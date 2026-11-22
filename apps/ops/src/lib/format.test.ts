@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { describe, expect, test } from "vitest";
 import {
+  formatBudgetPercent,
   formatBurn,
   formatCount,
   formatDuration,
@@ -29,9 +30,15 @@ describe("ops formatting helpers", () => {
     expect(formatBurn(1.25)).toBe("1.3x");
     expect(formatBurn(0)).toBe("0.0x");
     expect(formatUsd(42.5)).toBe("$42.50 USD");
-    expect(formatPercent(0)).toBe("Exhausted");
+    expect(formatPercent(0)).toBe("0.0%");
     expect(formatPercent(0.5)).toBe("0.5%");
+    expect(formatBudgetPercent(0)).toBe("Exhausted");
+    expect(formatBudgetPercent(0.5)).toBe("0.5%");
     expect(formatObservedPrimitive(true, null)).toBe("Frozen");
     expect(formatObservedPrimitive(false, null)).toBe("Open");
+    expect(formatObservedPrimitive(Number.NaN, "%")).toBe("Unknown: not instrumented");
+    expect(formatObservedPrimitive(Number.POSITIVE_INFINITY, "s")).toBe("Unknown: not instrumented");
+    expect(formatObservedPrimitive(Number.NEGATIVE_INFINITY, null)).toBe("Unknown: not instrumented");
+    expect(formatObservedPrimitive(Number.NaN, "%")).not.toContain("NaN");
   });
 });

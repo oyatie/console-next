@@ -37,6 +37,14 @@
   white-space: nowrap;
 }
 
+.launchChip {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1-5);
+  margin-inline-start: auto;
+}
+
 .band {
   display: flex;
   flex-direction: column;

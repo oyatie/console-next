@@ -57,7 +57,7 @@ describe("ops Cedar gating and O0 error classification", () => {
     expect(classifyOpsError(err404)).toMatchObject({
       kind: "404",
       code: "ops-not-found",
-      reason: "Alert group not found",
+      reason: "Resource not found",
       supportRef: "ref-404",
       evaluatedAt: "2026-11-21T21:43:00Z",
       showBreakGlass: false,

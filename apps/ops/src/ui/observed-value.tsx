@@ -7,10 +7,53 @@ import s from "./observed-value.module.css";
 
 function toneForWord(word: string): BadgeTone {
   if (word === "Unknown" || word === "Never reported") return "unknown";
-  if (word === "Healthy" || word === "Synced" || word === "Verified" || word === "Succeeded" || word === "Resolved") return "ok";
-  if (word === "Progressing" || word === "Monitoring" || word === "Running" || word === "Acked" || word === "Silenced" || word === "Inhibited") return "info";
-  if (word === "Degraded" || word === "OutOfSync" || word === "Stale" || word === "Suspended" || word === "Late" || word === "Ticket") return "warn";
-  if (word === "Missing" || word === "Firing" || word === "Failed" || word === "Page") return "danger";
+  if (
+    word === "Healthy" ||
+    word === "Synced" ||
+    word === "Verified" ||
+    word === "Succeeded" ||
+    word === "Resolved" ||
+    word === "OK" ||
+    word === "Operational" ||
+    word === "Ready"
+  ) {
+    return "ok";
+  }
+  if (
+    word === "Progressing" ||
+    word === "Monitoring" ||
+    word === "Running" ||
+    word === "Acked" ||
+    word === "Silenced" ||
+    word === "Inhibited" ||
+    word === "Expected" ||
+    word === "Maintenance"
+  ) {
+    return "info";
+  }
+  if (
+    word === "Degraded" ||
+    word === "OutOfSync" ||
+    word === "Stale" ||
+    word === "Suspended" ||
+    word === "Late" ||
+    word === "Ticket" ||
+    word === "Degraded performance" ||
+    word === "Partial outage" ||
+    word === "Watching"
+  ) {
+    return "warn";
+  }
+  if (
+    word === "Missing" ||
+    word === "Firing" ||
+    word === "Failed" ||
+    word === "Page" ||
+    word === "Major outage" ||
+    word === "Blocked"
+  ) {
+    return "danger";
+  }
   return "outline";
 }
 

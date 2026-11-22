@@ -139,8 +139,17 @@ textarea {
   cursor: pointer;
 }
 
-.btn:hover {
+.btn:hover:not(:disabled, [aria-disabled="true"]) {
   background: var(--surface-hover);
+}
+
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  border-style: solid;
+  border-color: var(--border);
+  background: var(--muted);
+  color: var(--faint);
+  cursor: not-allowed;
 }
 
 .btn--primary {
@@ -149,9 +158,20 @@ textarea {
   color: var(--on-primary);
 }
 
-.btn--primary:hover {
+.btn--primary:hover:not(:disabled, [aria-disabled="true"]) {
   background: var(--primary-hover);
   border-color: var(--primary-hover);
+}
+
+.btn--danger {
+  background: var(--danger-solid);
+  border-color: var(--danger-solid);
+  color: var(--on-danger);
+}
+
+.btn--danger:hover:not(:disabled, [aria-disabled="true"]) {
+  border-color: var(--danger-tx);
+  background: var(--danger-tx);
 }
 
 .btn--ghost {
@@ -159,7 +179,7 @@ textarea {
   background: transparent;
 }
 
-.btn--ghost:hover {
+.btn--ghost:hover:not(:disabled, [aria-disabled="true"]) {
   background: var(--surface-hover);
 }
 
@@ -185,6 +205,40 @@ textarea {
   background: var(--surface);
   color: var(--ink);
   font-size: var(--text-sm);
+}
+
+.field-input--form {
+  height: var(--field-h);
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--text-sm);
+}
+
+.field-textarea {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: calc(var(--field-h) * 2);
+  padding: var(--space-2);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--text-sm);
+  resize: vertical;
+}
+
+.field-checkbox {
+  width: var(--space-4);
+  height: var(--space-4);
+  accent-color: var(--primary);
+  cursor: pointer;
 }
 
 @layer {
