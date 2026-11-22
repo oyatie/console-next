@@ -214,6 +214,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 :where([data-experience]:not([data-experience="baseline"])) .btn--ghost[disabled]:hover { background: transparent; border-color: transparent; }
 /* ToggleButton look="chip": a filter as a pill (kit .optchip); pressed takes the shared pressed look above. */
 .btn--chip { min-height: calc(var(--space-6) - var(--space-1)); padding: 0 var(--space-2) 0 var(--space-3); border-color: var(--control-border); border-radius: calc(var(--radius-lg) * 10); background: var(--surface); font-size: var(--text-sm); font-weight: var(--fw-body); white-space: nowrap; }
+:where([data-experience]:not([data-experience="baseline"])) .btn--chip { border-radius: calc(var(--radius) * 2); }
 .btn--chip[aria-pressed="true"] { font-weight: var(--fw-medium); }
 .btn__count { display: inline-block; min-width: 3ch; font-variant-numeric: tabular-nums; color: var(--steel); font-weight: var(--fw-medium); }
 .btn__count[data-tone="warn"] { color: var(--warn-tx); }

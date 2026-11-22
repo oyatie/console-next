@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { Building, Building2, ClipboardCheck, Clock, FileText, Home, KeyRound, ListChecks, ScrollText, Settings, Users, type LucideIcon } from "lucide-react";
+import { Building, Building2, ClipboardCheck, Clock, FileText, Home, KeyRound, ListChecks, ScrollText, Settings, Users, UsersRound, type LucideIcon } from "lucide-react";
 import type { StaticDataRouteOption } from "@tanstack/react-router";
 import type { MessageId } from "@console/i18n";
 import type { AllPaths } from "@console/api/pending";
@@ -29,6 +29,7 @@ export const TENANT_NAV: readonly NavHub[] = [
   ] },
   { hub: "shell.hub.people", links: [
     { to: "/org", label: "shell.link.org", icon: Building2, module: "org" },
+    { to: "/team", label: "shell.link.team", icon: UsersRound, module: "people" },
     { to: "/people", label: "shell.link.people", icon: Users, module: "people" },
     { to: "/attendance", label: "shell.link.attendance", icon: Clock, module: "attendance" },
     { to: "/payroll", label: "shell.link.payroll", icon: FileText, module: PAYROLL_MODULE, requireReadiness: true },

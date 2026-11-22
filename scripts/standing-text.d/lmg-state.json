@@ -11,7 +11,7 @@
     "apps/web/src/features/attendance/ui/attendance-page.tsx#AttendancePage": 118,
     "apps/web/src/features/attendance/ui/attendance-page.tsx#DayPage": 78,
     "apps/web/src/features/attendance/ui/attendance-page.tsx#MonthPage": 84,
-    "apps/web/src/features/attendance/ui/attendance-page.tsx#PersonPage": 23,
+    "apps/web/src/features/attendance/ui/attendance-page.tsx#PersonPage": 21,
     "apps/web/src/features/company-domain/ui/domain-page.tsx#default": 22,
     "apps/web/src/features/entity/ui/entity-routes.tsx#EntitiesScreen": 118,
     "apps/web/src/features/entity/ui/entity-routes.tsx#EntityScreen": 0,

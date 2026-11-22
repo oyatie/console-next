@@ -7,8 +7,10 @@ import { Banner } from "../../../ui/banner/banner";
 import { Button } from "../../../ui/button/button";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { Tabs } from "../../../ui/tabs/tabs";
+import { ExperienceSwitch } from "../../../ui/patterns/pattern-shell";
 import { patternsQuery, treeQuery, type Layer, type ScopeKind } from "../api";
 import { AttendanceHead } from "./attendance-head";
+import { ScheduleConsoleView } from "./schedule-console-view";
 import { AssignSheet, type AssignTarget } from "./assign-sheet";
 import { CalendarView } from "./calendar-view";
 import { CancelLayerSheet } from "./cancel-layer-sheet";
@@ -71,14 +73,29 @@ export function PersonPage() {
 function AttendanceLayout({ children }: { children: (head: ReactNode) => ReactNode }) {
   const search = route.useSearch();
   const board = !search.person && ((search.tab ?? "month") === "month" || search.tab === "day");
-  return <div className={board ? `page ${styles.boardPage}` : "page"}><AttendanceHead tab={search.tab ?? "month"} />{children(null)}</div>;
+  return (
+    <ExperienceSwitch
+      baseline={() => (
+        <div className={board ? `page ${styles.boardPage}` : "page"}>
+          <AttendanceHead tab={search.tab ?? "month"} />
+          {children(null)}
+        </div>
+      )}
+    >
+      {() => (
+        <div className={board ? `page ${styles.boardPage}` : undefined}>
+          {children(null)}
+        </div>
+      )}
+    </ExperienceSwitch>
+  );
 }
 
 /**
  * attendance › work schedule (frames A2-*, A12-first-run). The scope and month are in the URL. Every write lands with a receipt
  * that names the way back: a layer can be cancelled until its start date, after that a new layer replaces it.
  */
-function ScheduleTab({ head }: { head: ReactNode }) {
+function ScheduleBaselineTab({ head }: { head: ReactNode }) {
   const search = route.useSearch();
   const navigate = route.useNavigate();
   const view = search.view ?? "calendar";
@@ -150,5 +167,13 @@ function ScheduleTab({ head }: { head: ReactNode }) {
     </>}</QueryState>}
     </Tabs>
     </>
+  );
+}
+
+function ScheduleTab({ head }: { head: ReactNode }) {
+  return (
+    <ExperienceSwitch baseline={() => <ScheduleBaselineTab head={head} />}>
+      {() => <ScheduleConsoleView baseline={() => <ScheduleBaselineTab head={head} />} />}
+    </ExperienceSwitch>
   );
 }

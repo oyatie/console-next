@@ -27,7 +27,17 @@ export async function mockPayroll(page: Page, screen: { key: string; read: strin
       if (state === "failed" || state === "refused") return route.fulfill({ status: state === "failed" ? 500 : 403, json: failure(state === "failed" ? "internal_error" : "forbidden") });
     }
     if (url.pathname.endsWith("/pay-groups")) return route.fulfill({ json: groups });
-    if (url.pathname.endsWith("/runs")) return route.fulfill({ json: { items: payrollRuns, total: payrollRuns.length, limit: payrollRuns.length, offset: 0 } });
+    if (url.pathname.endsWith("/runs")) {
+      const groupId = url.searchParams.get("pay_group_id");
+      const entityId = url.searchParams.get("legal_entity_id");
+      const offset = Number(url.searchParams.get("offset") ?? 0);
+      const limit = Number(url.searchParams.get("limit") ?? 50);
+      const filtered = payrollRuns.filter(
+        run => (!groupId || run.pay_group_id === groupId) && (!entityId || run.legal_entity_id === entityId),
+      );
+      const items = filtered.slice(offset, offset + limit);
+      return route.fulfill({ json: { items, total: filtered.length, limit, offset } });
+    }
     if (!url.pathname.endsWith("/reference/rates")) return route.fallback();
     const unsupported = state === "unsupported" || url.searchParams.get("legal_entity_id") === id(801);
     const json: PayrollRates = { country_code: unsupported ? "US" : "KR", adopted: !unsupported, items: state === "empty" ? [] : [{ ...rate, instrument_ko: state === "held" ? "" : rate.instrument_ko }] };

@@ -7,14 +7,17 @@ import { QueryState } from "../../../lib/react/query-state";
 import { Banner } from "../../../ui/banner/banner";
 import { Chip } from "../../../ui/chip";
 import { LongTable } from "../../../ui/long-table/long-table";
+import { ExperienceSwitch } from "../../../ui/patterns/pattern-shell";
 import { week52Query, type Week52Row } from "../api";
 import { dateText } from "../present";
+import { OvertimeConsoleView } from "./overtime-console-view";
 import { ReadPeriod } from "./read-period";
 
 const route = getRouteApi("/app/attendance");
 const tones = { OK: "ok", WARN: "warn", DANGER: "danger", UNKNOWN: "neutral" } as const;
 const hours = (value?: number | null) => value == null ? t("attendance.overtime.notReported") : t("attendance.hours", { hours: value });
-export function OvertimeTab() {
+
+function OvertimeBaselineTab() {
   const search = route.useSearch();
   const board = useQuery(week52Query(search.date ?? todayKst(), search.wp));
   return <><ReadPeriod week /><QueryState q={board} layout="list">{data => <>
@@ -29,4 +32,12 @@ export function OvertimeTab() {
         { id: "line", type: "status", header: t("attendance.overtime.line"), card: "status", cell: row => <Chip tone={tones[row.tone]}>{t(`attendance.overtime.${row.tone}`)}</Chip> },
       ]} />
   </>}</QueryState></>;
+}
+
+export function OvertimeTab() {
+  return (
+    <ExperienceSwitch baseline={() => <OvertimeBaselineTab />}>
+      {() => <OvertimeConsoleView baseline={() => <OvertimeBaselineTab />} />}
+    </ExperienceSwitch>
+  );
 }

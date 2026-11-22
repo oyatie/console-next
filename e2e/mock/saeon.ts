@@ -134,6 +134,7 @@ export const saeonUniverse = {
   heroDetails: raw.heroDetails,
   statusSamples: raw.statusSamples,
   reasonCodes: raw.reasonCodes,
+  statutory: raw.statutory,
 } as const;
 
 let cachedRoster: readonly SaeonRosterRow[] | null = null;
@@ -1146,8 +1147,8 @@ export function saeonPayrollRates(): S["PayrollRates"] {
     floor_won: null,
     cap_won: null,
     instrument_ko: t("payroll.reference.title"),
-    article_ko: "Art. 1",
-    promulgation_ko: "No. 1",
+    article_ko: raw.statutory.articles.baseArticle,
+    promulgation_ko: raw.statutory.articles.basePromulgation,
     enforced_on: "2026-01-01",
     retrieved_on: "2026-10-29",
     provenance_ko: t("payroll.reference.ACTIVE"),
