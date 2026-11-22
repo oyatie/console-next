@@ -15,7 +15,8 @@ import saeon from "./saeon-universe.json" with { type: "json" };
 import { mockScreen } from "./screen";
 
 type S = components["schemas"];
-const CAPTURE = process.env.CAPTURE_ACCESS_SETTINGS_SCREENSHOTS === "1";
+const SHOT_DIR = process.env.CONSOLE_SHOT_DIR ?? process.env.STRUCT_SHOTS ?? "";
+const CAPTURE = Boolean(SHOT_DIR);
 
 const saeonActorUser = (): S["CurrentUser"] => ({
   ...saeonAdminUser(),
@@ -115,8 +116,8 @@ async function captureThemeShots(page: Page, screen: string, width: 1440 | 390) 
     }, [theme, THEME_KEY] as const);
     await fits(page, `${screen}/${width}/${theme}`);
     await expectAxe(page, `${screen}/${width}/${theme}`);
-    if (CAPTURE) {
-      const dir = resolve("docs/ui-target/built/console", String(width));
+    if (SHOT_DIR) {
+      const dir = resolve(SHOT_DIR, String(width));
       mkdirSync(dir, { recursive: true });
       await page.screenshot({ path: resolve(dir, `${screen}-${theme}.png`), fullPage: true });
     }
