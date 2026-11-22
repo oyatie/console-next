@@ -133,82 +133,87 @@ afterAll(async () => {
 
 test("WorklistLower Monthly operations keeps UnlockReview, Open links, and 403 CommandError inside td[2] at 390px and 320px in Vite dev (en & ko)", async () => {
   const { page } = mounted;
-  await page.route("**/api/v1/access/me", route =>
-    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ is_ops: false, entries: [], decisions: {} }) }),
-  );
-  await page.route("**/api/v1/period-locks/**", route =>
-    route.fulfill({
-      status: 403,
-      contentType: "application/json",
-      body: JSON.stringify({ error: { code: "forbidden", message: "Permission_denied_unbroken_reference_token_for_wrapping_check", operation_id: "00000000-0000-4000-8000-000000000099" } }),
-    }),
-  );
+  try {
+    await page.route("**/api/v1/access/me", route =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ is_ops: false, entries: [], decisions: {} }) }),
+    );
+    await page.route("**/api/v1/period-locks/**", route =>
+      route.fulfill({
+        status: 403,
+        contentType: "application/json",
+        body: JSON.stringify({ error: { code: "forbidden", message: "Permission_denied_unbroken_reference_token_for_wrapping_check", operation_id: "00000000-0000-4000-8000-000000000099" } }),
+      }),
+    );
 
-  for (const locale of ["en", "ko"] as const) {
-    await loadCatalog(locale);
-    i18n.set(locale);
-    for (const width of [390, 320] as const) {
-      await page.setViewportSize({ width, height: 900 });
-      await page.goto("about:blank");
-      await page.goto(`${baseUrl}#ops-${locale}`);
-      const opsTable = page.getByRole("table", { name: t("home.worklist.opsTitle"), exact: true });
-      await opsTable.waitFor();
-      await opsTable.getByRole("button", { name: t("periodLocks.review.acknowledge"), exact: true }).waitFor();
+    for (const locale of ["en", "ko"] as const) {
+      await loadCatalog(locale);
+      i18n.set(locale);
+      for (const width of [390, 320] as const) {
+        await page.setViewportSize({ width, height: 900 });
+        await page.goto("about:blank");
+        await page.goto(`${baseUrl}#ops-${locale}`);
+        const opsTable = page.getByRole("table", { name: t("home.worklist.opsTitle"), exact: true });
+        await opsTable.waitFor();
+        await opsTable.getByRole("button", { name: t("periodLocks.review.acknowledge"), exact: true }).waitFor();
 
-      const metrics = await opsTable.evaluate((table, { vw, openLabel }) => {
-        const scroller = table.parentElement!;
-        const wrap = scroller.parentElement!;
-        const cues = wrap.querySelectorAll("[data-scroll-cue]").length;
-        const controlChecks = [...table.querySelectorAll<HTMLElement>("tbody a[href], tbody button")].map(ctrl => {
-          const td = ctrl.closest("td")!;
-          const rect = ctrl.getBoundingClientRect();
-          const tdRect = td.getBoundingClientRect();
-          const tdPadRight = Number.parseFloat(getComputedStyle(td).paddingRight) || 0;
-          const isOpen = ctrl.textContent?.trim() === openLabel;
-          let singleLine = true;
-          if (isOpen) {
-            const range = document.createRange();
-            range.selectNodeContents(ctrl);
-            singleLine = range.getClientRects().length <= 1;
-          }
+        const metrics = await opsTable.evaluate((table, { vw, openLabel }) => {
+          const scroller = table.parentElement!;
+          const wrap = scroller.parentElement!;
+          const cues = wrap.querySelectorAll("[data-scroll-cue]").length;
+          const controlChecks = [...table.querySelectorAll<HTMLElement>("tbody a[href], tbody button")].map(ctrl => {
+            const td = ctrl.closest("td")!;
+            const rect = ctrl.getBoundingClientRect();
+            const tdRect = td.getBoundingClientRect();
+            const tdPadRight = Number.parseFloat(getComputedStyle(td).paddingRight) || 0;
+            const isOpen = ctrl.textContent?.trim() === openLabel;
+            let singleLine = true;
+            if (isOpen) {
+              const range = document.createRange();
+              range.selectNodeContents(ctrl);
+              singleLine = range.getClientRects().length <= 1;
+            }
+            return {
+              insideLeft: rect.left >= tdRect.left - 1,
+              insideRight: rect.right <= tdRect.right + 1,
+              insideViewport: rect.right <= vw + 1,
+              flushRight: !isOpen || Math.abs(rect.right - (tdRect.right - tdPadRight)) <= 2,
+              singleLine,
+            };
+          });
           return {
-            insideLeft: rect.left >= tdRect.left - 1,
-            insideRight: rect.right <= tdRect.right + 1,
-            insideViewport: rect.right <= vw + 1,
-            flushRight: !isOpen || Math.abs(rect.right - (tdRect.right - tdPadRight)) <= 2,
-            singleLine,
+            minWidth: getComputedStyle(table).minWidth,
+            opsSW: Math.round(table.scrollWidth),
+            scrollerCW: Math.round(scroller.clientWidth),
+            cues,
+            controlChecks,
           };
+        }, { vw: width, openLabel: t("home.inbox.open") });
+
+        expect(metrics.minWidth).toBe("0px");
+        expect(metrics.opsSW).toBeLessThanOrEqual(metrics.scrollerCW + 1);
+        expect(metrics.cues).toBe(0);
+        expect(metrics.controlChecks.length).toBeGreaterThanOrEqual(3);
+        for (const check of metrics.controlChecks) {
+          expect(check).toEqual({ insideLeft: true, insideRight: true, insideViewport: true, flushRight: true, singleLine: true });
+        }
+
+        await opsTable.getByRole("button", { name: t("periodLocks.review.acknowledge"), exact: true }).click();
+        const alert = opsTable.locator('[role="alert"], [role="status"]').first();
+        await alert.waitFor();
+        const alertCheck = await alert.evaluate(el => {
+          const td = el.closest("td")!;
+          const rect = el.getBoundingClientRect();
+          const tdRect = td.getBoundingClientRect();
+          return { insideLeft: rect.left >= tdRect.left - 1, insideRight: rect.right <= tdRect.right + 1, fits: el.scrollWidth <= el.clientWidth + 1 };
         });
-        return {
-          minWidth: getComputedStyle(table).minWidth,
-          opsSW: Math.round(table.scrollWidth),
-          scrollerCW: Math.round(scroller.clientWidth),
-          cues,
-          controlChecks,
-        };
-      }, { vw: width, openLabel: t("home.inbox.open") });
-
-      expect(metrics.minWidth).toBe("0px");
-      expect(metrics.opsSW).toBeLessThanOrEqual(metrics.scrollerCW + 1);
-      expect(metrics.cues).toBe(0);
-      expect(metrics.controlChecks.length).toBeGreaterThanOrEqual(3);
-      for (const check of metrics.controlChecks) {
-        expect(check).toEqual({ insideLeft: true, insideRight: true, insideViewport: true, flushRight: true, singleLine: true });
+        expect(alertCheck).toEqual({ insideLeft: true, insideRight: true, fits: true });
       }
-
-      await opsTable.getByRole("button", { name: t("periodLocks.review.acknowledge"), exact: true }).click();
-      const alert = opsTable.locator('[role="alert"], [role="status"]').first();
-      await alert.waitFor();
-      const alertCheck = await alert.evaluate(el => {
-        const td = el.closest("td")!;
-        const rect = el.getBoundingClientRect();
-        const tdRect = td.getBoundingClientRect();
-        return { insideLeft: rect.left >= tdRect.left - 1, insideRight: rect.right <= tdRect.right + 1, fits: el.scrollWidth <= el.clientWidth + 1 };
-      });
-      expect(alertCheck).toEqual({ insideLeft: true, insideRight: true, fits: true });
     }
+  } finally {
+    await page.unroute("**/api/v1/access/me");
+    await page.unroute("**/api/v1/period-locks/**");
   }
-});
+}, 45_000);
 
 test("ConsoleWorklistTable + PaneGrid contains horizontal overflow in en at 900px / and 1024/1120/1440px split-pane", async () => {
   const { page } = mounted;
@@ -261,4 +266,4 @@ test("ConsoleWorklistTable + PaneGrid contains horizontal overflow in en at 900p
     });
     expect(btnFits).toBe(true);
   }
-});
+}, 45_000);
