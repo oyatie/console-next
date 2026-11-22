@@ -39,7 +39,6 @@
 .consolePhoneMeta { display: none; }
 .consoleDesktopSource { display: inline; }
 .consoleBody { display: flex; flex-direction: column; min-width: 0; }
-.consolePad { padding: var(--space-1-5) var(--space-3); }
 .consoleKicker { display: inline-flex; align-items: center; gap: var(--space-1-5); flex-wrap: wrap; }
 @container list-table (max-width: 480px) {
   .consolePhoneMeta { display: inline; }

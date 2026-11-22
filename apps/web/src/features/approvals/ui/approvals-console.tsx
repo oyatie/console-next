@@ -15,6 +15,7 @@ import { DocLinkContent, DocLinkList } from "../../../ui/patterns/document-decis
 import {
   WorklistChain,
   WorklistMoreBar,
+  WorklistPadded,
   WorklistSection,
   WorklistSummaryHead,
   type WorklistChainStep,
@@ -186,10 +187,8 @@ export function ConsoleApprovalSideView({ document: d }: { document: ApprovalDoc
         }
         title={d.title}
       />
-      <WorklistSection>
-        <div className={s.consolePad}>
-          <ApprovalFactsContent document={d} dense includeDocNo={false} columns={2} />
-        </div>
+      <WorklistSection padded>
+        <ApprovalFactsContent document={d} dense includeDocNo={false} columns={2} />
       </WorklistSection>
       {diffs.length > 0 && (
         <WorklistSection>
@@ -206,9 +205,9 @@ export function ConsoleApprovalSideView({ document: d }: { document: ApprovalDoc
       {detailItems.length > 0 ? (
         <WorklistSection>
           <PaneHead title={t("approvals.viewer.body")} level={3} />
-          <div className={s.consolePad}>
+          <WorklistPadded>
             <KeyValue density="dense" readOnly items={detailItems} />
-          </div>
+          </WorklistPadded>
         </WorklistSection>
       ) : null}
       {relatedLinks.length > 0 ? (
