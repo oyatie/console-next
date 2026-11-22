@@ -181,7 +181,6 @@
   "unused-export:apps/web/src/features/people/ui/use-register.ts:RegisterInput": 1,
   "unused-export:apps/web/src/features/periods/domain/strip.ts:StripLock": 1,
   "unused-export:apps/web/src/features/periods/present.ts:instantText": 1,
-  "unused-export:apps/web/src/features/platform/api.ts:OrgStatus": 1,
   "unused-export:apps/web/src/features/platform/domain/slug.ts:SlugProblem": 1,
   "unused-export:apps/web/src/features/structure/api.ts:Receipt": 1,
   "unused-export:apps/web/src/features/structure/domain/layout.ts:LayoutInput": 1,
