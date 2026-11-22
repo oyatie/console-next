@@ -48,6 +48,6 @@ export function NameInput({ kit, k, kind, label, siblings, parent, hint }: { kit
 }
 
 /** Before and after the op the card sends, from today's tree. */
-export function UnitDiff({ units, op, summary, then, note }: { units: Unit[]; op: Op; summary: string; then: string; note?: string }) {
-  return <StructureDiff summary={summary} then={then} note={note} {...preview(units, op)} />;
+export function UnitDiff({ units, op, summary, then, note, flat }: { units: Unit[]; op: Op; summary: string; then: string; note?: string; flat?: boolean }) {
+  return <StructureDiff summary={summary} then={then} note={note} flat={flat} {...preview(units, op)} />;
 }

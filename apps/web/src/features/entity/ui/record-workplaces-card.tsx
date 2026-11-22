@@ -12,11 +12,11 @@ import { Muted } from "../../../ui/muted/muted";
 import { InsuranceSummary } from "../../../reference/entity/ui/insurance-summary";
 
 /** workplaces and certificates (spec S3): every workplace with its headcount, its certificate's number and status, place and social insurance. */
-export function WorkplacesCard({ e }: { e: LegalEntity }) {
+export function WorkplacesCard({ e, flat }: { e: LegalEntity; flat?: boolean }) {
   const nav = useNavigate();
   const vat = e.current?.vat_unit_mode;
   return (
-    <section className="card" aria-labelledby="workplaces-title">
+    <section className={flat ? undefined : "card"} aria-labelledby="workplaces-title">
       <div className={s.cardHead}>
         <h2 id="workplaces-title" className={s.cardTitle}>{t("entityRecord.workplaces.title")}</h2>
         <span className="muted">
@@ -33,6 +33,7 @@ export function WorkplacesCard({ e }: { e: LegalEntity }) {
           label={t("entityRecord.workplaces.table")}
           rows={e.workplaces}
           rowId={(w) => w.id}
+          mobileLayout={flat ? "compact" : undefined}
           onSelect={(id) => void nav({ to: "/org/entities/$id", params: { id: e.id }, search: { wp: id, as_of: e.as_of, known_at: e.known_at ?? undefined } })}
           columns={[
             {
@@ -46,7 +47,7 @@ export function WorkplacesCard({ e }: { e: LegalEntity }) {
                 </span>
               ),
             },
-            { header: t("entityRecord.workplaces.col.people"), cell: (w) => <b className="num">{fmtNumber(w.headcount)}</b>, fit: true },
+            { header: t("entityRecord.workplaces.col.people"), cell: (w) => <b className="num">{fmtNumber(w.headcount)}</b>, fit: true, wide: flat ? true : undefined },
             { header: t("entityRecord.workplaces.col.brn"), cell: (w) => {
               const brn = registrationOf(e, w.registration_id ?? w.filing_registration_id)?.brn?.display;
               return <span className="code">{w.registration_id ? brn ?? t("workplace.brnPending") : <>{t("workplace.filing.entityBasis")}{brn && ` · ${brn}`}</>}</span>;
@@ -63,8 +64,8 @@ export function WorkplacesCard({ e }: { e: LegalEntity }) {
               },
             },
             { header: t("entityRecord.workplaces.col.address"), cell: (w) => <Muted>{addressLine(w.current?.address ?? registrationOf(e, w.registration_id)?.current?.business_address) || t("entityOps.info.none")}</Muted>, wide: true },
-            { header: t("entityRecord.workplaces.col.insurance"), cell: w => <InsuranceSummary insurance={w.insurance} />, fit: true },
-            { header: <span className="sr-only">{t("entityRecord.workplaces.col.open")}</span>, cell: () => <ChevronRight size={14} aria-hidden />, fit: true },
+            { header: t("entityRecord.workplaces.col.insurance"), cell: w => <InsuranceSummary insurance={w.insurance} />, fit: true, wide: flat ? true : undefined },
+            { header: <span className="sr-only">{t("entityRecord.workplaces.col.open")}</span>, cell: () => <ChevronRight size={14} aria-hidden />, fit: true, card: flat ? "action" : undefined },
           ]}
         />
       )}

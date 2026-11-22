@@ -23,8 +23,8 @@ const UNAVAILABLE = {
 } as const;
 
 /** One authority-check card, shared by the overview and each recorded certificate. */
-export function NtsCheck({ registration: r, entity, canManage = entity.can_manage, onAttach, historical = false }: {
-  registration: BusinessRegistration; entity: LegalEntity; canManage?: boolean; onAttach: () => void; historical?: boolean;
+export function NtsCheck({ registration: r, entity, canManage = entity.can_manage, onAttach, historical = false, flat = false }: {
+  registration: BusinessRegistration; entity: LegalEntity; canManage?: boolean; onAttach: () => void; historical?: boolean; flat?: boolean;
 }) {
   const live = useQuery({ ...registrationChecksQuery(r.id), enabled: !historical });
   const stored = r.nts_check;
@@ -45,9 +45,8 @@ export function NtsCheck({ registration: r, entity, canManage = entity.can_manag
   const error = send.error instanceof ApiError ? send.error : undefined;
   const reportedReason = error?.code === "registration_check_unavailable" ? error.details.reason : null;
   const failedReason = typeof reportedReason === "string" && Object.hasOwn(UNAVAILABLE, reportedReason) ? reportedReason as keyof typeof UNAVAILABLE : null;
-  return (
-    <Card title={t("nts.title")} id={`nts-${r.id}`}>
-        <QueryState q={q} loading={<Skeleton bones={["block"]} label={t("common.loading")} />}>
+  const content = (
+    <QueryState q={q} loading={<Skeleton bones={["block"]} label={t("common.loading")} />}>
           {(history) => {
             const checks = [history.latest_status, history.latest_validate].filter((check): check is CheckEvidence => Boolean(check));
             const latest = checks.reduce<CheckEvidence | undefined>((last, check) => !last || check.checked_at > last.checked_at ? check : last, undefined);
@@ -94,6 +93,15 @@ export function NtsCheck({ registration: r, entity, canManage = entity.can_manag
             </>;
           }}
         </QueryState>
+  );
+  return flat ? (
+    <section id={`nts-${r.id}`} aria-labelledby={`nts-title-${r.id}`}>
+      <h2 id={`nts-title-${r.id}`}>{t("nts.title")}</h2>
+      {content}
+    </section>
+  ) : (
+    <Card title={t("nts.title")} id={`nts-${r.id}`}>
+      {content}
     </Card>
   );
 }

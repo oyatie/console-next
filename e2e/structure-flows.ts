@@ -34,7 +34,7 @@ export const receipt = (page: Page) => page.getByRole("status").filter({ has: pa
  * chart with its re-read, so the find is repeated until it lands on it.
  */
 export async function findBox(page: Page, name: string) {
-  const find = page.getByRole("searchbox", { name: "조직 찾기" });
+  const find = page.getByRole("searchbox", { name: "부서·코드 검색" });
   await expect(async () => {
     await find.fill(name);
     await find.press("Enter");

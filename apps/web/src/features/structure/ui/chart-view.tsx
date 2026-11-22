@@ -11,6 +11,7 @@ import { ChangeReceipt } from "../../../reference/org/ui/change-receipt";
 import { useChangeNote } from "../../../reference/org/ui/use-change-note";
 import { receiptAction } from "../../../ui/receipt/receipt-action";
 import { Button } from "../../../ui/button/button";
+import type { Depth } from "../domain/layout";
 import { drawnAt, pathTo, type ChartNode, type Structure } from "../domain/model";
 import { EDITOR_SIZE } from "../domain/layout";
 import { collapseSelection, movable } from "../domain/rules";
@@ -39,7 +40,7 @@ import css from "./chart.module.css";
  * toolbar, inline add and rename, drag and M to move, the selection bar, and the receipt docked in the gutter.
  * During setup every change applies at once (undoable); after go-live the gestures open the governed proposal.
  */
-export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, pick, dimmed, covered, find: q, ref }: {
+export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, pick, dimmed, covered, find: q, depth, onDepth, consoleChrome = false, ref }: {
   s: Structure;
   /** The page toolbar's find text and its commands for this view. */
   find?: string;
@@ -56,8 +57,11 @@ export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, pick, dimme
   onSelect: (ids: ReadonlySet<string>, gather?: boolean) => void;
   /** A proposal covers the chart, so its floating controls leave the inert background. */
   covered?: boolean;
+  depth?: Depth;
+  onDepth?: (d: Depth) => void;
+  consoleChrome?: boolean;
 }) {
-  const c = useChartState(s, focusId, onFocus, sel, onSelect, q);
+  const c = useChartState(s, focusId, onFocus, sel, onSelect, q, { depth, onDepth });
   const [picked, setPicked] = useState(pick?.n);
   if (pick && pick.n !== picked) {
     setPicked(pick.n);
@@ -156,6 +160,8 @@ export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, pick, dimme
     <ChangeReceipt />
   ) : null;
 
+  const showChartTop = !consoleChrome || c.focus.kind !== "tenant" || Boolean(c.q.trim());
+
   return (
     // While a drag is live its Esc cancels the drag; the column beside the chart must not take the key first.
     <div className={css.chartWrap} data-escape-scope={drag.view ? "" : undefined}>
@@ -170,7 +176,7 @@ export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, pick, dimme
         top={drag.view ? (
           // While dragging, the top edge says what is moving and how a drop is judged (S2-chart-drag).
           <p className={`${css.dragBanner} card`} role="status"><CornerDownRight size={16} aria-hidden /><b>{t("structure.drop.moving", { name: drag.view.nodes.map((n) => n.name).join(", ") })}</b>{t("structure.drop.rules")}</p>
-        ) : <ChartTop s={s} c={c} onFocus={onFocus} />}
+        ) : showChartTop ? <ChartTop s={s} c={c} onFocus={onFocus} consoleChrome={consoleChrome} /> : undefined}
         gutter={gutter}
         layer={(zoom, visible) => (
           <>

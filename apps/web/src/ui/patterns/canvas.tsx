@@ -27,6 +27,9 @@ export function CanvasPattern({
   facts: _facts,
   overlays,
   statusSegments,
+  keepOnLoss,
+  back,
+  own,
   baseline,
   ...panes
 }: CanvasPatternProps) {
@@ -45,6 +48,9 @@ export function CanvasPattern({
       queryLayout="grid"
       detailActive={Boolean(paneInspector)}
       statusSegments={statusSegments}
+      keepOnLoss={keepOnLoss}
+      back={back}
+      own={own}
       baseline={baseline}
     >
       {() => (

@@ -17,23 +17,27 @@ type Report = components["schemas"]["OrgChangePreflightReport"];
  * The live preflight of a draft: blockers first, each with the server's label, its code and the fix this
  * screen can offer. The footer holds the only affected-people number shown while the change is a draft (D3).
  */
-export function ChangePreflight({ d, report, checking, onRerun, onEdit }: {
+export function ChangePreflight({ d, report, checking, onRerun, onEdit, flat = false }: {
   d: Detail;
   report: Report;
   checking: boolean;
   onRerun: () => void;
   onEdit: () => void;
+  flat?: boolean;
 }) {
-  return (
-    <section className="card panel" aria-labelledby="preflight" aria-busy={checking || undefined}>
-      <div className="row">
-        <h2 id="preflight" className="panel__title" tabIndex={-1}>{t("orgChange.preflight")}</h2>
-        {report.blockers.length > 0 && <Chip tone="danger">{t("orgChange.preflight.blocked", { count: report.blockers.length })}</Chip>}
-        {report.warnings.length > 0 && <Chip tone="warn">{t("orgChange.preflight.warn", { count: report.warnings.length })}</Chip>}
-        {report.blockers.length === 0 && <Chip tone="ok">{t("orgChange.preflight.clear")}</Chip>}
-        <span className="muted num">{checking ? t("orgChange.preflight.rerunning") : t("orgChange.preflight.at", { at: fmtDateTime(report.computedAt) })}</span>
-        <Button variant="ghost" disabled={checking} onClick={onRerun}>{t("orgChange.preflight.rerun")}</Button>
-      </div>
+  const statusRow = (
+    <div className="row">
+      {!flat && <h2 id="preflight" className="panel__title" tabIndex={-1}>{t("orgChange.preflight")}</h2>}
+      {report.blockers.length > 0 && <Chip tone="danger">{t("orgChange.preflight.blocked", { count: report.blockers.length })}</Chip>}
+      {report.warnings.length > 0 && <Chip tone="warn">{t("orgChange.preflight.warn", { count: report.warnings.length })}</Chip>}
+      {report.blockers.length === 0 && <Chip tone="ok">{t("orgChange.preflight.clear")}</Chip>}
+      <span className="muted num">{checking ? t("orgChange.preflight.rerunning") : t("orgChange.preflight.at", { at: fmtDateTime(report.computedAt) })}</span>
+      <Button variant="ghost" disabled={checking} onClick={onRerun}>{t("orgChange.preflight.rerun")}</Button>
+    </div>
+  );
+  const body = (
+    <>
+      {statusRow}
       <ul className="list-plain">
         {report.blockers.map((b) => (
           <li key={b.code} className={css.check}>
@@ -57,6 +61,12 @@ export function ChangePreflight({ d, report, checking, onRerun, onEdit }: {
         ))}
       </ul>
       <p className="muted num">{t("orgChange.preflight.footer", { count: report.headcount, deps: report.dependentsTotal })}</p>
+    </>
+  );
+  if (flat) return <div id="preflight" tabIndex={-1} aria-busy={checking || undefined}>{body}</div>;
+  return (
+    <section className="card panel" aria-labelledby="preflight" aria-busy={checking || undefined}>
+      {body}
     </section>
   );
 }

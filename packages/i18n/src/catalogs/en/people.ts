@@ -43,6 +43,7 @@ export const enPeople = {
   "people.sameName.reason": "Someone in the same unit has exactly this name. Check that the same person wasn’t registered twice.",
   "people.sameName.other": "{name} ({number})",
   "people.sameName.loading": "Another employee",
+  "people.sameName.more": "and {count, number} more",
   "people.duplicate.chip": "May already be on file",
   "people.duplicate.title": "{name} may already be registered",
   "people.duplicate.body": "A record has the same name and the same phone or date of birth. If it is the same person, open that record instead of registering again.",

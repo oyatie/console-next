@@ -5,6 +5,8 @@ import { Card } from "../../../ui/card/card";
 import { Chip } from "../../../ui/chip";
 import { KeyValue } from "../../../ui/key-value/key-value";
 import { DeadlineChip } from "../../../ui/deadline-chip/deadline-chip";
+import { Ledger } from "../../../ui/ledger/ledger";
+import { DocSection } from "../../../ui/patterns/document-decision-parts";
 import { TimelineLanes } from "../../../ui/timeline-lanes/timeline-lanes";
 import { todayKst } from "../../../lib/pure/today";
 import { retirementDate } from "../domain/employment";
@@ -14,7 +16,7 @@ import { EXIT_LEGS, exitLeg, exitLegAtRisk, exitPayrollPending, exitDeadlineKnow
 import { TrailItem, TrailCaseEnd } from "./lifecycle-trail-item";
 import boardCss from "./exit-board.module.css";
 
-export function ExitBoard({ value, lastWorkingDay, dueSoonDays = null }: { value: LifecycleCase; lastWorkingDay: string; dueSoonDays?: number | null }) {
+export function ExitBoard({ value, lastWorkingDay, dueSoonDays = null, consoleMode = false }: { value: LifecycleCase; lastWorkingDay: string; dueSoonDays?: number | null; consoleMode?: boolean }) {
   const dates = [
     { key: "today", date: todayKst(), title: t("lifecycle.preset.today"), highlight: true },
     { key: "last", date: lastWorkingDay, title: t("exit.field.date") },
@@ -24,6 +26,56 @@ export function ExitBoard({ value, lastWorkingDay, dueSoonDays = null }: { value
       detail: [item.basis.instrument, item.basis.article].filter(part => typeof part === "string").join(" · "),
     })),
   ].sort((a, b) => a.date.localeCompare(b.date));
+  if (consoleMode) {
+    return <>
+      <DocSection label={t("exit.board.ribbon")} title={t("exit.board.ribbon")}>
+        <TimelineLanes items={dates.map(item => ({ ...item, date: fmtDate(item.date) }))} density="dense" />
+      </DocSection>
+      <DocSection label={t("lifecycle.trail.title")} title={<>{t("lifecycle.trail.title")} <Chip>{trailText(`lifecycle.trail.state.${value.state}`)}</Chip></>}>
+        <Ledger
+          label={t("exit.board.board")}
+          rows={EXIT_LEGS.map(leg => {
+            const items = value.items.filter(item => exitLeg(item) === leg);
+            const risk = exitLegAtRisk(items, dueSoonDays);
+            const overdue = exitLegAtRisk(items, null);
+            const label = t(`exit.board.leg.${leg}`);
+            return {
+              key: leg,
+              label: (
+                <bdi className={boardCss.legLabel}>
+                  {label}
+                  {risk ? <Chip tone="warn">{t(overdue ? "exit.board.overdue" : "exit.board.dueSoon")}</Chip> : null}
+                </bdi>
+              ),
+              detail: items.length ? (
+                <ul className={`list-plain ${boardCss.stack}`}>
+                  {items.map(item => {
+                    const payrollPending = exitPayrollPending(item);
+                    const date = item.due_date && item.due_disposition !== "UNKNOWN" ? <time dateTime={item.due_date}>{fmtDate(item.due_date)}</time> : undefined;
+                    const deadline = payrollPending ? date : exitDeadlineKnown(item) && item.due_in_days !== null ? <DeadlineChip severity={exitDeadlineSeverity(item.due_in_days, dueSoonDays)} days={item.due_in_days}>{date}</DeadlineChip> : undefined;
+                    return (
+                      <li key={item.id} id={`item-${item.id}`}>
+                        <div className={boardCss.stack}>
+                          {payrollPending && <Chip>{t("exit.board.payrollPending")}</Chip>}
+                          <TrailItem item={item} value={value} deadline={deadline} />
+                          {!item.owner_line && <KeyValue items={[{ key: "owner", label: t("exit.board.owner"), value: t("exit.board.ownerUnknown") }]} />}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : undefined,
+              amount: items.length === 0 ? t("exit.board.empty") : t("empDoc.certificate.count", { count: items.length }),
+              tone: items.length === 0 ? "muted" : "default",
+            };
+          })}
+        />
+        <div className={boardCss.endActions}>
+          <TrailCaseEnd value={value} />
+        </div>
+      </DocSection>
+    </>;
+  }
   return <>
     <Card label={t("exit.board.ribbon")}>
       <TimelineLanes items={dates.map(item => ({ ...item, date: fmtDate(item.date) }))} density="dense" />

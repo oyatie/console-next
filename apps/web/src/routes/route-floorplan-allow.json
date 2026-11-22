@@ -6,20 +6,5 @@
   "/access/ready",
   "/access/roles",
   "/access/roles/$roleId",
-  "/access/roles/new",
-  "/org",
-  "/org/changes",
-  "/org/changes/$id",
-  "/org/entities",
-  "/org/entities/$id",
-  "/org/entities/$id/workplaces/new",
-  "/org/entities/bulk",
-  "/org/entities/new",
-  "/org/history",
-  "/org/import",
-  "/org/move",
-  "/org/paste",
-  "/org/workplaces/edit",
-  "/requests",
-  "/requests/$id"
+  "/access/roles/new"
 ]

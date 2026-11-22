@@ -89,6 +89,9 @@ export const saeonUniverse = {
   roles: raw.roles,
   employmentTypes: raw.employmentTypes,
   missingLabels: raw.missingLabels,
+  exitNotes: raw.exitNotes,
+  requestNotes: raw.requestNotes,
+  settings: raw.settings,
   entities,
   hero: {
     ...raw.hero,
@@ -1375,6 +1378,8 @@ export function saeonOrgUnits() {
 }
 
 export function saeonFilterEmployees(params: URLSearchParams): S["EmployeePage"] {
+  const ids = params.getAll("ids").flatMap(v => v.split(",")).filter(Boolean);
+  const numbers = params.getAll("employee_number").flatMap(v => v.split(",")).filter(Boolean);
   const statuses = params.getAll("status").filter(Boolean);
   const search = (params.get("search") ?? "").trim().toLowerCase();
   const legalEntityId = params.get("legal_entity_id");
@@ -1386,6 +1391,22 @@ export function saeonFilterEmployees(params: URLSearchParams): S["EmployeePage"]
   const limit = Math.min(1000, Math.max(1, Number(params.get("limit") ?? 100) || 100));
 
   const samples = saeonStatusSampleEmployees();
+  if (ids.length > 0) {
+    const idSet = new Set(ids);
+    const sampleList = [samples.onLeave, samples.preHire, samples.exited];
+    const fromRoster = generateSaeonRoster().filter(r => idSet.has(r.id)).map(r => rowToEmployee(r));
+    const fromSamples = sampleList.filter(e => idSet.has(e.id));
+    const items = [...fromRoster, ...fromSamples].sort((a, b) => a.id.localeCompare(b.id));
+    return { items, total: items.length, limit: Math.max(limit, items.length), offset: 0, next_cursor: null };
+  }
+  if (numbers.length > 0) {
+    const numSet = new Set(numbers);
+    const sampleList = [samples.onLeave, samples.preHire, samples.exited];
+    const fromRoster = generateSaeonRoster().filter(r => numSet.has(r.employeeNumber)).map(r => rowToEmployee(r));
+    const fromSamples = sampleList.filter(e => e.employee_number && numSet.has(e.employee_number));
+    const items = [...fromRoster, ...fromSamples];
+    return { items, total: items.length, limit: Math.max(limit, items.length), offset: 0, next_cursor: null };
+  }
   if (statuses.length === 1 && statuses[0] === "ON_LEAVE") {
     const items = search ? [samples.onLeave].filter(e => e.name.toLowerCase().includes(search)) : [samples.onLeave];
     return { items, total: items.length, limit, offset: 0, next_cursor: null };
@@ -2041,6 +2062,262 @@ export function saeonApprovalsPage(
   };
 }
 
+export const SAEON_NOTICE_ID = "00000000-0000-4000-8970-000000000001";
+export const SAEON_EXIT_CASE_ID = "00000000-0000-4000-8980-000000000001";
+export const SAEON_CERT_ID = "00000000-0000-4000-8950-000000000001";
+
+export function saeonRegisterFactsBatch(body?: S["RegisterFactsQueryRequest"] | null): S["RegisterFactsQueryResponse"] {
+  const roster = generateSaeonRoster();
+  const limit = Math.min(500, Math.max(1, body?.limit ?? 500));
+  const ids = body?.ids?.length
+    ? [...body.ids].sort()
+    : (body?.register_review_required ? roster.filter(r => Boolean(r.missingCode)) : roster).slice(0, limit).map(r => r.id).sort();
+  const items: S["RegisterFactsQueryItem"][] = ids.map(empId => {
+    const facts = saeonRegisterFacts(empId);
+    const { birthDate } = findRosterOrSampleEmployee(empId);
+    return {
+      employee_id: empId,
+      updated_at: facts.updated_at,
+      sex: facts.sex ?? null,
+      address: facts.address ?? null,
+      careers: facts.careers ?? [],
+      exit_reason_code: facts.exit_reason_code ?? null,
+      exit_reason_label: facts.exit_reason_label ?? null,
+      register_note: facts.register_note ?? null,
+      birth_date: birthDate,
+    };
+  });
+  return { items, next_cursor: null };
+}
+
+export function saeonNotices(): S["AppointmentNoticePage"] {
+  const admin = saeonAdminUser();
+  return {
+    items: [
+      {
+        id: SAEON_NOTICE_ID,
+        notice_no: "2026-0041",
+        title: `${saeonUniverse.hero.gradeLabel} · 2026-11`,
+        notice_date: "2026-11-15",
+        issued_by: admin.id,
+        issued_by_name: admin.display_name,
+        issued_at: SAEON_AT,
+        line_count: 1,
+      },
+      {
+        id: "00000000-0000-4000-8970-000000000002",
+        notice_no: "2026-0040",
+        title: `${saeonUniverse.entities[0]!.name} · 2026-10`,
+        notice_date: "2026-10-20",
+        issued_by: admin.id,
+        issued_by_name: admin.display_name,
+        issued_at: "2026-10-20T09:00:00+09:00",
+        line_count: 1,
+      },
+    ],
+    next_cursor: null,
+  };
+}
+
+export function saeonNoticeDetail(id: string): S["AppointmentNotice"] {
+  const list = saeonNotices().items;
+  const summary = list.find(n => n.id === id) ?? list[0]!;
+  const { employee } = findRosterOrSampleEmployee(SAEON_HERO_ID);
+  const events = saeonLifecycleEvents(SAEON_HERO_ID).items;
+  return {
+    ...summary,
+    note: saeonUniverse.heroDetails.scheduledEvent.reason,
+    lines: [
+      {
+        line_no: 1,
+        employee_id: employee.id,
+        employee_number: employee.employee_number ?? null,
+        name: employee.name,
+        event: events[0]!,
+      },
+    ],
+  };
+}
+
+export function saeonNoticeCandidates(): S["AppointmentNoticeCandidatePage"] {
+  const { employee } = findRosterOrSampleEmployee(SAEON_HERO_ID);
+  const events = saeonLifecycleEvents(SAEON_HERO_ID).items;
+  return {
+    items: events[0]
+      ? [
+          {
+            employee_id: employee.id,
+            employee_number: employee.employee_number ?? null,
+            name: employee.name,
+            event: events[0],
+          },
+        ]
+      : [],
+    next_cursor: null,
+  };
+}
+
+function buildSaeonExitCases(): S["EmployeeExitCase"][] {
+  const admin = saeonAdminUser();
+  const exited = saeonStatusSampleEmployees().exited;
+  const onLeave = saeonStatusSampleEmployees().onLeave;
+  const site0 = entities[0]!.workplaces[0]!.name;
+  const site1 = entities[0]!.workplaces[1]?.name ?? site0;
+  return [
+    {
+      id: SAEON_EXIT_CASE_ID,
+      employee_id: exited.id,
+      employee_name: exited.name,
+      employee_number: exited.employee_number ?? undefined,
+      company: exited.company,
+      org_unit: exited.org_unit ?? undefined,
+      worksite_name: site0,
+      status: "REPORTED",
+      effective_exit_date: "2026-11-30",
+      site_manager_note: saeonUniverse.exitNotes.resignation,
+      exit_reason_code: "RESIGNATION",
+      involuntary: false,
+      notice_required: false,
+      dismissal_notice: null,
+      protected_periods: [],
+      reported_by: admin.id,
+      reported_by_name: admin.display_name,
+      reported_at: SAEON_AT,
+      hr_confirmed_by_name: null,
+      hq_confirmed_by_name: null,
+      approval_submitted_by_name: null,
+      closed_by_name: null,
+      exit_lifecycle_event_id: null,
+      exit_event_state: null,
+      next_actions: [{ key: "confirm_exit" }, { key: "cancel_exit" }, { key: "reject_exit" }],
+      settlement_deadlines: [],
+    },
+    {
+      id: "00000000-0000-4000-8980-000000000002",
+      employee_id: onLeave.id,
+      employee_name: onLeave.name,
+      employee_number: onLeave.employee_number ?? undefined,
+      company: onLeave.company,
+      org_unit: onLeave.org_unit ?? undefined,
+      worksite_name: site1,
+      status: "HR_CONFIRMED",
+      effective_exit_date: "2026-11-28",
+      site_manager_note: saeonUniverse.exitNotes.contractEnd,
+      exit_reason_code: "CONTRACT_END",
+      involuntary: false,
+      notice_required: false,
+      dismissal_notice: null,
+      protected_periods: [],
+      reported_by: admin.id,
+      reported_by_name: admin.display_name,
+      reported_at: "2026-11-01T09:00:00+09:00",
+      hr_confirmed_by: admin.id,
+      hr_confirmed_by_name: admin.display_name,
+      hr_confirmed_at: "2026-11-02T10:00:00+09:00",
+      hq_confirmed_by_name: null,
+      approval_submitted_by_name: null,
+      closed_by_name: null,
+      exit_lifecycle_event_id: null,
+      exit_event_state: "SCHEDULED",
+      next_actions: [{ key: "confirm_exit_hq" }, { key: "reject_exit" }],
+      settlement_deadlines: [],
+    },
+  ];
+}
+
+export function saeonExitCases(filter?: { status?: string; search?: string }): S["EmployeeExitCasePage"] {
+  const all = buildSaeonExitCases();
+  const search = (filter?.search ?? "").trim().toLowerCase();
+  const status = filter?.status;
+  const openSet = new Set(["REPORTED", "HR_CONFIRMED", "HQ_CONFIRMED", "SETTLEMENT_READY", "APPROVAL_DRAFTED"]);
+  const closedSet = new Set(["SUBMITTED", "REJECTED", "CANCELLED"]);
+  const items = all.filter(c => {
+    if (status === "open" && !openSet.has(c.status)) return false;
+    if (status === "closed" && !closedSet.has(c.status)) return false;
+    if (status && status !== "open" && status !== "closed" && !status.split(",").includes(c.status)) return false;
+    if (search) {
+      const hay = `${c.employee_name} ${c.employee_number ?? ""} ${c.company}`.toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+  return { items, total: items.length, limit: 100, offset: 0 };
+}
+
+export function saeonExitCaseCounts(search?: string): S["ExitCaseCountsResponse"] {
+  const items = saeonExitCases({ search }).items;
+  const count = (st: S["EmployeeExitCaseStatus"]) => items.filter(c => c.status === st).length;
+  const reported = count("REPORTED");
+  const hrConfirmed = count("HR_CONFIRMED");
+  const hqConfirmed = count("HQ_CONFIRMED");
+  const settlementReady = count("SETTLEMENT_READY");
+  const approvalDrafted = count("APPROVAL_DRAFTED");
+  const submitted = count("SUBMITTED");
+  const rejected = count("REJECTED");
+  const cancelled = count("CANCELLED");
+  return {
+    all: items.length,
+    open: reported + hrConfirmed + hqConfirmed + settlementReady + approvalDrafted,
+    closed: submitted + rejected + cancelled,
+    reported,
+    hr_confirmed: hrConfirmed,
+    hq_confirmed: hqConfirmed,
+    settlement_ready: settlementReady,
+    approval_drafted: approvalDrafted,
+    submitted,
+    rejected,
+    cancelled,
+  };
+}
+
+export function saeonExitCaseDetail(id: string): S["EmployeeExitCase"] {
+  const all = buildSaeonExitCases();
+  return all.find(c => c.id === id) ?? all[0]!;
+}
+
+export function saeonCertificateDetail(id: string): S["Certificate"] {
+  const admin = saeonAdminUser();
+  const { employee } = findRosterOrSampleEmployee(SAEON_HERO_ID);
+  const certs = saeonCertificates(SAEON_HERO_ID).items;
+  const hit = certs.find(c => c.id === id) ?? certs[0]!;
+  return {
+    id: hit.id,
+    employee_id: employee.id,
+    certificate_no: hit.certificate_no,
+    kind: hit.kind,
+    items: ["period", "duty", "position"],
+    purpose: hit.purpose,
+    snapshot: {
+      name: employee.name,
+      issuer: employee.company,
+      seal_text: employee.company,
+      period: { from: employee.hire_date ?? "2019-03-14", to: "2026-11-15" },
+      duty: employee.org_unit ?? entities[0]!.name,
+      position: employee.position ?? saeonUniverse.hero.gradeLabel,
+    },
+    replaces_id: null,
+    issued_by: admin.id,
+    issued_at: hit.issued_at,
+    voided_at: null,
+    void_reason: null,
+  };
+}
+
+export function saeonCertificateSettings(): S["CertificateSettingsView"] {
+  return {
+    settings: entities.map(e => ({
+      legal_entity_id: e.id,
+      prefix: "SAEON",
+      width: 4,
+      seal_text: e.name,
+      version: 1,
+      seal_png: null,
+    })),
+    seal_max_bytes: 524288,
+    can_manage: true,
+  };
+}
+
 const HERO_PAYSLIP_SPECS = [
   {
     id: "00000000-0000-4000-8950-000000002010",
@@ -2141,7 +2418,7 @@ function buildHeroPayslipEntry(spec: (typeof HERO_PAYSLIP_SPECS)[number]) {
       taxable_won: row.taxablePay,
       gross_won: row.grossPay,
       deductions: [
-        { code: "NATIONAL_PENSION", label_ko: t("payslip.deduction.NATIONAL_PENSION"), amount_won: row.nationalPension, source_url: "https://www.nps.or.kr/" },
+        { code: "NATIONAL_PENSION", label_ko: t("payslip.deduction.NATIONAL_PENSION"), amount_won: row.nationalPension, source_url: "https://www.nps.go.kr/" },
         { code: "HEALTH_INSURANCE", label_ko: t("payslip.deduction.HEALTH_INSURANCE"), amount_won: row.healthInsurance, source_url: "https://www.nhis.or.kr/" },
         { code: "LONG_TERM_CARE", label_ko: t("payslip.deduction.LONG_TERM_CARE"), amount_won: row.longTermCare, source_url: "https://www.nhis.or.kr/" },
         { code: "EMPLOYMENT_INSURANCE", label_ko: t("payslip.deduction.EMPLOYMENT_INSURANCE"), amount_won: row.employmentInsurance, source_url: "https://www.ei.go.kr/" },

@@ -127,6 +127,7 @@ export const koOrgChange: Record<keyof typeof enOrgChange, string> = {
   "orgChange.chain.APPROVED": "{at} 승인",
   "orgChange.chain.REJECTED": "{at} 반려",
   "orgChange.chain.current": "차례",
+  "orgChange.openApproval": "결재 문서 열기",
   "orgChange.chain.skipped": "진행 안 함",
   "orgChange.settle.title": "정리 항목 {n}/{total}",
   "orgChange.settle.memo": "{label} 메모",

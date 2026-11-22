@@ -20,4 +20,5 @@ export const useReceipts = () =>
   useSyncExternalStore(
     (l) => (listeners.add(l), () => void listeners.delete(l)),
     () => list,
+    () => list,
   );

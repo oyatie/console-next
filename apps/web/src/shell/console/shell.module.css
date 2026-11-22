@@ -12,6 +12,7 @@
 .shell > :global(.main) {
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .shell > :global(.main) > :global(.page) {
@@ -187,6 +188,8 @@
 .phoneNav {
   grid-area: phoneNav;
   min-width: 0;
+  position: relative;
+  z-index: 2;
 }
 
 @media (--below-wide) {
@@ -207,5 +210,16 @@
 @media (--phone) {
   .shell {
     grid-template: "phoneTop" auto "notices" auto "main" 1fr "phoneNav" auto / minmax(0, 1fr);
+  }
+}
+
+@media print {
+  .top,
+  .tabsArea,
+  .noticesArea,
+  .statusArea,
+  .phoneTop,
+  .phoneNav {
+    display: none;
   }
 }

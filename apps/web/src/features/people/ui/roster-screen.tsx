@@ -43,7 +43,7 @@ import { ExitTabs, VoidedList } from "./exit-tabs";
 import { RosterConsole } from "./roster-console";
 import { RosterSavedViews } from "./roster-saved-views";
 
-type RosterScreenProps = { manage: boolean; scoped?: boolean; switcher?: ReactNode; notice?: ReactNode; actions?: ReactNode; screen: ReturnType<typeof useRosterScreen> };
+type RosterScreenProps = { manage: boolean; scoped?: boolean; switcher?: ReactNode; notice?: ReactNode; actions?: ReactNode; tabs?: ReactNode; screen: ReturnType<typeof useRosterScreen> };
 
 function TableScrollRestoration({ id, grid }: { id: string; grid: RefObject<HTMLElement | null> }) {
   const router = useRouter();
@@ -68,7 +68,7 @@ function TableScrollRestoration({ id, grid }: { id: string; grid: RefObject<HTML
 export function RosterScreen(props: RosterScreenProps) {
   return (
     <ExperienceSwitch baseline={() => <BaselineRosterScreen {...props} />}>
-      {() => <RosterConsole manage={props.manage} scoped={props.scoped} notice={props.notice} actions={props.actions} screen={props.screen} />}
+      {() => <RosterConsole manage={props.manage} scoped={props.scoped} notice={props.notice} actions={props.actions} tabs={props.tabs} screen={props.screen} />}
     </ExperienceSwitch>
   );
 }

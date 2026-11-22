@@ -2,6 +2,7 @@ import { useId, type ReactNode } from "react";
 import { t } from "@console/i18n";
 import { label, UNIT_KIND } from "../../../lib/labels";
 import { Chip } from "../../../ui/chip";
+import { Table } from "../../../ui/table";
 import type { PreviewNode } from "../domain/preview";
 import s from "./propose.module.css";
 import { Muted } from "../../../ui/muted/muted";
@@ -11,28 +12,76 @@ import { Muted } from "../../../ui/muted/muted";
  * words; the two mini trees show it with roll-up headcounts, the changed node marked in text. A preview
  * from today's tree, which the caption says.
  */
-export function StructureDiff({ summary, before, after, then, note }: {
+export function StructureDiff({ summary, before, after, then, note, flat = false }: {
   summary: string;
   before: PreviewNode[];
   after: PreviewNode[];
   /** The after column's heading, e.g. "From Nov 2" or "Once archived". */
   then: string;
   note?: ReactNode;
+  flat?: boolean;
 }) {
   return (
     <div className={s.diff}>
       <p className={s.diffSummary}>{summary}</p>
       <div className={s.diffCols}>
-        <Column title={t("orgPropose.diff.now")} nodes={before} />
-        <Column title={then} nodes={after} />
+        <Column title={t("orgPropose.diff.now")} nodes={before} flat={flat} />
+        <Column title={then} nodes={after} flat={flat} />
       </div>
       {note != null && <p className={s.note}>{note}</p>}
     </div>
   );
 }
 
-function Column({ title, nodes }: { title: string; nodes: PreviewNode[] }) {
+function flattenPreview(nodes: PreviewNode[], depth = 0): { n: PreviewNode; depth: number }[] {
+  return nodes.flatMap((n) => [{ n, depth }, ...flattenPreview(n.children, depth + 1)]);
+}
+
+function Column({ title, nodes, flat }: { title: string; nodes: PreviewNode[]; flat: boolean }) {
   const id = useId();
+  if (flat) {
+    const flatRows = flattenPreview(nodes);
+    return (
+      <div>
+        <Table
+          label={title}
+          density="compact"
+          mobileLayout="rows"
+          rows={flatRows}
+          rowId={({ n }) => n.id}
+          columns={[
+            {
+              header: title,
+              cell: ({ n, depth }) => (
+                <div className={s.diffRow} data-mark={n.mark ?? (n.delta ? "delta" : undefined)}>
+                  {depth > 0 ? <Muted>{"· ".repeat(depth)}</Muted> : null}
+                  <div className={s.diffName}>
+                    {n.kind === "COMPANY"
+                      ? label(UNIT_KIND, n.kind)
+                      : n.mark === "created" && !n.name.trim()
+                        ? t("orgPropose.diff.unnamed", { kind: label(UNIT_KIND, n.kind) })
+                        : n.name}
+                  </div>
+                  {n.kind !== "COMPANY" && <Muted>{label(UNIT_KIND, n.kind)}</Muted>}
+                </div>
+              ),
+            },
+            {
+              header: t("orgChange.headcount"),
+              fit: true,
+              cell: ({ n }) => (
+                <div className={s.diffRow}>
+                  <data className="num muted" value={n.count}>{t("orgPropose.diff.count", { count: n.count })}</data>
+                  {n.mark && <Chip tone={n.mark === "dissolved" ? "warn" : "info"}>{t(`orgPropose.diff.chip.${n.mark}`)}</Chip>}
+                  {n.delta ? <Chip tone="info">{t(n.delta > 0 ? "orgPropose.diff.chip.plus" : "orgPropose.diff.chip.minus", { count: Math.abs(n.delta) })}</Chip> : null}
+                </div>
+              ),
+            },
+          ]}
+        />
+      </div>
+    );
+  }
   return (
     <div className={s.diffCol}>
       <h4 id={id} className={s.diffTitle}>{title}</h4>
