@@ -31,8 +31,8 @@ export const enUnplaced = {
   "unplaced.target.where": "{entity} · unplaced · {value}",
   "unplaced.target.title": "Place {n, number} people",
   "unplaced.target.titleNone": "Place people",
-  "unplaced.target.find": "Find a department · within {entity}",
-  "unplaced.target.findAll": "Find a department · company › workplace › department",
+  "unplaced.target.find": "Select a department · {entity}",
+  "unplaced.target.findAll": "Select a department · company › workplace › department",
   "unplaced.target.findLabel": "Department",
   "unplaced.target.open": "Open the list",
   "unplaced.target.suggest": "Suggestions · number keys",
@@ -69,4 +69,6 @@ export const enUnplaced = {
   "unplaced.why.stale_record": "Someone changed this person just now · pick again",
   "unplaced.why.lifecycle_schedule_conflict": "Clashes with a scheduled action · check it on their record",
   "unplaced.why.scheduled_conflict": "Clashes with a scheduled action · check it on their record",
+  "unplaced.disabled.pick": "Select at least one person in the list first",
+  "unplaced.disabled.date": "Enter a valid effective date first",
 } as const;

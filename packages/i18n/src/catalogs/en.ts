@@ -127,6 +127,7 @@ import { enCrud } from "./en/crud";
 import { enRegister } from "./en/register";
 import { enUnplaced } from "./en/unplaced";
 import { enBulkGrid } from "./en/bulk-grid";
+import { enDataHealth } from "./en/data-health";
 import { enUiRecord } from "./en/ui-record";
 import { enEmpCard } from "./en/emp-card";
 import { enEmpFix } from "./en/emp-fix";
@@ -257,6 +258,7 @@ export const en = {
   ...enRegister,
   ...enUnplaced,
   ...enBulkGrid,
+  ...enDataHealth,
   ...enTimeline,
   ...enRequestOutcome,
   ...enUiRecord,

@@ -55,6 +55,7 @@ export const routeReads = {
   "/people/notices/new": { reads: ["GET /api/v1/appointment-notices/candidates"] },
   "/people/import": { reads: ["GET /api/v1/employees/import/unplaced"] },
   "/people/unplaced": { reads: ["GET /api/v1/employees/import/unplaced"] },
+  "/people/data-health": { reads: [people] },
   "/people/job-titles": { reads: ["GET /api/v1/job-titles"] },
   "/people/roster-fields": { reads: ["GET /api/v1/roster-fields"] },
   "/people/certificates": { reads: ["GET /api/v1/hr/certificates"] },

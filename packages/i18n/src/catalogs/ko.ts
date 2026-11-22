@@ -130,6 +130,7 @@ import { koCrud } from "./ko/crud";
 import { koRegister } from "./ko/register";
 import { koUnplaced } from "./ko/unplaced";
 import { koBulkGrid } from "./ko/bulk-grid";
+import { koDataHealth } from "./ko/data-health";
 import { koUiRecord } from "./ko/ui-record";
 import { koEmpCard } from "./ko/emp-card";
 import { koEmpFix } from "./ko/emp-fix";
@@ -257,6 +258,7 @@ export const ko: Record<ScreenMessageId, string> = {
   ...koRegister,
   ...koUnplaced,
   ...koBulkGrid,
+  ...koDataHealth,
   ...koTimeline,
   ...koRequestOutcome,
   ...koUiRecord,

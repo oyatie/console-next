@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { t } from "@console/i18n";
 import { Button, Check } from "../../../ui/button/button";
+import { Chip } from "../../../ui/chip";
 import { ChoiceField } from "../../../ui/choice/choice-field";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { SelectInput } from "../../../ui/field/select-input";
 import { Table } from "../../../ui/table";
 import type { ImportSheet } from "../domain/contract";
 import { draftOf, draftProblem, rereadsSkipped, withHeaderRow, withTarget, type Draft, type DraftColumn } from "../domain/mapping";
+import { allowedTargetsForHeader, restrictedKind } from "../domain/restricted";
 import { fieldLabel } from "../present";
 
 /** The select's value for "not imported" (a column the operator leaves out), sent as null. */
@@ -57,6 +59,17 @@ export function SheetEditor({ sheet, targets, busy, onSave }: { sheet: ImportShe
                 { header: t("importSheet.col.column"), cell: (c) => <span className="code">{c.column}</span>, fit: true },
                 { header: t("importSheet.col.label"), cell: (c) => c.label },
                 { header: t("importSheet.col.target"), card: "action", cell: (c) => <Target c={c} sheet={sheet.name} targets={targets} onChange={(v) => setD(withTarget(d, c.column, v))} /> },
+                ...(d.columns.some((c) => restrictedKind(c.label) != null)
+                  ? [{
+                      header: t("importSheet.col.restricted"),
+                      fit: true,
+                      cell: (c: DraftColumn) => {
+                        const kind = restrictedKind(c.label);
+                        if (!kind) return null;
+                        return <Chip tone={kind === "unmapped" ? "warn" : "info"}>{t(kind === "unmapped" ? "importSheet.restricted.none" : "importSheet.restricted.sealed")}</Chip>;
+                      },
+                    }]
+                  : []),
               ]}
             />
           )}
@@ -74,6 +87,7 @@ export function SheetEditor({ sheet, targets, busy, onSave }: { sheet: ImportShe
 }
 
 function Target({ c, sheet, targets, onChange }: { c: DraftColumn; sheet: string; targets: readonly string[]; onChange: (v: string | null) => void }) {
+  const allowed = allowedTargetsForHeader(c.label, targets, c.target);
   return (
     <SelectInput
       aria-label={t("importSheet.map.target", { sheet, column: c.column, label: c.label })}
@@ -81,7 +95,7 @@ function Target({ c, sheet, targets, onChange }: { c: DraftColumn; sheet: string
       onChange={(e) => onChange(e.target.value === SKIP_COLUMN ? null : e.target.value)}
     >
       <option value={SKIP_COLUMN}>{t("importSheet.map.notImported")}</option>
-      {targets.map((x) => <option key={x} value={x}>{fieldLabel(x)}</option>)}
+      {allowed.map((x) => <option key={x} value={x}>{fieldLabel(x)}</option>)}
     </SelectInput>
   );
 }

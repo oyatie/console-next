@@ -55,6 +55,7 @@ const paths = [
   "/people/bulk",
   "/people/certificates",
   "/people/certificates/$certificateId",
+  "/people/data-health",
   "/people/exits",
   "/people/exits/$id",
   "/people/grid",

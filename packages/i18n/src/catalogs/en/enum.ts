@@ -242,4 +242,11 @@ export const enEnum = {
   "enum.tenantLifecycle.ENROLLED": "Passkey registered",
   "enum.tenantLifecycle.SETUP": "Setup",
   "enum.tenantLifecycle.OPERATING": "Operating",
+  "enum.platformOperatorStatus.PENDING_ENROLMENT": "Pending enrolment",
+  "enum.platformOperatorStatus.ACTIVE": "Active",
+  "enum.platformOperatorStatus.REVOKED": "Revoked",
+  "enum.platformOperatorStatus.EXPIRED": "Expired",
+  "enum.platformGroupRole.GROUP_ADMIN": "Group admin",
+  "enum.platformGroupRole.GROUP_VIEWER": "Group viewer",
+  "enum.platformGroupRole.GROUP_FINANCE": "Group finance",
 } as const;

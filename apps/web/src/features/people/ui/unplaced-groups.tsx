@@ -2,8 +2,10 @@ import { Check, Inbox, Layers } from "lucide-react";
 import { t } from "@console/i18n";
 import { ToggleButton } from "../../../ui/button/button";
 import { Kbd } from "../../../ui/kbd/kbd";
+import { ListSummaryFooter } from "../../../ui/patterns/list-record-parts";
 import type { Group } from "../domain/unplaced";
 import { sourceText } from "../present";
+import c from "./unplaced-console.module.css";
 import s from "./unplaced.module.css";
 
 export type DoneGroup = { value: string; count: number; place: string };
@@ -12,13 +14,14 @@ export type DoneGroup = { value: string; count: number; place: string };
  * The left pane (spec E8): the groups of one company by source value, the ones placed in this visit struck through at
  * the top, the current one pressed, each with its size and what is suggested for it; and the closing sum.
  */
-export function UnplacedGroups({ groups, done, current, onPick, hint }: {
+export function UnplacedGroups({ groups, done, current, onPick, hint, consoleMode = false }: {
   groups: readonly Group[];
   done: readonly DoneGroup[];
   current: number;
   onPick: (i: number) => void;
   /** What each group's line says under its value (a suggestion's name, or none). */
   hint: (g: Group) => string;
+  consoleMode?: boolean;
 }) {
   const sizes = [...done.map((d) => d.count), ...groups.map((g) => g.people.length)];
   const total = sizes.reduce((a, b) => a + b, 0);
@@ -32,7 +35,7 @@ export function UnplacedGroups({ groups, done, current, onPick, hint }: {
         <Kbd keys="J" />
         <Kbd keys="K" />
       </div>
-      <ul className={s.groupList}>
+      <ul className={consoleMode ? `${s.groupList} ${c.groupList}` : s.groupList}>
         {done.map((d) => (
           <li key={`done-${d.value}`} className={s.groupDone}>
             <Check size={14} aria-hidden className={s.ok} />
@@ -50,7 +53,11 @@ export function UnplacedGroups({ groups, done, current, onPick, hint }: {
           </li>
         ))}
       </ul>
-      <p className={s.groupsFoot}>{t("unplaced.total", { parts: sizes.join(" + "), n: total, done: placed, left: total - placed })}</p>
+      {consoleMode ? (
+        <ListSummaryFooter start={t("unplaced.total", { parts: sizes.join(" + "), n: total, done: placed, left: total - placed })} />
+      ) : (
+        <p className={s.groupsFoot}>{t("unplaced.total", { parts: sizes.join(" + "), n: total, done: placed, left: total - placed })}</p>
+      )}
     </aside>
   );
 }
