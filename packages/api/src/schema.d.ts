@@ -15770,9 +15770,9 @@ export interface components {
             id?: string;
             /** @description Review period metadata or YYYY-MM label before start. */
             period: string | {
-                /** Format: date-time */
+                /** Format: date */
                 from?: string;
-                /** Format: date-time */
+                /** Format: date */
                 to?: string;
                 time_zone?: string;
             };
