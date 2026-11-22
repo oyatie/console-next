@@ -1,0 +1,157 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.tabsBar {
+  flex-shrink: 0;
+}
+
+.headActions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  flex-wrap: nowrap;
+}
+
+.headActions > * {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.desktopTools {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.findWrap {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.tableWrap {
+  min-width: 0;
+}
+
+.nowrap {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.cellGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  flex-wrap: wrap;
+}
+
+.actionRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.actionRow > * {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.paneSections {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.paneInner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+  min-width: 0;
+}
+
+.reasonStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.inlineBadges {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-1-5);
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.loginCell {
+  white-space: nowrap;
+}
+
+.mobileOnly {
+  display: none;
+}
+
+.accountRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+  min-width: 0;
+}
+
+.paneStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.checkGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.memberList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  list-style: none;
+}
+
+.memberRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.memberMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.tokenBox {
+  word-break: break-all;
+}
+
+@media (min-width: 768px) {
+  .loginCell {
+    min-width: calc(var(--panel-w) / 2);
+  }
+}
+
+@media (max-width: 767px) {
+  .desktopTools {
+    display: none;
+  }
+
+  .mobileOnly {
+    display: inline;
+  }
+}

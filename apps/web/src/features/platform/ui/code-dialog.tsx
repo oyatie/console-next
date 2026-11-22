@@ -18,11 +18,23 @@ export function CodeDialog({ issued, onClose }: { issued: Issued | null; onClose
   const inviteUrl = issued && typeof window !== "undefined" ? buildInviteUrl(window.location.origin, issued.otp) : null;
   const copy = (otp: string) => void navigator.clipboard.writeText(otp).then(() => announce(t("common.codeCopied")), () => announce(t("common.copyFailed")));
   const copyLink = () => inviteUrl && void navigator.clipboard.writeText(inviteUrl).then(() => announce(t("common.inviteLinkCopied")), () => announce(t("common.copyFailed")));
+  const titleKey =
+    issued?.kind === "operator"
+      ? "tenants.operators.codeTitle"
+      : issued?.kind === "groupAccount"
+        ? "tenants.groups.codeTitle"
+        : "tenants.code.title";
+  const leadKey =
+    issued?.kind === "operator"
+      ? "tenants.operators.codeFor"
+      : issued?.kind === "groupAccount"
+        ? "tenants.groups.codeFor"
+        : "tenants.code.for";
   return (
-    <Dialog open={issued !== null} title={t("tenants.code.title")} onClose={onClose} dismissable={false}>
+    <Dialog open={issued !== null} title={t(titleKey)} onClose={onClose} dismissable={false}>
       {issued && (
         <>
-          <p>{t("tenants.code.for", { org: issued.org, at: fmtDateTime(issued.expiresAt) })} {issued.recoveryMinutes ? <>{t("opsRecovery.issued", { minutes: issued.recoveryMinutes })} {t("opsRecovery.codeLost")}</> : t("tenants.next.lost")} {t("tenants.code.closeNote")}</p>
+          <p>{t(leadKey, { org: issued.org, at: fmtDateTime(issued.expiresAt) })} {issued.recoveryMinutes ? <>{t("opsRecovery.issued", { minutes: issued.recoveryMinutes })} {t("opsRecovery.codeLost")}</> : t("tenants.next.lost")} {t("tenants.code.closeNote")}</p>
           {issued.signInId && <div role="group" aria-label={t("tenants.code.signInId")}><code>{issued.signInId}</code><Button onClick={() => copy(issued.signInId!)}>{t("tenants.code.copyId")}</Button></div>}
           <div className="secret" role="group" aria-label={t("common.oneTimeCode")}>{issued.otp}</div>
           {inviteUrl && (

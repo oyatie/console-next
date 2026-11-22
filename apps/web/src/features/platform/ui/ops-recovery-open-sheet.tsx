@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
 import { useCommand } from "../../../lib/react/command";
-import { CommandError } from "../../../lib/react/command-error";
+import { PasskeyError } from "../../../lib/react/passkey-error";
 import { Button, Form } from "../../../ui/button/button";
 import { Dialog } from "../../../ui/dialog";
 import { Field, TextInput } from "../../../ui/field/field";
@@ -49,7 +49,7 @@ export function OpsRecoveryOpenSheet({ org, data, onClose }: { org: Org; data: O
         {(p) => <TextInput {...p} value={evidence} maxLength={200} onChange={(e) => setEvidence(e.target.value)} disabled={open.isPending} />}
       </Field>
       {latest.error && <QueryState q={latest}>{() => null}</QueryState>}
-      <CommandError error={open.error} />
+      <PasskeyError error={open.error} />
       <div className="form__actions">
         <Button onClick={onClose} disabled={open.isPending}>{t("common.cancel")}</Button>
         <Button type="submit" variant="primary" disabled={open.isPending || latest.isFetching || Boolean(latest.error)}>{t("opsRecovery.open")}</Button>

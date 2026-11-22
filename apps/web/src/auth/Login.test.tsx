@@ -40,3 +40,16 @@ test("Login renders SignInPattern in Console experience and legacy card in basel
   expect(consoleHtml).toContain('data-pattern="sign-in"');
   expect(consoleHtml).toContain('data-floorplan="sign-in"');
 });
+
+test("Login suppresses the 10-character OTP hint when #otp= carries a cop_ operator invite", () => {
+  search.code = undefined;
+  vi.stubGlobal("window", { location: { hash: "#otp=cop_AbCdEf123456" } });
+  try {
+    const html = renderToStaticMarkup(<Login />);
+    expect(html).toContain('<details open="">');
+    expect(html).toContain('value="cop_AbCdEf123456"');
+    expect(html).not.toContain("/10");
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
