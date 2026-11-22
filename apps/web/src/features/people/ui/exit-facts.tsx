@@ -28,7 +28,7 @@ type Package = components["schemas"]["EmployeeExitSettlementPackage"];
 /** How far the exit date is from today, in the date field's words (D-30, today, 3 days ago). */
 export function RelDay({ date }: { date: string }) {
   const days = daysBetween(todayKst(), date);
-  return <Muted>{days === 0 ? t("uiDate.today") : days > 0 ? t("uiDate.ahead", { days }) : t("uiDate.ago", { days: -days })}</Muted>;
+  return <bdi className={s.noWrap}><Muted>{days === 0 ? t("uiDate.today") : days > 0 ? t("uiDate.ahead", { days }) : t("uiDate.ago", { days: -days })}</Muted></bdi>;
 }
 
 /**
@@ -41,7 +41,7 @@ export function CaseFacts({ c, full = false }: { c: Case; full?: boolean }) {
       <dl className="kv">
         <dt>{t("exit.field.reporter")}</dt><dd>{actor(c.reported_by_name)}</dd>
         {full && <><dt>{t("exit.field.reportedAt")}</dt><dd className="num">{fmtDateTime(c.reported_at)}</dd></>}
-        {full && <><dt>{t("exit.field.date")}</dt><dd className="num">{fmtDate(c.effective_exit_date)} <RelDay date={c.effective_exit_date} /></dd></>}
+        {full && <><dt>{t("exit.field.date")}</dt><dd className={`num ${s.noWrap}`}>{fmtDate(c.effective_exit_date)} <RelDay date={c.effective_exit_date} /></dd></>}
         {/* A report with its exit reason code (BE-EMP-UI) names it; the note is then the circumstances. */}
         {c.exit_reason_code && <><dt>{t("exit.field.reason")}</dt><dd>{reasonLabel("exit_reason", c.exit_reason_code)}</dd></>}
         <dt>{t(c.exit_reason_code ? "exit.field.circumstances" : "exit.field.note")}</dt><dd><p className={s.quote}>{c.site_manager_note}</p></dd>
@@ -57,7 +57,7 @@ export function CaseFacts({ c, full = false }: { c: Case; full?: boolean }) {
  * reader) the person's hire date, service to the exit date and last three records, and the settlement's
  * computed figures once a package exists.
  */
-export function CasePanel({ c, trailUnavailable }: { c: Case; trailUnavailable?: boolean }) {
+export function CasePanel({ c, trailUnavailable, consoleMode }: { c: Case; trailUnavailable?: boolean; consoleMode?: boolean }) {
   const can = useCan();
   const reader = can("employee_directory_read", "all");
   const person = useQuery({ ...employeeQuery(c.employee_id), enabled: reader });
@@ -67,12 +67,12 @@ export function CasePanel({ c, trailUnavailable }: { c: Case; trailUnavailable?:
   const served = hired ? tenure(hired, c.effective_exit_date) : null;
   const { forward } = useCaseActions(c);
   return (
-    <div className={s.column}>
-      <h2 className="panel__title">{t("exit.facts")}</h2>
+    <div className={consoleMode ? s.stack : s.column}>
+      {!consoleMode && <h2 className="panel__title">{t("exit.facts")}</h2>}
       <dl className="kv">
         <dt>{t("people.field.unit")}</dt><dd>{c.org_unit ?? "—"}</dd>
         <dt>{t("people.field.homeBranch")}</dt><dd>{c.branch_name ?? "—"}</dd>
-        <dt>{t("exit.field.date")}</dt><dd className="num">{fmtDate(c.effective_exit_date)} <RelDay date={c.effective_exit_date} /></dd>
+        <dt>{t("exit.field.date")}</dt><dd className={`num ${s.noWrap}`}>{fmtDate(c.effective_exit_date)} <RelDay date={c.effective_exit_date} /></dd>
         {/* Held (blank) while the employee record loads: the facts below must not drop two lines when it lands. */}
         {(hired || (reader && person.isPending)) && <><dt>{t("exit.facts.hired")}</dt><dd className="num">{hired ? fmtDate(hired) : "\u00a0"}</dd></>}
         {(served || (reader && person.isPending)) && <><dt>{t("exit.facts.tenure")}</dt><dd>{served ? t("exit.facts.tenure.value", served) : "\u00a0"}</dd></>}

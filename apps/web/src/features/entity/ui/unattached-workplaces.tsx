@@ -3,19 +3,50 @@ import { FileText } from "lucide-react";
 import type { LegalEntity } from "@console/api/pending";
 import { t } from "@console/i18n";
 import { Button } from "../../../ui/button/button";
+import { SectionHead } from "../../../ui/card/section-head";
 import { Chip } from "../../../ui/chip";
+import { FormRow, FormRowList, FormSection } from "../../../ui/patterns/form-section";
 import { workplaceName } from "../domain/view";
 import { entityName } from "../../../reference/entity/domain/names";
 import { unattached } from "../domain/attach";
 import { AttachHost } from "./workplace-attach-sheet";
+import s from "./record.module.css";
 
 /**
  * Optional registration-answer prompts, people first; each opens the shared answer sheet.
  */
-export function UnattachedWorkplaces({ entities }: { entities: readonly LegalEntity[] }) {
+export function UnattachedWorkplaces({ entities, flat = false }: { entities: readonly LegalEntity[]; flat?: boolean }) {
   const [open, setOpen] = useState<{ entityId: string; workplaceId: string } | null>(null);
   const rows = unattached(entities);
   if (rows.length === 0) return null;
+  if (flat) {
+    return (
+      <section aria-labelledby="unattached-title">
+        <FormSection>
+          <SectionHead level={2} id="unattached-title">{t("entityOps.attach.listTitle")}</SectionHead>
+          <FormRowList label={t("entityOps.attach.listTitle")}>
+            {rows.map(({ e, w }) => (
+              <FormRow
+                key={w.id}
+                primary={<>{entityName(e)} · <b>{workplaceName(w)}</b></>}
+                end={
+                  <div className={s.attachEnd}>
+                    {w.headcount > 0 && <small className={s.sub}>{t("entityOps.attach.people", { count: w.headcount })}</small>}
+                    {w.can_manage && (
+                      <Button size="sm" onClick={() => setOpen({ entityId: e.id, workplaceId: w.id })} aria-label={t("entityOps.attach.actionOf", { name: workplaceName(w) })}>
+                        {t("entityOps.attach.action")}
+                      </Button>
+                    )}
+                  </div>
+                }
+              />
+            ))}
+          </FormRowList>
+        </FormSection>
+        {open && rows.some(({w}) => w.id === open.workplaceId && w.can_manage && !w.read_only) && <AttachHost {...open} onClose={() => setOpen(null)} />}
+      </section>
+    );
+  }
   return (
     <section className="card" aria-labelledby="unattached-title">
       <div className="toolbar">

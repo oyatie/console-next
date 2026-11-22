@@ -1,13 +1,16 @@
 import { useRef, useState } from "react";
-import { Eye, FilePlus2, FileText, MoreHorizontal } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Eye, FilePlus2, FileText, MoreHorizontal, Plus } from "lucide-react";
 import type { BusinessRegistration, LegalEntity } from "@console/api/pending";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { BIZ_KIND, ISSUE_REASON, label, labeled, RECORD_STATUS, TAX_TYPE } from "../../../lib/labels";
 import { Button } from "../../../ui/button/button";
+import { buttonClass } from "../../../ui/button/button-class";
 import { Chip } from "../../../ui/chip";
 import { MenuButton } from "../../../ui/menu/menu-button";
 import { addressLine, samePlace } from "../domain/view";
+import { unattached } from "../domain/attach";
 import { FactRow } from "./record-fact-row";
 import { entityFields } from "./record-entity-fields";
 import { registrationFields } from "./record-registration-fields";
@@ -16,6 +19,7 @@ import type { FieldSpec } from "./record-revise-sheet";
 import { useRecordLock } from "./use-record-lock";
 import { VoidRegistration } from "./void-registration";
 import { RegistrationStatusSheet } from "./workplace-status";
+import { AttachHost } from "./workplace-attach-sheet";
 import s from "./record.module.css";
 import { NtsCheck } from "./nts-check";
 import { Muted } from "../../../ui/muted/muted";
@@ -24,7 +28,7 @@ import { Muted } from "../../../ui/muted/muted";
  * A business registration certificate as printed (form 7 (2)): items 1-11 in their numbers, each with its verb. The numbers
  * that identify (the registration number, item 4 the CRN) only offer their governed correction path.
  */
-export function CertCard({ e, r, act, operating, onOriginal, showCheck = false }: { e: LegalEntity; r: BusinessRegistration; act: Act; operating: boolean; onOriginal?: () => void; showCheck?: boolean }) {
+export function CertCard({ e, r, act, operating, onOriginal, showCheck = false, flat }: { e: LegalEntity; r: BusinessRegistration; act: Act; operating: boolean; onOriginal?: () => void; showCheck?: boolean; flat?: boolean }) {
   const c = r.current;
   const f = registrationFields(r);
   const ef = entityFields(e);
@@ -45,7 +49,7 @@ export function CertCard({ e, r, act, operating, onOriginal, showCheck = false }
   const fix = <V,>(spec: FieldSpec<V>) => ({ verb: "edit" as const, onPress: () => act.field(spec) });
   const idAction = (field: "brn" | "crn") => ({ verb: "correct" as const, onPress: () => act.identifier(field, r.id) });
   return (
-    <section className="card" aria-labelledby={`cert-${r.id}`}>
+    <section className={flat ? undefined : "card"} aria-labelledby={`cert-${r.id}`}>
       <div className={s.cardHead}>
         <FileText size={16} aria-hidden />
         <h2 id={`cert-${r.id}`} className={s.cardTitle}>{title}</h2>
@@ -117,9 +121,34 @@ export function CertCard({ e, r, act, operating, onOriginal, showCheck = false }
         <FactRow no={11} label={t("entityRecord.field.email")} action={fix(f.email)}>{c?.e_invoice_email || none}</FactRow>
         <FactRow label={t("entityRecord.field.issued")} action={fix(f.issued)}>{f.issued.current}</FactRow>
       </div>
-      {showCheck && <NtsCheck historical={lock === "asof"} registration={r} entity={e} canManage={e.can_manage && !locked} onAttach={() => act.attach(r.id)} />}
+      {showCheck && <NtsCheck flat={flat} historical={lock === "asof"} registration={r} entity={e} canManage={e.can_manage && !locked} onAttach={() => act.attach(r.id)} />}
       {statusing && <RegistrationStatusSheet e={e} r={r} onClose={() => setStatusing(false)} />}
       {voiding && <VoidRegistration r={r} entityId={e.id} onClose={() => { setVoiding(false); requestAnimationFrame(() => voidTrigger.current?.focus()); }} />}
+    </section>
+  );
+}
+
+/**
+ * No certificate recorded yet: a to-do with its way in. A workplace that files under none takes its own here (org-03);
+ * with no workplace yet, the first workplace carries it.
+ */
+export function NoCertificate({ e, flat }: { e: LegalEntity; flat?: boolean }) {
+  const [attaching, setAttaching] = useState(false);
+  const first = unattached([e])[0]?.w;
+  const open = !useRecordLock();
+  return (
+    <section className={flat ? undefined : "card"} aria-labelledby="nocert-title">
+      <div className={s.cardHead}><h2 id="nocert-title" className={s.cardTitle}>{t("entityRecord.cert.title")}</h2><Chip tone="warn">{t("entityRecord.cert.missing")}</Chip></div>
+      <div className={s.cardBody}>
+        <p className="muted">{t("entityRecord.cert.missingWhy")}</p>
+        {open && first && (
+          <Button variant="primary" onClick={() => setAttaching(true)} aria-label={t("entityOps.attach.actionOf", { name: first.current?.name ?? "" })}>
+            <Plus size={16} aria-hidden /> {t("entityOps.attach.actionOf", { name: first.current?.name ?? "" })}
+          </Button>
+        )}
+        {open && !first && <Link to="/org/entities/$id/workplaces/new" params={{ id: e.id }} className={buttonClass("primary")}><Plus size={16} aria-hidden /> {t("entityRecord.cert.missingAction")}</Link>}
+        {open && attaching && first && <AttachHost entityId={e.id} workplaceId={first.id} onClose={() => setAttaching(false)} />}
+      </div>
     </section>
   );
 }

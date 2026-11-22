@@ -21,6 +21,10 @@ export function RecordPattern({
   facts: _facts,
   overlays,
   statusSegments,
+  keepOnLoss,
+  back,
+  own,
+  removed,
   baseline,
 }: RecordProps) {
   const hasSpine = shown(spine);
@@ -34,6 +38,10 @@ export function RecordPattern({
       overlays={overlays}
       queryLayout="record"
       statusSegments={statusSegments}
+      keepOnLoss={keepOnLoss}
+      back={back}
+      own={own}
+      removed={removed}
       baseline={baseline}
     >
       {() => (

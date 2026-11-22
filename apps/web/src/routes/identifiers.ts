@@ -6,12 +6,12 @@ import { app, screen } from "./app";
 // company's numbering rules and SETUP renumbering.
 const personIdentifiers = createRoute({
   getParentRoute: () => app,
-  path: "/people/$id/identifiers", staticData: { access: "signed-in", floorplan: "P-02" },
+  path: "/people/$id/identifiers", staticData: { access: "signed-in", floorplan: "P-02", pattern: "record" },
   component: lazyRouteComponent(screen(() => import("../features/identifiers/ui/identifiers-page")), "IdentifiersPage"),
 });
 const numbering = createRoute({
   getParentRoute: () => app,
-  path: "/people/numbering", staticData: { access: readRequirement("/people/numbering"), floorplan: "P-05" },
+  path: "/people/numbering", staticData: { access: readRequirement("/people/numbering"), floorplan: "P-05", pattern: "settings" },
   component: lazyRouteComponent(screen(() => import("../features/identifiers/ui/numbering-page")), "NumberingPage"),
 });
 

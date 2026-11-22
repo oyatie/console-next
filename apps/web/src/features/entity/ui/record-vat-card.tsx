@@ -11,13 +11,13 @@ import s from "./record.module.css";
  * regular-worker count, which is held until its method is released (BW-35), so only the live roster count shows, never a
  * made-up number (R13: headcount and regular-worker count differ).
  */
-export function VatCard({ e, act }: { e: LegalEntity; act: Act }) {
+export function VatCard({ e, act, flat }: { e: LegalEntity; act: Act; flat?: boolean }) {
   const c = e.current;
   const f = entityFields(e);
   const rw = e.regular_workers;
   const none = t("entityOps.info.none");
   return (
-    <section className="card" aria-labelledby="vat-title">
+    <section className={flat ? undefined : "card"} aria-labelledby="vat-title">
       <div className={s.cardHead}><h2 id="vat-title" className={s.cardTitle}>{t("entityRecord.vat.title")}</h2></div>
       <div className={s.facts}>
         <FactRow label={t("entityRecord.vat.unit")}>

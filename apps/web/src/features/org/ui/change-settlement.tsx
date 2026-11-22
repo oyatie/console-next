@@ -27,26 +27,30 @@ type Refetch = () => Promise<{ data?: Detail }>;
  * the unit still has members, and says so with the fix (1.3). Every other item is recorded by a named person
  * with a note of what was done.
  */
-export function ChangeSettlement({ d, refetch, onNote }: { d: Detail; refetch: Refetch; onNote: (n: Note) => void }) {
+export function ChangeSettlement({ d, refetch, onNote, flat = false }: { d: Detail; refetch: Refetch; onNote: (n: Note) => void; flat?: boolean }) {
   const done = d.settlementItems.filter((i) => i.done).length;
+  const list = (
+    <ul className="list-plain">
+      {d.settlementItems.map((it) => (
+        <li key={it.id} className={css.item}>
+          {it.done ? (
+            <span className="row">
+              <span className="grow">{it.label}</span>
+              <Chip tone="ok">{t("orgChange.settle.doneBy", { name: it.doneByName ?? "—", at: fmtDateTime(it.doneAt) })}</Chip>
+              {it.memo && <Muted>{it.memo}</Muted>}
+            </span>
+          ) : (
+            <OpenItem d={d} it={it} refetch={refetch} onNote={onNote} />
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+  if (flat) return <div id="settlement" tabIndex={-1}>{list}</div>;
   return (
     <section className="card panel" aria-labelledby="settlement">
       <h2 id="settlement" className="panel__title" tabIndex={-1}>{t("orgChange.settle.title", { n: done, total: d.settlementItems.length })}</h2>
-      <ul className="list-plain">
-        {d.settlementItems.map((it) => (
-          <li key={it.id} className={css.item}>
-            {it.done ? (
-              <span className="row">
-                <span className="grow">{it.label}</span>
-                <Chip tone="ok">{t("orgChange.settle.doneBy", { name: it.doneByName ?? "—", at: fmtDateTime(it.doneAt) })}</Chip>
-                {it.memo && <Muted>{it.memo}</Muted>}
-              </span>
-            ) : (
-              <OpenItem d={d} it={it} refetch={refetch} onNote={onNote} />
-            )}
-          </li>
-        ))}
-      </ul>
+      {list}
     </section>
   );
 }

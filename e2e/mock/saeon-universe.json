@@ -301,6 +301,24 @@
     "preHire": { "seq": 9002, "name": "한지호", "employeeNumber": "10701", "entityIndex": 0, "place": "서울 본사 › 인사팀", "gradeCode": "STAFF", "roleCode": null, "employmentTypeCode": "REGULAR", "hireDate": "2026-12-01" },
     "exited": { "seq": 9003, "name": "박성민", "employeeNumber": "10198", "entityIndex": 0, "place": "평택공장 › 생산3팀", "gradeCode": "MANAGER", "roleCode": "TEAM_LEAD", "employmentTypeCode": "REGULAR", "hireDate": "2017-05-08", "exitDate": "2026-10-31", "keptUntil": "2029-10-31", "retentionInstrument": "근로기준법", "retentionArticle": "제42조", "retentionDisposition": "파기" }
   },
+  "exitNotes": {
+    "resignation": "퇴직 면담 완료 · 개인 사유 사직",
+    "contractEnd": "계약 기간 만료 확인 완료"
+  },
+  "requestNotes": {
+    "phoneCorrection": "휴대전화 번호 정정 요청",
+    "workplaceReview": "사업장 배정 검토 요청",
+    "hrVerified": "인사팀 확인 완료"
+  },
+  "settings": {
+    "rosterFields": {
+      "lockerLabel": "사물함 번호",
+      "uniformLabel": "근무복 치수"
+    },
+    "jobTitles": {
+      "precisionLabel": "정밀가공"
+    }
+  },
   "reasonCodes": { "rrn_reveal": [{ "code": "INSURANCE_FILING", "labelKo": "4대보험 신고", "requiresNote": false }, { "code": "TAX_FILING", "labelKo": "원천세·연말정산 확인", "requiresNote": false }, { "code": "CERT_ISSUE", "labelKo": "증명서 발급", "requiresNote": false }] },
   "statutory": {
     "articles": { "baseArticle": "제1조", "basePromulgation": "제1호", "nps": "제88조", "nhis": "제73조", "incomeTax": "제134조" },

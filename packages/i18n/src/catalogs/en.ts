@@ -273,9 +273,11 @@ export const en = {
   ...enUiLedger,
   ...enMe,
   ...enTeam,
+  ...enShellRoutes,
 } as const;
 
 export type ScreenMessageId = keyof typeof en;
 import { enDirectoryViews } from "./en/directory-views";
 import { enSettingsHub } from "./en/settings-hub";
+import { enShellRoutes } from "./en/shell-routes";
 import { enUiWorklist } from "./en/ui-worklist";

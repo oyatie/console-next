@@ -47,7 +47,12 @@ export const queryPath = (q: { queryKey: readonly [PathPrefix, ...unknown[]] }) 
  * moment, so a command's own re-reads and the live stream's echo of that command are answered first.
  */
 export const BACKGROUND_SETTLE_MS = 1500;
+const LIVE_MAX_PAGES = 10;
 const isBackground = (q: Query) => q.meta?.background === true;
+const isDeepCursor = (q: Query) => {
+  const pages = (q.state.data as { pages?: unknown } | undefined)?.pages;
+  return Array.isArray(pages) && pages.length > LIVE_MAX_PAGES;
+};
 let settling: ReturnType<typeof setTimeout> | undefined;
 const invalidate = (qc: QueryClient, match: (q: Query) => boolean, refetch = true) => {
   if (refetch && qc.getQueryCache().findAll({ predicate: (q) => match(q) && isBackground(q) }).length > 0) {
@@ -75,8 +80,13 @@ export const invalidatePaths = (qc: QueryClient, prefixes: readonly PathPrefix[]
  * the live stream's invalidations (lib/live), which speak in `(path template, params)` and never touch the cache.
  * Navigation snapshots wait for a successful command's invalidatePaths or the next navigation.
  */
-export const invalidateWhere = (qc: QueryClient, match: (path: string, params: unknown) => boolean, refetch = true) =>
-  invalidate(qc, (q) => !q.meta?.navigation && typeof q.queryKey[0] === "string" && match(q.queryKey[0], q.queryKey[1]), refetch);
+export const invalidateWhere = (qc: QueryClient, match: (path: string, params: unknown) => boolean, refetch = true) => {
+  const predicate = (q: Query) => !q.meta?.navigation && typeof q.queryKey[0] === "string" && match(q.queryKey[0], q.queryKey[1]);
+  if (refetch && qc.getQueryCache().findAll({ predicate: (q) => predicate(q) && isDeepCursor(q) }).length > 0) {
+    void qc.invalidateQueries({ predicate: (q) => predicate(q) && isDeepCursor(q), refetchType: "none" });
+  }
+  return invalidate(qc, (q) => predicate(q) && !(refetch && isDeepCursor(q)), refetch);
+};
 
 /** Whether a read on screen now (an active query) has a derived key that passes `match`. */
 export const shownWhere = (qc: QueryClient, match: (path: string, params: unknown) => boolean) =>
@@ -118,3 +128,6 @@ export const cachedQueriesWithPrefix = (qc: QueryClient, prefix: string) =>
 
 /** True when a cached query belongs to `prefix`. */
 export const isQueryForPrefix = (q: Query, prefix: string) => q.queryKey[0] === prefix;
+
+/** Derived params object stored alongside a query's path in its key. */
+export const queryParams = (q: Query): unknown => q.queryKey[1];

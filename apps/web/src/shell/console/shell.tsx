@@ -17,10 +17,25 @@ import { WorkspaceTabs } from "../../ui/workspace-tabs/workspace-tabs";
 import { ShellFrame, type ShellLayoutProps } from "../frame/shell-frame";
 import { activeLink, type NavLink } from "../nav";
 import { ConsoleTopBar } from "./console-top-bar";
-import { consolePathTitle, getPhoneSnapshot, subscribePhoneQuery, tabIconForHref } from "./shell-meta";
+import { tabIconForHref } from "./tab-icon";
+import { useResolvedTabTitle } from "./tab-titles";
 import { useConsoleCounts } from "./use-console-counts";
 import { useWorkspaceTabs } from "./workspace-tabs-state";
 import s from "./shell.module.css";
+
+const PHONE_QUERY = "(max-width: 767px)";
+
+function subscribePhoneQuery(onStoreChange: () => void) {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => {};
+  const mql = window.matchMedia(PHONE_QUERY);
+  mql.addEventListener("change", onStoreChange);
+  return () => mql.removeEventListener("change", onStoreChange);
+}
+
+function getPhoneSnapshot() {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
+  return window.matchMedia(PHONE_QUERY).matches;
+}
 
 const ConsolePhoneTop = lazy(() => chunk(import("./console-phone-chrome")).then(m => ({ default: m.ConsolePhoneTop })));
 const ConsolePhoneBottom = lazy(() => chunk(import("./console-phone-chrome")).then(m => ({ default: m.ConsolePhoneBottom })));
@@ -44,7 +59,10 @@ function ConsoleLayout({
   onSearch,
   phoneHeader,
 }: ShellLayoutProps) {
-  const { pathname } = useLocation();
+  const location = useLocation();
+  const pathname = location.pathname;
+  const searchStr = location.searchStr ?? "";
+  const currentHref = location.href ?? `${pathname}${searchStr}${location.hash ?? ""}`;
   const navigate = useNavigate();
   const isPhone = useSyncExternalStore(subscribePhoneQuery, getPhoneSnapshot, () => false);
   const claims = useSyncExternalStore(session.subscribe, () => session.claims);
@@ -73,10 +91,12 @@ function ConsoleLayout({
     [allLinks, inboxCount, approvalsCount],
   );
 
-  const currentTitle = useMemo(
-    () => consolePathTitle(pathname, allLinks, currentModuleTo, platform),
-    [pathname, allLinks, currentModuleTo, platform],
-  );
+  const { title: currentTitle, isFallback, tabTarget } = useResolvedTabTitle({
+    pathname,
+    searchStr,
+    allLinks,
+    platform,
+  });
 
   const defaultHref = platform ? "/platform" : "/";
   const defaultLabel = platform ? t("shell.link.tenants") : t("shell.link.home");
@@ -92,8 +112,10 @@ function ConsoleLayout({
     principal: session.principal,
     defaultHref,
     defaultLabel,
-    pathname,
+    pathname: tabTarget,
+    currentHref,
     pathLabel: currentTitle,
+    isFallbackLabel: isFallback,
     onNavigate: navigateToHref,
   });
 
@@ -135,9 +157,12 @@ function ConsoleLayout({
   const displayName = rawName && roleMeta ? `${shortName} · ${roleMeta}` : shortName;
   const phoneActiveId = pathname === "/leave" || pathname === "/payslips"
     ? pathname
-    : pathname === "/me/attendance" || pathname === "/me/desk" || pathname === "/account" || pathname.startsWith("/account/")
-      ? "/account"
-      : currentModuleTo;
+    : phoneHeader?.phoneNav === "self-service" &&
+        (pathname === "/people/certificates" || pathname.startsWith("/people/certificates/"))
+      ? "/people/certificates"
+      : pathname === "/me/attendance" || pathname === "/me/desk" || pathname === "/account" || pathname.startsWith("/account/")
+        ? "/account"
+        : currentModuleTo;
   const shellOwnsH1 = isPhone && Boolean(phoneHeader?.shellOwnsH1);
   const phoneHeaderValue = useMemo(() => ({ shellOwnsH1 }), [shellOwnsH1]);
 
@@ -171,6 +196,8 @@ function ConsoleLayout({
                   renderLink={(tab, props) => (
                     <Link
                       to={tab.href}
+                      activeOptions={{ exact: true, includeSearch: true }}
+                      activeProps={() => ({})}
                       className={props.className}
                       aria-current={props["aria-current"]}
                       data-workspace-tab=""

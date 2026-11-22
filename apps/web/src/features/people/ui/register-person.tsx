@@ -13,7 +13,7 @@ type Set = <K extends keyof Draft>(k: K, v: Draft[K]) => void;
  * Who: name, birth date and employee number. RRN is recorded separately on the personnel card.
  * Errors show only after a commit attempt (`shown`).
  */
-export function RegisterPerson({ d, set, shown }: { d: Draft; set: Set; shown: ReadonlySet<Gap> }) {
+export function RegisterPerson({ d, set, shown, consoleMode }: { d: Draft; set: Set; shown: ReadonlySet<Gap>; consoleMode?: boolean }) {
   const birth = parseTyped(d.birth);
   return (
     <div className={s.personRow}>
@@ -33,7 +33,7 @@ export function RegisterPerson({ d, set, shown }: { d: Draft; set: Set; shown: R
         <ChoiceField
           label={t("register.number")}
           required={false}
-          look="chips"
+          look={consoleMode ? undefined : "chips"}
           options={[{ value: "auto", label: t("register.number.auto") }, { value: "manual", label: t("register.number.manual") }]}
           value={d.numberMode}
           onChange={(v) => set("numberMode", v as Draft["numberMode"])}
