@@ -2,7 +2,7 @@
 import { ShieldAlert, WifiOff } from "lucide-react";
 import { COPY } from "../copy";
 import type { RefusalModel } from "../lib/auth";
-import { formatUtcTimestamp } from "../lib/format";
+import { fmtJoin, formatUtcTimestamp } from "../lib/format";
 import { Badge } from "./badge";
 import { KeyValue } from "./key-value";
 import s from "./o0-state.module.css";
@@ -15,7 +15,6 @@ export function O0State({
   onRetry?: () => void;
 }) {
   const Icon = model.kind === "503" ? WifiOff : ShieldAlert;
-  const badgeTone = model.kind === "401" || model.kind === "404" ? "warn" : "danger";
 
   return (
     <div className={s.frame}>
@@ -23,12 +22,13 @@ export function O0State({
         <div className={s.head}>
           <Icon size={20} aria-hidden="true" />
           <h1 id="o0-title" className={s.title}>{model.title}</h1>
-          <Badge tone={badgeTone}>{model.code}</Badge>
+          <Badge tone="neutral">{fmtJoin(COPY.o0.httpStatusPrefix, " ", model.kind)}</Badge>
         </div>
         <p className={s.message}>{model.message}</p>
         <p className={s.guidance}>{model.guidance}</p>
         <KeyValue
           items={[
+            { id: "reason", label: COPY.o0.reasonLabel, value: model.reason },
             { id: "code", label: COPY.o0.codeLabel, value: <code>{model.code}</code> },
             { id: "ref", label: COPY.o0.supportRefLabel, value: <code>{model.supportRef}</code> },
             { id: "at", label: COPY.o0.evaluatedAtLabel, value: formatUtcTimestamp(model.evaluatedAt) },

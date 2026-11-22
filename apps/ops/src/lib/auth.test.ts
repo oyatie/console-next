@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { describe, expect, test } from "vitest";
 import { OpsApiError } from "./api";
-import { classifyOpsError, hasOpsAction } from "./auth";
+import { classifyOpsError, formatOpsErrorCode, hasOpsAction } from "./auth";
 
 describe("ops Cedar gating and O0 error classification", () => {
   test("hasOpsAction checks allowed_actions strictly", () => {
@@ -18,7 +18,7 @@ describe("ops Cedar gating and O0 error classification", () => {
     expect(hasOpsAction(undefined, "read.home")).toBe(false);
   });
 
-  test("classifyOpsError distinguishes 401, 403, and 503 with support_ref and evaluated_at", () => {
+  test("classifyOpsError distinguishes 401, 403, 404, and 503 with mapped codes, reasons, support_ref, and evaluated_at", () => {
     const err401 = new OpsApiError(401, {
       code: "OPS_ACCESS_JWT_MISSING",
       message: "Access assertion header missing.",
@@ -27,7 +27,8 @@ describe("ops Cedar gating and O0 error classification", () => {
     });
     expect(classifyOpsError(err401)).toMatchObject({
       kind: "401",
-      code: "OPS_ACCESS_JWT_MISSING",
+      code: "ops-access-jwt-missing",
+      reason: "Access token missing",
       supportRef: "ref-401",
       evaluatedAt: "2026-11-21T21:43:00Z",
       canRetry: true,
@@ -41,7 +42,8 @@ describe("ops Cedar gating and O0 error classification", () => {
     });
     expect(classifyOpsError(err403)).toMatchObject({
       kind: "403",
-      code: "OPS_NOT_OPERATOR",
+      code: "ops-not-operator",
+      reason: "Operator grant required",
       supportRef: "ref-403",
       canRetry: false,
     });
@@ -54,7 +56,8 @@ describe("ops Cedar gating and O0 error classification", () => {
     });
     expect(classifyOpsError(err404)).toMatchObject({
       kind: "404",
-      code: "OPS_NOT_FOUND",
+      code: "ops-not-found",
+      reason: "Alert group not found",
       supportRef: "ref-404",
       evaluatedAt: "2026-11-21T21:43:00Z",
       showBreakGlass: false,
@@ -69,10 +72,20 @@ describe("ops Cedar gating and O0 error classification", () => {
     });
     expect(classifyOpsError(err503)).toMatchObject({
       kind: "503",
-      code: "OPS_TIMEOUT",
+      code: "ops-timeout",
+      reason: "Gateway timeout",
       supportRef: "ref-503",
       showBreakGlass: true,
       canRetry: true,
+    });
+
+    expect(formatOpsErrorCode("HTTP_502")).toEqual({
+      code: "http-502",
+      reason: "HTTP 502 error",
+    });
+    expect(formatOpsErrorCode("OPS_CUSTOM_ERROR")).toEqual({
+      code: "ops-custom-error",
+      reason: "Ops custom error",
     });
   });
 });

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { COPY } from "../copy";
 import { fetchOpsRunning, OpsApiError, opsQueryKeys, readObservedValue, type OpsComponent, type OpsHealth, type OpsRunning } from "../lib/api";
@@ -17,6 +17,20 @@ import { StatRow } from "../ui/stat-row";
 import s from "./running-screen.module.css";
 
 type RollupRow = OpsRunning["hosts"][number];
+
+const PHONE_QUERY = "(max-width: 767px)";
+
+function subscribePhoneQuery(listener: () => void): () => void {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => {};
+  const mql = window.matchMedia(PHONE_QUERY);
+  mql.addEventListener("change", listener);
+  return () => mql.removeEventListener("change", listener);
+}
+
+function getPhoneSnapshot(): boolean {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
+  return window.matchMedia(PHONE_QUERY).matches;
+}
 
 const HEALTH_OPTIONS = [
   { value: "", label: COPY.running.allStates },
@@ -36,6 +50,7 @@ export function RunningScreen({
   onFiltersChange: (next: { group?: string; state?: OpsHealth }) => void;
 }) {
   const { me, live, reportEvaluatedAt } = useOpsContext();
+  const isPhone = useSyncExternalStore(subscribePhoneQuery, getPhoneSnapshot, () => false);
   const allowed = hasOpsAction(me, "read.running");
 
   const query = useQuery({
@@ -94,7 +109,15 @@ export function RunningScreen({
       header: COPY.running.cols.drift,
       mobileSlot: "meta",
       nowrap: true,
-      render: (r) => <ObservedValue observation={r.drift} liveStatus={live.status} disconnectedAgeS={live.disconnectedAgeS} asBadge />,
+      render: (r) =>
+        isPhone ? (
+          <span>
+            {fmtJoin(COPY.running.cols.drift, ": ")}
+            <ObservedValue observation={r.drift} liveStatus={live.status} disconnectedAgeS={live.disconnectedAgeS} />
+          </span>
+        ) : (
+          <ObservedValue observation={r.drift} liveStatus={live.status} disconnectedAgeS={live.disconnectedAgeS} asBadge />
+        ),
     },
   ];
 

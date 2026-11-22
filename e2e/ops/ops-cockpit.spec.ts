@@ -1,9 +1,37 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { atPhoneWidth, expectAxe, fits } from "../a11y";
-import { shotSet } from "../shots";
+import { withFullPage } from "../shots";
 import { forgetResize } from "../stability";
 import { buildFixtures, makeMe, mountOpsMock } from "./fixtures";
+
+async function shotOps(page: Page, screen: string) {
+  const dir = process.env.STRUCT_SHOTS;
+  if (!dir) return;
+  const html = page.locator("html");
+  const prevTheme = await html.getAttribute("data-theme");
+  const prevViewport = page.viewportSize();
+  const capture = (width: number, mode: string) =>
+    withFullPage(page, () =>
+      page.screenshot({ path: `${dir}/${width}/${screen}-${mode}.png`, fullPage: true }),
+    );
+  try {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    for (const mode of ["light", "dark"] as const) {
+      await html.evaluate((el, t) => {
+        el.dataset.theme = t;
+      }, mode);
+      await capture(1440, mode);
+      await atPhoneWidth(page, () => capture(390, mode));
+    }
+  } finally {
+    await html.evaluate((el, t) => {
+      if (t === null) delete el.dataset.theme;
+      else el.dataset.theme = t;
+    }, prevTheme);
+    if (prevViewport) await page.setViewportSize(prevViewport);
+  }
+}
 
 test.describe("Stage-0 Ops Cockpit", () => {
   test("Now renders paging verdict, top 3 worklist above fold at 1440, compact phone rows, and Evidence last at 390", async ({ page }) => {
@@ -66,7 +94,7 @@ test.describe("Stage-0 Ops Cockpit", () => {
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await forgetResize(page);
-    await shotSet(page, "ops-now");
+    await shotOps(page, "now");
     expect(mock.unexpected).toEqual([]);
   });
 
@@ -91,7 +119,7 @@ test.describe("Stage-0 Ops Cockpit", () => {
     await page.goto("/alerts");
 
     await expect(page.getByRole("heading", { name: "Alerts" })).toBeVisible();
-    await shotSet(page, "ops-alerts");
+    await shotOps(page, "alerts");
 
     await page.getByLabel("Severity").selectOption("Page");
     await expect(page).toHaveURL(/severity=Page/);
@@ -122,7 +150,7 @@ test.describe("Stage-0 Ops Cockpit", () => {
     await expect(detail.getByRole("button", { name: /Copy:/ }).first()).toBeVisible();
 
     await expectAxe(page, "ops-alerts-1440");
-    await shotSet(page, "ops-alert-detail");
+    await shotOps(page, "alert-detail");
 
     // Silences read-only empty state + single-active tab + 320px containment
     await page.goto("/alerts/silences");
@@ -131,7 +159,7 @@ test.describe("Stage-0 Ops Cockpit", () => {
     await expect(alertsTabs.getByRole("link", { name: "Groups" })).not.toHaveAttribute("aria-current", "page");
     await expect(alertsTabs.getByRole("link", { name: "Silences" })).toHaveAttribute("aria-current", "page");
     await expectAxe(page, "ops-silences");
-    await shotSet(page, "ops-silences");
+    await shotOps(page, "silences");
     await page.setViewportSize({ width: 320, height: 640 });
     await forgetResize(page);
     await fits(page, "ops-silences-320");
@@ -208,7 +236,7 @@ test.describe("Stage-0 Ops Cockpit", () => {
     await page.getByLabel("Health").selectOption("Degraded");
     await expect(page).toHaveURL(/state=Degraded/);
     await expectAxe(page, "ops-running-1440");
-    await shotSet(page, "ops-running");
+    await shotOps(page, "running");
 
     await page.goto("/running/jobs");
     await expect(page.getByText("pgbackrest-incr")).toBeVisible();
@@ -217,7 +245,7 @@ test.describe("Stage-0 Ops Cockpit", () => {
     await expect(runningTabs.getByRole("link", { name: "Components" })).not.toHaveAttribute("aria-current", "page");
     await expect(runningTabs.getByRole("link", { name: "Jobs" })).toHaveAttribute("aria-current", "page");
     await expectAxe(page, "ops-jobs");
-    await shotSet(page, "ops-jobs");
+    await shotOps(page, "jobs");
 
     await page.setViewportSize({ width: 320, height: 640 });
     await forgetResize(page);
@@ -228,7 +256,7 @@ test.describe("Stage-0 Ops Cockpit", () => {
     await page.goto("/sources");
     await expect(page.getByRole("cell", { name: "victoriametrics" }).first()).toBeVisible();
     await expectAxe(page, "ops-sources-1440");
-    await shotSet(page, "ops-sources");
+    await shotOps(page, "sources");
 
     await atPhoneWidth(page, async () => {
       await fits(page, "ops-sources-390");
@@ -236,6 +264,10 @@ test.describe("Stage-0 Ops Cockpit", () => {
     await page.goto("/running");
     await expect(page.getByText("console-api")).toBeVisible();
     await atPhoneWidth(page, async () => {
+      await expect(page.getByText("Drift: Synced").first()).toBeVisible();
+      await expect(page.getByText("Drift: OutOfSync")).toBeVisible();
+      const rollupRowBox = await page.locator("tbody tr").first().boundingBox();
+      expect(rollupRowBox?.height ?? 999).toBeLessThanOrEqual(68);
       await fits(page, "ops-running-390");
     });
     expect(mock.unexpected).toEqual([]);
@@ -370,24 +402,38 @@ test.describe("Stage-0 Ops Cockpit", () => {
     const mock401 = await mountOpsMock(page, "paging", { meStatus: 401 });
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/");
-    await expect(page.getByText("OPS_ACCESS_JWT_MISSING").first()).toBeVisible();
+    await expect(page.getByText("Cloudflare Access session required")).toBeVisible();
+    await expect(page.getByText("HTTP 401")).toBeVisible();
+    await expect(page.getByText("Access token missing")).toBeVisible();
+    await expect(page.getByText("ops-access-jwt-missing")).toBeVisible();
     await expect(page.getByText("sup-401")).toBeVisible();
+    await expect(page.getByText("2026-11-21T21:40:00Z")).toBeVisible();
+    expect(await page.locator("body").innerText()).not.toMatch(/\b[A-Z]{2,}_[A-Z0-9_]+\b/);
     expect(mock401.unexpected).toEqual([]);
 
     // 403
     const mock403 = await mountOpsMock(page, "paging", { meStatus: 403 });
     await page.goto("/");
     await expect(page.getByText("Not an operator")).toBeVisible();
-    await expect(page.getByText("OPS_NOT_OPERATOR").first()).toBeVisible();
+    await expect(page.getByText("HTTP 403")).toBeVisible();
+    await expect(page.getByText("Operator grant required")).toBeVisible();
+    await expect(page.getByText("ops-not-operator")).toBeVisible();
     await expect(page.getByText("sup-403")).toBeVisible();
-    await shotSet(page, "ops-o0-refusal");
+    await expect(page.getByText("2026-11-21T21:40:00Z")).toBeVisible();
+    expect(await page.locator("body").innerText()).not.toMatch(/\b[A-Z]{2,}_[A-Z0-9_]+\b/);
+    await shotOps(page, "o0-refusal");
     expect(mock403.unexpected).toEqual([]);
 
     // 503
     const mock503 = await mountOpsMock(page, "paging", { meStatus: 503 });
     await page.goto("/");
     await expect(page.getByText("Ops cockpit unreachable")).toBeVisible();
+    await expect(page.getByText("HTTP 503")).toBeVisible();
+    await expect(page.getByText("Gateway timeout")).toBeVisible();
+    await expect(page.getByText("ops-timeout")).toBeVisible();
     await expect(page.getByText("sup-503")).toBeVisible();
+    await expect(page.getByText("2026-11-21T21:40:00Z")).toBeVisible();
+    expect(await page.locator("body").innerText()).not.toMatch(/\b[A-Z]{2,}_[A-Z0-9_]+\b/);
     expect(mock503.unexpected).toEqual([]);
 
     // Cedar partial permissions: home only
@@ -401,7 +447,10 @@ test.describe("Stage-0 Ops Cockpit", () => {
     await expect(primaryNav.getByRole("link", { name: "Running" })).toHaveCount(0);
     await expect(primaryNav.getByRole("link", { name: "Sources" })).toHaveCount(0);
     await page.goto("/alerts");
-    await expect(page.getByText("OPS_ACTION_DENIED").first()).toBeVisible();
+    await expect(page.getByText("Permission missing")).toBeVisible();
+    await expect(page.getByText("Action permission required")).toBeVisible();
+    await expect(page.getByText("ops-action-denied")).toBeVisible();
+    expect(await page.locator("body").innerText()).not.toMatch(/\b[A-Z]{2,}_[A-Z0-9_]+\b/);
     expect(mockHomeOnly.unexpected).toEqual([]);
   });
 });
