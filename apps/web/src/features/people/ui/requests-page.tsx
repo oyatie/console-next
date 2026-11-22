@@ -20,7 +20,7 @@ import { tabClass } from "../../../ui/tabs/tab-class";
 import { TabCount, TabNav } from "../../../ui/tabs/tabs";
 import { changeRequestCountsQuery, mySub, REQUEST_PAGE, requestsQuery, type ChangeRequest, type Lane, type RequestStatus } from "../api";
 import { RequestPanel, RequestPanelBody } from "./request-panel";
-import { kindText, statusOf, subjectText } from "../present";
+import { kindText, reasonText, statusOf, subjectText } from "../present";
 import s from "./requests.module.css";
 
 const route = getRouteApi("/app/people/requests");
@@ -49,7 +49,7 @@ export function RequestsPage() {
   const makeColumns = (compact: boolean): Column<ChangeRequest>[] => [
     { header: t("requests.col.kind"), cell: (r) => kindText(r.kind), fit: true, card: compact ? "fact" : undefined },
     { header: t("requests.col.subject"), cell: (r) => subjectText(r), wide: compact ? undefined : true, card: compact ? "title" : undefined },
-    { header: t("requests.col.reason"), cell: (r) => r.reason_code, wide: true, card: compact ? "omit" : undefined },
+    { header: t("requests.col.reason"), cell: (r) => reasonText(r.reason_code), wide: true, card: compact ? "omit" : undefined },
     {
       header: t("requests.col.at"),
       cell: (r) => (

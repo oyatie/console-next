@@ -8,7 +8,7 @@ import { ORG_TABS, orgTab } from "./org-tab-search";
 const ORG_ACTS = ["create", "rename", "move", "dissolve", "reassign", ...STRUCTURE_ACTS] as const;
 type OrgAct = (typeof ORG_ACTS)[number];
 const KINDS = ["DEPARTMENT"] as const;
-const STRUCTURE_VIEWS = ["list", "outline"] as const;
+const STRUCTURE_VIEWS = ["chart", "list", "outline"] as const;
 const VIEWS = ["open", "mine", "approval", "ready", "done", "closed", "all"] as const;
 const DONE = ["submitted", "drafted", "redrafted"] as const;
 const oneOf = <T extends string>(all: readonly T[], v: unknown): T | undefined => (all.includes(v as T) ? (v as T) : undefined);

@@ -10,3 +10,7 @@
 :where([data-experience]:not([data-experience="baseline"])) .lookupHost [data-pattern="form"] [data-read-region] > div {
   max-width: none;
 }
+
+:where([data-experience]:not([data-experience="baseline"])) .lookupHost input {
+  max-width: min(100%, calc(var(--dialog-w-md) + var(--space-6) + var(--space-2)));
+}

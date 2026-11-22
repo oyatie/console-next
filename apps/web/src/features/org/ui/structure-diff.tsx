@@ -43,7 +43,6 @@ function Column({ title, nodes, flat }: { title: string; nodes: PreviewNode[]; f
     const flatRows = flattenPreview(nodes);
     return (
       <div>
-        <h4 id={id} className={s.diffTitle}>{title}</h4>
         <Table
           label={title}
           density="compact"

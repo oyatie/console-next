@@ -1,6 +1,8 @@
 /* Registration in a row (spec E3-run): head, carry bar, the row table with its entry row, the side cards. Tokens only. */
 .page { display: flex; flex-direction: column; min-height: 100%; }
 .sum { font-size: var(--text-sm); color: var(--ink); }
+.crumbLink { text-decoration: none; }
+.crumbLink:hover, .crumbLink:focus-visible { text-decoration: underline; }
 .carry { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); padding: var(--space-3) var(--space-5); border-bottom: 1px solid var(--border); background: var(--surface); }
 .carryLabel { max-width: 16rem; font-size: var(--text-sm); color: var(--steel); }
 .carry .carryChip { display: inline-flex; align-items: center; gap: var(--space-1); min-height: var(--target); padding: 0 var(--space-3); border: 1px solid var(--control-border); border-radius: calc(var(--target) / 2); background: var(--surface); color: var(--ink); font-size: var(--text-sm); white-space: nowrap; cursor: pointer; }

@@ -37,7 +37,7 @@ function saeonRequests() {
       subject_number: saeonUniverse.hero.employeeNumber,
       payload: { changes: { phone: MASKED_HERO_PHONE } },
       reason_code: "DATA_ENTRY_ERROR",
-      note: "Phone number correction request",
+      note: saeonUniverse.requestNotes.phoneCorrection,
       status: "OPEN" as const,
       assignee_role: "HR" as const,
       review_required: false,
@@ -57,7 +57,7 @@ function saeonRequests() {
       subject_number: peers[0]?.employeeNumber ?? "10612",
       payload: {},
       reason_code: "SCOPE_ADJUSTMENT",
-      note: "Workplace assignment review",
+      note: saeonUniverse.requestNotes.workplaceReview,
       status: "OPEN" as const,
       assignee_role: "HR" as const,
       review_required: true,
@@ -176,7 +176,7 @@ for (const width of [1440, 390] as const) {
       await mockRoute(page, "post", "/api/v1/change-requests/{id}/decide", req => {
         const reqId = req.url().split("/").at(-2)!;
         const target = items.find(x => x.id === reqId) ?? items[0]!;
-        return { status: 200, json: { ...target, status: "APPLIED" as const, decided_at: "2026-11-10T09:30:00Z", decision_reason_code: "Verified" } };
+        return { status: 200, json: { ...target, status: "APPLIED" as const, decided_at: "2026-11-10T09:30:00Z", decision_reason_code: saeonUniverse.requestNotes.hrVerified } };
       });
 
       try {
@@ -193,6 +193,10 @@ for (const width of [1440, 390] as const) {
         await expect(rows).toHaveCount(items.length);
         await expect(pattern).toContainText(`${saeonUniverse.hero.name} (${saeonUniverse.hero.employeeNumber})`);
         await expect(pattern).toContainText(`${t("requests.subject.USER_ACCOUNT")} · ${saeonUniverse.adminActor.name}`);
+        for (const code of ["DATA_ENTRY_ERROR", "SCOPE_ADJUSTMENT", "NEW_ASSIGNMENT", "DUPLICATE_CHECK", "SHIFT_POLICY"] as const) {
+          await expect(pattern).not.toContainText(code);
+        }
+        await expect(pattern).toContainText(t("requests.reason.DATA_ENTRY_ERROR"));
 
         if (width === 1440) {
           const sidePane = page.locator('aside[data-pane="record"]');
@@ -210,7 +214,7 @@ for (const width of [1440, 390] as const) {
           await capture(page, width, "people-requests", theme);
 
           await sidePane.getByRole("button", { name: t("requests.decide.APPLY"), exact: true }).click();
-          await sidePane.getByRole("textbox", { name: t("requests.decision.reason") }).fill("Verified by HR");
+          await sidePane.getByRole("textbox", { name: t("requests.decision.reason") }).fill(saeonUniverse.requestNotes.hrVerified);
           await sidePane.getByRole("button", { name: t("requests.commit.APPLY"), exact: true }).click();
           await expect(pattern.getByRole("status")).toContainText(t("requests.done.APPLIED", { kind: t("requests.kind.PROFILE_CORRECTION") }));
           await expect.poll(() => countReads.length).toBeGreaterThanOrEqual(2);

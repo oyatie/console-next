@@ -89,6 +89,8 @@ export const saeonUniverse = {
   employmentTypes: raw.employmentTypes,
   missingLabels: raw.missingLabels,
   exitNotes: raw.exitNotes,
+  requestNotes: raw.requestNotes,
+  settings: raw.settings,
   entities,
   hero: {
     ...raw.hero,

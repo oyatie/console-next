@@ -12,13 +12,13 @@ const DEPTHS: Depth[] = ["sites", "one", "all"];
 const crumb = (n: ChartNode) => (n.kind === "tenant" ? t("structure.root.word") : n.name);
 
 /** The canvas's top edge: crumbs to the focus and the depth control (the find sits in the page toolbar). */
-export function ChartTop({ s, c, onFocus }: { s: Structure; c: ChartState; onFocus: (id: string | undefined) => void }) {
+export function ChartTop({ s, c, onFocus, consoleChrome = false }: { s: Structure; c: ChartState; onFocus: (id: string | undefined) => void; consoleChrome?: boolean }) {
   const current = c.hits.ids[c.hit];
   // While finding, the crumbs follow the result shown (S2-chart-scale-search); a crumb still focuses its unit.
   const path = pathTo(s, c.q.trim() && current ? current : c.focus.id);
   return (
     <>
-      <nav className={`${css.crumbs} card`} aria-label={t("structure.crumbs")}>
+      <nav className={consoleChrome ? css.crumbs : `${css.crumbs} card`} aria-label={t("structure.crumbs")}>
         {path.map((n, i) => (
           <span key={n.id} className={css.crumb}>
             {i > 0 && <ChevronRight size={14} aria-hidden />}
@@ -27,13 +27,17 @@ export function ChartTop({ s, c, onFocus }: { s: Structure; c: ChartState; onFoc
         ))}
       </nav>
       {c.focus.kind !== "tenant" && (
-        <Button variant="ghost" className={`${css.floatBtn} card`} onClick={() => onFocus(undefined)}><Maximize2 size={16} aria-hidden />{t("structure.top.all")}</Button>
+        <Button variant="ghost" className={consoleChrome ? css.floatBtn : `${css.floatBtn} card`} onClick={() => onFocus(undefined)}><Maximize2 size={16} aria-hidden />{t("structure.top.all")}</Button>
       )}
-      <span className="grow" />
-      <HeadcountBasis>{t("structure.headcount.total", { count: c.focus.headcount })}</HeadcountBasis>
-      <div className={`${css.seg} card`} role="group" aria-label={t("structure.depth.label")}>
-        {DEPTHS.map((d) => <ToggleButton key={d} pressed={c.depth === d} onClick={() => c.setDepth(d)}>{t(`structure.depth.${d}`)}</ToggleButton>)}
-      </div>
+      {!consoleChrome && (
+        <>
+          <span className="grow" />
+          <HeadcountBasis>{t("structure.headcount.total", { count: c.focus.headcount })}</HeadcountBasis>
+          <div className={`${css.seg} card`} role="group" aria-label={t("structure.depth.label")}>
+            {DEPTHS.map((d) => <ToggleButton key={d} pressed={c.depth === d} onClick={() => c.setDepth(d)}>{t(`structure.depth.${d}`)}</ToggleButton>)}
+          </div>
+        </>
+      )}
     </>
   );
 }

@@ -86,7 +86,7 @@ export function CaseAxis({ c: live, onBack, onDone, consoleMode }: { c: Case; on
       key: step,
       who: titled(t(`exit.step.${step}`), text),
       state,
-      meta: state === "current" && next ? (forward ? t("exit.next.mine") : holder(next, sameActor)) : when && fmtDateTime(when),
+      meta: state === "current" && next ? (forward ? t(consoleMode ? "exit.next.current" : "exit.next.mine") : holder(next, sameActor)) : when && fmtDateTime(when),
     };
   });
   if (isClosed(c))

@@ -52,7 +52,8 @@ export function StructurePage({ proposal, panel, sheets }: {
   const [find, setFind] = useState("");
   const commands = useRef<ViewCommands>(null);
   const narrow = useNarrow();
-  const { view = "chart", focus, act, sel: picked } = search;
+  const { view, focus, act, sel: picked } = search;
+  const baselineView = view ?? "chart";
   const navigate = route.useNavigate();
   const { s, tree, ready, diff } = useStructure(search);
   const dates = freshOnOpen(useQuery({ ...get("/api/v1/org-structure/change-dates", { params: { query: { from: "0001-01-01", to: "9999-12-31", known_at: search.known_at } } }), refetchOnMount: "always" }));
@@ -100,7 +101,7 @@ export function StructurePage({ proposal, panel, sheets }: {
   // Reserve the selected panel in the click's render, before its URL write arrives and moves the chart controls.
   const one = url.last && sel.size === 1 ? s?.byId.get(url.last) : undefined;
   const paneled = one && (one.kind === "site" || one.kind === "dept") && tree.data ? one : undefined;
-  const stacked = view === "chart" && narrow;
+  const stacked = baselineView === "chart" && narrow;
   const side = proposing ? { id: "proposal", label: t("structure.side"), onClose: () => void navigate({ search: (q) => ({ ...q, act: undefined }), replace: true }), children: proposal }
     : paneled && {
         id: paneled.id,
@@ -116,11 +117,11 @@ export function StructurePage({ proposal, panel, sheets }: {
   const empty = s && s.root.children.length === 0;
   return (
     <UnitEdit.Provider value={canEdit}>
-    <RegistryExportContext.Provider value={view === "list" ? exportRows : null}>
+    <RegistryExportContext.Provider value={baselineView === "list" ? exportRows : null}>
     <ExperienceSwitch
       baseline={() => (
         <div className={css.page}>
-          <PageHead s={s} view={view} cmd={cmd} changeDates={dates.isSuccess ? dates.data?.items : undefined} loadingDates={dates.isFetching} readFailed={!!ready.error && !s} find={find} onFind={setFind} commands={commands} inline={canEdit} />
+          <PageHead s={s} view={baselineView} cmd={cmd} changeDates={dates.isSuccess ? dates.data?.items : undefined} loadingDates={dates.isFetching} readFailed={!!ready.error && !s} find={find} onFind={setFind} commands={commands} inline={canEdit} />
           {!ready.error && dates.isError && <QueryState q={dates} inline own={() => t("asof.error")}>{() => null}</QueryState>}
           <QueryState q={pageRead} loading={<ChartSkeleton />}>{() => <>
           <div className={css.body}>
@@ -132,8 +133,8 @@ export function StructurePage({ proposal, panel, sheets }: {
                 {
                   !s ? null
                   : empty ? (s.readOnly ? <EmptyState title={t("asof.noRecords")} reason={null} /> : <FirstRun />)
-                  : view === "list" ? <RegistryView ref={commands} find={find} s={s} cmd={cmd} sel={sel} onSelect={select} onVisibleRows={setExportRows} />
-                  : view === "outline" ? <OutlineView ref={commands} find={find} follow={!act} pick={jump} s={s} cmd={cmd} sel={sel} onSelect={select} />
+                  : baselineView === "list" ? <RegistryView ref={commands} find={find} s={s} cmd={cmd} sel={sel} onSelect={select} onVisibleRows={setExportRows} />
+                  : baselineView === "outline" ? <OutlineView ref={commands} find={find} follow={!act} pick={jump} s={s} cmd={cmd} sel={sel} onSelect={select} />
                   : <ChartView ref={commands} find={find} key={focus ?? "tenant"} pick={jump} covered={Boolean(act)} dimmed={!!ready.error} s={s} cmd={cmd} focusId={focus} onFocus={onFocus} sel={sel} onSelect={select} />
                 }
                 {stacked && side && (proposing ? <aside className={css.side} aria-label={side.label}>{side.children}</aside> : <div className={css.side}>{side.children}</div>)}
@@ -170,7 +171,6 @@ export function StructurePage({ proposal, panel, sheets }: {
             proposal={proposal}
             side={side}
             sheets={sheets}
-            onVisibleRows={setExportRows}
           />
         </Suspense>
       )}

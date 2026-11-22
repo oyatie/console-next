@@ -89,6 +89,8 @@ for (const width of [1440, 390] as const) {
         await expect(page.locator('[data-pattern="document-decision"]')).toHaveCount(1);
         await expect(main.getByText(t("reason.exit_reason.RESIGNATION"), { exact: true }).first()).toBeVisible();
         await expect(main.getByText(saeonUniverse.exitNotes.resignation, { exact: true }).first()).toBeVisible();
+        await expect(main.getByText(t("exit.next.mine"), { exact: true })).toHaveCount(0);
+        await expect(main.getByText(t("exit.next.current"), { exact: true })).toBeVisible();
         await fits(page, `Console /people/exits/$id ${width} ${theme}`);
         await expectAxe(page, `Console /people/exits/$id ${width} ${theme}`);
         await capture(page, width, "people-exit-detail", theme);

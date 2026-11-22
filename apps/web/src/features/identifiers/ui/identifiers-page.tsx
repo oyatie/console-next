@@ -12,6 +12,7 @@ import { RecordPattern } from "../../../ui/patterns/record";
 import { employeeRef } from "../api";
 import { NumberCard } from "./number-card";
 import { RrnCard } from "./rrn-card";
+import s from "./identifiers.module.css";
 
 const route = getRouteApi("/app/people/$id/identifiers");
 
@@ -58,7 +59,7 @@ export function IdentifiersPage() {
       head={{
         title: d ? t("identifiers.title", { name: d.employee.name }) : t("identifiers.title", { name: "" }).trim(),
         titleId: "identifiers-title",
-        crumbs: d ? <Crumbs items={[<Link key="person" to="/people/$id" params={{ id }} search={{}}>{d.employee.name}</Link>]} /> : undefined,
+        crumbs: d ? <Crumbs items={[<Link key="person" to="/people/$id" params={{ id }} search={{}} className={s.crumbLink}>{d.employee.name}</Link>]} /> : undefined,
         meta: d && status ? (
           <>
             <bdi className="code">{d.employee.employee_number ?? t("identifiers.number.none")}</bdi>

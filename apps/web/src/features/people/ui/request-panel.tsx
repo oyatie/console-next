@@ -14,7 +14,7 @@ import { RecordPaneSection } from "../../../ui/patterns/list-record-parts";
 import { X } from "lucide-react";
 import { mySub } from "../api";
 import { decideRequest, type ChangeRequest } from "../api";
-import { kindText, requestedChanges, statusOf, subjectText, valueText } from "../present";
+import { kindText, reasonText, requestedChanges, statusOf, subjectText, valueText } from "../present";
 import s from "./requests.module.css";
 
 type Employee = components["schemas"]["Employee"];
@@ -36,7 +36,7 @@ function decidedNode(r: ChangeRequest) {
   if (!r.decided_at) return null;
   return (
     <>
-      <time className="num" dateTime={r.decided_at}>{fmtDateTime(r.decided_at)}</time> · {r.decision_reason_code ?? "—"}
+      <time className="num" dateTime={r.decided_at}>{fmtDateTime(r.decided_at)}</time> · {r.decision_reason_code ? reasonText(r.decision_reason_code) : "—"}
       {r.decision_note ? ` · ${r.decision_note}` : ""}
     </>
   );
@@ -93,7 +93,7 @@ export function RequestPanel({ r, subject, hr, onClose, onDecided }: { r: Change
         <dt>{t("requests.col.at")}</dt>
         <dd className="num">{fmtDateTime(r.created_at)}{mine ? ` · ${t("requests.mine")}` : ""}</dd>
         <dt>{t("requests.col.reason")}</dt>
-        <dd>{r.reason_code}</dd>
+        <dd>{reasonText(r.reason_code)}</dd>
         {r.note && (
           <>
             <dt>{t("requests.note")}</dt>
@@ -138,7 +138,7 @@ export function RequestPanelBody({ r, hr, onDecided }: { r: ChangeRequest; hr: b
         </>
       ),
     },
-    { key: "reason", label: t("requests.col.reason"), value: r.reason_code },
+    { key: "reason", label: t("requests.col.reason"), value: reasonText(r.reason_code) },
     ...(r.note ? [{ key: "note", label: t("requests.note"), value: r.note }] : []),
     ...(r.decided_at ? [{ key: "decided", label: t("requests.decided"), value: decidedNode(r) }] : []),
   ];

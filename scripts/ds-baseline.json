@@ -142,7 +142,7 @@
 "apps/web/src/features/platform/ui/tenant-panel.tsx": {"dsClass":4},
 "apps/web/src/features/platform/ui/tenants-page.tsx": {"dsClass":4},
 "apps/web/src/features/platform/ui/tenants.module.css": {"restyle":6},
-"apps/web/src/features/structure/ui/chart-top.tsx": {"dsClass":4},
+"apps/web/src/features/structure/ui/chart-top.tsx": {"dsClass":2},
 "apps/web/src/features/structure/ui/chart-view.tsx": {"dsClass":3},
 "apps/web/src/features/structure/ui/chart.module.css": {"restyle":134,"literal":27},
 "apps/web/src/features/structure/ui/first-run.tsx": {"dsClass":2},

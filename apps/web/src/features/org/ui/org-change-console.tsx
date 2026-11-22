@@ -21,6 +21,7 @@ import { ChangePreflight } from "./change-preflight";
 import { ChangeSettlement } from "./change-settlement";
 import { OrgChangeHistoryTimeline, OrgChangeNextStep, OrgChangeNotices, OrgChangeReceiptDock, ProposalBody } from "./org-change-parts";
 import { useOrgChangeRecord } from "./use-org-change-record";
+import css from "./org-change.module.css";
 
 type Detail = components["schemas"]["OrgChangeDetail"];
 
@@ -162,7 +163,16 @@ export function OrgChangeConsole({
           <>
             <PaneHead title={t("orgChange.next.title")} />
             <DocRailBody>
-              <OrgChangeNextStep d={d} st={st} n={n} refetch={refetch} flat />
+              <div className={css.next}>
+                <OrgChangeNextStep d={d} st={st} n={n} refetch={refetch} flat />
+                {d.status === "IN_APPROVAL" && st.s.kind !== "decide" && (!d.sole_holder_decision || Boolean(st.note?.hold)) && (
+                  <div className={css.bar}>
+                    <Link to="/approvals/$approvalId" params={{ approvalId: `org_change:${d.id}` }} className={buttonClass("primary")}>
+                      {t("orgChange.openApproval")}
+                    </Link>
+                  </div>
+                )}
+              </div>
             </DocRailBody>
             <DocRailSection label={t("approvals.related.title")}>
               <PaneHead title={t("approvals.related.title")} meta={t("approvals.related.meta")} level={3} />

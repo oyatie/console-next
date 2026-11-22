@@ -21,7 +21,7 @@ for (const viewport of [{ width: 1280, height: 720 }, { width: 1920, height: 108
     const tree = canvas.getByRole("tree");
     const bottom = canvas.getByRole("group", { name: "확대·축소" }).locator("..");
     // Escape restores a taller receipt after search: the revealed box must still take a press.
-    const find = admin.getByRole("searchbox", { name: "조직 찾기" });
+    const find = admin.getByRole("searchbox", { name: "부서·코드 검색" });
     await find.fill("생산부");
     await find.press("Enter");
     await expect(box(admin, "생산부")).toHaveAttribute("data-s", /\bnow\b/);

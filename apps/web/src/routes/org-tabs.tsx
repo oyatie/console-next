@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { lazy, Suspense, useContext, type ReactNode } from "react";
+import { lazy, Suspense, useContext, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createLazyRoute, getRouteApi, lazyRouteComponent, useRouter } from "@tanstack/react-router";
 import { t } from "@console/i18n";
+import { OrgHeadSlotContext } from "../features/structure/ui/use-org-head-slot";
 import { chunk } from "../lib/chunk-guard";
 import { screen } from "../lib/fonts";
 import { useTabSearch } from "../lib/react/use-tab-search";
@@ -73,14 +74,23 @@ function OrgTabsConsole({ tabs, current }: { tabs: ReactNode; current: string })
   const level = useContext(PageHeadingLevel);
   const secondary = scope.embedded || level === 2;
   const Root = scope.landmark || secondary ? "div" : "main";
+  const [headSlot, setHeadSlot] = useState<HTMLElement | null>(null);
   return (
     <Root className={s.consoleFrame} data-floorplan="canvas">
       <PageHeadingLevel value={secondary ? 2 : 1}>
-        <PageHead band title={t("structure.title")} titleId="structure-title" tabs={tabs} />
+        <PageHead
+          band
+          title={t("structure.title")}
+          titleId="structure-title"
+          filters={tabs}
+          tools={current === ORG_TABS[0] ? <div ref={setHeadSlot} className={s.headSlot} /> : undefined}
+        />
       </PageHeadingLevel>
       <PageScope value={{ landmark: true, embedded: true }}>
         <PageHeadingLevel value={2}>
-          <OrgTabsContent current={current} />
+          <OrgHeadSlotContext.Provider value={headSlot}>
+            <OrgTabsContent current={current} />
+          </OrgHeadSlotContext.Provider>
         </PageHeadingLevel>
       </PageScope>
     </Root>

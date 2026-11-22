@@ -101,10 +101,10 @@ function RenewWorkspace() {
       <span className={s.steel}>{t("renew.sameNote")}</span>
     </div>
   );
-  const sideCard = (
+  const renderSideCard = (consoleMode: boolean) => (
     <Card titleId="renew-side" title={t("renew.side.title")}>
       <dl className={s.stats}>{(["renew", "convert", "leave", "open"] as const).map((k) => <div key={k}><dt>{t(`renew.count.${k}`)}</dt><dd className={k === "open" && n.open ? s.err : undefined}>{n[k]}</dd></div>)}</dl>
-      <ChoiceField label={t("renew.term")} required look="chips" options={[{ value: "12", label: t("renew.term.y1") }, { value: "24", label: t("renew.term.y2") }]} value={months ? String(months) : null} onChange={(v) => setMonths(Number(v))} error={tried && n.renew > 0 && !months ? t("renew.missing.term") : undefined} />
+      <ChoiceField label={t("renew.term")} required look={consoleMode ? undefined : "chips"} options={[{ value: "12", label: t("renew.term.y1") }, { value: "24", label: t("renew.term.y2") }]} value={months ? String(months) : null} onChange={(v) => setMonths(Number(v))} error={tried && n.renew > 0 && !months ? t("renew.missing.term") : undefined} />
       <p className={s.steel}>{t("renew.law")}</p>
       <Field label={t("renew.memo")} required error={tried && !memo.trim() ? t("renew.missing.memo") : undefined}>
         {(p) => <TextInput {...p} maxLength={1000} value={memo} onChange={(e) => setMemo(e.target.value)} />}
@@ -129,7 +129,7 @@ function RenewWorkspace() {
         {kindsBar}
         <div className={s.renewCols}>
           <RenewTable people={people} choices={choices} onChoice={onChoice} refused={refused} months={months ?? 12} tried={tried} />
-          {sideCard}
+          {renderSideCard(false)}
         </div>
         <footer className={s.bar}>
           <div className={s.barText}>
@@ -161,7 +161,7 @@ function RenewWorkspace() {
             steps={steps}
             notes={kindsBar}
             body={<RenewTable people={people} choices={choices} onChoice={onChoice} refused={refused} months={months ?? 12} tried={tried} mobileLayout="cards" />}
-            aside={sideCard}
+            aside={renderSideCard(true)}
             refusedBanner={refusedBanner}
             done={done}
             leaving={leaving}

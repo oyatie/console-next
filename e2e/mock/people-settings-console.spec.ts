@@ -64,14 +64,14 @@ async function setupSettingsConsole(
       can_manage: canManage,
       active_limit: 30,
       items: [
-        { id: id(601), label: "Locker Number", value_type: "TEXT", section: "PERSONAL", visibility: "MANAGERS", choices: [], active: true },
-        { id: id(602), label: "Uniform Size", value_type: "CHOICE", section: "JOB", visibility: "MANAGERS", choices: [{ id: id(611), label: "M" }, { id: id(612), label: "L" }], active: true },
+        { id: id(601), label: saeonUniverse.settings.rosterFields.lockerLabel, value_type: "TEXT", section: "PERSONAL", visibility: "MANAGERS", choices: [], active: true },
+        { id: id(602), label: saeonUniverse.settings.rosterFields.uniformLabel, value_type: "CHOICE", section: "JOB", visibility: "MANAGERS", choices: [{ id: id(611), label: "M" }, { id: id(612), label: "L" }], active: true },
       ],
     },
   });
   await mockRoute(page, "patch", "/api/v1/roster-fields/{id}", {
     status: 200,
-    json: { id: id(602), label: "Uniform Size", value_type: "CHOICE", section: "JOB", visibility: "MANAGERS", choices: [{ id: id(611), label: "M" }, { id: id(612), label: "L" }], active: true },
+    json: { id: id(602), label: saeonUniverse.settings.rosterFields.uniformLabel, value_type: "CHOICE", section: "JOB", visibility: "MANAGERS", choices: [{ id: id(611), label: "M" }, { id: id(612), label: "L" }], active: true },
   });
   await mockRoute(page, "get", "/api/v1/job-titles", {
     status: 200,
@@ -80,7 +80,7 @@ async function setupSettingsConsole(
       items: [
         { id: id(701), kind: "GRADE", label: saeonUniverse.grades.SENIOR_STAFF, grade_rank: 20, active: true },
         { id: id(702), kind: "TITLE", label: saeonUniverse.roles.TEAM_LEAD, grade_rank: 10, active: true },
-        { id: id(703), kind: "JOB", label: "Precision Engineering", grade_rank: null, active: false },
+        { id: id(703), kind: "JOB", label: saeonUniverse.settings.jobTitles.precisionLabel, grade_rank: null, active: false },
       ],
     },
   });
@@ -145,7 +145,7 @@ test("Console settings SidePane edit, focus return, read-only, 403 refusal, step
     await rfEditBtn.click();
     const rfPane = page.locator('aside[data-pane="record"]');
     await expect(rfPane).toBeVisible();
-    await expect(rfPane.getByRole("form", { name: t("rosterFields.edit.title", { label: "Uniform Size" }) })).toBeVisible();
+    await expect(rfPane.getByRole("form", { name: t("rosterFields.edit.title", { label: saeonUniverse.settings.rosterFields.uniformLabel }) })).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(rfPane).toHaveCount(0);
     await expect(rfEditBtn).toBeFocused();

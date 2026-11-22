@@ -21,6 +21,7 @@ import { FormSection } from "../../../ui/patterns/form-section";
 import { SettingsPattern } from "../../../ui/patterns/settings";
 import { Table, type Column } from "../../../ui/table";
 import { addRosterField, rosterFieldsQuery, updateRosterField, type RosterField, type RosterFieldInput } from "../api";
+import sf from "./settings-form.module.css";
 
 const READS = ["/api/v1/roster-fields"] as const;
 const TYPES = ["TEXT", "INTEGER", "DECIMAL", "DATE", "CHOICE"] as const;
@@ -90,7 +91,7 @@ export function RosterFieldsPage() {
       panel={
         fields.data ? (
           <>
-            {manage ? <AddField /> : <FormSection><DeniedNotice /></FormSection>}
+            {manage ? <AddField consoleMode /> : <FormSection><DeniedNotice /></FormSection>}
             <Card title={t("rosterFields.list")} flush={fields.data.items.length > 0}>
               {fields.data.items.length ? (
                 <Table mobileLayout="cards" label={t("rosterFields.list")} rows={fields.data.items} rowId={x => x.id} columns={makeColumns(x => setEditingId(x.id))} />
@@ -125,7 +126,7 @@ export function RosterFieldsPage() {
   );
 }
 
-function AddField() {
+function AddField({ consoleMode = false }: { consoleMode?: boolean }) {
   const [label, setLabel] = useState("");
   const [type, setType] = useState<RosterFieldInput["value_type"] | null>(null);
   const [section, setSection] = useState<RosterFieldInput["section"] | null>(null);
@@ -140,7 +141,7 @@ function AddField() {
   const missing = !label.trim() || !type || !section || (choice && !lines(choices).length);
   return <>
     {run.isSuccess && <p role="status">{t("rosterFields.added", { label: run.data.label })}</p>}
-    <Card title={t("rosterFields.add")} titleId="roster-fields-add"><Form className="form" aria-labelledby="roster-fields-add" noValidate onSubmit={() => { setTried(true); if (!missing) run.mutate(undefined); }}>
+    <Card title={t("rosterFields.add")} titleId="roster-fields-add"><Form className={consoleMode ? `form ${sf.narrowFields}` : "form"} aria-labelledby="roster-fields-add" noValidate onSubmit={() => { setTried(true); if (!missing) run.mutate(undefined); }}>
       <Field label={t("rosterFields.col.label")} required error={tried && !label.trim() ? t("rosterFields.label.missing") : undefined}>
         {p => <TextInput {...p} value={label} maxLength={LABEL_MAX} onChange={e => (run.reset(), setLabel(e.target.value))} />}
       </Field>
@@ -159,10 +160,27 @@ function AddField() {
 function Actions({ x, onEdit }: { x: RosterField; onEdit?: (x: RosterField) => void }) {
   const [edit, setEdit] = useState(false);
   const toggle = useCommand({ run: () => updateRosterField(x.id, { active: !x.active }), invalidates: READS });
+  const toggleKey = x.active ? "retire" : "restore";
   return <>
-    <Button id={onEdit ? `rf-edit-${x.id}` : undefined} variant="ghost" onClick={() => (onEdit ? onEdit(x) : setEdit(true))}>{t("rosterFields.edit", { label: x.label })}</Button>
+    <Button
+      id={onEdit ? `rf-edit-${x.id}` : undefined}
+      size={onEdit ? "sm" : undefined}
+      variant="ghost"
+      aria-label={onEdit ? t("rosterFields.edit", { label: x.label }) : undefined}
+      onClick={() => (onEdit ? onEdit(x) : setEdit(true))}
+    >
+      {onEdit ? t("rosterFields.action.edit") : t("rosterFields.edit", { label: x.label })}
+    </Button>
     {!onEdit && edit && <Edit x={x} onClose={() => setEdit(false)} />}
-    <Button variant="ghost" onClick={() => toggle.mutate(undefined)} aria-disabled={toggle.isPending || undefined}>{t(x.active ? "rosterFields.retire" : "rosterFields.restore", { label: x.label })}</Button>
+    <Button
+      size={onEdit ? "sm" : undefined}
+      variant="ghost"
+      aria-label={onEdit ? t(`rosterFields.${toggleKey}`, { label: x.label }) : undefined}
+      onClick={() => toggle.mutate(undefined)}
+      aria-disabled={toggle.isPending || undefined}
+    >
+      {onEdit ? t(`rosterFields.action.${toggleKey}`) : t(`rosterFields.${toggleKey}`, { label: x.label })}
+    </Button>
     <CommandError error={toggle.error} />
   </>;
 }

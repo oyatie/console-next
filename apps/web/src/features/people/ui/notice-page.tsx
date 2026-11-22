@@ -63,7 +63,7 @@ export function NoticePage() {
       back={{ to: "/people/notices", label: t("notice.crumb") }}
       head={{
         title: t("notice.title"),
-        crumbs: <Crumbs items={[<Link key="people" to="/people" search={{}}>{t("people.title")}</Link>, <Link key="notices" to="/people/notices">{t("notice.crumb")}</Link>]} />,
+        crumbs: <Crumbs items={[<Link key="people" to="/people" search={{}} className={s.crumbLink}>{t("people.title")}</Link>, <Link key="notices" to="/people/notices" className={s.crumbLink}>{t("notice.crumb")}</Link>]} />,
         meta: n ? <bdi className="num">{t("notice.doc.issued", { name: n.issued_by_name ?? "—", at: fmtDateTime(n.issued_at) })}</bdi> : undefined,
         actions: n ? (
           <>

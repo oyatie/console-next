@@ -23,8 +23,11 @@ export const koTitles: Record<keyof typeof enTitles, string> = {
   "titles.rank.bad": "{min, number}부터 {max, number}까지의 정수를 입력하십시오",
   "titles.rank.integer": "서열을 정수로 입력하십시오",
   "titles.deactivate": "{label} 사용 중지",
+  "titles.action.deactivate": "사용 중지",
   "titles.activate": "{label} 다시 사용",
+  "titles.action.activate": "다시 사용",
   "titles.edit": "{label} 수정",
+  "titles.action.edit": "수정",
   "titles.edit.title": "{label} 목록 항목 수정",
   "titles.edit.commit": "목록 항목 저장",
 };

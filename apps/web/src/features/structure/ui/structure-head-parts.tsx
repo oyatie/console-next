@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import type { MouseEvent, RefObject } from "react";
+import type { MouseEvent, ReactNode, RefObject } from "react";
 import type { getRouteApi } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 import { Download, List, ListTree, Network, Upload } from "lucide-react";
@@ -7,6 +7,7 @@ import { t } from "@console/i18n";
 import { AsOfControl } from "../../../ui/asof-control/asof-control";
 import { Button } from "../../../ui/button/button";
 import { buttonClass } from "../../../ui/button/button-class";
+import { Segmented } from "../../../ui/button/segmented";
 import { ActionMenu } from "../../../ui/menu/action-menu";
 import { SearchField } from "../../../ui/search/search-field";
 import type { ChartNode, Structure } from "../domain/model";
@@ -26,11 +27,27 @@ const VIEWS: { id: View; icon: typeof Network }[] = [
 
 type ViewCommands = { find: (step: number) => void; fold: () => void; add: (parent: ChartNode) => void };
 
-export function StructureViewButtons({ view, nav }: { view: View; nav: ReturnType<RouteApi["useNavigate"]> }) {
+export function StructureViewButtons({ view, nav, defaultView = "chart", segmented = false }: { view: View; nav: ReturnType<RouteApi["useNavigate"]>; defaultView?: View; segmented?: boolean }) {
+  const onPick = (id: View) => void nav({ search: (search) => ({ ...search, view: id === defaultView ? undefined : id }) });
+  if (segmented) {
+    return (
+      <Segmented
+        size="sm"
+        label={t("structure.views")}
+        value={view}
+        onChange={onPick}
+        items={VIEWS.map((v) => ({
+          id: v.id,
+          label: t(`structure.view.${v.id}`),
+          icon: <v.icon size={15} aria-hidden />,
+        }))}
+      />
+    );
+  }
   return (
     <div role="group" aria-label={t("structure.views")} className={css.views}>
       {VIEWS.map((v) => (
-        <Button key={v.id} variant="ghost" aria-pressed={view === v.id} className={css.viewTab} onClick={() => void nav({ search: (search) => ({ ...search, view: v.id === "chart" ? undefined : v.id }) })}>
+        <Button key={v.id} variant="ghost" aria-pressed={view === v.id} className={css.viewTab} onClick={() => onPick(v.id)}>
           <v.icon size={16} aria-hidden />
           {t(`structure.view.${v.id}`)}
         </Button>
@@ -101,6 +118,7 @@ export function StructureToolbar({
   addTo,
   inline,
   parent,
+  trailing,
 }: {
   today: string;
   value: string;
@@ -117,6 +135,7 @@ export function StructureToolbar({
   addTo?: ChartNode;
   inline: boolean;
   parent?: ChartNode;
+  trailing?: ReactNode;
 }) {
   return (
     <>
@@ -153,6 +172,7 @@ export function StructureToolbar({
       {value > today && !q.known_at && !q.compare_a && parent?.unitId && (
         <Button onClick={() => void nav({ search: (search) => ({ ...search, act: "create", sel: parent.unitId, kind: "DEPARTMENT" }) })}>{t("asof.create")}</Button>
       )}
+      {trailing ? <><span className="grow" />{trailing}</> : null}
     </>
   );
 }

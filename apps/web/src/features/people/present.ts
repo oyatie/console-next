@@ -149,6 +149,9 @@ export function hiredText(hire: string | null | undefined, today: string) {
 type Employee = components["schemas"]["Employee"];
 
 export const kindText = (k: ChangeRequest["kind"]) => codeText(`requests.kind.${k}`, k);
+/** A request reason code as readable copy, falling back to free-text reasons or enum.unknown. */
+export const reasonText = (code: string) =>
+  codeText(`requests.reason.${code}`, /^[A-Z][A-Z0-9_]*$/.test(code) ? t("enum.unknown") : code);
 /** A request status in words and its tone. */
 export const statusOf = (s: ChangeRequest["status"]) => labeled(CHANGE_REQUEST_STATUS, s);
 /** Who the request is about: server-joined subject name/number with safe fallback for legacy callers or unknown types. */

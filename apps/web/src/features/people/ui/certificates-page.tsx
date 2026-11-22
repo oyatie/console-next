@@ -143,7 +143,7 @@ export function CertificatesPage() {
           q={listQ}
           head={{ title: t("empDoc.certificate.register"), actions: <>{settingsBtn}{issueBtn}</> }}
           views={<WorklistSegmentBar phoneSelect label={t("empDoc.cert.kind")} items={kindItems} value={kindFilter} onChange={setKindFilter} />}
-          find={<WorklistSearchField label={t("empDoc.certificate.find")} value={qText} onChange={setQText} />}
+          find={<WorklistSearchField className={s.findField} label={t("empDoc.certificate.find")} value={qText} onChange={setQText} />}
           overlays={settingsModal}
           notes={employee ? <div className={s.bar}><Link to="/people/$id" params={{ id: employee }} search={{}}>{t("empDoc.certificate.employee")}</Link><Link to="/people/certificates" search={{}}>{t("empDoc.certificate.all")}</Link></div> : undefined}
           list={q.data ? (filtered.length === 0 ? empty : table(true)) : null}

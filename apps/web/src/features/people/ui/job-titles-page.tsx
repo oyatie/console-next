@@ -23,6 +23,7 @@ import { Table, type Column } from "../../../ui/table";
 import { addJobTitle, jobTitleSchemas, jobTitlesQuery, updateJobTitle, type JobTitleKind } from "../api";
 import type { JobTitle } from "../domain/titles";
 import { JobTitleEdit } from "./job-title-edit";
+import sf from "./settings-form.module.css";
 
 const rules = jobTitleSchemas.create.properties;
 
@@ -38,11 +39,11 @@ export function JobTitlesPage() {
   // Who may change the lists is the server's verdict on this user (Cedar job_title_manage, BE-EMP-UI §1).
   const manage = titles.data?.can_manage === true;
   const makeColumns = (onEdit?: (x: JobTitle) => void): Column<JobTitle>[] => [
-    { header: t("titles.col.kind"), cell: (x) => enumLabel(JOB_TITLE_KIND, x.kind), card: "fact", width: "status" },
-    { header: t("titles.col.label"), cell: (x) => x.label, card: "title", width: "summary" },
-    { header: t("titles.col.rank"), cell: (x) => (x.grade_rank === null ? t("titles.unranked") : <span className="num">{x.grade_rank}</span>), width: "code" },
-    { header: t("titles.col.state"), cell: (x) => <EnumValue e={JOB_TITLE_STATUS} value={x.active ? "active" : "inactive"} />, width: "status" },
-    ...(manage ? [{ header: t("titles.col.actions"), cell: (x: JobTitle) => <Toggle x={x} onEdit={onEdit} />, card: "action" as const }] : []),
+    { header: t("titles.col.kind"), cell: (x) => enumLabel(JOB_TITLE_KIND, x.kind), card: "fact", fit: Boolean(onEdit), width: onEdit ? undefined : "status" },
+    { header: t("titles.col.label"), cell: (x) => x.label, card: "title", width: onEdit ? undefined : "summary" },
+    { header: t("titles.col.rank"), cell: (x) => (x.grade_rank === null ? t("titles.unranked") : <span className="num">{x.grade_rank}</span>), fit: Boolean(onEdit), width: onEdit ? undefined : "code" },
+    { header: t("titles.col.state"), cell: (x) => <EnumValue e={JOB_TITLE_STATUS} value={x.active ? "active" : "inactive"} />, fit: Boolean(onEdit), width: onEdit ? undefined : "status" },
+    ...(manage ? [{ header: t("titles.col.actions"), cell: (x: JobTitle) => <Toggle x={x} onEdit={onEdit} />, fit: Boolean(onEdit), card: "action" as const }] : []),
   ];
   const editingEntry = titles.data?.items.find((x) => x.id === editingId) ?? null;
 
@@ -150,7 +151,7 @@ function AddTitle({ manage, consoleMode = false }: { manage: boolean; consoleMod
   });
   const form = manage ? (
     <Form
-      className={consoleMode ? "form" : "card panel form"}
+      className={consoleMode ? `form ${sf.narrowFields}` : "card panel form"}
       aria-labelledby={consoleMode ? "titles-add" : undefined}
       noValidate
       onSubmit={() => {
@@ -210,11 +211,28 @@ function AddTitle({ manage, consoleMode = false }: { manage: boolean; consoleMod
 function Toggle({ x, onEdit }: { x: JobTitle; onEdit?: (x: JobTitle) => void }) {
   const [edit, setEdit] = useState(false);
   const run = useCommand({ run: () => updateJobTitle(x.id, { active: !x.active }), invalidates: ["/api/v1/job-titles"] });
+  const toggleKey = x.active ? "deactivate" : "activate";
   return (
     <>
-      <Button id={onEdit ? `jt-edit-${x.id}` : undefined} variant="ghost" onClick={() => (onEdit ? onEdit(x) : setEdit(true))}>{t("titles.edit", { label: x.label })}</Button>
+      <Button
+        id={onEdit ? `jt-edit-${x.id}` : undefined}
+        size={onEdit ? "sm" : undefined}
+        variant="ghost"
+        aria-label={onEdit ? t("titles.edit", { label: x.label }) : undefined}
+        onClick={() => (onEdit ? onEdit(x) : setEdit(true))}
+      >
+        {onEdit ? t("titles.action.edit") : t("titles.edit", { label: x.label })}
+      </Button>
       {!onEdit && edit && <JobTitleEdit entry={x} onClose={() => setEdit(false)} />}
-      <Button variant="ghost" onClick={() => run.mutate(undefined)} aria-disabled={run.isPending || undefined}>{t(x.active ? "titles.deactivate" : "titles.activate", { label: x.label })}</Button>
+      <Button
+        size={onEdit ? "sm" : undefined}
+        variant="ghost"
+        aria-label={onEdit ? t(`titles.${toggleKey}`, { label: x.label }) : undefined}
+        onClick={() => run.mutate(undefined)}
+        aria-disabled={run.isPending || undefined}
+      >
+        {onEdit ? t(`titles.action.${toggleKey}`) : t(`titles.${toggleKey}`, { label: x.label })}
+      </Button>
       <CommandError error={run.error} />
     </>
   );

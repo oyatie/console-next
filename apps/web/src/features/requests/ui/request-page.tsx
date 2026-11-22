@@ -31,21 +31,21 @@ export function RequestLookup() {
       <Field label={t("requestOutcome.lookup")} required hint={t("requestOutcome.invalid")}>{c=><TextInput {...c} ref={input} value={key} onChange={e=>setKey(e.target.value)} autoComplete="off" />}</Field>
     </>
   );
-  const actionNode = valid
+  const actionNode = (disclosure: boolean) => valid
     ? <Button onClick={()=>void nav({to:"/requests/$id",params:{id:valid}})}>{t("requestOutcome.find")}</Button>
-    : <DisabledReason reason={t("requestOutcome.invalid")} control={p=><Button {...p} onClick={e=>{p.onClick(e);input.current?.focus();}}>{t("requestOutcome.find")}</Button>} />;
+    : <DisabledReason layout={disclosure ? "disclosure" : "stacked"} reason={t("requestOutcome.invalid")} control={p=><Button {...p} onClick={e=>{p.onClick(e);input.current?.focus();}}>{t("requestOutcome.find")}</Button>} />;
   return (
     <ExperienceSwitch
       baseline={() => (
         <main className="page">
           <PageHead title={t("requestOutcome.title")} />
-          <Card><div className="form">{fieldNode}{actionNode}</div></Card>
+          <Card><div className="form">{fieldNode}{actionNode(false)}</div></Card>
         </main>
       )}
     >
       {() => (
         <Suspense fallback={<ReadSkeleton layout="form" />}>
-          <RequestLookupConsole sections={fieldNode} actions={actionNode} onSubmit={() => { if (valid) void nav({ to: "/requests/$id", params: { id: valid } }); }} />
+          <RequestLookupConsole sections={fieldNode} actions={actionNode(true)} onSubmit={() => { if (valid) void nav({ to: "/requests/$id", params: { id: valid } }); }} />
         </Suspense>
       )}
     </ExperienceSwitch>
