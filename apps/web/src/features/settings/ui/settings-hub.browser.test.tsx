@@ -220,7 +220,7 @@ test("tenant default screen style composer validates, sends expected_version and
     const chooseRadio = (name: string) => dialog.getByRole("radio", { name, exact: true }).locator("xpath=ancestor::label[1]").click();
     await expect(commit).toHaveAttribute("aria-disabled", "true");
 
-    await chooseRadio(t("account.experience.preview", { style: t("account.experience.console") }));
+    await chooseRadio(t("account.experience.console"));
     await expect(commit).toHaveAttribute("aria-disabled", "true");
 
     await chooseRadio(t("reason.settings_change.OTHER"));

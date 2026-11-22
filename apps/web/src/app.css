@@ -206,6 +206,12 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .btn[data-pending="true"] { cursor: progress; }
 /* A primary whose pick is missing stays focusable and readable (spec R9, ER-14): soft fill, dashed border, full contrast. */
 .btn--primary[aria-disabled="true"]:not([data-pending="true"]) { opacity: 1; border-style: dashed; border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
+:where([data-experience]:not([data-experience="baseline"])) .btn--primary[aria-disabled="true"]:not([data-pending="true"]),
+:where([data-experience]:not([data-experience="baseline"])) .btn--primary[aria-disabled="true"]:not([data-pending="true"]):hover { opacity: 1; border-style: solid; border-color: var(--border); background: var(--muted); color: var(--steel); }
+:where([data-experience]:not([data-experience="baseline"])) .btn[disabled]:hover { background: var(--surface); }
+:where([data-experience]:not([data-experience="baseline"])) .btn--primary[disabled]:hover { background: var(--primary); }
+:where([data-experience]:not([data-experience="baseline"])) .btn--danger[disabled]:hover { background: var(--danger-solid); border-color: var(--danger-solid); }
+:where([data-experience]:not([data-experience="baseline"])) .btn--ghost[disabled]:hover { background: transparent; border-color: transparent; }
 /* ToggleButton look="chip": a filter as a pill (kit .optchip); pressed takes the shared pressed look above. */
 .btn--chip { min-height: calc(var(--space-6) - var(--space-1)); padding: 0 var(--space-2) 0 var(--space-3); border-color: var(--control-border); border-radius: calc(var(--radius-lg) * 10); background: var(--surface); font-size: var(--text-sm); font-weight: var(--fw-body); white-space: nowrap; }
 .btn--chip[aria-pressed="true"] { font-weight: var(--fw-medium); }
@@ -295,6 +301,8 @@ aside.panel { position: sticky; top: 0; }
 .state__title { margin: 0; font-size: var(--text-lg); font-weight: var(--fw-strong); }
 .state__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .state__actions > * { flex: none; max-width: 100%; }
+.state__extras { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); margin-top: var(--space-2); min-width: 0; max-width: 100%; }
+.state__extras .muted { font-size: var(--text-xs); }
 .state--compact { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; padding: 0; }
 .state--compact > .state__title { grid-column: 1 / -1; font-size: var(--text-sm); }
 .state--compact > .muted { grid-column: 1 / -1; }
