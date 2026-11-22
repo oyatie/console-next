@@ -16,7 +16,7 @@ import s from "./import.module.css";
  * text it is about. Choosing an item opens it below (the step opens the first blocking one), and answering it runs the
  * dry run again, after which the next item is open. Virtualised: a 3,000-row file can raise thousands.
  */
-export function ReviewQueue({ dry, picks, busy, sel, onSel, onResolve, onSheets }: {
+export function ReviewQueue({ dry, picks, busy, sel, onSel, onResolve, onSheets, inlineResolve = true, consoleMode = false }: {
   dry: ImportDryRun;
   picks: Picks;
   busy: boolean;
@@ -25,6 +25,8 @@ export function ReviewQueue({ dry, picks, busy, sel, onSel, onResolve, onSheets 
   onSel: (id: string) => void;
   onResolve: (c: Picks) => void;
   onSheets: () => void;
+  inlineResolve?: boolean;
+  consoleMode?: boolean;
 }) {
   // Value texts are answered in the value-link tables; the queue keeps people, rows, numbers and sheets.
   const rest = dry.review.items.filter((i) => !isValueItem(i));
@@ -63,13 +65,15 @@ export function ReviewQueue({ dry, picks, busy, sel, onSel, onResolve, onSheets 
             columns={columns}
             rows={items}
             rowId={(i) => i.id}
+            activeRowId={sel ?? undefined}
             hasMore={false}
             onLoadMore={() => undefined}
             empty={t("importReview.emptyFilter")}
             density="compact"
+            mobileLayout={consoleMode ? "compact" : "cards"}
             onRowAction={onSel}
           />
-          {current && <ReviewResolve key={current.id} item={current} dry={dry} picks={picks} busy={busy} onResolve={onResolve} onSheets={onSheets} />}
+          {inlineResolve && current && <ReviewResolve key={current.id} item={current} dry={dry} picks={picks} busy={busy} onResolve={onResolve} onSheets={onSheets} />}
         </>
       )}
     </section>

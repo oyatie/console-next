@@ -1,0 +1,33 @@
+{
+  "baseline": {
+    "apps/web/src/features/import/ui/import-console.tsx#ImportConsole": 133,
+    "apps/web/src/features/people/ui/data-health-page.tsx#DataHealthPage": 10,
+    "apps/web/src/features/people/ui/unplaced-console.tsx#UnplacedConsole": 61
+  },
+  "newScreens": {
+    "apps/web/src/features/import/ui/import-console.tsx#ImportConsole": {
+      "FACT": 89,
+      "REFUSAL": 29,
+      "EMPTY": 5,
+      "LEGAL": 4,
+      "RECEIPT": 6,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/people/ui/data-health-page.tsx#DataHealthPage": {
+      "FACT": 8,
+      "REFUSAL": 1,
+      "EMPTY": 1,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/people/ui/unplaced-console.tsx#UnplacedConsole": {
+      "FACT": 43,
+      "REFUSAL": 13,
+      "EMPTY": 2,
+      "LEGAL": 0,
+      "RECEIPT": 3,
+      "EXPLANATION": 0
+    }
+  }
+}
