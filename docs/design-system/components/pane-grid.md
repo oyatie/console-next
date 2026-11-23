@@ -42,7 +42,7 @@
 | `Enter` on a focused non-grid, non-tree row | Calls `onOpen(id)` when `record` already displays that row and `onOpen` is provided; otherwise calls `onSelect(id)` (native `<button>` rows trigger click when unselected). |
 | `ArrowLeft` / `ArrowRight` on splitter | Widens or narrows the adjacent side pane by `24px`; ignores keys while `isImeKey(event)` is true. |
 | `Home` on splitter | Resets the side pane width to its default token width. |
-| `Escape` inside `PaneGrid` | Exits `full` mode or closes `related` then `record` and returns focus via `returnFocus`, unless `isImeKey(event)` is true, focus is in an editable control, or a dialog/menu is open. |
+| `Escape` inside `PaneGrid` | Exits `full` mode or closes `related` then `record` and returns focus via `returnFocus`, unless `isImeKey(event)` is true, focus is in an editable control, a dialog/menu is open, or the focused control has a popup open (`popupOpen` in `lib/pure/popup.ts`). An expanded disclosure button or an unfolded tree row opens no popup, so Escape from it closes the pane. An expanded element around the focus does not count either, so Escape from a row inside an unfolded tree item closes the pane too. |
 
 ## Accessibility contract
 

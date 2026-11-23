@@ -2,6 +2,7 @@
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { ArrowLeft, X } from "lucide-react";
 import { t } from "@console/i18n";
+import { popupOpen } from "../../lib/pure/popup";
 import { Button, IconButton } from "../button/button";
 import { useMountFocus } from "../page/use-mount-focus";
 import { Skeleton } from "../skeleton/skeleton";
@@ -34,7 +35,7 @@ export function SidePanel({ open, title, crumb, chips, openLink, size = "peek", 
     if (!open || !panel) return;
     const escape = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || event.defaultPrevented || event.isComposing) return;
-      if (event.target instanceof Element && event.target.closest('[role="dialog"], [role="menu"], [role="listbox"], [aria-expanded="true"]')) return;
+      if (event.target instanceof Element && (event.target.closest('[role="dialog"], [role="menu"], [role="listbox"]') || popupOpen(event.target))) return;
       event.preventDefault();
       onClose();
     };
