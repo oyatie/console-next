@@ -130,8 +130,11 @@ jobs:
             const saved = JSON.parse(readFileSync(`${directory}/promotion-proof.json`));
             const proof = await collectPlatformProof(github, process.env.GITHUB_REPOSITORY, saved.run.id);
             if (proof.sha !== saved.sha || proof.run.run_attempt !== saved.run.run_attempt) throw new Error('PROMOTE_NOT_GREEN: platform attempt changed');
-            const artifact = publishEnvironment({proof, environment:process.env.PROMOTION_ENVIRONMENT, directory,
+            const artifact = await publishEnvironment({github, proof, environment:process.env.PROMOTION_ENVIRONMENT, directory,
               candidateRoot:`${process.env.GITHUB_WORKSPACE}/.tmp/candidate`,
               predicate:JSON.parse(readFileSync(`${directory}/console-gates.json`)),
-              runUrl:`${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/attempts/${process.env.GITHUB_RUN_ATTEMPT}`});
+              runUrl:`${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/attempts/${process.env.GITHUB_RUN_ATTEMPT}`}).catch(async error => {
+                if (error.code === 'PROMOTE_SUITES') await core.summary.addRaw(error.message).write();
+                throw error;
+              });
             await core.summary.addRaw(`${process.env.PROMOTION_ENVIRONMENT}: ${artifact}\nVerified promotion signature, gates attestation and identity negative controls.\n`).write();

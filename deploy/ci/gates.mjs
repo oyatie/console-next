@@ -43,6 +43,64 @@ export function buildPredicate({sha, gateChecks, changedPaths, longBakePaths, ru
   };
 }
 
+async function latestDevRun(github, params, workflow, sha, event) {
+  const runs = await github.paginate('GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}/runs',
+    {...params, workflow_id:workflow, head_sha:sha, branch:'dev', ...(event && {event})}).catch(error => {
+    if (error.status === 404) return [];
+    throw error;
+  });
+  const run = runs.sort((a, b) => b.id - a.id)[0];
+  if (run?.head_sha === sha && run.head_branch === 'dev' && run.path === `.github/workflows/${workflow}` &&
+    (!event || run.event === event)) return run;
+}
+
+async function suiteRefusal(github, params, workflow, sha) {
+  const run = await latestDevRun(github, params, workflow, sha);
+  if (!run || run.head_repository?.full_name !== `${params.owner}/${params.repo}`) return 'missing candidate run';
+  if (run.status !== 'completed') return run.status || 'unfinished run';
+  if (run.conclusion !== 'success') return run.conclusion || 'missing conclusion';
+  if (!Number.isSafeInteger(run.id) || run.id < 1 || !Number.isSafeInteger(run.run_attempt) || run.run_attempt < 1)
+    return 'unknown run or attempt';
+
+  // A partial rerun can omit a skipped sibling. Keep the latest execution of each job across attempts.
+  const jobs = await github.paginate('GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs',
+    {...params, run_id:run.id, filter:'all'});
+  if (!jobs.some(job => job.run_attempt === run.run_attempt)) return 'missing jobs for the current attempt';
+  const latest = new Map();
+  const executions = new Set();
+  for (const job of jobs) {
+    if (job.run_id !== run.id || job.head_sha !== sha || !Number.isSafeInteger(job.run_attempt) ||
+      job.run_attempt < 1 || job.run_attempt > run.run_attempt || typeof job.name !== 'string' || !job.name)
+      return 'job identity mismatch';
+    const key = `${job.run_attempt}/${job.name}`;
+    if (executions.has(key)) return 'ambiguous job name';
+    executions.add(key);
+    if (!latest.has(job.name) || job.run_attempt > latest.get(job.name).run_attempt) latest.set(job.name, job);
+  }
+  const red = [...latest.values()].find(job => job.status !== 'completed' || job.conclusion !== 'success');
+  if (red) return `job ${red.status === 'completed' ? red.conclusion ?? 'missing conclusion' : red.status}`;
+}
+
+export async function assertEnvironmentSuites(github, environment, {sha, repository}) {
+  const suites = gatesPolicy.environmentSuites[environment];
+  if (!Array.isArray(suites)) throw Object.assign(new Error(
+    `PROMOTE_SUITES: ${environment} has no suite policy`), {code:'PROMOTE_SUITES'});
+  const [owner, repo] = repository.split('/');
+  const refusals = [];
+  const errors = [];
+  for (const workflow of suites) {
+    try {
+      const refusal = await suiteRefusal(github, {owner, repo, per_page:100}, workflow, sha);
+      if (refusal) refusals.push(`${workflow} (${refusal})`);
+    } catch (error) {
+      errors.push(error);
+      refusals.push(`${workflow} (evidence unavailable)`);
+    }
+  }
+  if (refusals.length) throw Object.assign(new AggregateError(errors,
+    `PROMOTE_SUITES: ${environment} refused at ${sha}: ${refusals.join(', ')}`), {code:'PROMOTE_SUITES'});
+}
+
 export async function collectChecks(github, sha) {
   assert.match(sha, /^(?!0{40}$)[a-f0-9]{40}$/);
   const [owner, repo] = policy.repository.split('/');
@@ -51,15 +109,8 @@ export async function collectChecks(github, sha) {
   const workflows = new Map();
   for (const {workflow} of Object.values(gatesPolicy.checks).flat()) {
     if (workflows.has(workflow)) continue;
-    const runs = await github.paginate('GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}/runs',
-      {...params, workflow_id:workflow, head_sha:sha, event:'push', branch:'dev'}).catch(error => {
-      if (error.status === 404) return [];
-      throw error;
-    });
-    const run = runs.sort((a, b) => b.id - a.id)[0];
-    const valid = run?.head_sha === sha && run.event === 'push' && run.head_branch === 'dev' &&
-      run.path === `.github/workflows/${workflow}`;
-    const jobs = valid ? await github.paginate('GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}/jobs',
+    const run = await latestDevRun(github, params, workflow, sha, 'push');
+    const jobs = run ? await github.paginate('GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}/jobs',
       {...params, run_id:run.id, attempt_number:run.run_attempt}) : [];
     workflows.set(workflow, {run, jobs});
   }

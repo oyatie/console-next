@@ -122,11 +122,13 @@ const executeTool = (bin, args, options = {}) => execFileSync(bin, args, {
 });
 
 // Resolve mutable tags once, then verify and pull only that digest.
-export function publishEnvironment({proof, environment, predicate, runUrl, directory, root = '.', candidateRoot = root}, execute = executeTool) {
+export async function publishEnvironment({github, proof, environment, predicate, runUrl, directory, root = '.', candidateRoot = root}, execute = executeTool) {
   validatePredicate(predicate, proof.sha, runUrl);
   assertPromotion(proof, root);
   const {channel} = readEnvironment(environment, root);
   assert.ok(channel, 'PROMOTE_ENVIRONMENT: select a configured channel');
+  const {assertEnvironmentSuites} = await import('./gates.mjs');
+  await assertEnvironmentSuites(github, environment, proof);
   const deploy = `ghcr.io/${proof.repository.toLowerCase()}/console-deploy`;
   const issuer = '--certificate-oidc-issuer=https://token.actions.githubusercontent.com';
   const identity = workflow => `--certificate-identity=https://github.com/${proof.repository}/.github/workflows/${workflow}.yml@refs/heads/dev`;
