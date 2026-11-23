@@ -177,10 +177,14 @@ describe.each([["classic", {}], ["console", { style: "console" }], ["console on 
     expect(leads[2]!.width === 0).toBe(!!look.phone);
   });
 
-  test.runIf(look.style)("a paste while a row of another grid on the screen has the focus opens no paste preview", async () => {
+  test.runIf(look.style)("a paste while another grid on the screen, or a row of it, has the focus opens no paste preview", async () => {
     const grid = await month(look)();
     await grid.focus();
-    await page.getByRole("grid").last().getByRole("row").nth(1).focus();
+    const other = page.getByRole("grid").last();
+    await other.getByRole("row").nth(1).focus();
+    await paste(page);
+    await element(page.getByRole("dialog")).toHaveCount(0);
+    await other.evaluate((el) => (el.tabIndex = -1, el.focus()));
     await paste(page);
     await element(page.getByRole("dialog")).toHaveCount(0);
     await grid.focus();

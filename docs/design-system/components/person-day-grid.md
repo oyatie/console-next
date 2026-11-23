@@ -269,8 +269,8 @@ While the editor is closed:
   is, a cell, not to the focused table. It acts only while its own table, read through `tableRef`, has the focus.
   A paste with the editor, a name link or the button focused is not the grid's, nor one with the focus on another
   grid on the screen, such as the console month's list of open exceptions. The browser test pastes on the link
-  and on a row of that list, where no paste preview opens, and on the grid, where one does. It also pastes from
-  the keyboard after a focus and after a press on a cell, and the preview opens both times.
+  and on that list and a row of it, where no paste preview opens, and on the grid, where one does. It also pastes
+  from the keyboard after a focus and after a press on a cell, and the preview opens both times.
 - A change of focus row scrolls the box up or down so that the row is in view below the sticky head row. A row
   scrolled out of view by hand is not brought back by a key that keeps the focus row, such as Arrow Left.
 - The box scrolls sideways so that the focus cell's column shows whole between the sticky lead columns and the
