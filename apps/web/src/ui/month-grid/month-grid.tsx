@@ -9,8 +9,8 @@ export type DayTone = "holiday" | "rest";
 
 /**
  * A month as a grid of weeks (A2 calendar): one row per week, one cell per day, the neighbouring months' days muted so the
- * grid keeps its shape. WAI-ARIA grid with a roving focus: arrows move by a day or a week and stop at the grid's edges,
- * Home / End to the week's ends, Enter or Space (or a click) chooses the day. The caller draws each cell (`cell`) and passes the weeks
+ * grid keeps its shape. WAI-ARIA grid with a roving focus: arrows move by a day or a week, Home / End to the week's
+ * ends, Enter or Space (or a click) chooses the day. The caller draws each cell (`cell`) and passes the weeks
  * (Sunday-first dates) and the weekday headers, so the component knows no calendar rule of its own.
  */
 export function MonthGrid({ label, weeks, weekdays, inMonth, cell, tone, selected, onSelect }: {
@@ -30,20 +30,21 @@ export function MonthGrid({ label, weeks, weekdays, inMonth, cell, tone, selecte
   const current = active && flat.includes(active) ? active : selected && flat.includes(selected) ? selected : flat.find(inMonth);
   const grid = useRef<HTMLTableElement>(null);
   const move = (to: number) => {
-    const d = flat[Math.max(0, Math.min(flat.length - 1, to))];
+    if (to < 0 || to >= flat.length) return;
+    const d = flat[to];
     if (!d) return;
     setActive(d);
     grid.current?.querySelector<HTMLElement>(`[data-date="${d}"]`)?.focus();
   };
   const key = (e: KeyboardEvent, d: string) => {
+    // A key from a field the caller put in a cell reaches this handler too; mid-composition it is the input method's.
     if (isImeKey(e)) return;
     const i = flat.indexOf(d);
+    if (i < 0) return;
     const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[e.key];
-    if (step !== undefined) {
-      // An arrow with no day to land on moves nothing, so Up and Down never leave their weekday.
-      if (flat[i + step]) move(i + step);
-    } else if (e.key === "Home") move(i - (i % 7));
-    else if (e.key === "End") move(i - (i % 7) + 6);
+    if (step !== undefined) move(i + step);
+    else if (e.key === "Home") move(i - (i % 7));
+    else if (e.key === "End") move(Math.min(flat.length - 1, i - (i % 7) + 6));
     else if ((e.key === "Enter" || e.key === " ") && onSelect) onSelect(d);
     else return;
     e.preventDefault();

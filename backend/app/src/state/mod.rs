@@ -4,6 +4,7 @@ pub(crate) mod build;
 pub(crate) mod db;
 #[cfg(any(feature = "dispatch", feature = "support", feature = "mail"))]
 mod modules;
+mod otp_key;
 mod support;
 
 use crate::config::AppConfig;
@@ -17,6 +18,7 @@ use console_platform_auth_rest::AuthRestState;
 use console_platform_email::EmailSender;
 #[cfg(any(feature = "dispatch", feature = "workorder"))]
 use console_platform_jobs::JobQueue;
+use console_platform_provisioning::OtpHmacKey;
 #[cfg(any(feature = "dispatch", feature = "support"))]
 use console_platform_push::PushNotifier;
 use console_platform_realtime::{PgRealtimeHub, PostgresBridgeHandle};
@@ -61,6 +63,7 @@ pub struct AppState {
     /// publish/rollback requests.
     pub(crate) policy_step_up: Option<PasskeyService>,
     pub(crate) auth_rest: Option<AuthRestState>,
+    pub(crate) otp_hmac_key: Option<OtpHmacKey>,
     pub(crate) evidence_storage: Option<EvidenceService<SeaweedS3Storage>>,
     /// Object store + bucket backing the public storefront media-serve route.
     pub(crate) sales_media_storage: Option<(SeaweedS3Storage, String)>,

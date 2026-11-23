@@ -53,6 +53,7 @@ fn new_person(number: Option<&str>) -> NewPerson {
         sex: None,
         contract_end_date: None,
         probation_end_date: None,
+        id_type: None,
     }
 }
 

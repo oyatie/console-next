@@ -8,6 +8,7 @@ import { ApiError, configure, session } from "@console/api";
 import { webPlatform } from "@console/api/web";
 import { i18n, loadCatalog, t } from "@console/i18n";
 import { crashed, loaded, started } from "./lib/chunk-guard";
+import { STATUS_PAGE_URL } from "./lib/live/status-origin";
 import { CrashScreen } from "./lib/react/crash-screen";
 import { STALE_TIME_MS } from "./lib/freshness";
 import { queryDefaults } from "./lib/react/query-defaults";
@@ -23,7 +24,7 @@ import "./app.css";
 import { prepareFonts, bootScreen } from "./lib/fonts";
 
 // Every static import is in: from here a failed chunk is a lazy one (public/chunk-guard.js).
-started();
+started(STATUS_PAGE_URL);
 configure(webPlatform);
 
 initLocale();

@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { pick, type KeyId } from "../pure/keys";
 import { editable } from "../../ui/long-table/row-keys";
+import { singleKeysOn } from "../prefs";
 
 /**
  * Binds the screen's shortcuts from the keymap. One guard for all of them: a key the input method is composing is left
  * alone; a field keeps its keys unless the binding says otherwise; a page key waits while a dialog is open unless it
- * says otherwise; a region key needs focus inside the element `region` returns. A matched key's default is prevented.
+ * says otherwise; a page key of one character waits while this device has single keys off (read at each key, so the
+ * account page's choice applies without a reload); a region key needs focus inside the element `region` returns. A
+ * matched key's default is prevented.
  * An earlier `preventDefault` does not stop a binding: a text field prevents Enter to stop the form submitting, and
  * ⌘Enter from that field must still save.
  */
@@ -15,7 +18,7 @@ export function useKeys(
   { region, capture = false }: { region?: () => Element | null | undefined; capture?: boolean } = {},
 ) {
   const latest = useRef({ handlers, region });
-  useEffect(() => void (latest.current = { handlers, region }));
+  useLayoutEffect(() => { latest.current = { handlers, region }; });
   useEffect(() => {
     const listen = (e: KeyboardEvent) => {
       if (e.isComposing || e.key === "Process") return;
@@ -25,6 +28,7 @@ export function useKeys(
         typing: editable(e.target),
         dialog: document.querySelector("[role=dialog], [role=alertdialog]") !== null,
         inRegion: !!inside && e.target instanceof Node && inside.contains(e.target),
+        singleKeys: singleKeysOn(),
       });
       if (!hit) return;
       e.preventDefault();

@@ -1,5 +1,5 @@
 /* ui/action-grid: a popover of grouped acts with letter keys; unavailable acts dimmed with why. Tokens only. */
-.grid { position: fixed; z-index: 18; top: calc(var(--space-6) * 4.25); right: var(--space-5); width: min(calc(100vw - var(--space-6)), calc(var(--card-w) + var(--space-6))); max-height: calc(100vh - var(--space-6) * 5); overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow-pop); }
+.grid { position: fixed; z-index: 18; top: calc(var(--space-6) * 4.25); right: var(--space-5); width: min(calc(100vw - var(--space-6)), calc(var(--card-w) + var(--space-6))); max-height: calc(100vh - var(--space-6) * 5); overflow: auto; overscroll-behavior: contain; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow-pop); }
 .head { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--border); font-size: var(--text-sm); color: var(--steel); }
 .groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .group { display: flex; flex-direction: column; border-top: 1px solid var(--border-soft); }

@@ -13,7 +13,7 @@
 
 use console_inbox_application::{
     ConfirmReceiptCommand, EmitInboxDocCommand, EmitInboxDocFuture, GetInboxDocQuery,
-    InboxDocDetail, InboxDocFilter, InboxDocPage, InboxDocSink, InboxDocSummary,
+    InboxDocDetail, InboxDocFilter, InboxDocPage, InboxDocSink, InboxDocSummary, InboxPayslipMeta,
     ListInboxDocsQuery, inbox_doc_audit_event,
 };
 use console_inbox_domain::InboxDocKind;
@@ -26,10 +26,30 @@ mod emit;
 pub use emit::emit_inbox_doc_in_tx;
 
 /// The summary column list (no `payload`). `get` appends `, payload` for the
-/// single-document read. Kept as one `&'static str` so sqlx's SQL-injection
-/// guard is satisfied and the shared shape is defined once.
-const COLUMNS: &str = "id, recipient_user_id, kind, notice_type, title, legal_basis, \
-     source_kind, source_id, confirmed_by, confirmed_at, created_at";
+/// single-document read. Kept as a compile-time literal via `inbox_columns!()`
+/// so sqlx's SQL-injection guard stays `&'static str` and the shared shape is defined once.
+macro_rules! inbox_columns {
+    () => {
+        "id, recipient_user_id, kind, notice_type, title, legal_basis, \
+         source_kind, source_id, confirmed_by, confirmed_at, created_at, \
+         CASE WHEN kind = 'payslip' \
+               AND NULLIF(payload->>'period_start', '') IS NOT NULL \
+               AND NULLIF(payload->>'period_end', '') IS NOT NULL \
+              THEN jsonb_build_object( \
+                  'attribution_month', NULLIF(payload->>'attribution_month', ''), \
+                  'period_start', payload->>'period_start', \
+                  'period_end', payload->>'period_end', \
+                  'pay_date', NULLIF(payload->>'pay_date', ''), \
+                  'gross_won', CASE WHEN jsonb_typeof(payload->'gross_won') = 'number' AND (payload->>'gross_won') ~ '^-?[0-9]+$' THEN payload->'gross_won' ELSE NULL END, \
+                  'net_won', CASE WHEN jsonb_typeof(payload->'net_won') = 'number' AND (payload->>'net_won') ~ '^-?[0-9]+$' THEN payload->'net_won' ELSE NULL END \
+              ) \
+              ELSE NULL END AS payslip_meta"
+    };
+}
+
+pub(crate) use inbox_columns;
+
+const COLUMNS: &str = inbox_columns!();
 
 #[derive(Debug, thiserror::Error)]
 pub enum PgInboxError {
@@ -167,11 +187,11 @@ impl PgInboxStore {
 
         let row = with_org_conn::<_, _, PgInboxError>(&self.pool, org, move |tx| {
             Box::pin(async move {
-                Ok(sqlx::query(
-                    "SELECT id, recipient_user_id, kind, notice_type, title, legal_basis, \
-                     source_kind, source_id, confirmed_by, confirmed_at, created_at, payload \
-                     FROM inbox_docs WHERE id = $1 AND recipient_user_id = $2",
-                )
+                Ok(sqlx::query(concat!(
+                    "SELECT ",
+                    inbox_columns!(),
+                    ", payload FROM inbox_docs WHERE id = $1 AND recipient_user_id = $2"
+                ))
                 .bind(id_uuid)
                 .bind(recipient_uuid)
                 .fetch_optional(tx.as_mut())
@@ -246,18 +266,16 @@ impl PgInboxStore {
         let updated =
             with_audit::<_, Option<InboxDocSummary>, PgInboxError>(&self.pool, event, move |tx| {
                 Box::pin(async move {
-                    let row = sqlx::query(
-                        r#"
-                        UPDATE inbox_docs
-                        SET confirmed_by = $2, confirmed_at = $3
-                        WHERE id = $1
-                          AND recipient_user_id = $2
-                          AND kind = 'legal_notice'
-                          AND confirmed_at IS NULL
-                        RETURNING id, recipient_user_id, kind, notice_type, title, legal_basis,
-                                  source_kind, source_id, confirmed_by, confirmed_at, created_at
-                        "#,
-                    )
+                    let row = sqlx::query(concat!(
+                        "UPDATE inbox_docs \
+                         SET confirmed_by = $2, confirmed_at = $3 \
+                         WHERE id = $1 \
+                           AND recipient_user_id = $2 \
+                           AND kind = 'legal_notice' \
+                           AND confirmed_at IS NULL \
+                         RETURNING ",
+                        inbox_columns!()
+                    ))
                     .bind(id_uuid)
                     .bind(recipient_uuid)
                     .bind(occurred_at)
@@ -297,6 +315,11 @@ fn summary_from_row(row: &sqlx::postgres::PgRow) -> Result<InboxDocSummary, PgIn
     let kind = InboxDocKind::parse(row.try_get::<String, _>("kind")?.as_str())?;
     let confirmed_at: Option<time::OffsetDateTime> = row.try_get("confirmed_at")?;
     let confirmed_by: Option<uuid::Uuid> = row.try_get("confirmed_by")?;
+    let raw_meta: Option<serde_json::Value> = row.try_get("payslip_meta")?;
+    let payslip_meta = raw_meta
+        .map(serde_json::from_value::<InboxPayslipMeta>)
+        .transpose()
+        .map_err(DbError::Serialize)?;
     // Lock predicate: a legal notice is locked until its receipt is confirmed.
     let locked = kind.requires_receipt() && confirmed_at.is_none();
     Ok(InboxDocSummary {
@@ -312,5 +335,6 @@ fn summary_from_row(row: &sqlx::postgres::PgRow) -> Result<InboxDocSummary, PgIn
         confirmed_by: confirmed_by.map(UserId::from_uuid),
         confirmed_at,
         created_at: row.try_get("created_at")?,
+        payslip_meta,
     })
 }

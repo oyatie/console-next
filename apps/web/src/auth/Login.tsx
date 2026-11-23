@@ -11,6 +11,7 @@ import { Banner } from "../ui/banner/banner";
 import { Button, Form } from "../ui/button/button";
 import { Field, TextInput } from "../ui/field/field";
 import { PageHead } from "../ui/page-head/page-head";
+import { SignInPattern } from "../ui/patterns/sign-in";
 import { announce } from "../lib/react/announce";
 import { consentDestination } from "../lib/react/session";
 import { IDLE_EXPIRED } from "./idle";
@@ -21,9 +22,10 @@ export { SetupPasskey } from "./SetupPasskey";
 
 const loginRoute = getRouteApi("/login");
 
-/** Canonicalize new codes; legacy mixed-case/symbol codes retain their exact stored hash. */
+/** Canonicalize 10-char Crockford OTPs; keep case-sensitive `cop_` operator tokens and legacy short codes intact. */
 export const normalizeOtp = (text: string) => {
   const raw = text.replace(/\s/g, "");
+  if (raw.startsWith("cop_")) return raw;
   const symbols = raw.replaceAll("-", "");
   if (symbols.length < OTP_LENGTH) return raw;
   const folded = symbols.toUpperCase().slice(0, OTP_LENGTH);
@@ -86,12 +88,27 @@ function useAutofill(signedIn: () => Promise<void>, setBusy: (busy: boolean) => 
   return stop;
 }
 
+function readHashOtp(): string | null {
+  if (typeof window === "undefined") return null;
+  const hash = window.location.hash;
+  if (!hash || hash.length <= 1) return null;
+  const fragOtp = new URLSearchParams(hash.slice(1)).get("otp")?.trim();
+  return fragOtp ? normalizeOtp(fragOtp) : null;
+}
+
 export function Login() {
   const nav = useNavigate();
   const { enrolled, cancelled, code } = loginRoute.useSearch();
   const codeInput = useRef<HTMLInputElement>(null);
   useEffect(() => { if (code) codeInput.current?.focus(); }, [code]);
-  const [otp, setOtp] = useState("");
+  const [initialHashOtp] = useState(() => readHashOtp());
+  const [otp, setOtp] = useState(() => initialHashOtp ?? "");
+  const codeFromHash = Boolean(initialHashOtp);
+  useEffect(() => {
+    if (!initialHashOtp || typeof window === "undefined") return;
+    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+    codeInput.current?.focus();
+  }, [initialHashOtp]);
   const [id, setId] = useState("");
   const [idError, setIdError] = useState<string | null>(null);
   const [pick, setPick] = useState<{ login: string; domains: string[] } | null>(null);
@@ -149,80 +166,107 @@ export function Login() {
     if (parsed.kind === "ok") void signInAs(parsed.id);
   };
 
-  return (
-    <main className="auth">
-      <div className="card auth__card" aria-busy={busy || undefined}>
-        <PageHead title={t("auth.login.title")} />
-        {/* `enrolled`: the passkey is registered; only the automatic sign-in after enrollment failed. */}
-        {error && (
-          <Banner tone="danger" live="assertive">
-            {error}
-            {recovery === "code" && <div>{t("auth.login.codeRejected")}</div>}
-          </Banner>
-        )}
-        {/* No usable passkey here: one message for every account state (no enumeration), naming every way on. */}
-        {!error && recovery === "passkey" && <Banner live="polite">{t("auth.login.noPasskey")}</Banner>}
-        {/* A next step, not an error: the passkey is registered and only the automatic sign-in after enrollment
-            failed, or the server ended the last session for inactivity. */}
-        {!error && (enrolled || idle || cancelled) && <Banner live="polite">{cancelled ? bootstrapCodeExpiresAt() ? t("auth.login.cancelled", { at: fmtDateTime(bootstrapCodeExpiresAt()) }) : t("auth.login.cancelledUnknown") : t(enrolled ? "auth.login.enrolled" : "auth.login.idle")}</Banner>}
-        <Form className="form" onSubmit={submitId}>
-          <Field label={t("auth.login.id")} required={null} hint={t("auth.login.idHint")} error={idError ?? undefined}>
-            {/* `username webauthn`: the browser offers the passkey from this field's autofill. */}
-            {(p) => (
-              <TextInput
-                {...p}
-                readOnly={busy}
-                autoComplete="username webauthn"
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                inputMode="email"
-                value={id}
-                onChange={(e) => (setId(e.target.value), setIdError(null), setPick(null))}
-              />
-            )}
-          </Field>
-          {pick && (
-            <div className="row" role="group" aria-label={t("auth.login.id.pick")}>
-              {pick.domains
-                .map((d) => ({ d, full: [pick.login, d].join("@") }))
-                .map(({ d, full }) => (
-                  <Button key={d} disabled={busy} onClick={() => void signInAs(full)}>
-                    {full}
-                  </Button>
-                ))}
-            </div>
+  const isOperatorInvite = otp.startsWith("cop_");
+  const notices = (
+    <>
+      {/* `enrolled`: the passkey is registered; only the automatic sign-in after enrollment failed. */}
+      {error && (
+        <Banner tone="danger" live="assertive">
+          {error}
+          {recovery === "code" && <div>{t("auth.login.codeRejected")}</div>}
+        </Banner>
+      )}
+      {/* No usable passkey here: one message for every account state (no enumeration), naming every way on. */}
+      {!error && recovery === "passkey" && <Banner live="polite">{t("auth.login.noPasskey")}</Banner>}
+      {/* A next step, not an error: the passkey is registered and only the automatic sign-in after enrollment
+          failed, or the server ended the last session for inactivity. */}
+      {!error && (enrolled || idle || cancelled) && <Banner live="polite">{cancelled ? bootstrapCodeExpiresAt() ? t("auth.login.cancelled", { at: fmtDateTime(bootstrapCodeExpiresAt()) }) : t("auth.login.cancelledUnknown") : t(enrolled ? "auth.login.enrolled" : "auth.login.idle")}</Banner>}
+    </>
+  );
+  const body = (
+    <>
+      <Form className="form" onSubmit={submitId}>
+        <Field label={t("auth.login.id")} required={null} hint={t("auth.login.idHint")} error={idError ?? undefined}>
+          {/* `username webauthn`: the browser offers the passkey from this field's autofill. */}
+          {(p) => (
+            <TextInput
+              {...p}
+              readOnly={busy}
+              autoComplete="username webauthn"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              inputMode="email"
+              value={id}
+              onChange={(e) => (setId(e.target.value), setIdError(null), setPick(null))}
+            />
           )}
-          <Button type="submit" variant="primary" disabled={busy}>{t("auth.login.continue")}</Button>
-        </Form>
-        <Button disabled={busy} onClick={() => run(() => loginWithPasskey(), passkeyRecovery)}>
-          <KeyRound size={16} aria-hidden /> {t("auth.login.passkey")}
-        </Button>
-        <details open={code || undefined}>
-        <summary>{t(code ? "auth.login.code" : "auth.login.or")}</summary>
-        <Form className="form" onSubmit={submitOtp}>
-          <Field label={t("auth.login.code")} required={null} hint={t("auth.login.codeHint", { count: otp.replaceAll("-", "").length, length: OTP_LENGTH })}>
-            {/* Enter submits only this code form; the server also accepts outstanding legacy codes. */}
-            {(p) => (
-              <TextInput
-                {...p}
-                readOnly={busy}
-                className="code"
-                ref={codeInput}
-                autoComplete="one-time-code"
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                value={otp}
-                onChange={(e) => setOtp(normalizeOtp(e.target.value))}
-                onKeyDown={(e) => e.key === "Enter" && !(e.nativeEvent.isComposing || e.keyCode === 229) && !busy && submitOtp()}
-              />
-            )}
-          </Field>
-          <Button type="submit" disabled={busy || !otp.trim()}>{t("auth.login.submitCode")}</Button>
-        </Form>
-        </details>
-      </div>
-    </main>
+        </Field>
+        {pick && (
+          <div className="row" role="group" aria-label={t("auth.login.id.pick")}>
+            {pick.domains
+              .map((d) => ({ d, full: [pick.login, d].join("@") }))
+              .map(({ d, full }) => (
+                <Button key={d} disabled={busy} onClick={() => void signInAs(full)}>
+                  {full}
+                </Button>
+              ))}
+          </div>
+        )}
+        <Button type="submit" variant="primary" disabled={busy}>{t("auth.login.continue")}</Button>
+      </Form>
+      <Button disabled={busy} onClick={() => run(() => loginWithPasskey(), passkeyRecovery)}>
+        <KeyRound size={16} aria-hidden /> {t("auth.login.passkey")}
+      </Button>
+    </>
+  );
+  const showCodeDisclosure = Boolean(code || codeFromHash);
+  const secondary = (
+    <details open={showCodeDisclosure || undefined}>
+      <summary>{t(showCodeDisclosure ? "auth.login.code" : "auth.login.or")}</summary>
+      <Form className="form" data-code-summary={showCodeDisclosure || undefined} onSubmit={submitOtp}>
+        <Field label={t("auth.login.code")} required={null} hint={isOperatorInvite ? undefined : t("auth.login.codeHint", { count: otp.replaceAll("-", "").length, length: OTP_LENGTH })}>
+          {/* Enter submits only this code form; the server also accepts outstanding legacy codes. */}
+          {(p) => (
+            <TextInput
+              {...p}
+              aria-label={t("auth.login.code")}
+              readOnly={busy}
+              className="code"
+              ref={codeInput}
+              autoComplete="one-time-code"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              value={otp}
+              onChange={(e) => setOtp(normalizeOtp(e.target.value))}
+              onKeyDown={(e) => e.key === "Enter" && !(e.nativeEvent.isComposing || e.keyCode === 229) && !busy && submitOtp()}
+            />
+          )}
+        </Field>
+        <Button type="submit" disabled={busy || !otp.trim()}>{t("auth.login.submitCode")}</Button>
+      </Form>
+    </details>
+  );
+
+  return (
+    <SignInPattern
+      title={t("auth.login.title")}
+      context={t("app.name")}
+      busy={busy}
+      notices={notices}
+      body={body}
+      secondary={secondary}
+      baseline={() => (
+        <main className="auth">
+          <div className="card auth__card" aria-busy={busy || undefined}>
+            <PageHead title={t("auth.login.title")} />
+            {notices}
+            {body}
+            {secondary}
+          </div>
+        </main>
+      )}
+    />
   );
 }

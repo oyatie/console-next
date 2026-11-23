@@ -52,6 +52,41 @@ export function approvalSummary(data: Read<"listSettings">, t: SummaryCopy, fmtD
   return { value, hints };
 }
 
+type ExperienceEditProblem = "unchanged" | "reason" | "note";
+
+export function experienceEditProblem(p: {
+  current: string;
+  next: string;
+  reason: string | null;
+  needsNote: boolean;
+  note: string;
+}): ExperienceEditProblem | null {
+  if (p.next === p.current) return "unchanged";
+  if (!p.reason) return "reason";
+  if (p.needsNote && !p.note.trim()) return "note";
+  return null;
+}
+
+export function experienceSummary(data: Read<"listSettings">, t: SummaryCopy, fmtDate: (date: string) => string) {
+  const entry = data.items.find(row => row.key === "display.experience") ?? null;
+  const unknown = !entry || entry.kind.type !== "code" || typeof entry.value !== "string"
+    || !entry.kind.allowed?.includes(entry.value)
+    || settingValue(entry, entry.value, t) === t("settingsHub.unknown");
+  if (unknown) return { entry: null, value: t("settingsHub.unknown"), hints: [] as string[], canEdit: false };
+  const value = settingValue(entry, entry.value, t);
+  const hints: string[] = [];
+  const sourceFacts = [
+    ...(["platform", "legal_entity", "workplace"].includes(entry.source.layer) ? [t(`settingsHub.layer.${entry.source.layer}`)] : []),
+    ...(entry.governance !== "tenant" ? [t(`settingsHub.governance.${entry.governance}`)] : []),
+  ].join(" · ");
+  if (sourceFacts) hints.push(sourceFacts);
+  for (const next of entry.scheduled) {
+    hints.push(t("settingsHub.scheduled", { key: settingLabel(entry.key, t), date: fmtDate(next.effective_from), value: settingValue(entry, next.value, t) }));
+  }
+  if (!data.can_change) hints.push(t("settingsHub.readOnly"));
+  return { entry, value, hints, canEdit: data.can_change && entry.governance === "tenant" };
+}
+
 /** How many fields the company has added and still uses. */
 const rosterFieldsSummary = (data: Read<"listRosterFields">, t: SummaryCopy) => {
   const active = data.items.filter(row => row.active).length;

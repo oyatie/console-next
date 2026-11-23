@@ -28,6 +28,9 @@ export function addMonths(d: string, n: number): string {
   return new Date(Date.UTC(y, m, Math.min(day, last))).toISOString().slice(0, 10);
 }
 
+/** The `YYYY-MM` month `n` calendar months from `month`. */
+export const shiftMonth = (month: string, n: number): string => addMonths(`${month}-01`, n).slice(0, 7);
+
 /** The first day of the month after `d`. */
 export const nextMonthFirst = (d: string) => {
   const y = Number(d.slice(0, 4)), m = Number(d.slice(5, 7));

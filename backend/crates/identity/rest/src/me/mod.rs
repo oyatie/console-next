@@ -1,3 +1,4 @@
+pub(crate) mod access_log;
 pub(crate) mod authz;
 pub(crate) mod employee_views;
 pub(crate) mod platform;

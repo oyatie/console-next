@@ -242,7 +242,7 @@ for (const path of ["/", "/inbox"]) for (const width of [1440, 390]) {
     await page.goto(path);
     const queue = page.getByRole("region", { name: t("home.inbox.title"), exact: true });
     if (path === "/") {
-      await expect(page.locator('[data-read-layout="list"]')).toBeVisible();
+      await expect(page.getByRole("main").getByRole("status", { name: t("common.loading"), exact: true })).toBeVisible();
       await expect(queue).toHaveCount(0);
       mock.release();
       await expect(queue.locator("[data-id]")).toHaveCount(3);
@@ -336,7 +336,7 @@ for (const width of [1440, 390]) test(`Home paints the receipt with a refused in
     await page.goto("/");
     const queue = page.getByRole("region", { name: t("home.inbox.title"), exact: true });
     await expect.poll(() => requested).toBe(true);
-    await expect(page.locator('[data-read-layout="list"]')).toBeVisible();
+    await expect(page.getByRole("main").getByRole("status", { name: t("common.loading"), exact: true })).toBeVisible();
     await expect(queue).toHaveCount(0);
     for (const theme of ["light", "dark"]) {
       await page.locator("html").evaluate((el, value) => el.dataset.theme = value, theme);

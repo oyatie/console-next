@@ -18,22 +18,24 @@ for (const state of Object.keys(screen.states) as NumberingState[]) for (const w
     const fixture = { ...await mockScreen(page, screens[0], "populated"), ...await numberingReads(page, state) };
     try {
       await page.goto(screen.path);
+      if (state === "phase-loading") {
+        await expect(page.getByRole("main").locator("[data-phase-pending]")).toHaveAttribute("inert", "");
+        await expect(page.getByRole("main").getByRole("heading", { level: 1 })).toHaveCount(0);
+        await expect(page.getByRole("main").getByRole("status", { name: t("common.loading"), exact: true })).toHaveAttribute("aria-busy", "true");
+        fixture.releasePhase();
+      }
       const main = page.getByRole("main").locator(".page").filter({ has: page.getByRole("heading", { level: 1, name: t("identifiers.numbering.title"), exact: true }) });
       await expect(main.getByRole("heading", { level: 1, name: t("identifiers.numbering.title"), exact: true })).toBeVisible();
       const card = main.getByRole("region", { name: t("identifiers.renumber.title"), exact: true });
       const after = main.getByText(t("identifiers.renumber.whyAfter"), { exact: true });
       const preview = card.getByRole("button", { name: t("identifiers.renumber.preview"), exact: true });
-      if (state === "phase-loading" || state === "phase-500") {
-        if (state === "phase-loading") {
-          await expect(main.locator('[data-read-layout="form"][aria-busy="true"]')).toBeVisible();
-        } else {
-          await expect(main.getByText(t("common.loadFailed.title"), { exact: true })).toBeVisible();
-          await expect(main.getByRole("alert").getByRole("button", { name: t("common.retry"), exact: true })).toBeVisible();
-        }
+      if (state === "phase-500") {
+        await expect(main.getByText(t("common.loadFailed.title"), { exact: true })).toBeVisible();
+        await expect(main.getByRole("alert").getByRole("button", { name: t("common.retry"), exact: true })).toBeVisible();
         await expect(card).toHaveCount(0);
         await expect(after).toHaveCount(0);
         await expect(main.locator("input,select,textarea")).toHaveCount(0);
-      } else if (state === "operating") {
+      } else if (state === "operating" || state === "phase-loading") {
         await expect(after).toBeVisible();
         await expect(card.locator("p")).toHaveText([t("identifiers.renumber.whyAfter")]);
         await expect(card.locator("input,select,textarea,button")).toHaveCount(0);
@@ -48,14 +50,11 @@ for (const state of Object.keys(screen.states) as NumberingState[]) for (const w
       await expectAxe(page, `numbering/${state}/${width}`);
       await page.screenshot({ path: test.info().outputPath(`numbering-${state}-${width}.png`), fullPage: true });
       expect(fixture.writes).toEqual([]);
-      if (state === "phase-loading" || state === "phase-500") {
+      if (state === "phase-500") {
         const before = fixture.phaseReads();
-        if (state === "phase-loading") fixture.releasePhase();
-        else {
-          fixture.recover();
-          await main.getByRole("alert").getByRole("button", { name: t("common.retry"), exact: true }).click();
-          await expect.poll(fixture.phaseReads).toBeGreaterThan(before);
-        }
+        fixture.recover();
+        await main.getByRole("alert").getByRole("button", { name: t("common.retry"), exact: true }).click();
+        await expect.poll(fixture.phaseReads).toBeGreaterThan(before);
         await expect(after).toBeVisible();
         await expect(card.locator("input,select,textarea,button")).toHaveCount(0);
         await expect(main.getByRole("button", { name: t("common.retry"), exact: true })).toHaveCount(0);

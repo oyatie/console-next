@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+required:
+- kind
+- items
+- purpose
+properties:
+  kind:
+    type: string
+    enum: [EMPLOYMENT, CAREER, EXIT]
+  items:
+    type: array
+    minItems: 1
+    items:
+      type: string
+      enum: [period, duty, position, wage, birth]
+  purpose:
+    type: string
+    minLength: 1
+    maxLength: 200

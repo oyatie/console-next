@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [me]
+operationId: getMyCertificate
+summary: Read one self-service certificate belonging to the authenticated employee
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+responses:
+  '200':
+    description: Issued certificate detail with seal image when configured.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/Certificate'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Forbidden for unlinked users.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '404':
+    $ref: '#/components/responses/NotFound'

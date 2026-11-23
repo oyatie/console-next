@@ -26,13 +26,22 @@ const ArchiveRemedy = ({ org, onArchive }: Pick<Props, "org" | "onArchive">) =>
   org.status === "ARCHIVED" ? null : <Button onClick={onArchive}>{t("tenants.status.archive", { org: org.name })}</Button>;
 
 /** Guarded removal: only an empty onboarding shell goes (with its first admin); a tenant with data is refused. */
-export function RemoveDialog({ org, open, onClose, onDone, onArchive }: Props) {
+export function RemoveDialog(props: Props) {
+  if (!props.open) return null;
+  return <RemoveDialogBody {...props} />;
+}
+
+function RemoveDialogBody({ org, open, onClose, onDone, onArchive }: Props) {
   const remove = useRemove(org, false, onDone);
   const hasData = conflict(remove.error, "tenant_has_data");
   const held = conflict(remove.error, "blocked_legal_hold");
   const close = () => {
     remove.reset();
     onClose();
+  };
+  const archive = () => {
+    remove.reset();
+    onArchive();
   };
   return (
     <Dialog open={open} title={t("tenants.remove", { org: org.name })} onClose={close}>
@@ -45,7 +54,7 @@ export function RemoveDialog({ org, open, onClose, onDone, onArchive }: Props) {
       )}
       <div className="form__actions">
         <Button onClick={close}>{t("common.cancel")}</Button>
-        {hasData ? <ArchiveRemedy org={org} onArchive={onArchive} /> : (
+        {hasData ? <ArchiveRemedy org={org} onArchive={archive} /> : (
           <Button variant="danger" disabled={held || remove.isPending} onClick={() => remove.mutate(undefined)}>{t("tenants.remove", { org: org.name })}</Button>
         )}
       </div>

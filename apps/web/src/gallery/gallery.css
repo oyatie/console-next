@@ -2,3 +2,7 @@
 .gallery__section { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); }
 
 .gallery__canvas { display: flex; height: 360px; }
+
+.gallery__narrow { max-inline-size: calc(var(--space-6) * 11); }
+
+.gallery__phone { max-inline-size: calc(var(--space-6) * 12 + var(--space-1-5)); }

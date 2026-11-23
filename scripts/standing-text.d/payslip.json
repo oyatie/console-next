@@ -1,0 +1,15 @@
+{
+  "baseline": {
+    "apps/web/src/features/payslip/ui/payslip-page.tsx#PayslipPage": 4
+  },
+  "newScreens": {
+    "apps/web/src/features/payslip/ui/payslip-page.tsx#PayslipPage": {
+      "FACT": 0,
+      "REFUSAL": 2,
+      "EMPTY": 2,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    }
+  }
+}

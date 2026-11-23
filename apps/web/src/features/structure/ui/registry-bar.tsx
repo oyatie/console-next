@@ -62,10 +62,10 @@ export function OrderCell({ s, n, order }: { s: Structure; n: ChartNode; order: 
 }
 
 /** A vacant head opens the existing details composer directly, keeping the list in place. */
-export function HeadCell({ n, readOnly = false }: { n: ChartNode; readOnly?: boolean }) {
+export function HeadCell({ n, readOnly = false, quiet = false }: { n: ChartNode; readOnly?: boolean; quiet?: boolean }) {
   const nav = route.useNavigate();
   if (n.head) return <>{n.head.name}{n.head.concurrent ? t("structure.list.concurrent") : ""}</>;
-  const missing = <Chip tone="warn">{t("structure.head.missing")}</Chip>;
+  const missing = quiet ? <span className="muted">{t("structure.head.missing")}</span> : <Chip tone="warn">{t("structure.head.missing")}</Chip>;
   if (readOnly) return missing;
   return (
     <Button variant="ghost" id={`act-dept-head-${n.id}`} className={css.headPick} aria-label={t("structure.head.appoint")}

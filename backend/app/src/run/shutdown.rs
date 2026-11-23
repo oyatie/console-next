@@ -42,7 +42,7 @@ pub(crate) async fn shutdown_signal(timeout: Duration, state: AppState) {
 
     // The worker's /readyz is no proxy target, and a longer stop would only
     // lengthen the blue/green worker overlap (BG-6).
-    let grace = if state.config.role == AppRole::Api {
+    let grace = if matches!(state.config.role, AppRole::Api | AppRole::Ops) {
         DRAIN_GRACE
     } else {
         Duration::ZERO

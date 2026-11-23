@@ -94,8 +94,6 @@ fn cookies_refuse_body_credentials_even_when_equal_or_empty() {
 fn cookies_refuse_duplicate_credentials_in_one_header() {
     for cookie in [
         "__Host-console_refresh=first; __Host-console_refresh=second",
-        "console_refresh=first; console_refresh=second",
-        "console_refresh",
         "__Host-console_refresh",
         "__Host-console_refresh=same; __Host-console_refresh=same",
         "__Host-console_refresh=; __Host-console_refresh=second",
@@ -185,25 +183,31 @@ fn cookies_keep_refresh_cookie_wire_attributes() {
 }
 
 #[test]
-fn cookies_accept_legacy_for_one_release_and_prefer_host_cookie() {
+fn cookies_ignore_legacy_console_refresh_and_accept_only_host_cookie() {
     let mut headers = cookie_request();
-    for (cookie, expected) in [
-        ("console_refresh=legacy-token", "legacy-token"),
-        (
-            "console_refresh=legacy-token; __Host-console_refresh=host-token",
-            "host-token",
-        ),
-        (
-            "__Host-console_refresh=host-token; console_refresh=legacy-token",
-            "host-token",
-        ),
+    headers.insert(
+        header::COOKIE,
+        HeaderValue::from_static("console_refresh=legacy-token"),
+    );
+    assert_eq!(
+        select_refresh_credential(&headers, None, ORIGIN).unwrap(),
+        None
+    );
+    assert_eq!(
+        select_refresh_credential(&headers, Some("body-token".into()), ORIGIN).unwrap(),
+        Some("body-token".into())
+    );
+
+    for cookie in [
+        "console_refresh=legacy-token; __Host-console_refresh=host-token",
+        "__Host-console_refresh=host-token; console_refresh=legacy-token",
     ] {
         headers.insert(header::COOKIE, HeaderValue::from_str(cookie).unwrap());
         assert_eq!(
             select_refresh_credential(&headers, None, ORIGIN)
                 .unwrap()
                 .as_deref(),
-            Some(expected)
+            Some("host-token")
         );
         headers.insert(
             header::ORIGIN,

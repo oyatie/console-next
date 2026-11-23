@@ -11,7 +11,7 @@ impl RrnVault for UnusedVault {
     fn seal(&self, _: Uuid, _: &Rrn) -> Result<SealedRrn, VaultError> {
         panic!("an unconfirmed column must never reach the vault")
     }
-    fn blind_index(&self, _: &Rrn) -> Vec<u8> {
+    fn blind_index(&self, _: Uuid, _: &Rrn) -> Vec<u8> {
         panic!("an unconfirmed column must never reach the vault")
     }
     fn open(&self, _: Uuid, _: &SealedRrn) -> Result<Rrn, VaultError> {
@@ -133,4 +133,22 @@ fn confirmation_counts_only_nonblank_data_rows_without_staging_them() {
     assert_eq!(parsed.sheets[0]["status"], "needs_mapping");
     assert_eq!(parsed.sheets[0]["needs_confirmation"], true);
     assert!(parsed.rows.is_empty());
+}
+
+#[test]
+fn property_cells_become_json_without_panicking() {
+    let mut seed = 0xDEAD_BEEF_CAFE_F00Du64;
+    for _ in 0..2_000 {
+        seed ^= seed << 13;
+        seed ^= seed >> 7;
+        seed ^= seed << 17;
+        let cell = match seed % 4 {
+            0 => Cell::Float(f64::from_bits(seed >> 2)),
+            1 => Cell::Int(seed as i64),
+            2 => Cell::Text(format!("{seed:x}")),
+            _ => Cell::Bool(seed.is_multiple_of(2)),
+        };
+        let value = crate::import::sheet::cell_json(Some(&cell));
+        assert!(serde_json::to_string(&value).is_ok());
+    }
 }

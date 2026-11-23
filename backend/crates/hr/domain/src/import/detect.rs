@@ -10,12 +10,13 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 
 use super::classification::{
-    employee_import_target_for_header, import_header_match_key, normalize_header_label,
+    allowed_restricted_target, employee_import_target_for_header, import_header_match_key,
+    is_dropped_employee_import_header, normalize_header_label,
 };
 use super::detect_candidates::candidates;
 pub use super::detect_candidates::{CandidateCell, HeaderCandidate};
 use super::fields::EMPLOYEE_IMPORT_FIELD_DEFINITIONS;
-use super::grid::{GridRow, GridSheet, parse_column_letter};
+use super::grid::{GridRow, GridSheet, column_letter, parse_column_letter};
 use super::rrn::is_rrn_value;
 
 /// Rows searched for a header (non-empty rows from the top).
@@ -86,6 +87,7 @@ pub enum MappingError {
     HeaderRowRequired,
     NameRequired,
     DuplicateTarget(&'static str),
+    RestrictedColumn(String),
 }
 
 impl MappingError {
@@ -98,6 +100,7 @@ impl MappingError {
             Self::HeaderRowRequired => "mapping_header_row_required",
             Self::NameRequired => "mapping_name_required",
             Self::DuplicateTarget(_) => "mapping_duplicate_target",
+            Self::RestrictedColumn(_) => "mapping_restricted_column",
         }
     }
 }
@@ -132,10 +135,10 @@ fn target_of(
         return (Some(target), MappingSource::Catalog);
     }
     if let Some(remembered) = memory.get(&memory_key(label)) {
-        return (
-            remembered.as_deref().and_then(known_target),
-            MappingSource::Remembered,
-        );
+        let target = remembered.as_deref().and_then(known_target);
+        if !is_dropped_employee_import_header(label) || target == allowed_restricted_target(label) {
+            return (target, MappingSource::Remembered);
+        }
     }
     (
         employee_import_target_for_header(label),
@@ -210,6 +213,24 @@ fn operator_columns(
     Ok(out)
 }
 
+fn reject_restricted_remapping(columns: &[ColumnPlan]) -> Result<(), MappingError> {
+    for column in columns {
+        let normalized = normalize_header_label(&column.label);
+        if is_dropped_employee_import_header(&normalized)
+            && column
+                .target
+                .is_some_and(|target| Some(target) != allowed_restricted_target(&normalized))
+        {
+            return Err(MappingError::RestrictedColumn(format!(
+                "{} ({})",
+                column_letter(column.column),
+                column.label.trim()
+            )));
+        }
+    }
+    Ok(())
+}
+
 /// The sheet's header and column targets.
 ///
 /// # Errors
@@ -251,6 +272,7 @@ pub fn detect(
             return Err(MappingError::HeaderRowOutOfRange);
         }
         let columns = plan_row(row, memory, &fixed);
+        reject_restricted_remapping(&columns)?;
         return if has_name(&columns) {
             Ok(SheetDetection::Mapped {
                 header_row: index,
@@ -270,10 +292,13 @@ pub fn detect(
             score(&a.1).cmp(&score(&b.1)).then(b.0.cmp(&a.0))
         });
     Ok(match best {
-        Some((header_row, columns)) => SheetDetection::Mapped {
-            header_row,
-            columns,
-        },
+        Some((header_row, columns)) => {
+            reject_restricted_remapping(&columns)?;
+            SheetDetection::Mapped {
+                header_row,
+                columns,
+            }
+        }
         None if operator.is_some() => return Err(MappingError::NameRequired),
         None => SheetDetection::NeedsMapping {
             candidates: candidates(&scan),

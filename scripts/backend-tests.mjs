@@ -203,6 +203,20 @@ export function buildTargets(metadata, index, count) {
     ...targets.filter((_, i) => i % total === shard - 1).flatMap(name => ["--test", name])];
 }
 
+export function pruneTargetExecutables(targetDir) {
+  if (!targetDir) return 0;
+  const depsDir = path.join(targetDir, "debug", "deps");
+  if (!existsSync(depsDir)) return 0;
+  let removed = 0;
+  for (const entry of readdirSync(depsDir, { withFileTypes: true })) {
+    if (entry.isFile() && !entry.name.includes(".")) {
+      rmSync(path.join(depsDir, entry.name), { force: true });
+      removed += 1;
+    }
+  }
+  return removed;
+}
+
 const summary = (text, env = process.env) => {
   console.log(text);
   if (env.GITHUB_STEP_SUMMARY) appendFileSync(env.GITHUB_STEP_SUMMARY, text + "\n");
@@ -266,14 +280,19 @@ function main() {
   const targets = command.database ? ["--workspace"] : buildTargets(metadata, env.NEXTEST_SHARD, env.NEXTEST_SHARDS);
   const nextestArgs = (selectedFeatures = []) => [...targets, "--locked", ...selectedFeatures, "--profile", "ci", "--config-file", path.join(root, ".config/nextest.toml"), "--ignore-default-filter"];
   const defaultArgs = nextestArgs(command.database ? [] : features), featuredArgs = nextestArgs(features);
-  const list = cargoJSON(["nextest", "list", ...(command.database ? featuredArgs : defaultArgs), "--message-format", "json"]);
   const packageSources = metadata.packages.filter(pkg => metadata.workspace_members.includes(pkg.id)).map((pkg) => [pkg, sources(path.dirname(pkg.manifest_path))]);
   validateIgnoredTests(packageSources.flatMap(([, files]) => files));
   const byPackage = new Map(packageSources.map(([pkg, files]) => [pkg.id, databaseTests(files)]));
-  const inventory = classifyTests(list, byPackage);
-  const defaultInventory = command.database
-    ? classifyTests(cargoJSON(["nextest", "list", ...defaultArgs, "--message-format", "json"]), byPackage)
-    : inventory;
+  let inventory, defaultInventory;
+  if (command.database) {
+    // List and prune default test executables before building featured targets to avoid holding two full sets on disk.
+    defaultInventory = classifyTests(cargoJSON(["nextest", "list", ...defaultArgs, "--message-format", "json"]), byPackage);
+    pruneTargetExecutables(metadata.target_directory);
+    inventory = classifyTests(cargoJSON(["nextest", "list", ...featuredArgs, "--message-format", "json"]), byPackage);
+  } else {
+    inventory = classifyTests(cargoJSON(["nextest", "list", ...defaultArgs, "--message-format", "json"]), byPackage);
+    defaultInventory = inventory;
+  }
   const report = path.join(metadata.workspace_root, "target/nextest/ci");
   mkdirSync(report, { recursive: true });
   for (const name of ["junit.xml", "junit-featured.xml", "junit-default.xml"]) rmSync(path.join(report, name), { force: true });
@@ -314,6 +333,7 @@ function main() {
   writeFileSync(path.join(report, "inventory.json"), JSON.stringify(artifact, null, 2) + "\n");
   const results = [];
   for (const run of runs) {
+    if (command.database && run.name === "default") pruneTargetExecutables(metadata.target_directory);
     rmSync(path.join(report, "junit.xml"), { force: true });
     const result = spawnSync("cargo", ["nextest", "run", ...run.args, "--no-fail-fast", "--retries", "0", "--run-ignored", "default", "-E", run.filter ?? exactFilter(run.tests)], { ...options, stdio: "inherit" });
     assert.ifError(result.error);
@@ -323,6 +343,7 @@ function main() {
     summary(`JUnit ${run.name}: ${counts.tests ?? "missing"} executed, ${counts.failures ?? "missing"} failures, ${counts.errors ?? "missing"} errors.`, env);
     results.push({ result, tests: run.tests, xml });
   }
+  if (command.database) pruneTargetExecutables(metadata.target_directory);
   const executed = results.reduce((count, run) => count + verifyJUnit(run.xml, run.tests), 0);
   for (const { result } of results) assert.equal(result.status, 0, `cargo nextest failed (${result.status ?? result.signal})`);
   summary(`JUnit verified: ${executed}/${expected.length} ${label} tests passed in ${((performance.now() - started) / 1000).toFixed(1)}s including discovery and build; no selected tests skipped.`, env);

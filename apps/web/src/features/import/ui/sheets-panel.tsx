@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { t } from "@console/i18n";
+import { CommandError } from "../../../lib/react/command-error";
 import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
 import { Table } from "../../../ui/table";
 import type { ImportPreview, ImportSheet } from "../domain/contract";
 import { sheetMapping, sheetsToMap, type Draft, type Mapping } from "../domain/mapping";
-import { fieldLabel, sourceLabel } from "../present";
+import { fieldLabel, importError, sourceLabel } from "../present";
 import { IMPORT_SHEET_STATUS, labeled } from "../../../lib/labels";
 import { EnumValue } from "../../../ui/enum-value";
 import { SheetEditor } from "./sheet-editor";
@@ -16,7 +17,7 @@ import css from "./import.module.css";
  * the built-in labels, the tenant's memory or the operator said so). A sheet whose header it could not find is
  * opened for mapping at once; any sheet can be remapped or skipped. Saving reads the same file again.
  */
-export function SheetsPanel({ preview, mapping, busy, onRemap }: { preview: ImportPreview; mapping: Mapping; busy: boolean; onRemap: (m: Mapping) => void }) {
+export function SheetsPanel({ preview, mapping, busy, remapError, onRemap }: { preview: ImportPreview; mapping: Mapping; busy: boolean; remapError?: unknown; onRemap: (m: Mapping) => void }) {
   const [open, setOpen] = useState<string | null>(() => sheetsToMap(preview.sheets)[0]?.name ?? null);
   const save = (name: string, d: Draft) => onRemap({ ...mapping, [name]: sheetMapping(d) });
   // r3:hire-18: a sheet skipped because an earlier import skipped it is read this time, in place.
@@ -29,6 +30,7 @@ export function SheetsPanel({ preview, mapping, busy, onRemap }: { preview: Impo
         <h2 id="import-sheets" className="toolbar__title" tabIndex={-1}>{t("importSheet.title", { count: preview.sheets.length })}</h2>
       </div>
       {(needsMapping > 0 || needsConfirmation > 0) && <p className={`muted ${css.inset}`}>{t(needsMapping > 0 ? "importSheet.needs" : "importSheet.confirmation", { count: needsMapping || needsConfirmation })}</p>}
+      <CommandError error={remapError} own={importError} />
       {preview.sheets.map((s) => (
         <SheetRow key={s.name} s={s} open={open === s.name} busy={busy} targets={preview.available_targets} onOpen={() => setOpen(open === s.name ? null : s.name)} onSave={(d) => save(s.name, d)} onUnskip={() => unskip(s.name)} />
       ))}

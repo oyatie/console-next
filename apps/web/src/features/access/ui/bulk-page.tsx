@@ -1,7 +1,7 @@
 import { readGroup } from "../../../lib/react/query-view";
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
 import { QueryState } from "../../../lib/react/query-state";
 import { useCommand } from "../../../lib/react/command";
@@ -21,7 +21,7 @@ import { SelectField } from "../../../ui/select/select-field";
 import { orgStructureRef } from "../../../reference/entity/api";
 import { bulkBlock, grantOp, missing, ready, blankLine, type DraftLine } from "../domain/grants";
 import { flatten, type OrgNode } from "../domain/scope";
-import { ACCESS_READS, applyGrants, previewGrants, type AccessGrantPreview, type Account, type Batch } from "../api";
+import { ACCESS_READS, accountPagesQuery, applyGrants, previewGrants, type AccessGrantPreview, type Account, type Batch } from "../api";
 import { scopeLabel } from "../present";
 import { pickable } from "../domain/accounts";
 import { PersonLabel } from "../../../reference/person/ui/person-label";
@@ -52,14 +52,26 @@ export function BulkPage() {
   const [picking, setPicking] = useState(false);
   const [preview, setPreview] = useState<{ p: AccessGrantPreview; ids: string[] } | null>(null);
   const [done, setDone] = useState<string | null>(null);
-  const offered = pickable(ctx.accounts, ctx.ops).filter((a) => a.id !== ctx.me);
+  const [debounced, setDebounced] = useState("");
+  useEffect(() => {
+    const trimmed = find.trim();
+    if (!trimmed) return;
+    const timer = setTimeout(() => setDebounced(trimmed), 150);
+    return () => clearTimeout(timer);
+  }, [find]);
+  const debouncedFind = find.trim() ? debounced : "";
+  const accountPages = useInfiniteQuery(accountPagesQuery(debouncedFind, 100));
+  const pagedAccounts = accountPages.data?.pages.flatMap((page) => page.items) ?? [];
+  const serverTotal = accountPages.data?.pages[0]?.total;
+  const sourceAccounts = accountPages.isError ? pagedAccounts : accountPages.data ? pagedAccounts : ctx.accounts;
+  const offered = pickable(sourceAccounts, ctx.ops).filter((a) => a.id !== ctx.me);
   const roots = (tree.data?.entities ?? []) as OrgNode[];
   // The chart's order (one order for every list and picker); a name the tree does not hold follows, by name.
   const units = inOrder([...new Set(offered.map((a) => a.employee_org_unit).filter((u): u is string => !!u))].sort(), flatten(roots).map((r) => r.node.name));
   const term = find.trim().toLowerCase();
   const rows = offered.filter(
     (a) =>
-      (!term || a.display_name.toLowerCase().includes(term) || (a.employee_number ?? "").toLowerCase().includes(term)) &&
+      (!term || debouncedFind === term || a.display_name.toLowerCase().includes(term) || (a.employee_number ?? "").toLowerCase().includes(term)) &&
       (unit === ALL || a.employee_org_unit === unit) &&
       (!withPasskey || a.has_passkey),
   );
@@ -79,22 +91,22 @@ export function BulkPage() {
   const block = bulkBlock({ picked: ids.length, gaps, setup: ctx.setup, when: d.when, reason: d.reason });
   const previewPicked = () => block ? setTried(true) : check.mutate(ids);
   const columns: LongColumn<Account>[] = [
-    { id: "name", header: t("access.col.name"), rowHeader: true, cell: (a: Account) => <PersonLabel person={a} peers={offered} /> },
-    { id: "pk", header: t("access.col.passkey"), width: 96, cell: (a: Account) => <Chip tone={a.has_passkey ? "ok" : "neutral"}>{t(a.has_passkey ? "access.account.passkey.yes" : "access.account.passkey.no")}</Chip> },
+    { id: "name", card: "title", rowHeader: true, header: t("access.col.name"), cell: (a: Account) => <bdi className={s.personCell}><PersonLabel person={a} peers={offered} /></bdi> },
+    { id: "pk", card: "status", header: t("access.col.passkey"), width: 96, cell: (a: Account) => <Chip tone={a.has_passkey ? "ok" : "neutral"}>{t(a.has_passkey ? "access.account.passkey.yes" : "access.account.passkey.no")}</Chip> },
   ];
   const role = ctx.roles.find((r) => r.id === d.line.role_id);
   const pageRead = readGroup([ctx.q, tree]);
   return (
-    <div className="page">
+    <div className="page" data-access-page="">
       <AccessHead failed={Boolean(pageRead.error)} />
-      <div className={s.titleRow}>
+      <div className={s.titleRow} data-access-subhead="">
         <h2 className="page__title">{t(preview ? "access.bulk.title.preview" : "access.bulk.title")}</h2>
       </div>
 <QueryState q={pageRead} layout="form">{() => <>      {done && <Banner live="polite">{done}{apply.data?.operation_id && <Link to="/requests/$id" params={{id:apply.data.operation_id}}>{t("requestOutcome.open")}</Link>}</Banner>}
       {preview ? (
         <BulkPreview
           preview={preview.p}
-          accounts={ctx.accounts}
+          accounts={sourceAccounts}
           role={role?.name_ko ?? ""}
           scope={d.line.scope ? scopeLabel(roots, d.line.scope) : ""}
           end={d.line.end ?? ""}
@@ -109,7 +121,7 @@ export function BulkPage() {
           onApply={() => apply.mutate(undefined)}
         />
       ) : (
-        <div className={s.editor}>
+        <div className={s.editor} data-access-split="">
           <Card flush>
             {/* One toolbar (mockup M5): find by name or number, narrow by placement, or to people who can sign in. */}
             <div className={s.filters}>
@@ -117,16 +129,20 @@ export function BulkPage() {
               {units.length > 0 && (
                 <SelectField label={t("access.bulk.unit")} hideLabel required={false} options={[{ id: ALL, label: t("access.bulk.unit.all") }, ...units.map((u) => ({ id: u, label: u }))]} value={unit} onChange={setUnit} placeholder={t("access.bulk.unit.all")} />
               )}
-              <ToggleButton size="sm" pressed={withPasskey} onClick={() => setWithPasskey(!withPasskey)}>{t("access.bulk.withPasskey")}</ToggleButton>
+              <ToggleButton look="chip" size="sm" pressed={withPasskey} onClick={() => setWithPasskey(!withPasskey)}>{t("access.bulk.withPasskey")}</ToggleButton>
             </div>
+            {accountPages.isError && <QueryState q={accountPages} inline>{() => null}</QueryState>}
             <LongTable
               label={t("access.bulk.pick")}
-              caption={t("accounts.count", { count: offered.length })}
+              caption={t("accounts.count", { count: serverTotal ?? offered.length })}
               columns={columns}
               rows={rows}
               rowId={(a) => a.id}
-              hasMore={false}
-              onLoadMore={() => {}}
+              total={serverTotal}
+              hasMore={Boolean(accountPages.hasNextPage)}
+              loadingMore={accountPages.isFetchingNextPage}
+              onLoadMore={() => { if (accountPages.hasNextPage && !accountPages.isFetchingNextPage) void accountPages.fetchNextPage(); }}
+              mobileLayout="compact"
               empty={<EmptyState title={t("access.bulk.empty")} reason={t("access.bulk.empty.reason")} />}
               selection={sel}
               onSelectionChange={(next) => setSel(next.kind === "ids" ? next : { kind: "ids", ids: new Set(rows.map((a) => a.id)) })}

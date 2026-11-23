@@ -29,13 +29,13 @@
 .crumb { display: inline-flex; align-items: center; flex: 0 1 auto; min-width: 0; height: calc(var(--space-3) + var(--space-4)); gap: calc(2 * 1px); color: var(--steel); }
 .crumb:last-child { flex: none; }
 .crumb :global(.btn) { display: block; min-width: 24px; min-height: 28px; line-height: 28px; padding: 0 var(--space-1); overflow: hidden; text-overflow: ellipsis; color: var(--steel); font-weight: var(--fw-body); }
-.crumb [aria-current] { color: var(--ink); font-weight: var(--fw-medium); padding: 0 var(--space-1); }
+.crumb [aria-current] { color: var(--ink); font-weight: var(--fw-medium); }
 /* A control floating over the chart has its own ground, so boxes panned under it never show through. */
 .floatBtn { background: var(--surface); }
 /* One line, as tall as the hint it replaces: the bar under the chart keeps its height while a find is typed. */
 /* The toolbar find: as tall as the date control beside it, so the row keeps one height. */
 .toolbarFind { width: clamp(180px, 24vw, 340px); }
-.toolbarFind input { height: calc(var(--row-h) - var(--space-1)); }
+.toolbarFind input { height: var(--control-h); }
 .kbd { padding: 0 var(--space-1); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--kbd-bg); font-family: var(--font-mono); font-size: var(--text-xs); color: var(--steel); }
 .findStatus { flex: 1; min-width: 0; gap: var(--space-3); color: var(--ink); white-space: nowrap; overflow: hidden; }
 .findStatus > * { flex: none; }
@@ -93,7 +93,7 @@
 .selbar :global(.btn--primary) { color: var(--ink); background: var(--surface); }
 .selbar .kbd { margin-left: var(--space-1); background: transparent; color: inherit; border-color: var(--steel); }
 
-.registry { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: var(--space-2); }
+.registry { display: flex; flex-direction: column; flex: 1; min-width: 0; overflow: auto; gap: var(--space-2); }
 .registryBar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
 .registryCaption { white-space: nowrap; }
 .pill { border: 1px solid var(--control-border); border-radius: calc(999 * 1px); min-height: 32px; }
@@ -126,4 +126,17 @@
   .view { flex-direction: column; }
   .side { width: auto; }
 }
+@media (--phone) {
+  .head { flex-wrap: wrap; }
+  .toolbarFind { width: 100%; min-width: 0; max-width: 100%; }
+  .crumbs { min-width: 0; max-width: 100%; }
+  :where([data-experience]:not([data-experience="baseline"])) .toolbarFind { flex: 1 1 calc(var(--panel-w) / 2); width: auto; }
+  :where([data-experience]:not([data-experience="baseline"])) .chev:empty { display: none; }
+  :where([data-experience]:not([data-experience="baseline"])) [data-mobile-layout="compact"] .treeCell { padding-inline-start: 0 !important; }
+}
+:where([data-experience]:not([data-experience="baseline"])) :is(.skeleton, .chartWrap, .body:has(.chartWrap)) { min-height: 0; flex: 1 1 0%; }
+:where([data-experience]:not([data-experience="baseline"])) .registry { min-height: 0; overflow: hidden; }
+:where([data-experience]:not([data-experience="baseline"])) .registry > section { flex: 1 1 0%; min-height: 0; }
+:where([data-experience]:not([data-experience="baseline"])) .registry > section > div:last-child { flex: 1 1 0%; min-height: 0; display: flex; flex-direction: column; }
+:where([data-experience]:not([data-experience="baseline"])) .registry [role="grid"] { max-height: none; flex: 1 1 0%; min-height: 0; }
 .importEntry[data-hidden] { visibility: hidden; }

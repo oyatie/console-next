@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["stage", "components", "message_ko", "message_en", "rev"]
+additionalProperties: false
+properties:
+  expected_seq: {"type": "integer", "minimum": 1}
+  prev: {"type": "integer", "minimum": 1}
+  stage: {"anyOf": [{"$ref": "#/components/schemas/Incident"}, {"$ref": "#/components/schemas/PublicComponent"}]}
+  components: {"type": "array", "items": {"$ref": "#/components/schemas/Text"}}
+  message_ko: {"$ref": "#/components/schemas/Text"}
+  message_en: {"$ref": "#/components/schemas/Text"}
+  rev: {"type": "integer", "minimum": 1}

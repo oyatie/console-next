@@ -5,7 +5,7 @@
 .scrollCue { position: absolute; z-index: 1; inset: 0 0 0 auto; width: var(--space-6); background: linear-gradient(to right, transparent, var(--surface) 85%); border-inline-end: 2px solid var(--border); pointer-events: none; }
 .surface { --table-cards: 0; }
 .visuallyHidden,
-.short thead:has(input[type="checkbox"]) :global(.check > span) { position: absolute; width: 1px !important; height: 1px !important; padding: 0 !important; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.short:has(tbody td:not([data-card="omit"]) input[type="checkbox"]) thead:has(input[type="checkbox"]) :global(.check > span) { position: absolute; width: 1px !important; height: 1px !important; padding: 0 !important; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 .content { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-2) var(--space-3); width: 100%; min-width: 0; padding-block: var(--space-3); white-space: normal; overflow-wrap: anywhere; }
 .identity { display: flex; flex-direction: column; min-width: 0; font-weight: var(--fw-medium); }
 .status { grid-column: 2; align-self: start; }
@@ -14,23 +14,71 @@
 .field dd { margin: 0; }
 .term { color: var(--steel); font-size: var(--text-xs); }
 .actions { grid-column: 1 / -1; }
+.compactRow { display: flex; flex-direction: column; justify-content: center; gap: var(--space-half); width: 100%; min-width: 0; min-height: calc(var(--space-6) + var(--space-5)); padding-block: var(--space-1-5); box-sizing: border-box; }
+.compactLine1 { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); min-width: 0; }
+.compactLead { display: flex; align-items: baseline; gap: var(--space-1-5); min-width: 0; flex: 1 1 auto; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.compactTitle { font-size: var(--text-sm); font-weight: var(--fw-semibold); color: var(--ink); white-space: nowrap; }
+.compactSub { font-size: var(--text-xs); color: var(--steel); white-space: nowrap; }
+.compactTail { display: inline-flex; align-items: center; gap: var(--space-1); flex: none; }
+.compactLine2 { font-size: var(--text-xs); color: var(--steel); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 /* The container query is the single phone threshold, also read by the virtual table's layout observer. */
 @container list-table (max-width: 480px) {
   .surface { --table-cards: 1; }
   .rows:global(.table) { width: max-content; min-width: 100%; }
   .short:global(.table), .short thead, .short tbody { display: block; }
   .short thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-  .short thead:has(input[type="checkbox"]) { position: static; width: auto; height: auto; overflow: visible; clip-path: none; }
-  .short thead:has(input[type="checkbox"]) tr { display: flex; padding: var(--space-2); }
-  .short thead:has(input[type="checkbox"]) th:not(:has(input[type="checkbox"])) { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); }
-  .short thead:has(input[type="checkbox"]) th:has(input[type="checkbox"]) { position: static; flex: 1; width: auto; height: auto; padding: 0; border: 0; }
-  .short thead:has(input[type="checkbox"]) :global(.check) { align-items: center; }
-  .short thead:has(input[type="checkbox"]) :global(.check > span) { position: static; width: auto !important; height: auto !important; overflow: visible; clip-path: none; white-space: normal; }
+  .short:has(tbody td:not([data-card="omit"]) input[type="checkbox"]) thead:has(input[type="checkbox"]) { position: static; width: auto; height: auto; overflow: visible; clip-path: none; }
+  .short:has(tbody td:not([data-card="omit"]) input[type="checkbox"]) thead:has(input[type="checkbox"]) tr { display: flex; padding: var(--space-2); }
+  .short:has(tbody td:not([data-card="omit"]) input[type="checkbox"]) thead:has(input[type="checkbox"]) th:not(:has(input[type="checkbox"])) { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); }
+  .short:has(tbody td:not([data-card="omit"]) input[type="checkbox"]) thead:has(input[type="checkbox"]) th:has(input[type="checkbox"]) { position: static; flex: 1; width: auto; height: auto; padding: 0; border: 0; }
+  .short:has(tbody td:not([data-card="omit"]) input[type="checkbox"]) thead:has(input[type="checkbox"]) :global(.check) { align-items: center; }
+  .short:has(tbody td:not([data-card="omit"]) input[type="checkbox"]) thead:has(input[type="checkbox"]) :global(.check > span) { position: static; width: auto !important; height: auto !important; overflow: visible; clip-path: none; white-space: normal; }
   .short tbody > tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: var(--space-3); padding: var(--space-2); border: 1px solid var(--border); border-radius: var(--radius); }
   .short:global(.table) td { position: static; display: flex; flex-direction: column; align-items: start; min-width: 0; height: auto; padding: var(--space-2); border: 0; white-space: normal; overflow-wrap: anywhere; }
   .short [data-card="title"] { grid-column: 1 / -1; font-weight: var(--fw-medium); }
   .short [data-card="status"], .short [data-card="action"] { grid-column: 1 / -1; }
+  :where([data-experience]:not([data-experience="baseline"])) .short:global(.table) [data-card="action"] { flex-direction: row; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: var(--space-2); width: auto; }
+  :where([data-experience]:not([data-experience="baseline"])) .short:global(.table) [data-card="action"] :is(button, a) { white-space: nowrap; flex-shrink: 0; }
+  :where([data-experience]:not([data-experience="baseline"])) .short tbody > tr { border: 0; border-bottom: 1px solid var(--border-soft); border-radius: 0; margin-bottom: 0; padding: var(--space-2) 0; }
+  :where([data-experience]:not([data-experience="baseline"])) .short:global(.table) td { padding: var(--space-half) var(--space-1); }
   .short:global(.table) [data-card="omit"] { display: none; }
   .short [data-card="fact"]::before { content: attr(data-label); color: var(--steel); font-size: var(--text-xs); }
   .short :global(.table__detail) { grid-template-columns: minmax(0, 1fr); }
+  .compact:global(.table), .compact thead, .compact tbody { display: block; }
+  .compact thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .compact tbody > tr {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    align-items: center;
+    column-gap: var(--space-2);
+    row-gap: var(--space-half);
+    margin: 0;
+    padding: var(--space-1-5) var(--space-3);
+    border: 0;
+    border-bottom: 1px solid var(--border-soft);
+    border-radius: 0;
+  }
+  .compact:global(.table) td {
+    position: static;
+    min-width: 0;
+    height: auto;
+    padding: 0;
+    border: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .compact:global(.table) [data-card="omit"] { display: none; }
+  .compact [data-card="status"] { grid-column: 1; grid-row: 1; align-self: center; overflow: visible; }
+  .compact [data-card="fact"] { grid-column: 2; grid-row: 1; font-weight: var(--fw-semibold); color: var(--ink); }
+  .compact [data-card="title"] { grid-column: 1 / 3; grid-row: 2; color: var(--steel); font-size: var(--text-xs); }
+  .compact [data-card="action"] { grid-column: 3; grid-row: 1 / 3; align-self: center; justify-self: end; overflow: visible; }
+  .compact tbody > tr:not(:has(> [data-card="status"])) { grid-template-columns: minmax(0, 1fr) auto; }
+  .compact tbody > tr:not(:has(> [data-card="status"])) [data-card="fact"],
+  .compact tbody > tr:not(:has(> [data-card="status"])) [data-card="title"] { grid-column: 1; }
+  .compact tbody > tr:not(:has(> [data-card="status"])) [data-card="action"] { grid-column: 2; }
+  .compact :global(.table__detail) { grid-template-columns: minmax(0, 1fr); }
+  :where([data-experience]:not([data-experience="baseline"])) .compact:global(.table) tbody > tr[aria-selected="true"] { box-shadow: var(--selected-bar); }
+  :where([data-experience]:not([data-experience="baseline"])) .compact:global(.table) tbody > tr[aria-selected="true"] td:first-child { box-shadow: none; }
 }

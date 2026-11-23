@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+description: Map of candidate row source_key to canonical field repairs for a staged employee import run.
+additionalProperties: false
+required: [cells]
+properties:
+  cells:
+    type: object
+    description: Per-row map of canonical target field names (excluding restricted columns) to repaired string values.
+    maxProperties: 5000
+    additionalProperties:
+      type: object
+      description: Map of canonical field names to repaired values for one row.
+      maxProperties: 64
+      additionalProperties:
+        type: string
+        maxLength: 500

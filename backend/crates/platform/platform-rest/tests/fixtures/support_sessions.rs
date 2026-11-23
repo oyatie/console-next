@@ -66,7 +66,12 @@ pub struct Support {
 impl Support {
     pub async fn new(owner: PgPool) -> Self {
         let base = Harness::new(owner.clone()).await;
-        let org = base.onboard("support-http").await;
+        let org = base
+            .onboard(&format!(
+                "support-http-{}",
+                &Uuid::new_v4().simple().to_string()[..8]
+            ))
+            .await;
         let rt = runtime_role_pool(&owner).await;
         let signing = SigningKey::generate();
         let private = signing.to_pkcs8_pem(LineEnding::LF).unwrap();

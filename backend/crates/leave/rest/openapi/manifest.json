@@ -31,9 +31,16 @@
     ],
     "/api/v2/me/leave": [
       "get"
+    ],
+    "/api/v2/me/leave/approval-preview": [
+      "get"
+    ],
+    "/api/v2/me/leave/team-overlap": [
+      "get"
     ]
   },
   "schemas": [
+    "LeaveApprovalPreviewStep",
     "LeaveBalanceAmount",
     "LeaveChargeResolutionRequest",
     "LeaveChargeResolutionView",
@@ -55,7 +62,10 @@
     "LeaveStatutoryPushView",
     "LeaveUnits",
     "MyLeaveV2Overview",
+    "SelfLeaveApprovalPreview",
     "SelfLeaveBalance",
+    "SelfLeaveTeamOverlap",
+    "TeamOverlapMember",
     "TimeChangeCoverageEvidence",
     "TimeChangeGroundsCode"
   ],

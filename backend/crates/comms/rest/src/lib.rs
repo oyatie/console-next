@@ -20,6 +20,8 @@
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 mod openapi;
+mod tenant_cipher;
+mod webhook_auth;
 pub use openapi::OPENAPI_FRAGMENT;
 
 use std::str::FromStr;
@@ -48,9 +50,8 @@ use console_comms_domain::{FolderRole, MailSecurity, MessageAddress, normalize_s
 use console_kernel_core::{ErrorKind, KernelError, OrgId, TraceContext};
 use console_platform_auth::JwtVerifier;
 use console_platform_authz::{Action, Feature, Principal, authorize_capability};
-use secrecy::{ExposeSecret, SecretString};
+use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
-use subtle::ConstantTimeEq;
 use time::OffsetDateTime;
 
 pub const MAIL_ACCOUNT_PATH: &str = "/api/v1/mail/account";
@@ -142,6 +143,7 @@ pub struct CommsRestState {
     /// The master-key cipher. `None` when `CONSOLE_MAIL_MASTER_KEY` is absent —
     /// credential-using endpoints are then unavailable (503) but the app still boots.
     cipher: Option<Arc<EnvelopeCredentialCipher>>,
+    tenant_keys: Arc<console_platform_db::tenant_keys::PgTenantKeyStore>,
     /// The object store for inbound attachment presigned GETs. `None` when
     /// storage is unconfigured — the attachment-download endpoint then 503s.
     attachments: Option<SharedAttachmentStore>,
@@ -164,6 +166,7 @@ impl CommsRestState {
             sender: MailSender::Smtp(LettreMailSender::new()),
             imap: AsyncImapClient::new(),
             cipher,
+            tenant_keys: tenant_cipher::new_tenant_keys_from_env(),
             attachments: None,
             mox_webhook_secret: None,
             jwt_verifier,
@@ -328,7 +331,7 @@ async fn put_account(
 ) -> Result<Response, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
     authorize_feature(&principal, Feature::MailAccountManage)?;
-    let cipher = state.cipher_ref()?;
+    let cipher = tenant_cipher::resolve_tenant_cipher(&state, principal.org_id).await?;
     let service = AccountService::new(state.store.clone(), state.sender.clone(), cipher);
 
     let command = ConfigureAccountCommand {
@@ -366,10 +369,14 @@ async fn test_account(
 ) -> Result<Response, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
     authorize_feature(&principal, Feature::MailAccountManage)?;
-    let cipher = state.cipher_ref()?;
+    let cipher = tenant_cipher::resolve_tenant_cipher(&state, principal.org_id).await?;
     // Probe SMTP first (rate-limited + decrypted inside the service). A failure
     // short-circuits with the SMTP error code.
-    let smtp_service = AccountService::new(state.store.clone(), state.sender.clone(), cipher);
+    let smtp_service = AccountService::new(
+        state.store.clone(),
+        state.sender.clone(),
+        Arc::clone(&cipher),
+    );
     let smtp: TestConnectionResult = smtp_service
         .test_connection(principal.user_id, OffsetDateTime::now_utc())
         .await
@@ -434,7 +441,7 @@ async fn send_impl(
     let operation_id = body
         .operation_id
         .ok_or_else(|| RestError::validation("operation_id is required for mail reconciliation"))?;
-    let cipher = state.cipher_ref()?;
+    let cipher = tenant_cipher::resolve_tenant_cipher(&state, principal.org_id).await?;
     let service = SendService::new(
         state.store.clone(),
         state.sender.clone(),
@@ -723,18 +730,18 @@ async fn mox_webhook(
 ) -> Result<Response, RestError> {
     // 1. Authenticate BEFORE touching the (untrusted) body. The secret must be
     //    configured; mox presents it verbatim as `Authorization: Bearer <secret>`.
-    let secret = state
-        .mox_webhook_secret
-        .as_ref()
-        .ok_or_else(|| RestError::unavailable("mox delivery webhook is not configured"))?;
-    let expected = format!("Bearer {}", secret.expose_secret());
-    let presented = headers
-        .get(AUTHORIZATION)
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or_default();
-    if !bool::from(presented.as_bytes().ct_eq(expected.as_bytes())) {
-        return Err(RestError::unauthorized("invalid mox webhook credential"));
-    }
+    webhook_auth::verify_mox_bearer_secret(
+        state.mox_webhook_secret.as_ref(),
+        headers.get(AUTHORIZATION).and_then(|v| v.to_str().ok()),
+    )
+    .map_err(|err| match err {
+        webhook_auth::MoxWebhookAuthError::Unconfigured => {
+            RestError::unavailable("mox delivery webhook is not configured")
+        }
+        webhook_auth::MoxWebhookAuthError::InvalidCredential => {
+            RestError::unauthorized("invalid mox webhook credential")
+        }
+    })?;
 
     // 2. Parse the mox Incoming payload.
     let incoming: Incoming = serde_json::from_slice(&body)
@@ -879,15 +886,6 @@ fn decode_attachment(
 // ---------------------------------------------------------------------------
 // AuthZ + auth extraction
 // ---------------------------------------------------------------------------
-
-impl CommsRestState {
-    /// Borrow the cipher or fail with a 503 when the master key is unconfigured.
-    fn cipher_ref(&self) -> Result<&EnvelopeCredentialCipher, RestError> {
-        self.cipher
-            .as_deref()
-            .ok_or_else(RestError::email_not_configured)
-    }
-}
 
 /// Mail handlers are org-wide and do not load a branch, so authorization stays capability-based.
 fn authorize_feature(principal: &Principal, feature: Feature) -> Result<(), RestError> {
@@ -1084,39 +1082,8 @@ impl IntoResponse for RestError {
 
 #[cfg(test)]
 mod tests {
-    use super::ConstantTimeEq;
     use super::keep_existing_if_blank;
     use secrecy::ExposeSecret;
-
-    // -------------------------------------------------------------------
-    // Webhook credential comparison: the length-XOR-truncated-to-u8
-    // hand-roll this replaced would silently mask a length delta that is a
-    // multiple of 256 (`(a.len() ^ b.len()) as u8 == 0` for such deltas).
-    // The 256-length-delta vector proves the `subtle`-backed check catches
-    // exactly that case: a 256-byte-longer presented value must still be
-    // rejected.
-    // -------------------------------------------------------------------
-    #[test]
-    fn credential_eq_rejects_256_length_delta() {
-        let expected = b"Bearer test-mox-webhook-secret".to_vec();
-        let mut presented = expected.clone();
-        presented.extend(std::iter::repeat_n(b'x', 256));
-        assert!(!bool::from(presented.as_slice().ct_eq(expected.as_slice())));
-    }
-
-    #[test]
-    fn credential_eq_accepts_exact_match() {
-        let secret = b"Bearer test-mox-webhook-secret".to_vec();
-        assert!(bool::from(secret.as_slice().ct_eq(secret.as_slice())));
-    }
-
-    #[test]
-    fn credential_eq_rejects_wrong_value_same_length() {
-        let expected = b"Bearer test-mox-webhook-secret".to_vec();
-        let mut presented = expected.clone();
-        *presented.last_mut().unwrap() ^= 0x01;
-        assert!(!bool::from(presented.as_slice().ct_eq(expected.as_slice())));
-    }
 
     #[test]
     fn blank_password_keeps_existing_secret() {

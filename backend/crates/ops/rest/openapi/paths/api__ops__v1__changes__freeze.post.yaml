@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+operationId: "opsChangesFreeze"
+summary: "Draft Freeze Cmd"
+x-cedar-action: "change.request.freeze"
+x-cedar-actions: ["change.request.freeze", "change.request.unfreeze"]
+security: [{"accessJwt": []}]
+description: "Records signed freeze/unfreeze Cmd hand-off in actions spool."
+requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/FreezeRequest"}}}}
+responses: {"201": {"description": "Cmd hand-off recorded.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CmdResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}

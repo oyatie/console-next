@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { FileText } from "lucide-react";
 import { isMessageId, t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
+import { chunk } from "../../../lib/chunk-guard";
 import { LIFECYCLE_EVENT, label } from "../../../lib/labels";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
@@ -21,10 +22,14 @@ import { TextArea } from "../../../ui/field/text-area";
 import { Kbd } from "../../../ui/kbd/kbd";
 import { Crumbs } from "../../../ui/page-head/crumbs";
 import { PageHead } from "../../../ui/page-head/page-head";
+import { ExperienceSwitch } from "../../../ui/patterns/pattern-shell";
+import { ReadSkeleton } from "../../../ui/skeleton/skeleton";
 import { Table } from "../../../ui/table";
 import { failureOf, issueNotice, noticeCandidatesPages } from "../api";
 import { after, before } from "../domain/notice";
 import s from "./notice.module.css";
+
+const NoticeNewConsole = lazy(() => chunk(import("./notice-new-console")).then((m) => ({ default: m.NoticeNewConsole })));
 
 /** The notice that already holds an act (409 appointment_notice_event_taken names it per act). */
 const takenNo = (e: unknown) => {
@@ -65,7 +70,10 @@ export function NoticeNewPage() {
   });
   const gaps = { title: !title.trim(), date: !date, events: !batch && ids.length === 0 };
   const submit = () => (setTried(true), !gaps.title && !gaps.date && !gaps.events && !issue.isPending && issue.mutate(undefined));
-  return (
+  const toggleSelected = (id: string, checked: boolean) =>
+    setSelected((current) => (checked ? [...current, id] : current.filter((x) => x !== id)));
+
+  const renderBaseline = () => (
     <div className="page">
       <PageHead crumbs={<Crumbs items={[<Link key="people" to="/people" search={{}}>{t("people.title")}</Link>, <Link key="notices" to="/people/notices">{t("notice.crumb")}</Link>]} />} title={t("notice.title")} />
       {choosing && <Card title={t("notice.pick.title")}>
@@ -75,7 +83,7 @@ export function NoticeNewPage() {
           : <div className={s.form}>
             {dates.map((effectiveDate) => <section key={effectiveDate} aria-label={fmtDate(effectiveDate)}>
               <h3>{fmtDate(effectiveDate)}</h3>
-              {lines.filter((c) => c.event.effective_date === effectiveDate).map((c) => <Check key={c.event.id} checked={selected.includes(c.event.id)} onChange={(checked) => setSelected((current) => checked ? [...current, c.event.id] : current.filter((id) => id !== c.event.id))}>
+              {lines.filter((c) => c.event.effective_date === effectiveDate).map((c) => <Check key={c.event.id} checked={selected.includes(c.event.id)} onChange={(checked) => toggleSelected(c.event.id, checked)}>
                 {c.name} · {label(LIFECYCLE_EVENT, c.event.event_type)} · {after(c)}
               </Check>)}
             </section>)}
@@ -108,5 +116,42 @@ export function NoticeNewPage() {
       </Card>}
 
     </div>
+  );
+
+  return (
+    <ExperienceSwitch baseline={renderBaseline}>
+      {() => (
+        <Suspense fallback={<ReadSkeleton layout="form" />}>
+          <NoticeNewConsole
+            choosing={choosing}
+            candidatesQ={candidates}
+            hasNextPage={Boolean(candidates.hasNextPage)}
+            isFetchingNextPage={candidates.isFetchingNextPage}
+            onFetchNextPage={() => { if (!candidates.isFetchingNextPage) void candidates.fetchNextPage(); }}
+            lines={lines}
+            picked={picked}
+            dates={dates}
+            selected={selected}
+            onToggleSelected={toggleSelected}
+            batch={batch}
+            count={count}
+            idsLength={ids.length}
+            today={today}
+            title={title}
+            onTitle={setTitle}
+            date={date}
+            onDate={setDate}
+            memo={note}
+            onMemo={setNote}
+            tried={tried}
+            gaps={gaps}
+            pending={issue.isPending}
+            error={issue.error}
+            takenNo={takenNo(issue.error)}
+            onSubmit={submit}
+          />
+        </Suspense>
+      )}
+    </ExperienceSwitch>
   );
 }

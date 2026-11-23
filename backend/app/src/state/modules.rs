@@ -54,18 +54,20 @@ pub(super) fn attach_mail_cipher(state: &mut AppState) -> Result<(), AppError> {
     // `503 email_not_configured`. If it is present but malformed, that's a
     // boot error so it is caught immediately rather than at first use.
     // H6c: the key may come from `CONSOLE_MAIL_MASTER_KEY_FILE`.
+    let keyring =
+        crate::config::secret_files::secret_env(console_comms_credential_cipher::KEYRING_ENV)?;
     let master_key =
         crate::config::secret_files::secret_env(console_comms_credential_cipher::MASTER_KEY_ENV)?;
-    match master_key.map(EnvelopeCredentialCipher::from_owned_base64_key) {
-        Some(Ok(cipher)) => state.mail_cipher = Some(Arc::new(cipher)),
-        None => {
+    match EnvelopeCredentialCipher::from_owned_env_values(keyring, master_key) {
+        Ok(Some(cipher)) => state.mail_cipher = Some(Arc::new(cipher)),
+        Ok(None) => {
             tracing::info!(
-                "CONSOLE_MAIL_MASTER_KEY unset: credential-using webmail endpoints are unavailable; read paths stay clean and the app boots normally"
+                "CONSOLE_MAIL_MASTER_KEY/CONSOLE_MAIL_KEYRING unset: credential-using webmail endpoints are unavailable; read paths stay clean and the app boots normally"
             );
         }
-        Some(Err(_)) => {
+        Err(_) => {
             return Err(AppError::Config(
-                "CONSOLE_MAIL_MASTER_KEY is set but is not a valid base64 32-byte key".to_owned(),
+                "CONSOLE_MAIL_MASTER_KEY/CONSOLE_MAIL_KEYRING is set but invalid".to_owned(),
             ));
         }
     }

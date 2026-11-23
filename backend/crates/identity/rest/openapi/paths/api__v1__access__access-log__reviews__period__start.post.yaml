@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [access]
+operationId: startAccessLogReview
+summary: Start and freeze a monthly tenant access-log review
+description: Requires tenant-wide Cedar audit::approve. Freezes flagged events and daily summaries once per closed period.
+security:
+- bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: true
+  schema:
+    type: string
+    minLength: 16
+    maxLength: 200
+- name: period
+  in: path
+  required: true
+  schema:
+    type: string
+    pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'
+responses:
+  '200':
+    description: Started or existing review projection.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/AccessLogReview'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: access_denied or scope_tenant_wide_only.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '503':
+    $ref: '#/components/responses/ServiceUnavailable'

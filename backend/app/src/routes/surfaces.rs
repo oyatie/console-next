@@ -21,6 +21,10 @@ pub const CONFIGURED_ROUTE_SURFACES: &[ConfiguredRouteSurface] = &[
         "attendance",
         console_attendance_rest::ATTENDANCE_ROUTE_PATHS,
     ),
+    #[cfg(feature = "leave")]
+    surface("leave", console_leave_rest::LEAVE_ROUTE_PATHS),
+    #[cfg(feature = "inbox")]
+    surface("inbox", console_inbox_rest::INBOX_ROUTE_PATHS),
     #[cfg(feature = "inventory")]
     surface("inventory", console_inventory_rest::INVENTORY_ROUTE_PATHS),
     #[cfg(feature = "dispatch")]
@@ -156,6 +160,10 @@ pub const CONFIGURED_ROUTE_SURFACES: &[ConfiguredRouteSurface] = &[
         console_hr_rest::identity::IDENTITY_ROUTE_PATHS,
     ),
     surface(
+        "hr-data-health",
+        console_hr_rest::data_health::DATA_HEALTH_ROUTE_PATHS,
+    ),
+    surface(
         "hr-change-sets",
         console_hr_rest::change_sets::CHANGE_SET_ROUTE_PATHS,
     ),
@@ -184,6 +192,18 @@ pub const CONFIGURED_ROUTE_SURFACES: &[ConfiguredRouteSurface] = &[
     surface(
         "hr-import-reconcile",
         console_hr_rest::reconcile::RECONCILE_ROUTE_PATHS,
+    ),
+    surface(
+        "hr-exit-cases",
+        console_hr_rest::exit_cases::EXIT_CASES_ROUTE_PATHS,
+    ),
+    surface(
+        "hr-unit-position",
+        console_hr_rest::unit_position::UNIT_POSITION_ROUTE_PATHS,
+    ),
+    surface(
+        "hr-me-profile",
+        console_hr_rest::me_profile::ME_PROFILE_ROUTE_PATHS,
     ),
     #[cfg(feature = "workspace")]
     surface(

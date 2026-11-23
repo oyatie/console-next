@@ -22,6 +22,7 @@ export function KeyValue({
   error,
   readOnly,
   density,
+  columns,
 }: {
   items: readonly KeyValueItem[];
   label?: string;
@@ -30,10 +31,11 @@ export function KeyValue({
   error?: ReactNode;
   readOnly?: boolean;
   density?: "dense" | "default";
+  columns?: 1 | 2;
 }) {
   const acts = items.some((i) => i.action != null);
   return (
-    <dl className={s.kv} data-acts={acts || undefined} data-density={density} aria-label={label} data-readonly={readOnly || undefined} aria-busy={loading || undefined}>
+    <dl className={s.kv} data-acts={acts || undefined} data-density={density} data-cols={columns === 2 && !acts ? "2" : undefined} aria-label={label} data-readonly={readOnly || undefined} aria-busy={loading || undefined}>
       {loading || error || (items.length === 0 && empty != null) ? (
         <div><dt className="sr-only">{label}</dt><dd className={error ? s.error : loading ? s.loading : s.empty} role={error ? "alert" : loading ? "status" : undefined} data-state={error ? "error" : undefined}>
           {error || (loading ? <div className={s.skeleton} /> : empty)}
@@ -53,14 +55,40 @@ export function KeyValue({
   );
 }
 
+/** One summary count tile in a `StatRow`: label over tabular value, with optional contextual meta, urgency tone, and press handler. */
+export type StatRowItem = {
+  key: string;
+  label: ReactNode;
+  value: ReactNode;
+  meta?: ReactNode;
+  tone?: "warn" | "danger" | "ok" | "primary" | "muted";
+  active?: boolean;
+  onPress?: () => void;
+};
+
 /** Counts side by side in one bordered row (kit .statrow): the label over the number. Never a vanity KPI: each is a count the view acts on. */
-export function StatRow({ items, label }: { items: readonly { key: string; label: ReactNode; value: ReactNode }[]; label?: string }) {
+export function StatRow({ items, label, phoneCols }: { items: readonly StatRowItem[]; label?: string; phoneCols?: 2 | 3 }) {
   return (
-    <dl className={s.stats} aria-label={label}>
+    <dl className={s.stats} data-phone-cols={phoneCols} aria-label={label}>
       {items.map((i) => (
-        <div key={i.key} className={s.stat}>
-          <dt className={s.statLabel}>{i.label}</dt>
+        <div
+          key={i.key}
+          className={s.stat}
+          data-tone={i.tone}
+          data-active={i.active || undefined}
+          data-interactive={i.onPress ? true : undefined}
+        >
+          <dt className={s.statLabel}>
+            {i.onPress ? (
+              <button type="button" className={s.statBtn} aria-pressed={Boolean(i.active)} onClick={i.onPress}>
+                {i.label}
+              </button>
+            ) : (
+              i.label
+            )}
+          </dt>
           <dd className={s.statValue}>{i.value}</dd>
+          {i.meta != null && <dd className={s.statMeta}>{i.meta}</dd>}
         </div>
       ))}
     </dl>

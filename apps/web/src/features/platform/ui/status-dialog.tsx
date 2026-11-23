@@ -10,7 +10,12 @@ import { rereadTenants, setStatus, type Org, type Recorded } from "../api";
 import { TARGET, type Move } from "../domain/tenants";
 
 /** Suspend, archive or resume: the consequence, then the same verb-object on the commit. None is irreversible. */
-export function StatusDialog({ org, move, onClose, onDone }: { org: Org; move: Move | null; onClose: () => void; onDone: (r: Recorded) => void }) {
+export function StatusDialog(props: { org: Org; move: Move | null; onClose: () => void; onDone: (r: Recorded) => void }) {
+  if (!props.move) return null;
+  return <StatusDialogBody {...props} move={props.move} />;
+}
+
+function StatusDialogBody({ org, move, onClose, onDone }: { org: Org; move: Move; onClose: () => void; onDone: (r: Recorded) => void }) {
   const change = useCommand({
     run: async (m: Move) => {
       // No idempotency key on a status change: a lost response or a 409 on a retry counts as done when a re-read shows the status.
@@ -27,17 +32,13 @@ export function StatusDialog({ org, move, onClose, onDone }: { org: Org; move: M
     onClose();
   };
   return (
-    <Dialog open={move !== null} title={move ? t(`tenants.status.${move}`, { org: org.name }) : ""} onClose={close}>
-      {move && (
-        <>
-          <span>{t(`tenants.status.${move}.consequence`, { org: org.name })}</span>
-          <CommandError error={change.error} />
-          <div className="form__actions">
-            <Button onClick={close}>{t("common.cancel")}</Button>
-            <Button variant="primary" disabled={change.isPending} onClick={() => change.mutate(move)}>{t(`tenants.status.${move}`, { org: org.name })}</Button>
-          </div>
-        </>
-      )}
+    <Dialog open title={t(`tenants.status.${move}`, { org: org.name })} onClose={close}>
+      <span>{t(`tenants.status.${move}.consequence`, { org: org.name })}</span>
+      <CommandError error={change.error} />
+      <div className="form__actions">
+        <Button onClick={close}>{t("common.cancel")}</Button>
+        <Button variant="primary" disabled={change.isPending} onClick={() => change.mutate(move)}>{t(`tenants.status.${move}`, { org: org.name })}</Button>
+      </div>
     </Dialog>
   );
 }

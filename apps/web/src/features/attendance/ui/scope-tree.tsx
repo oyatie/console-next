@@ -67,7 +67,12 @@ export function ScopeTree({ tree, selected, onSelect, onPerson }: { tree: Schedu
           onExpandedChange={setExpanded}
         />
       )}
-      {tree.people_unscheduled === 0 && <p className="muted">{t("attendanceSchedule.tree.allScheduled", { people: peopleText(tree.people_total) })}</p>}
+      {tree.people_total > 0 &&
+        tree.people_unscheduled === 0 &&
+        !tree.nodes.some(n => (n.unscheduled ?? 0) > 0) &&
+        tree.nodes.some(n => Boolean(n.layer || n.effective)) && (
+          <p className="muted">{t("attendanceSchedule.tree.allScheduled", { people: peopleText(tree.people_total) })}</p>
+        )}
     </div>
   );
 }

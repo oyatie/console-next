@@ -16,7 +16,6 @@ use crate::state::db::serving::connect_command_pool;
 #[cfg(any(feature = "dispatch", feature = "support", feature = "mail"))]
 use crate::state::modules;
 use crate::wiring::realtime::realtime_hub_from_database;
-use console_platform_auth_rest::AuthRestState;
 use console_platform_email::{DisabledEmailSender, EmailSender, LettreSmtpSender, StubEmailSender};
 #[cfg(any(feature = "dispatch", feature = "workorder"))]
 use console_platform_jobs::ApalisPostgresJobQueue;
@@ -59,19 +58,9 @@ impl AppState {
                 None => Arc::new(DisabledEmailSender),
             },
         };
-        let auth_rest = match &database {
-            DatabaseDependency::Postgres(pool) => match &config.auth_rest {
-                Some(auth_config) => Some(
-                    AuthRestState::new(pool.clone(), auth_config.clone())
-                        .map_err(|err| {
-                            AppError::Config(format!("invalid auth REST config: {err}"))
-                        })?
-                        .with_email_sender(email_sender.clone()),
-                ),
-                None => Some(AuthRestState::disabled(pool.clone())),
-            },
-            DatabaseDependency::NotConfigured => None,
-        };
+        let otp_hmac_key = super::otp_key::resolve_otp_hmac_key(&config, &database)?;
+        let auth_rest =
+            super::otp_key::build_auth_rest_state(&config, &database, otp_hmac_key.as_ref())?;
         let audit_attestation_signer =
             audit_chain_signer::build_attestation_signer(config.audit_chain_external.as_ref())?;
         let realtime_hub = realtime_hub_from_database(&database, config.realtime.clone());
@@ -97,6 +86,7 @@ impl AppState {
             support_issuer,
             policy_step_up,
             auth_rest,
+            otp_hmac_key,
             evidence_storage: None,
             sales_media_storage: None,
             #[cfg(feature = "docs")]
@@ -254,13 +244,6 @@ impl AppState {
             tracing::warn!(
                 "CONSOLE_EMAIL_* unset and CONSOLE_EMAIL_STUB_MODE disabled: outbound OTP email fails closed without logging OTPs"
             );
-        }
-        // Hand the resolved OTP email sender to the auth REST layer so its
-        // open-signup endpoint (#38) can deliver the code. Done here (not in
-        // `AppState::new`) because the live SMTP sender is only known once
-        // `config.email` is resolved above.
-        if let Some(auth_rest) = state.auth_rest.take() {
-            state.auth_rest = Some(auth_rest.with_email_sender(state.email_sender.clone()));
         }
         #[cfg(feature = "mail")]
         modules::attach_mail_cipher(&mut state)?;

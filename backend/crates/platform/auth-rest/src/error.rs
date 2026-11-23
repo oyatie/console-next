@@ -76,14 +76,6 @@ impl RestError {
         }
     }
 
-    pub(crate) fn bad_gateway(message: impl Into<String>) -> Self {
-        Self {
-            status: StatusCode::BAD_GATEWAY,
-            code: "bad_gateway",
-            message: message.into(),
-        }
-    }
-
     pub(crate) fn forbidden(message: impl Into<String>) -> Self {
         Self {
             status: StatusCode::FORBIDDEN,
@@ -215,6 +207,7 @@ impl RestError {
             }
             ProvisioningError::TenantErase(_)
             | ProvisioningError::OpsRecovery(_)
+            | ProvisioningError::PlatformOperator(_)
             | ProvisioningError::OpsRecoveryHoldActive(_)
             | ProvisioningError::Sqlx(_)
             | ProvisioningError::Db(_)

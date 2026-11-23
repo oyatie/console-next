@@ -92,7 +92,7 @@ There is one look and one size. No prop changes either.
 
 | Part | Look |
 |---|---|
-| Input | The control box of [`Field`](field.md): 40 px high (`--row-h`). Its width is the browser's own for a text input (`width: auto`) and at least `10.5rem`, which is 168 px at the browser's default root size. |
+| Input | The control box of [`Field`](field.md): 40 px high (`--field-h`). Its width is the browser's own for a text input (`width: auto`) and at least `10.5rem`, which is 168 px at the browser's default root size. |
 | Calendar button | At least 44 px square (`--target-touch`), a 1 px `--control-border` border, a 10 px radius (`--radius-lg`), `--surface` fill, an 18 px icon in `--ink`. |
 | Quick pick | A button at least 32 px high (`--target`), 12 px side padding, a 1 px `--control-border` border, a 10 px radius, 13 px medium text. The date it stands for is 12 px regular `--steel`. |
 | Problem line | 13 px, `--danger-tx`. |
@@ -301,7 +301,9 @@ and no container query.
 | `today` | yes | `string` |  |  |
 | `value` | yes | `string` |  | `YYYY-MM-DD`, or "" while empty. |
 | `basis` | no | `ReactNode` |  |  |
+| `disabled` | no | `boolean` |  |  |
 | `disabledDates` | no | `readonly string[]` |  |  |
+| `displayFormat` | no | `"default" \| "short-weekday"` | `"default"` |  |
 | `echo` | no | `ReactNode` |  |  |
 | `error` | no | `ReactNode` |  |  |
 | `inputRef` | no | `Ref<HTMLInputElement>` |  |  |
@@ -328,6 +330,7 @@ and no container query.
 | `className` | no | `string` |  |  |
 | `disabled` | no | `boolean` |  |  |
 | `disabledDates` | no | `readonly string[]` | `[]` |  |
+| `displayFormat` | no | `"default" \| "short-weekday"` | `"default"` |  |
 | `id` | no | `string` |  |  |
 | `inputRef` | no | `Ref<HTMLInputElement>` |  |  |
 | `label` | no | `string` |  |  |
@@ -372,9 +375,12 @@ and no container query.
 | --- | --- |
 | `--border` | `border` |
 | `--control-border` | `border` |
+| `--danger-solid` | `border-color` |
 | `--danger-tx` | `color` |
+| `--field-h` | `height`, `min-height`, `min-width` |
 | `--fw-body` | `font-weight` |
 | `--fw-medium` | `font-weight` |
+| `--fw-semibold` | `font-weight` |
 | `--info-bd` | `border` |
 | `--info-bg` | `background` |
 | `--info-tx` | `color` |
@@ -385,9 +391,9 @@ and no container query.
 | `--radius` | `border-radius` |
 | `--radius-lg` | `border-radius` |
 | `--shadow-pop` | `box-shadow` |
-| `--space-1` | `gap` |
+| `--space-1` | `gap`, `padding-inline` |
 | `--space-2` | `gap`, `margin-left`, `padding` |
-| `--space-3` | `gap`, `max-width`, `padding`, `width` |
+| `--space-3` | `gap`, `max-width`, `padding`, `padding-inline`, `width` |
 | `--steel` | `color` |
 | `--surface` | `background` |
 | `--target` | `min-height` |

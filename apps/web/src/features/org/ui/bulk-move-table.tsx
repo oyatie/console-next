@@ -26,11 +26,11 @@ export function BulkMoveTable({ plan, targetLabel, onResolve }: { plan: Plan; ta
         tone={(r) => (r.clash && !r.resolution ? "danger" : undefined)}
         detail={(r) => r.clash && <Clash r={r} targetLabel={targetLabel} onResolve={onResolve} />}
         columns={[
-          { header: t("bulkMove.col.group"), cell: (r) => <>{r.node.name}{r.sub > 0 && <div className={css.note}>{t("bulkMove.carried", { count: r.sub })}</div>}</> },
-          { header: t("bulkMove.col.fromTo"), cell: (r) => <><div className={css.note}>{r.from.workplace?.name}</div><b>{to(r)}</b></> },
-          { header: t("bulkMove.col.sub"), cell: (r) => <span className="num">{r.sub}</span>, fit: true },
-          { header: t("bulkMove.col.members"), cell: (r) => <b className="num">{t("orgStructure.peopleCount", { count: r.members })}</b>, fit: true },
-          { header: t("bulkMove.col.site"), cell: (r) => <span className="num">{t("orgStructure.peopleCount", { count: r.siteChanged })}</span>, fit: true },
+          { header: t("bulkMove.col.group"), card: "title", cell: (r) => <>{r.node.name}{r.sub > 0 && <div className={css.note}>{t("bulkMove.carried", { count: r.sub })}</div>}</> },
+          { header: t("bulkMove.col.fromTo"), card: "fact", cell: (r) => <><div className={css.note}>{r.from.workplace?.name}</div><b>{to(r)}</b></> },
+          { header: t("bulkMove.col.sub"), wide: true, cell: (r) => <span className="num">{r.sub}</span>, fit: true },
+          { header: t("bulkMove.col.members"), card: "status", cell: (r) => <b className="num">{t("orgStructure.peopleCount", { count: r.members })}</b>, fit: true },
+          { header: t("bulkMove.col.site"), wide: true, cell: (r) => <span className="num">{t("orgStructure.peopleCount", { count: r.siteChanged })}</span>, fit: true },
         ]}
       />
       <Stats
@@ -47,16 +47,17 @@ export function BulkMoveTable({ plan, targetLabel, onResolve }: { plan: Plan; ta
           rows={plan.sites}
           rowId={(x) => x.node.id}
           columns={[
-            { header: t("bulkMove.sites"), cell: (x) => x.node.name },
+            { header: t("bulkMove.sites"), card: "title", cell: (x) => x.node.name },
             {
               header: t("orgStructure.stat.people"),
+              card: "fact",
               cell: (x) => (
                 <span className="num">
                   <s className="muted">{t("orgStructure.peopleCount", { count: x.node.headcount })}</s> <ArrowRight size={12} aria-label={t("bulkMove.becomes")} /> <b>{t("orgStructure.peopleCount", { count: x.node.headcount + x.change })}</b>
                 </span>
               ),
             },
-            { header: t("bulkMove.change"), cell: (x) => <span className="num muted">{x.change > 0 ? `+${x.change}` : x.change}</span>, fit: true },
+            { header: t("bulkMove.change"), card: "status", cell: (x) => <span className="num muted">{x.change > 0 ? `+${x.change}` : x.change}</span>, fit: true },
           ]}
         />
       )}

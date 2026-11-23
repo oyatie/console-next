@@ -37,7 +37,7 @@ async fn admin_issue_otp_preserves_live_code_without_access_authority(pool: PgPo
     .await
     .unwrap();
 
-    let live = BootstrapCredentialStore
+    let live = BootstrapCredentialStore::default()
         .issue_for_zero_credential_user(
             &pool,
             None,

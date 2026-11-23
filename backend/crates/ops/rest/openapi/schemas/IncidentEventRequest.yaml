@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["event", "fields"]
+properties:
+  expected_seq: {"type": "integer", "minimum": 1}
+  prev: {"type": "integer", "minimum": 1}
+  event: {"type": "string", "enum": ["lead_assigned", "note_added", "severity_changed", "status_changed", "postmortem_linked", "public_attached", "mitigation_added", "notice_sent", "resolved"]}
+  fields: {"type": "object"}

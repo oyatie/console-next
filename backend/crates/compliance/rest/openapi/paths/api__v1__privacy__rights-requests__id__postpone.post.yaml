@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [Compliance]
+operationId: postponePrivacyRightsRequest
+summary: Postpone one requested privacy right with bound passkey step-up and SoD enforcement
+security: [{ bearerAuth: [] }]
+description: >
+  Requires a fresh PRIVACY_REQUEST_DECIDE passkey step-up bound to the request UUID
+  and SHA-256 of the serialized postponement payload (kind, reason, note, decided_on).
+parameters:
+- { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 16, maxLength: 200 } }
+- { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        additionalProperties: false
+        required: [kind, reason, note, step_up]
+        properties:
+          kind: { type: string, enum: [ACCESS, CORRECTION, DELETION, SUSPENSION, WITHDRAWAL] }
+          reason: { type: string }
+          note: { type: string }
+          decided_on: { type: string, format: date, nullable: true }
+          step_up: { $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope' }
+responses:
+  '200': { description: Updated privacy rights receipt or exact idempotent replay., content: { application/json: { schema: { $ref: '#/components/schemas/PrivacyRightsReceipt' } } } }
+  '401': { $ref: '#/components/responses/Unauthorized' }
+  '403': { $ref: '#/components/responses/Forbidden' }
+  '404': { $ref: '#/components/responses/NotFound' }
+  '409': { $ref: '#/components/responses/Conflict' }
+  '422': { $ref: '#/components/responses/ValidationError' }
+  '503': { $ref: '#/components/responses/ServiceUnavailable' }

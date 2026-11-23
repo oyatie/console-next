@@ -1,0 +1,48 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.nav {
+  display: flex;
+  flex-direction: column;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: var(--row-h);
+  padding: var(--space-2) var(--space-3);
+  border-block-end: 1px solid var(--border-soft);
+  color: var(--ink);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-medium);
+  text-decoration: none;
+}
+
+.item:hover {
+  background: var(--surface-hover);
+}
+
+.item[aria-current="page"] {
+  background: var(--surface-selected);
+  box-shadow: var(--selected-bar);
+  font-weight: var(--fw-semibold);
+}
+
+@media (--phone) {
+  .nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .item {
+    width: auto;
+    flex: 1 1 auto;
+    justify-content: center;
+    min-height: var(--target-touch);
+    border-block-end: 0;
+    border-inline-end: 1px solid var(--border-soft);
+    border-block-start: 1px solid var(--border-soft);
+    white-space: nowrap;
+  }
+}

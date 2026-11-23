@@ -23,14 +23,26 @@ export function useChartState(
   setSel: (next: ReadonlySet<string>, gather?: boolean) => void,
   /** The find's text (the page toolbar owns the field). */
   q = "",
+  options?: { depth?: Depth; onDepth?: (d: Depth) => void },
 ) {
   const focus = (focusId && s.byId.get(focusId)) || s.root;
   const before = kept.get(focus.id);
-  const [depth, setDepthRaw] = useState<Depth>(before?.depth ?? (focus.kind === "tenant" ? "sites" : "one"));
+  const [depth, setDepthRaw] = useState<Depth>(before?.depth ?? options?.depth ?? (focus.kind === "tenant" ? "sites" : "one"));
+  const [syncedDepth, setSyncedDepth] = useState<Depth | undefined>(options?.depth);
   // A single selection arriving with the view (⌘K, a change's result) opens its path and itself, and takes the cursor.
   const arrived = sel.size === 1 ? s.byId.get([...sel][0]!) : undefined;
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set([...(before?.expanded ?? expandedFor(focus, depth)), ...(arrived ? pathTo(s, arrived.id).map((n) => n.id) : [])]));
+  if (options?.depth !== undefined && options.depth !== syncedDepth) {
+    setSyncedDepth(options.depth);
+    if (options.depth !== depth) {
+      setDepthRaw(options.depth);
+      setExpanded(expandedFor(focus, options.depth));
+    }
+  }
   useEffect(() => void kept.set(focus.id, { depth, expanded: [...expanded] }), [focus.id, depth, expanded]);
+  useEffect(() => {
+    if (options?.onDepth && depth !== options.depth) options.onDepth(depth);
+  }, [depth, options]);
   // A unit that appears in a re-read (a change just applied) is drawn: the way to it opens (org-22).
   const known = useRef<ReadonlySet<string> | null>(null);
   useEffect(() => {

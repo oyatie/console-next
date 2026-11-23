@@ -90,11 +90,19 @@ test("a failed live chunk has one recovery screen and reload restores the same s
   await mockRoute(page, "post", "/api/v1/auth/otp/redeem", { status: 200, json: token() });
   const liveAsset = (url: URL) => /\/live-[^/]+\.js$/.test(url.pathname);
   await page.route(liveAsset, route => route.fulfill({ status: 404, body: "" }));
+  await page.addInitScript(() => {
+    if (!sessionStorage.getItem("__e2e_chunk_barrier__")) {
+      sessionStorage.setItem("__e2e_chunk_barrier__", "1");
+      sessionStorage.setItem("console.chunk-reload:__ready__", "1");
+    }
+  });
   await page.goto("/login");
+  await page.waitForFunction(() => sessionStorage.getItem("console.chunk-reload:__ready__") === null);
   // Exercise the exhausted automatic reload, so the next recovery belongs to the user.
   await page.evaluate(() => {
     const entry = document.querySelector<HTMLScriptElement>('script[type="module"][src]')!;
     sessionStorage.setItem(`console.chunk-reload:${entry.src}`, "1");
+    (window as unknown as { __noReload?: boolean }).__noReload = true;
   });
   await page.locator("summary").click();
   await page.getByRole("textbox", { name: t("auth.login.code"), exact: true }).fill("ABCD-EFGH");
@@ -104,6 +112,7 @@ test("a failed live chunk has one recovery screen and reload restores the same s
   await page.waitForLoadState("networkidle");
   await expect(heading).toHaveCount(1);
   await expect(heading).toBeInViewport();
+  expect(await page.evaluate(() => (window as unknown as { __noReload?: boolean }).__noReload)).toBe(true);
   const reload = page.getByRole("button", { name: t("common.crashed.action"), exact: true });
   await expect(reload).toHaveCount(1);
   await expect(reload).toBeInViewport();

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
+x-console-authz: {"permission": "audit:view", "scope": "tenant"}
 tags: [access]
 operationId: listAccessLog
 summary: Tenant access records with monthly flag totals

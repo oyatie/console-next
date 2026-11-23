@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required: [period, scope, reviewer, started_at, reviewed_at, due, flags_seen, findings, follow_up, state]
+properties:
+  id:
+    type: string
+    format: uuid
+  period:
+    description: Review period metadata or YYYY-MM label before start.
+    oneOf:
+      - type: string
+      - type: object
+        properties:
+          from: { type: string, format: date-time }
+          to: { type: string, format: date-time }
+          time_zone: { type: string }
+  scope:
+    type: string
+  reviewer:
+    type: [string, 'null']
+    format: uuid
+  started_at:
+    type: [string, 'null']
+    format: date-time
+  reviewed_at:
+    type: [string, 'null']
+    format: date-time
+  due:
+    type: string
+    format: date-time
+  flags_seen:
+    type: object
+    nullable: true
+    additionalProperties: true
+  findings:
+    type: array
+    items:
+      type: object
+      additionalProperties: true
+  follow_up:
+    type: object
+    required: [open, total]
+    properties:
+      open: { type: integer, minimum: 0 }
+      total: { type: integer, minimum: 0 }
+  state:
+    type: string
+    enum: [not_started, open, overdue, complete]

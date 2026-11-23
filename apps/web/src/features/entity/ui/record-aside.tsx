@@ -8,6 +8,7 @@ import { fmtDate, fmtDateTime, fmtNumber } from "@console/i18n/format";
 import { todayKst } from "../../../lib/pure/today";
 import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
+import { StatRow } from "../../../ui/key-value/key-value";
 import { entityEndQuery, entityHistoryQuery } from "../api";
 import { refusalText } from "../../../reference/crud/present";
 import { NtsCheck } from "./nts-check";
@@ -32,7 +33,7 @@ function todos(e: LegalEntity) {
 }
 
 /** The side column (spec S3): where the record stands, its latest history, how it closes, and its kept originals. */
-export function RecordAside({ e, phase, depts, docs, act, onTab }: { e: LegalEntity; phase?: string; depts: number; docs: EntityDocument[] | null; act: Act; onTab: (tab: "history" | "documents") => void }) {
+export function RecordAside({ e, phase, depts, docs, act, onTab, flat }: { e: LegalEntity; phase?: string; depts: number; docs: EntityDocument[] | null; act: Act; onTab: (tab: "history" | "documents") => void; flat?: boolean }) {
   const primary = primaryRegistration(e);
   const lock = useRecordLock();
   const locked = lock !== null;
@@ -43,50 +44,67 @@ export function RecordAside({ e, phase, depts, docs, act, onTab }: { e: LegalEnt
   const history = useQuery({ ...entityHistoryQuery(e.id), retry: false });
   const items: Revision[] = history.data?.items ?? [];
   const left = todos(e);
+  const todo = left.length > 0 ? <p className={s.todo}><TriangleAlert size={14} aria-hidden /> {t("entityRecord.state.todos", { count: left.length, first: left[0] })}</p> : null;
+  const card = flat ? undefined : "card";
   return (
     <aside className={s.aside}>
-      {primary && <NtsCheck historical={lock === "asof"} registration={primary} entity={e} canManage={e.can_manage && !locked} onAttach={() => act.attach(primary.id)} />}
-      <section className="card" aria-labelledby="state-title">
+      {primary && <NtsCheck flat={flat} historical={lock === "asof"} registration={primary} entity={e} canManage={e.can_manage && !locked} onAttach={() => act.attach(primary.id)} />}
+      <section className={card} aria-labelledby="state-title">
         <div className={s.cardHead}><h2 id="state-title" className={s.cardTitle}>{t("entityRecord.state.title", { date: fmtDate(e.as_of ?? todayKst()) })}</h2><Chip tone={labeled(ENTITY_PHASE, setup ? "setup" : "operating").tone}>{t(setup ? "entityRecord.phase.setup" : "entityRecord.phase.operating")}</Chip></div>
-        <div className={s.cardBody}>
-          <div className={s.stats}>
-            <div><small>{t("entityRecord.state.people")}</small><b className="num">{fmtNumber(headcount(e))}</b></div>
-            <div><small>{t("entityRecord.state.workplaces")}</small><b className="num">{fmtNumber(e.workplaces.length)}</b></div>
-            <div><small>{t("entityRecord.state.depts")}</small><b className="num">{fmtNumber(depts)}</b></div>
+        {flat ? (
+          <>
+            <StatRow
+              items={[
+                { key: "people", label: t("entityRecord.state.people"), value: fmtNumber(headcount(e)) },
+                { key: "workplaces", label: t("entityRecord.state.workplaces"), value: fmtNumber(e.workplaces.length) },
+                { key: "depts", label: t("entityRecord.state.depts"), value: fmtNumber(depts) },
+              ]}
+            />
+            {todo && <div className={s.cardBody}>{todo}</div>}
+          </>
+        ) : (
+          <div className={s.cardBody}>
+            <div className={s.stats}>
+              <div><small>{t("entityRecord.state.people")}</small><b className="num">{fmtNumber(headcount(e))}</b></div>
+              <div><small>{t("entityRecord.state.workplaces")}</small><b className="num">{fmtNumber(e.workplaces.length)}</b></div>
+              <div><small>{t("entityRecord.state.depts")}</small><b className="num">{fmtNumber(depts)}</b></div>
+            </div>
+            {todo}
           </div>
-          {left.length > 0 && <p className={s.todo}><TriangleAlert size={14} aria-hidden /> {t("entityRecord.state.todos", { count: left.length, first: left[0] })}</p>}
-        </div>
+        )}
       </section>
-      <section className="card" aria-labelledby="hist-title">
-        <div className={s.cardHead}>
-          <h2 id="hist-title" className={s.cardTitle}>{t("entityRecord.history.title")}</h2>
-          <span className="grow" />
-          {history.isSuccess && <Button variant="ghost" onClick={() => onTab("history")}>{t("entityRecord.history.all", { count: items.length })}</Button>}
-        </div>
-        <QueryState q={history}>{() => <ol className={s.timeline}>
-          {[...e.scheduled].reverse().filter((x) => !items.slice(0, 4).some((r) => r.version === x.version)).map((x) => (
-            <li key={`s${x.version}`} data-t="plan"><span className={s.when}>{t("entityRecord.history.scheduled", { date: fmtDate(x.effective_from) })}</span><b>{t("entityRecord.history.scheduledWhat")}</b></li>
-          ))}
-          {items.slice(0, 4).map((r) => {
-            const kind = revisionKind(r);
-            const derived = kind === "derived" || kind === "declared";
-            const future = r.effective_from > (e.as_of ?? todayKst());
-            return (
-              <li key={r.version} data-t={kind === "corrected" ? "fix" : kind === "created" ? "new" : "rev"}>
-                {/* The record time is an instant: its day is Korea's, never the UTC date's (TS-21). */}
-                <span className={s.when}>{fmtDateTime(r.recorded_at)}{r.effective_from !== recordedDay(r.recorded_at) && ` · ${t(future ? "entityRecord.history.scheduled" : "entityRecord.history.from", { date: fmtDate(r.effective_from) })}`}</span>
-                <b>{t(`entityRecord.history.${kind}`)}</b>
-                {/* company-19: what changed, old → new, and why (the first two fields; the history tab has them all). */}
-                {!derived && r.changes.length > 0 && <span>{[r.changes.slice(0, 2).map(changeLine).join(" · "), reasonText(r.reason_code)].filter(Boolean).join(" · ")}</span>}
-                {kind !== "derived" && <span className={s.when}>{r.actor_name}</span>}
-                <Link to="/org/entities/$id" params={{ id: e.id }} search={{ as_of: r.effective_from, known_at: r.recorded_at }}>{t("asof.viewMoment")}</Link>
-              </li>
-            );
-          })}
-        </ol>}</QueryState>
-      </section>
+      {(!flat || history.isError || items.length > 0 || e.scheduled.length > 0) && (
+        <section className={card} aria-labelledby="hist-title">
+          <div className={s.cardHead}>
+            <h2 id="hist-title" className={s.cardTitle}>{t("entityRecord.history.title")}</h2>
+            <span className="grow" />
+            {history.isSuccess && <Button variant="ghost" onClick={() => onTab("history")}>{t("entityRecord.history.all", { count: items.length })}</Button>}
+          </div>
+          <QueryState q={history}>{() => <ol className={s.timeline}>
+            {[...e.scheduled].reverse().filter((x) => !items.slice(0, 4).some((r) => r.version === x.version)).map((x) => (
+              <li key={`s${x.version}`} data-t="plan"><span className={s.when}>{t("entityRecord.history.scheduled", { date: fmtDate(x.effective_from) })}</span><b>{t("entityRecord.history.scheduledWhat")}</b></li>
+            ))}
+            {items.slice(0, 4).map((r) => {
+              const kind = revisionKind(r);
+              const derived = kind === "derived" || kind === "declared";
+              const future = r.effective_from > (e.as_of ?? todayKst());
+              return (
+                <li key={r.version} data-t={kind === "corrected" ? "fix" : kind === "created" ? "new" : "rev"}>
+                  {/* The record time is an instant: its day is Korea's, never the UTC date's (TS-21). */}
+                  <span className={s.when}>{fmtDateTime(r.recorded_at)}{r.effective_from !== recordedDay(r.recorded_at) && ` · ${t(future ? "entityRecord.history.scheduled" : "entityRecord.history.from", { date: fmtDate(r.effective_from) })}`}</span>
+                  <b>{t(`entityRecord.history.${kind}`)}</b>
+                  {/* company-19: what changed, old → new, and why (the first two fields; the history tab has them all). */}
+                  {!derived && r.changes.length > 0 && <span>{[r.changes.slice(0, 2).map(changeLine).join(" · "), reasonText(r.reason_code)].filter(Boolean).join(" · ")}</span>}
+                  {kind !== "derived" && <span className={s.when}>{r.actor_name}</span>}
+                  <Link to="/org/entities/$id" params={{ id: e.id }} search={{ as_of: r.effective_from, known_at: r.recorded_at }}>{t("asof.viewMoment")}</Link>
+                </li>
+              );
+            })}
+          </ol>}</QueryState>
+        </section>
+      )}
       {/* worst-case-08: a reader who may not manage this entity is offered no way to end it. */}
-      {(e.can_manage || e.closed_on) && <section className="card" aria-labelledby="close-title">
+      {(e.can_manage || e.closed_on) && <section className={card} aria-labelledby="close-title">
         <div className={s.cardHead}><h2 id="close-title" className={s.cardTitle}>{t("entityRecord.close.title")}</h2></div>
         <div className={s.cardBody}>
           {e.closed_on ? (
@@ -105,8 +123,8 @@ export function RecordAside({ e, phase, depts, docs, act, onTab }: { e: LegalEnt
           )}
         </div>
       </section>}
-      {docs && (
-        <section className="card" aria-labelledby="docs-title">
+      {docs && (!flat || docs.length > 0) && (
+        <section className={card} aria-labelledby="docs-title">
           <div className={s.cardHead}>
             <h2 id="docs-title" className={s.cardTitle}>{t("entityRecord.docs.title")}</h2>
             <span className="grow" />

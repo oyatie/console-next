@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+operationId: "opsAlertAck"
+summary: "Acknowledge AlertGroup"
+x-cedar-action: "alert.ack"
+security: [{"accessJwt": []}]
+description: "Access JWT identity only; Cedar decides before reading or writing. Non-GET/HEAD requires configured Origin plus Sec-Fetch-Site: same-origin."
+parameters: [{"in": "path", "name": "key", "required": true, "schema": {"$ref": "#/components/schemas/Text"}}]
+requestBody: {"required": false, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AckRequest"}}}}
+responses: {"200": {"description": "Alert group acknowledged and recorded.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AckResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}

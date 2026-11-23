@@ -33,8 +33,11 @@ export const koRosterFields: Record<keyof typeof enRosterFields, string> = {
   "rosterFields.choices.missing": "선택지를 하나 이상 입력하십시오",
   "rosterFields.choices.more": "선택지 추가 (한 줄에 하나)",
   "rosterFields.edit": "{label} 수정",
+  "rosterFields.action.edit": "수정",
   "rosterFields.edit.title": "{label} 항목 수정",
   "rosterFields.edit.commit": "항목 저장",
   "rosterFields.retire": "{label} 사용 중지",
+  "rosterFields.action.retire": "사용 중지",
   "rosterFields.restore": "{label} 다시 사용",
+  "rosterFields.action.restore": "다시 사용",
 };

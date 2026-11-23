@@ -4,7 +4,7 @@ import { dirname } from "node:path";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { expect as element } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
-import { browserTestOptimizeDeps, chromium, type Browser, type Page } from "../../lib/browser-test";
+import { browserTestOptimizeDeps, chromium, openBrowserTestPage, type Browser, type Page } from "../../lib/browser-test";
 
 const [fixture] = Object.values(import.meta.glob<string>("./month-grid.browser-fixture.tsx", { query: "?url", import: "default", eager: true }));
 let server: ViteDevServer;
@@ -25,8 +25,7 @@ afterAll(async () => { await browser?.close(); await server?.close(); });
 // October 2026 is drawn in five weeks, from Sunday 27 September to Saturday 31 October. Its first day is a Thursday.
 const open = async (query = "", size = { width: 1280, height: 720 }) => {
   await page.setViewportSize(size);
-  await page.goto(`${server.resolvedUrls!.local[0]}month-test${query}`);
-  await element(page.getByRole("grid", { name: "October 2026" })).toBeVisible();
+  await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}month-test${query}`, page.getByRole("grid", { name: "October 2026" }));
 };
 const day = (date: string) => page.getByRole("gridcell").and(page.locator(`[data-date="${date}"]`));
 /** Focus is on that day, and it is the grid's one tab stop. */
@@ -60,6 +59,9 @@ test("Up in the first week stays on the day, from the tab stop and from a day th
   await on("2026-09-29");
   await press("ArrowUp");
   await on("2026-09-29");
+  await day("2026-09-27").click();
+  await press("ArrowUp");
+  await on("2026-09-27");
 });
 
 test("Down in the last week stays on the day, reached by arrows and by a click, and does not scroll the page", async () => {
@@ -76,6 +78,9 @@ test("Down in the last week stays on the day, reached by arrows and by a click, 
   await on("2026-10-26");
   await press("ArrowDown");
   await on("2026-10-26");
+  await day("2026-10-31").click();
+  await press("ArrowDown");
+  await on("2026-10-31");
 });
 
 test("the other keys move as the design page says: a week up or down, across a week's end, to a week's ends, and no further than the days shown", async () => {
@@ -111,6 +116,14 @@ test("the other keys move as the design page says: a week up or down, across a w
   await on("2026-10-18");
 });
 
+test("End on a last week shorter than seven days goes to that week's last day", async () => {
+  await open("?ragged");
+  await day("2026-10-04").click();
+  await press("End");
+  await on("2026-10-06");
+  await key("End taken");
+});
+
 test("a key the grid has no use for is left to the browser: Page Up and Page Down, a letter, and with nothing to choose Enter and Space", async () => {
   await open();
   await tabIn();
@@ -126,6 +139,15 @@ test("a key the grid has no use for is left to the browser: Page Up and Page Dow
   await on("2026-10-02");
   await press("Shift+Tab");
   await element(page.getByRole("button", { name: "Before" })).toBeFocused();
+});
+
+test("a selected day with nothing to choose is the tab stop and is not marked, and Space is left to the browser", async () => {
+  await open("?selected=2026-10-15");
+  await page.getByRole("button", { name: "Before" }).focus();
+  await press("Tab", "Space");
+  await on("2026-10-15");
+  await key("Space left");
+  await element(day("2026-10-15")).not.toHaveAttribute("aria-selected");
 });
 
 test("with a day to choose, Enter, Space and a click choose the focused day", async () => {

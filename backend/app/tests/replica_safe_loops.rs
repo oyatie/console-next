@@ -33,6 +33,10 @@ const LOOPS: &[(&str, &str)] = &[
         "per-account claim lease (migration 0116)",
     ),
     (
+        "crates/ops/rest/src/lib.rs",
+        "process-local snapshot and JWKS state via read-only upstream polls, no shared writes",
+    ),
+    (
         "crates/platform/audit-chain/src/lib.rs",
         "per-org pg_advisory_xact_lock",
     ),

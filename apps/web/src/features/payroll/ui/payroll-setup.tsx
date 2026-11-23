@@ -10,8 +10,13 @@ import { Button } from "../../../ui/button/button";
 import { EmptyState } from "../../../ui/empty-state";
 import { payGroupsQuery } from "../api";
 import { PayGroupSheet } from "./pay-group-sheet";
+import { PayrollSetupConsole } from "./payroll-setup-console";
 
 export function PayrollSetup() {
+  return <PayrollSetupConsole baseline={() => <BaselinePayrollSetup />} />;
+}
+
+function BaselinePayrollSetup() {
   const groups = useQuery(payGroupsQuery);
   const [open, setOpen] = useState(false);
   return <Page floorplan="P-05" head={{ title: t("payroll.setup.page"), tools: <Link to="/payroll">{t("payroll.title")}</Link> }}>

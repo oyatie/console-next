@@ -4,22 +4,25 @@ use crate::HrError;
 
 pub(super) const ITEMS: &[&str] = &["period", "duty", "position", "wage", "birth"];
 pub(super) fn issue(body: &IssueCertificateRequest) -> Result<(), HrError> {
-    if !["EMPLOYMENT", "CAREER", "EXIT"].contains(&body.kind.as_str())
-        || body.items.is_empty()
-        || body.items.len() > ITEMS.len()
-        || body.items.iter().any(|key| !ITEMS.contains(&key.as_str()))
-        || body
-            .items
+    issue_fields(&body.kind, &body.items, &body.purpose)
+}
+
+pub(super) fn issue_fields(kind: &str, items: &[String], purpose: &str) -> Result<(), HrError> {
+    if !["EMPLOYMENT", "CAREER", "EXIT"].contains(&kind)
+        || items.is_empty()
+        || items.len() > ITEMS.len()
+        || items.iter().any(|key| !ITEMS.contains(&key.as_str()))
+        || items
             .iter()
             .collect::<std::collections::BTreeSet<_>>()
             .len()
-            != body.items.len()
+            != items.len()
     {
         return Err(invalid(
             "choose a certificate kind and distinct requested items",
         ));
     }
-    text(&body.purpose, 200)?;
+    text(purpose, 200)?;
     Ok(())
 }
 pub(super) fn text(raw: &str, max: usize) -> Result<String, HrError> {

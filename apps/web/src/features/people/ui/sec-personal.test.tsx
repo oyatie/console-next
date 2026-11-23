@@ -18,14 +18,14 @@ vi.mock("./photo-row", () => ({ PhotoRow: () => null }));
 vi.mock("./emergency-contacts", () => ({ EmergencyContacts: () => null }));
 beforeAll(() => loadCatalog("ko"));
 
-function card(readable: boolean, editable = false, recorded = false, status = "ACTIVE") {
+function card(readable: boolean, editable = false, recorded = false, status = "ACTIVE", idType?: string) {
   rrnRead.recorded = recorded;
   const c = { e: { id: "person", name: "한기록", employee_number: "1001", status },
     // The reads carry only the server's masks; the clear value opens through the reveal alone.
     d: { employment: { phone_e164: "010-••••-5821" } }, readable, editable,
     personal: { data: { personal_email: "••••" } },
     register: { data: { address: "••••" } },
-    facts: { data: { birth_date: "••••-••-••" } },
+    facts: { data: { birth_date: "••••-••-••", ...(idType ? { id_type: idType } : {}) } },
   } as unknown as Card;
   const quick = { conflictFor: () => undefined } as unknown as Quick;
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -70,4 +70,9 @@ test("recording is offered only on an editable readable card without a number", 
 test("a readable editable card respects the server's recording refusal", () => {
   rrnRead.can_record = false;
   expect(card(true, true)).not.toContain(">기록</button>");
+});
+
+test("NOT_ISSUED id_type shows follow-up indicator on RrnField when unrecorded", () => {
+  const html = card(true, true, false, "PRE_HIRE", "NOT_ISSUED");
+  expect(html).toContain(t("enum.idType.NOT_ISSUED"));
 });

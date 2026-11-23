@@ -26,6 +26,8 @@ export type PickerEscape =
  */
 export function ServerPicker(p: {
   label: string;
+  placeholder?: string;
+  hideLabel?: boolean;
   query: string;
   onQueryChange: (q: string) => void;
   options: PickerOption[];
@@ -108,10 +110,10 @@ export function ServerPicker(p: {
         isInvalid={p.error != null || undefined}
         data-form-value={p.value ?? ""}
       >
-        <Label className="field__label">{p.label}</Label>
+        <Label className={p.hideLabel ? "field__label sr-only" : "field__label"}>{p.label}</Label>
         <div className={css.input}>
           <Search aria-hidden="true" className={css.icon} />
-          <Input ref={input} className="field__input" onKeyDownCapture={leaveImeKey} />
+          <Input ref={input} className="field__input" placeholder={p.placeholder} onKeyDownCapture={leaveImeKey} />
         </div>
         {p.disabledReason && <Text slot="description" className={css.sub}>{p.disabledReason}</Text>}
         {(p.reserveError || p.error != null) && <div className={css.feedback} data-reserved={p.reserveError || undefined}>

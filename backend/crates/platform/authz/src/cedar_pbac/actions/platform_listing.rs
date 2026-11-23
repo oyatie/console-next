@@ -9,7 +9,7 @@ action platform_listing appliesTo { principal: [Subject], resource: [Resource],
 };"#;
 const POLICIES: &str = r#"permit (principal, action == Action::"platform_listing", resource)
 when { principal.org == resource.org && principal.roles.contains("SUPER_ADMIN")
-  && context.platform && ["groups", "tenants", "health"].contains(context.operation) };"#;
+  && context.platform && ["groups", "tenants", "health", "operators"].contains(context.operation) };"#;
 
 pub fn decide(user: &str, org: &str, roles: &[&str], platform: bool, operation: &str) -> bool {
     static BUNDLE: OnceLock<Result<ActionBundle, String>> = OnceLock::new();
@@ -39,7 +39,7 @@ mod tests {
     use super::*;
     #[test]
     fn only_current_platform_operators_may_list() {
-        for operation in ["groups", "tenants", "health"] {
+        for operation in ["groups", "tenants", "health", "operators"] {
             assert!(decide("u", "o", &["SUPER_ADMIN"], true, operation));
             assert!(!decide("u", "o", &["ADMIN"], true, operation));
             assert!(!decide("u", "o", &[], true, operation));

@@ -4,6 +4,17 @@
 .boardPage > .monthPage, .boardPage > .dayPage { flex: 1; }
 .toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-2); }
 .scopeSelect { min-inline-size: calc(var(--space-6) * 6); }
+.scopeCompact { min-width: 0; max-width: 100%; flex-shrink: 1; }
+.filterPair { display: inline-flex; align-items: center; gap: var(--space-2); min-width: 0; max-width: 100%; }
+@media (--phone) {
+  .filterPair { display: flex; width: 100%; }
+  .scopeCompact { flex: 1 1 0%; }
+}
+.headTools { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-width: 0; }
+.headActions { display: inline-flex; align-items: center; gap: var(--space-2); flex-shrink: 0; white-space: nowrap; }
+.nowrap { white-space: nowrap; flex-shrink: 0; }
+.phoneOnly { display: none; }
+@media (--phone) { .phoneOnly { display: inline; } }
 .selection { margin: 0; }
 /* The grid and a docked sheet side by side; the grid reflows (all four totals stay) rather than folding columns. */
 .monthLayout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; min-height: 0; }

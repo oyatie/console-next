@@ -1,0 +1,255 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.totalsGrid {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: stretch;
+  min-width: 0;
+}
+
+.totalsStats {
+  min-width: 0;
+}
+
+@media (min-width: 961px) {
+  .totalsStats dd {
+    font-size: var(--text-xl);
+    white-space: nowrap;
+  }
+}
+
+.stageCell {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-4);
+  border-inline-end: 1px solid var(--border);
+  min-width: 0;
+}
+
+.stageLabel {
+  font-size: var(--text-xs);
+  color: var(--steel);
+  white-space: nowrap;
+}
+
+.blockerRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  width: 100%;
+  min-width: 0;
+}
+
+.blockerTitle {
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--ink);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.blockerItem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  font-size: var(--text-xs);
+  color: var(--steel);
+}
+
+.blockerSubject {
+  font-weight: var(--fw-semibold);
+  color: var(--ink);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.blockerNote {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.blockerAction {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.footBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding: var(--space-1-5) var(--space-4);
+  background: var(--surface);
+  border-block-end: 1px solid var(--border-strong);
+  font-size: var(--text-xs);
+  color: var(--steel);
+}
+
+.footLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.footRange {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.footActions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.previewCols {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  min-width: 0;
+}
+
+.previewCol {
+  min-width: 0;
+}
+
+.previewCol + .previewCol {
+  border-inline-start: 1px solid var(--border);
+}
+
+.netBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  min-width: 0;
+}
+
+.netHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.netFormula {
+  font-size: var(--text-xs);
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.heroFigure {
+  font-size: var(--text-2xl);
+  font-weight: var(--fw-strong);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  line-height: var(--lh-tight);
+  white-space: nowrap;
+}
+
+.netDetails {
+  padding-block-start: var(--space-2);
+  border-block-start: 1px solid var(--border-soft);
+  min-width: 0;
+}
+
+.toolbarSelect {
+  min-width: 0;
+  max-width: 100%;
+  flex-shrink: 0;
+}
+
+.toolbarSelect button {
+  min-height: var(--field-h-toolbar);
+  padding-inline: var(--space-2);
+  gap: var(--space-1-5);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+}
+
+.toolbarSearch {
+  width: calc(var(--space-6) * 7.5);
+  max-width: 100%;
+  min-width: 0;
+}
+
+.toolbarSearch :global(.field__input) {
+  height: var(--field-h-toolbar);
+  font-size: var(--text-sm);
+}
+
+.bankStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-size: var(--text-xs);
+}
+
+.nowrap {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.phoneOnly {
+  display: none;
+}
+
+.sheetPreviewList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+@container list-table (max-width: 480px) {
+  .phoneOnly {
+    display: inline;
+  }
+}
+
+@media (--below-wide) {
+  .totalsGrid,
+  .previewCols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .stageCell {
+    border-inline-end: 0;
+    border-block-end: 1px solid var(--border);
+  }
+
+  .previewCol + .previewCol {
+    border-inline-start: 0;
+    border-block-start: 1px solid var(--border);
+  }
+}
+
+@media (--phone) {
+  .stageCell,
+  .footBar,
+  .netBox {
+    padding-inline: var(--space-3);
+  }
+
+  .toolbarSearch {
+    width: 100%;
+  }
+}
+
+@media (max-width: 359px) {
+  .heroFigure {
+    font-size: var(--text-xl);
+  }
+}

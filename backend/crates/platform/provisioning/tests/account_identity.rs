@@ -692,7 +692,7 @@ async fn reset_owner_removal_and_late_audit_failure_are_atomic(owner: PgPool) {
     removal_key(&owner, org, user, key).await;
     let rt = login(&owner, false, "removal-reset").await;
     sqlx::raw_sql("CREATE FUNCTION public.test_removal_audit_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action='auth.passkey.admin_reset' THEN RAISE EXCEPTION 'removal_audit_failed'; END IF; RETURN NEW; END $$; CREATE TRIGGER test_removal_audit_failure BEFORE INSERT ON public.audit_events FOR EACH ROW EXECUTE FUNCTION public.test_removal_audit_failure();").execute(&owner).await.unwrap();
-    let error = BootstrapCredentialStore
+    let error = BootstrapCredentialStore::default()
         .reset_credentials_for_user(
             &rt,
             UserId::from_uuid(user),
@@ -711,7 +711,7 @@ async fn reset_owner_removal_and_late_audit_failure_are_atomic(owner: PgPool) {
         .execute(&owner)
         .await
         .unwrap();
-    BootstrapCredentialStore
+    BootstrapCredentialStore::default()
         .reset_credentials_for_user(
             &rt,
             UserId::from_uuid(user),

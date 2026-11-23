@@ -1,5 +1,5 @@
 import { verificationState } from "../present";
-import { useEffect, useState, type ReactNode } from "react";
+import { useContext, useEffect, useState, type ReactNode } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { Network, PencilLine, Plus } from "lucide-react";
@@ -8,34 +8,33 @@ import { t } from "@console/i18n";
 import { BIZ_KIND, label } from "../../../lib/labels";
 import { useFreshOnArrival } from "../../../lib/react/arrival";
 import { QueryState } from "../../../lib/react/query-state";
-import { myAccessQuery } from "../../../reference/authz/api";
 import { PageReadGate } from "../../../reference/authz/ui/access-gate";
-import { checklistRef, orgStructureAt } from "../../../reference/entity/api";
-import { settingsQuery } from "../../../reference/settings/api";
-import { ReadSkeleton } from "../../../ui/skeleton/skeleton";
+import { orgStructureAt } from "../../../reference/entity/api";
+import { myAccessQuery } from "../../../reference/authz/api";
 import { todayKst } from "../../../lib/pure/today";
 import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
 import { EnumValue } from "../../../ui/enum-value";
 import { ENTITY_LIFECYCLE, RECORD_STATUS } from "../../../lib/labels";
 import { PageHead } from "../../../ui/page-head/page-head";
+import { PagePhase } from "../../../ui/page/page-scope";
 import { Crumbs } from "../../../ui/page-head/crumbs";
+import { ExperienceSwitch } from "../../../ui/patterns/pattern-shell";
+import { RecordPattern } from "../../../ui/patterns/record";
 import { Tabs } from "../../../ui/tabs/tabs";
 import { entityDocumentsQuery, entityHistoryQuery, entityQuery } from "../api";
-import { officers, primaryRegistration } from "../domain/view";
+import { headcount, officers, primaryRegistration } from "../domain/view";
 import { TABS, type Tab } from "../domain/tabs";
 import { entityName } from "../../../reference/entity/domain/names";
-import { unattached } from "../domain/attach";
 import { LockNotice } from "./record-lock";
-import { lockOf, RecordLockProvider, useRecordLock } from "./use-record-lock";
-import { AttachHost } from "./workplace-attach-sheet";
+import { lockOf, RecordLockProvider } from "./use-record-lock";
 import { FoundingCard } from "./record-founding";
 import { DocumentsTab } from "./documents-tab";
 import { HistoryTab } from "./history-tab";
 import { VoidEntity } from "./void-entity";
 import { OriginalSheet } from "./record-original-sheet";
 import { WorkplacesTab } from "./workplaces-tab";
-import { CertCard } from "./record-cert-card";
+import { CertCard, NoCertificate } from "./record-cert-card";
 import { CloseSheet } from "./record-close-sheet";
 import { CorrectionRegister } from "./correction-register";
 import { IdentifierSheet } from "./record-identifier-sheet";
@@ -82,21 +81,16 @@ export function EntityRecord({ id, workplace }: { id: string; workplace?: string
   const docsQ = useQuery({ ...entityDocumentsQuery(id), retry: false });
   const historyRead = entityHistoryQuery(id);
   const hist = useFreshOnArrival(useQuery({ ...historyRead, retry: false }), historyRead);
-  const phaseQ = useQuery(checklistRef);
   const access = useQuery(myAccessQuery);
-  const settings = useQuery(settingsQuery);
-  const [settled, setSettled] = useState(false);
-  const ready = [phaseQ, access, settings].every(q => q.data !== undefined || q.failureCount > 0);
-  // The first receipt belongs above the certificate; background reads keep the open record in place.
-  if (ready && !settled) setSettled(true);
-  const phase = phaseQ.data?.phase;
+  const phase = access.data?.phase;
+  const { settled } = useContext(PagePhase);
   const structure = useQuery(orgStructureAt(point));
   const node = structure.data?.entities.find((n) => n.id === id);
   const tab = nts ? "certificates" : urlTab ?? (workplace ? "workplaces" : "overview");
   const setTab = (next: Tab) => void navigate({ search: search => ({ ...search, tab: next, nts: undefined }), replace: true });
   useEffect(() => {
-    if (nts && tab === "certificates" && q.isSuccess) requestAnimationFrame(() => document.getElementById(`nts-${nts}`)?.scrollIntoView({ block: "center" }));
-  }, [nts, tab, q.isSuccess]);
+    if (settled && nts && tab === "certificates" && q.isSuccess) requestAnimationFrame(() => document.getElementById(`nts-${nts}`)?.scrollIntoView({ block: "center" }));
+  }, [settled, nts, tab, q.isSuccess]);
   const [sheet, setSheet] = useState<ReactNode>(null);
   const [displayed, setDisplayed] = useState(q.data);
   // A conflict re-reads the latest values for its sheet without moving the record behind it.
@@ -110,94 +104,129 @@ export function EntityRecord({ id, workplace }: { id: string; workplace?: string
     void navigate({ search: (search) => ({ ...search, wp: undefined, as_of: date === today ? undefined : date, known_at: knownAt }) });
   };
   const band = <AsOfBand asOf={as_of} knownAt={known_at} onChange={changeDate} />;
+  const back = { to: "/org/entities", label: t("denied.entity.back") } as const;
+  const removed = t("denied.entity.deleted.reason");
   const operating = phase === "OPERATING";
   const depts = countDepts(node);
-  const head = (e: LegalEntity, tabs: ReactNode) => {
+  const activeQ = sheet && displayed ? { ...q, data: displayed } : q;
+
+  const buildHeaderParts = (e: LegalEntity) => {
     const primary = primaryRegistration(e);
     const lock = temporal ? "asof" : lockOf(e, phase !== undefined);
     const v = primary ? verificationState(primary) : null;
+    const meta = (
+      <>
+        {e.biz_kind && <Chip tone="neutral">{label(BIZ_KIND, e.biz_kind)}</Chip>}
+        {/* company-05: an entity being founded reads as founding alone, never "continuing" beside it. */}
+        <EnumValue e={ENTITY_LIFECYCLE} value={e.founding ? "founding" : e.closed_on ? "closed" : "open"} />
+        {!e.closed_on && primary?.current?.status === "SUSPENDED" && <EnumValue e={RECORD_STATUS} value="SUSPENDED" />}
+        {v && <Chip tone="neutral">{v.label}</Chip>}
+      </>
+    );
+    const secondaryTools = (
+      <>
+        <Link to="/org" search={point} className="btn"><Network size={16} aria-hidden /> {t("entityRecord.action.chart")}</Link>
+        {(!lock || lock === "loading") && <Link to="/org/entities/$id/workplaces/new" params={{ id: e.id }} className="btn" disabled={lock === "loading"}><Plus size={16} aria-hidden /> {t("entityRecord.action.addWorkplace")}</Link>}
+      </>
+    );
+    const notes = (
+      <>
+        <NameProblems e={e} onCertificate={() => setTab("certificates")} review={(r) => <NameReview key={r.id} e={e} review={r} editable={e.can_manage && !lock} />} />
+        <LockNotice e={e} lock={lock === "loading" ? null : lock} />
+        {e.can_manage && <QueryState q={access} inline loading={<></>}>{() => null}</QueryState>}
+      </>
+    );
+    return { primary, lock, meta, secondaryTools, notes };
+  };
+
+  const buildBodyState = (e: LegalEntity) => {
+    const readOnly = temporal || Boolean(e.read_only) || phase === undefined;
+    const act: Act = {
+      field: <V,>(spec: FieldSpec<V>) => { if (!readOnly) setSheet(<ReviseSheet e={e} spec={spec} phase={phase} onClose={close} />); },
+      identifier: (field, registrationId) => { if (!readOnly) setSheet(<IdentifierSheet e={e} field={field} registrationId={registrationId ?? primaryRegistration(e)?.id} operating={operating} onClose={close} />); },
+      reissue: (registrationId) => void navigate({ search: (search) => ({ ...search, reissue: registrationId }) }),
+      attach: (registrationId) => { if (!readOnly) setSheet(<OriginalSheet entityId={e.id} registrationId={registrationId} onClose={close} />); },
+      close: () => { if (!readOnly) setSheet(<CloseSheet e={e} depts={depts} onClose={close} />); },
+      remove: () => { if (!readOnly) setSheet(<VoidEntity e={e} onClose={close} />); },
+    };
+    const primary = primaryRegistration(e);
+    const docs = docsQ.isSuccess ? docsQ.data.items : null;
+    const counts = {
+      certificates: e.registrations.length,
+      workplaces: e.workplaces.length,
+      officers: officers(e).length,
+      documents: docsQ.data?.items.length ?? "",
+      history: hist.data?.items.length ?? "",
+    };
+    const reissuing = reissue ? e.registrations.find((r) => r.id === reissue && !r.closed_on) : undefined;
+    const renderTab = (selected: string, flat: boolean) => (
+      <>
+        {selected === "overview" && (
+          <div className={s.col}>
+            {e.founding && <FoundingCard e={e} flat={flat} />}
+            {primary ? <CertCard e={e} r={primary} act={act} operating={operating} onOriginal={docs?.length ? () => setTab("documents") : undefined} flat={flat} /> : <NoCertificate e={e} flat={flat} />}
+            <RegistryCard e={e} act={act} flat={flat} />
+            <WorkplacesCard e={e} flat={flat} />
+            <VatCard e={e} act={act} flat={flat} />
+          </div>
+        )}
+        {selected === "certificates" && (
+          <div className={s.wide}>
+            {e.registrations.map((r) => <CertCard showCheck key={r.id} e={e} r={r} act={act} operating={operating} onOriginal={docs?.length ? () => setTab("documents") : undefined} flat={flat} />)}
+            {e.registrations.length === 0 && <NoCertificate e={e} flat={flat} />}
+          </div>
+        )}
+        {selected === "workplaces" && <div className={s.wide}><WorkplacesTab e={e} selected={workplace} flat={flat} /></div>}
+        {selected === "officers" && <div className={s.wide}><OfficersTab e={e} act={act} flat={flat} /></div>}
+        {selected === "documents" && <div className={s.wide}><QueryState q={docsQ}>{data => <DocumentsTab docs={data.items} flat={flat} />}</QueryState></div>}
+        {selected === "history" && <div className={s.wide}><HistoryTab e={e} flat={flat} /></div>}
+      </>
+    );
+    const overlays = (
+      <>
+        {!readOnly && sheet}
+        {!readOnly && reissuing && <ReissueSheet e={e} r={reissuing} phase={phase} onClose={() => void navigate({ search: (search) => ({ ...search, reissue: undefined }), replace: true })} />}
+      </>
+    );
+    return { readOnly, act, docs, counts, renderTab, overlays };
+  };
+
+  const renderBaselineHead = (e: LegalEntity, tabs: ReactNode) => {
+    const { lock, meta, secondaryTools, notes } = buildHeaderParts(e);
     return (
       <PageHead band
         title={<EntityName entity={e} />}
         crumbs={<Crumbs items={[<Link key="entities" to="/org/entities" search={point}>{t("entity.list.title")}</Link>]} current={entityName(e)} />}
-        meta={<>
-          {e.biz_kind && <Chip tone="neutral">{label(BIZ_KIND, e.biz_kind)}</Chip>}
-          {/* company-05: an entity being founded reads as founding alone, never "continuing" beside it. */}
-          <EnumValue e={ENTITY_LIFECYCLE} value={e.founding ? "founding" : e.closed_on ? "closed" : "open"} />
-          {!e.closed_on && primary?.current?.status === "SUSPENDED" && <EnumValue e={RECORD_STATUS} value="SUSPENDED" />}
-          {v && <Chip tone="neutral">{v.label}</Chip>}
-        </>}
+        meta={meta}
         tools={<>
-          <Link to="/org" search={point} className="btn"><Network size={16} aria-hidden /> {t("entityRecord.action.chart")}</Link>
-          {(!lock || lock === "loading") && <Link to="/org/entities/$id/workplaces/new" params={{ id: e.id }} className="btn" disabled={lock === "loading"}><Plus size={16} aria-hidden /> {t("entityRecord.action.addWorkplace")}</Link>}
+          {secondaryTools}
           {(!lock || lock === "loading") && <Button variant="primary" disabled={lock === "loading"} onClick={() => setTab("certificates")}><PencilLine size={16} aria-hidden /> {t("entityRecord.action.editByCert")}</Button>}
         </>}
-        sub={<>
-          <NameProblems e={e} onCertificate={() => setTab("certificates")} review={(r) => <NameReview key={r.id} e={e} review={r} editable={e.can_manage && !lock} />} />
-          <LockNotice e={e} lock={lock === "loading" ? null : lock} />
-          {e.can_manage && <QueryState q={phaseQ} inline loading={<></>}>{() => null}</QueryState>}
-        </>}
+        sub={notes}
         tabs={tabs}
       />
     );
   };
-  if (!settled && !ready && !q.error) return <ReadSkeleton layout="record" />;
-  return (
-    <div className={s.page}><PageReadGate q={q} title={t("entity.list.title")} back={{ to: "/org/entities", label: t("denied.entity.back") }} removed={t("denied.entity.deleted.reason")}>{band}
-    <QueryState q={sheet && displayed ? { ...q, data: displayed } : q} back={{ to: "/org/entities", label: t("denied.entity.back") }} removed={t("denied.entity.deleted.reason")} layout="record">
+
+  const renderBaseline = () => (
+    <div className={s.page}><PageReadGate q={q} title={t("entity.list.title")} back={back} removed={removed}>{band}
+    <QueryState q={activeQ} back={back} removed={removed} layout="record">
       {(e) => {
-        const readOnly = temporal || Boolean(e.read_only) || phase === undefined;
-        const act: Act = {
-          field: <V,>(spec: FieldSpec<V>) => { if (!readOnly) setSheet(<ReviseSheet e={e} spec={spec} phase={phase} onClose={close} />); },
-          identifier: (field, registrationId) => { if (!readOnly) setSheet(<IdentifierSheet e={e} field={field} registrationId={registrationId ?? primaryRegistration(e)?.id} operating={operating} onClose={close} />); },
-          reissue: (registrationId) => void navigate({ search: (search) => ({ ...search, reissue: registrationId }) }),
-          attach: (registrationId) => { if (!readOnly) setSheet(<OriginalSheet entityId={e.id} registrationId={registrationId} onClose={close} />); },
-          close: () => { if (!readOnly) setSheet(<CloseSheet e={e} depts={depts} onClose={close} />); },
-          remove: () => { if (!readOnly) setSheet(<VoidEntity e={e} onClose={close} />); },
-        };
-        const primary = primaryRegistration(e);
-        const docs = docsQ.isSuccess ? docsQ.data.items : null;
-        const counts = {
-          certificates: e.registrations.length,
-          workplaces: e.workplaces.length,
-          officers: officers(e).length,
-          documents: docsQ.data?.items.length ?? "",
-          history: hist.data?.items.length ?? "",
-        };
-        const reissuing = reissue ? e.registrations.find((r) => r.id === reissue && !r.closed_on) : undefined;
+        const { lock } = buildHeaderParts(e);
+        const { readOnly, act, docs, counts, renderTab, overlays } = buildBodyState(e);
         return (
-          <RecordLockProvider key={id} value={temporal ? "asof" : lockOf(e, phase !== undefined)}>
+          <RecordLockProvider key={id} value={lock}>
           <>
-            <Tabs label={t("entityRecord.tabs")} selected={tab} onSelect={next => setTab(next as Tab)} renderList={list => head(e, list)}
-              items={TABS.map(x => ({ id: x, label: t(`entityRecord.tab.${x}`), count: x === "overview" ? undefined : counts[x] }))}>
-              {selected => <div className={s.body}>
-              {selected === "overview" && (
-                <>
-                  <div className={s.col}>
-                    {e.founding && <FoundingCard e={e} />}
-                    {primary ? <CertCard e={e} r={primary} act={act} operating={operating} onOriginal={docs?.length ? () => setTab("documents") : undefined} /> : <NoCertificate e={e} />}
-                    <RegistryCard e={e} act={act} />
-                    <WorkplacesCard e={e} />
-                    <VatCard e={e} act={act} />
-                  </div>
-                  <RecordAside e={e} phase={phase} depts={depts} docs={docs} act={act} onTab={setTab} />
-                </>
-              )}
-              {selected === "certificates" && (
-                <div className={s.wide}>
-                  {e.registrations.map((r) => <CertCard showCheck key={r.id} e={e} r={r} act={act} operating={operating} onOriginal={docs?.length ? () => setTab("documents") : undefined} />)}
-                  {e.registrations.length === 0 && <NoCertificate e={e} />}
+            <Tabs label={t("entityRecord.tabs")} selected={tab} onSelect={next => setTab(next as Tab)} renderList={tabs => renderBaselineHead(e, tabs)} items={TABS.map(x => ({ id: x, label: t(`entityRecord.tab.${x}`), count: x === "overview" ? undefined : counts[x] }))}>
+              {selected => (
+                <div className={s.body}>
+                  {renderTab(selected, false)}
+                  {selected === "overview" && <RecordAside e={e} phase={phase} depts={depts} docs={docs} act={act} onTab={setTab} />}
                 </div>
               )}
-              {selected === "workplaces" && <div className={s.wide}><WorkplacesTab e={e} selected={workplace} /></div>}
-              {selected === "officers" && <div className={s.wide}><OfficersTab e={e} act={act} /></div>}
-              {selected === "documents" && <div className={s.wide}><QueryState q={docsQ}>{data => <DocumentsTab docs={data.items} />}</QueryState></div>}
-              {selected === "history" && <div className={s.wide}><HistoryTab e={e} /></div>}
-            </div>}
             </Tabs>
             {!readOnly && <CorrectionRegister entityId={e.id} />}
-            {!readOnly && sheet}
-            {!readOnly && reissuing && <ReissueSheet e={e} r={reissuing} phase={phase} onClose={() => void navigate({ search: (search) => ({ ...search, reissue: undefined }), replace: true })} />}
+            {overlays}
           </>
           </RecordLockProvider>
         );
@@ -205,29 +234,55 @@ export function EntityRecord({ id, workplace }: { id: string; workplace?: string
     </QueryState>
     </PageReadGate></div>
   );
-}
 
-/**
- * No certificate recorded yet: a to-do with its way in. A workplace that files under none takes its own here (org-03);
- * with no workplace yet, the first workplace carries it.
- */
-function NoCertificate({ e }: { e: LegalEntity }) {
-  const [attaching, setAttaching] = useState(false);
-  const first = unattached([e])[0]?.w;
-  const open = !useRecordLock();
   return (
-    <section className="card" aria-labelledby="nocert-title">
-      <div className={s.cardHead}><h2 id="nocert-title" className={s.cardTitle}>{t("entityRecord.cert.title")}</h2><Chip tone="warn">{t("entityRecord.cert.missing")}</Chip></div>
-      <div className={s.cardBody}>
-        <p className="muted">{t("entityRecord.cert.missingWhy")}</p>
-        {open && first && (
-          <Button variant="primary" onClick={() => setAttaching(true)} aria-label={t("entityOps.attach.actionOf", { name: first.current?.name ?? "" })}>
-            <Plus size={16} aria-hidden /> {t("entityOps.attach.actionOf", { name: first.current?.name ?? "" })}
-          </Button>
-        )}
-        {open && !first && <Link to="/org/entities/$id/workplaces/new" params={{ id: e.id }} className="btn btn--primary"><Plus size={16} aria-hidden /> {t("entityRecord.cert.missingAction")}</Link>}
-        {open && attaching && first && <AttachHost entityId={e.id} workplaceId={first.id} onClose={() => setAttaching(false)} />}
-      </div>
-    </section>
+    <ExperienceSwitch baseline={renderBaseline}>
+      {() => {
+        const e = activeQ.data;
+        if (!e) return <RecordPattern q={activeQ} head={{ title: t("entity.list.title"), asOf: band }} back={back} removed={removed} sections={null} />;
+        const { lock, meta, secondaryTools, notes } = buildHeaderParts(e);
+        const { readOnly, act, docs, counts, renderTab, overlays } = buildBodyState(e);
+        return (
+          <RecordLockProvider key={id} value={lock}>
+            <Tabs label={t("entityRecord.tabs")} selected={tab} onSelect={next => setTab(next as Tab)}
+              items={TABS.map(x => ({ id: x, label: t(`entityRecord.tab.${x}`), count: x === "overview" ? undefined : counts[x] }))}
+              renderLayout={(list, panels) => (
+                <RecordPattern
+                  q={activeQ}
+                  back={back}
+                  removed={removed}
+                  head={{
+                    title: <EntityName entity={e} />,
+                    crumbs: <Crumbs items={[<Link key="entities" to="/org/entities" search={point}>{t("entity.list.title")}</Link>]} current={entityName(e)} />,
+                    asOf: band,
+                    meta,
+                    tools: secondaryTools,
+                    primary: (!lock || lock === "loading") ? {
+                      id: "edit-by-cert",
+                      label: t("entityRecord.action.editByCert"),
+                      icon: <PencilLine size={16} aria-hidden />,
+                      disabled: lock === "loading",
+                      onAction: () => setTab("certificates"),
+                    } : undefined,
+                    tabs: list,
+                  }}
+                  notes={notes}
+                  sections={panels}
+                  spine={tab === "overview" ? <RecordAside e={e} phase={phase} depts={depts} docs={docs} act={act} onTab={setTab} flat /> : undefined}
+                  foot={!readOnly ? <CorrectionRegister entityId={e.id} /> : undefined}
+                  overlays={overlays}
+                  statusSegments={[
+                    { id: "entity", tone: "strong", content: entityName(e) },
+                    { id: "workplaces", content: t("entity.count.workplaces", { count: e.workplaces.length }) },
+                    { id: "people", content: t("entity.count.people", { count: headcount(e) }) },
+                  ]}
+                />
+              )}>
+              {selected => renderTab(selected, true)}
+            </Tabs>
+          </RecordLockProvider>
+        );
+      }}
+    </ExperienceSwitch>
   );
 }

@@ -245,6 +245,10 @@ const SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../openapi/schemas/PayGroupRules.yaml"),
     },
     NamedYaml {
+        name: "PayrollCalculationDeduction",
+        body: include_str!("../openapi/schemas/PayrollCalculationDeduction.yaml"),
+    },
+    NamedYaml {
         name: "PayrollClosePreflight",
         body: include_str!("../openapi/schemas/PayrollClosePreflight.yaml"),
     },

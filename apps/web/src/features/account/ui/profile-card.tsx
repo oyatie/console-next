@@ -15,7 +15,7 @@ import { claims, signOutHere, type Me } from "../api";
  * Who I am. A tenant account adds its employee link from `/users/me`; a vendor (platform token) reads
  * only its token, since that read answers 404 there, and never shows an error for it.
  */
-export function ProfileCard({ locale, experience, me }: { locale: ReactNode; experience: ReactNode; me: UseQueryResult<Me> }) {
+export function ProfileCard({ locale, experience, singleKeys, me }: { locale: ReactNode; experience: ReactNode; singleKeys: ReactNode; me: UseQueryResult<Me> }) {
   const nav = useNavigate();
   const c = claims();
   const vendor = Boolean(c?.platform);
@@ -43,6 +43,7 @@ export function ProfileCard({ locale, experience, me }: { locale: ReactNode; exp
           { key: "locale", label: <label htmlFor="acct-locale">{t("shell.locale")}</label>, value: locale },
           { key: "theme", label: t("account.field.theme"), value: <span className="muted">{t("account.field.theme.where")}</span> },
           { key: "experience", label: <label htmlFor="account-experience">{t("account.experience")}</label>, value: experience },
+          { key: "shortcuts", label: t("account.field.shortcuts"), value: singleKeys },
         ]}
       />
     </Card>

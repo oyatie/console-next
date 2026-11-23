@@ -9,11 +9,13 @@ pub(crate) mod env;
 pub(crate) mod links;
 pub(crate) mod notify;
 pub(crate) mod office;
+pub(crate) mod ops_cockpit;
 pub(crate) mod parse;
 pub(crate) mod proxy;
 pub(crate) mod realtime;
 pub(crate) mod role;
 pub(crate) mod secret_files;
+pub(crate) mod status;
 pub(crate) mod storage;
 
 use crate::audit_chain_signer;
@@ -23,6 +25,7 @@ use console_dispatch_domain::DispatchTimerConfig;
 use console_kernel_core::OrgId;
 use console_platform_auth_rest::AuthRestConfig;
 use console_platform_email::{SmtpEmailConfig, StubEmailMode};
+use console_platform_provisioning::OtpHmacKey;
 use console_platform_push::{FcmConfig, SolapiConfig};
 use console_platform_storage::S3StorageConfig;
 use ipnet::IpNet;
@@ -95,6 +98,11 @@ pub struct AppConfig {
     pub support_log_query_url: Option<String>,
     pub jwt: Option<JwtVerifierConfig>,
     pub auth_rest: Option<AuthRestConfig>,
+    /// HTTPS deployment flag (`CONSOLE_COOKIE_SECURE`, default `true`).
+    pub cookie_secure: bool,
+    /// Public status-page origin allowed in `SPA_CSP` `connect-src`
+    /// (`CONSOLE_STATUS_ORIGIN`, default `https://status.cosskorea.com`, `"none"` to omit).
+    pub status_origin: Option<String>,
     pub storage: Option<S3StorageConfig>,
     /// Road-name address / detailed address search keys and knobs (STREET_JUSO_API_KEY, …).
     pub juso: console_entity_adapter_juso::JusoConfig,
@@ -136,6 +144,9 @@ pub struct AppConfig {
     /// Lifetime of a boot-seeded cold-start OTP (`CONSOLE_COLDSTART_OTP_TTL_SECS`,
     /// default 3600s).
     pub coldstart_otp_ttl: time::Duration,
+    /// Keyed HMAC-SHA256 pepper for bootstrap OTP storage (`CONSOLE_OTP_HMAC_KEY`,
+    /// optional `CONSOLE_OTP_HMAC_KEY_PREV` for zero-downtime key rotation).
+    pub otp_hmac_key: Option<OtpHmacKey>,
     /// Number of configured reverse-proxy hops in front of the service,
     /// including the direct transport peer (`CONSOLE_TRUSTED_PROXY_COUNT`, default
     /// 0). Forwarding headers are ignored unless every configured hop is in
@@ -201,6 +212,8 @@ pub struct AppConfig {
     /// the backend serves it as the router FALLBACK so production is one
     /// same-origin deployable; unset means no SPA route at all.
     pub web_dist: Option<std::path::PathBuf>,
+    /// Validated operator cockpit config bundle (`AppRole::Ops` only).
+    pub ops_cockpit: Option<ops_cockpit::OpsCockpitConfig>,
 }
 
 /// Native app-link association config for the `/.well-known/*` endpoints.

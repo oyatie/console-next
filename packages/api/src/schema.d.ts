@@ -552,6 +552,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/platform/operators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List platform operators (platform vendor tier)
+         * @description Lists all platform-tier SUPER_ADMIN operators with passkey and invitation status. Audited as platform.operator.list.
+         */
+        get: operations["listPlatformOperators"];
+        put?: never;
+        /**
+         * Invite a second platform operator (platform vendor tier)
+         * @description Provisions a new platform-tier SUPER_ADMIN account and mints a single-use enrolment token returned once. Requires OPERATOR_RECOVERY step-up bound to the request.
+         */
+        post: operations["invitePlatformOperator"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/platform/operators/{id}/reissue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reissue a platform operator invite token (platform vendor tier)
+         * @description Revokes any open invite for an unkeyed active platform operator and mints a fresh one-time enrolment token. Requires OPERATOR_RECOVERY step-up bound to the operator id.
+         */
+        post: operations["reissuePlatformOperatorInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/platform/operators/{id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revoke a platform operator (platform vendor tier)
+         * @description Deactivates a platform operator, revokes open invites and refresh families, and bumps session generation. Refuses self-revocation and revoking the last active enrolled operator. Requires OPERATOR_RECOVERY step-up.
+         */
+        post: operations["revokePlatformOperator"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/platform/ops": {
         parameters: {
             query?: never;
@@ -935,6 +999,86 @@ export interface paths {
         get: operations["listAccessLog"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/access-log/reviews/{period}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the monthly tenant access-log review state without exposing frozen chunks
+         * @description Requires tenant-wide Cedar audit::view. Records access_log.review_read before returning.
+         */
+        get: operations["getAccessLogReview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/access-log/reviews/{period}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete a monthly tenant access-log review after all findings and follow-ups resolve
+         * @description Requires tenant-wide Cedar audit::approve and a fresh passkey step-up assertion once all frozen targets are resolved.
+         */
+        post: operations["completeAccessLogReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/access-log/reviews/{period}/findings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record or supersede a finding on a frozen flagged event or daily summary
+         * @description Requires tenant-wide Cedar audit::approve. Appends an immutable finding audit record for the started review period.
+         */
+        post: operations["recordAccessLogFinding"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/access-log/reviews/{period}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start and freeze a monthly tenant access-log review
+         * @description Requires tenant-wide Cedar audit::approve. Freezes flagged events and daily summaries once per closed period.
+         */
+        post: operations["startAccessLogReview"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2801,52 +2945,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/auth/signup": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Open self-service signup
-         * @description Public, unauthenticated open signup. Creates a new lowest-privilege MEMBER account in the default organization and emails it a single-use one-time sign-in code; the caller then redeems that code via `POST /api/v1/auth/otp/redeem` and enrolls a passkey. The response reveals nothing about whether the email was newly registered (no account-existence oracle) and never mints a token. The new account sees the minimal role-gated surface until an admin elevates it. Rate-limited per client (IP and optional device).
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["SignupRequest"];
-                };
-            };
-            responses: {
-                /** @description The signup was accepted and a one-time code was sent. */
-                202: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["SignupResponse"];
-                    };
-                };
-                400: components["responses"]["ValidationError"];
-                429: components["responses"]["TooManyRequests"];
-                502: components["responses"]["BadGateway"];
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/auth/token/refresh": {
         parameters: {
             query?: never;
@@ -3192,6 +3290,26 @@ export interface paths {
          * @description BW-17. An employee or branch subject outside the caller's branch scope reads as 404. PROFILE_CORRECTION carries `payload.changes` with fields from name, phone, hire_date, employment_type, position_id, base_pay (applied through BW-18). OTHER requires a note and is flagged for review. ACCESS_EXPLANATION (governance S7 explanation request) needs org-wide audit_log_read, a USER_ACCOUNT subject and `assignee_user_id` equal to it; POLICY_QUESTION (S5) names the ORGANIZATION.
          */
         post: operations["createChangeRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/change-requests/counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Counts of open change requests visible to the caller
+         * @description Single-scan counts of OPEN change requests across all visible requests (`all`), requests assigned directly to the caller (`me`), and unassigned HR role requests (`role`).
+         */
+        get: operations["getChangeRequestCounts"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4025,7 +4143,7 @@ export interface paths {
         put?: never;
         /**
          * Create an employee and governed employment profile
-         * @description HR directory managers only. Creates the stable employee identity, employment profile, ONBOARD lifecycle event, and audit record atomically. Reusing an idempotency key replays the same payload; a different payload conflicts. hire_date is required and the ONBOARD event takes effect on it; a CONTRACT employment also requires contract_end_date (422 validation otherwise). Without employee_number the server assigns one (E-000001, …). When other employees (not EXITED) in the same org unit have exactly this name, the response carries warnings [{code: same_name_in_unit, employee_ids}]; the employee is created regardless. BW-19: a person already on file (any status) with the same name (spaces ignored) and the same phone or date of birth is 409 duplicate_candidate listing them in error.refusals [{employee_id, status, employee_number, basis, remedy}] (remedy rehire for an EXITED one: POST /api/v1/employees/{id}/rehire); resend with duplicate_override naming every candidate to record the governed exception DUPLICATE_NAME_CONFIRMED and create the employee. An employee number already held is 409 employee_number_taken with error.refusals [{holder: {id, status}}]; a reused idempotency key with another payload is 409 idempotency_key_reused. A namesake hired the same day is only the warning same_name_same_hire_date. A future hire_date creates the employee as a pending hire (status PRE_HIRE) with a SCHEDULED ONBOARD the lifecycle runner applies on that day. MR-22: the legal entity · workplace assignment is written in the same transaction from hire_date: the workplace_id asked for (its legal entity follows), else the workplace the org unit sits in (its own placement or its nearest ancestor's); neither is unplaced (no assignment). Cause SETUP_BIND while the tenant is in SETUP, HIRE after. 422 workplace_required (a legal_entity_id without workplace_id), org_unit_at_other_workplace, workplace_of_other_entity, workplace_not_open; nothing is written then.
+         * @description HR directory managers only. Creates the stable employee identity, employment profile, ONBOARD lifecycle event, and audit record atomically. Reusing an idempotency key replays the same payload; a different payload conflicts. hire_date is required and the ONBOARD event takes effect on it; a CONTRACT employment also requires contract_end_date (422 validation otherwise). Without employee_number the server assigns one (E-000001, …). When other employees (not EXITED) in the same org unit have exactly this name, the response carries warnings [{code: same_name_in_unit, employee_ids}]; the employee is created regardless. BW-19: a person already on file (any status) with the same name (spaces ignored) and the same phone or date of birth is 409 duplicate_candidate listing them in error.refusals [{employee_id, name, org_unit, hire_date, status, employee_number, basis, remedy}] (remedy rehire for an EXITED one: POST /api/v1/employees/{id}/rehire); resend with duplicate_override naming every candidate to record the governed exception DUPLICATE_NAME_CONFIRMED and create the employee. An employee number already held is 409 employee_number_taken with error.refusals [{holder: {id, status}}]; a reused idempotency key with another payload is 409 idempotency_key_reused. A namesake hired the same day is only the warning same_name_same_hire_date. A future hire_date creates the employee as a pending hire (status PRE_HIRE) with a SCHEDULED ONBOARD the lifecycle runner applies on that day. MR-22: the legal entity · workplace assignment is written in the same transaction from hire_date: the workplace_id asked for (its legal entity follows), else the workplace the org unit sits in (its own placement or its nearest ancestor's); neither is unplaced (no assignment). Cause SETUP_BIND while the tenant is in SETUP, HIRE after. 422 workplace_required (a legal_entity_id without workplace_id), org_unit_at_other_workplace, workplace_of_other_entity, workplace_not_open; nothing is written then.
          */
         post: operations["createEmployee"];
         delete?: never;
@@ -4239,6 +4357,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/employees/import/{run_id}/cells": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Repair canonical cell values for staged candidate rows in an employee import run
+         * @description Requires EmployeeDirectoryManage. Validates and merges inline canonical cell repairs into dry_run_decisions.cells while rejecting restricted PII targets and two-digit dates.
+         */
+        put: operations["repairEmployeeImportCells"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/employees/import/{run_id}/dry-run": {
         parameters: {
             query?: never;
@@ -4314,6 +4452,26 @@ export interface paths {
          * @description Versioned (expected_version = the row's version as read, 0 when never set). Audited data_import.reconcile_check. 409 import_not_applied, import_signed_off (the run is frozen after its sign-off; error.refusals carries the sign-off), stale_revision (error.refusals [{source_key, current_version}]); 404 for a row the run did not plan; 422 for another state or a note over 1000.
          */
         put: operations["setEmployeeImportReconcileRow"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/employees/import/{run_id}/rows/{source_key}/identifier": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Stage a step-up sealed registration number onto a draft employee import row
+         * @description Requires EmployeeDirectoryManage and a fresh PII_RECORD passkey step-up assertion bound to (run_id, source_key). Validates and seals the registration number into data_import_row_identities without mutating raw import rows or echoing sensitive digits.
+         */
+        put: operations["recordImportRowIdentifier"];
         post?: never;
         delete?: never;
         options?: never;
@@ -4435,6 +4593,26 @@ export interface paths {
          * @description MR-23. Org-wide employee_directory_manage. The browser parses the sheet (no file and no resident registration number reaches the server) and sends one row per employee, by `employee_id` or a `employee_number` that names exactly one record, carrying `sex`, `address`, `careers` and `register_note` and the personal details profile's `name_hanja`, `name_en`, `nationality`, `personal_email` and `emergency_contacts` (MR-34), plus a first `exit_reason` or `group_service_start_date` (changing a recorded one is per person, PATCH /employees/{id}; a `photo` is uploaded per person). `dry_run` returns what each row would change and why a row cannot be taken. The apply is all-or-nothing (422 `bulk_register_facts_refused` with `refusals`) and writes one correction ledger row per changed item; an unchanged value writes nothing, except a recorded `address` or `personal_email`, which is written and listed as changed whether or not it equals the record, so neither the plan nor the apply confirms a recorded value. At most 500 rows.
          */
         post: operations["bulkCorrectRegisterFacts"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/employees/register-facts/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Batch read worker register facts for up to 500 employees
+         * @description MR-23. Org-wide employee_directory_manage. Returns worker register facts plus masked birth_date for either explicit employee `ids` (up to 500) or a cursor-paged slice filtered by `register_review_required`. Records a single audited DirectoryAccess::List event.
+         */
+        post: operations["queryEmployeeRegisterFacts"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5132,6 +5310,26 @@ export interface paths {
          * @description Decisions #25. reason_code from the rrn_reveal domain (PAYROLL_WITHHOLDING, SOCIAL_INSURANCE_FILING, IDENTITY_VERIFICATION, DATA_SUBJECT_ACCESS, OTHER + note); the access log row (action employee.rrn_reveal) names the code, never the number. 404 when none is recorded; 503 rrn_vault_unavailable when the server has no vault keys. Never cached (Cache-Control no-store).
          */
         post: operations["revealEmployeeRrn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/employees/{id}/unit-position": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Server position of an employee within their org unit
+         * @description Returns the 1-based position, total unit member count, adjacent employee IDs (`prev_id`, `next_id`), and `pre_hire_count` matching the employee list ordering and caller reach, supporting keyboard navigation past 200 unit members.
+         */
+        get: operations["getEmployeeUnitPosition"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -7444,6 +7642,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/hr/exit-cases/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Report exit cases in bulk (up to 500 items)
+         * @description Creates audited employee exit cases in a single idempotent transaction for up to 500 employees using set-based preloading, per-item scope + own-record + guard evaluation, and non-aborting per-item results.
+         */
+        post: operations["bulkReportEmployeeExitCases"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hr/exit-cases/counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Single-scan status counts of employee exit cases in scope */
+        get: operations["getEmployeeExitCaseCounts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/hr/exit-cases/{id}": {
         parameters: {
             query?: never;
@@ -7596,6 +7831,26 @@ export interface paths {
          * @description Executive/admin/super-admin read model grouped by company, org unit, and position. Source workbook rows remain preserved in the employee directory.
          */
         get: operations["getHrOrgChart"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hr/people/data-health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tenant- and branch-scoped people data-health overview
+         * @description Returns batched statutory register completeness, identity document coverage, workplace and department placement counts, boolean-only bank account readiness, identity review counts, failed lifecycle action counts, bounded zero-PII drilldown items, and EmployeeDirectoryManage-gated latest import status.
+         */
+        get: operations["getPeopleDataHealth"];
         put?: never;
         post?: never;
         delete?: never;
@@ -8996,6 +9251,26 @@ export interface paths {
         patch: operations["setMailThreadReadState"];
         trace?: never;
     };
+    "/api/v1/me/access-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Authenticated user's own personal-data access history
+         * @description Strictly self-scoped to events where the authenticated principal's linked employee or user record was the subject. Excludes self-reads and denied attempts, requires no tenant-wide audit::view grant, and never exposes raw personal data values or free-text notes.
+         */
+        get: operations["listMyAccessLog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/action-inbox": {
         parameters: {
             query?: never;
@@ -9132,6 +9407,41 @@ export interface paths {
          * @description The caller's authorization projection: org, branch scope, roles-as-principal-attributes, and the legacy-matrix capability grants the console needs for deny-by-omission rendering. NON-AUTHORITATIVE (`authority = "advisory_ui_only"`) — the server remains the sole enforcer; this is a rendering hint that lets the frontend gate on grants instead of hardcoded role lists. `source = "legacy_matrix"` today; the Cedar enforce-flip later flips `source` to `"cedar"` with this shape unchanged. Capabilities are deny-by-omission: a feature the caller cannot use is omitted (never emitted at `deny`). Org and HR menu keys (same matrix the handlers enforce): `org_change_read` (org-change list/detail and the OrgUnit tree), `org_change_draft` (draft/submit org changes, OrgUnit create/rename/move/dissolve drafts), `org_change_approve`, `org_change_apply`, `employee_directory_read`, `employee_directory_manage` (employee create, lifecycle events), `exit_case_report`, `exit_case_hr_confirm`, `exit_case_hq_confirm`, `exit_settlement_manage`, `user_manage`, `subordinate_user_create`, `region_manage`, `branch_manage`.
          */
         get: operations["getCurrentUserAuthz"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/certificates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List certificates issued for the authenticated employee */
+        get: operations["listMyCertificates"];
+        put?: never;
+        /** Issue a self-service certificate for the authenticated employee */
+        post: operations["issueMyCertificate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/certificates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read one self-service certificate belonging to the authenticated employee */
+        get: operations["getMyCertificate"];
         put?: never;
         post?: never;
         delete?: never;
@@ -9392,6 +9702,70 @@ export interface paths {
         put?: never;
         /** Mark one of the authenticated user's notifications unread again (read toggle) */
         post: operations["markMyNotificationUnread"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Authenticated employee's masked self-service profile
+         * @description Returns the caller's own masked personal details, employment metadata, address administrative summary, boolean bank-account registration flag, and open profile-correction requests. Requires Cedar employee_self_read on the caller's linked employee record.
+         */
+        get: operations["getMyProfile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update immediate self-service profile fields (phone, emergency_contacts)
+         * @description Updates the caller's immediate-apply self-service fields (phone and/or emergency_contacts) on their own linked employee record. Address and bank account status require approval via POST /api/v1/me/profile/change-requests.
+         */
+        patch: operations["updateMyProfile"];
+        trace?: never;
+    };
+    "/api/v1/me/profile/change-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * File an approval-gated self-service change request (address or bank_account_registered)
+         * @description Submits a PROFILE_CORRECTION change request for the caller's linked employee for fields requiring HR approval (address or boolean bank_account_registered attestation). Rejects raw bank account identifiers.
+         */
+        post: operations["createMyProfileChangeRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/profile/reveal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Step-up passkey reveal of one self-service personal field
+         * @description Verifies a fresh MobileStepUpActionKind::PiiReveal passkey assertion bound to the caller's linked employee, commits an immutable audit event before reading, and returns the plaintext phone, address, or emergency contacts with Cache-Control: private, no-store.
+         */
+        post: operations["revealMyProfileField"];
         delete?: never;
         options?: never;
         head?: never;
@@ -11842,7 +12216,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List tenant privacy rights intake requests under live Cedar placement */
+        get: operations["listPrivacyRightsIntake"];
         put?: never;
         /**
          * File a self-service request with register-backed per-kind deadlines
@@ -11889,6 +12264,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/privacy/rights-requests/received": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record an off-app privacy rights receipt on behalf of a tenant subject */
+        post: operations["receiveOffAppPrivacyRightsRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/privacy/rights-requests/{id}": {
         parameters: {
             query?: never;
@@ -11900,6 +12292,63 @@ export interface paths {
         get: operations["readPrivacyRightsIntake"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/rights-requests/{id}/decide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decide one requested privacy right with bound passkey step-up and SoD enforcement
+         * @description Requires a fresh PRIVACY_REQUEST_DECIDE passkey step-up bound to the request UUID and SHA-256 of the serialized decision payload (kind, outcome, reason, note, decided_on). Enforces Cedar permission, natural-person SoD against the subject, off-app filer, and prior decision maker on objections.
+         */
+        post: operations["decidePrivacyRightsRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/rights-requests/{id}/objection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** File an objection against a prior privacy rights request decision */
+        post: operations["objectPrivacyRightsRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/rights-requests/{id}/postpone": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Postpone one requested privacy right with bound passkey step-up and SoD enforcement
+         * @description Requires a fresh PRIVACY_REQUEST_DECIDE passkey step-up bound to the request UUID and SHA-256 of the serialized postponement payload (kind, reason, note, decided_on).
+         */
+        post: operations["postponePrivacyRightsRequest"];
         delete?: never;
         options?: never;
         head?: never;
@@ -14895,6 +15344,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v2/me/leave/approval-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preview the approval chain for a self-service leave request
+         * @description Returns the caller's leave filing readiness, active home branch, org unit, and SoD-filtered approval steps (optional unambiguous unit lead plus branch HR/approver step). Requires Cedar employee_self_read on the caller's linked employee.
+         */
+        get: operations["getMyLeaveApprovalPreviewV2"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/me/leave/team-overlap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List teammates in the caller's own org unit on overlapping leave
+         * @description Returns minimal overlap info (org_unit, active_count, out_count, and { employee_id, name } of overlapping teammates) strictly within the caller's own org unit for the requested date range. Requires Cedar employee_self_read on the caller's linked employee. Never exposes leave reasons, types, or exact leave dates.
+         */
+        get: operations["getMyLeaveTeamOverlapV2"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/work-orders": {
         parameters: {
             query?: never;
@@ -15335,6 +15824,39 @@ export interface components {
                     label_key: string;
                 }[];
             };
+        };
+        AccessLogReview: {
+            /** Format: uuid */
+            id?: string;
+            /** @description Review period metadata or YYYY-MM label before start. */
+            period: string | {
+                /** Format: date-time */
+                from?: string;
+                /** Format: date-time */
+                to?: string;
+                time_zone?: string;
+            };
+            scope: string;
+            /** Format: uuid */
+            reviewer: string | null;
+            /** Format: date-time */
+            started_at: string | null;
+            /** Format: date-time */
+            reviewed_at: string | null;
+            /** Format: date-time */
+            due: string;
+            flags_seen: {
+                [key: string]: unknown;
+            } | null;
+            findings: {
+                [key: string]: unknown;
+            }[];
+            follow_up: {
+                open: number;
+                total: number;
+            };
+            /** @enum {string} */
+            state: "not_started" | "open" | "overdue" | "complete";
         };
         /** @description Access-screen account labels and state. Contact details and unrelated HR facts are excluded. */
         AccessPerson: {
@@ -16459,6 +16981,7 @@ export interface components {
             employee_number?: string | null;
             name: string;
             unit_name?: string | null;
+            position?: string | null;
             own: boolean;
             cells: components["schemas"]["AttendanceGridCell"][];
             totals: components["schemas"]["AttendanceGridTotals"];
@@ -16706,6 +17229,28 @@ export interface components {
             rows: components["schemas"]["AttendanceGridRow"][];
             people_total: number;
             next_cursor?: string | null;
+            work_pattern_summary?: string | null;
+            summary?: components["schemas"]["AttendanceMonthGridSummary"];
+        };
+        AttendanceMonthGridSummary: {
+            /** Format: int64 */
+            scheduled_days: number;
+            /** Format: int64 */
+            weekday_holidays: number;
+            /** Format: int64 */
+            recognised_minutes: number;
+            /** Format: int64 */
+            outside_minutes: number;
+            /** Format: int64 */
+            unapproved_minutes: number;
+            /** Format: int64 */
+            blocking_count: number;
+            /** Format: int64 */
+            decision_count: number;
+            /** Format: int64 */
+            issue_people_count: number;
+            /** Format: int64 */
+            overtime_people_count: number;
         };
         /** @description Whether a person's attendance month takes writes. CLOSED refuses them (lock_id is the payroll period lock to request an unlock of, null when none covers the month); REOPENED takes them while an approved period unlock is open, until relock_at (null only for an unlock without a time box). */
         AttendanceMonthState: {
@@ -17531,6 +18076,18 @@ export interface components {
             /** @description One recorded event per employee, in employee_ids or lines order (a selection in employee id order); each carries batch_id. */
             items: components["schemas"]["EmployeeLifecycleEvent"][];
         };
+        BulkExitCaseItemInput: {
+            employee_id: components["schemas"]["Uuid"];
+            branch_id?: components["schemas"]["Uuid"] | null;
+            absence_alert_id?: components["schemas"]["Uuid"] | null;
+        };
+        BulkExitCaseItemResult: {
+            employee_id: components["schemas"]["Uuid"];
+            ok: boolean;
+            case_id?: components["schemas"]["Uuid"];
+            code?: string;
+            message?: string;
+        };
         BulkLifecyclePreview: {
             event_type: string;
             /** Format: date */
@@ -17587,6 +18144,16 @@ export interface components {
                 /** @description sex, address, careers, register_note, name_hanja, name_en, nationality, personal_email, emergency_contacts (and a first exit_reason or group_service_start_date) as in CorrectEmployeeRequest.changes. */
                 changes: Record<string, never>;
             }[];
+        };
+        BulkReportExitCasesRequest: {
+            /** @description YYYY-MM-DD */
+            effective_exit_date: string;
+            site_manager_note: string;
+            exit_reason_code?: string | null;
+            items: components["schemas"]["BulkExitCaseItemInput"][];
+        };
+        BulkReportExitCasesResponse: {
+            results: components["schemas"]["BulkExitCaseItemResult"][];
         };
         /** @description The "select all {n} people matching the filter" choice — every employee the list filters admit under the caller's scope, minus exclude_employee_ids, resolved by the server in the batch transaction (recorded in employee id order). */
         BulkSelection: {
@@ -17760,6 +18327,8 @@ export interface components {
             kind: string;
             subject_type: string;
             subject_id: components["schemas"]["Uuid"];
+            subject_name?: string | null;
+            subject_number?: string | null;
             /** @description The request's details. In `changes`, a birth date, address, phone or personal email is the reveal mask, never the value; only POST /api/v1/employees/{id}/reveal returns a recorded one. */
             payload: {
                 [key: string]: unknown;
@@ -17779,6 +18348,14 @@ export interface components {
             decision_note?: string | null;
             created_at: components["schemas"]["Timestamp"];
             decided_at?: components["schemas"]["Timestamp"] | null;
+        };
+        ChangeRequestCountsResponse: {
+            /** Format: int64 */
+            all: number;
+            /** Format: int64 */
+            me: number;
+            /** Format: int64 */
+            role: number;
         };
         ChangeSetDetail: components["schemas"]["ChangeSetSummary"] & {
             lines: components["schemas"]["ChangeSetLine"][];
@@ -19131,6 +19708,13 @@ export interface components {
             equipment_id: components["schemas"]["Uuid"];
             config: components["schemas"]["FinancialConfigSnapshot"];
         };
+        CreateSelfChangeRequest: {
+            /** @enum {string} */
+            field: "address" | "bank_account_registered";
+            address?: components["schemas"]["KrAddress"] | null;
+            bank_account_registered?: boolean | null;
+            note?: string | null;
+        };
         /** @description Create a series and attach its first instance. */
         CreateSeriesRequest: {
             /** @description Human label for the series (1-200 chars). */
@@ -19883,6 +20467,13 @@ export interface components {
             code: "same_name_in_unit" | "same_name_same_hire_date" | "pay_below_minimum_wage";
             /** @description The namesakes for same_name_in_unit; empty for pay_below_minimum_wage. */
             employee_ids: components["schemas"]["Uuid"][];
+            /** @description Capped namesake match details (up to 20 entries). */
+            matches?: components["schemas"]["EmployeeWarningMatch"][];
+            /**
+             * Format: int64
+             * @description Total number of matching namesakes before capping.
+             */
+            total_count?: number;
             /**
              * Format: int64
              * @description pay_below_minimum_wage only.
@@ -20437,9 +21028,13 @@ export interface components {
                  * @description r3:hire-16: the employment profile's probation end date.
                  */
                 probation_end_date?: string;
+                /**
+                 * @description Resolved legal identity document type for the created employee.
+                 * @enum {string}
+                 */
+                id_type?: "RRN" | "ARC" | "DOMESTIC_RESIDENCE" | "NOT_ISSUED";
             };
-            /** @enum {string} */
-            refusal_code?: "duplicate_in_file" | "invalid_date" | "identity_mismatch" | "hire_date_required" | "former_load_closed" | "workplace_conflict" | "identity_conflict" | "employee_number_taken" | "status_unmapped" | "status_conflict" | "exit_date_required" | "leave_start_required" | "leave_type_unmapped" | "leave_return_required";
+            refusal_code?: string;
             refusal_field?: string;
             /** @enum {string} */
             matched_by?: "employee_number" | "alias" | "rrn" | "pick";
@@ -20591,6 +21186,8 @@ export interface components {
                 basis: string;
                 alias?: string | null;
             }[];
+            /** @description Expected format hint for inline cell repair (for example YYYY-MM-DD). */
+            expected_format?: string;
         };
         /** @description IMPORT-2 (decisions #25): the "needs checking" queue, counted. Blocking items keep apply closed (422 import_unresolved); the rest are imported as the plan says (unplaced, no employee number assigned) and stay listed. */
         EmployeeImportReviewQueue: {
@@ -21086,6 +21683,11 @@ export interface components {
         EmployeeRrnRecordRequest: {
             /** @description Resident registration number, validated by the server; never retained in a draft. */
             rrn: string;
+            /**
+             * @description Optional explicit identity document type paired with the registration number.
+             * @enum {string}
+             */
+            id_type?: "RRN" | "ARC" | "DOMESTIC_RESIDENCE";
             step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"];
         };
         EmployeeRrnRevealRequest: {
@@ -21115,6 +21717,17 @@ export interface components {
             /** Format: date-time */
             recorded_at?: string | null;
         };
+        EmployeeUnitPosition: {
+            org_unit_id: components["schemas"]["Uuid"] | null;
+            /** Format: int64 */
+            index: number;
+            /** Format: int64 */
+            total: number;
+            prev_id: components["schemas"]["Uuid"] | null;
+            next_id: components["schemas"]["Uuid"] | null;
+            /** Format: int64 */
+            pre_hire_count: number;
+        };
         EmployeeView: {
             /** Format: uuid */
             id: string;
@@ -21136,6 +21749,11 @@ export interface components {
             /** @description A sole holder voided; reviewed after the fact. */
             review_required: boolean;
             pending_request?: components["schemas"]["ChangeRequest"] | null;
+        };
+        EmployeeWarningMatch: {
+            id: components["schemas"]["Uuid"];
+            name: string;
+            employee_number?: string;
         };
         EmploymentAssignment: {
             /** Format: uuid */
@@ -22168,6 +22786,30 @@ export interface components {
             idempotency_key?: string | null;
             step_up?: components["schemas"]["PasskeyStepUpAssertion"];
         };
+        ExitCaseCountsResponse: {
+            /** Format: int64 */
+            all: number;
+            /** Format: int64 */
+            open: number;
+            /** Format: int64 */
+            closed: number;
+            /** Format: int64 */
+            reported: number;
+            /** Format: int64 */
+            hr_confirmed: number;
+            /** Format: int64 */
+            hq_confirmed: number;
+            /** Format: int64 */
+            settlement_ready: number;
+            /** Format: int64 */
+            approval_drafted: number;
+            /** Format: int64 */
+            submitted: number;
+            /** Format: int64 */
+            rejected: number;
+            /** Format: int64 */
+            cancelled: number;
+        };
         /** @description An action the case's current state admits, as a key; the client owns its label and route (the caller's capability is still checked by the action). */
         ExitCaseNextAction: {
             /** @enum {string} */
@@ -22827,6 +23469,9 @@ export interface components {
         };
         HrOrgChartResponse: {
             companies: components["schemas"]["HrOrgChartCompany"][];
+            truncated: boolean;
+            /** Format: int64 */
+            total: number;
         };
         HrOrgChartUnit: {
             /** @description The canonical OrgUnit this group is (grouped by binding, named by the unit's current name); null for legacy free-text groups. */
@@ -22906,8 +23551,48 @@ export interface components {
         ImportApplyRequest: {
             checklist_all_acknowledged?: boolean | null;
         };
+        /** @description Map of candidate row source_key to canonical field repairs for a staged employee import run. */
+        ImportCellsRepairRequest: {
+            /** @description Per-row map of canonical target field names (excluding restricted columns) to repaired string values. */
+            cells: {
+                [key: string]: {
+                    [key: string]: string;
+                };
+            };
+        };
+        /** @description Persisted inline cell repairs merged onto a staged employee import run. */
+        ImportCellsRepairResponse: {
+            /** @description Effective per-row map of canonical field repairs persisted in dry_run_decisions.cells. */
+            cells: {
+                [key: string]: {
+                    [key: string]: string;
+                };
+            };
+            /** @description Count of candidate rows with persisted cell repairs. */
+            repaired_rows: number;
+            run_id: components["schemas"]["Uuid"];
+        };
         ImportDryRunRequest: {
             decisions?: components["schemas"]["EmployeeImportDecisions"];
+        };
+        ImportRowIdentifierRequest: {
+            /** @description Resident registration number validated by the server, sealed via RrnVault, and never logged or echoed. */
+            rrn: string;
+            /**
+             * @description Optional explicit identity document type paired with the registration number.
+             * @enum {string}
+             */
+            id_type?: "RRN" | "ARC" | "DOMESTIC_RESIDENCE";
+            step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"];
+        };
+        ImportRowIdentifierResponse: {
+            run_id: components["schemas"]["Uuid"];
+            source_key: string;
+            /** @enum {string} */
+            id_type: "RRN" | "ARC" | "DOMESTIC_RESIDENCE";
+            recorded: boolean;
+            /** @enum {string} */
+            sex_derived?: "MALE" | "FEMALE";
         };
         /** @description The fresh passkey assertion proving present possession of an authenticator. Its absence yields 428 (precondition required). */
         InboxDocConfirmReceiptRequest: {
@@ -22953,6 +23638,22 @@ export interface components {
              */
             confirmed_at?: string | null;
             created_at: components["schemas"]["Timestamp"];
+            payslip_meta?: components["schemas"]["InboxPayslipMeta"] | null;
+        };
+        /** @description Structured period and total summary for an issued payslip row in the inbox list, avoiding N+1 detail fetches when stepping across periods. */
+        InboxPayslipMeta: {
+            /** @description Attribution month in YYYY-MM format. */
+            attribution_month?: string | null;
+            /** Format: date */
+            period_start: string;
+            /** Format: date */
+            period_end: string;
+            /** Format: date */
+            pay_date?: string | null;
+            /** Format: int64 */
+            gross_won?: number | null;
+            /** Format: int64 */
+            net_won?: number | null;
         };
         IncidentLocation: {
             /** Format: double */
@@ -23369,6 +24070,12 @@ export interface components {
             id: components["schemas"]["Uuid"];
             label: string;
         };
+        InvitePlatformOperatorRequest: {
+            id: components["schemas"]["Uuid"];
+            display_name: string;
+            login?: string | null;
+            step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"];
+        };
         IssueAppointmentNoticeRequest: {
             title: string;
             /**
@@ -23475,6 +24182,14 @@ export interface components {
             detail?: string | null;
             /** @description Address exactly as printed on the certificate. */
             as_printed?: string | null;
+        };
+        LeaveApprovalPreviewStep: {
+            /** Format: int32 */
+            order: number;
+            step_kind: string;
+            role_label: string;
+            approver_name?: string | null;
+            approver_position?: string | null;
         };
         /**
          * @description Exact signed fixed-scale ledger days; historical imports may legitimately be negative.
@@ -24521,6 +25236,24 @@ export interface components {
             /** @description Capability grants the caller holds (deny-by-omission — a feature the caller cannot use is omitted, never present at `deny`). */
             capabilities: components["schemas"]["MeAuthzCapability"][];
         };
+        MeProfileResponse: {
+            employee_id: components["schemas"]["Uuid"];
+            employee_number?: string | null;
+            org_unit?: string | null;
+            grade?: string | null;
+            position?: string | null;
+            /** Format: date */
+            hire_date?: string | null;
+            employment_status: string;
+            phone_masked?: string | null;
+            emergency_contacts_registered: boolean;
+            /** Format: int64 */
+            emergency_contacts_count: number;
+            emergency_contacts: components["schemas"]["SelfEmergencyContactSummary"][];
+            address_masked?: string | null;
+            bank_account_registered: boolean;
+            open_change_requests: components["schemas"]["SelfChangeRequestSummary"][];
+        };
         /** @enum {string} */
         MediaKind: "IMAGE" | "VIDEO";
         MessengerAckSummary: {
@@ -24700,6 +25433,22 @@ export interface components {
         MobileVotePollRequest: {
             selected_option_ids: components["schemas"]["Uuid"][];
             step_up: components["schemas"]["MobilePasskeyStepUpEnvelope"];
+        };
+        MyAccessLogEvent: {
+            /** Format: uuid */
+            event_id: string;
+            /** Format: date-time */
+            occurred_at: string;
+            actor_name: string;
+            actor_team: string | null;
+            action: string;
+            field: string | null;
+            reason_code: string | null;
+            target_type: string;
+        };
+        MyAccessLogPage: {
+            items: components["schemas"]["MyAccessLogEvent"][];
+            next_cursor: string | null;
         };
         /** @description One pending P1 offer for the signed-in mechanic: a BROADCASTING dispatch that fanned out to the caller, still inside its accept window, with no response from the caller yet. */
         MyDispatchOffer: {
@@ -26087,6 +26836,13 @@ export interface components {
             /** @enum {string} */
             channel: "ATTESTATION_ONLY" | "FILE_GENERIC";
         };
+        PayrollCalculationDeduction: {
+            code: string;
+            label_ko: string;
+            /** Format: int64 */
+            amount_won: number;
+            source_url: string;
+        };
         PayrollClosePreflight: {
             checks: components["schemas"]["PayrollPreflightCheck"][];
             can_close: boolean;
@@ -26159,9 +26915,13 @@ export interface components {
             id: components["schemas"]["Uuid"];
             /** Format: uuid */
             employee_id?: string | null;
+            employee_number?: string | null;
             employee_display_name: string;
             employee_company: string;
+            org_unit?: string | null;
+            position?: string | null;
             work_days?: number | null;
+            paid_holiday_days?: number | null;
             regular_hours?: number | null;
             overtime_hours?: number | null;
             night_hours?: number | null;
@@ -26170,11 +26930,30 @@ export interface components {
             leave_remaining?: number | null;
             gross_pay_source_present: boolean;
             net_pay_source_present: boolean;
+            bank_account_registered: boolean;
             /** @enum {string} */
             nts_tax_row_status: "REQUIRED_NOT_SUPPLIED" | "SUPPLIED_UNVERIFIED" | "VERIFIED_SOURCE_ROW";
             /** @enum {string} */
             calculation_status: "BLOCKED_LEGAL_GATE" | "READY_FOR_REVIEW" | "APPROVED" | "ISSUED" | "VOID";
             blockers: unknown[];
+            /** Format: int32 */
+            calculation_version?: number | null;
+            /** Format: int64 */
+            base_pay_won?: number | null;
+            /** Format: int64 */
+            overtime_pay_won?: number | null;
+            /** Format: int64 */
+            meal_allowance_won?: number | null;
+            /** Format: int64 */
+            taxable_won?: number | null;
+            /** Format: int64 */
+            gross_won?: number | null;
+            deductions?: components["schemas"]["PayrollCalculationDeduction"][] | null;
+            /** Format: int64 */
+            total_deductions_won?: number | null;
+            /** Format: int64 */
+            net_won?: number | null;
+            tax_table_version?: string | null;
         };
         PayrollLinkedRef: {
             /** @description Object family the ref points at — payroll_line or employee today; extensible. */
@@ -26384,6 +27163,16 @@ export interface components {
              * Format: int64
              * @description Whole KRW won. null unless EVERY line of the run calculated — never a partial sum presented as a total.
              */
+            total_gross_won?: number | null;
+            /**
+             * Format: int64
+             * @description Whole KRW won. null unless EVERY line of the run calculated — never a partial sum presented as a total.
+             */
+            total_deductions_won?: number | null;
+            /**
+             * Format: int64
+             * @description Whole KRW won. null unless EVERY line of the run calculated — never a partial sum presented as a total.
+             */
             total_net_won: number | null;
         };
         PayrollRunDetail: {
@@ -26397,6 +27186,8 @@ export interface components {
             lines_limit: number;
             /** Format: int64 */
             lines_offset: number;
+            /** Format: int64 */
+            missing_bank_account_count: number;
             /** Format: int64 */
             exceptions_open: number;
             /** Format: int64 */
@@ -26529,6 +27320,97 @@ export interface components {
             url: string;
             /** Format: date */
             retrieved_on: string;
+        };
+        PeopleDataHealthResponse: {
+            cohort: {
+                /** Format: int64 */
+                total: number;
+                /** Format: int64 */
+                active: number;
+                /** Format: int64 */
+                on_leave: number;
+                /** Format: int64 */
+                pre_hire: number;
+            };
+            statutory_register: {
+                /** Format: int64 */
+                complete_count: number;
+                /** Format: int64 */
+                incomplete_count: number;
+                missing_by_category: {
+                    /** Format: int64 */
+                    birth: number;
+                    /** Format: int64 */
+                    job: number;
+                    /** Format: int64 */
+                    hire: number;
+                    /** Format: int64 */
+                    contract_end: number;
+                    /** Format: int64 */
+                    sex: number;
+                    /** Format: int64 */
+                    address: number;
+                    /** Format: int64 */
+                    career: number;
+                };
+            };
+            id_summary: {
+                /** Format: int64 */
+                rrn_recorded: number;
+                /** Format: int64 */
+                not_issued: number;
+                /** Format: int64 */
+                missing: number;
+                by_type: {
+                    /** Format: int64 */
+                    rrn: number;
+                    /** Format: int64 */
+                    arc: number;
+                    /** Format: int64 */
+                    domestic_residence: number;
+                    /** Format: int64 */
+                    not_issued: number;
+                    /** Format: int64 */
+                    unset: number;
+                };
+            };
+            placement_summary: {
+                /** Format: int64 */
+                placed: number;
+                /** Format: int64 */
+                unplaced: number;
+                /** Format: int64 */
+                department_missing: number;
+            };
+            bank_account: {
+                /** Format: int64 */
+                registered: number;
+                /** Format: int64 */
+                missing: number;
+            };
+            identity_review: {
+                /** Format: int64 */
+                needs_review: number;
+            };
+            failed_actions: {
+                /** Format: int64 */
+                count: number;
+            };
+            drilldown_items: {
+                employee_id: components["schemas"]["Uuid"];
+                employee_number?: string;
+                /** @enum {string} */
+                employment_status: "PRE_HIRE" | "ACTIVE" | "ON_LEAVE";
+                missing_categories: string[];
+            }[];
+            latest_import?: {
+                run_id: components["schemas"]["Uuid"];
+                status: string;
+                /** Format: int32 */
+                candidate_rows: number;
+                created_at: components["schemas"]["Timestamp"];
+                applied_at?: components["schemas"]["Timestamp"];
+            };
         };
         Period: {
             start: components["schemas"]["Timestamp"];
@@ -26916,6 +27798,27 @@ export interface components {
         };
         /** @enum {string} */
         PlatformGroupRole: "GROUP_ADMIN" | "GROUP_VIEWER" | "GROUP_FINANCE";
+        PlatformOperatorInviteResponse: {
+            operator: components["schemas"]["PlatformOperatorSummary"];
+            /** @description One-time enrolment token returned once; deliver out-of-band and never log it. */
+            invite_token: string;
+            expires_at: components["schemas"]["Timestamp"];
+        };
+        PlatformOperatorStatus: string;
+        PlatformOperatorSummary: {
+            user_id: components["schemas"]["Uuid"];
+            display_name: string;
+            sign_in_id?: string | null;
+            is_active: boolean;
+            has_passkey: boolean;
+            device_bound_passkey: boolean;
+            status: components["schemas"]["PlatformOperatorStatus"];
+            /** Format: uuid */
+            invited_by?: string | null;
+            /** Format: date-time */
+            invite_expires_at?: string | null;
+            created_at: components["schemas"]["Timestamp"];
+        };
         PlatformOpsResponse: {
             tenants: components["schemas"]["PlatformTenantHealth"][];
             /** @description Operator notices for the vendor only (never a tenant surface), e.g. a juso key from D-14 before it expires, after it expired, or once juso rejected it. */
@@ -28121,6 +29024,30 @@ export interface components {
             deactivated_at: string | null;
             created_at: components["schemas"]["Timestamp"];
         };
+        RegisterFactsQueryItem: {
+            employee_id: components["schemas"]["Uuid"];
+            /** Format: date-time */
+            updated_at: string;
+            /** @enum {string|null} */
+            sex: "MALE" | "FEMALE" | null;
+            address: string | null;
+            careers: components["schemas"]["EmployeeCareer"][] | null;
+            exit_reason_code: string | null;
+            exit_reason_label: string | null;
+            register_note: string | null;
+            birth_date: string | null;
+        };
+        RegisterFactsQueryRequest: {
+            ids?: components["schemas"]["Uuid"][] | null;
+            register_review_required?: boolean | null;
+            cursor?: components["schemas"]["Uuid"] | null;
+            /** Format: int64 */
+            limit?: number | null;
+        };
+        RegisterFactsQueryResponse: {
+            items: components["schemas"]["RegisterFactsQueryItem"][];
+            next_cursor: components["schemas"]["Uuid"] | null;
+        };
         RegisterProductionSourceSystem: {
             branch_id: components["schemas"]["Uuid"];
             source_system: string;
@@ -28447,6 +29374,9 @@ export interface components {
             pay_unit?: "MONTHLY" | "HOURLY" | "DAILY" | "ANNUAL";
             idempotency_key: string;
         };
+        ReissuePlatformOperatorInviteRequest: {
+            step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"];
+        };
         RejectPeriodUnlockRequest: {
             /** Format: uuid */
             requestId: string;
@@ -28633,6 +29563,10 @@ export interface components {
             prev_hash: string;
             row_hash: string;
         };
+        RevokePlatformOperatorRequest: {
+            reason?: string | null;
+            step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"];
+        };
         RollbackWorkflowDefinitionRequest: {
             /** Format: int32 */
             target_version: number;
@@ -28797,9 +29731,53 @@ export interface components {
             attestation_id: components["schemas"]["Uuid"];
             step_up?: components["schemas"]["PasskeyStepUpAssertion"];
         };
+        SelfChangeRequestSummary: {
+            id: components["schemas"]["Uuid"];
+            field: string;
+            status: string;
+            masked_summary?: string | null;
+            created_at: components["schemas"]["Timestamp"];
+        };
+        SelfEmergencyContactInput: {
+            name: string;
+            /** @enum {string} */
+            relation: "SPOUSE" | "PARENT" | "CHILD" | "SIBLING" | "RELATIVE" | "OTHER";
+            phone: string;
+            contact_notified?: boolean | null;
+        };
+        SelfEmergencyContactSummary: {
+            name: string;
+            /** @enum {string} */
+            relation: "SPOUSE" | "PARENT" | "CHILD" | "SIBLING" | "RELATIVE" | "OTHER";
+            phone_masked: string;
+        };
+        SelfFieldRevealed: {
+            employee_id: components["schemas"]["Uuid"];
+            /** @enum {string} */
+            field: "PHONE" | "ADDRESS" | "EMERGENCY_CONTACTS";
+            value: unknown;
+            /** Format: int64 */
+            display_seconds: number;
+        };
+        SelfIssueCertificateRequest: {
+            /** @enum {string} */
+            kind: "EMPLOYMENT" | "CAREER" | "EXIT";
+            items: ("period" | "duty" | "position" | "wage" | "birth")[];
+            purpose: string;
+        };
+        SelfLeaveApprovalPreview: {
+            /** @enum {string} */
+            filing_state: "ready" | "home_branch_required";
+            /** Format: uuid */
+            home_branch_id?: string | null;
+            branch_name?: string | null;
+            org_unit?: string | null;
+            steps: components["schemas"]["LeaveApprovalPreviewStep"][];
+        };
         SelfLeaveBalance: {
             employee_id: components["schemas"]["Uuid"];
             name: string;
+            org_unit?: string | null;
             accrued_units: components["schemas"]["LeaveBalanceAmount"] | null;
             used_units: components["schemas"]["LeaveBalanceAmount"] | null;
             remaining_units: components["schemas"]["LeaveBalanceAmount"] | null;
@@ -28813,6 +29791,19 @@ export interface components {
              * @description Active authoritative routing branch; null exactly when filing_state is home_branch_required.
              */
             home_branch_id: string | null;
+        };
+        SelfLeaveTeamOverlap: {
+            org_unit?: string | null;
+            /** Format: int64 */
+            active_count: number;
+            /** Format: int64 */
+            out_count: number;
+            members_out: components["schemas"]["TeamOverlapMember"][];
+        };
+        SelfRevealRequest: {
+            /** @enum {string} */
+            field: "PHONE" | "ADDRESS" | "EMERGENCY_CONTACTS";
+            step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"] | null;
         };
         /** @description Compose a message. For reply/forward, in_reply_to is required and references carries the accumulated chain. The From is constrained to the configured account address (it cannot be set here). */
         SendMailRequest: {
@@ -29292,17 +30283,6 @@ export interface components {
             acknowledge_open: boolean;
             note?: string | null;
         };
-        SignupRequest: {
-            /**
-             * Format: email
-             * @description The email address to register and deliver the one-time code to.
-             */
-            email: string;
-        };
-        SignupResponse: {
-            /** @description Always true. The signup was accepted and a one-time code was sent; the response intentionally carries no account-existence or token information. */
-            accepted: boolean;
-        };
         SimulateWorkflowDefinitionRequest: {
             definition?: {
                 [key: string]: unknown;
@@ -29641,6 +30621,13 @@ export interface components {
             requested_at: string;
             /** Format: date-time */
             expires_at: string | null;
+            /** Format: date-time */
+            request_expires_at?: string;
+            requested_duration_seconds?: number;
+            scope?: string[];
+            /** Format: uuid */
+            operator_approver_ref?: string | null;
+            tenant_approved?: boolean;
         };
         SupportSessions: {
             sessions: components["schemas"]["SupportSession"][];
@@ -29804,6 +30791,10 @@ export interface components {
         };
         /** @enum {string} */
         Team: "MAINTENANCE" | "PREVENTION" | "MANAGEMENT" | "RECEPTION";
+        TeamOverlapMember: {
+            employee_id: components["schemas"]["Uuid"];
+            name: string;
+        };
         TenantEraseRead: {
             request: components["schemas"]["TenantEraseRequest"] | null;
             second_operator_available: boolean;
@@ -30216,6 +31207,10 @@ export interface components {
             sort_weight?: number;
             equipment_id?: components["schemas"]["Uuid"] | null;
         };
+        UpdateMeProfileRequest: {
+            phone?: string | null;
+            emergency_contacts?: components["schemas"]["SelfEmergencyContactInput"][];
+        };
         UpdateNoticeDraftRequest: {
             title?: string;
             body?: string;
@@ -30402,6 +31397,10 @@ export interface components {
             employee_company: string | null;
             employee_org_unit: string | null;
             employee_position: string | null;
+            /** Format: date */
+            employee_hire_date?: string | null;
+            employee_employment_status?: string | null;
+            employee_grade?: string | null;
             employee_identity_review_required: boolean | null;
             employee_identity_resolution_confidence: string | null;
             /** @enum {string} */
@@ -31614,7 +32613,9 @@ export interface operations {
                 limit?: number;
                 offset?: number;
                 target_type?: string;
+                target_id?: string;
                 actor?: components["schemas"]["Uuid"];
+                trace_id?: string;
             };
             header?: never;
             path?: never;
@@ -31630,6 +32631,42 @@ export interface operations {
                 content: {
                     "application/json": {
                         items: ({
+                            /** Format: uuid */
+                            id?: string;
+                            /** Format: uuid */
+                            actor?: string | null;
+                            action?: string;
+                            target_type?: string;
+                            target_id?: string;
+                            /** Format: uuid */
+                            branch_id?: string | null;
+                            before_snap?: unknown;
+                            after_snap?: unknown;
+                            ip?: string | null;
+                            user_agent?: string | null;
+                            auth_method?: string | null;
+                            device?: string | null;
+                            classification_badges?: string[] | null;
+                            anomaly?: boolean | null;
+                            reason?: string | null;
+                            trace_id?: string;
+                            span_id?: string;
+                            source?: string | null;
+                            change_mode?: string | null;
+                            reason_code?: string | null;
+                            decision_snapshot?: unknown;
+                            /** Format: uuid */
+                            command_id?: string | null;
+                            scope_ids?: string[] | null;
+                            actor_kind?: string | null;
+                            principal_type?: string | null;
+                            /** Format: uuid */
+                            session_id?: string | null;
+                            outcome?: string | null;
+                            actor_display?: string | null;
+                            actor_employer?: string | null;
+                            /** Format: int32 */
+                            row_hash_version?: number;
                             occurred_at: components["schemas"]["Timestamp"];
                         } & {
                             [key: string]: unknown;
@@ -32447,6 +33484,121 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlatformOrg"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    listPlatformOperators: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Platform operators visible to the platform tier. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformOperatorSummary"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    invitePlatformOperator: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvitePlatformOperatorRequest"];
+            };
+        };
+        responses: {
+            /** @description Invited platform operator summary and one-time enrolment token. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformOperatorInviteResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    reissuePlatformOperatorInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReissuePlatformOperatorInviteRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated operator summary and replacement one-time enrolment token. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformOperatorInviteResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    revokePlatformOperator: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevokePlatformOperatorRequest"];
+            };
+        };
+        responses: {
+            /** @description Revoked platform operator summary. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformOperatorSummary"];
                 };
             };
             401: components["responses"]["Unauthorized"];
@@ -33661,6 +34813,191 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
+        };
+    };
+    getAccessLogReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                period: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current monthly review projection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessLogReview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description access_denied or scope_tenant_wide_only. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    completeAccessLogReview: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                period: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    step_up?: components["schemas"]["PasskeyLoginFinishRequest"];
+                };
+            };
+        };
+        responses: {
+            /** @description Completed monthly review projection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessLogReview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description access_denied or scope_tenant_wide_only. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            /** @description step_up_required — passkey step-up assertion required to sign off. */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    recordAccessLogFinding: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                period: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    event_id?: string | null;
+                    summary?: {
+                        /** Format: uuid */
+                        actor: string;
+                        /** Format: date */
+                        day: string;
+                        flag: string;
+                    } | null;
+                    /** @enum {string} */
+                    disposition: "confirmed" | "action_required";
+                    outcome?: string | null;
+                    note?: string | null;
+                    follow_up?: {
+                        kind: string;
+                        ref?: string | null;
+                        closed?: boolean | null;
+                    } | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Updated monthly review projection including the recorded finding. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessLogReview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description access_denied or scope_tenant_wide_only. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    startAccessLogReview: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                period: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Started or existing review projection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessLogReview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description access_denied or scope_tenant_wide_only. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
         };
     };
     getAccountEffectiveAccess: {
@@ -37129,6 +38466,28 @@ export interface operations {
             422: components["responses"]["ValidationError"];
         };
     };
+    getChangeRequestCounts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Counts of OPEN change requests per lane. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeRequestCountsResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
     decideChangeRequest: {
         parameters: {
             query?: never;
@@ -39002,6 +40361,8 @@ export interface operations {
                 status?: ("PRE_HIRE" | "ACTIVE" | "ON_LEAVE" | "EXITED" | "UNKNOWN")[];
                 /** @description Exact employee numbers, comma-separated (`employee_number=A-1,A-2`), at most 500 (422 above). Resolves a pasted column in one read. */
                 employee_number?: string[];
+                /** @description Exact employee IDs, comma-separated (`ids=<uuid>,<uuid>`), at most 500 (422 above). */
+                ids?: components["schemas"]["Uuid"][];
                 /** @description YYYY-MM-DD. Only employees whose current contract ends strictly before this date (e.g. tomorrow with status=ACTIVE finds expired contracts of still-active employees). `total` counts the filtered set. */
                 contract_ending_before?: string;
                 /** @description true lists only employees with a failed_event (a scheduled action that could not apply on its date and was not redone); false only those without. `total` counts the filtered set. */
@@ -39380,7 +40741,7 @@ export interface operations {
                      * @description Last day (YYYY-MM-DD) of the pay period, not before pay_period_start. With pay_period_start, or not at all.
                      */
                     pay_period_end?: string;
-                    /** @description IMPORT-2, optional JSON: {"sheets": {"<sheet name>": {"header_row": 1-based, "columns": {"<column letter>": "<target>" | null}, "skip": bool | null}}}. skip true is remembered for the sheet name; false, or mapping the sheet (header_row or columns), imports a remembered skip. Columns need header_row; the sheet needs a name column. 422 mapping_invalid, mapping_unknown_sheet, mapping_unknown_target, mapping_bad_column, mapping_header_row_required, mapping_header_row_out_of_range, mapping_name_required, mapping_duplicate_target. */
+                    /** @description IMPORT-2, optional JSON: {"sheets": {"<sheet name>": {"header_row": 1-based, "columns": {"<column letter>": "<target>" | null}, "skip": bool | null}}}. skip true is remembered for the sheet name; false, or mapping the sheet (header_row or columns), imports a remembered skip. Columns need header_row; the sheet needs a name column. 422 mapping_invalid, mapping_unknown_sheet, mapping_unknown_target, mapping_bad_column, mapping_header_row_required, mapping_header_row_out_of_range, mapping_name_required, mapping_duplicate_target, mapping_restricted_column. */
                     mapping?: string;
                 };
             };
@@ -39522,6 +40883,37 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
+        };
+    };
+    repairEmployeeImportCells: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportCellsRepairRequest"];
+            };
+        };
+        responses: {
+            /** @description Validated cell repairs merged into the staged import run decisions. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportCellsRepairResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
         };
     };
     dryRunEmployeeImport: {
@@ -39667,6 +41059,52 @@ export interface operations {
                 };
             };
             422: components["responses"]["ValidationError"];
+        };
+    };
+    recordImportRowIdentifier: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: components["schemas"]["Uuid"];
+                source_key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportRowIdentifierRequest"];
+            };
+        };
+        responses: {
+            /** @description Sealed draft identifier staged for dry run and apply. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportRowIdentifierResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            /** @description rrn_record_rate_limited. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description rrn_vault_unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     signOffEmployeeImport: {
@@ -39953,6 +41391,33 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
+        };
+    };
+    queryEmployeeRegisterFacts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterFactsQueryRequest"];
+            };
+        };
+        responses: {
+            /** @description Register facts items and optional next cursor. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegisterFactsQueryResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationError"];
         };
     };
     applyEmployeeRenumber: {
@@ -41688,6 +43153,31 @@ export interface operations {
                 content?: never;
             };
             503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    getEmployeeUnitPosition: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Employee position within the org unit. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmployeeUnitPosition"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     voidEmployee: {
@@ -46664,6 +48154,63 @@ export interface operations {
             422: components["responses"]["ValidationError"];
         };
     };
+    bulkReportEmployeeExitCases: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 16..200 characters. An exact replay returns 200 with the original body; the same key with a different body is 409 conflict. */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkReportExitCasesRequest"];
+            };
+        };
+        responses: {
+            /** @description Per-item exit-case reporting results (or exact Idempotency-Key replay). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkReportExitCasesResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+        };
+    };
+    getEmployeeExitCaseCounts: {
+        parameters: {
+            query?: {
+                /** @description Part of the employee's name or employee number (case-insensitive). */
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Exit-case status counts in the caller's branch scope. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExitCaseCountsResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationError"];
+        };
+    };
     getEmployeeExitCase: {
         parameters: {
             query?: never;
@@ -46910,6 +48457,34 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+        };
+    };
+    getPeopleDataHealth: {
+        parameters: {
+            query?: {
+                /** @description Filter drilldown items to employees missing the specified category. */
+                category?: "birth" | "job" | "hire" | "contractEnd" | "sex" | "address" | "career" | "rrn_missing" | "unplaced" | "department_missing" | "bank_account_missing" | "identity_review" | "failed_action" | "register_incomplete";
+                /** @description Maximum number of drilldown items returned (1..=50). */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description People data-health metrics and bounded zero-PII drilldown items. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PeopleDataHealthResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationError"];
         };
     };
     getHrReadinessSummary: {
@@ -50211,6 +51786,39 @@ export interface operations {
             503: components["responses"]["MailUnavailable"];
         };
     };
+    listMyAccessLog: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Keyset page of subject-scoped access events. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyAccessLogPage"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description limit_out_of_range or cursor_invalid. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     listMyActionInbox: {
         parameters: {
             query?: {
@@ -50517,6 +52125,126 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
+        };
+    };
+    listMyCertificates: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Keyset page of the employee's certificates. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificatePage"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Forbidden for unlinked users. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    issueMyCertificate: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["schemas"]["Uuid"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SelfIssueCertificateRequest"];
+            };
+        };
+        responses: {
+            /** @description Issued certificate snapshot. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Certificate"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Forbidden for unlinked users or support sessions. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Employee ineligible, facts missing, or settings unconfigured. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Validation error. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    getMyCertificate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Issued certificate detail with seal image when configured. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Certificate"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Forbidden for unlinked users. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            404: components["responses"]["NotFound"];
         };
     };
     listMyDispatchOffers: {
@@ -51093,6 +52821,184 @@ export interface operations {
             404: components["responses"]["NotFound"];
             /** @description JWT verification is not configured. */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    getMyProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Masked self-service profile. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeProfileResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Caller has no linked employee or employee_self_read is denied. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateMyProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMeProfileRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated masked self-service profile. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeProfileResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Forbidden for unlinked users or read-only support sessions. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Validation error or non-immediate field rejected. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    createMyProfileChangeRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSelfChangeRequest"];
+            };
+        };
+        responses: {
+            /** @description Change request created and routed to HR. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeRequest"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Forbidden for unlinked users or support sessions. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description An open change request already exists for this field. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Validation error or unknown/restricted field rejected. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    revealMyProfileField: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SelfRevealRequest"];
+            };
+        };
+        responses: {
+            /** @description Revealed personal field with display timer. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SelfFieldRevealed"];
+                };
+            };
+            /** @description Missing, invalid, or stale passkey step-up assertion. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Forbidden for unlinked users or support sessions. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            /** @description Hourly reveal rate limit exceeded. */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -54896,6 +56802,8 @@ export interface operations {
             query?: {
                 limit?: number;
                 offset?: number;
+                pay_group_id?: string;
+                legal_entity_id?: string;
             };
             header?: never;
             path?: never;
@@ -55022,6 +56930,8 @@ export interface operations {
             query?: {
                 limit?: number;
                 offset?: number;
+                missing_bank_only?: boolean;
+                q?: string;
             };
             header?: never;
             path: {
@@ -56441,6 +58351,41 @@ export interface operations {
             };
         };
     };
+    listPrivacyRightsIntake: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                status?: "RECEIVED" | "DECIDED";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tenant intake page filtered by live Cedar placement. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            request: components["schemas"]["PrivacyRightsReceipt"];
+                            subject_name: string;
+                        }[];
+                        next_cursor: string | null;
+                        /** Format: date */
+                        as_of: string;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
     filePrivacyRightsRequest: {
         parameters: {
             query?: never;
@@ -56559,6 +58504,56 @@ export interface operations {
             503: components["responses"]["ServiceUnavailable"];
         };
     };
+    receiveOffAppPrivacyRightsRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    subject_user_id: string;
+                    /** @enum {string} */
+                    controller: "TENANT";
+                    /** @enum {string} */
+                    channel: "PHONE" | "LETTER" | "EMAIL" | "IN_PERSON";
+                    /** @enum {string} */
+                    agent: "SUBJECT" | "LEGAL_REPRESENTATIVE" | "AUTHORIZED";
+                    /** @default false */
+                    mandate_received?: boolean;
+                    /** @enum {string} */
+                    identity_method: "SIGNED_IN" | "PASSKEY" | "ID_DOCUMENT_SEEN" | "KNOWN_CONTACT" | "AGENT_MANDATE";
+                    /** Format: date */
+                    received_on: string;
+                    kinds: ("ACCESS" | "CORRECTION" | "DELETION" | "SUSPENSION" | "WITHDRAWAL")[];
+                    /** @default  */
+                    detail?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Recorded off-app receipt or exact idempotent replay. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivacyRightsReceipt"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
     readPrivacyRightsIntake: {
         parameters: {
             query?: never;
@@ -56586,6 +58581,140 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    decidePrivacyRightsRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    kind: "ACCESS" | "CORRECTION" | "DELETION" | "SUSPENSION" | "WITHDRAWAL";
+                    /** @enum {string} */
+                    outcome: "GRANTED" | "PARTIAL" | "REFUSED";
+                    reason?: string | null;
+                    note?: string | null;
+                    /** Format: date */
+                    decided_on?: string | null;
+                    step_up: components["schemas"]["MobilePasskeyStepUpEnvelope"];
+                };
+            };
+        };
+        responses: {
+            /** @description Updated privacy rights receipt or exact idempotent replay. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivacyRightsReceipt"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    objectPrivacyRightsRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    kinds: ("ACCESS" | "CORRECTION" | "DELETION" | "SUSPENSION" | "WITHDRAWAL")[];
+                    /** @default  */
+                    detail?: string;
+                    /** @enum {string} */
+                    channel?: "IN_APP" | "PHONE" | "LETTER" | "EMAIL" | "IN_PERSON";
+                    /** @enum {string} */
+                    agent?: "SUBJECT" | "LEGAL_REPRESENTATIVE" | "AUTHORIZED";
+                    /** @default false */
+                    mandate_received?: boolean;
+                    /** @enum {string} */
+                    identity_method?: "SIGNED_IN" | "PASSKEY" | "ID_DOCUMENT_SEEN" | "KNOWN_CONTACT" | "AGENT_MANDATE";
+                    /** Format: date */
+                    received_on?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Objection receipt or exact idempotent replay. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivacyRightsReceipt"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    postponePrivacyRightsRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    kind: "ACCESS" | "CORRECTION" | "DELETION" | "SUSPENSION" | "WITHDRAWAL";
+                    reason: string;
+                    note: string;
+                    /** Format: date */
+                    decided_on?: string | null;
+                    step_up: components["schemas"]["MobilePasskeyStepUpEnvelope"];
+                };
+            };
+        };
+        responses: {
+            /** @description Updated privacy rights receipt or exact idempotent replay. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivacyRightsReceipt"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
             503: components["responses"]["ServiceUnavailable"];
         };
     };
@@ -60190,6 +62319,7 @@ export interface operations {
                 include_inactive?: boolean;
                 limit?: number;
                 offset?: number;
+                search?: string;
             };
             header?: never;
             path?: never;
@@ -63069,7 +65199,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
-            /** @description The linked active employee has no explicit home branch (`leave_home_branch_review_required`), or the supplied `idempotency_key` is already bound to different client intent (`leave_create.idempotency_conflict`). */
+            /** @description The linked active employee has no explicit home branch (`leave_home_branch_review_required`), the requested dates overlap an existing pending or approved request (`leave_overlapping_request`), the requested dates fall inside a closed attendance or payroll period (`leave_period_closed`), or the supplied `idempotency_key` is already bound to different client intent (`leave_create.idempotency_conflict`). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -63274,6 +65404,62 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    getMyLeaveApprovalPreviewV2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Leave approval preview. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SelfLeaveApprovalPreview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getMyLeaveTeamOverlapV2: {
+        parameters: {
+            query: {
+                start_date: string;
+                end_date: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Same-unit overlap summary. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SelfLeaveTeamOverlap"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Invalid or inverted date range. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
         };
     };
     createWorkOrder: {

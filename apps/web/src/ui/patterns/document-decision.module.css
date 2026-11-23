@@ -1,0 +1,82 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.workspace {
+  display: flex;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-width: 0;
+  background: var(--surface);
+}
+
+.paneWrap {
+  display: flex;
+  flex: 1 1 0%;
+  min-width: 0;
+}
+
+.docCol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  min-width: 0;
+}
+
+.decisionAside {
+  position: sticky;
+  top: 0;
+  max-height: calc(100dvh - var(--frame-top) - var(--frame-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 var(--queue-w);
+  width: var(--queue-w);
+  min-width: 0;
+  border-inline-start: 1px solid var(--border-strong);
+  background: var(--surface);
+}
+
+@media (--below-wide) {
+  .workspace[data-docked-decision] {
+    flex-direction: column;
+  }
+
+  .decisionAside {
+    position: static;
+    max-height: none;
+    flex: none;
+    width: 100%;
+    border-inline-start: 0;
+    border-block-start: 1px solid var(--border-strong);
+  }
+}
+
+@media (--phone) {
+  .docCol {
+    padding: var(--space-4) var(--space-3);
+  }
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .docCol :global([data-exit-now]) {
+  padding: var(--space-4) 0 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .docCol :global([data-exit-now]) :global([data-checks]) {
+  padding: var(--space-3) 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .docCol :global([data-exit-now]) button[type="submit"] {
+  width: auto;
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .docCol :global([data-exit-now]) :has(> button[type="submit"]) > :first-child {
+  flex-basis: auto;
+}

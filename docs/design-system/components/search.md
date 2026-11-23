@@ -59,7 +59,7 @@ There is one look and one size. No prop changes either.
 | Part | Look |
 |---|---|
 | Wrapper | A flex row, items centred, `position: relative`. It can shrink (`min-width: 0`). It has no width of its own. |
-| Input | The control box of the Field family: 40 px high (`--row-h`), a 1 px `--control-border` border, a 6 px radius (`--radius`), `--surface` fill, 12 px padding on the right (`--space-3`). It fills the wrapper and can shrink. |
+| Input | The control box of the Field family: 40 px high (`--field-h`), a 1 px `--control-border` border, a 6 px radius (`--radius`), `--surface` fill, 12 px padding on the right (`--space-3`). It fills the wrapper and can shrink. |
 | Input, left padding | 36 px: `calc(var(--space-3) + var(--space-4) + var(--space-2))`, which clears the icon. |
 | Icon | 16 px, `--steel`, placed 12 px (`--space-3`) from the left edge of the wrapper. The wrapper's `align-items: center` centres it on the input. |
 | Text | Inherits the body size, 14 px. |
@@ -253,9 +253,12 @@ The input's box, `field__input` in `app.css`:
 | Token | Read by |
 | --- | --- |
 | `--control-border` | `border` |
+| `--field-h` | `height` |
+| `--field-h-toolbar` | `height` |
 | `--radius` | `border-radius` |
-| `--row-h` | `height` |
+| `--space-2` | `background-position` |
 | `--space-3` | `padding` |
+| `--space-6` | `padding-inline-end` |
 | `--surface` | `background` |
 
 <!-- /ds:tokens -->

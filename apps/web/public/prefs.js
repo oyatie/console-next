@@ -9,7 +9,7 @@
   var prefs = {
     theme: { key: "console.theme", values: ["light", "dark"] },
     // An experience becomes known by adding its id to this list; a test holds the list to the experience token files.
-    experience: { key: "console.experience", values: ["baseline", "control-room", "warm-clear"] },
+    experience: { key: "console.experience", values: ["baseline", "console", "warm-clear"] },
   };
   // With no stored theme the shell follows the system (src/shell/theme.ts), so the first paint does too.
   function system() {
@@ -27,6 +27,7 @@
     } catch {
       // Storage can refuse the read (private mode, blocked site data): that is no choice either.
     }
+    if (name === "experience" && value === "control-room") value = "console";
     if (prefs[name].values.indexOf(value) < 0) value = name === "theme" ? system() : null;
     if (value) document.documentElement.setAttribute("data-" + name, value);
   }

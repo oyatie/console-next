@@ -10,12 +10,19 @@ use crate::dto::{GroupAccountResponse, GroupResponse, OrgResponse};
 use crate::step_up::{PlatformStepUpRequest, require_platform_step_up};
 use crate::{PlatformError, PlatformRestState};
 
+fn require_group_manage(principal: &PlatformPrincipal, message: &str) -> Result<(), PlatformError> {
+    principal
+        .authorize(PlatformFeature::GroupManage)
+        .map_err(|_| PlatformError::forbidden(message))
+}
+
 /// GET /api/platform/groups — list all top-level groups and their member org identities.
 pub(crate) async fn list_groups(
     State(state): State<PlatformRestState>,
     Extension(principal): Extension<PlatformPrincipal>,
     Extension(claims): Extension<console_platform_auth::AccessClaims>,
 ) -> Result<Response, PlatformError> {
+    require_group_manage(&principal, "platform principal cannot list groups")?;
     let mut tx = crate::listing_authority::begin(
         &state,
         &principal,
@@ -44,9 +51,7 @@ pub(crate) async fn list_group_accounts(
     Extension(principal): Extension<PlatformPrincipal>,
     Path(id): Path<Uuid>,
 ) -> Result<Response, PlatformError> {
-    principal
-        .authorize(PlatformFeature::GroupManage)
-        .map_err(|_| PlatformError::forbidden("platform principal cannot list group accounts"))?;
+    require_group_manage(&principal, "platform principal cannot list group accounts")?;
 
     let accounts = state
         .provisioner
@@ -72,9 +77,7 @@ pub(crate) async fn revoke_group_role(
     Extension(principal): Extension<PlatformPrincipal>,
     Path((id, user_id, group_role)): Path<(Uuid, Uuid, String)>,
 ) -> Result<Response, PlatformError> {
-    principal
-        .authorize(PlatformFeature::GroupManage)
-        .map_err(|_| PlatformError::forbidden("platform principal cannot revoke group roles"))?;
+    require_group_manage(&principal, "platform principal cannot revoke group roles")?;
 
     state
         .provisioner
@@ -99,9 +102,7 @@ pub(crate) async fn assign_org_to_group(
     Path((id, org_id)): Path<(Uuid, Uuid)>,
     body: Option<Json<PlatformStepUpRequest>>,
 ) -> Result<Response, PlatformError> {
-    principal
-        .authorize(PlatformFeature::GroupManage)
-        .map_err(|_| PlatformError::forbidden("platform principal cannot assign group members"))?;
+    require_group_manage(&principal, "platform principal cannot assign group members")?;
     // Group accounts reach every org in their group: adding an org extends
     // that reach, so it takes the same step-up as creating an account.
     require_platform_step_up(
@@ -134,9 +135,7 @@ pub(crate) async fn remove_org_from_group(
     Extension(principal): Extension<PlatformPrincipal>,
     Path((id, org_id)): Path<(Uuid, Uuid)>,
 ) -> Result<Response, PlatformError> {
-    principal
-        .authorize(PlatformFeature::GroupManage)
-        .map_err(|_| PlatformError::forbidden("platform principal cannot remove group members"))?;
+    require_group_manage(&principal, "platform principal cannot remove group members")?;
 
     let org = state
         .provisioner
@@ -151,4 +150,47 @@ pub(crate) async fn remove_org_from_group(
         .map_err(PlatformError::from_provisioning)?;
 
     Ok(Json(OrgResponse::from(org)).into_response())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn list_groups_rejects_restricted_platform_principal() {
+        let pool = sqlx::postgres::PgPoolOptions::new()
+            .connect_lazy("postgres://console_rt@127.0.0.1:5432/console_contract")
+            .unwrap();
+        let state = PlatformRestState::new(
+            pool,
+            None,
+            console_platform_provisioning::PlatformProvisioner::new(time::Duration::minutes(15)),
+        );
+        let user_id = console_kernel_core::UserId::new();
+        let restricted: PlatformPrincipal = serde_json::from_value(serde_json::json!({
+            "user_id": user_id,
+            "features": ["tenant_list"]
+        }))
+        .unwrap();
+        let claims: console_platform_auth::AccessClaims =
+            serde_json::from_value(serde_json::json!({
+                "sub": user_id.as_uuid().to_string(),
+                "org": console_kernel_core::OrgId::platform().as_uuid().to_string(),
+                "roles": ["SUPER_ADMIN"],
+                "branches": [],
+                "platform": true,
+                "iss": "",
+                "aud": "",
+                "iat": 0,
+                "nbf": 0,
+                "exp": 9_999_999_999_i64,
+                "jti": Uuid::new_v4().to_string(),
+                "alg": "ES256"
+            }))
+            .unwrap();
+        let err = list_groups(State(state), Extension(restricted), Extension(claims))
+            .await
+            .unwrap_err();
+        assert_eq!(err.into_response().status(), StatusCode::FORBIDDEN);
+    }
 }

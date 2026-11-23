@@ -4,8 +4,12 @@
 //! Opening the sealed value takes the shell's vault; without one the reveal is
 //! 503, never a fallback.
 
+pub mod backfill;
+pub mod census;
 pub(crate) mod govern;
-mod record;
+pub(crate) mod record;
+pub mod reseal;
+mod reseal_staged;
 mod reveal;
 use console_hr_domain::{import::rrn_value::RrnVault, profile::mask};
 use console_kernel_core::KernelError;
@@ -82,7 +86,7 @@ async fn require_employee(
     }
 }
 
-fn unavailable() -> HrError {
+pub(crate) fn unavailable() -> HrError {
     HrError {
         errors: None,
         status: http::StatusCode::SERVICE_UNAVAILABLE,

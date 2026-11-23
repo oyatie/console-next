@@ -19,7 +19,7 @@ export function Checks({ label, items, value, onChange, error, isDisabled, requi
   required?: boolean;
 }) {
   return (
-    <CheckboxGroup className={s.group} value={[...value]} onChange={onChange} isRequired={required} isInvalid={error != null} isDisabled={isDisabled} validationBehavior="aria">
+    <CheckboxGroup data-checks className={s.group} value={[...value]} onChange={onChange} isRequired={required} isInvalid={error != null} isDisabled={isDisabled} validationBehavior="aria">
       <Label className={s.label}>{label}{required && <Marker required />}</Label>
       {items.map((i) => (
         <Checkbox key={i.id} value={i.id} aria-describedby={i.description} className={s.item}>

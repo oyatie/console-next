@@ -1,3 +1,4 @@
+x-console-authz: {"permission": "audit:view", "scope": "any"}
 tags:
   - audit
 operationId: listAuditLog
@@ -29,11 +30,21 @@ parameters:
   required: false
   schema:
     type: string
+- name: target_id
+  in: query
+  required: false
+  schema:
+    type: string
 - name: actor
   in: query
   required: false
   schema:
     $ref: '#/components/schemas/Uuid'
+- name: trace_id
+  in: query
+  required: false
+  schema:
+    type: string
 responses:
   '200':
     description: Paginated audit records.
@@ -52,6 +63,97 @@ responses:
                 type: object
                 required: [occurred_at]
                 properties:
+                  id:
+                    type: string
+                    format: uuid
+                  actor:
+                    type: string
+                    format: uuid
+                    nullable: true
+                  action:
+                    type: string
+                  target_type:
+                    type: string
+                  target_id:
+                    type: string
+                  branch_id:
+                    type: string
+                    format: uuid
+                    nullable: true
+                  before_snap:
+                    nullable: true
+                  after_snap:
+                    nullable: true
+                  ip:
+                    type: string
+                    nullable: true
+                  user_agent:
+                    type: string
+                    nullable: true
+                  auth_method:
+                    type: string
+                    nullable: true
+                  device:
+                    type: string
+                    nullable: true
+                  classification_badges:
+                    type: array
+                    items:
+                      type: string
+                    nullable: true
+                  anomaly:
+                    type: boolean
+                    nullable: true
+                  reason:
+                    type: string
+                    nullable: true
+                  trace_id:
+                    type: string
+                  span_id:
+                    type: string
+                  source:
+                    type: string
+                    nullable: true
+                  change_mode:
+                    type: string
+                    nullable: true
+                  reason_code:
+                    type: string
+                    nullable: true
+                  decision_snapshot:
+                    nullable: true
+                  command_id:
+                    type: string
+                    format: uuid
+                    nullable: true
+                  scope_ids:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
+                    nullable: true
+                  actor_kind:
+                    type: string
+                    nullable: true
+                  principal_type:
+                    type: string
+                    nullable: true
+                  session_id:
+                    type: string
+                    format: uuid
+                    nullable: true
+                  outcome:
+                    type: string
+                    nullable: true
+                  actor_display:
+                    type: string
+                    nullable: true
+                  actor_employer:
+                    type: string
+                    nullable: true
+                  row_hash_version:
+                    type: integer
+                    format: int32
                   occurred_at:
                     $ref: '#/components/schemas/Timestamp'
                 additionalProperties: true

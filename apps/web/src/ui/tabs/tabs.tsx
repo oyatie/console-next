@@ -1,24 +1,32 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useEffect, useRef, type ReactNode } from "react";
-import { Tab, TabList, TabPanel, Tabs as AriaTabs } from "react-aria-components";
+import { useContext, useEffect, useRef, type ReactNode } from "react";
+import { Tab, TabList, TabListStateContext, TabPanel, Tabs as AriaTabs } from "react-aria-components";
 import { fmtNumber } from "@console/i18n/format";
 import s from "./tabs.module.css";
 
 /** Available views only; callers omit refused views using the server's decision. Known nonnegative counts render. */
 export type TabItem = { id: string; label: ReactNode; count?: ReactNode };
 
+function TabLayout({ list, panels, renderLayout }: { list: ReactNode; panels: ReactNode; renderLayout: (list: ReactNode, panels: ReactNode) => ReactNode }) {
+  const state = useContext(TabListStateContext);
+  // AriaTabs renders its children inside CollectionBuilder before TabListStateContext is provided; withhold outer layout/overlays during collection so portals mount once.
+  return state ? renderLayout(list, panels) : <>{list}</>;
+}
+
 /**
  * View tabs over one model (chart, list, outline; a record's sections): WAI-ARIA tabs (React Aria) — arrow keys move
  * and select, Home / End jump, Tab leaves the list for the panel. `children(id)` renders the selected view's panel.
  * Pages that are separate routes use TabNav instead (links with aria-current), which looks the same.
  */
-export function Tabs({ label, items, selected, onSelect, renderList, children }: {
+export function Tabs({ label, items, selected, onSelect, renderList, renderLayout, children }: {
   label: string;
   items: readonly TabItem[];
   selected: string;
   onSelect: (id: string) => void;
   /** Place the tablist in a page head while its panels stay outside that header. */
   renderList?: (list: ReactNode) => ReactNode;
+  /** Arrange both the tablist and panels within an enclosing pattern frame. */
+  renderLayout?: (list: ReactNode, panels: ReactNode) => ReactNode;
   children: (id: string) => ReactNode;
 }) {
   if (!items.length) return null;
@@ -33,12 +41,12 @@ export function Tabs({ label, items, selected, onSelect, renderList, children }:
       ))}
     </TabList>
   );
+  const panels = items.map((i) => (
+    <TabPanel key={i.id} id={i.id} className={s.panel}>{children(i.id)}</TabPanel>
+  ));
   return (
     <AriaTabs selectedKey={current} onSelectionChange={(k) => onSelect(String(k))} className={s.tabs}>
-      {renderList ? renderList(list) : list}
-      {items.map((i) => (
-        <TabPanel key={i.id} id={i.id} className={s.panel}>{children(i.id)}</TabPanel>
-      ))}
+      {renderLayout ? <TabLayout list={list} panels={panels} renderLayout={renderLayout} /> : <>{renderList ? renderList(list) : list}{panels}</>}
     </AriaTabs>
   );
 }

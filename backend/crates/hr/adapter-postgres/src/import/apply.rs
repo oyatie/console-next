@@ -7,6 +7,7 @@
 //! (`apply_drive`).
 
 use console_hr_domain::import::plan::{Decisions, PlannedRow};
+use console_hr_domain::import::rrn_value::RrnVault;
 use console_kernel_core::{KernelError, TraceContext};
 use console_leave_adapter_postgres::PgLeaveError;
 use console_platform_db::DbError;
@@ -100,36 +101,56 @@ fn changed_rows(stored: &Value, now: &[PlannedRow]) -> Value {
 pub(crate) fn apply_failure(error: PgLeaveError) -> HrError {
     if let PgLeaveError::Db(DbError::Sqlx(sqlx)) = &error
         && let Some(db) = sqlx.as_database_error()
-        && let Some(sqlstate @ ("42501" | "25P04" | "57014")) = db.code().as_deref()
     {
-        let support_reference = apply_support_reference();
-        tracing::warn!(sqlstate, %support_reference, "import command refused by the database");
-        return if sqlstate == "42501" {
-            HrError::from_kernel(
-                KernelError::forbidden("the import command was not admitted")
-                    .with_code("import_apply_forbidden"),
-            )
-        } else {
-            HrError {
-                code: "import_apply_timed_out",
-                ..HrError::unavailable(
-                    "the import exceeded the server time limit; nothing was written",
+        if let Some(sqlstate @ ("42501" | "25P04" | "57014")) = db.code().as_deref() {
+            let support_reference = apply_support_reference();
+            tracing::warn!(sqlstate, %support_reference, "import command refused by the database");
+            return if sqlstate == "42501" {
+                HrError::from_kernel(
+                    KernelError::forbidden("the import command was not admitted")
+                        .with_code("import_apply_forbidden"),
                 )
+            } else {
+                HrError {
+                    code: "import_apply_timed_out",
+                    ..HrError::unavailable(
+                        "the import exceeded the server time limit; nothing was written",
+                    )
+                }
+            };
+        }
+        if db.message() == "employee_import_batch.rows_changed" {
+            let source_key = db
+                .try_downcast_ref::<sqlx::postgres::PgDatabaseError>()
+                .and_then(|pg| pg.detail().map(str::to_owned));
+            return conflict(
+                "rows_changed_since_preview",
+                "the roster changed after the dry run; run it again",
+                json!([{ "source_key": source_key }]),
+            );
+        }
+        if db.code().as_deref() == Some("23505") {
+            let support_reference = apply_support_reference();
+            tracing::warn!(
+                constraint = db.constraint(),
+                %support_reference,
+                "import apply hit unique constraint conflict"
+            );
+            if db.constraint() == Some("employees_prehire_not_issued_identity_idx") {
+                return conflict(
+                    "duplicate_candidate",
+                    "a pending hire with the same name and birth date already exists without an issued identifier",
+                    json!([]),
+                );
             }
-        };
-    }
-    if let PgLeaveError::Db(DbError::Sqlx(sqlx)) = &error
-        && let Some(db) = sqlx.as_database_error()
-        && db.message() == "employee_import_batch.rows_changed"
-    {
-        let source_key = db
-            .try_downcast_ref::<sqlx::postgres::PgDatabaseError>()
-            .and_then(|pg| pg.detail().map(str::to_owned));
-        return conflict(
-            "rows_changed_since_preview",
-            "the roster changed after the dry run; run it again",
-            json!([{ "source_key": source_key }]),
-        );
+            if db.constraint() != Some("employees_org_employee_number_key") {
+                return conflict(
+                    "rows_changed_since_preview",
+                    "the roster changed after the dry run; run it again",
+                    json!([]),
+                );
+            }
+        }
     }
     HrError::from_leave_store(error)
 }
@@ -145,6 +166,7 @@ pub(crate) async fn check_and_build(
     org_uuid: Uuid,
     run_id: Uuid,
     digest: &str,
+    vault: Option<&dyn RrnVault>,
 ) -> Result<Checked, HrError> {
     let run = import_run_for_update(tx, org_uuid, run_id).await?;
     if run.entity_type != "employee_hr" {
@@ -174,6 +196,7 @@ pub(crate) async fn check_and_build(
     }
     crate::import::identities::require_fresh_run(tx, org_uuid, run_id).await?;
     require_row_limit(tx, org_uuid, run_id).await?;
+    crate::import::header::validate_run_mapping_profile(tx, org_uuid, run_id).await?;
     if stored_digest.as_deref() != Some(digest) {
         return Err(conflict(
             "dry_run_digest_mismatch",
@@ -222,7 +245,7 @@ pub(crate) async fn check_and_build(
     }
     let decisions: Decisions = serde_json::from_value(decisions)
         .map_err(|_| HrError::internal("stored import decisions are unreadable"))?;
-    let (stored, _, plan) = plan_run(tx, org_uuid, run_id, &decisions).await?;
+    let (stored, _, plan) = plan_run(tx, org_uuid, run_id, &decisions, vault).await?;
     if plan_digest(&plan)? != digest {
         return Err(conflict(
             "rows_changed_since_preview",
@@ -248,3 +271,7 @@ impl HrService {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "apply_tests.rs"]
+mod tests;

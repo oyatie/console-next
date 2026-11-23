@@ -33,8 +33,7 @@ pub(crate) async fn require_app_write_consent(
         .contains_key(axum::http::header::AUTHORIZATION)
         || matches!(
             request.uri().path(),
-            crate::SIGNUP_PATH
-                | crate::PASSKEY_LOGIN_START_PATH
+            crate::PASSKEY_LOGIN_START_PATH
                 | crate::PASSKEY_LOGIN_FINISH_PATH
                 | crate::OTP_REDEEM_PATH
                 | crate::DEVICE_LOGIN_START_PATH

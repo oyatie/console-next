@@ -1,7 +1,11 @@
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { AlertTriangle, Ban, CheckCircle2, Circle } from "lucide-react";
 import { t } from "@console/i18n";
+import { currentStep } from "./current-step";
 import s from "./setup-rail.module.css";
+
+// eslint-disable-next-line react/only-export-components -- Home and the rail share this current-step rule.
+export { currentStep };
 
 export type SetupState = "todo" | "done" | "attention" | "blocked";
 /**
@@ -27,10 +31,6 @@ export type SetupGroup = { key: string; title: string; steps: readonly SetupStep
 
 const ICON = { todo: Circle, done: CheckCircle2, attention: AlertTriangle, blocked: Ban } as const;
 const TONE = { todo: "neutral", done: "ok", attention: "warn", blocked: "neutral" } as const;
-
-// eslint-disable-next-line react/only-export-components -- Home and the rail share this current-step rule.
-export const currentStep = (steps: readonly Pick<SetupStepView, "key" | "state">[]) =>
-  steps.find((x) => x.state !== "done" && x.state !== "attention")?.key;
 
 /**
  * A guided first-run checklist (design §6.2): steps grouped into phases, each with a state, one primary

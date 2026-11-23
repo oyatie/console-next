@@ -1,0 +1,133 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.wrap {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.phoneBar {
+  display: none;
+}
+
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  min-width: 0;
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.col + .col {
+  border-inline-start: 1px solid var(--border-strong);
+}
+
+.basisCallout {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-2) var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.legendGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-1-5) var(--space-3);
+  padding: 0 var(--space-4) var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--steel);
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  min-width: 0;
+}
+
+.empty {
+  padding: var(--space-3) var(--space-4);
+}
+
+.paneDock {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0%;
+  min-height: 0;
+}
+
+.paneDockBody {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.paneDockFoot {
+  flex: none;
+  padding: var(--space-2) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+@media (--below-wide) {
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .col + .col {
+    border-inline-start: 0;
+    border-block-start: 1px solid var(--border);
+  }
+}
+
+@media (--phone) {
+  .phoneBar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    min-height: var(--row-h);
+    padding: var(--space-1) var(--space-3);
+    background: var(--surface-2);
+  }
+
+  .phoneSummary {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--text-xs);
+    font-weight: var(--fw-semibold);
+    color: var(--ink);
+  }
+
+  .split:not([data-open="true"]) {
+    display: none;
+  }
+
+  .split[data-open="true"] {
+    border-block-start: 1px solid var(--border);
+  }
+
+  .legendGrid {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 0 var(--space-3) var(--space-3);
+  }
+
+  .basisCallout {
+    margin: var(--space-2) var(--space-3);
+  }
+}

@@ -175,12 +175,28 @@ proptest! {
         national in "[1-9][0-9]{6,10}",
         sep in prop::sample::select(vec!["", "-", " ", "."]),
     ) {
+        prop_assume!(!national.starts_with("82"));
         let raw = format!("0{}{sep}{}", &national[..2], &national[2..]);
         let phone = PhoneE164::parse(&raw).unwrap();
         prop_assert_eq!(phone.as_str(), format!("+82{national}"));
+        let international = PhoneE164::parse(&format!("00 82 (0){national}")).unwrap();
+        prop_assert_eq!(&international, &phone);
+        prop_assert_eq!(PhoneE164::parse(international.as_str()).unwrap(), international);
         prop_assert_eq!(&PhoneE164::parse(&phone.display()).unwrap(), &phone);
         prop_assert_eq!(&PhoneE164::parse(&format!("+82 {national}")).unwrap(), &phone);
         prop_assert_eq!(&PhoneE164::parse(&format!("+82 (0){national}")).unwrap(), &phone);
+    }
+
+    #[test]
+    fn stored_phone_is_a_fixed_point(
+        prefix in prop::sample::select(vec!["", "+", "00", "+82", "82", "0082"]),
+        national in "(0{0,3}82){0,3}0{0,3}[1-9][0-9]{5,12}",
+    ) {
+        if let Ok(phone) = PhoneE164::parse(&format!("{prefix}{national}")) {
+            prop_assert!(!phone.as_str().starts_with("+820"));
+            prop_assert!(!phone.as_str().starts_with("+8282"));
+            prop_assert_eq!(PhoneE164::parse(phone.as_str()).unwrap(), phone);
+        }
     }
 
     #[test]

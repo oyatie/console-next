@@ -85,6 +85,12 @@ beforeAll(async () => {
   browser = await chromium.launch();
   page = await browser.newPage();
   page.setDefaultTimeout(10000);
+  await page.addInitScript(() => {
+    const plat = new URLSearchParams(location.search).get("platform");
+    if (!plat) return;
+    Object.defineProperty(navigator, "platform", { value: plat });
+    Object.defineProperty(navigator, "userAgentData", { value: undefined });
+  });
 }, 60_000);
 
 test.each([390, 1440])("resolving a page block keeps both controls fixed at %ipx", async (width) => {
@@ -294,4 +300,13 @@ test("remounting a kept command refusal does not take focus again", async () => 
   await page.locator("#mount").click();
   await page.getByRole("alert").waitFor();
   expect(await page.locator("#mount").evaluate(el => el === document.activeElement)).toBe(true);
+});
+
+test.each([
+  { platform: "MacIntel", expected: "⌘↵" },
+  { platform: "Win32", expected: "Ctrl+↵" },
+  { platform: "Linux x86_64", expected: "Ctrl+↵" },
+])("commit key hint matches platform $platform", async ({ platform, expected }) => {
+  await open(`inline&platform=${encodeURIComponent(platform)}`);
+  expect(await page.locator("#commit kbd").textContent()).toBe(expected);
 });
