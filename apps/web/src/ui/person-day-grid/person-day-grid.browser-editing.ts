@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-// The month view's editing cases of the grid's browser test: typing, the editor's keys, presses and the name links.
-// They have their own file for the test file's length, and run on its server and page.
+// The month view's editing cases of the grid's browser test, run on its server and page: typing, keys, presses, links.
 import { beforeAll, expect, test } from "vitest";
 import { expect as element, type Locator, type Page } from "@playwright/test";
 
@@ -91,8 +90,7 @@ export function editingCases(view: () => MonthView) {
 
   test("an edit opened with the pointer gives the focus to what is pressed next", async () => {
     const grid = await month();
-    // A press on another cell commits and the grid has the focus. (Cells left of the editor's column: they do not move
-    // when it closes.)
+    // A press on another cell commits and the grid has the focus (cells left of the editor's column do not move as it closes).
     await dayCell(1, 5).dblclick();
     await element(editor).toBeFocused();
     await page.keyboard.type("9-18");
@@ -123,8 +121,7 @@ export function editingCases(view: () => MonthView) {
   test("a press that ends an edit selects the pressed cell alone, though the closing editor moves it from under the pointer", async () => {
     const grid = await month();
     const selected = grid.locator('td[aria-selected="true"]');
-    // The open editor widens its column. As it closes, the cells in that column and right of it move left under the
-    // pointer: the cell below the editor first, then one right of it in its own row.
+    // The closing editor moves the cells in and right of its column under the pointer: below it, then right of it.
     for (const [person, day, cell, draft] of [[2, 1, "1,0", '"0002|2026-10-01":"5"'], [1, 4, "0,3", '"0001|2026-10-04":"5"']] as const) {
       await dayCell(1, 1).dblclick();
       await element(editor).toBeFocused();
@@ -182,6 +179,24 @@ export function editingCases(view: () => MonthView) {
     await grid.focus();
     await paste(page);
     await element(page.getByRole("dialog")).toHaveCount(1);
+  });
+
+  test("a paste from the keyboard with the grid focused opens the paste preview, after a focus and after a press", async () => {
+    const grid = await month();
+    // Something to paste, copied as a person copies it.
+    await grid.focus();
+    await page.keyboard.type("1001");
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.keyboard.press("ControlOrMeta+c");
+    await page.keyboard.press("Escape");
+    // The browser sends a paste to where the text selection is, a cell, not to the focused grid.
+    for (const focus of [() => grid.focus(), () => dayCell(2, 3).click()]) {
+      await focus();
+      await page.keyboard.press("ControlOrMeta+v");
+      await element(page.getByRole("dialog")).toHaveCount(1);
+      await page.keyboard.press("Escape");
+      await element(page.getByRole("dialog")).toHaveCount(0);
+    }
   });
 
   test("a press inside the open editor places the caret and keeps the editor", async () => {

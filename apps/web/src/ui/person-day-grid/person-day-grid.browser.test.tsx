@@ -23,8 +23,7 @@ beforeAll(async () => {
   await server.listen();
   browser = await chromium.launch();
   page = await browser.newPage();
-  // A short box, for `?w=` a narrow one, and for `?row=` its own compact row height, set on a container the way a
-  // visual style would set it; `?style=` names the visual style the page is drawn in.
+  // A short box, `?w=` wide, with `?row=` its own compact row height as a visual style would set it, in the style `?style=` names.
   await page.route("**/grid-test*", route => {
     const query = new URL(route.request().url()).searchParams, row = query.get("row"), width = query.get("w"), style = query.get("style");
     return route.fulfill({ contentType: "text/html", body: `<html lang="ko"${style ? ` data-experience="${style}"` : ""}><title>Person-day grid</title>
@@ -163,8 +162,7 @@ const dayCell = (person: number, day: number) => page.locator("main tbody tr").f
 /** The active cell as "row,column", counted from 0. */
 const active = async () => (await page.locator("main").getByRole("grid").getAttribute("aria-activedescendant"))?.match(/r(\d+)-c(\d+)$/)?.slice(1).join(",");
 
-// Each case runs in the classic look and in the console month screen's, at a desk and on a phone. Its editing and
-// sideways cases are in their own files. Last in the file: the cases leave the page at their screen size.
+// Every look the month view has, at a desk and on a phone; last in the file, since its cases leave the page at their screen size.
 describe.each([["classic", {}], ["console", { style: "console" }], ["console on a phone", { style: "console", phone: true }]] as const)("the month view, %s", (_, look: Look) => {
   const view = () => ({ page, month: month(look), dayCell, active });
   editingCases(view);

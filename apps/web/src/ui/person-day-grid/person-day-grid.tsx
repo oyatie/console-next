@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent, type ReactNode, type RefObject } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react";
 import { isImeKey, leaveImeKey } from "../../lib/pure/ime";
 import { at, indexOf, inRect, moveRange, rectIn, spanIn, type Cell, type Range } from "../sheet-grid/range";
 import s from "./person-day-grid.module.css";
@@ -51,16 +51,14 @@ type Props<R> = {
   onRange: (range: Range) => void;
   /** The open editor and the cell it belongs to: it is drawn only there, whatever has moved since. */
   editing: { value: string; cell: Cell } | null;
-  /** With no editor open: a typed character starts an edit on that character, and "" (Enter, F2, a double-click) asks
-   * for one on what the cell holds, which only the caller knows. With one open: its new text. null closes it unsaved. */
+  /** Closed: a typed character opens the editor on it, "" (Enter, F2, a double-click) on what the cell holds. Open: its new text; null cancels. */
   onEdit: (value: string | null) => void;
   /** Commit the open editor; the grid then moves `then`. */
   onCommit: (then: "down" | "right" | "stay") => void;
-  /** The feature's keys first (⌘D, ⌘↵, =, Delete, P …); true when handled. It also sees a key pressed on a link or a
-   * button in a cell (`e.target` is not the grid), which is that control's unless the feature takes it (⌘S). */
+  /** The feature's keys first (⌘D, ⌘↵, =, Delete, P …), also those on a link or a button in a cell; true when handled. */
   onKey: (e: KeyboardEvent) => boolean;
-  /** A paste with the focus anywhere in the grid: on the grid itself, its editor, or a link or a button in a cell. */
-  onPaste?: (e: ClipboardEvent<HTMLTableElement>) => void;
+  /** The grid's table, for a caller that must tell the grid itself having the focus from a control in it. */
+  tableRef?: RefObject<HTMLTableElement | null>;
   /** A row group's head is drawn above the first row of each group. */
   groupOf?: (r: R) => string;
 };
@@ -97,15 +95,13 @@ export function PersonDayGrid<R>(p: Props<R>) {
     return () => window.removeEventListener("resize", read);
   }, []);
   const [drag, setDrag] = useState(false);
-  const table = useRef<HTMLTableElement>(null);
-  // The editor left while it held the focus (Enter, Tab, Escape): the grid takes the focus back, so the next key lands
-  // here. One left by a press outside the grid had already given the focus away, and a press on the grid gives the
-  // grid the focus by itself, as a press does: without the focus ring a key brings.
+  const own = useRef<HTMLTableElement>(null), table = p.tableRef ?? own;
+  // An editor left by a key gives the focus back to the grid, so the next key lands here; a press has already moved it.
   const held = useRef(false), pressed = useRef(false);
   useEffect(() => {
     if (!p.editing && held.current && !pressed.current) table.current?.focus({ preventScroll: true });
     held.current = pressed.current = false;
-  }, [p.editing]);
+  }, [p.editing, table]);
   const axes = { rows: p.rows.map(p.rowKey), cols: p.days.map((d) => d.key) };
   const rect = rectIn(p.range, axes);
   const f = p.range && indexOf(p.range.focus, axes);
@@ -198,7 +194,6 @@ export function PersonDayGrid<R>(p: Props<R>) {
           "aria-activedescendant": f ? cellId(f.r, f.c) : undefined,
           tabIndex: 0,
           onKeyDown: keyDown,
-          onPaste: p.onPaste,
           // Nothing selected (yet, or its row has left): focus starts on the first cell, by its keys from then on.
           onFocus: () => !f && p.rows.length && p.days.length && p.onRange(at(axes.rows[0]!, axes.cols[0]!)),
         }}
@@ -246,12 +241,9 @@ export function PersonDayGrid<R>(p: Props<R>) {
                 {p.days.map((d, c) => {
                   const focused = !!f && r === f.r && c === f.c;
                   const described = p.describe(row, c);
-                  // A press or a double-click in the cell that holds the open editor is the editor's own (the caret,
-                  // a word): the cell neither selects, which would commit and close it, nor opens it again, nor takes
-                  // the focus from the input when the press lands on the cell beside it.
+                  // A press in the open editor's cell is the editor's (the caret, a word): selecting would commit and close it.
                   const open = p.editing?.cell.row === key && p.editing.cell.col === d.key;
-                  // The press that ends an edit starts no drag: the closing editor narrows its column, which moves
-                  // other cells under the held pointer, and a drag would take them for the range.
+                  // A press that ends an edit starts no drag: the closing editor moves other cells under the held pointer.
                   return (
                     <td
                       key={d.key}
@@ -308,8 +300,7 @@ function Editor({ value, label, onChange, onCommit, held }: { value: string; lab
     const el = input.current;
     el?.focus();
     el?.setSelectionRange(el.value.length, el.value.length);
-    // Whether it held the focus is read as it leaves, while it is still in the page; the grid acts on it once it is
-    // gone (moving the focus off a live input would be its blur, a second commit).
+    // Read as it leaves, while still in the page; moving the focus off a live input would blur it, a second commit.
     return () => { held.current = document.activeElement === el; };
   }, [held]);
   return (
@@ -319,8 +310,7 @@ function Editor({ value, label, onChange, onCommit, held }: { value: string; lab
       aria-label={label}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      // A composing Escape or Tab is the input method's: nothing here or above acts on it. The Tab's own action is
-      // cancelled as well, so the focus stays: it would leave the editor for the next link.
+      // A composing Escape or Tab is the input method's; the Tab's own move is cancelled too, so the focus stays here.
       onKeyDownCapture={(e) => (leaveImeKey(e), e.key === "Tab" && isImeKey(e) && e.preventDefault())}
       onKeyDown={(e) => {
         if (isImeKey(e)) return;
