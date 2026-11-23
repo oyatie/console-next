@@ -30,11 +30,11 @@ beforeAll(async () => {
       <style>main { display: flex; flex-direction: column; height: ${Number(query.get("box") ?? 320)}px; ${width ? `width: ${Number(width)}px;` : ""} ${row ? `--row-h-compact: ${Number(row)}px;` : ""} }</style>
       <div id="root"></div><script type="module" src="${fixture}"></script></html>` });
   });
-  // The month view in a box of `?w=` by `?h=` px (31 days are wider than most boxes), in the visual style `?style=` names.
+  // The month view in a box `?w=` px wide (31 days are wider than most boxes) and 320 px high, in the visual style `?style=` names.
   await page.route("**/month-test*", route => {
     const query = new URL(route.request().url()).searchParams, style = query.get("style");
     return route.fulfill({ contentType: "text/html", body: `<html lang="ko"${style ? ` data-experience="${style}"` : ""}><title>Month grid</title>
-      <style>main { display: flex; flex-direction: column; width: ${Number(query.get("w") ?? 900)}px; height: ${Number(query.get("h") ?? 320)}px; }</style>
+      <style>main { display: flex; flex-direction: column; width: ${Number(query.get("w") ?? 900)}px; height: 320px; }</style>
       <div id="root"></div><script type="module" src="${monthFixture}"></script></html>` });
   });
 }, 60_000);
@@ -110,6 +110,29 @@ test.each([390, 180])("a grid with one total column keeps it at the right edge o
   // Ten days do not fit: the box scrolls sideways.
   expect(end).toBeGreaterThan(100);
   for (const to of [0, 100, end]) await expect.poll(async () => (await total(to)).ends, { message: `scrolled to ${to}` }).toEqual([0, 0]);
+});
+
+// Fewer rows than the box was scrolled past: until the box reports its new scroll, no person row is drawn.
+test("rows that shrink under a range of many people, with the box scrolled past them, leave the grid drawn", async () => {
+  const errors: string[] = [];
+  const onError = (error: Error) => errors.push(error.message);
+  page.on("pageerror", onError);
+  try {
+    await page.goto(`${server.resolvedUrls!.local[0]}grid-test?shrink`);
+    const grid = page.getByRole("grid", { name: "October" });
+    await element(grid.getByText("Person 1", { exact: true })).toBeVisible();
+    // A press on the day header selects every person with the focus on the last, and the box scrolls down to them.
+    await grid.locator("thead th").nth(1).click();
+    await element(grid.getByText("Person 400", { exact: true })).toBeVisible();
+    // Thirty people are left, the last among them, so the range collapses to that person.
+    await page.getByRole("button", { name: "Shrink" }).click();
+    await page.evaluate(() => new Promise(done => requestAnimationFrame(() => setTimeout(done))));
+    expect(errors).toEqual([]);
+    // Drawn again once the box reports where it is, the one cell selected being that person's.
+    await element(grid.locator('td[aria-selected="true"]')).toHaveAttribute("aria-label", "Person 400 day 1");
+  } finally {
+    page.off("pageerror", onError);
+  }
 });
 
 // Rows 24 px apart leave two neighbouring names exactly the spacing a pointer needs. So in a visual style a row's rules

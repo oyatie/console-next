@@ -171,7 +171,7 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act, c
     if (mod && e.key.toLowerCase() === "s") return run(() => act({ kind: "save" }));
     if (mod && e.key.toLowerCase() === "z") return run(e.shiftKey ? store.redo : store.undo);
     if (mod && e.key.toLowerCase() === "y") return run(store.redo);
-    // The chords above are the page's wherever the focus is in the grid; the rest act on the selection, from the grid itself.
+    // The chords above are the page's on the table and on a control in a cell; the rest act on the selection, from the table itself.
     if (e.target !== e.currentTarget) return false;
     if ((e.key === "[" || e.key === "]") && !mod) return run(() => act({ kind: "month", step: e.key === "[" ? -1 : 1 }));
     if (!f || !rect) return false;
@@ -243,7 +243,7 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act, c
   const scheduleLead = {
     key: "schedule", header: t("attendanceRecords.day.plan"), width: "name" as const,
     cell: (r: GridRow) => r.cells.some((c) => c.plan_kind === "NO_SCHEDULE") ? <>
-      {t("attendance.dayKind.NO_SCHEDULE")} <Button size="sm" onPointerDown={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} onClick={() => act({ kind: "assign", row: r })}>{t("attendanceRecords.unscheduled.assign")}</Button>
+      {t("attendance.dayKind.NO_SCHEDULE")} <Button size="sm" onPointerDown={(e) => e.stopPropagation()} onClick={() => act({ kind: "assign", row: r })}>{t("attendanceRecords.unscheduled.assign")}</Button>
     </> : null,
   };
   const positionLead = { key: "position", header: t("attendance.monthConsole.grid.position"), width: "name" as const, hideOnPhone: true, cell: (r: GridRow) => r.position ?? "–" };

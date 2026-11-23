@@ -15,7 +15,7 @@ import "../../../app.css";
 await loadCatalog();
 const query = new URLSearchParams(location.search);
 const DAYS = Array.from({ length: 31 }, (_, i) => `2026-10-${String(i + 1).padStart(2, "0")}`);
-// `?unscheduled` gives the first person a day without a schedule, which adds the month view's third lead column.
+// `?unscheduled` gives the first person a day without a schedule, which adds the month view's third lead column and its assign button.
 const unscheduled = query.has("unscheduled");
 // `?style=console` draws the view as the console month screen calls it, with that screen's open-exceptions list below.
 const inConsole = query.get("style") === "console";
@@ -28,7 +28,8 @@ const ROWS: GridRow[] = Array.from({ length: 12 }, (_, r) => ({
   month_state: { state: "OPEN" },
   cells: DAYS.map((date, c) => ({
     date, plan_kind: unscheduled && r === 0 && c === 0 ? "NO_SCHEDULE" : "WORK", recognised: 0, unrecognised: 0, not_worked: 0,
-    // One saved day, so Delete has something to ask about.
+    // One saved day, so Delete has something to ask about. In the console look it also changes how the first row is drawn,
+    // and the sideways case at 640 px finds a day cut at the box's edge only in that layout.
     ...(r === 0 && c === 1 ? { entry_id: "00000000-0000-4000-8000-00000000e001", entry_kind: "TIMES" as const, recognised: 480 } : {}),
   })),
   totals: { recognised: 9600, approved: 90, unrecognised: 30, not_worked: 0, blocking: 2, decision: 1 },

@@ -165,7 +165,7 @@ export function editingCases(view: () => MonthView) {
     await element(drafts).toHaveText(`{${FIRST}}`);
     await element(page.locator("#acts")).toHaveText("");
     expect(await active()).toBe("0,0");
-    // The month view's chords are the page's wherever the focus is in the grid: save, undo and redo.
+    // The month view's chords are the page's on a control in a cell too: save, undo and redo.
     await page.keyboard.press("Control+s");
     await element(page.locator("#acts")).toHaveText("save");
     await page.keyboard.press("Control+z");
@@ -179,6 +179,37 @@ export function editingCases(view: () => MonthView) {
     await grid.focus();
     await paste(page);
     await element(page.getByRole("dialog")).toHaveCount(1);
+  });
+
+  test("the assign button in a lead cell keeps its keys, and the save, undo and redo chords work on it", async () => {
+    const grid = await month("?unscheduled");
+    await grid.focus();
+    await page.keyboard.type("9-18");
+    await page.keyboard.press("Enter");
+    await element(drafts).toHaveText(`{${FIRST}}`);
+    const assign = grid.getByRole("button"), acts = page.locator("#acts");
+    await assign.focus();
+    for (const key of ["p", "Backspace", "Delete", "]", "8", "F2", "ArrowDown"]) await page.keyboard.press(key);
+    await element(assign).toBeFocused();
+    await element(editor).toHaveCount(0);
+    await element(drafts).toHaveText(`{${FIRST}}`);
+    await element(acts).toHaveText("");
+    await page.keyboard.press("Enter");
+    await element(acts).toHaveText("assign");
+    await page.keyboard.press("Control+s");
+    await element(acts).toHaveText("assign,save");
+    await page.keyboard.press("Control+z");
+    await element(drafts).toHaveText("{}");
+    await page.keyboard.press("Control+y");
+    await element(drafts).toHaveText(`{${FIRST}}`);
+    await element(assign).toBeFocused();
+  });
+
+  test("Delete on a saved day with no draft asks to void it", async () => {
+    await month();
+    await dayCell(1, 2).click();
+    await page.keyboard.press("Delete");
+    await element(page.locator("#acts")).toHaveText("void");
   });
 
   test("a paste from the keyboard with the grid focused opens the paste preview, after a focus and after a press", async () => {

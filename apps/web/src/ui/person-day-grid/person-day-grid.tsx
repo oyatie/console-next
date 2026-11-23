@@ -34,7 +34,7 @@ type Props<R> = {
   lead: readonly SideColumn<R>[];
   days: readonly DayColumn[];
   tail: readonly SideColumn<R>[];
-  /** Optional group header spanning all tail columns (2-row thead). */
+  /** Optional group header above the tail columns, in a head row of its own (2-row thead). */
   tailGroupHeader?: ReactNode;
   /** Active/selected employee row key highlighted with the selected row bar. */
   activeRowId?: string;
@@ -130,10 +130,12 @@ export function PersonDayGrid<R>(p: Props<R>) {
   const focusCol = f?.c, editing = !!p.editing, rowPress = useRef(false), leads = p.lead.length, tails = p.tail.length;
   useEffect(() => {
     const el = box.current;
+    // Any drawn body row has one cell per column (a head row may span the totals); the focused one may not be drawn yet,
+    // and none is while the rows have shrunk below a scroll the box has not reported yet.
+    const drawn = el?.querySelector("tbody tr:not([aria-hidden])");
     // A press on a lead selects its row with the focus on the last day: the box stays where the person has it.
-    if (!el || focusCol === undefined || rowPress.current) return void (rowPress.current = false);
-    // Any drawn body row has one cell per column (a head row may span the totals); the focused one may not be drawn yet.
-    const cells = [...el.querySelector("tbody tr:not([aria-hidden])")!.children].map((c) => ({ c, b: c.getBoundingClientRect() }));
+    if (!el || !drawn || focusCol === undefined || rowPress.current) return void (rowPress.current = false);
+    const cells = [...drawn.children].map((c) => ({ c, b: c.getBoundingClientRect() }));
     const frame = el.getBoundingClientRect(), day = cells[leads + focusCol]!.b;
     // A lead that scrolls with the days, or is not drawn at this width, covers nothing.
     const sticky = cells.slice(0, leads).filter(({ c, b }) => b.width && getComputedStyle(c).position === "sticky");
