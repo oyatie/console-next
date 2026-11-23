@@ -37,6 +37,20 @@ fn last() { authorize(); }`;
   expect(found.references.map((r: { line: number }) => r.line)).toEqual([1, 4, 7]);
 });
 
+test("a module that only compiles under test, whatever else its cfg needs, is masked; one that compiles outside test is not", () => {
+  const found = rustInventory("reader.rs", `fn first() { authorize(); }
+#[cfg(all(test, feature = "test-postgres"))]
+mod db_tests { fn test_only() { authorize(); } }
+#[cfg(all(feature = "test-postgres", test))]
+mod db_tests_2 { fn test_only_2() { authorize(); } }
+#[cfg(all(feature = "test-postgres"))]
+mod feature_only { fn served() { authorize(); } }
+#[cfg(any(test, feature = "e2e"))]
+mod either { fn also_served() { authorize(); } }`);
+  expect(found.functions.map((f: { name: string }) => f.name)).toEqual(["first", "served", "also_served"]);
+  expect(found.references.map((r: { line: number }) => r.line)).toEqual([1, 7, 9]);
+});
+
 test("a cfg(test) decoy in a comment or literal cannot hide serving code", () => {
   const found = rustInventory("reader.rs", `// #[cfg(test)] mod tests
 const DECOY: &str = "#[cfg(test)] mod tests";

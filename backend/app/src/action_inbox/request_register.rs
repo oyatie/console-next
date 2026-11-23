@@ -96,11 +96,6 @@ fn db(error: sqlx::Error) -> KernelError {
 }
 
 #[cfg(test)]
-#[allow(dead_code)]
-#[path = "../../tests/support/reference_logs.rs"]
-mod reference_logs;
-
-#[cfg(test)]
 mod tests {
     use super::*;
     use tracing::instrument::WithSubscriber;
@@ -117,7 +112,7 @@ mod tests {
         let cache = Register::default();
         let org = OrgId::new();
         let as_of = OffsetDateTime::now_utc();
-        let logs = reference_logs::Logs::default();
+        let logs = crate::reference_logs::Logs::default();
         let writer = logs.clone();
         let subscriber = tracing_subscriber::fmt()
             .json()
