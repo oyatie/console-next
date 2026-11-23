@@ -218,7 +218,7 @@ function ConsoleLayout({
           </>
         ) : !restoring ? (
           <div className={s.phoneTop} data-pinned-bar>
-            <Suspense fallback={null}>
+            <Suspense fallback={<div className={s.phoneTopHold} />}>
               <ConsolePhoneTop
                 title={phoneHeader?.title ?? currentTitle}
                 shellOwnsH1={phoneHeader?.shellOwnsH1}
@@ -258,7 +258,7 @@ function ConsoleLayout({
           </div>
         ) : !restoring ? (
           <div className={s.phoneNav} data-pinned-bar>
-            <Suspense fallback={null}>
+            <Suspense fallback={<div className={s.phoneNavHold} />}>
               <ConsolePhoneBottom
                 links={allLinks}
                 inboxCount={inboxCount}

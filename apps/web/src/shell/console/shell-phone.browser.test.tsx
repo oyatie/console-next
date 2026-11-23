@@ -226,3 +226,34 @@ test("on a phone the bars draw over the page's own raised layers, the skip link 
   expect(skipBox.y).toBeLessThan(topBox.height);
   expect(await hitIn(skipBox.x + skipBox.width / 2, skipBox.y + skipBox.height / 2, "a.skip")).toBe(true);
 });
+
+/** Where the page starts below the top, and how much room is left after it, in page coordinates. */
+const pageFrame = () => page.evaluate(() => {
+  const main = document.getElementById("main")!.getBoundingClientRect();
+  return { above: main.top + window.scrollY, below: document.scrollingElement!.scrollHeight - (main.bottom + window.scrollY) };
+});
+
+test("on a phone the page keeps its place while the bars' code loads, since their room is held before they draw", async () => {
+  const chunk = "**/console-phone-chrome.tsx*";
+  let release!: () => void, asked!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  const requested = new Promise<void>(resolve => { asked = resolve; });
+  await page.route(chunk, async route => { asked(); await held; await route.continue(); });
+  try {
+    const opened = openPhoneShell();
+    // The new page has asked for the bars' code, so what is on screen now is that page, not the previous test's.
+    await requested;
+    await page.locator('[data-phone-screen="Account"]').waitFor();
+    // The bars' code is still held back, so the screen is drawn without them.
+    expect(await page.locator('header[data-surface="chrome"]').count()).toBe(0);
+    const before = await pageFrame();
+
+    release();
+    await opened;
+    await Promise.all([page.locator('header[data-surface="chrome"]').waitFor(), page.getByRole("navigation", { name: t("shell.nav"), exact: true }).waitFor()]);
+    expect(await pageFrame()).toEqual(before);
+  } finally {
+    release();
+    await page.unroute(chunk);
+  }
+});

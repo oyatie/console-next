@@ -218,6 +218,15 @@
     inset-block-end: 0;
     z-index: var(--z-bar);
   }
+
+  /* Each bar's room, held while its code loads, so the page does not move when the bar draws. */
+  .phoneTopHold {
+    block-size: var(--phone-top-h);
+  }
+
+  .phoneNavHold {
+    block-size: var(--phone-nav-clear);
+  }
 }
 
 @media print {
