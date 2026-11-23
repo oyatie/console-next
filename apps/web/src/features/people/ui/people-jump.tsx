@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { EMPLOYEE_STATUS, EMPLOYMENT_TYPE, label, labeled } from "../../../lib/labels";
-import { singleKeysOn } from "../../../lib/prefs";
+import { useSingleKeys } from "../../../lib/react/use-single-keys";
 import { useKeys } from "../../../lib/react/use-keys";
 import { KeyMap } from "../../../ui/palette/key-map";
 import { Palette, type PaletteSection } from "../../../ui/palette/palette";
@@ -23,6 +23,7 @@ export function PeopleJump() {
   const navigate = useNavigate();
   const [open, setOpen] = useState<"jump" | "keys" | null>(null);
   const [q, setQ] = useState("");
+  const singleKeys = useSingleKeys();
   useKeys({
     "people.find": e => {
       // On the people screens ⌘K is this people search (E1-jump: employee-number aliases, the person's own acts); the shell's jump
@@ -114,7 +115,7 @@ export function PeopleJump() {
         notice={none && <><b>{t("peopleJump.none", { q: q.trim() })}</b><span>{t("peopleJump.none.d")}</span></>}
         foot={<><span className="grow" /><span>{t("peopleJump.foot.masked")}</span></>}
       />
-      <KeyMap open={open === "keys"} onClose={() => setOpen(null)} title={t("peopleJump.keys")}  filter={{ label: t("peopleJump.keys.filter"), hint: singleKeysOn() ? t("peopleJump.keys.single") : t("account.singleKeys.off") }} groups={KEY_GROUPS.map((g) => ({ id: g.id, title: tx(`peopleJump.keys.group.${g.id}`), keys: g.keys.map((k) => ({ keys: k.keys, what: tx(`peopleJump.keys.${k.id}`) })) }))} />
+      <KeyMap open={open === "keys"} onClose={() => setOpen(null)} title={t("peopleJump.keys")}  filter={{ label: t("peopleJump.keys.filter"), hint: singleKeys ? t("peopleJump.keys.single") : t("account.singleKeys.off") }} groups={KEY_GROUPS.map((g) => ({ id: g.id, title: tx(`peopleJump.keys.group.${g.id}`), keys: g.keys.map((k) => ({ keys: k.keys, what: tx(`peopleJump.keys.${k.id}`) })) }))} />
     </>
   );
 }
