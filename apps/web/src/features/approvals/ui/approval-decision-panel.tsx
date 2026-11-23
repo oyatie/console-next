@@ -97,12 +97,13 @@ export function ApprovalDecisionPanel({
   // Only the action the server offers is drawn; nothing is inferred from the document's status.
   const reject = actions.kind === "approve" ? actions.reject : undefined;
   if (reject && !offered) setOffered(true);
-  const receiptMessage = receipt && <p role="status">{receipt}</p>;
+  // A card drawn here that a later read no longer offers means someone else has decided: the status line says so, in
+  // place of the card. A decision of this person's on its way is still pending here, and shows nothing of the kind.
+  const withdrawn = offered && !reject && !receipt && !command.isPending && !command.error;
+  const status = receipt ?? (withdrawn ? t("approvals.viewer.unavailable") : undefined);
+  const statusLine = status && <p role="status" tabIndex={withdrawn ? -1 : undefined} ref={withdrawn ? takeDroppedFocus : undefined}>{status}</p>;
   if (!reject && !receipt && !command.isPending) {
-    // A card drawn here that a later read no longer offers means someone else has decided: a line says so, in place
-    // of the card. A decision of this person's on its way is still pending here, and shows nothing of the kind.
-    const content = command.error ? <CommandError error={command.error} own={ownError} />
-      : offered ? <p role="status" tabIndex={-1} ref={takeDroppedFocus}>{t("approvals.viewer.unavailable")}</p> : null;
+    const content = command.error ? <CommandError error={command.error} own={ownError} /> : statusLine;
     if (!content) return null;
     return docked ? <DocDecisionPad>{content}</DocDecisionPad> : <Card title={t("approvals.viewer.decision")}>{content}</Card>;
   }
@@ -170,7 +171,7 @@ export function ApprovalDecisionPanel({
         approveBlocked={stale ? t("approvals.viewer.changed") : undefined}
         staleBlocked={stale ? t("approvals.viewer.changed") : undefined}
         meta={docked ? stepMeta : t("approvals.viewer.revision", { revision: d.revision })}
-        receipt={receiptMessage}
+        receipt={statusLine}
         next={
           receipt && showNext ? (
             <Link to="/approvals" search={{}} className={buttonClass("secondary", { size: "sm" })}>

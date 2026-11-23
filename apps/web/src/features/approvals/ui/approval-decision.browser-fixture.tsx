@@ -21,7 +21,7 @@ const host = new URLSearchParams(location.search).get("host") ?? "page";
  * the document's row whatever is decided. `pending` is the pending box: it drops a document once that offers no
  * decision, and holds one more row. `last` is a pending box with no other row.
  */
-function Baseline() {
+export function Baseline() {
   const q = useQuery({ ...approvalDocumentQuery("approval-1"), refetchOnMount: "always" });
   const [sel, setSel] = useState<string | undefined>("approval-1");
   const record = <QueryState q={q} layout="record">{document => <ApprovalDocumentView document={document} />}</QueryState>;
