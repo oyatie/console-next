@@ -21,7 +21,7 @@ import { ReasonField } from "../../../ui/reason/reason-field";
 import { reasonProblem, type Reason } from "../../../ui/reason/reason";
 import type { ApprovalDecision, ApprovalDocument } from "../api";
 import { decisionRefusalText, relatedApprovalLinks } from "../present";
-import { useApprovalDecisionCommand } from "./use-approval-decision";
+import { useApprovalDecisionCommand, useDecisionOffered } from "./use-approval-decision";
 
 const emptyReason = (): Reason => ({ code: null, memo: "" });
 /** The longest note a reason takes (the reason catalog's own limit). */
@@ -78,7 +78,7 @@ export function ApprovalDecisionPanel({
 }) {
   const [opinion, setOpinion] = useState("");
   const [reasons, setReasons] = useState<Record<DecisionForm, Reason>>({ reject: emptyReason(), return: emptyReason() });
-  const [offered, setOffered] = useState(false);
+  const offered = useDecisionOffered(d);
   const internal = useApprovalDecisionCommand(d.id, onReceipt);
   const { command, localReceipt } = controller ?? internal;
   const receipt = controlledReceipt ?? localReceipt;
@@ -103,7 +103,6 @@ export function ApprovalDecisionPanel({
         : undefined;
   // Only the action the server offers is drawn; nothing is inferred from the document's status.
   const reject = actions.kind === "approve" ? actions.reject : undefined;
-  if (reject && !offered) setOffered(true);
   // A card drawn here that a later read no longer offers means someone else has decided: the status line says so, in
   // place of the card. A decision of this person's on its way is still pending here, and shows nothing of the kind.
   const withdrawn = offered && !reject && !receipt && !command.isPending && !command.error;
