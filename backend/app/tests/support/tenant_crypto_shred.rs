@@ -286,10 +286,13 @@ pub async fn assert_all_nine_s3_outbox_drain(
         (stats.deleted, stats.deferred_worm, stats.retried),
         (expected_primary_plus_explicit, expected_replica, 0)
     );
-    let deletes = fake_s3.deletes.lock().unwrap();
-    for (kind, _, key) in expected_keys {
-        if kind == "PRIMARY" {
-            assert!(deletes.contains(&("primary-bkt".to_owned(), key.clone())));
+    {
+        // The guard ends here: a std lock held across an await can deadlock another task that needs it.
+        let deletes = fake_s3.deletes.lock().unwrap();
+        for (kind, _, key) in expected_keys {
+            if kind == "PRIMARY" {
+                assert!(deletes.contains(&("primary-bkt".to_owned(), key.clone())));
+            }
         }
     }
     let remaining: i64 = sqlx::query_scalar(

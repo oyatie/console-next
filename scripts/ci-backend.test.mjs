@@ -78,6 +78,15 @@ test("Home uses a release artifact on every candidate; every Rust check stays re
   assert.ok(ci.jobs["backend-release"].steps.some(s => s.run === "cargo build --release --locked -p console-app --features e2e-test-support"));
 });
 
+test("every pull request lints the database test targets with the features that build them", () => {
+  const script = readFileSync(new URL("./backend-tests.mjs", import.meta.url), "utf8");
+  const features = script.match(/command\.database \? "([^"]+)"/)?.[1];
+  assert.ok(features, "database test features not found");
+  const lint = ci.jobs.backend.steps.filter(s => s.run === `cargo clippy --workspace --all-targets --locked --features ${features} -- -D warnings`);
+  assert.equal(lint.length, 1);
+  assert.ok(!lint[0].if && !lint[0]["continue-on-error"]);
+});
+
 test("Home requires a successful same-run backend on every event and affected-path combination", () => {
   const home = ci.jobs.home, release = ci.jobs["backend-release"];
   const condition = job => new Function("github", "needs", "cancelled", `return ${job.if.slice(3, -2)}`);
