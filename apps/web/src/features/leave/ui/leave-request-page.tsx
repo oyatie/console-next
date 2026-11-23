@@ -14,6 +14,7 @@ import { Field } from "../../../ui/field/field";
 import { StatRow } from "../../../ui/key-value/key-value";
 import { FormPattern } from "../../../ui/patterns/form";
 import { FormSection } from "../../../ui/patterns/form-section";
+import { SelfServiceUnlinked } from "../../../reference/person/ui/self-service-unlinked";
 import {
   createLeaveRequest,
   leaveSubmitError,
@@ -21,6 +22,7 @@ import {
   myLeaveQuery,
   myLeaveTeamOverlapQuery,
   myScheduleQuery,
+  meQuery,
 } from "../api";
 import {
   buildLeaveCreatePayload,
@@ -48,7 +50,10 @@ import s from "./leave-request-page.module.css";
 /** Self-service annual / half-day leave filing page (`P7` `FormPattern` at `/leave`). */
 export function LeaveRequestPage() {
   const today = todayKst();
-  const q = useQuery(myLeaveQuery);
+  // An account with no employee record would only be refused these reads, so none is sent until users/me shows a link.
+  const me = useQuery(meQuery);
+  const linked = me.data?.employee_link_status === "LINKED";
+  const q = useQuery({ ...myLeaveQuery, enabled: linked });
   const [kind, setKind] = useState<LeaveOptionKind>("annual");
   const [spanMode, setSpanMode] = useState<LeaveSpanMode>("one");
   const [startDate, setStartDate] = useState<string>(today);
@@ -70,7 +75,7 @@ export function LeaveRequestPage() {
     queries: rangeMonths.map((month) => ({
       ...myScheduleQuery(month),
       retry: false,
-      enabled: month === startMonth || (spanMode === "multi" && kind === "annual"),
+      enabled: linked && (month === startMonth || (spanMode === "multi" && kind === "annual")),
     })),
   });
 
@@ -226,9 +231,15 @@ export function LeaveRequestPage() {
   );
   const submitNotice = command.error ? <CommandError error={command.error} own={leaveSubmitError} focusOnRefusal /> : null;
 
+  if (me.data && !linked) {
+    return <SelfServiceUnlinked q={me} title={t("leave.title")} titleId="leave-request-title" pattern="form" floorplan="P-04" queryLayout="form" />;
+  }
+  // Until users/me answers, the page shows its pending or failed read rather than a leave read that was never sent.
+  const read = linked ? q : me;
+
   return (
     <FormPattern
-      q={q}
+      q={read}
       head={{ title: t("leave.title"), titleId: "leave-request-title" }}
       notes={notes}
       summary={<LeaveBalanceSummary statItems={balanceStatItems} meter={meterData} legendItems={legendItems} />}
@@ -287,7 +298,7 @@ export function LeaveRequestPage() {
       noValidate
       baseline={() => (
         <LeaveRequestBaseline
-          q={q}
+          q={read}
           statItems={balanceStatItems}
           meter={meterData}
           legendItems={legendItems}

@@ -15,6 +15,8 @@ type MockLeaveState = {
   scheduleErrorMonths?: readonly string[];
   teamOverlap?: { data?: unknown; error?: unknown };
   approvalPreview?: { data?: unknown; error?: unknown };
+  linkStatus?: "LINKED" | "UNLINKED";
+  enabled?: Record<string, boolean | undefined>;
 };
 
 const mockState = vi.hoisted((): MockLeaveState => ({
@@ -23,11 +25,17 @@ const mockState = vi.hoisted((): MockLeaveState => ({
   scheduleErrorMonths: [],
   teamOverlap: undefined,
   approvalPreview: undefined,
+  linkStatus: "LINKED",
+  enabled: {},
 }));
 
 function resolveMockQuery(options: Parameters<typeof readIdentity>[0] & { enabled?: boolean }) {
   const parsed = JSON.parse(readIdentity(options)) as [string, { query?: { month?: string } }?];
   const path = String(parsed[0]);
+  mockState.enabled![path] = options.enabled;
+  if (path === "/api/v1/users/me") {
+    return { data: { employee_link_status: mockState.linkStatus }, isPending: false, isFetching: false, isError: false, isSuccess: true, error: null, dataUpdatedAt: 1 };
+  }
   if (options.enabled === false) {
     return { data: undefined, isPending: true, isFetching: false, isError: false, isSuccess: false, error: null, dataUpdatedAt: 0 };
   }
@@ -125,6 +133,8 @@ function renderWithState(next: MockLeaveState) {
   mockState.scheduleErrorMonths = next.scheduleErrorMonths ?? [];
   mockState.teamOverlap = next.teamOverlap;
   mockState.approvalPreview = next.approvalPreview;
+  mockState.linkStatus = next.linkStatus ?? "LINKED";
+  mockState.enabled = {};
   const client = new QueryClient({ defaultOptions: { queries: { enabled: false, retry: false } } });
   try {
     return renderToStaticMarkup(
@@ -314,4 +324,13 @@ test("LeaveRequestPage renders team overlap, localized approval preview without 
   expect(leaveSubmitError("leave_create.overlapping_request")).toBe(t("common.failed.code.leave_overlapping_request"));
   expect(leaveSubmitError("leave_period_closed")).toBe(t("common.failed.code.leave_period_closed"));
   expect(leaveSubmitError("leave_create.period_closed")).toBe(t("common.failed.code.leave_period_closed"));
+});
+
+test("an account with no employee record is told why, and sends no leave read the server would refuse", () => {
+  const html = renderWithState({ linkStatus: "UNLINKED" });
+  expect(html).toContain(t("account.status.unlinked"));
+  expect(html).toContain(t("me.desk.profile.unlinked"));
+  expect(html).not.toContain('role="meter"');
+  expect(mockState.enabled!["/api/v2/me/leave"]).toBe(false);
+  expect(mockState.enabled!["/api/v1/attendance/me/schedule"]).toBe(false);
 });

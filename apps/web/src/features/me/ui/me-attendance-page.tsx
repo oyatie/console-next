@@ -9,8 +9,10 @@ import { PageReadGate } from "../../../reference/authz/ui/access-gate";
 import { Card } from "../../../ui/card/card";
 import { PageHead } from "../../../ui/page-head/page-head";
 import { RecordPattern } from "../../../ui/patterns/record";
+import { SelfServiceUnlinked } from "../../../reference/person/ui/self-service-unlinked";
 import { PeriodStepper } from "../../../ui/period-stepper";
 import {
+  meUserQuery,
   myAttendanceExceptionsQuery,
   myAttendanceRecordsQuery,
   myAttendanceScheduleQuery,
@@ -31,12 +33,15 @@ export function MeAttendancePage() {
   const month = search.month ?? today.slice(0, 7);
   const week = isoMondayOf(search.week ?? today);
 
-  const week52 = useQuery(myAttendanceWeek52Query(week));
-  const records = useQuery(myAttendanceRecordsQuery());
-  const exceptions = useQuery(myAttendanceExceptionsQuery(month));
-  const schedule = useQuery({ ...myAttendanceScheduleQuery(month), retry: false });
+  // An account with no employee record would only be refused these reads, so none is sent until users/me shows a link.
+  const me = useQuery(meUserQuery);
+  const linked = me.data?.employee_link_status === "LINKED";
+  const week52 = useQuery({ ...myAttendanceWeek52Query(week), enabled: linked });
+  const records = useQuery({ ...myAttendanceRecordsQuery(), enabled: linked });
+  const exceptions = useQuery({ ...myAttendanceExceptionsQuery(month), enabled: linked });
+  const schedule = useQuery({ ...myAttendanceScheduleQuery(month), enabled: linked, retry: false });
 
-  const primary = readGroup([week52, records, exceptions]);
+  const primary = readGroup(linked ? [week52, records, exceptions] : [me]);
   const go = (patch: Partial<MeAttendanceSearch>) => void navigate({ search: prev => ({ ...prev, ...patch }) });
 
   const filters = (
@@ -51,6 +56,10 @@ export function MeAttendancePage() {
       />
     </div>
   );
+
+  if (me.data && !linked) {
+    return <SelfServiceUnlinked q={me} title={t("me.attendance.title")} titleId="me-attendance-title" pattern="record" floorplan="P-02" queryLayout="record" />;
+  }
 
   const baseline = () => (
     <main className="page" data-floorplan="P-02">

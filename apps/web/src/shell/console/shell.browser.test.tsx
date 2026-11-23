@@ -136,18 +136,15 @@ beforeAll(async () => {
           const navigate = useNavigate();
           return h('div', { 'data-phone-screen': title },
             h('h1', null, title),
-            h('button', { type: 'button', onClick: () => void navigate({ href: '/people/certificates/cert-1' }) }, 'go-cert-detail'),
+            h('button', { type: 'button', onClick: () => void navigate({ href: '/account?sheet=certificates' }) }, 'go-certificates'),
             h('button', { type: 'button', onClick: () => void navigate({ href: '/account' }) }, 'go-account'),
           );
         }
         const root = createRootRoute({ component: () => h(ConsoleShell) });
         const mk = (path, title) => createRoute({ getParentRoute: () => root, path, staticData: { access: 'signed-in' }, component: () => h(Screen, { title }) });
         const router = createRouter({
-          routeTree: root.addChildren([
-            mk('/', 'Home'), mk('/people/certificates', 'Certificates'), mk('/people/certificates/$certificateId', 'Certificate Detail'),
-            mk('/account', 'Account'), mk('/leave', 'Leave'), mk('/payslips', 'Payslips'),
-          ]),
-          history: createMemoryHistory({ initialEntries: ['/people/certificates'] }),
+          routeTree: root.addChildren([mk('/', 'Home'), mk('/account', 'Account'), mk('/leave', 'Leave'), mk('/payslips', 'Payslips')]),
+          history: createMemoryHistory({ initialEntries: ['/account'] }),
         });
         createRoot(document.getElementById('root')).render(h(QueryClientProvider, { client: qc }, h(RouterProvider, { router })));
       ` : undefined,
@@ -252,7 +249,7 @@ test("openWorkspaceTab preserves hash fragments on view-query routes when reconc
   expect(afterChart).not.toContain("/org?tab=entities#identifier-corrections");
 });
 
-test("ConsolePhoneBottom highlights certificates tab on both /people/certificates and /people/certificates/$certificateId", async () => {
+async function openPhoneShell() {
   const apiMocks: Record<string, unknown> = {
     "/api/v1/users/me": {
       id: "u1", display_name: "Hajun", employee_name: "Hajun", employee_id: "e1",
@@ -276,21 +273,48 @@ test("ConsolePhoneBottom highlights certificates tab on both /people/certificate
     return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(apiMocks[path] ?? { items: [] }) });
   });
 
-  await openBrowserTestPage(phonePage, `${server.resolvedUrls!.local[0]}console-phone-nav-test`, phonePage.locator('[data-phone-screen="Certificates"]'));
-  const nav = phonePage.getByRole("navigation", { name: t("shell.nav"), exact: true });
+  await openBrowserTestPage(phonePage, `${server.resolvedUrls!.local[0]}console-phone-nav-test`, phonePage.locator('[data-phone-screen="Account"]'));
+  return phonePage.getByRole("navigation", { name: t("shell.nav"), exact: true });
+}
+
+test("the self-service certificates tab opens the employee's own certificates, not the HR list", async () => {
+  const nav = await openPhoneShell();
   const expectCurrent = async (href: string, label: string) => {
     await expect.poll(async () => await nav.locator('a[aria-current="page"]').count()).toBe(1);
     await expect.poll(async () => await nav.locator('a[aria-current="page"]').getAttribute("href")).toBe(href);
     await expect.poll(async () => (await nav.locator('a[aria-current="page"]').textContent())?.trim()).toBe(label);
   };
 
-  await expectCurrent("/people/certificates", t("shell.link.certificates"));
+  // An employee on the self-service nav holds no HR grant, so the HR certificate list would only refuse them.
+  expect(await nav.getByRole("link", { name: t("shell.link.certificates"), exact: true }).getAttribute("href")).toBe("/account?sheet=certificates");
+  await expectCurrent("/account", t("shell.link.profile"));
 
-  await phonePage.getByRole("button", { name: "go-cert-detail", exact: true }).click();
-  await phonePage.locator('[data-phone-screen="Certificate Detail"]').waitFor();
-  await expectCurrent("/people/certificates", t("shell.link.certificates"));
+  await phonePage.getByRole("button", { name: "go-certificates", exact: true }).click();
+  await expectCurrent("/account?sheet=certificates", t("shell.link.certificates"));
 
   await phonePage.getByRole("button", { name: "go-account", exact: true }).click();
-  await phonePage.locator('[data-phone-screen="Account"]').waitFor();
   await expectCurrent("/account", t("shell.link.profile"));
+});
+
+test("on a phone the top bar and bottom nav stay on screen while a long page scrolls, and never cover what has focus", async () => {
+  const nav = await openPhoneShell();
+  await phonePage.evaluate(() => {
+    const screen = document.querySelector("[data-phone-screen]")!;
+    const tall = document.createElement("div");
+    tall.style.blockSize = "3000px";
+    const far = document.createElement("button");
+    far.textContent = "far";
+    screen.append(tall, far, Object.assign(document.createElement("div"), { style: "block-size: 600px" }));
+    window.scrollTo(0, 1200);
+  });
+  await expect.poll(() => phonePage.evaluate(() => window.scrollY)).toBe(1200);
+
+  const navBox = (await nav.boundingBox())!;
+  expect(Math.round(navBox.y + navBox.height)).toBe(844);
+  expect((await phonePage.locator('header[data-surface="chrome"]').boundingBox())!.y).toBe(0);
+
+  // A control brought into view at the bottom edge lands above the pinned nav, not under it.
+  const far = phonePage.getByRole("button", { name: "far", exact: true });
+  await far.evaluate(element => element.scrollIntoView({ block: "end" }));
+  expect((await far.boundingBox())!.y + (await far.boundingBox())!.height).toBeLessThanOrEqual(navBox.y + 0.5);
 });

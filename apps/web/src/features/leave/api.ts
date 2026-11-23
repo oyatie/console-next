@@ -22,6 +22,8 @@ export type ApprovalPreviewStep = components["schemas"]["LeaveApprovalPreviewSte
 type LeaveCreateBody = components["schemas"]["LeaveCreateRequest"];
 
 /** Self-service leave balance and recent request history. */
+/** The signed-in account; its employee link decides whether the self reads below can answer at all. */
+export const meQuery = get("/api/v1/users/me");
 export const myLeaveQuery = get("/api/v2/me/leave");
 
 /** Self-service team overlap for the selected leave date range. */

@@ -15,6 +15,7 @@ const state = vi.hoisted(() => ({
   records403: false,
   canClock: true,
   employeeLinkStatus: "LINKED" as "LINKED" | "UNLINKED",
+  enabled: {} as Record<string, unknown>,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -33,6 +34,7 @@ vi.mock("@tanstack/react-query", async original => {
     useQuery: (opts: Record<string, unknown>) => {
       const first = Object.values(opts).find(Array.isArray);
       const path = String(first?.[0] ?? "");
+      state.enabled[path] = opts.enabled;
       if (opts.enabled === false) return { isPending: false, error: null, data: undefined, refetch: vi.fn() };
       if (path.includes("/api/v1/attendance/me/schedule")) {
         if (state.schedule403) {
@@ -194,6 +196,7 @@ beforeEach(() => {
   state.records403 = false;
   state.canClock = true;
   state.employeeLinkStatus = "LINKED";
+  state.enabled = {};
 });
 
 function render(node: ReactNode) {
@@ -241,4 +244,20 @@ test("me desk surfaces honest unlinked notice and secondary query 403 refusals",
   expect(refusedHtml).toContain("attendance.refuse.missing_grant");
   expect(refusedHtml).not.toContain(t("me.desk.requests.empty"));
   expect(refusedHtml).not.toContain(t("me.desk.payslips.empty"));
+});
+
+test("me attendance tells an account with no employee record why, and sends no attendance read", () => {
+  state.employeeLinkStatus = "UNLINKED";
+  const html = render(<MeAttendancePage />);
+  expect(html).toContain(t("account.status.unlinked"));
+  expect(html).toContain(t("me.desk.profile.unlinked"));
+  expect(html).not.toContain(t("me.attendance.records.title"));
+  const attendanceReads = Object.entries(state.enabled).filter(([path]) => path.includes("attendance"));
+  expect(attendanceReads.map(([path]) => path).sort()).toEqual([
+    "/api/v1/attendance/me/exceptions",
+    "/api/v1/attendance/me/schedule",
+    "/api/v1/attendance/me/week52",
+    "/api/v1/hr/attendance-records/me",
+  ]);
+  expect(attendanceReads.every(([, enabled]) => enabled === false)).toBe(true);
 });

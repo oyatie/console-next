@@ -90,7 +90,7 @@ export function ConsolePhoneBottom({
           { id: "/", href: "/", label: t("shell.link.home"), icon: Home, count: inboxCount },
           { id: "/leave", href: "/leave", label: t("shell.link.leave"), icon: CalendarDays },
           { id: "/payslips", href: "/payslips", label: t("shell.link.payroll"), icon: Banknote },
-          { id: "/people/certificates", href: "/people/certificates", label: t("shell.link.certificates"), icon: FileText },
+          { id: "/account?sheet=certificates", href: "/account?sheet=certificates", label: t("shell.link.certificates"), icon: FileText },
           { id: "/account", href: "/account", label: t("shell.link.profile"), icon: UserRound },
         ]
       : links.map(link => ({

@@ -157,9 +157,8 @@ function ConsoleLayout({
   const displayName = rawName && roleMeta ? `${shortName} · ${roleMeta}` : shortName;
   const phoneActiveId = pathname === "/leave" || pathname === "/payslips"
     ? pathname
-    : phoneHeader?.phoneNav === "self-service" &&
-        (pathname === "/people/certificates" || pathname.startsWith("/people/certificates/"))
-      ? "/people/certificates"
+    : phoneHeader?.phoneNav === "self-service" && pathname === "/account" && location.search.sheet === "certificates"
+      ? "/account?sheet=certificates"
       : pathname === "/me/attendance" || pathname === "/me/desk" || pathname === "/account" || pathname.startsWith("/account/")
         ? "/account"
         : currentModuleTo;
