@@ -233,6 +233,7 @@ test("Back restores the shell scroller on a non-table screen", async ({ page }) 
   await routeReady(page, "/org");
   await page.addStyleTag({ content: "#main::after { content: ''; display: block; height: 1800px; }" });
   const main = page.locator("#main");
+  await expect(main).toBeVisible();
   await main.focus();
   await main.evaluate(element => { element.scrollTop = 700; });
   await main.dispatchEvent("scroll");
@@ -345,6 +346,7 @@ test("Escape inside a clean wide DockSheet closes it", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await mockNavigate(page, "/_gallery?entry=dock-sheet");
   const dock = page.getByRole("complementary", { name: tg("dockSheet.title"), exact: true });
+  await expect(dock.getByRole("heading")).toBeVisible();
   await dock.getByRole("heading").focus();
   await page.keyboard.press("Escape");
   await expect(dock).toHaveCount(0);
@@ -406,4 +408,63 @@ test("Escape from a listbox with DOM focus leaves a dirty Sheet unarmed", { tag:
   await draft.focus();
   await page.keyboard.press("Escape");
   await expect(sheet.getByRole("status")).toHaveText(t("composer.unsaved"));
+});
+
+test("open Sheet, CommandPalette, and Combobox popover contain overscroll without scrolling #main", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const fixture = await mockScreen(page, screens[2], "populated");
+  await orgPanelReads(page);
+  await mockLifecycleSheets(page, lifecycleSheetScreens[0]);
+  await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { account_id: user.id, is_ops: true, phase: "OPERATING", as_of: AT, entries: [] } });
+  await page.goto("/org");
+  await routeReady(page, "/org");
+  await page.addStyleTag({ content: "#main::after { content: ''; display: block; height: 2200px; }" });
+  const main = page.locator("#main");
+  await main.evaluate((el) => { el.scrollTop = 300; });
+  const startTop = await main.evaluate((el) => el.scrollTop);
+  expect(startTop).toBeGreaterThan(0);
+
+  // 1. CommandPalette (⌘K) overlay & .menu
+  await page.keyboard.press("ControlOrMeta+k");
+  const paletteDialog = page.getByRole("dialog");
+  await expect(paletteDialog).toBeVisible();
+  const palCss = await paletteDialog.evaluate((el) => {
+    const cs = getComputedStyle(el.closest('[class*="overlay"]')!);
+    return { overflow: cs.overflow, overscrollBehavior: cs.overscrollBehavior };
+  });
+  expect(palCss.overflow).toBe("hidden");
+  expect(palCss.overscrollBehavior).toBe("contain");
+  const palMenu = paletteDialog.locator("[role=menu]");
+  expect(await palMenu.evaluate((el) => getComputedStyle(el).overscrollBehavior)).toBe("contain");
+  const palBox = await palMenu.boundingBox();
+  await page.mouse.move(palBox!.x + palBox!.width / 2, palBox!.y + palBox!.height / 2);
+  for (let i = 0; i < 4; i++) await page.mouse.wheel(0, 400);
+  await page.mouse.move(10, 400);
+  await page.mouse.wheel(0, 400);
+  await page.waitForTimeout(80);
+  expect(await main.evaluate((el) => el.scrollTop)).toBe(startTop);
+  await page.keyboard.press("Escape");
+  await expect(paletteDialog).toHaveCount(0);
+
+  // 2. Sheet + Combobox .popover (/people/new)
+  await go(page, "/people/new");
+  const sheet = page.getByRole("dialog", { name: t("register.title"), exact: true });
+  await expect(sheet).toBeVisible();
+  const sheetCss = await sheet.evaluate((el) => {
+    const cs = getComputedStyle(el.closest('[class*="overlay"]')!);
+    return { overflow: cs.overflow, overscrollBehavior: cs.overscrollBehavior };
+  });
+  expect(sheetCss.overflow).toBe("hidden");
+  expect(sheetCss.overscrollBehavior).toBe("contain");
+  const placement = sheet.getByRole("combobox", { name: t("register.place.label"), exact: true });
+  await placement.locator("..").getByRole("button").click();
+  const popover = page.locator(".popover");
+  await expect(popover).toBeVisible();
+  expect(await popover.evaluate((el) => getComputedStyle(el).overscrollBehavior)).toBe("contain");
+  const popBox = await popover.boundingBox();
+  await page.mouse.move(popBox!.x + popBox!.width / 2, popBox!.y + popBox!.height / 2);
+  for (let i = 0; i < 3; i++) await page.mouse.wheel(0, 400);
+  await page.waitForTimeout(80);
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+  expect(fixture.unexpected).toEqual([]);
 });

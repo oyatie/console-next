@@ -22,7 +22,6 @@ mod limits;
 mod otp;
 mod passkey;
 mod rate_limit;
-mod signup;
 mod state;
 mod token;
 mod urls;
@@ -55,7 +54,6 @@ use crate::passkey::self_service::delete_self_passkey;
 use crate::passkey::self_service::list_self_passkeys;
 use crate::passkey::self_service::rename_self_passkey;
 use crate::passkey::step_up::start_mobile_step_up;
-use crate::signup::signup;
 use crate::token::logout::logout;
 use crate::token::refresh::refresh_token;
 use axum::Router;
@@ -63,7 +61,6 @@ use axum::routing::delete;
 use axum::routing::get;
 use axum::routing::post;
 
-pub const SIGNUP_PATH: &str = "/api/v1/auth/signup";
 pub const PASSKEY_REGISTER_START_PATH: &str = "/api/v1/auth/passkey/register/start";
 pub const PASSKEY_REGISTER_FINISH_PATH: &str = "/api/v1/auth/passkey/register/finish";
 pub const PASSKEY_LOGIN_START_PATH: &str = "/api/v1/auth/passkey/login/start";
@@ -92,7 +89,6 @@ pub const GROUP_ADMIN_TENANT_CONTEXT_EXIT_PATH: &str = "/api/v1/group-admin/tena
 #[cfg(feature = "dev-auth")]
 pub const DEV_AUTH_SESSION_PATH: &str = "/api/v1/dev-auth/session";
 pub const AUTH_ROUTE_PATHS: &[&str] = &[
-    SIGNUP_PATH,
     PASSKEY_REGISTER_START_PATH,
     PASSKEY_REGISTER_FINISH_PATH,
     PASSKEY_LOGIN_START_PATH,
@@ -136,7 +132,6 @@ pub const ENROLLMENT_ROUTE_PATHS: &[&str] = &[
 
 pub fn router(state: AuthRestState) -> Router {
     let router = Router::new()
-        .route(SIGNUP_PATH, post(signup))
         .route(PASSKEY_REGISTER_START_PATH, post(start_registration))
         .route(PASSKEY_REGISTER_FINISH_PATH, post(finish_registration))
         .route(PASSKEY_LOGIN_START_PATH, post(start_login))

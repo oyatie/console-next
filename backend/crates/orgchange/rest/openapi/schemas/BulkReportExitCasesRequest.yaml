@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+required: [effective_exit_date, site_manager_note, items]
+properties:
+  effective_exit_date:
+    type: string
+    description: YYYY-MM-DD
+  site_manager_note:
+    type: string
+    minLength: 1
+    maxLength: 1000
+  exit_reason_code:
+    type: [string, 'null']
+  items:
+    type: array
+    minItems: 1
+    maxItems: 500
+    items:
+      $ref: '#/components/schemas/BulkExitCaseItemInput'

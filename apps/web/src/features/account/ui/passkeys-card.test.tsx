@@ -8,7 +8,7 @@ import { AxeBuilder } from "@axe-core/playwright";
 import { createServer, type ViteDevServer } from "vite";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import type { components } from "@console/api/schema";
-import { loadCatalog } from "@console/i18n";
+import { loadCatalog, t } from "@console/i18n";
 import { PasskeysCard } from "./passkeys-card";
 import { STALE_TIME_MS } from "../../../lib/freshness";
 
@@ -40,6 +40,7 @@ beforeAll(async () => {
         import { createElement as h } from 'react';
         import { createRoot } from 'react-dom/client';
         import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
+        import { createMemoryHistory, createRootRoute, createRouter, RouterProvider } from '@tanstack/react-router';
         import { configure } from '@console/api';
         import { loadCatalog } from '@console/i18n';
         import { passkeysQuery } from '/apps/web/src/features/account/api.ts';
@@ -51,7 +52,9 @@ beforeAll(async () => {
           const passkeys = useQuery(passkeysQuery);
           return h('main', null, h('h1',null,'내 계정'), h(PasskeysCard,{ops:false,passkeys}));
         }
-        createRoot(document.getElementById('root')).render(h(QueryClientProvider,{client:new QueryClient()},h(Demo)));
+        const router = createRouter({ routeTree: createRootRoute({ component: Demo }), history: createMemoryHistory({ initialEntries: ['/account'] }) });
+        await router.load();
+        createRoot(document.getElementById('root')).render(h(QueryClientProvider,{client:new QueryClient()},h(RouterProvider,{router})));
       ` : undefined,
       configureServer: vite => { vite.middlewares.use((req, res, next) => {
         if (req.url !== "/passkeys-test") return next();
@@ -195,4 +198,56 @@ test("a failed cached policy keeps naming visible and blocks registration until 
   failing = false;
   await dialog.getByRole("button", { name: "다시 불러오기", exact: true }).click();
   await expect.poll(() => dialog.getByRole("button", { name: "패스키 등록", exact: true }).isEnabled()).toBe(true);
+}, 30_000);
+
+test("naming dialog stays dismissible via Cancel when rename hits an uncertain 500 error", async () => {
+  await page.route("**/api/v1/auth/passkeys/policy", route => route.fulfill({ json: { label_max_length: 12 } }));
+  await page.route("**/api/v1/auth/passkeys", route => route.fulfill({ json: [key] }));
+  await page.route(`**/api/v1/auth/passkeys/${key.id}`, route => {
+    if (route.request().method() !== "PATCH") return route.fallback();
+    return route.fulfill({ status: 500, json: { error: { code: "internal_error", message: "boom" } } });
+  });
+  await page.goto(`${server.resolvedUrls!.local[0]}passkeys-test`);
+  await page.getByRole("table").waitFor();
+  await page.getByRole("button", { name: t("account.passkey.renameOne", { name: key.label! }), exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel(t("account.passkey.label")).fill("New key");
+  const commit = dialog.getByRole("button", { name: t("account.passkey.renameCommit"), exact: true });
+  await commit.click();
+  await dialog.getByRole("status").waitFor();
+  expect(await commit.isDisabled()).toBe(true);
+  const cancel = dialog.getByRole("button", { name: t("composer.dismiss"), exact: true });
+  expect(await cancel.isDisabled()).toBe(false);
+  await expect.poll(() => page.evaluate(() => Boolean(document.activeElement?.closest('[role="dialog"]')))).toBe(true);
+  await page.keyboard.press("Escape");
+  await expect.poll(() => page.getByRole("dialog").count()).toBe(0);
+
+  // Dismissing an uncertain rename failure must NOT lock out passkey registration (add).
+  await page.getByRole("button", { name: t("account.passkey.add"), exact: true }).click();
+  const addDialog = page.getByRole("dialog");
+  const addCommit = addDialog.getByRole("button", { name: t("account.passkey.addCommit"), exact: true });
+  await addCommit.waitFor();
+  expect(await addCommit.isDisabled()).toBe(false);
+  await addDialog.getByRole("button", { name: t("composer.dismiss"), exact: true }).click();
+  await expect.poll(() => page.getByRole("dialog").count()).toBe(0);
+}, 30_000);
+
+test("naming dialog closes immediately on Escape after add abort without manual re-focus", async () => {
+  await page.route("**/api/v1/auth/passkeys/policy", route => route.fulfill({ json: { label_max_length: 12 } }));
+  await page.route("**/api/v1/auth/passkeys", route => route.fulfill({ json: [key] }));
+  await page.route("**/api/v1/auth/passkey/register/start", route =>
+    route.fulfill({ json: { ceremony_id: key.id, challenge: { publicKey: {} } } }),
+  );
+  await page.route("**/api/v1/auth/passkey/register/finish", route => route.abort("failed"));
+
+  await page.goto(`${server.resolvedUrls!.local[0]}passkeys-test`);
+  await page.getByRole("table").waitFor();
+  await page.getByRole("button", { name: t("account.passkey.add"), exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  const commit = dialog.getByRole("button", { name: t("account.passkey.addCommit"), exact: true });
+  await commit.click();
+  await dialog.getByRole("status").waitFor();
+  expect(await commit.isDisabled()).toBe(true);
+  await page.keyboard.press("Escape");
+  await expect.poll(() => page.getByRole("dialog").count()).toBe(0);
 }, 30_000);

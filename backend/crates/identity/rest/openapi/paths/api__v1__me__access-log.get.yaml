@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [me]
+operationId: listMyAccessLog
+summary: Authenticated user's own personal-data access history
+description: >
+  Strictly self-scoped to events where the authenticated principal's linked
+  employee or user record was the subject. Excludes self-reads and denied
+  attempts, requires no tenant-wide audit::view grant, and never exposes raw
+  personal data values or free-text notes.
+security:
+- bearerAuth: []
+parameters:
+- name: cursor
+  in: query
+  schema:
+    type: string
+- name: limit
+  in: query
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 100
+    default: 20
+responses:
+  '200':
+    description: Keyset page of subject-scoped access events.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/MyAccessLogPage'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '422':
+    description: limit_out_of_range or cursor_invalid.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

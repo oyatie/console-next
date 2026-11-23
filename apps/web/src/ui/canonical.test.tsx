@@ -63,11 +63,13 @@ test("a banner present on load is silent; one raised by an action is announced b
   expect(html(<Banner tone="danger">{x}</Banner>)).toMatch(/<svg[^>]*aria-hidden="true"/);
 });
 
-test("button sizes and the icon-only variant are classes of the one button, never a second look", () => {
+test("button sizes, block, pending and the icon-only variant are classes and attributes of the one button", () => {
   expect(buttonClass()).toBe("btn");
   expect(buttonClass("primary", { size: "sm" })).toBe("btn btn--primary btn--sm");
+  expect(buttonClass("primary", { size: "lg", block: true })).toBe("btn btn--primary btn--lg btn--block");
   expect(buttonClass("ghost", { icon: true, className: "extra" })).toBe("btn btn--ghost btn--icon extra");
   expect(html(<Button size="sm">{x}</Button>)).toContain('class="btn btn--sm"');
+  expect(html(<Button pending>{x}</Button>)).toContain('aria-disabled="true" data-pending="true"');
   const icon = html(<IconButton label={y}>{x}</IconButton>);
   expect(icon).toContain('aria-label="y"');
   expect(icon).toContain('title="y"');
@@ -120,7 +122,10 @@ test("the find box is a named search input with its icon hidden; an avatar is de
 test("every class the button look emits is defined in app.css", () => {
   const css = readFileSync(new URL("../app.css", import.meta.url), "utf8");
   const emitted = new Set(
-    (["primary", "secondary", "ghost", "danger", "ghost-danger"] as const).flatMap((v) => buttonClass(v, { size: "sm", icon: true }).split(" ")),
+    (["primary", "secondary", "ghost", "danger", "ghost-danger"] as const).flatMap((v) => [
+      ...buttonClass(v, { size: "sm", icon: true }).split(" "),
+      ...buttonClass(v, { size: "lg", block: true }).split(" "),
+    ]),
   );
   for (const c of emitted) expect(css, c).toMatch(new RegExp(`\\.${c}[\\s.{:\\[]`));
 });

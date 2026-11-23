@@ -52,9 +52,9 @@ const detail = (): Detail => ({
     { id: "next", stepOrder: 2, roleKey: "finance", decision: "PENDING", decidedByName: null },
   ],
 });
-const render = (command: "approve" | "effectuate") => {
+const render = (command: "approve" | "effectuate", extra?: { canDecide?: boolean; focusAfter?: string }) => {
   state.buttons = [];
-  return renderToStaticMarkup(<InboxCommand id="change" command={command} />);
+  return renderToStaticMarkup(<InboxCommand id="change" command={command} {...extra} />);
 };
 const click = (button: Parameters<typeof Button>[0]) => button.onClick!({} as MouseEvent<HTMLButtonElement>);
 beforeAll(() => loadCatalog("ko"));
@@ -80,6 +80,13 @@ test("inline approval sends the current pending step and refreshes the inbox wit
   expect(state.command!.invalidates).toContain("/api/v1/org-changes");
   state.command!.onSuccess();
   expect(state.focus).toHaveBeenCalledWith("inbox-title");
+});
+
+test("inline approval omits button when canDecide=false and honors custom focusAfter", () => {
+  expect(render("approve", { canDecide: false })).toBe("");
+  render("approve", { focusAfter: "home-title" });
+  state.command!.onSuccess();
+  expect(state.focus).toHaveBeenCalledWith("home-title");
 });
 
 test.each(["missing", "fetching", "cached", "failed", "pending"] as const)("approval stays disarmed while its step is %s", (reason) => {

@@ -8,8 +8,8 @@ import { Banner } from "../../../ui/banner/banner";
 import { Button } from "../../../ui/button/button";
 import { SheetGrid, type SheetGridColumn } from "../../../ui/sheet-grid/sheet-grid";
 import { unitsQuery } from "../../../reference/org/api";
-import { ROSTER_PAGE, rosterPageQuery } from "../api";
-import { registerFactsQuery } from "../api/record";
+import { IDS_PER_READ, byIdsQuery } from "../api";
+import { REGISTER_FACTS_BATCH, registerFactsBatchQuery } from "../api/record";
 import { DEFAULT_COLUMNS, GRID_FIELDS, parseTsv, type Cell } from "../domain/grid";
 import { pasteSkippedText } from "../present";
 import { GridPage } from "./grid-page";
@@ -29,10 +29,27 @@ function PageFixture() {
     const query = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, retry: false } } });
     const employees = people();
     query.setQueryData(unitsQuery.queryKey, { items: [] });
-    for (let offset = 0; offset < employees.length; offset += ROSTER_PAGE) {
-      query.setQueryData(rosterPageQuery(offset).queryKey, { items: employees.slice(offset, offset + ROSTER_PAGE), total: employees.length });
+    for (let offset = 0; offset < employees.length; offset += IDS_PER_READ) {
+      const chunk = employees.slice(offset, offset + IDS_PER_READ);
+      query.setQueryData(byIdsQuery(chunk.map((e) => e.id)).queryKey, { items: chunk, total: chunk.length });
     }
-    for (const employee of employees) query.setQueryData(registerFactsQuery(employee.id).queryKey, { sex: "MALE", address: null });
+    for (let offset = 0; offset < employees.length; offset += REGISTER_FACTS_BATCH) {
+      const chunk = employees.slice(offset, offset + REGISTER_FACTS_BATCH);
+      query.setQueryData(registerFactsBatchQuery(chunk.map((e) => e.id)).queryKey, {
+        items: chunk.map((e) => ({
+          employee_id: e.id,
+          updated_at: e.updated_at,
+          sex: "MALE" as const,
+          address: null,
+          careers: null,
+          exit_reason_code: null,
+          exit_reason_label: null,
+          register_note: null,
+          birth_date: null,
+        })),
+        next_cursor: null,
+      });
+    }
     return query;
   });
   useEffect(() => {

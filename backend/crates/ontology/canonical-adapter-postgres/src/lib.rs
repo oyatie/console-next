@@ -64,3 +64,5 @@ pub mod employee_facts;
 // --- lane: IMPORT ---
 /// Registration and import writes on the `employees` head (BW-10, BW-19).
 pub mod employee_intake;
+/// Identity type updates and immutable `IdRegistered` audit transitions on `employees`.
+pub mod id_registered;

@@ -1,5 +1,6 @@
 import { t } from "@console/i18n";
 import { queryView } from "../../../lib/react/query-view";
+import { ExperienceSwitch } from "../../../ui/patterns/pattern-shell";
 import { useDocumentsServed } from "../../../reference/authz/ui/use-documents-served";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -17,6 +18,7 @@ import { rrnStatusQuery } from "../api/record";
 import { assignmentsRef, entitiesRef } from "../../../reference/entity/api";
 import { unitsQuery } from "../../../reference/org/api";
 import { authzApplies, authzQuery, granted } from "../../../reference/authz/api";
+import { cardSections } from "../domain/keys";
 import { verbStates } from "../domain/lifecycle";
 import type { Done } from "./person-act";
 import { CardBar, CardBody } from "./card-body";
@@ -28,6 +30,7 @@ import { useCard } from "./use-card";
 import { useQuick } from "./use-quick";
 import { directorySearch } from "./use-linked-account";
 import { PeopleJump } from "./people-jump";
+import { CardConsole } from "./card-console";
 import s from "./card.module.css";
 
 const CardActions = lazy(() => chunk(import("./person-act")).then(m => ({ default: m.CardActions })));
@@ -65,12 +68,20 @@ export function EmployeeCard() {
   // Only until each first answers: a read the reader may not make (403) retries behind the card, never behind the skeleton.
   const first = (q: { isPending: boolean; failureCount: number }) => q.isPending && q.failureCount === 0;
   const view = queryView(detail);
-  if (view === "denied" || view === "not-found" || (detail.error && !detail.data)) return <div className={s.page}><QueryState q={detail} layout="record" back={{ to: "/people", label: t("peopleJump.keys.group.roster") }}>{() => null}</QueryState></div>;
   const loading = (authzApplies() && authz.isPending) || first(events) || first(placed) || first(entities) || first(units) || (manage && (first(contracts) || first(ends) || first(exits) || first(rrn))) || (users && !!detail.data && first(account));
-  if (detail.isPending || (opened !== id && loading)) return <CardSkeleton />;
-  // Later reads keep the mounted card and anything typed into it, including a changed account-search key.
-  if (detail.isSuccess && opened !== id) setOpened(id);
-  return <div className={s.page}><QueryState q={detail} layout="record" back={{ to: "/people", label: t("peopleJump.keys.group.roster") }}>{(d) => <Card key={d.employee.id} d={d} />}</QueryState></div>;
+  if (detail.isSuccess && !loading && opened !== id) setOpened(id);
+
+  const renderBaseline = () => {
+    if (view === "denied" || view === "not-found" || (detail.error && !detail.data)) return <div className={s.page}><QueryState q={detail} layout="record" back={{ to: "/people", label: t("peopleJump.keys.group.roster") }}>{() => null}</QueryState></div>;
+    if (detail.isPending || (opened !== id && loading)) return <CardSkeleton />;
+    return <div className={s.page}><QueryState q={detail} layout="record" back={{ to: "/people", label: t("peopleJump.keys.group.roster") }}>{(d) => <Card key={d.employee.id} d={d} />}</QueryState></div>;
+  };
+
+  return (
+    <ExperienceSwitch baseline={renderBaseline}>
+      {() => <CardConsole id={id} detail={detail} loading={loading} opened={opened} baseline={renderBaseline} />}
+    </ExperienceSwitch>
+  );
 }
 
 function Card({ d }: { d: Detail }) {
@@ -123,13 +134,17 @@ function Card({ d }: { d: Detail }) {
   const keys = useRef<{ next?: () => void; prev?: () => void; jump: (n: number) => void; history: () => void }>({ jump: () => {}, history: () => {} });
   useEffect(() => {
     keys.current.jump = (n) => {
+      // A digit whose section this record does not show does nothing, whichever tab is open. A reader's record shows
+      // the employment section alone.
+      if (!(c.readable ? cardSections(c.records.data?.sections, documents) : [2]).includes(n)) return;
       if (tab !== "card") onTab("card");
       jumpTo(`s${n}`);
     };
     // H: the record's history (change history), where every dated fact and correction of its sections is listed.
     keys.current.history = () => onTab("ledger");
   });
-  useKeys({
+  // The print view replaces the card and is no dialog, so the card's keys are not bound while it is open.
+  useKeys(act === "print" ? {} : {
     "card.section": (_, n) => keys.current.jump(Number(n)),
     "card.next": () => keys.current.next?.(),
     "card.prev": () => keys.current.prev?.(),

@@ -105,9 +105,10 @@ for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 });
     const fixture = await mockScreen(page, screens[2], "populated");
     const held = Promise.withResolvers<void>();
-    await mockRoute(page, "get", "/api/v1/onboarding/checklist", async () => {
-      await held.promise;
-      return { status: 200, json: checklist };
+    const phase = Promise.withResolvers<void>();
+    await page.route("**/api/v1/onboarding/checklist", async route => {
+      await phase.promise;
+      await route.fallback();
     });
     await mockRoute(page, "get", "/api/v1/org-structure", async () => {
       await held.promise;
@@ -115,18 +116,24 @@ for (const width of [1440, 390]) {
     });
     try {
       await page.goto("/org");
+      const main = page.getByRole("main");
+      await expect(main.locator("[data-phase-pending]")).toHaveAttribute("inert", "");
+      await expect(main.getByRole("heading", { level: 1 })).toHaveCount(0);
+      await expect(main.getByRole("button")).toHaveCount(0);
+      phase.resolve();
       const collapse = page.getByRole("button", { name: t("structure.collapseAll"), exact: true });
       await expect(collapse).toBeVisible();
       await expect(page.getByRole("main")).toContainText(t("structure.phase.operatingChip"));
       await page.evaluate(() => document.fonts.ready);
       const before = await collapse.boundingBox();
+      await expectStable(page, "org phase reveal from navigation");
       await page.evaluate(clearShifts);
       held.resolve();
       await expect(page.getByRole("tree")).toBeVisible();
       expect(await collapse.boundingBox()).toEqual(before);
       await expectStable(page, "org structure");
       expect(fixture.unexpected).toEqual([]);
-    } finally { held.resolve(); fixture.release(); }
+    } finally { phase.resolve(); held.resolve(); fixture.release(); }
   });
 
   test(`attendance: late phase keeps tabs in place at ${width}px`, async ({ page }) => {

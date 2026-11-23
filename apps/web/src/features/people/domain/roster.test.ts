@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { components } from "@console/api/schema";
-import { retentionEnd, exactNumber, facetQueries, headcount, joinReview, listQuery, nextItems, offeredVerbs, parseReview, parseStatus, reviewCounts, reviewTotals, statusCounts, statusTotals, tenure, toggleReview } from "./roster";
+import { retentionEnd, exactNumber, facetQueries, headcount, joinReview, listQuery, nextItems, offeredVerbs, parseIds, parseReview, parseStatus, reviewCounts, reviewTotals, statusCounts, statusTotals, tenure, toggleReview } from "./roster";
 
 type Employee = components["schemas"]["Employee"];
 const person = (p: Partial<Employee>): Employee => ({ id: "1", company: "c", name: "n", org_unit_id: null, legal_entity_id: null, workplace_id: null, home_branch_review_required: false, identity_resolution_strategy: "employee_number", identity_resolution_confidence: "high", identity_review_required: false, identity_name_only_merge: false, next_event: null, failed_event: null, created_at: "", updated_at: "", status: "ACTIVE", ...p });
@@ -173,4 +173,12 @@ test("an unavailable contract window omits only the window-dependent filters and
   expect(facets.review.contract_ending_before).toBeUndefined();
   expect(listQuery({ ...filter, review: ["contractPast"] }, TODAY).contract_ending_before).toBe(TODAY);
   expect(nextItems(person({ contract_end_date: "2026-10-03" }), TODAY)).toEqual([]);
+});
+
+test("parseIds validates and deduplicates UUID drilldown parameters for listQuery", () => {
+  const id1 = "00000000-0000-4000-8000-000000000001";
+  const id2 = "00000000-0000-4000-8000-000000000002";
+  expect(parseIds(` ${id1}, bogus , ${id2} , ${id1} `)).toEqual([id1, id2]);
+  expect(listQuery({ status: "current", review: [], ids: [id1, id2] }, TODAY, 60).ids).toEqual([id1, id2]);
+  expect(listQuery({ status: "current", review: [] }, TODAY, 60).ids).toBeUndefined();
 });

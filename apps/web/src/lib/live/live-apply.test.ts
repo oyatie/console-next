@@ -12,7 +12,7 @@ beforeEach(() => {
   qc = new QueryClient();
   openLive(qc, "http://test/api/v1/events", input => {
     options = input;
-    return { get: () => ({ state: "live", since: 0, partial: [] }), subscribe: () => () => {}, lastEventId: "", close: () => {}, reconnect: () => {} };
+    return { get: () => ({ state: "live", since: 0, lastEventAt: null, partial: [] }), subscribe: () => () => {}, lastEventId: "", close: () => {}, reconnect: () => {} };
   });
 });
 afterEach(() => { closeLive(); qc.clear(); vi.useRealTimers(); });

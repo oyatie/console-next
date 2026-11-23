@@ -13,9 +13,12 @@ publish.workspace = true
 test-physical-replication = []
 
 [dependencies]
+aws-lc-rs = { workspace = true }
 console-compliance-domain = { workspace = true }
 console-kernel-core = { workspace = true }
+console-platform-crypto = { workspace = true }
 console-settings-domain = { path = "../../settings/domain" }
+secrecy = { workspace = true }
 sha2 = { workspace = true }
 hex = { workspace = true }
 serde = { workspace = true }
@@ -26,6 +29,7 @@ uuid = { workspace = true }
 time = { workspace = true }
 sqlx = { workspace = true }
 tokio = { workspace = true }
+zeroize = { workspace = true }
 
 [dev-dependencies]
 # Dev-only: feature_catalog_covers_every_feature asserts every shipped Feature is grantable.

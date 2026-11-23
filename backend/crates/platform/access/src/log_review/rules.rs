@@ -103,6 +103,33 @@ impl Rules {
             .fetch_one(conn).await?)
     }
 
+    pub async fn reason_due(
+        &self,
+        conn: &mut PgConnection,
+        now: OffsetDateTime,
+    ) -> AccessResult<Option<OffsetDateTime>> {
+        let Some(days) = self.reason_due_business_days else {
+            return Ok(None);
+        };
+        Ok(Some(
+            sqlx::query_scalar(
+                "SELECT (d + 1)::timestamp AT TIME ZONE $2 FROM \
+                 (SELECT (timezone($2, $1)::date + 1 + n) AS d FROM \
+                  generate_series(0, ($3::int + cardinality($5::text[])) * 7) n) dates \
+                 WHERE NOT extract(isodow FROM d)::smallint = ANY($4::smallint[]) \
+                   AND NOT d = ANY($5::text[]::date[]) \
+                 ORDER BY d OFFSET ($3::int - 1) LIMIT 1",
+            )
+            .bind(now)
+            .bind(&self.time_zone)
+            .bind(i32::try_from(days).map_err(AccessError::internal)?)
+            .bind(&self.weekend_isodays)
+            .bind(&self.holidays)
+            .fetch_one(conn)
+            .await?,
+        ))
+    }
+
     pub fn disabled_flags(&self) -> Vec<&'static str> {
         [
             (FLAG_CODES[0], self.every_download != Some(true)),

@@ -1,5 +1,12 @@
 use super::*;
 
+pub(super) fn refresh_hash_v2(token: &str) -> Vec<u8> {
+    let mut ctx = aws_lc_rs::digest::Context::new(&aws_lc_rs::digest::SHA256);
+    ctx.update(b"console.refresh_token.v2\0");
+    ctx.update(token.as_bytes());
+    ctx.finish().as_ref().to_vec()
+}
+
 /// POST as a WEB client: sends `X-Auth-Transport: cookie` and, optionally, a
 /// `Cookie` header carrying `__Host-console_refresh=<token>` (what a browser would replay).
 pub(super) async fn post_cookie_mode(

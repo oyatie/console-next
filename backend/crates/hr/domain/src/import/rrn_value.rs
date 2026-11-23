@@ -1,11 +1,12 @@
-//! Resident registration number as a value the import keeps (decisions #25):
-//! checked for shape and a real birth date, sealed and
-//! matched only through the [`RrnVault`] port (the keys live with the
-//! shell, never in the database). The value never prints: `Debug` is redacted.
+//! Resident registration number value kept by employee import and identity workflows:
+//! checked for shape and a real birth date, sealed and matched only through the [`RrnVault`] port
+//! (keys live with the shell, never in the database). `Debug` is redacted.
 //!
-//! Shape only, never the check digit: numbers issued since October 2020
-//! have no check digit. Date of birth / sex are not derived from it into other
-//! fields (decisions #20 Q3).
+//! Citizen RRNs (7th digit `1..=4`) validate shape and birth date only because post-October 2020
+//! citizen issuances omit a check digit. Alien registration numbers (`ARC`) and domestic residence
+//! numbers (`DOMESTIC_RESIDENCE`, 7th digit `5..=8`) enforce the Ministry of Justice Mod-11 check
+//! digit via [`Rrn::passes_mod11`]. When the sex field is omitted on import, sex is derived from
+//! the 7th digit per product policy.
 
 use time::{Date, Month};
 use uuid::Uuid;
@@ -75,21 +76,110 @@ impl Rrn {
     pub fn masked(&self) -> String {
         format!("{}-{}******", &self.0[..6], &self.0[6..7])
     }
+
+    /// 7th digit (`1..=8`) classifying citizen vs foreign/domestic residence and binary sex.
+    #[must_use]
+    pub fn seventh_digit(&self) -> u8 {
+        self.0.as_bytes()[6] - b'0'
+    }
+
+    /// Check the 13th Mod-11 check digit.
+    ///
+    /// Citizen numbers (`1..=4`) use `(11 - (sum % 11)) % 10`; alien registration and domestic
+    /// residence numbers (`5..=8`) use the Ministry of Justice check formula
+    /// `((11 - (sum % 11)) % 10 + 2) % 10`.
+    #[must_use]
+    pub fn passes_mod11(&self) -> bool {
+        const WEIGHTS: [u32; 12] = [2, 3, 4, 5, 6, 7, 8, 9, 2, 3, 4, 5];
+        let b = self.0.as_bytes();
+        let sum: u32 = WEIGHTS
+            .iter()
+            .enumerate()
+            .map(|(i, w)| u32::from(b[i] - b'0') * w)
+            .sum();
+        let base = (11 - (sum % 11)) % 10;
+        let expected = match self.seventh_digit() {
+            5..=8 => (base + 2) % 10,
+            _ => base,
+        };
+        u32::from(b[12] - b'0') == expected
+    }
 }
 
 /// A sealed resident registration number as stored (employee_rrn,
 /// data_import_row_identities).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct SealedRrn {
-    /// HMAC-SHA256 under the vault's matching key: the only thing compared.
+    /// Legacy v1 HMAC-SHA256 matching key (retained during N-1 rollout).
     pub hmac: Vec<u8>,
     pub hmac_key_version: i16,
+    /// Tenant-bound HKDF-SHA256 + HMAC-SHA256 blind index (`version >= 2`).
+    pub hmac_v2: Option<Vec<u8>>,
+    pub blind_index_version: Option<i16>,
     pub ciphertext: Vec<u8>,
     pub nonce: Vec<u8>,
     pub dek_wrapped: Vec<u8>,
     pub dek_nonce: Vec<u8>,
     pub key_version: i16,
     pub masked: String,
+    pub alg_id: Option<String>,
+    pub kek_id: Option<String>,
+    pub msg_id: Option<Vec<u8>>,
+    pub commitment_tag: Option<Vec<u8>>,
+}
+
+impl std::fmt::Debug for SealedRrn {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SealedRrn")
+            .field(
+                "hmac",
+                &format_args!("[redacted; {} bytes]", self.hmac.len()),
+            )
+            .field("hmac_key_version", &self.hmac_key_version)
+            .field(
+                "hmac_v2",
+                &self
+                    .hmac_v2
+                    .as_ref()
+                    .map(|h| format!("[redacted; {} bytes]", h.len())),
+            )
+            .field("blind_index_version", &self.blind_index_version)
+            .field(
+                "ciphertext",
+                &format_args!("[redacted; {} bytes]", self.ciphertext.len()),
+            )
+            .field(
+                "nonce",
+                &format_args!("[redacted; {} bytes]", self.nonce.len()),
+            )
+            .field(
+                "dek_wrapped",
+                &format_args!("[redacted; {} bytes]", self.dek_wrapped.len()),
+            )
+            .field(
+                "dek_nonce",
+                &format_args!("[redacted; {} bytes]", self.dek_nonce.len()),
+            )
+            .field("key_version", &self.key_version)
+            .field("masked", &"[redacted]")
+            .field("alg_id", &self.alg_id)
+            .field("kek_id", &self.kek_id)
+            .field(
+                "msg_id",
+                &self
+                    .msg_id
+                    .as_ref()
+                    .map(|m| format!("[redacted; {} bytes]", m.len())),
+            )
+            .field(
+                "commitment_tag",
+                &self
+                    .commitment_tag
+                    .as_ref()
+                    .map(|t| format!("[redacted; {} bytes]", t.len())),
+            )
+            .finish()
+    }
 }
 
 /// The vault failed (no key, wrong key, tampered row). Carries no value.
@@ -104,13 +194,134 @@ pub trait RrnVault: Send + Sync {
     /// [`VaultError`] when sealing fails.
     fn seal(&self, org: Uuid, rrn: &Rrn) -> Result<SealedRrn, VaultError>;
 
-    /// The matching key of `rrn` under the current HMAC key.
-    fn blind_index(&self, rrn: &Rrn) -> Vec<u8>;
+    /// Tenant-bound v2+ blind index of `rrn` under the active key version.
+    fn blind_index(&self, org: Uuid, rrn: &Rrn) -> Vec<u8>;
+
+    /// Legacy v1 (un-tenanted) blind index for N-1 dual-write compatibility.
+    fn blind_index_v1(&self, rrn: &Rrn) -> Vec<u8> {
+        let _ = rrn;
+        Vec::new()
+    }
+
+    /// Active tenant-bound blind-index version (`>= 2`).
+    fn active_blind_index_version(&self) -> i16 {
+        2
+    }
+
+    /// All tenant-bound v2+ blind-index candidates for `rrn` (active/newest first).
+    fn blind_index_v2_candidates(&self, org: Uuid, rrn: &Rrn) -> Vec<Vec<u8>> {
+        vec![self.blind_index(org, rrn)]
+    }
+
+    /// Derive tenant-bound v2+ candidates from an existing [`SealedRrn`],
+    /// keeping plaintext inside the vault.
+    ///
+    /// # Errors
+    /// [`VaultError`] when opening `sealed` fails.
+    fn blind_index_v2_candidates_from_sealed(
+        &self,
+        org: Uuid,
+        sealed: &SealedRrn,
+    ) -> Result<Vec<Vec<u8>>, VaultError> {
+        let rrn = self.open(org, sealed)?;
+        let mut candidates = self.blind_index_v2_candidates(org, &rrn);
+        if let Some(existing) = &sealed.hmac_v2
+            && !candidates.iter().any(|c| c == existing)
+        {
+            candidates.push(existing.clone());
+        }
+        Ok(candidates)
+    }
+
+    /// Recompute `(rrn_hmac_v2, blind_index_version)` for batched backfill.
+    ///
+    /// # Errors
+    /// [`VaultError`] when opening `sealed` fails.
+    fn rekey_blind_index_v2(
+        &self,
+        org: Uuid,
+        sealed: &SealedRrn,
+    ) -> Result<(Vec<u8>, i16), VaultError> {
+        let rrn = self.open(org, sealed)?;
+        Ok((
+            self.blind_index(org, &rrn),
+            self.active_blind_index_version(),
+        ))
+    }
+
+    /// Active envelope key version written by [`RrnVault::seal`] (`3` = AWS-ESDK-v2).
+    fn active_envelope_key_version(&self) -> i16 {
+        3
+    }
+
+    /// Canonical `alg_id` written by [`RrnVault::seal`], if crypto-agile (`v3+`).
+    fn active_alg_id(&self) -> Option<&str> {
+        None
+    }
+
+    /// Active wrapping KEK identifier written by [`RrnVault::seal`], if any.
+    fn active_kek_id(&self) -> Option<&str> {
+        None
+    }
+
+    /// Re-seal `sealed`'s AEAD envelope under the active writer suite and KEK,
+    /// preserving `hmac`, `hmac_key_version`, `hmac_v2`, `blind_index_version`,
+    /// and `masked` so N-1 blind-index compatibility stays intact.
+    ///
+    /// # Errors
+    /// [`VaultError`] when opening or re-sealing `sealed` fails.
+    fn reseal(&self, org: Uuid, sealed: &SealedRrn) -> Result<SealedRrn, VaultError> {
+        let rrn = self.open(org, sealed)?;
+        let fresh = self.seal(org, &rrn)?;
+        Ok(SealedRrn {
+            hmac: sealed.hmac.clone(),
+            hmac_key_version: sealed.hmac_key_version,
+            hmac_v2: sealed.hmac_v2.clone(),
+            blind_index_version: sealed.blind_index_version,
+            ciphertext: fresh.ciphertext,
+            nonce: fresh.nonce,
+            dek_wrapped: fresh.dek_wrapped,
+            dek_nonce: fresh.dek_nonce,
+            key_version: fresh.key_version,
+            masked: sealed.masked.clone(),
+            alg_id: fresh.alg_id,
+            kek_id: fresh.kek_id,
+            msg_id: fresh.msg_id,
+            commitment_tag: fresh.commitment_tag,
+        })
+    }
 
     /// # Errors
     /// [`VaultError`] for a wrong key, another tenant's row or a tampered one.
     fn open(&self, org: Uuid, sealed: &SealedRrn) -> Result<Rrn, VaultError>;
+
+    /// Resolve a tenant-scoped vault for `org` at an async boundary, or
+    /// `Ok(None)` when the implementation has no per-tenant key store.
+    fn scoped_for_org<'a>(&'a self, _org: Uuid) -> ScopedRrnVaultFuture<'a> {
+        Box::pin(async { Ok(None) })
+    }
+
+    /// Resolve the read-only target `kek_id` for `org` without provisioning or
+    /// mutating per-tenant key rows.
+    fn target_kek_for_org<'a>(&'a self, _org: Uuid) -> TargetRrnKekFuture<'a> {
+        let kek = self.active_kek_id().map(str::to_owned);
+        Box::pin(async move { Ok(kek) })
+    }
 }
+
+/// Boxed future returned by [`RrnVault::scoped_for_org`].
+pub type ScopedRrnVaultFuture<'a> = std::pin::Pin<
+    Box<
+        dyn core::future::Future<Output = Result<Option<std::sync::Arc<dyn RrnVault>>, VaultError>>
+            + Send
+            + 'a,
+    >,
+>;
+
+/// Boxed future returned by [`RrnVault::target_kek_for_org`].
+pub type TargetRrnKekFuture<'a> = std::pin::Pin<
+    Box<dyn core::future::Future<Output = Result<Option<String>, VaultError>> + Send + 'a>,
+>;
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]

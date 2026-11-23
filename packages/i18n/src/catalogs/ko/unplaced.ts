@@ -33,8 +33,8 @@ export const koUnplaced: Record<keyof typeof enUnplaced, string> = {
   "unplaced.target.where": "{entity} · 미배치 · {value}",
   "unplaced.target.title": "{n, number}명 배치",
   "unplaced.target.titleNone": "직원 배치",
-  "unplaced.target.find": "부서 찾기 · {entity} 안에서만",
-  "unplaced.target.findAll": "부서 찾기 · 법인 › 사업장 › 부서",
+  "unplaced.target.find": "부서 선택 · {entity}",
+  "unplaced.target.findAll": "부서 선택 · 법인 › 사업장 › 부서",
   "unplaced.target.findLabel": "둘 부서",
   "unplaced.target.open": "목록 열기",
   "unplaced.target.suggest": "제안 · 숫자키",
@@ -71,4 +71,6 @@ export const koUnplaced: Record<keyof typeof enUnplaced, string> = {
   "unplaced.why.stale_record": "방금 다른 사람이 이 직원을 변경했습니다 · 다시 선택하십시오",
   "unplaced.why.lifecycle_schedule_conflict": "예약된 발령과 겹칩니다 · 인사카드에서 예약을 확인하십시오",
   "unplaced.why.scheduled_conflict": "예약된 발령과 겹칩니다 · 인사카드에서 예약을 확인하십시오",
+  "unplaced.disabled.pick": "가운데 목록에서 직원을 먼저 선택하십시오",
+  "unplaced.disabled.date": "발령 기준 날짜를 입력하십시오",
 };

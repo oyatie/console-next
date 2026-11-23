@@ -26,7 +26,7 @@ export function layer(file, kind = "normal", name = "") {
   if (/\/(rest|adapter-[^/]+)\//.test(file)) return "interface adapters";
   if (file.startsWith("packages/api/")) return "web: data";
   if (file.startsWith("packages/i18n/")) return "web: UI";
-  if (file.startsWith("apps/web/")) return "web: UI";
+  if (file.startsWith("apps/web/") || file.startsWith("apps/ops/")) return "web: UI";
   return "frameworks & drivers/platform";
 }
 

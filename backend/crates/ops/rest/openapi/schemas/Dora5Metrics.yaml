@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["deployment_frequency", "lead_time_s", "change_failure_rate", "mttr_s", "rework_rate", "n"]
+properties:
+  deployment_frequency: {"$ref": "#/components/schemas/ObservedNumber"}
+  lead_time_s: {"$ref": "#/components/schemas/ObservedNumber"}
+  change_failure_rate: {"$ref": "#/components/schemas/ObservedNumber"}
+  mttr_s: {"$ref": "#/components/schemas/ObservedNumber"}
+  rework_rate: {"$ref": "#/components/schemas/ObservedNumber"}
+  n: {"type": "integer", "minimum": 0}

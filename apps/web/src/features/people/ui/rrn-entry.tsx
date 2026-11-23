@@ -1,14 +1,19 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useRef, useState } from "react";
 import { isMessageId, t } from "@console/i18n";
+import { ID_TYPE, label } from "../../../lib/labels";
 import { FORMATS, complete } from "../../../lib/pure/formats";
 import { announce } from "../../../lib/react/announce";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { Button } from "../../../ui/button/button";
+import { Field } from "../../../ui/field/field";
+import { SelectInput } from "../../../ui/field/select-input";
 import { MaskedField } from "../../../ui/masked-field/masked-field";
 import { Sheet } from "../../../ui/sheet/sheet";
-import { recordRrn } from "../api/record";
+import { recordRrn, type RecordableIdType } from "../api/record";
+
+const RECORDABLE_ID_TYPES: readonly RecordableIdType[] = ["RRN", "ARC", "DOMESTIC_RESIDENCE"];
 
 export function RrnEntry({ employeeId, who }: { employeeId: string; who: string }) {
   const [open, setOpen] = useState(false);
@@ -21,17 +26,18 @@ export function RrnEntry({ employeeId, who }: { employeeId: string; who: string 
 function RrnEntrySheet({ employeeId, who, onClose }: { employeeId: string; who: string; onClose: () => void }) {
   const input = useRef("");
   const [value, setValue] = useState("");
-  const close = () => { input.current = ""; setValue(""); onClose(); };
+  const [idType, setIdType] = useState<RecordableIdType | null>(null);
+  const close = () => { input.current = ""; setValue(""); setIdType(null); onClose(); };
   const command = useCommand({
     run: async () => {
       // The command captures the cleared ref, keeping digits out of mutation variables and callbacks.
       let secret = input.current;
       input.current = ""; setValue("");
-      try { return await recordRrn(employeeId, secret); }
+      try { return await recordRrn(employeeId, secret, idType ?? undefined); }
       finally { secret = ""; }
     },
     forget: true,
-    invalidates: ["/api/v1/employees/{id}/rrn"],
+    invalidates: ["/api/v1/employees/{id}/rrn", "/api/v1/employees"],
     settle: true,
     onSuccess: () => {
       announce(t("empCard.rrn.recorded", { who }));
@@ -48,6 +54,24 @@ function RrnEntrySheet({ employeeId, who, onClose }: { employeeId: string; who: 
       <Button onClick={close}>{t("uiSheet.close")}</Button>
       <Button variant="primary" disabled={command.isPending || !complete(FORMATS.rrn, value)} onClick={() => command.mutate(undefined)}>{t("empCard.rrn.record")}</Button>
     </>}>
+    <Field label={t("empCard.rrn.idType")} required={false}>
+      {(p) => (
+        <SelectInput
+          {...p}
+          value={idType ?? ""}
+          onChange={(e) => {
+            const v = e.target.value;
+            setIdType(v ? (v as RecordableIdType) : null);
+            command.reset();
+          }}
+        >
+          <option value="">{t("importReview.cells.pickOption")}</option>
+          {RECORDABLE_ID_TYPES.map((code) => (
+            <option key={code} value={code}>{label(ID_TYPE, code)}</option>
+          ))}
+        </SelectInput>
+      )}
+    </Field>
     <MaskedField label={t("empCard.f.rrn")} required format={FORMATS.rrn} value={value} onChange={next => { input.current = next; setValue(next); command.reset(); }} />
   </Sheet>;
 }

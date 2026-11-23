@@ -106,9 +106,27 @@ const PATHS: &[PathItem] = &[
             body: include_str!("../openapi/paths/api__v2__me__leave.get.yaml"),
         }],
     },
+    PathItem {
+        path: "/api/v2/me/leave/approval-preview",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v2__me__leave__approval-preview.get.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v2/me/leave/team-overlap",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v2__me__leave__team-overlap.get.yaml"),
+        }],
+    },
 ];
 
 const SCHEMAS: &[NamedYaml] = &[
+    NamedYaml {
+        name: "LeaveApprovalPreviewStep",
+        body: include_str!("../openapi/schemas/LeaveApprovalPreviewStep.yaml"),
+    },
     NamedYaml {
         name: "LeaveBalanceAmount",
         body: include_str!("../openapi/schemas/LeaveBalanceAmount.yaml"),
@@ -194,8 +212,20 @@ const SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../openapi/schemas/MyLeaveV2Overview.yaml"),
     },
     NamedYaml {
+        name: "SelfLeaveApprovalPreview",
+        body: include_str!("../openapi/schemas/SelfLeaveApprovalPreview.yaml"),
+    },
+    NamedYaml {
         name: "SelfLeaveBalance",
         body: include_str!("../openapi/schemas/SelfLeaveBalance.yaml"),
+    },
+    NamedYaml {
+        name: "SelfLeaveTeamOverlap",
+        body: include_str!("../openapi/schemas/SelfLeaveTeamOverlap.yaml"),
+    },
+    NamedYaml {
+        name: "TeamOverlapMember",
+        body: include_str!("../openapi/schemas/TeamOverlapMember.yaml"),
     },
     NamedYaml {
         name: "TimeChangeCoverageEvidence",

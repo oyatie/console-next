@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags:
+  - platform
+operationId: invitePlatformOperator
+summary: Invite a second platform operator (platform vendor tier)
+description: Provisions a new platform-tier SUPER_ADMIN account and mints a single-use enrolment token returned once. Requires OPERATOR_RECOVERY step-up bound to the request.
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/InvitePlatformOperatorRequest'
+responses:
+  '201':
+    description: Invited platform operator summary and one-time enrolment token.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/PlatformOperatorInviteResponse'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '503':
+    $ref: '#/components/responses/ServiceUnavailable'

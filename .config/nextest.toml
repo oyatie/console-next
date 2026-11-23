@@ -23,9 +23,9 @@ filter = '''
   + binary(apalis_schema_contract)
   + binary(apalis_runtime_release)
   + binary(group_of_one_expand_contract)
+  + test(=migrated_canonical_tables_have_only_expected_writers)
   + test(=definitions_migrated_by_console_app_are_read_only_for_runtime)
   + test(=placement_migrations_run_as_console_app)
-  + test(=owner_only_acl_is_effectively_private_on_postgres18)
   + test(=console_app_may_set_its_own_lock_timeout_default)
   + test(=status_worker_age_is_queue_scoped_read_only_and_missing_is_unknown)
   + test(/status_public_evidence_answers_aggregate_age_only_beside_tenant_data$/)
@@ -38,19 +38,6 @@ threads-required = "num-test-threads"
 [profile.ci]
 # Hosted: no flake-hide retries. Slow timeout generous for PG.
 slow-timeout = { period = "120s", terminate-after = 3 }
-
-# census_binds_to_an_executed_database is EIGHT sequential migrate+enforce
-# cycles against a Docker PostgreSQL in one test -- the mutation matrix for the
-# canonical-enforcement census. Measured 263s locally and it hit the 360s
-# terminate ceiling on a hosted runner the first time every shard ran under
-# nextest. That cost is legitimate and serial by construction (each cycle
-# re-installs the topology script), so the ceiling is raised for THIS binary
-# only. The global 360s stays: it is what catches a genuinely hung test, and
-# widening it everywhere to accommodate one known-slow suite would hide hangs
-# in the other 153.
-[[profile.ci.overrides]]
-filter = 'binary(census_executes_against_postgres)'
-slow-timeout = { period = "120s", terminate-after = 8 }
 
 # Wall-clock budgets must not measure concurrent migrations.
 [[profile.ci.overrides]]
@@ -65,11 +52,6 @@ path = "junit.xml"
 [profile.lane]
 retries = 0
 slow-timeout = { period = "60s", terminate-after = 5 }
-# The 263-319 s census binary is excluded HERE ONLY. The once-per-task full sweep
-# runs NEXTEST_PROFILE=ci, which has no default-filter. Never put a default-filter on
-# [profile.default]: ci and every custom profile would inherit it and silently drop
-# the census (tools/ci/check-nextest-config.mjs enforces this).
-default-filter = 'not binary(census_executes_against_postgres)'
 
 [profile.lane.junit]
 path = "junit.xml"

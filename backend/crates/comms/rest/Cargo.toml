@@ -10,6 +10,7 @@ publish.workspace = true
 [dependencies]
 console-contracts = { path = "../../contracts" }
 axum = { workspace = true }
+aws-lc-rs = { workspace = true }
 base64 = { workspace = true }
 console-comms-adapter-imap = { workspace = true }
 console-comms-adapter-mox = { workspace = true }
@@ -22,13 +23,13 @@ console-comms-domain = { workspace = true }
 console-kernel-core = { workspace = true }
 console-platform-auth = { path = "../../platform/auth" }
 console-platform-authz = { path = "../../platform/authz" }
+console-platform-crypto = { workspace = true }
 console-platform-db = { workspace = true }
 console-platform-request-context = { workspace = true }
 secrecy = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sqlx = { workspace = true }
-subtle = { workspace = true }
 time = { workspace = true }
 tracing = { workspace = true }
 uuid = { workspace = true }

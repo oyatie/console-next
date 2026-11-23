@@ -12,6 +12,7 @@
 pub mod account_link_solo;
 mod employee_views;
 mod error;
+mod me_access_log;
 mod org_structure;
 mod policy;
 pub mod second_person;

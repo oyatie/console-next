@@ -1,8 +1,8 @@
 /* ui/sheet: a side sheet over the right of the page; head, scrolling body, foot with the consequence. Tokens only. */
-.overlay { position: fixed; inset: 0; z-index: var(--z-sheet); display: flex; justify-content: flex-end; background: var(--scrim); }
+.overlay { position: fixed; inset: 0; z-index: var(--z-sheet); display: flex; justify-content: flex-end; overflow: hidden; overscroll-behavior: contain; background: var(--scrim); }
 .sheet { display: flex; width: min(100%, var(--sheet-w)); height: 100dvh; background: var(--surface); color: var(--ink); box-shadow: var(--shadow-pop); outline: none; }
 .sheet[data-size="lg"] { width: min(100%, var(--sheet-w-lg)); }
-.dialog { display: flex; flex: 1; flex-direction: column; min-width: 0; outline: none; }
+.dialog { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; height: 100%; outline: none; }
 .head { display: flex; align-items: flex-start; gap: var(--space-2); padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--border); }
 .titles { display: flex; flex: 1; flex-direction: column; gap: var(--space-1); min-width: 0; }
 .kicker { display: flex; align-items: center; gap: var(--space-1); font-size: var(--text-xs); color: var(--steel); }

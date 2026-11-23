@@ -1,0 +1,2 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+allOf: [{"$ref": "#/components/schemas/CmdHandOff"}, {"type": "object", "required": ["seq", "hash", "support_ref", "status"], "properties": {"seq": {"type": "integer", "minimum": 1}, "hash": {"$ref": "#/components/schemas/Text"}, "support_ref": {"$ref": "#/components/schemas/Text"}, "status": {"type": "string", "enum": ["pending", "executed", "superseded"]}}}]

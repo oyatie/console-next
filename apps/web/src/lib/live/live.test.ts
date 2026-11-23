@@ -3,14 +3,14 @@ import { QueryClient, QueryObserver } from "@tanstack/react-query";
 import { interactionHeaders, lastTouch, session } from "@console/api";
 import type { StreamOptions, StreamSnapshot, StreamState } from "@console/api/events";
 import { get, isInvalidated } from "../query";
-import { closeLive, holdLive, liveApplying, liveHeld, liveStatus, onRecordChange, openLive, showHeld } from "./live";
+import { closeLive, holdLive, liveApplying, liveHeld, liveStatus, onRecordChange, openLive, reconnectLive, showHeld } from "./live";
 
 // A fake stream the test drives: frames, state flips and the cursor.
-const fake = vi.hoisted(() => ({ opts: null as StreamOptions | null, snap: null as StreamSnapshot | null, lastEventId: "", listeners: new Set<() => void>(), closed: 0 }));
+const fake = vi.hoisted(() => ({ opts: null as StreamOptions | null, snap: null as StreamSnapshot | null, lastEventId: "", listeners: new Set<() => void>(), closed: 0, reconnected: 0 }));
 vi.mock("@console/api/events", () => ({
   openEventStream: (o: StreamOptions) => {
     fake.opts = o;
-    fake.snap = { state: "connecting", since: Date.now(), partial: [] };
+    fake.snap = { state: "connecting", since: Date.now(), lastEventAt: null, partial: [] };
     fake.lastEventId = "";
     fake.listeners.clear();
     return {
@@ -20,7 +20,7 @@ vi.mock("@console/api/events", () => ({
         return fake.lastEventId;
       },
       close: () => void fake.closed++,
-      reconnect: () => {},
+      reconnect: () => void fake.reconnected++,
     };
   },
 }));
@@ -226,14 +226,11 @@ test("the stream is never user activity: frames, re-reads and reconnects record 
 });
 
 test("the shell sees the stream state, and closing leaves it offline", () => {
-  to("live");
-  expect(liveStatus.get().state).toBe("live");
-  closeLive();
-  expect(liveStatus.get().state).toBe("offline");
-  expect(fake.closed).toBeGreaterThan(0);
+  to("live"); expect(liveStatus.get().state).toBe("live");
+  reconnectLive(); closeLive();
+  expect(liveStatus.get()).toMatchObject({ state: "offline", lastEventAt: null });
+  expect(fake.reconnected).toBeGreaterThan(0); expect(fake.closed).toBeGreaterThan(0);
 });
-
-
 test("recovery changes from the other operator survive this tab's recent-write window", async () => {
   const query = get("/api/platform/orgs/{id}/ops-recovery", { params: { path: { id: "o1" } } });
   await load(query);

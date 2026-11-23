@@ -264,3 +264,14 @@ test("the post-sign-in consent response body is also bounded", async () => {
   await vi.advanceTimersByTimeAsync(client.DEFAULT_REQUEST_TIMEOUT_MS);
   expect(result.error).toBeInstanceOf(TypeError);
 });
+
+test("30s server timeout plus transport slack and deadline timeout detection match contract", () => {
+  expect(client.SERVER_REQUEST_TIMEOUT_MS).toBe(30_000);
+  expect(client.TRANSPORT_SLACK_MS).toBe(15_000);
+  expect(client.DEFAULT_REQUEST_TIMEOUT_MS).toBe(45_000);
+  const timeoutCause = new DOMException("Deadline", "TimeoutError");
+  const wrapped = new TypeError("Failed to fetch", { cause: timeoutCause });
+  expect(client.isDeadlineTimeout(wrapped)).toBe(true);
+  expect(client.isDeadlineTimeout(new TypeError("Failed to fetch"))).toBe(false);
+  expect(client.isDeadlineTimeout(new DOMException("Aborted", "AbortError"))).toBe(false);
+});

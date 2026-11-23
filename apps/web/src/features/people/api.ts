@@ -1,6 +1,6 @@
 // Employee records, lifecycle events and exit cases: query descriptors.
-import { api, ApiError, assertBoundPasskey, assertPasskey, session, unwrap } from "@console/api";
-import { get } from "../../lib/query";
+import { api, ApiError, assertBoundPasskey, assertPasskey, hrWaterfallApi, session, unwrap } from "@console/api";
+import { get, read } from "../../lib/query";
 import type { components, paths } from "@console/api/schema";
 import { unknownOutcome } from "./domain/accounts";
 import { canonical } from "./domain/canonical";
@@ -34,9 +34,15 @@ export const statusParam = (f?: ExitFilter | Status[]) =>
 /** Cases newest activity first (the server's largest page), narrowed to an employee or to statuses. */
 export const exitCasesQuery = (q: { employeeId?: string; status?: Status[] }) =>
   get("/api/v1/hr/exit-cases", { params: { query: { employee_id: q.employeeId, status: statusParam(q.status), limit: 200 } } });
-/** How many cases match a filter and a name or employee-number search (one row read; the server counts). */
-export const exitCountQuery = (status?: ExitFilter, search?: string) =>
-  get("/api/v1/hr/exit-cases", { params: { query: { status: statusParam(status), search: search || undefined, limit: 1 } } });
+/** How many cases match each filter and an optional search (single aggregate read). */
+export const exitCaseCountsQuery = (search?: string) => {
+  const trimmed = search?.trim() || undefined;
+  return read(
+    "/api/v1/hr/exit-cases/counts",
+    () => hrWaterfallApi(api).getExitCaseCounts(trimmed ? { search: trimmed } : undefined),
+    { query: { search: trimmed } },
+  );
+};
 type CasePage = components["schemas"]["EmployeeExitCasePage"];
 /**
  * The list's pages for useInfiniteQuery: keyed by the filter and page size (the offset is the page param,
@@ -194,15 +200,16 @@ export type BulkRequest = components["schemas"]["BulkEmployeeLifecycleEventReque
 export const bulkAppoint = (body: BulkRequest, key: string) =>
   unwrap(api.POST("/api/v1/employees/lifecycle-events/bulk", { params: { header: { "Idempotency-Key": key } }, body })) as Promise<components["schemas"]["BulkEmployeeLifecycleEventResponse"]>;
 
-/** A page of the whole roster, every status (bulk paste looks employee numbers up in it; the server's largest page). */
-export const ROSTER_PAGE = 1000;
-export const rosterPageQuery = (offset: number) => get("/api/v1/employees", { params: { query: { limit: ROSTER_PAGE, offset } } });
+/** The most employee IDs one list read takes (`ids[]`, 422 above). */
+export const IDS_PER_READ = 500;
+/** Every person, any status, whose id is in `ids` (up to IDS_PER_READ). */
+export const byIdsQuery = (ids: readonly string[]) => get("/api/v1/employees", { params: { query: { ids: [...ids], limit: IDS_PER_READ } } });
 /** The unplaced queue (BE-MIG W03, spec E8): its whole count and the first page of people with why and the file's department text. */
 export const unplacedQuery = get("/api/v1/employees/import/unplaced", { params: { query: { limit: 500 } } });
 /** The most employee numbers one list read takes (`employee_number[]`, 422 above). */
 export const NUMBERS_PER_READ = 500;
 /** Every person, any status, whose employee number is exactly one of `numbers` (up to NUMBERS_PER_READ). */
-export const byNumbersQuery = (numbers: string[]) => get("/api/v1/employees", { params: { query: { employee_number: numbers, limit: ROSTER_PAGE } } });
+export const byNumbersQuery = (numbers: string[]) => get("/api/v1/employees", { params: { query: { employee_number: numbers, limit: NUMBERS_PER_READ } } });
 
 /**
  * How a failed command ended: the server refused named employees, or answered otherwise (4xx: nothing was
@@ -228,8 +235,11 @@ export const requestsQuery = (q: { lane: Lane; mine?: boolean; status?: RequestS
     params: { query: { assignee: q.lane === "all" ? undefined : q.lane, requester: q.mine ? "me" : undefined, status: q.status, limit: REQUEST_PAGE, offset: q.offset } },
   });
 /** The organization's open requests for Home's queue (HR only; the server lists a requester's own otherwise). */
-/** How many open requests wait in a lane (one row read; the server counts). */
-export const openCountQuery = (lane: Lane) => get("/api/v1/change-requests", { params: { query: { assignee: lane === "all" ? undefined : lane, status: "OPEN", limit: 1 } } });
+/** Single-scan OPEN counts per HR lane (`all`, `me`, `role`). */
+export const changeRequestCountsQuery = read(
+  "/api/v1/change-requests/counts",
+  () => hrWaterfallApi(api).getChangeRequestCounts(),
+);
 
 /** Files a request to HR about an employee (a branch reader's way to ask for a correction or anything else). */
 export const fileRequest = (b: { kind: "PROFILE_CORRECTION" | "OTHER"; employeeId: string; changes?: CorrectionChanges; reason: string; note?: string }) =>
@@ -331,7 +341,16 @@ export const recordContract = (id: string, body: ContractBody, key: string) =>
   unwrap(api.POST("/api/v1/employees/{id}/contracts", { params: { ...onEmployee(id), header: { "Idempotency-Key": key } }, body }));
 
 /** One person already on file who may be the one being registered (BW-19 `duplicate_candidate`). */
-export type DuplicateCandidate = { employee_id: string; status: string; employee_number?: string | null; basis: "name_phone" | "name_birth_date"; remedy?: "rehire" | null };
+export type DuplicateCandidate = {
+  employee_id: string;
+  status: string;
+  employee_number?: string | null;
+  name?: string | null;
+  org_unit?: string | null;
+  hire_date?: string | null;
+  basis: "name_phone" | "name_birth_date";
+  remedy?: "rehire" | null;
+};
 export type DuplicateOverride = components["schemas"]["DuplicateOverride"];
 /** The candidates of a 409 `duplicate_candidate`, else none: any other error is the form's usual message. */
 export const duplicateCandidates = (e: unknown): DuplicateCandidate[] =>
@@ -403,22 +422,32 @@ export async function cancelRegistration(id: string, o: { updated_at: string; ca
 /** One outcome of a bulk exit report: the case, or the server's refusal code for that person. */
 export type BulkExitRow = { id: string; name: string; ok: boolean; code?: string };
 
+const BULK_EXIT_LIMIT = 500;
+
 /**
- * exit reported for several people with one date and note: one report each, with the same checks as one by one, and each
- * person's own answer (bulk equals one-by-one, design-language §6.3). A refusal stops nobody else.
- * sequential client calls under one intent key per person; a server job when a selection passes the job threshold.
+ * Exit reported for several people with one date and note: chunked to <=500 per request with a deterministic
+ * idempotency key per chunk, returning each person's outcome (refusals stop nobody else).
  */
 export async function reportExits(people: { id: string; name: string }[], date: string, note: string, keys: Map<string, string>) {
+  if (people.length === 0) return [];
+  const names = new Map(people.map((p) => [p.id, p.name]));
   const out: BulkExitRow[] = [];
-  for (const p of people) {
-    const key = keys.get(p.id) ?? crypto.randomUUID();
-    keys.set(p.id, key);
-    try {
-      await reportExit({ employee_id: p.id, effective_exit_date: date, site_manager_note: note }, key);
-      out.push({ id: p.id, name: p.name, ok: true });
-    } catch (e) {
-      if (!(e instanceof ApiError)) throw e;
-      out.push({ id: p.id, name: p.name, ok: false, code: e.code });
+  for (let i = 0; i < people.length; i += BULK_EXIT_LIMIT) {
+    const chunk = people.slice(i, i + BULK_EXIT_LIMIT);
+    const sig = JSON.stringify([date, note, chunk.map((p) => p.id)]);
+    const key = keys.get(sig) ?? crypto.randomUUID();
+    keys.set(sig, key);
+    const res = await hrWaterfallApi(api).bulkReportExitCases(
+      { effective_exit_date: date, site_manager_note: note, items: chunk.map((p) => ({ employee_id: p.id })) },
+      key,
+    );
+    for (const item of res.results) {
+      out.push({
+        id: item.employee_id,
+        name: names.get(item.employee_id) ?? "",
+        ok: item.ok,
+        code: item.ok ? undefined : (item.code || "failed"),
+      });
     }
   }
   return out;

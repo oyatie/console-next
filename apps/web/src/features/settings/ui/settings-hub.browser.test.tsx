@@ -48,7 +48,10 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       const json = path.endsWith("company-domain/request") ? { pending_domain: "example.test" }
         : path.endsWith("employee-number-rules") ? [{ scope_kind: "TENANT", scope_id: "tenant", prefix: "E-", width: 4, next_number: "E-0012" }]
         : path.endsWith("users/me") ? { sign_in_id: "operator@current.test" }
-        : path.endsWith("settings") ? { can_change: false, items: [{ key: "approval.policy.org_structure", kind: { type: "code", allowed: ["none", "route"] }, value: "route", governance: "tenant", source: { layer: "tenant" }, scheduled: [{ value: "none", effective_from: "2026-12-01T00:00:00Z" }] }] }
+        : path.endsWith("settings") ? { can_change: false, items: [
+          { key: "approval.policy.org_structure", kind: { type: "code", allowed: ["none", "route"] }, value: "route", governance: "tenant", source: { layer: "tenant" }, scheduled: [{ value: "none", effective_from: "2026-12-01T00:00:00Z" }] },
+          { key: "display.experience", kind: { type: "code", allowed: ["baseline", "console", "warm-clear"] }, value: "baseline", version: "code_default", governance: "tenant", source: { layer: "code_default" }, scheduled: [] },
+        ] }
         : { items: [] };
       return route.fulfill({ json });
     });
@@ -62,6 +65,10 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await expect(approval).toContainText("조직 개편");
     await expect(approval).toContainText("2026. 12. 01.");
     await expect(approval.getByRole("link")).toHaveCount(0);
+    const screenStyle = main.getByRole("region", { name: t("settingsHub.key.display.experience"), exact: true });
+    await expect(screenStyle).toContainText(t("settingsHub.code.baseline"));
+    await expect(screenStyle).toContainText(t("settingsHub.readOnly"));
+    await expect(screenStyle.getByRole("button")).toHaveCount(0);
     const links = main.getByRole("link");
     await expect(links).toHaveCount(5);
     for (const link of await links.all()) await expect(link.locator("svg[aria-hidden=true]")).toHaveCount(1);
@@ -123,7 +130,7 @@ test("an unavailable identity cannot present a pending request as the live domai
 
 test("the domain waits for identity while other summaries are ready", async () => {
   let release!: () => void;
-  const held = new Promise<void>(resolve => { release = resolve; });
+  const held = new Promise<void>(done => { release = done; });
   await page.route("**/api/v1/users/me", async route => { await held; await route.fulfill({ json: { sign_in_id: "operator@current.test" } }); });
   try {
     await page.goto(`${server.resolvedUrls!.local[0]}settings-test`);
@@ -135,4 +142,108 @@ test("the domain waits for identity while other summaries are ready", async () =
     await expect(card).toContainText("current.test");
     await expect(card.getByRole("status")).toHaveCount(0);
   } finally { release(); await page.unroute("**/api/v1/users/me"); }
+});
+
+test("tenant default screen style composer validates, sends expected_version and reason, and surfaces version conflicts", async () => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  let currentStyle = "baseline";
+  let currentVersion = { override: "00000000-0000-4000-8000-000000000001" };
+  let shouldConflict = true;
+  const payloads: unknown[] = [];
+
+  await page.route("**/api/v1/settings", route => route.fulfill({
+    json: {
+      can_change: true,
+      items: [
+        { key: "approval.policy.org_structure", kind: { type: "code", allowed: ["none", "route"] }, value: "none", governance: "tenant", source: { layer: "tenant" }, scheduled: [] },
+        {
+          key: "display.experience",
+          kind: { type: "code", allowed: ["baseline", "console", "warm-clear"] },
+          default: "baseline",
+          looser_when: "neutral",
+          value: currentStyle,
+          version: currentVersion,
+          governance: "tenant",
+          source: { layer: "tenant", scope_entity_id: null },
+          chain: [],
+          scheduled: [],
+        },
+      ],
+    },
+  }));
+  await page.route("**/api/v1/reason-codes**", route => route.fulfill({
+    json: {
+      domain: "settings_change",
+      items: [
+        { code: "POLICY_REVIEW", system: true, active: true, requires_note: false, sort: 1 },
+        { code: "OTHER", system: true, active: true, requires_note: true, sort: 2 },
+      ],
+    },
+  }));
+  await page.route("**/api/v1/settings/display.experience**", async route => {
+    payloads.push(route.request().postDataJSON());
+    if (shouldConflict) {
+      shouldConflict = false;
+      currentVersion = { override: "00000000-0000-4000-8000-000000000002" };
+      await route.fulfill({
+        status: 409,
+        json: { error: { code: "setting_version_stale", message: "stale", current_version: currentVersion } },
+      });
+      return;
+    }
+    currentStyle = "console";
+    await route.fulfill({
+      status: 201,
+      json: {
+        id: "00000000-0000-4000-8000-000000000003",
+        key: "display.experience",
+        value: "console",
+        effective_from: "2026-11-20T00:00:00Z",
+        scope_entity_id: null,
+        immediate: true,
+      },
+    });
+  });
+
+  try {
+    await page.goto(`${server.resolvedUrls!.local[0]}settings-test`);
+    const card = page.getByRole("region", { name: t("settingsHub.key.display.experience"), exact: true });
+    await expect(card).toContainText(t("settingsHub.code.baseline"));
+    await card.getByRole("button", { name: t("settingsHub.experience.change"), exact: true }).click();
+
+    const dialog = page.getByRole("dialog", { name: t("settingsHub.experience.sheetTitle"), exact: true });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("radio", { name: t("account.experience.warmClear") })).toHaveCount(0);
+
+    const commitName = t("composer.commit", { action: t("settingsHub.key.display.experience"), verb: t("composer.verb.save"), count: 0, unit: "" });
+    const commit = dialog.getByRole("button", { name: commitName, exact: true });
+    const chooseRadio = (name: string) => dialog.getByRole("radio", { name, exact: true }).locator("xpath=ancestor::label[1]").click();
+    await expect(commit).toHaveAttribute("aria-disabled", "true");
+
+    await chooseRadio(t("account.experience.console"));
+    await expect(commit).toHaveAttribute("aria-disabled", "true");
+
+    await chooseRadio(t("reason.settings_change.OTHER"));
+    await expect(commit).toHaveAttribute("aria-disabled", "true");
+    await dialog.getByRole("textbox", { name: new RegExp(t("settingsHub.experience.note")) }).fill("rollout");
+    await expect(commit).not.toHaveAttribute("aria-disabled", "true");
+
+    await chooseRadio(t("reason.settings_change.POLICY_REVIEW"));
+    await commit.click();
+
+    await expect(dialog.getByRole("alert")).toContainText(t("settingsHub.error.setting_version_stale"));
+    await expect(dialog).toBeVisible();
+
+    await commit.click();
+    await expect(dialog).toHaveCount(0);
+    await expect(card).toContainText(t("settingsHub.code.console"));
+    expect(payloads).toEqual([
+      { value: "console", reason_code: "POLICY_REVIEW", expected_version: { override: "00000000-0000-4000-8000-000000000001" } },
+      { value: "console", reason_code: "POLICY_REVIEW", expected_version: { override: "00000000-0000-4000-8000-000000000002" } },
+    ]);
+  } finally {
+    await page.unroute("**/api/v1/settings/display.experience**");
+    await page.unroute("**/api/v1/reason-codes**");
+    await page.unroute("**/api/v1/settings");
+  }
 });

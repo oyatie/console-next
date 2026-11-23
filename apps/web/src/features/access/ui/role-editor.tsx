@@ -3,10 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
 import { t } from "@console/i18n";
-import { fmtDateTime } from "@console/i18n/format";
 import { useCommand } from "../../../lib/react/command";
 import { PasskeyError } from "../../../lib/react/passkey-error";
-import { readGroup, type ReadState } from "../../../lib/react/query-view";
+import { readGroup } from "../../../lib/react/query-view";
 import { QueryState } from "../../../lib/react/query-state";
 import { ActionBar } from "../../../ui/action-bar/action-bar";
 import { Button } from "../../../ui/button/button";
@@ -14,24 +13,25 @@ import { buttonClass } from "../../../ui/button/button-class";
 import { Card } from "../../../ui/card/card";
 import { Chip } from "../../../ui/chip";
 import { Field, TextInput } from "../../../ui/field/field";
-import { Table } from "../../../ui/table";
-import { EmptyState } from "../../../ui/empty-state";
-import { PersonLabel, PersonRef } from "../../../reference/person/ui/person-label";
 import { ReasonField } from "../../../ui/reason/reason-field";
 import { reasonProblem, type Reason } from "../../../ui/reason/reason";
+import { Tabs } from "../../../ui/tabs/tabs";
 import { usePolicyRouted } from "../../../reference/settings/ui/use-policy-routed";
 import { moduleReady, modulesQuery, PAYROLL_MODULE } from "../../../reference/onboarding/api";
 import { fromLines, isEmpty, toLines, type Chosen } from "../domain/grid";
 import { ACCESS_READS, accountsQuery, catalogQuery, createRole, grantsQuery, meQuery, roleQuery, roleVersionsQuery, updateRole, type AccessCatalog, type AccessGrant, type AccessRole } from "../api";
 import { AccessHead } from "./access-head";
-import { accountLabel, grantPerson, linesText } from "../present";
+import { accessRefusal, accountLabel, grantPerson } from "../present";
 import { PermissionGrid } from "./permission-grid";
 import { RoleDiff } from "./role-diff";
+import { RoleHistory } from "./role-history";
+import { RoleHolders } from "./role-holders";
 import { RolePreview } from "./role-preview";
 import { useReasons } from "./use-reasons";
 import s from "./access.module.css";
 
 const OTHER = "OTHER";
+type RoleEditorTab = "permissions" | "holders" | "history";
 type Draft = { name: string; description: string; grid: Chosen };
 const sameLines = (a: Chosen, b: Chosen, cat: AccessCatalog) => JSON.stringify(toLines(a, cat.domains)) === JSON.stringify(toLines(b, cat.domains));
 
@@ -45,25 +45,14 @@ function useHolders(role: AccessRole | undefined) {
   return { grants, holders, accounts: accounts.data?.items ?? [], names: names.join(", "), now: live.some((g) => g.enforcement === "ENFORCED"), waiting: live.length > 0 && live.every((g) => g.enforcement === "PREPARED") };
 }
 
-type RoleVersionsData = Awaited<ReturnType<ReturnType<typeof roleVersionsQuery>["queryFn"]>>;
-
-function RoleVersions({ versions }: { versions: ReadState<RoleVersionsData> }) {
-  const reasons = useReasons();
-  return <Card title={t("access.role.versions")} flush>
-    <QueryState q={versions} layout="list">{rows => rows.length ? <Table
-      label={t("access.role.versions")} rows={rows} rowId={row => String(row.version)}
-      columns={[
-        { header: t("access.role.version.column"), fit: true, cell: row => row.version },
-        { header: t("access.roles.col.name"), cell: row => row.name_ko },
-        { header: t("access.roles.col.lines"), cell: row => linesText(row.lines) },
-        { header: t("access.role.version.at"), cell: row => fmtDateTime(row.created_at) },
-        { header: t("access.grant.reason"), cell: row => reasons.codes.find(code => code.code === row.reason_code)?.label ?? row.reason_code ?? t("access.role.version.noReason") },
-      ]}
-    /> : <EmptyState title={t("access.role.versions.empty")} reason={null} />}</QueryState>
-  </Card>;
-}
-
-function Editor({ cat, role, copy, setup }: { cat: AccessCatalog; role?: AccessRole; copy: boolean; setup: boolean }) {
+function Editor({ cat, role, copy, setup, tab = "permissions", onTab }: {
+  cat: AccessCatalog;
+  role?: AccessRole;
+  copy: boolean;
+  setup: boolean;
+  tab?: RoleEditorTab;
+  onTab?: (next: RoleEditorTab) => void;
+}) {
   const nav = useNavigate();
   const order = cat.domains.map((x) => x.domain);
   const start: Draft = role ? { name: copy ? t("access.role.copyName", { name: role.name_ko }) : role.name_ko, description: role.description ?? "", grid: fromLines(role.lines) } : { name: "", description: "", grid: {} };
@@ -93,15 +82,12 @@ function Editor({ cat, role, copy, setup }: { cat: AccessCatalog; role?: AccessR
   const holders = editing?.holder_count ?? 0;
   const who = useHolders(editing);
   const versions = useQuery({ ...roleVersionsQuery(editing?.id ?? ""), enabled: !!editing });
-  const sharedSecondaryOutage = Boolean(editing && holders > 0 && who.grants.error && !who.grants.data && versions.error && !versions.data);
-  const holdersRead = sharedSecondaryOutage
-    ? { ...who.grants, refetch: () => Promise.all([who.grants.refetch(), versions.refetch()]) }
-    : who.grants;
-  const effect = holders && !who.grants.isSuccess ? (who.grants.isPending ? t("common.loading") : undefined) : !holders ? t("access.role.effect.none")
+  const effect = !holders ? undefined
+    : !who.grants.isSuccess ? (who.grants.isPending ? t("common.loading") : undefined)
     : !setup ? t("access.role.effect.live", { count: holders, names: who.names })
     : t(who.now ? "access.role.effect.setup" : "access.role.effect.golive", { count: holders, names: who.names });
-  return (
-    <div className={s.editor}>
+  const permissionsPane = (
+    <div className={s.editor} data-access-split="">
       <div className={s.stack}>
         <Card label={t("access.role.basics")}>
           <div className={s.two}>
@@ -117,18 +103,6 @@ function Editor({ cat, role, copy, setup }: { cat: AccessCatalog; role?: AccessR
           <PermissionGrid domains={cat.domains} value={d.grid} routed={routed} payrollReady={moduleReady(modules.data, PAYROLL_MODULE)} onChange={(grid) => setD({ ...d, grid })} />
           {tried && isEmpty(d.grid) && <p className={`field__error ${s.pad}`} role="alert">{t("access.role.grid.missing")}</p>}
         </Card>
-        {editing && <Card title={t("access.roles.col.holders")} meta={holders ? t(who.waiting ? "access.role.meta.golive" : "access.role.meta", { count: holders }) : undefined} flush>
-          {holders ? <QueryState q={holdersRead} layout="list">{() => <ul className={s.held}>
-            {who.holders.map(g => {
-              const account = who.accounts.find(a => a.id === g.account_id);
-              return <li key={g.account_id}>
-                <Link to="/access/people/$accountId" params={{ accountId: g.account_id }}><PersonLabel person={grantPerson(g, who.accounts)} peers={who.accounts} linked={false} wrap /></Link>
-                {account && <PersonRef account={account} details={false} wrap />}
-              </li>;
-            })}
-          </ul>}</QueryState> : <EmptyState title={t("access.role.effect.none")} reason={null} />}
-        </Card>}
-        {editing && !sharedSecondaryOutage && <RoleVersions versions={versions} />}
       </div>
       <aside className={`card ${s.preview}`} aria-labelledby="ac-preview">
         <h2 id="ac-preview">{t("access.preview.title")}</h2>
@@ -136,7 +110,7 @@ function Editor({ cat, role, copy, setup }: { cat: AccessCatalog; role?: AccessR
         {held && <RoleDiff before={start.grid} after={d.grid} order={order} />}
         {held && <ReasonField label={t("access.role.reason")} codes={reasons.codes} other={OTHER} value={reason} onChange={setReason} memoMax={200} showErrors={tried} />}
         <ActionBar
-          notice={<PasskeyError error={run.error} />}
+          notice={<PasskeyError error={run.error} own={accessRefusal} />}
           consequence={effect}
           actions={
             <>
@@ -148,10 +122,29 @@ function Editor({ cat, role, copy, setup }: { cat: AccessCatalog; role?: AccessR
       </aside>
     </div>
   );
+  if (!editing) return permissionsPane;
+  return (
+    <Tabs
+      label={t("access.role.tab.label")}
+      items={[
+        { id: "permissions", label: t("access.role.tab.permissions") },
+        { id: "holders", label: t("access.role.tab.holders"), count: editing.holder_count },
+        { id: "history", label: t("access.role.tab.history"), count: versions.data?.length },
+      ]}
+      selected={tab}
+      onSelect={(next) => onTab?.(next as RoleEditorTab)}
+    >
+      {(id) => id !== tab ? null : id === "permissions"
+        ? permissionsPane
+        : id === "holders"
+          ? <RoleHolders roleId={editing.id} roleName={editing.name_ko} accounts={who.accounts} />
+          : <RoleHistory versions={versions} order={order} />}
+    </Tabs>
+  );
 }
 
 /** role editor (mockup M2): a new role, a copy of one (`copy`), or an existing role (`roleId`). */
-export function RoleEditorPage({ roleId, copy }: { roleId?: string; copy?: string }) {
+export function RoleEditorPage({ roleId, copy, tab, onTab }: { roleId?: string; copy?: string; tab?: RoleEditorTab; onTab?: (next: RoleEditorTab) => void }) {
   const cat = useQuery(catalogQuery);
   const me = useQuery(meQuery);
   const source = roleId ?? copy;
@@ -161,16 +154,16 @@ export function RoleEditorPage({ roleId, copy }: { roleId?: string; copy?: strin
   const held = roleId ? role.data : undefined;
   const pageRead = readGroup(source ? [cat, role] : [cat]);
   return (
-    <div className="page">
+    <div className="page" data-access-page="">
       <AccessHead failed={Boolean(pageRead.error)} />
 <QueryState q={pageRead} back={{ to: "/access/roles", label: t("access.role.back") }} layout="form">{() => <>      <>
-      <div className={s.titleRow}>
+      <div className={s.titleRow} data-access-subhead="">
         <Link to="/access/roles" className={buttonClass("ghost")}><ChevronLeft size={16} aria-hidden />{t("access.role.back")}</Link>
         <h2 className="page__title">{held ? t("access.role.title.named", { title, name: held.name_ko }) : title}</h2>
         {held && <Chip>{t("access.role.version", { version: held.version })}</Chip>}
         {held && (held.holder_count ? <Chip tone="ok">{t("access.roles.state.used")}</Chip> : <Chip>{t("access.roles.state.unused")}</Chip>)}
       </div>
-      <Editor key={role.data ? `${role.data.id}:${role.data.version}` : "new"} cat={cat.data!} role={role.data} copy={!roleId && Boolean(source)} setup={setup} />
+      <Editor key={role.data ? `${role.data.id}:${role.data.version}` : "new"} cat={cat.data!} role={role.data} copy={!roleId && Boolean(source)} setup={setup} tab={tab} onTab={onTab} />
       </>
     </>}</QueryState>
     </div>

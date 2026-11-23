@@ -8,19 +8,39 @@ mod token;
 
 pub(crate) use issue_tx::*;
 pub(crate) use token::*;
-pub use token::{OTP_ALPHABET, OTP_GROUP_LEN, OTP_LEN, bootstrap_otp_pattern};
+pub use token::{OTP_ALPHABET, OTP_GROUP_LEN, OTP_LEN, OtpHmacKey, bootstrap_otp_pattern};
 
+use crate::ProvisioningError;
 use console_kernel_core::OrgId;
+use secrecy::{ExposeSecret, SecretString};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BootstrapToken(String);
+#[derive(Clone)]
+pub struct BootstrapToken(SecretString);
+
+impl std::fmt::Debug for BootstrapToken {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("BootstrapToken([REDACTED])")
+    }
+}
+
+impl PartialEq for BootstrapToken {
+    fn eq(&self, other: &Self) -> bool {
+        aws_lc_rs::constant_time::verify_slices_are_equal(
+            self.0.expose_secret().as_bytes(),
+            other.0.expose_secret().as_bytes(),
+        )
+        .is_ok()
+    }
+}
+
+impl Eq for BootstrapToken {}
 
 impl BootstrapToken {
     #[must_use]
     pub fn as_str(&self) -> &str {
-        &self.0
+        self.0.expose_secret()
     }
 }
 
@@ -32,8 +52,46 @@ pub struct BootstrapCredentialIssue {
     pub expires_at: OffsetDateTime,
 }
 
-#[derive(Debug, Clone, Copy, Default)]
-pub struct BootstrapCredentialStore;
+#[derive(Debug, Clone)]
+#[cfg_attr(debug_assertions, derive(Default))]
+pub struct BootstrapCredentialStore {
+    hmac_key: Option<OtpHmacKey>,
+}
+
+impl BootstrapCredentialStore {
+    #[must_use]
+    pub const fn new(hmac_key: OtpHmacKey) -> Self {
+        Self {
+            hmac_key: Some(hmac_key),
+        }
+    }
+
+    #[must_use]
+    pub const fn unconfigured() -> Self {
+        Self { hmac_key: None }
+    }
+
+    pub(crate) fn resolve_hmac_key(&self) -> Result<OtpHmacKey, ProvisioningError> {
+        if let Some(ref key) = self.hmac_key {
+            return Ok(key.clone());
+        }
+        #[cfg(debug_assertions)]
+        {
+            OtpHmacKey::try_dev_process_key()
+        }
+        #[cfg(not(debug_assertions))]
+        {
+            Err(ProvisioningError::Conflict(
+                "CONSOLE_OTP_HMAC_KEY is required in non-development builds".to_owned(),
+            ))
+        }
+    }
+
+    #[cfg(any(test, debug_assertions))]
+    pub fn hash_otp_for_test(&self, otp: &str) -> Result<Vec<u8>, ProvisioningError> {
+        Ok(hash_otp_v2(&self.resolve_hmac_key()?, otp))
+    }
+}
 
 /// Outcome of a successful OTP first sign-in.
 #[derive(Debug, Clone, PartialEq, Eq)]

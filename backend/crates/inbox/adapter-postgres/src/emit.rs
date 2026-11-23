@@ -74,16 +74,16 @@ async fn emit_with_id_in_tx(
         return Ok((existing, Vec::new()));
     }
     let event = emit_event(org, id, &command)?;
-    let row = sqlx::query(
+    let row = sqlx::query(concat!(
         "INSERT INTO inbox_docs (
             id, org_id, recipient_user_id, kind, notice_type, title,
             payload, legal_basis, source_kind, source_id, dedup_key
          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
          ON CONFLICT (org_id, recipient_user_id, dedup_key)
              WHERE dedup_key IS NOT NULL DO NOTHING
-         RETURNING id, recipient_user_id, kind, notice_type, title, legal_basis,
-                   source_kind, source_id, confirmed_by, confirmed_at, created_at",
-    )
+         RETURNING ",
+        inbox_columns!()
+    ))
     .bind(id.as_uuid())
     .bind(org.as_uuid())
     .bind(command.recipient.as_uuid())
@@ -111,11 +111,11 @@ async fn find_by_dedup_in_tx(
     recipient: UserId,
     key: Option<&str>,
 ) -> Result<Option<InboxDocSummary>, PgInboxError> {
-    let row = sqlx::query(
-        "SELECT id, recipient_user_id, kind, notice_type, title, legal_basis,
-                source_kind, source_id, confirmed_by, confirmed_at, created_at
-         FROM inbox_docs WHERE recipient_user_id=$1 AND dedup_key=$2",
-    )
+    let row = sqlx::query(concat!(
+        "SELECT ",
+        inbox_columns!(),
+        " FROM inbox_docs WHERE recipient_user_id=$1 AND dedup_key=$2"
+    ))
     .bind(recipient.as_uuid())
     .bind(key)
     .fetch_optional(tx.as_mut())

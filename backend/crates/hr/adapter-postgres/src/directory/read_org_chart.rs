@@ -18,6 +18,8 @@ use crate::{HrError, HrService, assignment_lateral};
 #[derive(Debug, Serialize)]
 pub struct HrOrgChartResponse {
     pub companies: Vec<HrOrgChartCompany>,
+    pub truncated: bool,
+    pub total: i64,
 }
 
 #[derive(Debug, Serialize)]
@@ -118,7 +120,7 @@ impl HrService {
         let org = principal.org_id;
         let reader = principal.clone();
 
-        let companies = with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
+        let (companies, total, truncated) = with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
         Box::pin(async move {
             let rows = sqlx::query(concat!(
                 r#"
@@ -138,7 +140,8 @@ impl HrService {
                         '소속 미지정'
                     ) AS org_unit,
                     COALESCE(NULLIF(e.position, ''), '직책 미지정') AS position,
-                    entity_employment_status_on(entity_today(), e.hire_on, e.exit_on, e.employment_status) AS employment_status
+                    entity_employment_status_on(entity_today(), e.hire_on, e.exit_on, e.employment_status) AS employment_status,
+                    COUNT(*) OVER() AS total_count
                 FROM person_employees_current e
                 LEFT JOIN LATERAL (
                     SELECT r.attributes FROM org_unit_revisions r
@@ -156,7 +159,7 @@ impl HrService {
                     ORDER BY x.effective_from DESC, x.version DESC LIMIT 1
                 ) le ON ea.legal_entity_id IS NOT NULL
                 WHERE entity_employed_on(entity_today(), e.hire_on, e.exit_on, e.employment_status)
-                ORDER BY 3 ASC, 2 ASC NULLS LAST, 7 ASC, 8 ASC, e.name ASC, e.source_sheet ASC, e.source_row ASC
+                ORDER BY company ASC, ea.legal_entity_id ASC NULLS LAST, org_unit ASC, position ASC, e.name ASC, e.source_sheet ASC, e.source_row ASC
                 LIMIT 5000
                 "#
             ))
@@ -165,6 +168,11 @@ impl HrService {
 
             let mut companies = Vec::<HrOrgChartCompany>::new();
             let row_count = rows.len();
+            let total: i64 = match rows.first() {
+                Some(first) => first.try_get("total_count")?,
+                None => 0,
+            };
+            let truncated = total > i64::try_from(row_count).unwrap_or(i64::MAX);
             for row in rows {
                 let company: String = row.try_get("company")?;
                 let unit: String = row.try_get("org_unit")?;
@@ -200,13 +208,17 @@ impl HrService {
             // Like the export, the whole-population chart names its row
             // count, not every subject id (up to 5000).
             let me = actor_employee_id(tx, &reader).await?;
-            let details = json!({ "row_count": row_count });
+            let details = json!({ "row_count": row_count, "total": total, "truncated": truncated });
             let event = access_event(&reader, DirectoryAccess::OrgChart, &[], me, details)?;
-            Ok((companies, vec![event]))
+            Ok(((companies, total, truncated), vec![event]))
         })
     })
     .await?;
 
-        Ok(HrOrgChartResponse { companies })
+        Ok(HrOrgChartResponse {
+            companies,
+            truncated,
+            total,
+        })
     }
 }

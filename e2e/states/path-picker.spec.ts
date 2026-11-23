@@ -29,6 +29,7 @@ for (const width of [1440, 390]) for (const path of ["/people/run", "/people/unp
       const name = path === "/people/run" ? t("register.run.cell", { n: 1, field: t("register.run.col.place") }) : t("unplaced.target.findLabel");
       const input = page.getByRole("combobox", { name, exact: true });
       await input.scrollIntoViewIfNeeded();
+      await expect(input).toBeVisible();
       await input.focus();
       // Finish the phone focus scroll before opening a popover that closes on outside scroll.
       await page.evaluate(() => document.fonts.ready.then(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))));

@@ -20,6 +20,18 @@ use crate::exits::types::{EmployeeExitCasePage, EmployeeExitCaseResponse, ExitCa
 use crate::metrics::record_hr_read;
 use crate::{HrError, HrService};
 
+fn exit_branch_scope(principal: &Principal) -> console_kernel_core::BranchScope {
+    principal.branch_scope.clone()
+}
+
+pub(super) fn push_exit_filters(
+    principal: &Principal,
+    filters: ExitCaseFilters,
+) -> impl Fn(&mut sqlx::QueryBuilder<sqlx::Postgres>) + Send + Sync + 'static {
+    let scope = exit_branch_scope(principal);
+    move |q| filters.push(q, &scope)
+}
+
 impl HrService {
     /// `GET /api/v1/hr/exit-cases?employee_id=&status=&limit=&offset=`: exit cases
     /// inside the caller's branch scope, newest activity first, with the filtered
@@ -31,7 +43,7 @@ impl HrService {
     ) -> Result<EmployeeExitCasePage, HrError> {
         authorize_hr_scoped(&principal, Feature::EmployeeDirectoryRead)?;
         record_hr_read("exit_cases");
-        let scope = principal.branch_scope.clone();
+        let scope = exit_branch_scope(&principal);
         let limit = query.limit.unwrap_or(50).clamp(1, 200);
         let offset = query.offset.unwrap_or(0).max(0);
         let statuses = query
@@ -100,7 +112,7 @@ impl HrService {
     ) -> Result<EmployeeExitCaseResponse, HrError> {
         authorize_hr_scoped(&principal, Feature::EmployeeDirectoryRead)?;
         record_hr_read("exit_case");
-        let scope = principal.branch_scope.clone();
+        let scope = exit_branch_scope(&principal);
         let reader = principal.clone();
         let item = with_audits::<_, _, HrError>(&self.pool, principal.org_id, move |tx| {
             Box::pin(async move {

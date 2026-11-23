@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+required:
+- field
+properties:
+  field:
+    type: string
+    enum: [address, bank_account_registered]
+  address:
+    anyOf:
+    - $ref: '#/components/schemas/KrAddress'
+    - type: 'null'
+  bank_account_registered:
+    type:
+    - boolean
+    - 'null'
+  note:
+    type:
+    - string
+    - 'null'
+    maxLength: 500

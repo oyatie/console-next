@@ -1,0 +1,164 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required:
+- cohort
+- statutory_register
+- id_summary
+- placement_summary
+- bank_account
+- identity_review
+- failed_actions
+- drilldown_items
+properties:
+  cohort:
+    type: object
+    required: [total, active, on_leave, pre_hire]
+    properties:
+      total:
+        type: integer
+        format: int64
+      active:
+        type: integer
+        format: int64
+      on_leave:
+        type: integer
+        format: int64
+      pre_hire:
+        type: integer
+        format: int64
+  statutory_register:
+    type: object
+    required: [complete_count, incomplete_count, missing_by_category]
+    properties:
+      complete_count:
+        type: integer
+        format: int64
+      incomplete_count:
+        type: integer
+        format: int64
+      missing_by_category:
+        type: object
+        required: [birth, job, hire, contract_end, sex, address, career]
+        properties:
+          birth:
+            type: integer
+            format: int64
+          job:
+            type: integer
+            format: int64
+          hire:
+            type: integer
+            format: int64
+          contract_end:
+            type: integer
+            format: int64
+          sex:
+            type: integer
+            format: int64
+          address:
+            type: integer
+            format: int64
+          career:
+            type: integer
+            format: int64
+  id_summary:
+    type: object
+    required: [rrn_recorded, not_issued, missing, by_type]
+    properties:
+      rrn_recorded:
+        type: integer
+        format: int64
+      not_issued:
+        type: integer
+        format: int64
+      missing:
+        type: integer
+        format: int64
+      by_type:
+        type: object
+        required: [rrn, arc, domestic_residence, not_issued, unset]
+        properties:
+          rrn:
+            type: integer
+            format: int64
+          arc:
+            type: integer
+            format: int64
+          domestic_residence:
+            type: integer
+            format: int64
+          not_issued:
+            type: integer
+            format: int64
+          unset:
+            type: integer
+            format: int64
+  placement_summary:
+    type: object
+    required: [placed, unplaced, department_missing]
+    properties:
+      placed:
+        type: integer
+        format: int64
+      unplaced:
+        type: integer
+        format: int64
+      department_missing:
+        type: integer
+        format: int64
+  bank_account:
+    type: object
+    required: [registered, missing]
+    properties:
+      registered:
+        type: integer
+        format: int64
+      missing:
+        type: integer
+        format: int64
+  identity_review:
+    type: object
+    required: [needs_review]
+    properties:
+      needs_review:
+        type: integer
+        format: int64
+  failed_actions:
+    type: object
+    required: [count]
+    properties:
+      count:
+        type: integer
+        format: int64
+  drilldown_items:
+    type: array
+    items:
+      type: object
+      required: [employee_id, employment_status, missing_categories]
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/Uuid'
+        employee_number:
+          type: string
+        employment_status:
+          type: string
+          enum: [PRE_HIRE, ACTIVE, ON_LEAVE]
+        missing_categories:
+          type: array
+          items:
+            type: string
+  latest_import:
+    type: object
+    required: [run_id, status, candidate_rows, created_at]
+    properties:
+      run_id:
+        $ref: '#/components/schemas/Uuid'
+      status:
+        type: string
+      candidate_rows:
+        type: integer
+        format: int32
+      created_at:
+        $ref: '#/components/schemas/Timestamp'
+      applied_at:
+        $ref: '#/components/schemas/Timestamp'

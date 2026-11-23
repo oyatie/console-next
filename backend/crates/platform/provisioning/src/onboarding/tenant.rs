@@ -36,6 +36,7 @@ impl PlatformProvisioner {
             ));
         }
         let ttl = self.onboarding_otp_ttl;
+        let hmac_key = self.resolve_otp_hmac_key()?;
 
         let mut tx = pool.begin().await?;
 
@@ -71,6 +72,7 @@ impl PlatformProvisioner {
         // never the removed fixed `coss0000` seed.
         let issue = issue_bootstrap_if_needed_tx(
             &mut tx,
+            &hmac_key,
             admin_user_id,
             OrgId::from_uuid(org_id),
             now,
@@ -169,8 +171,10 @@ impl PlatformProvisioner {
             ProvisioningError::NotFound("tenant has no active SUPER_ADMIN account".to_owned())
         })?;
         let org = OrgId::from_uuid(org_id);
+        let hmac_key = self.resolve_otp_hmac_key()?;
         let issue = issue_bootstrap_if_needed_tx(
             &mut tx,
+            &hmac_key,
             admin_user_id,
             org,
             now,

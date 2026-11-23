@@ -40,6 +40,7 @@ properties:
           - PII_REVEAL
           - PII_RECORD
           - PRIVACY_REQUEST
+          - PRIVACY_REQUEST_DECIDE
       object_id:
         $ref: '#/components/schemas/Uuid'
       reason_key:
@@ -61,6 +62,7 @@ properties:
           - passkey_step_up_pii_reveal
           - passkey_step_up_pii_record
           - passkey_step_up_privacy_request
+          - passkey_step_up_privacy_request_decide
       replay_attempt:
         type:
           - integer

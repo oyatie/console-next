@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+operationId: "opsRecovery"
+summary: "Read Recovery"
+x-cedar-action: "recovery.read"
+security: [{"accessJwt": []}]
+description: "Returns backup RPO, base backups, drill records, and RTO Unknown status."
+responses: {"200": {"description": "Recovery view.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RecoveryView"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}

@@ -1,0 +1,9 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.reason {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--steel);
+  min-width: 0;
+}

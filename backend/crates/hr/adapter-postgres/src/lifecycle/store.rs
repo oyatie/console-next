@@ -36,6 +36,32 @@ pub async fn load_employee_for_lifecycle(
     current_from_row(&row)
 }
 
+/// Prevent onboarding (`PRE_HIRE` -> `ACTIVE`) while `employees.id_type` is still `NOT_ISSUED`.
+pub(crate) async fn require_issued_id_for_onboard(
+    tx: &mut sqlx::Transaction<'_, Postgres>,
+    org_uuid: Uuid,
+    employee_id: Uuid,
+    from_status: &str,
+    to_status: &str,
+) -> Result<(), HrError> {
+    if from_status != "PRE_HIRE" || to_status != "ACTIVE" {
+        return Ok(());
+    }
+    let id_type: Option<String> =
+        sqlx::query_scalar("SELECT id_type FROM employees WHERE org_id = $1 AND id = $2")
+            .bind(org_uuid)
+            .bind(employee_id)
+            .fetch_optional(tx.as_mut())
+            .await?
+            .flatten();
+    if id_type.as_deref() == Some("NOT_ISSUED") {
+        return Err(HrError::from_kernel(KernelError::invalid_transition(
+            "cannot onboard a PRE_HIRE employee while id_type is NOT_ISSUED",
+        )));
+    }
+    Ok(())
+}
+
 fn current_from_row(row: &sqlx::postgres::PgRow) -> Result<EmployeeForLifecycle, HrError> {
     Ok(EmployeeForLifecycle {
         company: row.try_get("company")?,

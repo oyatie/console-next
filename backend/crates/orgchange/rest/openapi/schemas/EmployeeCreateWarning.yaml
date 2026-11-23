@@ -13,6 +13,15 @@ properties:
     description: The namesakes for same_name_in_unit; empty for pay_below_minimum_wage.
     items:
       $ref: '#/components/schemas/Uuid'
+  matches:
+    type: array
+    description: Capped namesake match details (up to 20 entries).
+    items:
+      $ref: '#/components/schemas/EmployeeWarningMatch'
+  total_count:
+    type: integer
+    format: int64
+    description: Total number of matching namesakes before capping.
   floor_won:
     type: integer
     format: int64

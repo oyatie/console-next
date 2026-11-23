@@ -132,6 +132,13 @@ const PATHS: &[PathItem] = &[
         ],
     },
     PathItem {
+        path: "/api/v1/change-requests/counts",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__change-requests__counts.get.yaml"),
+        }],
+    },
+    PathItem {
         path: "/api/v1/change-requests/{id}/decide",
         operations: &[Operation {
             method: "post",
@@ -368,6 +375,15 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/employees/import/{run_id}/cells",
+        operations: &[Operation {
+            method: "put",
+            body: include_str!(
+                "../openapi/paths/api__v1__employees__import__run_id__cells.put.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/employees/import/{run_id}/reconcile",
         operations: &[Operation {
             method: "get",
@@ -391,6 +407,15 @@ const PATHS: &[PathItem] = &[
             method: "put",
             body: include_str!(
                 "../openapi/paths/api__v1__employees__import__run_id__reconcile__rows__source_key.put.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/employees/import/{run_id}/rows/{source_key}/identifier",
+        operations: &[Operation {
+            method: "put",
+            body: include_str!(
+                "../openapi/paths/api__v1__employees__import__run_id__rows__source_key__identifier.put.yaml"
             ),
         }],
     },
@@ -445,6 +470,15 @@ const PATHS: &[PathItem] = &[
             method: "post",
             body: include_str!(
                 "../openapi/paths/api__v1__employees__register-facts__bulk.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/employees/register-facts/query",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__employees__register-facts__query.post.yaml"
             ),
         }],
     },
@@ -757,6 +791,13 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/employees/{id}/unit-position",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__employees__id__unit-position.get.yaml"),
+        }],
+    },
+    PathItem {
         path: "/api/v1/employees/{id}/void",
         operations: &[Operation {
             method: "post",
@@ -901,6 +942,20 @@ const PATHS: &[PathItem] = &[
         ],
     },
     PathItem {
+        path: "/api/v1/hr/exit-cases/bulk",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!("../openapi/paths/api__v1__hr__exit-cases__bulk.post.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/hr/exit-cases/counts",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__hr__exit-cases__counts.get.yaml"),
+        }],
+    },
+    PathItem {
         path: "/api/v1/hr/exit-cases/{id}",
         operations: &[Operation {
             method: "get",
@@ -956,6 +1011,13 @@ const PATHS: &[PathItem] = &[
         operations: &[Operation {
             method: "get",
             body: include_str!("../openapi/paths/api__v1__hr__org-chart.get.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/hr/people/data-health",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__hr__people__data-health.get.yaml"),
         }],
     },
     PathItem {
@@ -1266,6 +1328,14 @@ const SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../openapi/schemas/BulkEmployeeLifecycleEventResponse.yaml"),
     },
     NamedYaml {
+        name: "BulkExitCaseItemInput",
+        body: include_str!("../openapi/schemas/BulkExitCaseItemInput.yaml"),
+    },
+    NamedYaml {
+        name: "BulkExitCaseItemResult",
+        body: include_str!("../openapi/schemas/BulkExitCaseItemResult.yaml"),
+    },
+    NamedYaml {
         name: "BulkLifecyclePreview",
         body: include_str!("../openapi/schemas/BulkLifecyclePreview.yaml"),
     },
@@ -1280,6 +1350,14 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "BulkRegisterFactsRequest",
         body: include_str!("../openapi/schemas/BulkRegisterFactsRequest.yaml"),
+    },
+    NamedYaml {
+        name: "BulkReportExitCasesRequest",
+        body: include_str!("../openapi/schemas/BulkReportExitCasesRequest.yaml"),
+    },
+    NamedYaml {
+        name: "BulkReportExitCasesResponse",
+        body: include_str!("../openapi/schemas/BulkReportExitCasesResponse.yaml"),
     },
     NamedYaml {
         name: "BulkSelection",
@@ -1332,6 +1410,10 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "ChangeRequest",
         body: include_str!("../openapi/schemas/ChangeRequest.yaml"),
+    },
+    NamedYaml {
+        name: "ChangeRequestCountsResponse",
+        body: include_str!("../openapi/schemas/ChangeRequestCountsResponse.yaml"),
     },
     NamedYaml {
         name: "ChangeSetDetail",
@@ -1674,12 +1756,24 @@ const SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../openapi/schemas/EmployeeRrnStatus.yaml"),
     },
     NamedYaml {
+        name: "EmployeeUnitPosition",
+        body: include_str!("../openapi/schemas/EmployeeUnitPosition.yaml"),
+    },
+    NamedYaml {
         name: "EmployeeVoidOutcome",
         body: include_str!("../openapi/schemas/EmployeeVoidOutcome.yaml"),
     },
     NamedYaml {
+        name: "EmployeeWarningMatch",
+        body: include_str!("../openapi/schemas/EmployeeWarningMatch.yaml"),
+    },
+    NamedYaml {
         name: "EmploymentType",
         body: include_str!("../openapi/schemas/EmploymentType.yaml"),
+    },
+    NamedYaml {
+        name: "ExitCaseCountsResponse",
+        body: include_str!("../openapi/schemas/ExitCaseCountsResponse.yaml"),
     },
     NamedYaml {
         name: "ExitCaseNextAction",
@@ -1722,8 +1816,24 @@ const SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../openapi/schemas/ImportApplyRequest.yaml"),
     },
     NamedYaml {
+        name: "ImportCellsRepairRequest",
+        body: include_str!("../openapi/schemas/ImportCellsRepairRequest.yaml"),
+    },
+    NamedYaml {
+        name: "ImportCellsRepairResponse",
+        body: include_str!("../openapi/schemas/ImportCellsRepairResponse.yaml"),
+    },
+    NamedYaml {
         name: "ImportDryRunRequest",
         body: include_str!("../openapi/schemas/ImportDryRunRequest.yaml"),
+    },
+    NamedYaml {
+        name: "ImportRowIdentifierRequest",
+        body: include_str!("../openapi/schemas/ImportRowIdentifierRequest.yaml"),
+    },
+    NamedYaml {
+        name: "ImportRowIdentifierResponse",
+        body: include_str!("../openapi/schemas/ImportRowIdentifierResponse.yaml"),
     },
     NamedYaml {
         name: "IssueAppointmentNoticeRequest",
@@ -1818,6 +1928,10 @@ const SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../openapi/schemas/OrgUnitStatus.yaml"),
     },
     NamedYaml {
+        name: "PeopleDataHealthResponse",
+        body: include_str!("../openapi/schemas/PeopleDataHealthResponse.yaml"),
+    },
+    NamedYaml {
         name: "PersonBindingReviews",
         body: include_str!("../openapi/schemas/PersonBindingReviews.yaml"),
     },
@@ -1904,6 +2018,18 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "ProtectedExitPeriod",
         body: include_str!("../openapi/schemas/ProtectedExitPeriod.yaml"),
+    },
+    NamedYaml {
+        name: "RegisterFactsQueryItem",
+        body: include_str!("../openapi/schemas/RegisterFactsQueryItem.yaml"),
+    },
+    NamedYaml {
+        name: "RegisterFactsQueryRequest",
+        body: include_str!("../openapi/schemas/RegisterFactsQueryRequest.yaml"),
+    },
+    NamedYaml {
+        name: "RegisterFactsQueryResponse",
+        body: include_str!("../openapi/schemas/RegisterFactsQueryResponse.yaml"),
     },
     NamedYaml {
         name: "RehireEmployeeRequest",

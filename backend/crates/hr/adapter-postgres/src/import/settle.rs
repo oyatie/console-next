@@ -7,12 +7,13 @@
 //! Then the profile, placement and correction-ledger rows of the run (MR-7,
 //! `settle_facts`).
 
+use console_hr_domain::import::rrn_value::RrnVault;
 use console_kernel_core::{AuditAction, AuditEvent, OrgId, TraceContext, UserId};
 use console_ontology_canonical_adapter_postgres::employment;
 use console_platform_db::insert_audit_event;
 use serde_json::json;
 use sqlx::{Postgres, Transaction};
-use std::{future::Future, pin::Pin};
+use std::{future::Future, pin::Pin, sync::Arc};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -75,6 +76,7 @@ pub fn settle_chunk(
     actor: UserId,
     run_id: Uuid,
     chunk: Chunk<'_>,
+    rrn_vault: Option<Arc<dyn RrnVault>>,
 ) -> impl for<'a> FnOnce(&'a mut Transaction<'_, Postgres>) -> SettleFuture<'a> + use<> {
     let org_uuid = *org.as_uuid();
     let Chunk { keys, last, job } = chunk;
@@ -185,8 +187,15 @@ pub fn settle_chunk(
             }
             let recorded =
                 record_import_facts(tx, org_uuid, *actor.as_uuid(), run_id, &keys).await?;
-            let setup =
-                record_setup_facts(tx, org_uuid, *actor.as_uuid(), run_id, (&keys, last)).await?;
+            let setup = record_setup_facts(
+                tx,
+                org_uuid,
+                *actor.as_uuid(),
+                run_id,
+                (&keys, last),
+                rrn_vault.as_deref(),
+            )
+            .await?;
             crate::import::effects::assign_home_branches(
                 tx,
                 org_uuid,

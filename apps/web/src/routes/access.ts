@@ -14,7 +14,18 @@ const roleNew = createRoute({
   validateSearch: (s: Record<string, unknown>): { copy?: string } => ({ copy: str(s.copy) }),
   component: lazyRouteComponent(screen(load), "RoleNewScreen"),
 });
-const role = createRoute({ getParentRoute: () => app, path: "/access/roles/$roleId", staticData: { access: readRequirement("/access/roles/$roleId") }, component: lazyRouteComponent(screen(load), "RoleScreen") });
+const ROLE_TABS = new Set(["permissions", "holders", "history"]);
+type RoleEditorTab = "permissions" | "holders" | "history";
+const role = createRoute({
+  getParentRoute: () => app,
+  path: "/access/roles/$roleId",
+  staticData: { access: readRequirement("/access/roles/$roleId") },
+  validateSearch: (s: Record<string, unknown>): { tab?: RoleEditorTab } => {
+    const v = str(s.tab);
+    return { tab: v && ROLE_TABS.has(v) ? (v as RoleEditorTab) : undefined };
+  },
+  component: lazyRouteComponent(screen(load), "RoleScreen"),
+});
 // `role`: the holders of one role (the roles list links its holder count here).
 const grants = createRoute({
   getParentRoute: () => app,
@@ -31,5 +42,6 @@ const person = createRoute({
   component: lazyRouteComponent(screen(load), "PersonScreen"),
 });
 const ready = createRoute({ getParentRoute: () => app, path: "/access/ready", staticData: { access: readRequirement("/access/ready") }, component: lazyRouteComponent(screen(load), "ReadyScreen") });
+const review = createRoute({ getParentRoute: () => app, path: "/access/review", staticData: { access: readRequirement("/access/review"), floorplan: "P-01" }, component: lazyRouteComponent(screen(() => import("../features/access/ui/access-review-page")), "AccessReviewPage") });
 
-export const accessRoutes = [home, roles, roleNew, role, grants, bulk, person, ready];
+export const accessRoutes = [home, roles, roleNew, role, grants, bulk, person, ready, review];

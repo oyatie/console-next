@@ -17,7 +17,7 @@ beforeAll(async () => {
   server = await createServer({
     configFile: false, cacheDir: ".cache/vite-query-loss-test",
     optimizeDeps: { ...browserTestOptimizeDeps, entries: ["apps/web/src/lib/react/query-loss.browser-fixture.tsx"] },
-    server: { host: "127.0.0.1", port: 0, fs: { allow: [process.cwd(), dirname(realpathSync("node_modules/pretendard"))] } },
+    server: { host: "127.0.0.1", port: 0, watch: null, hmr: false, fs: { allow: [process.cwd(), dirname(realpathSync("node_modules/pretendard"))] } },
   });
   await server.listen();
   browser = await chromium.launch();
@@ -32,7 +32,13 @@ beforeAll(async () => {
   await page.goto(`${server.resolvedUrls!.local[0]}query-loss-test`, { waitUntil: "networkidle" });
   await page.getByLabel("사유").waitFor();
 }, 60_000);
-afterAll(async () => { await browser?.close(); await server?.close(); });
+afterAll(async () => {
+  await page?.close();
+  await refetchPage?.close();
+  await gatePage?.close();
+  await browser?.close();
+  await server?.close();
+}, 60_000);
 
 test.each([403, 404])("a real %s refetch keeps the mounted editor and typed draft, then recovers", async status => {
   responseStatus = 200;

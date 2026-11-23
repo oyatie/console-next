@@ -9,11 +9,14 @@ import { readGroup } from "../../../lib/react/query-view";
 import { branchesQuery } from "../../../reference/org/api";
 import { Chip } from "../../../ui/chip";
 import { LongTable, type LongColumn } from "../../../ui/long-table/long-table";
+import { ExperienceSwitch } from "../../../ui/patterns/pattern-shell";
 import { closesQuery } from "../api";
+import { CloseConsoleView } from "./close-console-view";
 import { ReadPeriod } from "./read-period";
 
 const route = getRouteApi("/app/attendance");
-export function CloseTab() {
+
+function CloseBaselineTab() {
   const search = route.useSearch();
   const board = useQuery(closesQuery(search.month ?? (search.date ?? todayKst()).slice(0, 7), search.wp));
   const branches = useQuery(branchesQuery);
@@ -33,4 +36,12 @@ export function CloseTab() {
         ]} />
     </>;
   }}</QueryState></>;
+}
+
+export function CloseTab() {
+  return (
+    <ExperienceSwitch baseline={() => <CloseBaselineTab />}>
+      {() => <CloseConsoleView baseline={() => <CloseBaselineTab />} />}
+    </ExperienceSwitch>
+  );
 }

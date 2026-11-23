@@ -202,10 +202,16 @@ const PATHS: &[PathItem] = &[
     },
     PathItem {
         path: "/api/v1/privacy/rights-requests",
-        operations: &[Operation {
-            method: "post",
-            body: include_str!("../openapi/paths/api__v1__privacy__rights-requests.post.yaml"),
-        }],
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!("../openapi/paths/api__v1__privacy__rights-requests.get.yaml"),
+            },
+            Operation {
+                method: "post",
+                body: include_str!("../openapi/paths/api__v1__privacy__rights-requests.post.yaml"),
+            },
+        ],
     },
     PathItem {
         path: "/api/v1/privacy/rights-requests/mine",
@@ -224,10 +230,46 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/privacy/rights-requests/received",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__privacy__rights-requests__received.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/privacy/rights-requests/{id}",
         operations: &[Operation {
             method: "get",
             body: include_str!("../openapi/paths/api__v1__privacy__rights-requests__id.get.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/privacy/rights-requests/{id}/decide",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__privacy__rights-requests__id__decide.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/privacy/rights-requests/{id}/objection",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__privacy__rights-requests__id__objection.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/privacy/rights-requests/{id}/postpone",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__privacy__rights-requests__id__postpone.post.yaml"
+            ),
         }],
     },
     PathItem {

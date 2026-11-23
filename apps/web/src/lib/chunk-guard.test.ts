@@ -2,11 +2,12 @@ import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 import { afterEach, expect, test, vi } from "vitest";
 import { isModuleNotFoundError } from "@tanstack/router-core";
-import { i18n, t } from "@console/i18n";
+import { i18n, loadBootCatalog, t } from "@console/i18n";
 import { chunk, crashed, isChunkError, localChunk } from "./chunk-guard";
+import { resolveStatusOrigin } from "./live/status-origin";
 
 const SRC = readFileSync(new URL("../../public/chunk-guard.js", import.meta.url), "utf8");
-type Guard = { handled(error: unknown): void; recover(): boolean; loaded(): void; start(): void };
+type Guard = { handled(error: unknown): void; recover(): boolean; loaded(): void; fail(): void; start(statusOrigin?: string): void };
 
 /** One page load of public/chunk-guard.js over a tab's sessionStorage: what it navigated to, and its API. */
 function page(storage: Map<string, string>, entry = "/assets/index-A.js", search = "") {
@@ -111,10 +112,183 @@ test("a locally handled preload rejects to its boundary without reloading the fo
   expect(p.navigations).toEqual([]);
 });
 
-test("the static error screen says what the app's crashed screen says", () => {
+test("the static error screen says what the app's crashed screen says", async () => {
   for (const l of ["en", "ko"] as const) {
+    await loadBootCatalog(l);
     i18n.set(l);
-    for (const id of ["common.crashed.title", "common.crashed.reason", "common.crashed.action"] as const) expect(SRC).toContain(`"${t(id)}"`);
+    for (const id of ["common.crashed.title", "common.crashed.reason", "common.crashed.action", "live.statusPage", "live.crashed.inputKept"] as const) expect(SRC).toContain(`"${t(id)}"`);
+  }
+});
+
+function runStaticFail({ experience, locale = "ko", statusOrigin, omitGetAttribute = false, getAttributeOverride, withUrl = true }: {
+  experience?: string | null;
+  locale?: "ko" | "en";
+  statusOrigin?: unknown;
+  omitGetAttribute?: boolean;
+  getAttributeOverride?: unknown;
+  withUrl?: boolean;
+}) {
+  interface MockEl {
+    tagName: string;
+    id?: string;
+    className?: string;
+    href?: string;
+    target?: string;
+    rel?: string;
+    textContent: string;
+    hidden?: boolean;
+    children: MockEl[];
+    appendChild: (child: MockEl) => MockEl;
+    addEventListener: () => void;
+    querySelector: (selector: string) => MockEl | null;
+    innerHTML: string;
+  }
+  const makeEl = (tagName: string): MockEl => {
+    const el: MockEl = {
+      tagName: tagName.toUpperCase(),
+      textContent: "",
+      children: [],
+      appendChild(child) {
+        this.children.push(child);
+        return child;
+      },
+      addEventListener() {},
+      querySelector(selector) {
+        const find = (node: MockEl): MockEl | null => {
+          for (const child of node.children) {
+            if (
+              (selector === ".state" && child.className === "state") ||
+              (selector === "h2" && child.tagName === "H2") ||
+              (selector === "span" && child.tagName === "SPAN") ||
+              (selector === "button" && child.tagName === "BUTTON")
+            ) return child;
+            const nested = find(child);
+            if (nested) return nested;
+          }
+          return null;
+        };
+        return find(this);
+      },
+      set innerHTML(_html: string) {
+        const state = makeEl("div");
+        state.className = "state";
+        state.appendChild(makeEl("h2"));
+        state.appendChild(makeEl("span"));
+        const actions = makeEl("div");
+        actions.className = "state__actions";
+        actions.appendChild(makeEl("button"));
+        state.appendChild(actions);
+        this.children = [state];
+      },
+      get innerHTML() {
+        return "";
+      },
+    };
+    return el;
+  };
+  const root = makeEl("div");
+  root.id = "root";
+  root.hidden = false;
+  const body = makeEl("body");
+  let fallback: MockEl | null = null;
+  const documentElement = omitGetAttribute
+    ? {}
+    : { getAttribute: getAttributeOverride !== undefined ? getAttributeOverride : (name: string) => (name === "data-experience" ? experience ?? null : null) };
+  const document = {
+    documentElement,
+    body,
+    querySelectorAll: () => [{ src: "http://localhost/assets/index-A.js" }],
+    getElementById: (id: string) => (id === "root" ? root : id === "chunk-fallback" ? fallback : null),
+    createElement: (tag: string) => {
+      const el = makeEl(tag);
+      if (tag === "main") fallback = el;
+      return el;
+    },
+  };
+  const window = { addEventListener: () => {} } as Record<string, unknown>;
+  const loc = { pathname: "/login", search: "", hash: "", replace: () => {} };
+  const history = { state: null, replaceState: () => {} };
+  const storage = new Map<string, string>();
+  const sessionStorage = {
+    get length() { return storage.size; },
+    key: () => null,
+    getItem: () => null,
+    setItem: () => {},
+    removeItem: () => {},
+  };
+  const localStorage = { getItem: (k: string) => (k === "console.locale" ? locale : null) };
+  runInNewContext(SRC, { window, document, location: loc, history, sessionStorage, localStorage, Date, setTimeout, ...(withUrl ? { URL } : {}) });
+  const guard = window.consoleChunkGuard as Guard;
+  if (statusOrigin !== undefined) guard.start(statusOrigin as string);
+  guard.fail();
+  const state = fallback!.querySelector(".state")!;
+  return { root, fallback: fallback!, state };
+}
+
+test("static crash recovery renders status link and input-kept reassurance in console experience only", async () => {
+  for (const locale of ["ko", "en"] as const) {
+    await loadBootCatalog(locale);
+    i18n.set(locale);
+    const { root, state } = runStaticFail({ experience: "console", locale });
+    expect(root.hidden).toBe(true);
+    const extras = state.children.find(c => c.className === "state__extras");
+    expect(extras).toBeDefined();
+    const link = extras!.children.find(c => c.tagName === "A");
+    expect(link).toBeDefined();
+    expect(link!.className).toBe("btn btn--sm");
+    expect(link!.href).toBe("https://status.cosskorea.com");
+    expect(link!.target).toBe("_blank");
+    expect(link!.rel).toBe("noopener noreferrer");
+    expect(link!.textContent).toBe(t("live.statusPage"));
+    const note = extras!.children.find(c => c.className === "muted");
+    expect(note).toBeDefined();
+    expect(note!.textContent).toBe(t("live.crashed.inputKept"));
+  }
+
+  const custom = runStaticFail({ experience: "console", statusOrigin: "https://status.staging.example" });
+  expect(custom.state.children.find(c => c.className === "state__extras")!.children[0]!.href).toBe("https://status.staging.example");
+
+  const fallbackInvalid = runStaticFail({ experience: "console", statusOrigin: "javascript:alert(1)" });
+  expect(fallbackInvalid.state.children.find(c => c.className === "state__extras")!.children[0]!.href).toBe("https://status.cosskorea.com");
+
+  const fallbackEmpty = runStaticFail({ experience: "console", statusOrigin: "   " });
+  expect(fallbackEmpty.state.children.find(c => c.className === "state__extras")!.children[0]!.href).toBe("https://status.cosskorea.com");
+
+  for (const caseOpts of [{ experience: "baseline" }, { experience: "unknown-exp" }, { experience: null }, { omitGetAttribute: true }, { getAttributeOverride: "not-a-function" }, { getAttributeOverride: true }]) {
+    const { state } = runStaticFail(caseOpts);
+    expect(state.children.find(c => c.className === "state__extras")).toBeUndefined();
+  }
+
+  const warmClear = runStaticFail({ experience: "warm-clear" });
+  expect(warmClear.state.children.find(c => c.className === "state__extras")).toBeDefined();
+});
+
+test("static crash recovery resolveOrigin maintains strict parity with resolveStatusOrigin", () => {
+  const inputs: string[] = [
+    "https://status.cosskorea.com", "https://STATUS.COSSKOREA.COM", "https://status.cosskorea.com:443", "https://status.staging.example:8443",
+    "http://localhost", "http://localhost:80", "HTTP://LOCALHOST:8787", "http://127.0.0.1:4173", "http://[::1]:8787",
+    "https://status.cosskorea.com@evil.com", "https://evil.com@status.cosskorea.com", "https://user:pass@status.cosskorea.com",
+    "https://evil.com\\status.cosskorea.com", "https://evil.com\\@status.cosskorea.com",
+    "\nhttps://status.cosskorea.com", "https://status.cosskorea.com\t", "https://evil.com\u0000", "https://evil.com\u0007",
+    "https://evil%2f.com", "https://evil*com", "https://evil,com", "https://evil;com", "https://evil'com", "https://evil\"com", "https://evil com",
+    "https://status.cosskorea.com:0", "http://localhost:0", "http://127.0.0.1:0", "https://status.cosskorea.com:99999", "http://localhost:99999",
+    "https://.", "https://..", "https://[", "https://a:b:c", "https://:8443",
+    "https://status.cosskorea.com/", "https://status.cosskorea.com/.", "https://status.cosskorea.com/..",
+    "https://status.cosskorea.com/path", "https://status.cosskorea.com?x=1", "https://status.cosskorea.com#y",
+    "http://evil.com", "http://localhost.evil.com", "javascript:alert(1)", "data:text/html,<script>alert(1)</script>", "", "   ",
+  ];
+  for (const raw of inputs) {
+    const expected = resolveStatusOrigin(raw);
+    for (const withUrl of [true, false]) {
+      const { state } = runStaticFail({ experience: "console", statusOrigin: raw, withUrl });
+      expect(state.children.find(c => c.className === "state__extras")!.children[0]!.href, `input=${JSON.stringify(raw)} withUrl=${withUrl}`).toBe(expected);
+    }
+  }
+  for (const nonString of [null, 123, true, {}, new String("https://evil.com")]) {
+    for (const withUrl of [true, false]) {
+      const { state } = runStaticFail({ experience: "console", statusOrigin: nonString, withUrl });
+      expect(state.children.find(c => c.className === "state__extras")!.children[0]!.href).toBe("https://status.cosskorea.com");
+    }
   }
 });
 

@@ -2,7 +2,7 @@
 .stacked { display: inline-flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); }
 .inline { display: inline-grid; grid-template-columns: max-content minmax(0, 1fr); align-items: baseline; gap: var(--space-1) var(--space-3); }
 /* Doubled class: wins over any variant (.btn--danger, .btn--primary) whatever the stylesheet order. */
-.off.off, .off.off:hover { border-color: var(--border); background: var(--muted); color: var(--steel); cursor: not-allowed; white-space: nowrap; }
+.off.off, .off.off:hover { border-style: solid; border-color: var(--border); background: var(--muted); color: var(--steel); cursor: not-allowed; white-space: nowrap; }
 .why { display: flex; flex-wrap: wrap; max-width: 100%; align-items: center; gap: var(--space-1) var(--space-3); font-size: var(--text-sm); color: var(--steel); }
 .disclosure { display: inline-flex; flex-direction: column; gap: var(--space-1); }
 .disclosure > .why { display: none; }

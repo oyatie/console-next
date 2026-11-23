@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required:
+- order
+- step_kind
+- role_label
+properties:
+  order:
+    type: integer
+    format: int32
+  step_kind:
+    type: string
+  role_label:
+    type: string
+  approver_name:
+    type:
+    - string
+    - 'null'
+  approver_position:
+    type:
+    - string
+    - 'null'

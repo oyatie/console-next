@@ -13,7 +13,7 @@ import { ReasonField } from "../../../ui/reason/reason-field";
 import { reasonProblem, type Reason } from "../../../ui/reason/reason";
 import { Table } from "../../../ui/table";
 import { ACCESS_READS, accountsQuery, applyGrants, grantsQuery, previewGrants, removeRole, rolesQuery, type AccessGrant, type AccessRole, type GrantOp } from "../api";
-import { grantPerson, periodText, storedScope } from "../present";
+import { accessRefusal, grantPerson, periodText, storedScope } from "../present";
 import { PersonLabel } from "../../../reference/person/ui/person-label";
 import { AccountText } from "./holder";
 import { RolePick } from "./role-pick";
@@ -112,10 +112,10 @@ export function RoleDelete({ role, onClose, onDeleted }: { role: AccessRole | nu
         notice={
           run.error instanceof Partial ? (
             <Banner tone="warn" live="assertive">
-              {t("accessGrants.roleDelete.partial", { revoked: run.error.revoked })} · {t("accessGrants.roleDelete.partial.why", { reason: failureText(run.error.cause) })}{" "}
+              {t("accessGrants.roleDelete.partial", { revoked: run.error.revoked })} · {t("accessGrants.roleDelete.partial.why", { reason: failureText(run.error.cause, accessRefusal) })}{" "}
               <Button size="sm" onClick={() => run.mutate(role)} disabled={run.isPending}>{t("accessGrants.roleDelete.retry")}</Button>
             </Banner>
-          ) : refused.length > 0 ? <Banner tone="danger" live="assertive">{refused.join(" · ")}</Banner> : <PasskeyError error={run.error} />
+          ) : refused.length > 0 ? <Banner tone="danger" live="assertive">{refused.join(" · ")}</Banner> : <PasskeyError error={run.error} own={accessRefusal} />
         }
         consequence={
           target ? t("access.roles.move.consequence", { name: role.name_ko, to: target.name_ko, count: n })

@@ -14,7 +14,6 @@ use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum RateLimitEndpoint {
-    Signup,
     OtpRedeem,
     LoginStart,
     LoginStartIdentifier,
@@ -31,7 +30,6 @@ pub(crate) enum RateLimitEndpoint {
 impl RateLimitEndpoint {
     pub(crate) const fn as_str(self) -> &'static str {
         match self {
-            Self::Signup => "signup",
             Self::OtpRedeem => "otp_redeem",
             Self::LoginStart => "login_start",
             Self::LoginStartIdentifier => "login_start_identifier",
@@ -66,10 +64,10 @@ impl RateLimitEndpoint {
             Self::DeviceLoginPoll => (1_200, 60, 20_000),
             _ => (RATE_LIMIT_PER_IP, RATE_LIMIT_PER_DEVICE, RATE_LIMIT_GLOBAL),
         };
-        // A guessable secret (OTP) or a write (sign-up): key IPv6 per /56, so
+        // A guessable secret (OTP): key IPv6 per /56, so
         // one /48 holder gets 256 buckets instead of 65 536.
         let ipv6_prefix = match self {
-            Self::Signup | Self::OtpRedeem => 56,
+            Self::OtpRedeem => 56,
             _ => 64,
         };
         Caps {
@@ -246,6 +244,22 @@ pub(crate) fn floor_to_window(now: OffsetDateTime) -> OffsetDateTime {
     shared::floor_to_window(now)
 }
 
+pub(crate) fn hash_rate_limit_key(namespace: &str, value: &str) -> String {
+    let mut ctx = aws_lc_rs::digest::Context::new(&aws_lc_rs::digest::SHA256);
+    ctx.update(b"console.rate_limit.v1\0");
+    ctx.update(namespace.as_bytes());
+    ctx.update(b"\0");
+    ctx.update(value.as_bytes());
+    let digest = ctx.finish();
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let mut out = String::with_capacity(digest.as_ref().len() * 2);
+    for &byte in digest.as_ref() {
+        out.push(HEX[(byte >> 4) as usize] as char);
+        out.push(HEX[(byte & 0x0f) as usize] as char);
+    }
+    out
+}
+
 // The process ingress resolves the peer and forwarding chain once, then this
 // rate limiter consumes only its [`TrustedClientIp`] extension.
 
@@ -265,6 +279,21 @@ mod tests {
     use console_platform_request_context::rate_limit::WINDOW as RATE_LIMIT_WINDOW;
     use time::OffsetDateTime;
     use uuid::Uuid;
+
+    #[test]
+    fn rate_limit_key_hash_is_domain_separated_per_namespace_and_from_device_login() {
+        let id_hash = super::hash_rate_limit_key("id", "alice@example.com");
+        let cred_hash = super::hash_rate_limit_key("cred", "alice@example.com");
+        assert_eq!(id_hash.len(), 64);
+        assert_ne!(id_hash, cred_hash);
+        let dl_v2 = crate::device_login::token::hash_device_login_token_v2("alice@example.com");
+        let mut dl_hex = String::with_capacity(dl_v2.len() * 2);
+        for b in dl_v2 {
+            dl_hex.push_str(&format!("{b:02x}"));
+        }
+        assert_ne!(id_hash, dl_hex);
+        assert_ne!(cred_hash, dl_hex);
+    }
 
     #[test]
     fn ip_buckets_key_ipv6_by_its_64_and_ipv4_by_address() {
@@ -290,7 +319,6 @@ mod tests {
             (RATE_LIMIT_PER_IP, 10, 100)
         );
         assert_eq!(otp.ipv6_prefix, 56);
-        assert_eq!(RateLimitEndpoint::Signup.caps().ipv6_prefix, 56);
         assert_eq!(RateLimitEndpoint::LoginStart.caps().ipv6_prefix, 64);
     }
 

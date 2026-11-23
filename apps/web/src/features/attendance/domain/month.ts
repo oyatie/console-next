@@ -1,9 +1,8 @@
 // Calendar months as "YYYY-MM" and days as "YYYY-MM-DD" (business dates, no time zone).
-import { addDays, addMonths, utc } from "../../../ui/date/days";
+import { addDays, utc } from "../../../ui/date/days";
 
 export const monthOf = (date: string) => date.slice(0, 7);
-/** The month `n` months from `month`. */
-export const shiftMonth = (month: string, n: number) => monthOf(addMonths(`${month}-01`, n));
+export { shiftMonth } from "../../../ui/date/days";
 /** 0 = Sunday … 6 = Saturday. */
 export const weekday = (date: string) => new Date(utc(date)).getUTCDay();
 

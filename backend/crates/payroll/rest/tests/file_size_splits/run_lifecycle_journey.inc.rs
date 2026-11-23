@@ -1,5 +1,7 @@
 #[path = "../fixtures/pay_view.rs"]
 mod pay_view;
+#[path = "../support/run_detail_assertions.rs"]
+mod run_detail_assertions;
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn executive_drives_full_lifecycle_with_audit_readback(pool: PgPool) {
@@ -20,6 +22,7 @@ async fn executive_drives_full_lifecycle_with_audit_readback(pool: PgPool) {
     let run = seed_run(&pool, org, submitter).await;
     let import_row = seed_verified_import_row(&pool, org).await;
     seed_calculable_line(&pool, org, run, employee, import_row).await;
+    run_detail_assertions::assert_uncalculated_run_detail(&rt, &keys, run, &submitter_token).await;
 
     // ---- Close preflight: fail-closed while the payroll period lock is
     // missing; the check names itself and close 409s with the receipt.
@@ -106,6 +109,7 @@ async fn executive_drives_full_lifecycle_with_audit_readback(pool: PgPool) {
         "3,000,000 gross with the June 2026 statutory tables + verified NTS row"
     );
     assert_eq!(calc["payable"], false, "draft until the release gate flips");
+    run_detail_assertions::assert_calculated_run_detail(&calculated);
     assert_eq!(
         calculated["exceptions_open"], 1,
         "overtime hours raise 예외"
@@ -458,6 +462,7 @@ async fn executive_drives_full_lifecycle_with_audit_readback(pool: PgPool) {
     .await
     .unwrap();
     assert_eq!(docs, 1);
+    run_detail_assertions::assert_issued_payslip_payload(&pool, run).await;
     let emits: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM audit_events a JOIN inbox_docs d ON a.target_id=d.id::text
          WHERE a.action='inbox_doc.emit' AND d.kind='payslip' AND d.source_id=$1",

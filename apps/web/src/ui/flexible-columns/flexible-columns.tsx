@@ -4,6 +4,7 @@ import { ArrowLeft, Maximize2, Minimize2, X } from "lucide-react";
 import { t } from "@console/i18n";
 import { Button, IconButton } from "../button/button";
 import { editable, FOCUS_SETTLE_MS, ROW_SELECTOR } from "../long-table/row-keys";
+import { useMountFocus } from "../page/use-mount-focus";
 import { SidePanelReadContext } from "../side-panel/read-context";
 import s from "./flexible-columns.module.css";
 
@@ -62,12 +63,11 @@ function ColumnPane({ kind, pane, paneRef, listRef, onCloseRequest, full, onFull
   const titleRef = useRef<HTMLHeadingElement>(null);
   const titled = pane.title != null || pane.crumb != null || pane.expand != null;
   const closeLabel = pane.closeLabel ?? t(kind === "related" ? "common.closeRelated" : "common.closePanel");
-  useEffect(() => {
-    const singleCol = Boolean(listRef.current && getComputedStyle(listRef.current).display === "none");
-    if (!pane.id || (!singleCol && kind !== "related")) return;
-    const frame = requestAnimationFrame(() => (backRef.current && getComputedStyle(backRef.current).display !== "none" ? backRef.current : titleRef.current ?? closeRef.current)?.focus());
-    return () => cancelAnimationFrame(frame);
-  }, [kind, listRef, pane.id]);
+  useMountFocus(pane.id, () => {
+    const singleCol = listRef.current && getComputedStyle(listRef.current).display === "none";
+    if (!singleCol && kind !== "related") return null;
+    return backRef.current && getComputedStyle(backRef.current).display !== "none" ? backRef.current : titleRef.current ?? closeRef.current;
+  });
   return (
     <aside ref={paneRef} className={s[kind]} aria-label={pane.label}>
       <div className={s.head} data-titled={titled || undefined}>
@@ -156,6 +156,8 @@ export function FlexibleColumns({ list, record, related, onSelect, onOpen, onFin
       if (e.key !== "Escape" || (!openRelated && !openRecord) || editable(target)) return;
       if (target instanceof Element && target.closest('[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"], [data-sheet-layer], [data-escape-scope], [aria-expanded="true"]')) return;
       if (document.querySelector('[role="dialog"][aria-modal="true"], [role="alertdialog"], dialog[open]')) return;
+      const activePane = openRelated ? relatedRef.current : recordRef.current;
+      if (activePane?.querySelector('[data-escape-scope][aria-busy="true"]')) return;
       e.preventDefault();
       e.stopPropagation();
       if (full && onFull && !window.matchMedia("(max-width: 639px)").matches) onFull(false);

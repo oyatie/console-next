@@ -6,6 +6,8 @@ import { TabNav } from "../../../ui/tabs/tabs";
 
 export function AuditTabs() {
   return <TabNav label={t("audit.nav")} overflow="scroll">
+    <Link to="/audit" className={tabClass}>{t("audit.nav.log")}</Link>
+    <Link to="/audit/access-log" search={{}} className={tabClass}>{t("audit.nav.accessLog")}</Link>
     <Link to="/audit/support-access" search={{}} className={tabClass}>{t("audit.nav.supportAccess")}</Link>
   </TabNav>;
 }

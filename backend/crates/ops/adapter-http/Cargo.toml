@@ -9,10 +9,13 @@ publish.workspace = true
 
 [dependencies]
 console-ops-application.workspace = true
+console-ops-domain.workspace = true
 reqwest = { workspace = true, features = ["rustls"] }
 serde.workspace = true
 serde_json.workspace = true
+time.workspace = true
 tokio.workspace = true
+url.workspace = true
 
 [dev-dependencies]
 axum.workspace = true

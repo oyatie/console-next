@@ -18,7 +18,7 @@ type Set = <K extends keyof Draft>(k: K, v: Draft[K]) => void;
  * "where does this person go": three chips of equal weight, nothing chosen (spec E3); unplaced can be completed later. Then the
  * place itself, and what placing does to that unit's headcount from the start date and to which workplace's employee register.
  */
-export function RegisterPlace({ d, set, units, options, workplaces, shown, hireLabel, hidePreview }: {
+export function RegisterPlace({ d, set, units, options, workplaces, shown, hireLabel, hidePreview, consoleMode }: {
   d: Draft;
   set: Set;
   units: Unit[];
@@ -29,6 +29,7 @@ export function RegisterPlace({ d, set, units, options, workplaces, shown, hireL
   /** The start date as `MM-DD`, once chosen. */
   hireLabel: string | null;
   hidePreview?: boolean;
+  consoleMode?: boolean;
 }) {
   const chosen = options.find((o) => o.unit.id === d.unitId);
   const leaf = chosen?.unit.name ?? "";
@@ -41,7 +42,7 @@ export function RegisterPlace({ d, set, units, options, workplaces, shown, hireL
     <div className={s.block}>
       <ChoiceField
         label={t("register.where")} required={false}
-        look="chips"
+        look={consoleMode ? undefined : "chips"}
         options={[
           { value: "unit", label: t("register.where.unit") },
           { value: "site", label: t("register.where.site") },
@@ -77,7 +78,7 @@ export function RegisterPlace({ d, set, units, options, workplaces, shown, hireL
           label={t("register.workplace")}
           required
           note={t("register.workplace.note", { unit: chosen?.unit.name ?? "" })}
-          look="chips"
+          look={consoleMode ? undefined : "chips"}
           options={workplaces.map((w) => ({ value: w.workplaceId, label: `${entityNameText(w.entityRecord)} · ${w.site}`, content: <><EntityName entity={w.entityRecord} /> · {w.site}</> }))}
           value={d.workplaceId || null}
           onChange={(v) => set("workplaceId", v)}

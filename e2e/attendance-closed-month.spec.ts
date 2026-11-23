@@ -4,7 +4,7 @@ import { confirmGrantNotice, grantAccess } from "./access-flows";
 import { letGrantsAge } from "./second-person-fixture";
 import { apiOf, bearerOf, codeOf } from "./helpers/api";
 import { expectDrafts, cellOf, officeSchedule, openMonth } from "./helpers/attendance-records";
-import { chooseRadio, firstSignIn, go, kstDate, option, passkeyLogin, registerEmployee, stepUp, takeCode, unique } from "./flows";
+import { chooseRadio, firstSignIn, go, kstDate, option, registerEmployee, reloadAndWait, stepUp, takeCode, unique } from "./flows";
 import { tenantInSetup } from "./setup-flows";
 import { clearShifts } from "./stability";
 
@@ -30,8 +30,7 @@ test("마감된 달: read-only with the unlock path, editable while unlocked, cl
   await officeSchedule(operator);
   await grantAccess(operator, "김마감", "full");
   await go(admin, "/", true);
-  await passkeyLogin(admin);
-  await admin.reload();
+  await reloadAndWait(admin);
   await confirmGrantNotice(admin, "full");
   letGrantsAge(unique(slug), "김마감");
   const api = apiOf(admin, bearer);

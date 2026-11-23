@@ -3,7 +3,7 @@ import { OWN_ECHO_MS } from "../apps/web/src/lib/freshness";
 import { expectAccessible } from "./a11y";
 import { expectStable, forgetResize } from "./stability";
 import { confirmGrantNotice, grantAccess, openGrantNotice } from "./access-flows";
-import { firstSignIn, go, kstDate, option, passkeyLogin, registerEmployee, stepUp, takeCode, unique } from "./flows";
+import { firstSignIn, go, kstDate, option, registerEmployee, reloadAndWait, stepUp, takeCode, unique } from "./flows";
 import { apiOf, bearerOf, codeOf } from "./helpers/api";
 import { openTenant } from "./helpers/tenant";
 import { letGrantsAge } from "./second-person-fixture";
@@ -56,10 +56,8 @@ test("period unlock: a second close authority refuses, then approves; the reques
   await startOperations(operator);
   for (const [page, name] of [[admin, "이요청"], [exec, "김마감"]] as const) {
     await grantAccess(operator, name, "close");
-    // A changed grant ends sessions; the authority signs in and acknowledges its notice.
     await go(page, "/", true);
-    await passkeyLogin(page);
-    await page.reload();
+    await reloadAndWait(page);
     const notices = await openGrantNotice(page, "close");
     await expect(notices).toContainText("기간 마감 · 전체 ·");
     await expectAccessible(page, "grant notice");
@@ -197,7 +195,6 @@ test("a sole close authority delivers separate inbox reviews before and after go
   const human = await firstSignIn(browser, await takeCode(operator));
   await grantAccess(operator, "단독마감", "full");
   await go(human, "/", true);
-  await passkeyLogin(human);
   await confirmGrantNotice(human, "full");
   // Reopen the event stream that was established before the grant changed its reader scope.
   await human.reload();

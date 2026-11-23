@@ -68,7 +68,7 @@ test.each(["pointer", "keyboard"])("grouped virtual detail keeps editable valida
   // Enter the grid as a user: fill() alone starts React Aria's deferred virtual row focus.
   if (entry === "pointer") await input.click();
   else {
-    await page.getByRole("textbox", { name: "사람 찾기 — 이름·사번", exact: true }).click();
+    await page.getByRole("textbox", { name: "이름, 사번 검색", exact: true }).click();
     await page.keyboard.press("Tab");
     await visible(grids.first().getByRole("row").nth(1)).toBeFocused();
     for (const column of ["number", "name"]) {
@@ -105,7 +105,7 @@ test.each(["pointer", "keyboard"])("grouped virtual detail keeps editable valida
   await visible(input).toBeFocused();
   await visible.poll(() => input.evaluate((el: HTMLInputElement) => el.selectionStart)).toBe(1);
   const text = "0-0\t+2\n1-2\t+2";
-  await paste(page.getByRole("textbox", { name: "사람 찾기 — 이름·사번", exact: true }), text);
+  await paste(page.getByRole("textbox", { name: "이름, 사번 검색", exact: true }), text);
   await visible(page.getByText(/붙여넣은/)).toHaveCount(0);
   await paste(input, text);
   const preview = page.getByRole("dialog", { name: "붙여넣기 미리보기" });
@@ -131,7 +131,7 @@ test.each(["pointer", "keyboard"])("grouped virtual detail keeps editable valida
 
 test("arrow keys enter a closed-month input without allowing a draft", async () => {
   await page.goto(`${page.url()}?closed`);
-  await page.getByRole("textbox", { name: "사람 찾기 — 이름·사번", exact: true }).click();
+  await page.getByRole("textbox", { name: "이름, 사번 검색", exact: true }).click();
   await page.keyboard.press("Tab");
   for (let column = 0; column < 4; column++) await page.keyboard.press("ArrowRight");
   const input = page.getByRole("textbox", { name: /^0-0 입력/ });

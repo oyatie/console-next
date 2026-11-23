@@ -61,14 +61,30 @@ test("release policy CI evidence runs on every dev push and is required by ci-ok
   }
 });
 
+test("the live retention proof runs even when its database shard is red", () => {
+  const db = yaml.load(readFileSync(new URL("../.github/workflows/db-tests.yml", import.meta.url), "utf8"));
+  const steps = Object.values(db.jobs).flatMap(job => job.steps ?? []).filter(s => s.name === "Verify SeaweedFS compliance retention");
+  assert.equal(steps.length, 1);
+  assert.equal(steps[0].if, "${{ !cancelled() && matrix.shard == 1 }}");
+});
+
 test("Home uses a release artifact on every candidate; every Rust check stays required", () => {
   assert.deepEqual(ci.jobs.home.needs, ["affected", "backend-release"]);
   assert.equal(ci.jobs["d10-probes"], undefined);
   for (const name of backendJobs) assert.ok(ci.jobs["ci-ok"].needs.includes(name), name);
   assert.ok(ci.jobs.backend.steps.some(s => s.run === "cargo fmt --check"));
-  assert.ok(ci.jobs.backend.steps.some(s => s.run === "cargo clippy --workspace --all-targets --locked -- -D warnings"));
+  assert.ok(ci.jobs.backend.steps.some(s => s.run === "cargo clippy --workspace --all-targets --locked --features console-platform-storage/test-seaweedfs -- -D warnings"));
   assert.ok(ci.jobs["backend-gates"].steps.some(s => s.run === "cargo test --locked -p console-gate-migration-safety"));
   assert.ok(ci.jobs["backend-release"].steps.some(s => s.run === "cargo build --release --locked -p console-app --features e2e-test-support"));
+});
+
+test("every pull request lints the database test targets with the features that build them", () => {
+  const script = readFileSync(new URL("./backend-tests.mjs", import.meta.url), "utf8");
+  const features = script.match(/command\.database \? "([^"]+)"/)?.[1];
+  assert.ok(features, "database test features not found");
+  const lint = ci.jobs.backend.steps.filter(s => s.run === `cargo clippy --workspace --all-targets --locked --features ${features} -- -D warnings`);
+  assert.equal(lint.length, 1);
+  assert.ok(!lint[0].if && !lint[0]["continue-on-error"]);
 });
 
 test("Home requires a successful same-run backend on every event and affected-path combination", () => {

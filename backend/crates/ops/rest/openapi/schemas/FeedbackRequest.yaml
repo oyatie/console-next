@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["feedback_id", "digest", "severity", "disposition", "note"]
+additionalProperties: false
+properties:
+  feedback_id: {"$ref": "#/components/schemas/Text"}
+  digest: {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+  severity: {"type": "string", "enum": ["P0", "P1", "P2"]}
+  disposition: {"type": "string", "enum": ["open", "triaged", "resolved", "wontfix"]}
+  note: {"$ref": "#/components/schemas/Text"}

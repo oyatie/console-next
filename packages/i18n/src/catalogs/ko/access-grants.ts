@@ -4,7 +4,7 @@ import type { enAccessGrants } from "../en/access-grants";
 export const koAccessGrants: Record<keyof typeof enAccessGrants, string> = {
   "accessGrants.holders": "{role} 보유자 {count, number}명",
   "accessGrants.reset": "필터 초기화",
-  "accessGrants.find": "이름·사번·역할 찾기",
+  "accessGrants.find": "이름, 사번, 역할 검색",
   "accessGrants.role": "역할",
   "accessGrants.role.all": "모든 역할",
   "accessGrants.ending": "{days, number}일 안에 끝나는 부여",

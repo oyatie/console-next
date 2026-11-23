@@ -1,0 +1,33 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+@property --pct {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 0%;
+}
+
+.meter {
+  display: inline-flex;
+  width: 100%;
+  min-width: var(--space-6);
+  max-width: calc(var(--space-6) * 4);
+  height: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--muted);
+  overflow: hidden;
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  width: var(--pct, 0%);
+  background: var(--primary);
+}
+
+.meter[data-warn="true"] .fill {
+  background: var(--warn-solid);
+}
+
+.meter[data-danger="true"] .fill {
+  background: var(--danger-solid);
+}

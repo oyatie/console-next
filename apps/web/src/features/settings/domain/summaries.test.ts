@@ -3,7 +3,7 @@ import { expect, test } from "vitest";
 import type { components } from "@console/api/schema";
 import { ko } from "../../../../../../packages/i18n/src/catalogs/ko";
 import { en } from "../../../../../../packages/i18n/src/catalogs/en";
-import { approvalSummary, domainSummary, numberingSummary, titlesSummary, periodsSummary, settingLabel, settingValue } from "./summaries";
+import { approvalSummary, domainSummary, experienceEditProblem, experienceSummary, numberingSummary, titlesSummary, periodsSummary, settingLabel, settingValue } from "./summaries";
 
 const t = (id: string, values: Record<string, string | number> = {}) => ((ko as Record<string, string>)[id] ?? ko["settingsHub.unknown"] ?? "확인 불가").replace(/\{(\w+)(?:, number)?\}/g, (_, key) => String(values[key]));
 const date = (value: string) => value;
@@ -15,9 +15,16 @@ const entry = (key = keys[0]!): components["schemas"]["SettingEntry"] => ({
 });
 
 test("every displayed policy key has Korean and English copy; unknown keys are never exposed", () => {
-  for (const key of keys.map(name => entry(name).key)) for (const catalog of [ko, en]) {
+  for (const key of [...keys.map(name => entry(name).key), "display.experience"]) for (const catalog of [ko, en]) {
     expect((catalog as Record<string, string>)[`settingsHub.key.${key}`]).toBeTruthy();
   }
+  const styleEntry: components["schemas"]["SettingEntry"] = {
+    ...entry(), key: "display.experience", kind: { type: "code", allowed: ["baseline", "console", "warm-clear"] },
+    default: "baseline", value: "baseline", looser_when: "neutral",
+  };
+  expect(settingValue(styleEntry, "baseline", t)).toBe(ko["account.experience.baseline"]);
+  expect(settingValue(styleEntry, "console", t)).toBe(ko["account.experience.console"]);
+  expect(settingValue(styleEntry, "warm-clear", t)).toBe(ko["account.experience.warmClear"]);
   expect(settingLabel("approval.policy.unlabelled", t)).toBe(t("settingsHub.unknown"));
 });
 
@@ -98,4 +105,58 @@ test("approval values follow served allowed kinds and routed classes omit the re
   const restricted: components["schemas"]["SettingEntry"] = { ...entry(), kind: { type: "code", allowed: ["none"] }, value: "route" };
   expect(approvalSummary({ can_change: true, items: [restricted] }, t, date).value).toBe("확인 불가");
   expect(approvalSummary({ can_change: true, items: [entry(), { ...entry("identity_merge"), value: "route" }, { ...entry("exit"), value: "route" }] }, t, date).value).toBe("동일인 병합, 퇴직 확인");
+});
+
+test("screen style summary reports the active style, editability, scheduled changes, and read-only governance", () => {
+  const styleEntry: components["schemas"]["SettingEntry"] = {
+    ...entry(),
+    key: "display.experience",
+    kind: { type: "code", allowed: ["baseline", "console", "warm-clear"] },
+    default: "baseline",
+    value: "baseline",
+    looser_when: "neutral",
+  };
+  expect(experienceSummary({ can_change: true, items: [styleEntry] }, t, date)).toEqual({
+    entry: styleEntry,
+    value: ko["settingsHub.code.baseline"],
+    hints: [],
+    canEdit: true,
+  });
+
+  const scheduled: components["schemas"]["SettingEntry"] = {
+    ...styleEntry,
+    value: "console",
+    scheduled: [{ id: "next", value: "baseline", scope_entity_id: null, effective_from: "2026-12-01" }],
+  };
+  expect(experienceSummary({ can_change: false, items: [scheduled] }, t, date)).toEqual({
+    entry: scheduled,
+    value: ko["settingsHub.code.console"],
+    hints: [t("settingsHub.scheduled", { key: ko["settingsHub.key.display.experience"], date: "2026-12-01", value: ko["settingsHub.code.baseline"] }), ko["settingsHub.readOnly"]],
+    canEdit: false,
+  });
+
+  const fixed: components["schemas"]["SettingEntry"] = {
+    ...styleEntry,
+    governance: "fixed",
+    source: { layer: "platform", scope_entity_id: null },
+  };
+  expect(experienceSummary({ can_change: true, items: [fixed] }, t, date)).toEqual({
+    entry: fixed,
+    value: ko["settingsHub.code.baseline"],
+    hints: [`${ko["settingsHub.layer.platform"]} · ${ko["settingsHub.governance.fixed"]}`],
+    canEdit: false,
+  });
+
+  expect(experienceSummary({ can_change: true, items: [] }, t, date)).toEqual({
+    entry: null,
+    value: ko["settingsHub.unknown"],
+    hints: [],
+    canEdit: false,
+  });
+
+  expect(experienceEditProblem({ current: "baseline", next: "baseline", reason: "POLICY_REVIEW", needsNote: false, note: "" })).toBe("unchanged");
+  expect(experienceEditProblem({ current: "baseline", next: "console", reason: null, needsNote: false, note: "" })).toBe("reason");
+  expect(experienceEditProblem({ current: "baseline", next: "console", reason: "OTHER", needsNote: true, note: "   " })).toBe("note");
+  expect(experienceEditProblem({ current: "baseline", next: "console", reason: "POLICY_REVIEW", needsNote: false, note: "" })).toBeNull();
+  expect(experienceEditProblem({ current: "baseline", next: "console", reason: "OTHER", needsNote: true, note: "rollout" })).toBeNull();
 });

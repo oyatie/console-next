@@ -2,8 +2,6 @@ use crate::audit::auth_audit_event;
 use crate::context::grants::resolve_feature_grant_keys_for_user_in_tx;
 use crate::context::load::load_user_auth_context_tx;
 use crate::context::request::authenticated_user_context;
-use crate::device_login::token::hash_device_login_token;
-use crate::device_login::token::hex_encode;
 use crate::dto::passkey::LoginFinishRequest;
 use crate::dto::passkey::LoginStartRequest;
 use crate::dto::passkey::LoginStartResponse;
@@ -12,6 +10,7 @@ use crate::limits::RATE_LIMIT_PER_CREDENTIAL;
 use crate::limits::RATE_LIMIT_PER_IDENTIFIER;
 use crate::rate_limit::RateLimitEndpoint;
 use crate::rate_limit::floor_to_window;
+use crate::rate_limit::hash_rate_limit_key;
 use crate::rate_limit::increment_rate_bucket;
 use crate::rate_limit::passkey_error;
 use crate::rate_limit::rate_bucket_attempts;
@@ -69,7 +68,7 @@ pub(crate) async fn start_login(
         // Identifier first: the same answer shape for every identifier, known
         // or not; a syntax error is the only distinct refusal.
         let identifier = normalize_sign_in_id(&raw).ok_or_else(RestError::sign_in_id_invalid)?;
-        let key = format!("id:{}", hex_encode(&hash_device_login_token(&identifier)));
+        let key = format!("id:{}", hash_rate_limit_key("id", &identifier));
         rate_limit_key(
             &state.pool,
             &key,
@@ -120,7 +119,7 @@ pub(crate) async fn finish_login(
     // cap, count only when verification fails.
     let failure_key = format!(
         "cred:{}:{}",
-        hex_encode(&hash_device_login_token(&body.credential.id)),
+        hash_rate_limit_key("cred", &body.credential.id),
         trusted_client_ip.map_or_else(String::new, rate_limit_ip_key)
     );
     if rate_bucket_attempts(

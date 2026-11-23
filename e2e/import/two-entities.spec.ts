@@ -4,7 +4,7 @@ import type { components } from "@console/api/schema";
 import { atPhoneWidth, expectAccessible, fits } from "../a11y";
 import { firstSignIn, go, kstDate, option, unique } from "../flows";
 import { registerEntity, registerWorkplace, SECOND, SETUP_DEPARTMENT, setupCompany } from "../setup-flows";
-import { apiOf, bearerOf, codeOf, headcount } from "../helpers/api";
+import { apiOf, bearerOf, codeOf, headcount, stepUpAssertion } from "../helpers/api";
 import { openTenant } from "../helpers/tenant";
 import { activatePendingGrants, letGrantsAge } from "../second-person-fixture";
 import { workbook } from "../helpers/import-layouts";
@@ -164,19 +164,6 @@ test("an HR admin imports 300 people across two legal entities, answers each unp
   await expect(admin.getByRole("heading", { name: "명부를 반영했습니다" })).toBeVisible({ timeout: 60_000 });
 });
 
-async function assertPasskey(page: Page, api: ReturnType<typeof apiOf>) {
-  await page.bringToFront();
-  const response = await api("/auth/passkey/login/start", "POST", {});
-  expect(response.status()).toBe(200);
-  const start = await response.json() as components["schemas"]["PasskeyLoginStartResponse"];
-  const credential = await page.evaluate(async challenge => {
-    const { publicKey } = challenge as { publicKey: PublicKeyCredentialRequestOptionsJSON };
-    const assertion = await navigator.credentials.get({ publicKey: PublicKeyCredential.parseRequestOptionsFromJSON(publicKey) });
-    return (assertion as PublicKeyCredential).toJSON();
-  }, start.challenge);
-  return { ceremony_id: start.ceremony_id, credential };
-}
-
 test("a second person rolls an applied import back within its configured window", { tag: ["@hr", "@negative"] }, async ({ browser }) => {
   const slug = "importsecond";
   const operator = await openTenant(browser, slug, "되돌림상사");
@@ -219,7 +206,7 @@ test("a second person rolls an applied import back within its configured window"
     const account = await created.json() as components["schemas"]["UserSummary"];
     expect(account.roles).toEqual([]);
     accounts.push(account.id);
-    const issued = await ops("/auth/admin/otp/issue", "POST", { user_id: account.id, step_up: await assertPasskey(operator, ops) });
+    const issued = await ops("/auth/admin/otp/issue", "POST", { user_id: account.id, step_up: await stepUpAssertion(operator, ops) });
     expect(issued.status(), await issued.text()).toBe(200);
     const { otp } = await issued.json() as components["schemas"]["AdminIssueOtpResponse"];
     codes.push(otp);
@@ -233,7 +220,7 @@ test("a second person rolls an applied import back within its configured window"
   const grantsPreview = await previewedGrants.json() as components["schemas"]["AccessGrantPreview"];
   expect(grantsPreview.refused).toBe(0);
   const granted = await ops("/access/grants/apply", "POST", {
-    receipt_id: grantsPreview.receipt_id, step_up: await assertPasskey(operator, ops),
+    receipt_id: grantsPreview.receipt_id, step_up: await stepUpAssertion(operator, ops),
   }, { "Idempotency-Key": crypto.randomUUID() });
   expect(granted.status(), await granted.text()).toBe(200);
   const { items: grants } = await granted.json() as { items: components["schemas"]["AccessGrant"][] };
@@ -248,7 +235,7 @@ test("a second person rolls an applied import back within its configured window"
   const goLive = await read("/onboarding/go-live/preview") as components["schemas"]["GoLivePreview"];
   expect(goLive.blockers).toEqual([]);
   const started = await ops("/onboarding/go-live", "POST", {
-    digest: goLive.digest, line_digests: goLive.line_digests, step_up: await assertPasskey(operator, ops),
+    digest: goLive.digest, line_digests: goLive.line_digests, step_up: await stepUpAssertion(operator, ops),
   }, { "Idempotency-Key": crypto.randomUUID() });
   expect(started.status(), await started.text()).toBe(200);
   expect((await started.json() as components["schemas"]["GoLiveResult"]).phase).toBe("OPERATING");

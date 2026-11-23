@@ -14,6 +14,7 @@
 
 pub mod bulk;
 pub(crate) mod exit_reason;
+pub mod query;
 pub mod read;
 pub(crate) mod store;
 

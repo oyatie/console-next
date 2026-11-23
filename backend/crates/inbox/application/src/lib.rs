@@ -114,6 +114,20 @@ pub struct ConfirmReceiptCommand {
 // Views
 // ---------------------------------------------------------------------------
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct InboxPayslipMeta {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub attribution_month: Option<String>,
+    pub period_start: String,
+    pub period_end: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pay_date: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gross_won: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub net_won: Option<i64>,
+}
+
 /// List-row view. Never carries `payload` — the list is metadata only, so a
 /// locked legal notice's body never reaches the wire before receipt.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -138,6 +152,8 @@ pub struct InboxDocSummary {
     pub confirmed_at: Option<Timestamp>,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: Timestamp,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub payslip_meta: Option<InboxPayslipMeta>,
 }
 
 /// Single-document view. `payload` is present only when the document is
