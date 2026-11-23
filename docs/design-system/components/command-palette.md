@@ -124,11 +124,22 @@ Opening the palette is the caller's. The shell opens `JumpPalette` on Command+K 
 button in the top bar. It matches the physical K key (`code`), not the character, so the chord does not depend on
 the input language.
 
-The Console shell also opens it on `/` (`shell.search` in `lib/pure/keys.ts`, handled in `shell/console/shell.tsx`).
-`/` is a single key, so it acts only while single keys are on for the device (`singleKeysOn`) and focus is not in a
-field. When the page shows its own find box (`[data-list-find]` or a search input in `#main`), `/` focuses and
-selects that box instead of opening the palette. The top bar's search button names all three keys in
-`aria-keyshortcuts`, and `/` only while single keys are on.
+On the tenant side, the Console shell also opens it on `/` (`shell.search` in `lib/pure/keys.ts`, handled in
+`shell/console/shell.tsx`). The platform side binds neither `/` nor ⌘K, and its top bar has no search button.
+`/` is a single key, so it acts only while all of these hold:
+
+- single keys are on for the device (`singleKeysOn`, read at each key press);
+- focus is not in a field;
+- no dialog or alert dialog is open;
+- no input method is composing.
+
+Before opening the palette, `/` looks in `#main` for the first `input[type="search"]` or input inside a
+`[data-list-find]` element. If that first match is shown, `/` focuses and selects it instead. Only the first match is
+checked, so a hidden first match lets the palette open even when a later find box is shown.
+
+The top bar's search button names ⌘K, Ctrl+K and, while single keys are on, `/` in `aria-keyshortcuts`. It reads the
+setting when the top bar renders and does not follow a change until the next render. The visible `/` hint on the
+button shows either way.
 
 The component has one key handler. It sits on the input and runs in the capture phase, before React Aria's
 handlers, and it acts on Enter, on Escape, on a key the input method owns and on the six keys that move through
