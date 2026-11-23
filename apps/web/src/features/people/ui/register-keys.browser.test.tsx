@@ -54,9 +54,8 @@ test.each(SYSTEMS)("on $platform the run's entry row keeps the ⌘↵ cap and is
   await page.goto(`${server.resolvedUrls!.local[0]}register-keys-test?case=table&platform=${platform}`);
   const save = page.getByRole("button", { name: t("register.run.save"), exact: true });
   await element(save.locator("kbd")).toHaveText("⌘↵");
-  // Speech input presses a control by the word on it, so the name holds the word the button shows.
+  // Speech input presses a control by the word on it; the test below checks the name holds this word in both catalogs.
   await element(save).toContainText(t("register.run.submit"));
-  expect(t("register.run.save")).toContain(t("register.run.submit"));
 });
 
 test("in both catalogs the row save's name holds the word it shows", async () => {
