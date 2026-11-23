@@ -97,11 +97,11 @@ Known gaps:
   it is a child of the control, and no caller does it for it: a search of `apps/web/src` for `aria-keyshortcuts`
   finds two controls, and neither holds a `Kbd` from this module.
 - `keys` is not adapted to the platform. A caller that passes the Command glyph shows it on every system.
-  A caller can pick the text first with `modChord` (`lib/pure/keys`), given the page's navigator, or with `modHint`
-  (`lib/mod-hint`), which passes it. It puts `⌘` before the rest of the chord on an Apple system and `Ctrl+` on any
-  other, so `⇧↵` reads `⌘⇧↵` or `Ctrl+⇧↵`. These callers do: the commit of `Composer` through `modChord`, and the
-  rest through `modHint`; under `features/people/ui`, the register sheet's second commit and the register run's
-  finish button, and in the Console look the register sheet's register button (`register-console-footer.tsx`) and
+  A caller can pick the text first with `modHint` (`lib/mod-hint`), which passes the page's navigator to `modChord`
+  (`lib/pure/keys`). It puts `⌘` before the rest of the chord on an Apple system and `Ctrl+` on any other, so `⇧↵`
+  reads `⌘⇧↵` or `Ctrl+⇧↵`. These callers do: the commit of `Composer`; under `features/people/ui`, the register
+  sheet's second commit and the register run's finish button, and in the Console look the register sheet's
+  register button (`register-console-footer.tsx`) and
   the register run's finish and register buttons (`register-run-console.tsx`); under `features/attendance/ui`, the
   month tab's save (`month-tab.tsx`, and `month-console-view.tsx` in the Console look); and the Console status bar's
   search cap (`shell/console/shell.tsx`). `register-keys.browser.test.tsx` checks the register hints on Windows and
