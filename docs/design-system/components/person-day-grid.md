@@ -186,8 +186,8 @@ and the same rules hold in every look and at every width.
 - The last tail column sticks to the right edge. Every other tail column is `position: static`: it scrolls with
   the days and is where the row ends.
 - With `tailGroupHeader`, the first head row ends in the group header, over every tail column but the last, and
-  an empty cell over the last that sticks to the right edge with it. In a visual style the group header row is
-  22 px high and the tail headers below it start there.
+  an empty cell over the last. In a visual style that cell sticks to the right edge with the last total, the
+  group header row is 22 px high, and the tail headers below it start there.
 - On a phone a visual style does not draw a lead column marked `hideOnPhone`, and a `name` column is 72 px wide.
 - A `code` longer than its width widens its column, since in a table a cell's `width` is a least width. A `name`
   column after it still sticks at 64 px. No test has such a code.
