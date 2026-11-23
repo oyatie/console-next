@@ -4,7 +4,7 @@
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
-  min-height: calc(var(--space-6) + var(--space-5) - var(--space-1));
+  min-height: var(--phone-top-h);
   padding: 0 var(--space-4);
   border-block-end: 1px solid var(--border);
 }
@@ -106,7 +106,7 @@
   gap: var(--space-half);
   flex: 1;
   min-width: 0;
-  min-height: calc(var(--target-touch) + var(--space-3));
+  min-height: var(--phone-nav-h);
   padding: var(--space-1) var(--space-1);
   border: 0;
   background: transparent;

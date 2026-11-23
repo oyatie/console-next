@@ -44,6 +44,7 @@ export interface ShellLayoutProps {
     display_name?: string | null;
     employee_org_unit?: string | null;
     employee_position?: string | null;
+    employee_link_status?: string | null;
   };
   menu: readonly NavHub[] | undefined;
   navigationState: "loading" | "failed" | "ready";
