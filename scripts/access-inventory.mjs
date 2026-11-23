@@ -31,8 +31,9 @@ export function rustInventory(file, source) {
   const scanned = scanRustSyntax(source, { projectCode: true });
   if (!scanned.valid) throw new Error(`${file}: ${scanned.error}`);
   let code = scanned.projection;
-  // Mask only test items, preserving offsets and production items after them.
-  for (const m of code.matchAll(/#\[\s*cfg\s*\(\s*test\s*\)\s*\]/g)) {
+  // Mask only test items (`cfg(test)`, or `cfg(all(...))` with `test` among its terms), preserving offsets and
+  // production items after them. `any(test, ...)` also compiles outside test, so it stays counted.
+  for (const m of code.matchAll(/#\[\s*cfg\s*\(\s*(?:test|all\s*\((?:[^()\]]*,)?\s*test\s*(?:,[^()\]]*)?\))\s*\)\s*\]/g)) {
     if (code[m.index] !== "#") continue;
     const opening = code.indexOf("{", m.index);
     const semi = code.indexOf(";", m.index);
@@ -211,7 +212,7 @@ The scanner still discovers every REST operation, named list/count/search/export
 Detailed census (including current line numbers) is available on demand, without a committed snapshot:
 \`node scripts/access-inventory.mjs --census > /tmp/access-census.json\`.
 Static references are reviewer leads, never proof of enforcement or route/first-read parity.
-Legacy method calls and production code after test items are included; function declarations and \`cfg(test)\` items are excluded.
+Legacy method calls and production code after test items are included; function declarations and items under \`cfg(test)\` or \`cfg(all(test, ...))\` are excluded.
 Detector fixtures retain historical defects after the product fixes them.
 
 | Model | File | Kind | Maximum count |

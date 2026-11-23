@@ -49,6 +49,12 @@ pub mod office;
 mod privacy;
 #[cfg(feature = "recruiting")]
 mod recruiting_hire;
+/// The log fixture the integration tests share, mounted once for the unit tests that read it. Plain unit
+/// tests use its log capture and the database-backed ones its VictoriaLogs store, so a build uses part of it.
+#[cfg(test)]
+#[allow(dead_code)]
+#[path = "../tests/support/reference_logs.rs"]
+mod reference_logs;
 pub mod requests;
 mod routes;
 mod run;

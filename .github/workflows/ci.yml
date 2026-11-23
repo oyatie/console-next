@@ -403,6 +403,9 @@ jobs:
           touch "$RUNNER_TEMP/rust-cache-start"
       - run: cargo fmt --check
       - run: cargo clippy --workspace --all-targets --locked --features console-platform-storage/test-seaweedfs -- -D warnings
+      # Pull requests do not run the database tests, and only these features build them; lint them here so one that no longer compiles cannot merge.
+      - name: Lint the database test targets
+        run: cargo clippy --workspace --all-targets --locked --features test-postgres,console-app/full,console-app/e2e-test-support,console-app/dev-auth -- -D warnings
       - &cache-collect
         name: Collect Rust cache changes
         if: github.event_name == 'merge_group'
