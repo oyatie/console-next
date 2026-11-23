@@ -131,23 +131,42 @@ export function hangulDebt(sources, allow) {
   return { counts, problems, encodedProblems, lines };
 }
 
+const BLOB_BATCH_BYTES = 32 * 1024 * 1024;
+
 export function repositoryHangul(base, allow) {
   const git = args => execFileSync("git", args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
   const source = (file, bytes) => isUtf8(bytes) && !bytes.includes(0) ? [{ file, text: bytes.toString("utf8") }] : [];
   if (base) {
     // Read the same UTF-8 blobs at first adoption, including text fixtures marked binary by Git attributes.
-    const files = git(["ls-tree", "-r", "--name-only", "-z", base]).split("\0").filter(Boolean);
-    const blobs = execFileSync("git", ["cat-file", "--batch", "-Z"], {
-      input: files.map(file => `${base}:${file}\0`).join(""), maxBuffer: 128 * 1024 * 1024,
+    const entries = git(["ls-tree", "-r", "-l", "-z", base]).split("\0").filter(Boolean).map(line => {
+      const tab = line.indexOf("\t");
+      return { file: line.slice(tab + 1), size: Number(line.slice(0, tab).split(/\s+/)[3]) || 0 };
     });
-    let offset = 0;
-    const sources = files.flatMap(file => {
-      const end = blobs.indexOf(0, offset);
-      const header = blobs.subarray(offset, end).toString("utf8").match(/^[a-f0-9]+ blob (\d+)$/);
-      if (!header) throw new Error(`cannot read Hangul merge-base blob: ${file}`);
-      const start = end + 1, size = Number(header[1]);
-      offset = start + size + 1;
-      return source(file, blobs.subarray(start, start + size));
+    // Batches keep each read bounded however large the tree grows; a blob over the budget is read alone.
+    const batches = [[]];
+    let bytes = 0;
+    for (const entry of entries) {
+      if (bytes + entry.size > BLOB_BATCH_BYTES && batches.at(-1).length) {
+        batches.push([]);
+        bytes = 0;
+      }
+      batches.at(-1).push(entry);
+      bytes += entry.size;
+    }
+    const sources = batches.flatMap(batch => {
+      const input = batch.map(({ file }) => `${base}:${file}\0`).join("");
+      const blobs = execFileSync("git", ["cat-file", "--batch", "-Z"], {
+        input, maxBuffer: batch.reduce((sum, { size }) => sum + size + 128, Buffer.byteLength(input)),
+      });
+      let offset = 0;
+      return batch.flatMap(({ file }) => {
+        const end = blobs.indexOf(0, offset);
+        const header = blobs.subarray(offset, end).toString("utf8").match(/^[a-f0-9]+ blob (\d+)$/);
+        if (!header) throw new Error(`cannot read Hangul merge-base blob: ${file}`);
+        const start = end + 1, size = Number(header[1]);
+        offset = start + size + 1;
+        return source(file, blobs.subarray(start, start + size));
+      });
     });
     return hangulDebt(sources, allow);
   }
