@@ -81,10 +81,12 @@ async fn batched_reseal_rotation_census_audit_isolation_and_n_minus_1_rollback(p
                     StagedIdentity {
                         source_key: "st-1".into(),
                         sealed: s_v1,
+                        id_type: None,
                     },
                     StagedIdentity {
                         source_key: "st-2".into(),
                         sealed: s_k1,
+                        id_type: None,
                     },
                 ],
             )
