@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
@@ -92,6 +92,12 @@ export function MeCertificatesSheet({
   const [items, setItems] = useState<SelfIssueCertificateRequest["items"]>(["period", "position"]);
   const [purpose, setPurpose] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Back closes the sheet through the address, not through close(), so a closing by either way clears what it showed.
+  const [shownOpen, setShownOpen] = useState(open);
+  if (shownOpen !== open) {
+    setShownOpen(open);
+    if (!open) setSelectedId(null);
+  }
 
   const listQuery = useQuery({
     ...myCertificatesQuery(),
@@ -115,11 +121,14 @@ export function MeCertificatesSheet({
     announce: () => t("account.certificates.issuedSuccess"),
   });
 
+  // A failed issue's notice is gone when the sheet next opens; reset refuses while a sent issue's outcome is unknown.
+  const resetIssue = useEffectEvent(() => issue.reset());
+  useEffect(() => {
+    if (!open) resetIssue();
+  }, [open]);
+
   const close = () => {
-    if (issue.isSending) return;
-    setSelectedId(null);
-    issue.reset();
-    onClose();
+    if (!issue.isSending) onClose();
   };
 
   const toggleItem = (key: SelfIssueCertificateRequest["items"][number], checked: boolean) => {
