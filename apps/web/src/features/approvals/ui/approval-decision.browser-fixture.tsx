@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useState } from "react";
+import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, Outlet, RouterProvider } from "@tanstack/react-router";
@@ -55,4 +55,5 @@ const routes = [
 ];
 const start = host === "console-auto" ? "/approvals" : host === "console" ? "/approvals?sel=approval-1" : host === "console-page" ? "/approvals/approval-1" : "/";
 const router = createRouter({ routeTree: root.addChildren(routes), history: createMemoryHistory({ initialEntries: [start] }) });
-createRoot(document.getElementById("root")!).render(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
+// Under StrictMode, as the app is drawn: in development it runs each effect and attaches each ref callback twice.
+createRoot(document.getElementById("root")!).render(<StrictMode><QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider></StrictMode>);
