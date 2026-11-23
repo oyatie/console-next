@@ -24,7 +24,10 @@ export function DissolveMembers({ place, groups, to, onTo, overrides, onOverride
   const [picking, setPicking] = useState<string | null>(null);
   const [changing, setChanging] = useState(false);
   const d = place.node;
-  const tree = (value: string | null, onChange: (id: string) => void, label: string) => (
+  // The trees close on a pick and take their value with them, so the line that stays carries the plan for the sheet to
+  // compare: an override to where everyone goes changes nothing.
+  const plan = [to.id, ...[...overrides].filter(([, n]) => n.id !== to.id).map(([id, n]) => `${id}>${n.id}`).sort()].join(" ");
+  const tree =(value: string | null, onChange: (id: string) => void, label: string) => (
     <TargetTree
       label={label}
       entity={place.entity}
@@ -38,7 +41,7 @@ export function DissolveMembers({ place, groups, to, onTo, overrides, onOverride
   );
   return (
     <div className={css.stack}>
-      <p className="row">
+      <p className="row" id="dissolve-plan" data-form-value={plan}>
         <Users size={14} aria-hidden />
         <span className="grow">{t("orgUnit.dissolve.allTo", { n: groups.reduce((n, g) => n + g.people.length, 0), to: label(to, workplaceName) })}</span>
         <Button variant="ghost" size="sm" id="dissolve-change-to" aria-expanded={changing} onClick={() => setChanging((x) => !x)}>{t("orgUnit.dissolve.changeTo")}</Button>
