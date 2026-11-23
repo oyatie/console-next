@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useMemo, useState } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
-import { Check } from "lucide-react";
 import { t } from "@console/i18n";
 import { todayKst } from "../../../lib/pure/today";
 import { useCommand } from "../../../lib/react/command";
@@ -14,6 +13,7 @@ import { Field } from "../../../ui/field/field";
 import { StatRow } from "../../../ui/key-value/key-value";
 import { FormPattern } from "../../../ui/patterns/form";
 import { FormSection } from "../../../ui/patterns/form-section";
+import { useEmployeeLink } from "../../../reference/person/ui/use-employee-link";
 import { SelfServiceUnlinked } from "../../../reference/person/ui/self-service-unlinked";
 import {
   createLeaveRequest,
@@ -22,7 +22,6 @@ import {
   myLeaveQuery,
   myLeaveTeamOverlapQuery,
   myScheduleQuery,
-  meQuery,
 } from "../api";
 import {
   buildLeaveCreatePayload,
@@ -39,6 +38,7 @@ import {
   formatTeamOverlapSummary,
 } from "../present";
 import { LeaveContextRows } from "./leave-context-rows";
+import { leaveKindItems, leaveSpanItems } from "./leave-options";
 import {
   LeaveBalanceSummary,
   LeaveHistorySection,
@@ -50,9 +50,7 @@ import s from "./leave-request-page.module.css";
 /** Self-service annual / half-day leave filing page (`P7` `FormPattern` at `/leave`). */
 export function LeaveRequestPage() {
   const today = todayKst();
-  // An account with no employee record would only be refused these reads, so none is sent until users/me shows a link.
-  const me = useQuery(meQuery);
-  const linked = me.data?.employee_link_status === "LINKED";
+  const { me, linked } = useEmployeeLink();
   const q = useQuery({ ...myLeaveQuery, enabled: linked });
   const [kind, setKind] = useState<LeaveOptionKind>("annual");
   const [spanMode, setSpanMode] = useState<LeaveSpanMode>("one");
@@ -133,7 +131,8 @@ export function LeaveRequestPage() {
     }
   };
 
-  const balance = q.data?.balance;
+  // Cached leave from before the account lost its link is not shown, filed against, or checked for overlap.
+  const balance = linked ? q.data?.balance : undefined;
   const accrued = parseLeaveUnits(balance?.accrued_units);
   const used = parseLeaveUnits(balance?.used_units);
   const remaining = parseLeaveUnits(balance?.remaining_units);
@@ -183,20 +182,8 @@ export function LeaveRequestPage() {
     kind,
   });
 
-  const kindItems = (
-    [
-      { id: "annual", label: t("leave.type.annual") },
-      { id: "half_am", label: t("leave.type.halfAm") },
-      { id: "half_pm", label: t("leave.type.halfPm") },
-    ] as const
-  ).map((item) => ({ ...item, icon: kind === item.id ? <Check size={14} aria-hidden="true" /> : undefined }));
-
-  const spanItems = (
-    [
-      { id: "one", label: t("leave.date.oneDay") },
-      { id: "multi", label: t("leave.date.multiDay") },
-    ] as const
-  ).map((item) => ({ ...item, icon: spanMode === item.id ? <Check size={14} aria-hidden="true" /> : undefined }));
+  const kindItems = leaveKindItems(kind);
+  const spanItems = leaveSpanItems(spanMode);
 
   const handleSubmit = () => {
     if (!canSubmit || command.isPending) return;
@@ -231,16 +218,15 @@ export function LeaveRequestPage() {
   );
   const submitNotice = command.error ? <CommandError error={command.error} own={leaveSubmitError} focusOnRefusal /> : null;
 
-  if (me.data && !linked) {
-    return <SelfServiceUnlinked q={me} title={t("leave.title")} titleId="leave-request-title" pattern="form" floorplan="P-04" queryLayout="form" />;
-  }
+  const head = { title: t("leave.title"), titleId: "leave-request-title" };
+  if (me.data && !linked) return <SelfServiceUnlinked q={me} head={head} pattern="form" floorplan="P-04" queryLayout="form" />;
   // Until users/me answers, the page shows its pending or failed read rather than a leave read that was never sent.
   const read = linked ? q : me;
 
   return (
     <FormPattern
       q={read}
-      head={{ title: t("leave.title"), titleId: "leave-request-title" }}
+      head={head}
       notes={notes}
       summary={<LeaveBalanceSummary statItems={balanceStatItems} meter={meterData} legendItems={legendItems} />}
       sections={

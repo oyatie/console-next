@@ -265,6 +265,7 @@ function ConsoleLayout({
                 approvalsCount={approvalsCount}
                 platform={platform}
                 mode={phoneHeader?.phoneNav}
+                unlinked={userProfile?.employee_link_status === "UNLINKED"}
                 activeId={phoneActiveId}
                 onNavigate={navigateToHref}
               />

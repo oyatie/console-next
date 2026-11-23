@@ -16,100 +16,49 @@ type MockLeaveState = {
   teamOverlap?: { data?: unknown; error?: unknown };
   approvalPreview?: { data?: unknown; error?: unknown };
   linkStatus?: "LINKED" | "UNLINKED";
+  /** users/me not yet answered, or failed. */
+  me?: "pending" | "error";
+  /** Leave the cache still holds from before, which a disabled query keeps answering with. */
+  cachedLeave?: boolean;
   enabled?: Record<string, boolean | undefined>;
 };
 
-const mockState = vi.hoisted((): MockLeaveState => ({
-  data: undefined,
-  error: undefined,
-  scheduleErrorMonths: [],
-  teamOverlap: undefined,
-  approvalPreview: undefined,
-  linkStatus: "LINKED",
-  enabled: {},
-}));
+const mockState = vi.hoisted((): MockLeaveState => ({ enabled: {} }));
+
+const ok = (data: unknown) => ({ data, isPending: false, isFetching: false, isError: false, isSuccess: true, error: null, dataUpdatedAt: 1 });
+const failed = (error: unknown) => ({ data: undefined, isPending: false, isFetching: false, isError: true, isSuccess: false, error, dataUpdatedAt: 0 });
+const pending = { data: undefined, isPending: true, isFetching: false, isError: false, isSuccess: false, error: null, dataUpdatedAt: 0 };
+const outage = () => new ApiError(503, "service_unavailable", "");
 
 function resolveMockQuery(options: Parameters<typeof readIdentity>[0] & { enabled?: boolean }) {
   const parsed = JSON.parse(readIdentity(options)) as [string, { query?: { month?: string } }?];
   const path = String(parsed[0]);
   mockState.enabled![path] = options.enabled;
   if (path === "/api/v1/users/me") {
-    return { data: { employee_link_status: mockState.linkStatus }, isPending: false, isFetching: false, isError: false, isSuccess: true, error: null, dataUpdatedAt: 1 };
+    return mockState.me === "pending" ? pending : mockState.me === "error" ? failed(outage()) : ok({ employee_link_status: mockState.linkStatus });
   }
-  if (options.enabled === false) {
-    return { data: undefined, isPending: true, isFetching: false, isError: false, isSuccess: false, error: null, dataUpdatedAt: 0 };
-  }
-  if (path === "/api/v2/me/leave") {
-    if (mockState.error) {
-      return {
-        data: undefined,
-        isPending: false,
-        isFetching: false,
-        isError: true,
-        isSuccess: false,
-        error: mockState.error,
-        dataUpdatedAt: 0,
-      };
-    }
-    return {
-      data: mockState.data,
-      isPending: false,
-      isFetching: false,
-      isError: false,
-      isSuccess: true,
-      error: null,
-      dataUpdatedAt: 1,
-    };
-  }
+  if (options.enabled === false) return path === "/api/v2/me/leave" && mockState.cachedLeave ? ok(mockState.data) : pending;
+  if (path === "/api/v2/me/leave") return mockState.error ? failed(mockState.error) : ok(mockState.data);
   if (path === "/api/v1/attendance/me/schedule") {
     const month = parsed[1]?.query?.month ?? "2026-11";
-    if (mockState.scheduleErrorMonths?.includes(month)) {
-      return {
-        data: undefined,
-        isPending: false,
-        isFetching: false,
-        isError: true,
-        isSuccess: false,
-        error: new ApiError(503, "service_unavailable", ""),
-        dataUpdatedAt: 0,
-      };
-    }
-    return {
-      data: { month, days: [] },
-      isPending: false,
-      isFetching: false,
-      isError: false,
-      isSuccess: true,
-      error: null,
-      dataUpdatedAt: 1,
-    };
+    return mockState.scheduleErrorMonths?.includes(month) ? failed(outage()) : ok({ month, days: [] });
   }
-  if (path === "/api/v2/me/leave/team-overlap") {
-    if (mockState.teamOverlap?.error) {
-      return { data: undefined, isPending: false, isFetching: false, isError: true, isSuccess: false, error: mockState.teamOverlap.error, dataUpdatedAt: 0 };
-    }
-    if (mockState.teamOverlap?.data) {
-      return { data: mockState.teamOverlap.data, isPending: false, isFetching: false, isError: false, isSuccess: true, error: null, dataUpdatedAt: 1 };
-    }
-  }
-  if (path === "/api/v2/me/leave/approval-preview") {
-    if (mockState.approvalPreview?.error) {
-      return { data: undefined, isPending: false, isFetching: false, isError: true, isSuccess: false, error: mockState.approvalPreview.error, dataUpdatedAt: 0 };
-    }
-    if (mockState.approvalPreview?.data) {
-      return { data: mockState.approvalPreview.data, isPending: false, isFetching: false, isError: false, isSuccess: true, error: null, dataUpdatedAt: 1 };
-    }
-  }
-  return {
-    data: undefined,
-    isPending: true,
-    isFetching: false,
-    isError: false,
-    isSuccess: false,
-    error: null,
-    dataUpdatedAt: 0,
-  };
+  const side = path === "/api/v2/me/leave/team-overlap" ? mockState.teamOverlap : path === "/api/v2/me/leave/approval-preview" ? mockState.approvalPreview : undefined;
+  if (side?.error) return failed(side.error);
+  if (side?.data) return ok(side.data);
+  return pending;
 }
+
+const BALANCE = {
+  employee_id: "00000000-0000-4000-8300-000000001287",
+  name: "Yoon Hajun",
+  accrued_units: "15.000000",
+  used_units: "5.500000",
+  remaining_units: "9.500000",
+  filing_state: "ready",
+  home_branch_id: "00000000-0000-4000-8200-000000000102",
+};
+const NO_REQUESTS = { items: [], next_cursor: null };
 
 vi.mock("../../../experience/dom", () => ({ useActiveExperienceId: () => "console" }));
 vi.mock("@tanstack/react-router", () => ({
@@ -128,13 +77,8 @@ afterEach(() => {
 });
 
 function renderWithState(next: MockLeaveState) {
-  mockState.data = next.data;
-  mockState.error = next.error;
-  mockState.scheduleErrorMonths = next.scheduleErrorMonths ?? [];
-  mockState.teamOverlap = next.teamOverlap;
-  mockState.approvalPreview = next.approvalPreview;
-  mockState.linkStatus = next.linkStatus ?? "LINKED";
-  mockState.enabled = {};
+  Object.assign(mockState, { linkStatus: "LINKED", scheduleErrorMonths: [], ...next, enabled: {} });
+  for (const key of ["data", "error", "teamOverlap", "approvalPreview", "me", "cachedLeave"] as const) if (!(key in next)) delete mockState[key];
   const client = new QueryClient({ defaultOptions: { queries: { enabled: false, retry: false } } });
   try {
     return renderToStaticMarkup(
@@ -149,18 +93,7 @@ function renderWithState(next: MockLeaveState) {
 
 test("LeaveRequestPage renders populated balance, 30-cell Meter, and 3 leave types without condolence or reason", () => {
   const html = renderWithState({
-    data: {
-      balance: {
-        employee_id: "00000000-0000-4000-8300-000000001287",
-        name: "Yoon Hajun",
-        accrued_units: "15.000000",
-        used_units: "5.500000",
-        remaining_units: "9.500000",
-        filing_state: "ready",
-        home_branch_id: "00000000-0000-4000-8200-000000000102",
-      },
-      requests: { items: [], next_cursor: null },
-    },
+    data: { balance: BALANCE, requests: NO_REQUESTS },
   });
 
   expect(html).toContain('data-pattern="form"');
@@ -176,18 +109,7 @@ test("LeaveRequestPage renders populated balance, 30-cell Meter, and 3 leave typ
 
 test("LeaveRequestPage blocks filing when home_branch_required and preserves error states on 403/503", () => {
   const closedHtml = renderWithState({
-    data: {
-      balance: {
-        employee_id: "00000000-0000-4000-8300-000000001287",
-        name: "Yoon Hajun",
-        accrued_units: "15.000000",
-        used_units: "5.500000",
-        remaining_units: "9.500000",
-        filing_state: "home_branch_required",
-        home_branch_id: null,
-      },
-      requests: { items: [], next_cursor: null },
-    },
+    data: { balance: { ...BALANCE, filing_state: "home_branch_required", home_branch_id: null }, requests: NO_REQUESTS },
   });
   expect(closedHtml).toContain(t("leave.filing.homeBranchRequired.title"));
   expect(closedHtml).toContain("disabled");
@@ -211,15 +133,7 @@ test("LeaveRequestPage formats null balance units as unset in Meter valuetext, r
 
   const nullBalanceHtml = renderWithState({
     data: {
-      balance: {
-        employee_id: "00000000-0000-4000-8300-000000001287",
-        name: "Yoon Hajun",
-        accrued_units: null,
-        used_units: null,
-        remaining_units: null,
-        filing_state: "ready",
-        home_branch_id: "00000000-0000-4000-8200-000000000102",
-      },
+      balance: { ...BALANCE, accrued_units: null, used_units: null, remaining_units: null },
       requests: {
         items: [
           {
@@ -260,19 +174,7 @@ test("LeaveRequestPage formats null balance units as unset in Meter valuetext, r
 
 test("LeaveRequestPage renders team overlap, localized approval preview without raw English labels, and maps 409 codes", () => {
   const html = renderWithState({
-    data: {
-      balance: {
-        employee_id: "00000000-0000-4000-8300-000000001287",
-        name: "Yoon Hajun",
-        org_unit: "Prod Team 1",
-        accrued_units: "15.000000",
-        used_units: "5.500000",
-        remaining_units: "9.500000",
-        filing_state: "ready",
-        home_branch_id: "00000000-0000-4000-8200-000000000102",
-      },
-      requests: { items: [], next_cursor: null },
-    },
+    data: { balance: { ...BALANCE, org_unit: "Prod Team 1" }, requests: NO_REQUESTS },
     teamOverlap: {
       data: {
         org_unit: "Prod Team 1",
@@ -305,14 +207,7 @@ test("LeaveRequestPage renders team overlap, localized approval preview without 
   expect(html).not.toContain("Approver");
 
   const degradedHtml = renderWithState({
-    data: {
-      balance: {
-        employee_id: "00000000-0000-4000-8300-000000001287", name: "Yoon Hajun",
-        accrued_units: "15.000000", used_units: "5.500000", remaining_units: "9.500000",
-        filing_state: "ready", home_branch_id: "00000000-0000-4000-8200-000000000102",
-      },
-      requests: { items: [], next_cursor: null },
-    },
+    data: { balance: BALANCE, requests: NO_REQUESTS },
     teamOverlap: { error: new ApiError(403, "forbidden", "") },
     approvalPreview: { error: new ApiError(503, "service_unavailable", "") },
   });
@@ -333,4 +228,20 @@ test("an account with no employee record is told why, and sends no leave read th
   expect(html).not.toContain('role="meter"');
   expect(mockState.enabled!["/api/v2/me/leave"]).toBe(false);
   expect(mockState.enabled!["/api/v1/attendance/me/schedule"]).toBe(false);
+});
+
+test("until users/me answers, the page shows that read, not a leave read it never sent", () => {
+  const waiting = renderWithState({ me: "pending" });
+  expect(waiting).toContain('aria-busy="true"');
+  expect(waiting).not.toContain(t("account.status.unlinked"));
+  expect(mockState.enabled!["/api/v2/me/leave"]).toBe(false);
+
+  // A failed users/me is the page's failed read. Leave cached from before is not shown or filed against.
+  const failedMe = renderWithState({ me: "error", cachedLeave: true, data: { balance: BALANCE, requests: NO_REQUESTS } });
+  expect(failedMe).toContain(t("common.loadFailed.title"));
+  expect(failedMe).toContain(t("common.retry"));
+  expect(failedMe).not.toContain('role="meter"');
+  for (const path of ["/api/v2/me/leave", "/api/v1/attendance/me/schedule", "/api/v2/me/leave/team-overlap", "/api/v2/me/leave/approval-preview"]) {
+    expect(mockState.enabled![path], path).toBe(false);
+  }
 });

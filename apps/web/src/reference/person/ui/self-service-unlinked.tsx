@@ -4,25 +4,23 @@ import type { ReadState } from "../../../lib/react/query-view";
 import { EmptyState } from "../../../ui/empty-state";
 import { PageHead } from "../../../ui/page-head/page-head";
 import type { Floorplan } from "../../../ui/page/floorplan";
-import { PatternShell } from "../../../ui/patterns/pattern-shell";
+import { PatternShell, type PatternHead } from "../../../ui/patterns/pattern-shell";
 import type { PatternId } from "../../../ui/patterns/patterns";
 import type { ReadLayout } from "../../../ui/skeleton/skeleton";
 
 /**
- * A self-service page for a signed-in account with no employee record. Its own reads would only be refused,
- * so the page keeps its frame and says why instead. `q` is the users/me read that showed the account unlinked.
+ * A self-service page for a signed-in account with no employee record. The page keeps its frame and head and says
+ * why it has nothing to show. `q` is the users/me read that showed the account unlinked.
  */
 export function SelfServiceUnlinked({
   q,
-  title,
-  titleId,
+  head,
   pattern,
   floorplan,
   queryLayout,
 }: {
   q: ReadState;
-  title: string;
-  titleId: string;
+  head: Pick<PatternHead, "title" | "titleId" | "crumbs">;
   pattern: PatternId;
   floorplan: Floorplan;
   queryLayout: ReadLayout;
@@ -33,12 +31,12 @@ export function SelfServiceUnlinked({
       pattern={pattern}
       floorplan={floorplan}
       q={q}
-      head={{ title, titleId }}
+      head={head}
       queryLayout={queryLayout}
       phoneHeadAware
       baseline={() => (
         <main className="page" data-floorplan={floorplan}>
-          <PageHead title={title} />
+          <PageHead title={head.title} crumbs={head.crumbs} />
           {empty}
         </main>
       )}

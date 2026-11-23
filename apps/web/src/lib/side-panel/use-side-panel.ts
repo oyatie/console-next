@@ -19,7 +19,8 @@ export function useSidePanel(param = "sel") {
   const router = useRouter();
   return {
     selected,
-    select: (id: string) => void navigate({ to: ".", search: previous => ({ ...previous, [param]: id }), replace: Boolean(selected),
+    // Opening or closing a panel never moves the page under it.
+    select: (id: string) => void navigate({ to: ".", search: previous => ({ ...previous, [param]: id }), replace: Boolean(selected), resetScroll: false,
       state: previous => ({ ...previous, sidePanelOrigin: selected ? previous.sidePanelOrigin : location.href }) }),
     close: () => {
       const list = new URL(location.href, window.location.origin);
@@ -29,7 +30,7 @@ export function useSidePanel(param = "sel") {
       origin?.searchParams.sort();
       // Only unwind an entry we pushed, and only when doing so preserves the current list filters.
       if (origin && origin.href === list.href) router.history.back();
-      else void navigate({ to: ".", search: previous => ({ ...previous, [param]: undefined }), replace: true });
+      else void navigate({ to: ".", search: previous => ({ ...previous, [param]: undefined }), replace: true, resetScroll: false });
     },
   };
 }

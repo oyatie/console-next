@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { lazy, Suspense, type ReactNode } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useLocation } from "@tanstack/react-router";
 import { Banknote, CalendarDays, FileText, Home, Search, UserRound } from "lucide-react";
 import { t } from "@console/i18n";
 import { chunk } from "../../lib/chunk-guard";
@@ -67,12 +67,16 @@ export function ConsolePhoneTop({
   );
 }
 
+/** The employee's own certificate sheet, opened over the profile page. */
+const CERTIFICATES = "/account?sheet=certificates";
+
 export function ConsolePhoneBottom({
   links,
   inboxCount,
   approvalsCount,
   platform,
   mode,
+  unlinked,
   activeId,
   onNavigate,
 }: {
@@ -81,6 +85,8 @@ export function ConsolePhoneBottom({
   approvalsCount?: number;
   platform: boolean;
   mode?: "self-service";
+  /** An account with no employee record has no certificates of its own to open. */
+  unlinked?: boolean;
   activeId?: string;
   onNavigate: (href: string) => void;
 }) {
@@ -90,7 +96,7 @@ export function ConsolePhoneBottom({
           { id: "/", href: "/", label: t("shell.link.home"), icon: Home, count: inboxCount },
           { id: "/leave", href: "/leave", label: t("shell.link.leave"), icon: CalendarDays },
           { id: "/payslips", href: "/payslips", label: t("shell.link.payroll"), icon: Banknote },
-          { id: "/account?sheet=certificates", href: "/account?sheet=certificates", label: t("shell.link.certificates"), icon: FileText },
+          ...(unlinked ? [] : [{ id: CERTIFICATES, href: CERTIFICATES, label: t("shell.link.certificates"), icon: FileText }]),
           { id: "/account", href: "/account", label: t("shell.link.profile"), icon: UserRound },
         ]
       : links.map(link => ({
@@ -100,6 +106,7 @@ export function ConsolePhoneBottom({
           icon: link.icon,
           count: link.countKey === "inbox" ? inboxCount : link.countKey === "approvals" ? approvalsCount : undefined,
         }));
+  const here = useLocation({ select: location => location.href });
   if (!platform && mode !== "self-service" && !items.some(item => item.id === "/account")) {
     items.push({ id: "/account", href: "/account", label: t("shell.profile"), icon: UserRound });
   }
@@ -110,7 +117,10 @@ export function ConsolePhoneBottom({
       onNavigate={item => onNavigate(item.href)}
       renderLink={(item, props) => (
         <Link
-          to={item.href}
+          to={item.id === CERTIFICATES ? "/account" : item.href}
+          search={item.id === CERTIFICATES ? { sheet: "certificates" } : undefined}
+          // The sheet's close unwinds the entry this tab pushes, as it does one the profile page opens.
+          state={item.id === CERTIFICATES ? previous => ({ ...previous, sidePanelOrigin: activeId === CERTIFICATES ? previous.sidePanelOrigin : here }) : undefined}
           className={props.className}
           activeOptions={{ exact: item.href !== activeId }}
           aria-current={props["aria-current"]}

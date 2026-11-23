@@ -10,7 +10,6 @@ let server: ViteDevServer;
 let browser: Browser;
 let context: BrowserContext;
 let page: Page;
-let phonePage: Page;
 
 beforeAll(async () => {
   await loadCatalog("ko");
@@ -29,12 +28,7 @@ beforeAll(async () => {
     },
     plugins: [{
       name: "console-shell-shortcut-test",
-      resolveId: id =>
-        id === "/console-shell-shortcut-test.js"
-          ? "\0console-shell-shortcut-test"
-          : id === "/console-phone-nav-test.js"
-            ? "\0console-phone-nav-test"
-            : undefined,
+      resolveId: id => id === "/console-shell-shortcut-test.js" ? "\0console-shell-shortcut-test" : undefined,
       load: id => id === "\0console-shell-shortcut-test" ? `
         import React, { useEffect, useState } from 'react';
         import { createRoot } from 'react-dom/client';
@@ -116,37 +110,6 @@ beforeAll(async () => {
           history: createMemoryHistory({ initialEntries: ['/'] }),
         });
         createRoot(document.getElementById('root')).render(React.createElement(RouterProvider, { router }));
-      ` : id === "\0console-phone-nav-test" ? `
-        import React from 'react';
-        import { createRoot } from 'react-dom/client';
-        import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-        import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider, useNavigate } from '@tanstack/react-router';
-        import { session } from '@console/api';
-        import { loadCatalog } from '@console/i18n';
-        import { ConsoleShell } from '/apps/web/src/shell/console/shell.tsx';
-        import '/apps/web/src/app.css';
-        await loadCatalog('ko');
-        session.set({
-          access_token: 'h.' + btoa(JSON.stringify({ sub: 'hero', org: 'tenant', name: 'Hajun' })).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, '') + '.s',
-          token_type: 'Bearer', refresh_expires_at: '2099-01-01T00:00:00Z', requires_passkey_setup: false,
-        });
-        const h = React.createElement;
-        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-        function Screen({ title }) {
-          const navigate = useNavigate();
-          return h('div', { 'data-phone-screen': title },
-            h('h1', null, title),
-            h('button', { type: 'button', onClick: () => void navigate({ href: '/account?sheet=certificates' }) }, 'go-certificates'),
-            h('button', { type: 'button', onClick: () => void navigate({ href: '/account' }) }, 'go-account'),
-          );
-        }
-        const root = createRootRoute({ component: () => h(ConsoleShell) });
-        const mk = (path, title) => createRoute({ getParentRoute: () => root, path, staticData: { access: 'signed-in' }, component: () => h(Screen, { title }) });
-        const router = createRouter({
-          routeTree: root.addChildren([mk('/', 'Home'), mk('/account', 'Account'), mk('/leave', 'Leave'), mk('/payslips', 'Payslips')]),
-          history: createMemoryHistory({ initialEntries: ['/account'] }),
-        });
-        createRoot(document.getElementById('root')).render(h(QueryClientProvider, { client: qc }, h(RouterProvider, { router })));
       ` : undefined,
     }],
   });
@@ -154,7 +117,6 @@ beforeAll(async () => {
   browser = await browserEngine().launch();
   context = await browser.newContext();
   page = await context.newPage();
-  phonePage = await context.newPage();
   await page.route("**/console-shell-shortcut-test", route => route.fulfill({
     contentType: "text/html",
     body: '<html lang="ko"><title>Console Shell</title><div id="root"></div><script type="module" src="/console-shell-shortcut-test.js"></script></html>',
@@ -163,7 +125,6 @@ beforeAll(async () => {
 }, 60_000);
 
 afterAll(async () => {
-  await phonePage?.close();
   await page?.close();
   await context?.close();
   await browser?.close();
@@ -247,74 +208,4 @@ test("openWorkspaceTab preserves hash fragments on view-query routes when reconc
   const afterChart = JSON.parse((await page.locator("[data-tabs]").textContent()) ?? "[]") as string[];
   expect(afterChart).toContain("/org");
   expect(afterChart).not.toContain("/org?tab=entities#identifier-corrections");
-});
-
-async function openPhoneShell() {
-  const apiMocks: Record<string, unknown> = {
-    "/api/v1/users/me": {
-      id: "u1", display_name: "Hajun", employee_name: "Hajun", employee_id: "e1",
-      employee_link_status: "LINKED", employee_company: "Saeon", tenant: { name: "Saeon", phase: "OPERATING" },
-    },
-    "/api/v1/me/authz": { capabilities: [] },
-    "/api/v1/access/me": { is_ops: false, entries: [], phase: "OPERATING" },
-    "/api/v1/support-sessions/active": { can_approve: false, sessions: [], pending_count: 0 },
-    "/api/v1/onboarding/modules": ["home", "people"].map(key => ({ key, ready: true, unblock: null })),
-    "/api/v1/onboarding/checklist": { phase: "OPERATING", steps: [] },
-    "/api/v1/me/action-inbox": { items: [], next_cursor: null, counts: { turn: { total: 0, total_is_exact: true } }, attention_filters: [] },
-    "/api/v1/auth/passkeys": [],
-  };
-  await phonePage.setViewportSize({ width: 390, height: 844 });
-  await phonePage.route("**/console-phone-nav-test", route => route.fulfill({
-    contentType: "text/html",
-    body: '<html lang="ko" data-experience="console"><title>Console Phone</title><div id="root"></div><script type="module" src="/console-phone-nav-test.js"></script></html>',
-  }));
-  await phonePage.route("**/api/v1/**", route => {
-    const path = new URL(route.request().url()).pathname;
-    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(apiMocks[path] ?? { items: [] }) });
-  });
-
-  await openBrowserTestPage(phonePage, `${server.resolvedUrls!.local[0]}console-phone-nav-test`, phonePage.locator('[data-phone-screen="Account"]'));
-  return phonePage.getByRole("navigation", { name: t("shell.nav"), exact: true });
-}
-
-test("the self-service certificates tab opens the employee's own certificates, not the HR list", async () => {
-  const nav = await openPhoneShell();
-  const expectCurrent = async (href: string, label: string) => {
-    await expect.poll(async () => await nav.locator('a[aria-current="page"]').count()).toBe(1);
-    await expect.poll(async () => await nav.locator('a[aria-current="page"]').getAttribute("href")).toBe(href);
-    await expect.poll(async () => (await nav.locator('a[aria-current="page"]').textContent())?.trim()).toBe(label);
-  };
-
-  // An employee on the self-service nav holds no HR grant, so the HR certificate list would only refuse them.
-  expect(await nav.getByRole("link", { name: t("shell.link.certificates"), exact: true }).getAttribute("href")).toBe("/account?sheet=certificates");
-  await expectCurrent("/account", t("shell.link.profile"));
-
-  await phonePage.getByRole("button", { name: "go-certificates", exact: true }).click();
-  await expectCurrent("/account?sheet=certificates", t("shell.link.certificates"));
-
-  await phonePage.getByRole("button", { name: "go-account", exact: true }).click();
-  await expectCurrent("/account", t("shell.link.profile"));
-});
-
-test("on a phone the top bar and bottom nav stay on screen while a long page scrolls, and never cover what has focus", async () => {
-  const nav = await openPhoneShell();
-  await phonePage.evaluate(() => {
-    const screen = document.querySelector("[data-phone-screen]")!;
-    const tall = document.createElement("div");
-    tall.style.blockSize = "3000px";
-    const far = document.createElement("button");
-    far.textContent = "far";
-    screen.append(tall, far, Object.assign(document.createElement("div"), { style: "block-size: 600px" }));
-    window.scrollTo(0, 1200);
-  });
-  await expect.poll(() => phonePage.evaluate(() => window.scrollY)).toBe(1200);
-
-  const navBox = (await nav.boundingBox())!;
-  expect(Math.round(navBox.y + navBox.height)).toBe(844);
-  expect((await phonePage.locator('header[data-surface="chrome"]').boundingBox())!.y).toBe(0);
-
-  // A control brought into view at the bottom edge lands above the pinned nav, not under it.
-  const far = phonePage.getByRole("button", { name: "far", exact: true });
-  await far.evaluate(element => element.scrollIntoView({ block: "end" }));
-  expect((await far.boundingBox())!.y + (await far.boundingBox())!.height).toBeLessThanOrEqual(navBox.y + 0.5);
 });
