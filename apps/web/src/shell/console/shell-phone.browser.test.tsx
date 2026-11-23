@@ -186,6 +186,17 @@ test("on a phone the top bar and bottom nav stay on screen while a long page scr
   expect(nearNavBox.y + nearNavBox.height).toBeLessThanOrEqual(navBox.y + 0.5);
 });
 
+test("on a phone the page's last control scrolls fully clear of both bars, so nothing stays under one", async () => {
+  const nav = await openPhoneShell();
+  await grow('<div style="block-size: 2400px"></div><button data-probe="last">last</button>');
+  await page.evaluate(() => window.scrollTo(0, document.scrollingElement!.scrollHeight));
+  const last = page.locator("#main").locator("a[href], button, input, select, textarea, [tabindex]").last();
+  await expect.poll(async () => await last.textContent()).toBe("last");
+  const [box, topBox, navBox] = [(await last.boundingBox())!, (await page.locator('header[data-surface="chrome"]').boundingBox())!, (await nav.boundingBox())!];
+  expect(box.y).toBeGreaterThanOrEqual(topBox.y + topBox.height - 0.5);
+  expect(box.y + box.height).toBeLessThanOrEqual(navBox.y + 0.5);
+});
+
 test("on a phone the bars draw over the page's own raised layers, the skip link draws over the bars, and the account menu over the page", async () => {
   const nav = await openPhoneShell();
   // A record's section strip (z-index 4) and a sticky action bar (z-index 5), as the page draws them.

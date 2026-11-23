@@ -217,7 +217,7 @@ function ConsoleLayout({
             ) : null}
           </>
         ) : !restoring ? (
-          <div className={s.phoneTop}>
+          <div className={s.phoneTop} data-pinned-bar>
             <Suspense fallback={null}>
               <ConsolePhoneTop
                 title={phoneHeader?.title ?? currentTitle}
@@ -257,7 +257,7 @@ function ConsoleLayout({
             ) : null}
           </div>
         ) : !restoring ? (
-          <div className={s.phoneNav}>
+          <div className={s.phoneNav} data-pinned-bar>
             <Suspense fallback={null}>
               <ConsolePhoneBottom
                 links={allLinks}

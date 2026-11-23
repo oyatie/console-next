@@ -53,6 +53,8 @@ Use `PhoneTopBar` and `PhoneBottomNav` in the phone shell layout (`< 768px`) to 
 
 Designed specifically for 390 px phone viewports (`52px` top bar, five `78px × 56px` bottom slots across a `390px` screen, plus iOS/Android bottom safe-area inset).
 
+The Console shell pins both bars while the page scrolls (`position: sticky` at `--z-bar`, over the page's own raised layers; the skip link draws over the top bar). Both stay in the page's flow, so the page's last control scrolls fully clear of the nav, and focus stops clear of both bars (`scroll-padding`). `apps/web/src/shell/console/shell-phone.browser.test.tsx` proves all three. The shell marks the two bar wrappers `data-pinned-bar`; `expectAxe` puts them back in flow while it scans, because axe counts a control that a pinned bar covers at the scanned scroll position as too small.
+
 ## Copy rules
 
 `PhoneBottomNav` reads `shell.nav` and `shell.nav.more` by default; callers pass translated `shell.link.*`, `shell.account`, and `common.back` labels from `@console/i18n`.
