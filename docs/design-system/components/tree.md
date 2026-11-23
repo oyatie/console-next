@@ -31,7 +31,7 @@ of attendance and the destination picker of a closing workplace.
 
 | Part | Element | Holds |
 |---|---|---|
-| Root | `<div role="treegrid">`, with the global `tree` class and the module's class | `id`, `aria-label` from `label`, `data-density` from `density`, and `data-state="error"` when `error` is given. |
+| Root | `<div role="treegrid">`, with the global `tree` class and the module's class | `id`, `aria-label` from `label`, `data-density` from `density`, `data-state="error"` when `error` is given, and `data-form-value` with `selected`, or an empty string when none is chosen: see [Sheet](sheet.md#dirty-and-how-a-sheet-closes). |
 | Row | `<div role="row" class="react-aria-TreeItem">`, one for each visible item | `data-id` with the item's `id`. Rows are siblings in the document whatever their depth: React Aria flattens the tree and gives each row its level. |
 | Cell | `<div role="gridcell">` with `display: contents` | The row layout. Every row has exactly one. |
 | Row layout | `<div class="tree__row">` | The chevron or its placeholder, then the row content. |
@@ -189,8 +189,10 @@ dialog or a sheet around the tree. `required` is for such a caller. With it:
 - **Escape** is never the tree's. From a chosen row it closes a dismissable dialog around the tree, and the row
   stays chosen. In a sheet it does what Escape does anywhere else in that sheet: a clean sheet closes, and a
   sheet that holds unsaved input shows its unsaved line on the first press and closes on the second. A pick is
-  unsaved input: the tree carries the chosen row's id as `data-form-value` (empty when none is chosen), so a sheet
-  that works out its own dirty state warns before Escape throws a pick away.
+  unsaved input while the tree is shown: the tree carries the chosen row's id as `data-form-value` (empty when none
+  is chosen), so a sheet that works out its own dirty state warns before Escape throws the pick away. A tree that
+  closes on a pick takes its value with it: the destination trees of the dissolve sheet do, so a destination picked
+  there leaves that sheet clean.
 - **Enter or a press** on the chosen row leaves it chosen. By the source the same holds for Space; the tests
   use Enter and the pointer only.
 
