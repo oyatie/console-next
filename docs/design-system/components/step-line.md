@@ -84,7 +84,7 @@ The step line has no states of its own beyond the three step states above.
 | Loading | Does not exist. There is no pending prop and no placeholder. |
 | Empty | With no steps the line renders an empty `<ol>` that still has its name. Nothing checks for it. |
 
-Nothing requires one step to be `current`. Four callers pass a line with none:
+Nothing requires one step to be `current`. Five callers pass a line with none:
 
 - `features/import/ui/import-page.tsx` and `features/import/ui/import-console.tsx` pass every step as `done` once
   the import has finished.
@@ -93,6 +93,8 @@ Nothing requires one step to be `current`. Four callers pass a line with none:
 - `features/payroll/ui/run-console.tsx` passes three stages from `buildCompactRunStages`
   (`features/payroll/domain/run-register.ts`): every stage `done` for a paid run, and every stage `waiting` for a
   void run or a status that function does not know.
+- `features/payroll/ui/payroll-setup-console.tsx` passes its three steps as `done` once the fields of all three are
+  set.
 
 Nothing limits `current` to one step either. Every step passed as `current` gets `aria-current="step"` and the
 current look.
@@ -148,6 +150,11 @@ These tests assert its output. They were found by searching `e2e` and `apps/web/
   has two done stages, a current stage with no such image and a hidden box, and three waiting stages. The text
   of each step is its label alone. The box of a done stage holds an `<svg>`, the first of them with
   `aria-hidden="true"`, and the box of every other stage draws its number.
+- `apps/web/src/ui/patterns/wizard.browser.test.tsx`, on the fixture of `WizardPattern`, whose `steps` is a step
+  line: the item that has `aria-current="step"` holds the label of the basics step, then of the certificate step
+  after next, of the basics step again after back, and of the review step after two more.
+- `e2e/mock/payroll-run-console.spec.ts`, on the baseline run page: the list named `payroll.stages.title` is
+  visible in the main region.
 - `features/payroll/ui/run-header.browser.test.tsx`, for a staged, an issued and a void run: the list is found by
   its name and has six items, with no button or link inside. One item is current for the staged run and none for
   the other two. All six are `done` for the issued run and none for the other two.
@@ -196,8 +203,9 @@ head's title row, which wraps too. So there the line shares a wrapping row with 
 
 - `label`, the name of the list, and the `label` of each step come from the message catalog in `packages/i18n`,
   through the caller. The `en` catalog is the source and the `ko` catalog must define every id.
-- The callers name the list with `bulk.page.steps`, `renew.steps`, `import.steps` and `payroll.stages.title`. The
-  gallery uses `common.steps`.
+- The callers name the list with `bulk.page.steps`, `renew.steps`, `import.steps`, `payroll.stages.title`,
+  `entityCreate.steps`, `orgBulk.import.title`, `payroll.setup.page` and `payroll.create.title`. The gallery uses
+  `common.steps`, and the wizard pattern's fixture `pat.wizard.stepsLabel`.
 - A step's label is a word or two that names the step. It must make sense without its number: the number is drawn
   by the stylesheet and is not part of the step's text.
 - The gallery's sample labels are in the gallery catalog, which production builds leave out.

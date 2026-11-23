@@ -28,7 +28,8 @@ The record columns are where the card's `data-escape-scope` attribute matters: s
 Two rules for the caller:
 
 - Give the card a `key` that is the item's id. The open form is the card's own state, and a new key is what stops
-  it from carrying over to the next item. The viewer keys the panel that holds the card.
+  it from carrying over to the next item. Each of the three screens keys the panel that holds the card by the
+  document's id.
 - Pass `returnLabel`, `returnConsequence` and `onReturn` together, or none of them. The type refuses one or two.
   Without them the card offers approve and reject only.
 
@@ -59,7 +60,7 @@ The card has three shapes: deciding, a reason form, and recorded.
 | Title | `<h2>` | `title`. |
 | Children | None of its own | `children`, as passed. |
 | Consequence | `<div role="note">` | `consequence`. |
-| Bar | `<div>` | In this order: the blocked reason, a `<span>`, only with `approveBlocked`; the meta, a `<span>`, only with `meta`; a spacer `<span>`; the reject button; the request-changes button, only with `onReturn`; the approve button. |
+| Bar | `<div>` | In this order: the blocked reason, a `<span>` with `staleBlocked`, or else `approveBlocked`, only when one of them is given; the meta, a `<span>`, only with `meta`; a spacer `<span>`; the reject button; the request-changes button, only with `onReturn`; the approve button. |
 
 **A reason form** opens when reject or request changes is pressed. It takes the place of the consequence and the
 bar. The body above it stays.
@@ -70,7 +71,7 @@ bar. The body above it stays.
 | Form heading | `<h3 tabindex="-1">` | `rejectLabel` or `returnLabel`. |
 | Reason | None of its own | What `reason` returns for the open form, `"reject"` or `"return"`. |
 | Consequence | `<div role="note">` | `rejectConsequence` or `returnConsequence`. |
-| Bar | `<div>` | A back button; a spacer `<span>`; the missing-reason text, a `<span>`, only while the reason is not complete; the commit button, which shows the same label as the heading. |
+| Bar | `<div>` | A back button; a spacer `<span>`; while `staleBlocked` is set, the blocked reason, a `<bdi>` with `staleBlocked`, and otherwise the missing-reason text, a `<span>`, only while the reason is not complete; the commit button, which shows the same label as the heading. |
 
 The reason is complete when `reasonComplete` is `true`, or, when it is a function, when it returns `true` for the
 open form.
@@ -87,10 +88,10 @@ truth, so any falsy value is not given: `false`, `null`, `undefined`, `0` or an 
 The recorded card keeps `title` as its heading and renders no eyebrow, step, `children`, consequence or button.
 
 **Docked** (`docked`) changes the deciding and the recorded shapes. The `<article>` has no `card` class. A
-`PaneHead` (`ui/pane-grid`) with `title` and `meta` takes the place of the eyebrow, the step and the `<h2>`: its
-heading is an `<h2>`, with `tabindex="-1"` in the recorded shape. The body begins with a row that holds `step` and
-`due`, drawn only when one of them is given. The bar leaves `meta` out. `compact` sets `data-compact` on the
-`<article>`, which the stylesheet reads in the record pane of a Console screen.
+`PaneHead` (`ui/pane-grid`), a `<header>` with `title` and `meta`, stands above the body in place of the `<h2>`: its
+heading is an `<h2>`, with `tabindex="-1"` in the recorded shape. The eyebrow is not drawn. The body begins with a
+row that holds `step` and `due`, drawn only when one of them is given. The bar leaves `meta` out. `compact` sets
+`data-compact` on the `<article>`, which the stylesheet reads in the record pane of a Console screen.
 
 Every button is a React Aria `Button`, a native `<button type="button">`, with the global `btn` classes. The card
 does not use the `Button` of `ui/button`.
@@ -243,11 +244,15 @@ titled `approvals.viewer.decision`, or, when docked, in `DocDecisionPad` (`ui/pa
 That line takes focus if `document.activeElement` is the `<body>`, which is where the browser leaves focus once the
 card that held it is gone. Otherwise focus stays where it is, and the panel passes the line's words to `announce`
 (`lib/react/announce`), the shell's one polite live region: a `role="status"` drawn with its words already in it is
-not read out by every screen reader. A command still on its way passes through the same state just before its receipt, and
-shows no such line. After a command error the panel shows the error in the card's place instead. The Console
-document page keeps the panel once it has drawn the card, and the Console list keeps it while that document stays
-open, so the line shows there too. A document opened again later that offers nothing has no panel, as any decided
-document has none.
+not read out by every screen reader. A command still on its way passes through the same state just before its
+receipt, and shows no such line. After a command error the panel shows the error in the card's place instead.
+
+The panel keeps the card's place, and the Console document page and the Console list keep the panel, while the
+document whose decision was offered stays the one shown: all three ask `useDecisionOffered`
+(`features/approvals/ui/use-approval-decision.ts`). The baseline viewer always draws the panel. So the line shows on
+all three screens. Once another document, or none, has been shown, a document that offers nothing draws no panel
+when it is shown again, with one exception: the Console list keeps the receipt of the last decision made in it, and
+draws the recorded card again when that document is opened again.
 
 ## Accessibility contract
 
@@ -260,12 +265,13 @@ document has none.
   while `staleBlocked` is set, else by the missing-reason text until the reason is complete, and by the form's
   consequence box after that.
 - **Announced:** nothing by the card itself. It has no live region. Opening a form moves focus to its heading, and
-  a receipt moves it to the recorded heading, which is what a screen reader reads at those points. `aria-busy` is
-  the only thing set while a command runs. The receipt is announced only if what the caller passes announces
-  itself: the panel passes a `<p role="status">`.
+  a receipt that arrives while focus is on the `<body>` moves it to the recorded heading, which is what a screen
+  reader reads at those points. `aria-busy` is the only thing set while a command runs. The receipt is announced
+  only if the caller announces it: the panel passes it in a `<p role="status">`, and its command passes the same
+  words to `announce` (`lib/react/announce`).
 
 The button that opens a form and the commit of that form can have the same name. The opener's text is built in;
-the commit's is `rejectLabel` or `returnLabel`. The viewer passes the built-in messages as both. The two are never
+the commit's is `rejectLabel` or `returnLabel`. The panel passes the built-in messages as both. The two are never
 rendered together.
 
 The heading levels are fixed: `<h2>` for the title and `<h3>` for a form. No prop changes them.
@@ -285,13 +291,17 @@ Known gaps:
 - The card has no slot for the error of a command that failed. The caller places it. The panel puts
   `CommandError` (`lib/react/command-error`) first in `children`, above its opinion field.
 - A running command has no words: no status text and no spinner, only `aria-busy` and disabled buttons.
+- A document the Console list opened by itself, with no document named in the address, does not stay shown when
+  someone else decides it and the next read of the list no longer holds it, as the pending box does not: the column
+  moves on to the first document left, or closes when none is left. The line does not stay, what was typed in the
+  opinion is gone, and focus that was in the card is left on the `<body>`.
 
 The WCAG 2.2 criteria that apply:
 
 | Criterion | How the card answers it |
 |---|---|
 | 1.3.1 Info and Relationships | The title and the form are headings, each consequence is a note, and each commit points at its consequence or its reason with `aria-describedby`. |
-| 1.3.2 Meaningful Sequence | The document order is the order on screen: the body, the consequence, then the buttons. |
+| 1.3.2 Meaningful Sequence | The document order is the body, the consequence, then the buttons. In the baseline look that is the order on screen. The Console look draws the consequence of the deciding shape after the buttons (`order: 1`), so there a screen reader reads it before the buttons while the eye reaches it after them. |
 | 1.4.1 Use of Color | The danger fill of the reject commit repeats its label. A disabled button is paler, and its reason is in words beside it, except while `pending`. |
 | 1.4.3 Contrast (Minimum) | Every colour is a token; none is written in the component. A disabled button is drawn at half opacity; the criterion does not cover an inactive control. |
 | 1.4.10 Reflow | The card is never wider than its container, and the bar wraps. |
@@ -415,7 +425,7 @@ query. The component's own comment calls it a desktop card; the approval viewer 
 
 - Everything else is the caller's, from the message catalog in `packages/i18n`. The `en` catalog is the source and
   the `ko` catalog must define every id.
-- `approveLabel`, `rejectLabel` and `returnLabel` are a verb and its object. The viewer passes
+- `approveLabel`, `rejectLabel` and `returnLabel` are a verb and its object. The panel passes
   `uiApprovalCard.reject` and `uiApprovalCard.return` as the two form labels.
 - `consequence` says what approving does and who can undo it. `rejectConsequence` and `returnConsequence` say what
   each of those does.
