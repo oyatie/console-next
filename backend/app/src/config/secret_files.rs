@@ -9,7 +9,10 @@ use std::collections::HashMap;
 use crate::error::AppError;
 
 /// `*_FILE` variables that are paths in their own right, never secrets.
-const PATH_VARS: &[&str] = &["CONSOLE_DEV_LIFECYCLE_TODAY_FILE"];
+const PATH_VARS: &[&str] = &[
+    "CONSOLE_DEV_LIFECYCLE_TODAY_FILE",
+    "CONSOLE_AUDIT_CHAIN_CUSTODY_CA_FILE",
+];
 
 /// Only the app's own names: `SSL_CERT_FILE` and friends belong to libraries.
 fn app_secret(name: &str) -> bool {

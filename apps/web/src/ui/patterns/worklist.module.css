@@ -1,0 +1,96 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.frame {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 100%;
+  background: var(--surface);
+}
+
+.standalone {
+  padding: var(--page-pad);
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--page-pad) 0;
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .frame {
+  flex: 1 0 auto;
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .head {
+  padding: var(--toolbar-py) var(--space-4);
+  border-block-end: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.inlineFilters {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.inlineFilters > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.lower {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.statsBand {
+  min-width: 0;
+  border-block-end: 1px solid var(--border);
+  background: var(--surface);
+}
+
+@media (min-width: 1024px) {
+  :where([data-experience]:not([data-experience="baseline"])) .frame[data-viewport-lock] {
+    height: calc(100dvh - var(--frame-top) - var(--frame-bottom));
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  :where([data-experience]:not([data-experience="baseline"])) .frame[data-viewport-lock] :global([data-pane-grid]) {
+    flex: 1 1 0%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  :where([data-experience]:not([data-experience="baseline"])) .frame[data-viewport-lock] :global([data-pane-grid]) > div:not([role="separator"]) {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  :where([data-experience]:not([data-experience="baseline"])) .frame[data-viewport-lock] :global([data-pane-grid]) > div:not([role="separator"]) > div:first-child {
+    flex: 1 1 0%;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  :where([data-experience]:not([data-experience="baseline"])) .frame[data-viewport-lock] :is([data-pane="record"], [data-pane="related"]) {
+    --pane-footer-max-h: max(0px, min(65%, calc(100% - var(--row-h) - 120px)));
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+}
+
+@media (--phone) {
+  .frame[data-detail]:has([data-pane="record"]) > .head,
+  .frame[data-detail]:has([data-pane="record"]) > .statsBand {
+    display: none;
+  }
+}

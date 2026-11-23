@@ -27,14 +27,8 @@ time = { workspace = true }
 uuid = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
-# Ed25519 seal signing. `ring` 0.17.x is ALREADY resolved in-tree (transitively
-# via lettre/tokio-rustls' rustls `ring` provider — Cargo.lock name = "ring",
-# version 0.17.14), so this pins the existing lockfile entry and adds NO new
-# third-party to reindeer/buck2-vendor. Keep ring's default features (`alloc` for
-# the PKCS#8 Document/Vec APIs, `dev_urandom_fallback` for SystemRandom) — the
-# Ed25519 keygen path needs both. Verified against the committed Cargo.lock:
-# reusing the in-tree version is the workspace's single-stack discipline.
-ring = "0.17"
+# Ed25519 seal signing via the unified workspace `aws-lc-rs` crypto stack.
+aws-lc-rs = { workspace = true }
 
 [dev-dependencies]
 console-platform-test-support = { workspace = true }

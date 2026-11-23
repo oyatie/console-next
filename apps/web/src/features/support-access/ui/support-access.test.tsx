@@ -94,8 +94,10 @@ test("support details are named and their history follows the ticket heading", (
   for (const heading of ["supportAccess.decisions", "supportAccess.records"])
     expect(html).toContain(`<h3>${heading}</h3>`);
 });
-test("the support-access head has no navigation while it is the only served audit view", () => {
-  expect(renderToStaticMarkup(<SupportAccess />)).not.toContain("<nav");
+test("the support-access head renders the audit view navigation", () => {
+  const html = renderToStaticMarkup(<SupportAccess />);
+  expect(html).toContain("<nav");
+  expect(html).toContain("audit.nav.supportAccess");
 });
 test("approval and end commands use the shared authenticated API and retain their intent key", async () => {
   renderToStaticMarkup(<SupportAccess />);

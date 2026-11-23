@@ -315,16 +315,6 @@
   }
  ],
  "operations": {
-  "DELETE /api/platform/groups/{id}/accounts/{user_id}/roles/{group_role}": {
-   "lane": "T1",
-   "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "DELETE /api/platform/groups/{id}/organizations/{org_id}": {
-   "lane": "T1",
-   "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
   "DELETE /api/v1/change-sets/{id}": {
    "lane": "MAT-PARITY",
    "reason": "Org change-set management follows MVP bulk-command delivery; units/maturity/plan.md §3.",
@@ -360,60 +350,10 @@
    "reason": "internal: native-app association document fetched by the OS, not a screen",
    "when": "excluded"
   },
-  "GET /api/audit": {
-   "lane": "K4",
-   "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/platform/groups": {
-   "lane": "T1",
-   "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/platform/groups/{id}/accounts": {
-   "lane": "T1",
-   "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/v1/access/ops-usage": {
-   "lane": "K0",
-   "reason": "K0 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
   "GET /api/v1/approval-inbox/bulk-tasks": {
    "lane": "H1",
    "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
-  },
-  "GET /api/v1/attendance/exceptions/{exception_id}": {
-   "lane": "A5",
-   "reason": "A5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/v1/attendance/me/exceptions": {
-   "lane": "A5",
-   "reason": "A5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/v1/attendance/me/schedule": {
-   "lane": "A1",
-   "reason": "A1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/v1/attendance/me/week52": {
-   "lane": "MAT-PARITY",
-   "reason": "52 h engine and substitution workflow follow the MVP attendance pilot; units/maturity/plan.md §3.",
-   "when": "post-mvp"
-  },
-  "GET /api/v1/attendance/substitution-candidates": {
-   "lane": "MAT-PARITY",
-   "reason": "52 h engine and substitution workflow follow the MVP attendance pilot; units/maturity/plan.md §3.",
-   "when": "post-mvp"
-  },
-  "GET /api/v1/attendance/substitutions": {
-   "lane": "MAT-PARITY",
-   "reason": "52 h engine and substitution workflow follow the MVP attendance pilot; units/maturity/plan.md §3.",
-   "when": "post-mvp"
   },
   "GET /api/v1/audit-streams/ceo-covert/access-events": {
    "lane": "K4",
@@ -421,11 +361,6 @@
    "when": "mvp"
   },
   "GET /api/v1/audit-streams/ceo-covert/events": {
-   "lane": "K4",
-   "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/v1/audit/attestation": {
    "lane": "K4",
    "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
@@ -495,17 +430,7 @@
    "reason": "H2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
-  "GET /api/v1/hr/attendance-import/summary": {
-   "lane": "A2",
-   "reason": "A2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
   "GET /api/v1/hr/attendance-records": {
-   "lane": "A1",
-   "reason": "A1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/v1/hr/attendance-records/me": {
    "lane": "A1",
    "reason": "A1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
@@ -540,6 +465,16 @@
    "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
+  "GET /api/v1/leave/balances": {
+   "lane": "leave",
+   "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
+   "when": "mvp"
+  },
+  "GET /api/v1/leave/requests": {
+   "lane": "leave",
+   "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
+   "when": "mvp"
+  },
   "GET /api/v1/legal-entities/{entityId}/workplaces": {
    "lane": "E3a",
    "reason": "E3a owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
@@ -548,16 +483,6 @@
   "GET /api/v1/lifecycles/{objectType}/{objectId}": {
    "lane": "P5a",
    "reason": "P5a owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/v1/me/inbox-docs": {
-   "lane": "H1",
-   "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/v1/me/inbox-docs/{id}": {
-   "lane": "H1",
-   "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
   "GET /api/v1/me/notification-policies": {
@@ -595,11 +520,6 @@
    "reason": "H2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
-  "GET /api/v1/me/workspace": {
-   "lane": "MAT-PARITY",
-   "reason": "Workspace crate is excluded from the release build; reviewed promotion required (built-is-not-ready).",
-   "when": "excluded"
-  },
   "GET /api/v1/ops/summary": {
    "lane": "MAT-PARITY",
    "reason": "Ops realm capability awaits the ops-cockpit owner lanes; units/maturity/plan.md §3.",
@@ -613,21 +533,6 @@
   "GET /api/v1/payroll/payslips/me": {
    "lane": "Payroll S7 교부",
    "reason": "The payslip delivery journey will let employees read their issued payslips.",
-   "when": "2026-11-18"
-  },
-  "GET /api/v1/payroll/runs/{id}/close-preflight": {
-   "lane": "Payroll S5 대상·근태",
-   "reason": "The attendance stage will show close prerequisites once attendance month close is available.",
-   "when": "2026-11-13"
-  },
-  "GET /api/v1/payroll/runs/{id}/exceptions": {
-   "lane": "Payroll S6 계산·검토",
-   "reason": "The calculation review stage will list exceptions before submission.",
-   "when": "2026-11-16"
-  },
-  "GET /api/v1/payroll/runs/{id}/payslip-delivery": {
-   "lane": "Payroll S7 교부",
-   "reason": "The delivery stage will show issued payslip delivery status with e-mail off by default.",
    "when": "2026-11-18"
   },
   "GET /api/v1/policy/assignments": {
@@ -690,11 +595,6 @@
    "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
-  "GET /api/v1/settings/{key}/history": {
-   "lane": "K5",
-   "reason": "K5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
   "GET /api/v1/status/events": {
    "lane": "MAT-PARITY",
    "reason": "internal: unauthenticated endpoint (security: []): public feed, not a signed-in screen; confirm it needs no in-app view",
@@ -730,11 +630,6 @@
    "reason": "internal: process health probe for the orchestrator",
    "when": "excluded"
   },
-  "PATCH /api/platform/groups/{id}": {
-   "lane": "T1",
-   "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
   "PATCH /api/v1/org-structure/units/{orgUnitId}": {
    "lane": "O4b",
    "reason": "O4b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
@@ -754,61 +649,6 @@
    "lane": "K2",
    "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
-  },
-  "PATCH /api/v1/reason-codes/{domain}/{code}": {
-   "lane": "K5",
-   "reason": "K5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/platform/groups": {
-   "lane": "T1",
-   "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/platform/groups/{id}/accounts": {
-   "lane": "T1",
-   "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/attendance/closes": {
-   "lane": "A6",
-   "reason": "A6 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/attendance/closes/preflight": {
-   "lane": "A6",
-   "reason": "A6 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/attendance/closes/{close_id}/amendments": {
-   "lane": "A6",
-   "reason": "A6 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/attendance/exceptions": {
-   "lane": "A5",
-   "reason": "A5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/attendance/exceptions/{exception_id}/resolve": {
-   "lane": "A5",
-   "reason": "A5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/attendance/substitutions": {
-   "lane": "MAT-PARITY",
-   "reason": "52 h engine and substitution workflow follow the MVP attendance pilot; units/maturity/plan.md §3.",
-   "when": "post-mvp"
-  },
-  "POST /api/v1/attendance/substitutions/{substitution_id}/cancel": {
-   "lane": "MAT-PARITY",
-   "reason": "52 h engine and substitution workflow follow the MVP attendance pilot; units/maturity/plan.md §3.",
-   "when": "post-mvp"
-  },
-  "POST /api/v1/attendance/week52/acks": {
-   "lane": "MAT-PARITY",
-   "reason": "52 h engine and substitution workflow follow the MVP attendance pilot; units/maturity/plan.md §3.",
-   "when": "post-mvp"
   },
   "POST /api/v1/auth/device-login/approve": {
    "lane": "K3",
@@ -834,11 +674,6 @@
    "lane": "K3",
    "reason": "K3 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
-  },
-  "POST /api/v1/auth/signup": {
-   "lane": "MAT-PARITY",
-   "reason": "Self-signup is outside MVP bootstrap and invitation flows; units/maturity/plan.md §3.",
-   "when": "post-mvp"
   },
   "POST /api/v1/console/kill-switch": {
    "lane": "MAT-PARITY",
@@ -930,29 +765,24 @@
    "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
-  "POST /api/v1/hr/attendance-import/preview": {
-   "lane": "A2",
-   "reason": "A2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/hr/attendance-import/{run_id}/apply": {
-   "lane": "A2",
-   "reason": "A2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/hr/attendance-import/{run_id}/dry-run": {
-   "lane": "A2",
-   "reason": "A2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/hr/attendance-records/me": {
-   "lane": "A1",
-   "reason": "A1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
   "POST /api/v1/integrity/findings/{id}/triage": {
    "lane": "K4",
    "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+   "when": "mvp"
+  },
+  "POST /api/v1/leave/promotions": {
+   "lane": "leave",
+   "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
+   "when": "mvp"
+  },
+  "POST /api/v1/leave/refusal-notices": {
+   "lane": "leave",
+   "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
+   "when": "mvp"
+  },
+  "POST /api/v1/leave/requests/{id}/decide": {
+   "lane": "leave",
+   "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
    "when": "mvp"
   },
   "POST /api/v1/lifecycles/{objectType}/{objectId}/hold": {
@@ -1015,51 +845,6 @@
    "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
-  "POST /api/v1/payroll/runs/{id}/calculate": {
-   "lane": "Payroll S6 계산·검토",
-   "reason": "The calculation stage will calculate a run after attendance month close.",
-   "when": "2026-11-16"
-  },
-  "POST /api/v1/payroll/runs/{id}/close-attendance": {
-   "lane": "Payroll S5 대상·근태",
-   "reason": "The attendance stage will attest and close run attendance after preflight passes.",
-   "when": "2026-11-13"
-  },
-  "POST /api/v1/payroll/runs/{id}/decision": {
-   "lane": "Payroll S6 계산·검토",
-   "reason": "The review stage will record the second person's approval or rejection.",
-   "when": "2026-11-16"
-  },
-  "POST /api/v1/payroll/runs/{id}/disbursement/attest": {
-   "lane": "Payroll S7 지급",
-   "reason": "The disbursement stage will attest the outcome of a scheduled payment.",
-   "when": "2026-11-18"
-  },
-  "POST /api/v1/payroll/runs/{id}/exceptions/{exceptionId}/resolve": {
-   "lane": "Payroll S6 계산·검토",
-   "reason": "The exception review stage will resolve flagged items before submission.",
-   "when": "2026-11-16"
-  },
-  "POST /api/v1/payroll/runs/{id}/issue-payslips": {
-   "lane": "Payroll S7 교부",
-   "reason": "The delivery stage will issue payslips after the legal delivery gate passes.",
-   "when": "2026-11-18"
-  },
-  "POST /api/v1/payroll/runs/{id}/schedule-disbursement": {
-   "lane": "Payroll S7 지급",
-   "reason": "The disbursement stage will schedule payment for an approved run.",
-   "when": "2026-11-18"
-  },
-  "POST /api/v1/payroll/runs/{id}/submit": {
-   "lane": "Payroll S6 계산·검토",
-   "reason": "The review stage will submit a calculated run for the second person's decision.",
-   "when": "2026-11-16"
-  },
-  "POST /api/v1/payroll/runs/{id}/withdraw": {
-   "lane": "Payroll S6 계산·검토",
-   "reason": "The review stage will withdraw a submitted run so its preparer can correct it.",
-   "when": "2026-11-16"
-  },
   "POST /api/v1/policy/drafts": {
    "lane": "K2",
    "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
@@ -1095,16 +880,6 @@
    "reason": "MAT-ACC owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
-  "POST /api/v1/reason-codes": {
-   "lane": "K5",
-   "reason": "K5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/settings/{key}": {
-   "lane": "K5",
-   "reason": "K5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
   "POST /api/v1/workflow-tasks/{task_id}/claim": {
    "lane": "H1",
    "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
@@ -1120,9 +895,19 @@
    "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
-  "PUT /api/platform/groups/{id}/organizations/{org_id}": {
-   "lane": "T1",
-   "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
+  "POST /api/v2/leave/requests/{id}/alternate-dates": {
+   "lane": "leave",
+   "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
+   "when": "mvp"
+  },
+  "POST /api/v2/leave/requests/{id}/charge-resolution": {
+   "lane": "leave",
+   "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
+   "when": "mvp"
+  },
+  "POST /api/v2/leave/requests/{id}/decide": {
+   "lane": "leave",
+   "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
    "when": "mvp"
   },
   "PUT /api/v1/console/rollout/opt-in": {
@@ -1139,11 +924,6 @@
    "lane": "MAT-PARITY",
    "reason": "Notification centre is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
    "when": "ideal"
-  },
-  "PUT /api/v1/me/workspace": {
-   "lane": "MAT-PARITY",
-   "reason": "Workspace crate is excluded from the release build; reviewed promotion required (built-is-not-ready).",
-   "when": "excluded"
   },
   "PUT /api/v1/policy/drafts/{draft_id}": {
    "lane": "K2",

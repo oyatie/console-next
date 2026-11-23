@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use time::{Date, Month};
 
 /// The correction fields this module owns (`employee_corrections.field`).
-pub const PERSONAL_FIELDS: [&str; 7] = [
+pub const PERSONAL_FIELDS: [&str; 8] = [
     "name_hanja",
     "name_en",
     "nationality",
@@ -24,6 +24,7 @@ pub const PERSONAL_FIELDS: [&str; 7] = [
     "emergency_contacts",
     "photo",
     "group_service_start_date",
+    "bank_account_registered",
 ];
 
 /// Most emergency contacts one employee holds (third-party data, kept small).
@@ -148,7 +149,7 @@ impl ContactRelation {
 }
 
 /// One emergency contact as the client sends it.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct EmergencyContactInput {
     pub name: String,

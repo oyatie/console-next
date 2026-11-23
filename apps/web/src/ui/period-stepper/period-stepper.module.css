@@ -1,0 +1,61 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+/* ui/period-stepper: previous/current/next period navigation in plain and boxed variants. Tokens only. */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: 100%;
+}
+
+.stepBtn {
+  flex: none;
+}
+
+.text {
+  min-width: calc(var(--space-6) * 3);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.stepper[data-variant="boxed"] {
+  gap: 0;
+  min-height: var(--target);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.stepper[data-variant="boxed"] .stepBtn {
+  width: var(--target);
+  min-height: calc(var(--target) - var(--space-half));
+  border: 0;
+  border-radius: 0;
+}
+
+.stepper[data-variant="boxed"] .stepBtn:focus-visible {
+  outline-offset: -2px;
+}
+
+.stepper[data-variant="boxed"] .text {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: calc(var(--target) - var(--space-half));
+  padding: 0 var(--space-2);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  line-height: 1;
+}

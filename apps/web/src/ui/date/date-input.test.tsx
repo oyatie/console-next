@@ -65,6 +65,18 @@ test("Enter commits once, including the subsequent blur", () => {
   expect(field.onChange).toHaveBeenCalledExactlyOnceWith("2026-11-15");
 });
 
+test("Enter on an invalid non-empty draft surfaces error immediately without waiting for blur", () => {
+  const onInvalid = vi.fn();
+  const field = input({ onInvalid, displayFormat: "short-weekday" });
+  field.type("not-a-date");
+  field.enter();
+  expect(onInvalid).toHaveBeenLastCalledWith(true);
+  expect(field.render().props["aria-invalid"]).toBe(true);
+  hooks.cursor = 0;
+  const tree = DateInput({ value: "", today: "2026-10-01", onChange: field.onChange, onInvalid, displayFormat: "short-weekday" });
+  expect(tree.props.children.at(-1).props.role).toBe("alert");
+});
+
 test.each([
   { min: "2026-12-01", message: "uiDate.outOfRange" as const },
   { max: "2026-11-01", message: "uiDate.outOfRange" as const },

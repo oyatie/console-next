@@ -21,17 +21,18 @@ import s from "./access.module.css";
 
 const ICON = { ok: Check, bad: TriangleAlert, info: Info } as const;
 
-function Row({ c, ops, accounts }: { c: Item; ops: string; accounts: readonly Account[] }) {
+function Row({ c, ops, accounts, setup }: { c: Item; ops: string; accounts: readonly Account[]; setup: boolean }) {
   const Icon = ICON[c.tone];
   const who = "account" in c ? c.account.name : ops;
   const person = "account" in c ? accounts.find((a) => a.id === c.account.id) ?? c.account : undefined;
+  const textKey = c.code === "no_grant" && !setup ? ("access.ready.no_grant.text.operating" as const) : (`access.ready.${c.code}.text` as const);
   return (
     <div className={s.check}>
       <Icon size={18} className={s[c.tone]} aria-hidden />
       <div>
         <strong>{t(`access.ready.${c.code}`, { name: who })}</strong>
         {person && <div><PersonLabel person={person} peers={accounts} /></div>}
-        <p>{t(`access.ready.${c.code}.text`, { name: who })}{"alsoNoPasskey" in c && c.alsoNoPasskey && <> {t("access.ready.alsoNoPasskey")}</>}</p>
+        <p>{t(textKey, { name: who })}{"alsoNoPasskey" in c && c.alsoNoPasskey && <> {t("access.ready.alsoNoPasskey")}</>}</p>
       </div>
       {"account" in c && c.code !== "no_passkey" && <Link to="/access/people/$accountId" params={{ accountId: c.account.id }} search={{ grant: true }} className={buttonClass()} aria-label={t("people.label.grant", { name: personLabel(person!, accounts).text })}>{t("access.grant.title")}</Link>}
       {c.code === "no_passkey" && <Link to="/people" search={{ view: "accounts" }} className={buttonClass()}>{t("access.ready.no_passkey.fix")}</Link>}
@@ -54,9 +55,10 @@ export function ReadinessPage() {
   const opsName = personName(ctx.accounts.find((a) => a.id === ctx.ops)?.display_name);
   const pageRead = readGroup([ctx.q, grants]);
   return (
-      <div className="page">
+      <div className="page" data-access-page="">
       <AccessHead
         failed={Boolean(pageRead.error)}
+        lede={!pageRead.error && !pageRead.isPending ? t(ctx.setup ? "access.ready.lede.setup" : "access.ready.lede.live") : undefined}
         actions={!pageRead.error && !pageRead.isPending && ctx.setup ? <Link to="/setup/go-live" className={buttonClass("primary")}><ArrowRight size={16} aria-hidden />{t("access.ready.goLive")}</Link> : undefined}
       />
       <QueryState q={pageRead} layout="list">
@@ -79,7 +81,7 @@ export function ReadinessPage() {
 
 <>
               <Card label={t("access.ready.checks", { count: blocking(checks) })} flush>
-                {checks.map((c, i) => <Row key={`${c.code}:${"account" in c ? c.account.id : i}`} c={c} ops={opsName} accounts={ctx.accounts} />)}
+                {checks.map((c, i) => <Row key={`${c.code}:${"account" in c ? c.account.id : i}`} c={c} ops={opsName} accounts={ctx.accounts} setup={ctx.setup} />)}
               </Card>
               <Card
                 title={title}
@@ -91,16 +93,17 @@ export function ReadinessPage() {
                     label={t("access.ready.list")}
                     rows={g.items}
                     rowId={(x) => x.id}
+                    mobileLayout="compact"
                     columns={[
-                      { header: t("access.col.person"), cell: (x) => <><Link to="/access/people/$accountId" params={{ accountId: x.account_id }}><PersonLabel person={grantPerson(x, ctx.accounts)} peers={ctx.accounts} linked={false} /></Link> <PersonRecordLink person={grantPerson(x, ctx.accounts)} peers={ctx.accounts} /></> },
-                      { header: t("access.col.role"), cell: (x) => x.role_name_ko },
-                      { header: t("access.col.scope"), cell: (x) => storedScope(x.scope, roots) },
-                      { header: t("access.col.until"), fit: true, cell: (x) => periodText(x) },
-                      { header: t("access.col.state"), fit: true, cell: (x) => <EnforcementChip e={x.enforcement} /> },
+                      { card: "fact", rowHeader: true, header: t("access.col.person"), cell: (x) => <bdi className={s.personCell}><Link className={s.plainLink} to="/access/people/$accountId" params={{ accountId: x.account_id }}><PersonLabel person={grantPerson(x, ctx.accounts)} peers={ctx.accounts} linked={false} /></Link> <PersonRecordLink person={grantPerson(x, ctx.accounts)} peers={ctx.accounts} /></bdi> },
+                      { card: "title", header: t("access.col.role"), cell: (x) => <><bdi className={s.desktopOnly}>{x.role_name_ko}</bdi><bdi className={s.phoneOnly}>{[x.role_name_ko, storedScope(x.scope, roots), periodText(x)].join(" · ")}</bdi></> },
+                      { card: "omit", header: t("access.col.scope"), cell: (x) => storedScope(x.scope, roots) },
+                      { card: "omit", header: t("access.col.until"), fit: true, cell: (x) => <bdi className={`num ${s.nowrap}`}>{periodText(x)}</bdi> },
+                      { card: "status", header: t("access.col.state"), fit: true, cell: (x) => <EnforcementChip e={x.enforcement} /> },
                     ]}
                   />
                 ) : (
-                  <EmptyState title={t("access.grants.none")} reason={t("access.ready.none.reason")} />
+                  <EmptyState title={t("access.grants.none")} reason={t(ctx.setup ? "access.ready.none.reason" : "access.ready.none.reason.operating")} />
                 )}
               </Card>
             </></>

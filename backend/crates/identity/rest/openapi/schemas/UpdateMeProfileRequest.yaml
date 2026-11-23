@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+properties:
+  phone:
+    type:
+    - string
+    - 'null'
+  emergency_contacts:
+    type: array
+    maxItems: 3
+    items:
+      $ref: '#/components/schemas/SelfEmergencyContactInput'

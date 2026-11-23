@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required:
+- event_id
+- occurred_at
+- actor_name
+- actor_team
+- action
+- field
+- reason_code
+- target_type
+properties:
+  event_id:
+    type: string
+    format: uuid
+  occurred_at:
+    type: string
+    format: date-time
+  actor_name:
+    type: string
+  actor_team:
+    type: [string, 'null']
+  action:
+    type: string
+  field:
+    type: [string, 'null']
+  reason_code:
+    type: [string, 'null']
+  target_type:
+    type: string

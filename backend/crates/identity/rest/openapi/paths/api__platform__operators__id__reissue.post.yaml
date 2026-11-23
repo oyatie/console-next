@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags:
+  - platform
+operationId: reissuePlatformOperatorInvite
+summary: Reissue a platform operator invite token (platform vendor tier)
+description: Revokes any open invite for an unkeyed active platform operator and mints a fresh one-time enrolment token. Requires OPERATOR_RECOVERY step-up bound to the operator id.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/ReissuePlatformOperatorInviteRequest'
+responses:
+  '200':
+    description: Updated operator summary and replacement one-time enrolment token.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/PlatformOperatorInviteResponse'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '503':
+    $ref: '#/components/responses/ServiceUnavailable'

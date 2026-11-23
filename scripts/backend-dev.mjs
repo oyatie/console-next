@@ -136,7 +136,11 @@ function rrnKeys() {
     }
     return readFileSync(file, "utf8").trim();
   };
-  return { CONSOLE_RRN_MASTER_KEY: process.env.CONSOLE_RRN_MASTER_KEY ?? key("rrn-master.key"), CONSOLE_RRN_HMAC_KEY: process.env.CONSOLE_RRN_HMAC_KEY ?? key("rrn-hmac.key") };
+  return {
+    CONSOLE_RRN_MASTER_KEY: process.env.CONSOLE_RRN_MASTER_KEY ?? key("rrn-master.key"),
+    CONSOLE_RRN_HMAC_KEY: process.env.CONSOLE_RRN_HMAC_KEY ?? key("rrn-hmac.key"),
+    CONSOLE_OTP_HMAC_KEY: process.env.CONSOLE_OTP_HMAC_KEY ?? key("otp-hmac.key"),
+  };
 }
 
 function appEnv(role) {

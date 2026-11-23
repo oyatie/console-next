@@ -3,6 +3,10 @@
 .card[data-look] { box-shadow: none; border-radius: var(--radius); }
 .card[data-look="dashed"] { border-style: dashed; border-color: var(--control-border); background: var(--canvas); }
 .card[data-look="muted"] { background: var(--muted); }
+.card[data-look="flush"] { border: 0; border-bottom: 1px solid var(--border); border-radius: 0; box-shadow: none; }
+.card[data-look="flush"][data-top-rule] { border-top: 1px solid var(--border); }
+.card[data-look="flush"]:last-child { border-bottom: 0; }
+.card[data-look="flush"] > .head { min-height: var(--row-h); padding: var(--space-1-5) var(--space-4); }
 .card[data-look] > .body { padding: var(--space-3); gap: var(--space-2); }
 .head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-height: calc(var(--row-h) + var(--space-3)); padding: var(--space-2) var(--space-4); border-bottom: 1px solid var(--border); }
 .title { margin: 0; font-size: var(--text-body); font-weight: var(--fw-strong); }

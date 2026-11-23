@@ -84,3 +84,18 @@ test.each(["loading", "failed"])("%s keeps commands and their overlays mounted",
   expect(html).not.toContain('data-contract-region="list"');
   if (state === "failed") expect(html).toContain("pattern-failure");
 });
+
+const BASELINE_FALLBACK = "baseline-fallback";
+
+test("ListRecord renders baseline fallback when baseline prop is supplied in baseline experience", async () => {
+  const html = await markup(
+    <ListRecord
+      q={read}
+      head={{ title: "Roster" }}
+      list={mark("list")}
+      baseline={() => <div data-baseline-fallback="true">{BASELINE_FALLBACK}</div>}
+    />,
+  );
+  expect(html).toContain('data-baseline-fallback="true"');
+  expect(html).not.toContain('data-contract-region="list"');
+});

@@ -38,6 +38,7 @@ test("onboarding creates every account through the product", { tag: "@smoke" }, 
 
   // Passkey sign-in after sign-out (usernameless, discoverable credential).
   await admin.getByRole("button", { name: "로그아웃" }).click();
+  await expect(admin).toHaveURL(/\/login(?:\?|$)/);
   await passkeyLogin(admin);
 
   // Account administration (governance-01): no role chips and no role change; the panel says what the account may

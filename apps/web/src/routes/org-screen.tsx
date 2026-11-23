@@ -3,19 +3,19 @@ import { AccessGate } from "../reference/authz/ui/access-gate";
 import { useQuery } from "@tanstack/react-query";
 import { lazy, Suspense } from "react";
 import { chunk } from "../lib/chunk-guard";
-import { WorkplaceSidePanel } from "../features/entity/ui/workplace-side-panel";
 import { useFreshOnArrival } from "../lib/react/arrival";
 import { StructurePanel } from "../features/org/ui/structure-selection";
 import { StructurePage } from "../features/structure/ui/structure-page";
 import { unitsQuery } from "../reference/org/api";
 import { StructureSlots, type StructureSlotsValue } from "../reference/org/ui/use-structure-slots";
 
+const WorkplaceSidePanel = lazy(() => chunk(import("../features/entity/ui/workplace-side-panel")).then(m => ({ default: m.WorkplaceSidePanel })));
 const WorkplaceSheet = lazy(() => chunk(import("../features/entity/ui/workplace-sheets")).then(m => ({ default: m.WorkplaceSheet })));
 const ProposeSlot = lazy(() => chunk(import("../features/org/ui/propose-card")).then(m => ({ default: m.ProposeSlot })));
 const StructureSheets = lazy(() => chunk(import("../features/org/ui/structure-sheets")).then(m => ({ default: m.StructureSheets })));
 
 const slots: StructureSlotsValue = {
-  workplacePanel: (p) => <WorkplaceSidePanel {...p} />,
+  workplacePanel: (p) => <Suspense fallback={null}><WorkplaceSidePanel {...p} /></Suspense>,
   workplaceSheet: (p) => <Suspense fallback={null}><WorkplaceSheet {...p} /></Suspense>,
 };
 

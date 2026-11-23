@@ -31,6 +31,9 @@ pub enum AuthError {
 
     #[error("invalid stored auth data: {0}")]
     InvalidStoredData(String),
+
+    #[error("csprng unavailable")]
+    Csprng,
 }
 
 impl AuthError {

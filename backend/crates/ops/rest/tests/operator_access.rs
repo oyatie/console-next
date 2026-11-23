@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+use aws_lc_rs::digest::{SHA256, digest};
 use console_ops_rest::operators::{OperatorRegistry, Refusal};
 use serde_json::{Value, json};
-use sha2::{Digest, Sha256};
 use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
 
@@ -23,7 +23,7 @@ fn refusal_codes_match_the_ops_contract() {
 fn registry(grants: Value) -> String {
     json!([{
         "person": PERSON,
-        "email_sha256": hex::encode(Sha256::digest(b"operator@example.invalid")),
+        "email_sha256": hex::encode(digest(&SHA256, b"operator@example.invalid")),
         "grants": grants
     }])
     .to_string()
@@ -169,6 +169,8 @@ fn registry_refuses_ambiguous_identity_and_invalid_facts() {
     for (pointer, replacement) in [
         ("/0/person", json!("not-a-uuid")),
         ("/0/email_sha256", json!("operator@example.invalid")),
+        ("/0/email_sha256", json!("a".repeat(63))),
+        ("/0/email_sha256", json!("a".repeat(65))),
         ("/0/email_sha256", json!("G".repeat(64))),
         ("/0/email_sha256", json!("A".repeat(64))),
         ("/0/grants/0/from", json!("2026-10-28T00:00:00+00:00")),

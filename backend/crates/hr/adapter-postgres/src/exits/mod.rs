@@ -4,8 +4,12 @@
 mod approval_draft;
 mod assignment_end;
 pub mod audit;
+pub mod bulk_report;
+mod bulk_report_eval;
+mod bulk_report_preload;
 mod close;
 pub mod confirm;
+pub mod counts;
 mod deadlines;
 pub use deadlines::settlement_deadlines;
 pub mod group_transfer_case;

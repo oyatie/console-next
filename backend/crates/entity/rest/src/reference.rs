@@ -16,7 +16,7 @@ use serde::Deserialize;
 use serde_json::json;
 
 use crate::EntityRestState;
-use crate::auth::{Need, actor};
+use crate::auth::{Need, actor, tenant_actor};
 use crate::error::RestError;
 use console_entity_application::Target;
 
@@ -73,7 +73,7 @@ pub(crate) async fn address_search(
     h: HeaderMap,
     Query(q): Query<SearchQuery>,
 ) -> Result<Response> {
-    let (a, _) = actor(&s, &h, Need::Read, Target::Tenant).await?;
+    let a = tenant_actor(&s, &h).await?;
     let keyword = q.q.trim();
     if keyword.is_empty() {
         return Err(RestError(Refusal::field("q", "required")));
@@ -153,7 +153,7 @@ pub(crate) async fn address_detail(
     h: HeaderMap,
     Query(q): Query<DetailQuery>,
 ) -> Result<Response> {
-    let (a, _) = actor(&s, &h, Need::Read, Target::Tenant).await?;
+    let a = tenant_actor(&s, &h).await?;
     let b = building(&q)?;
     let out = match &s.juso {
         None => AddressDetail {

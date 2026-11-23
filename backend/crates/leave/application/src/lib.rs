@@ -31,6 +31,9 @@ use console_leave_domain::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+mod self_service;
+pub use self_service::*;
+
 // ---------------------------------------------------------------------------
 // Create (crate-level write port — no public REST route)
 // ---------------------------------------------------------------------------
@@ -364,26 +367,6 @@ pub struct LeaveBalancePage {
 
 /// Exact self-service balance projection. `None` means the source roster has
 /// not established that figure; zero is an explicit, materially different value.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum SelfLeaveFilingState {
-    Ready,
-    HomeBranchRequired,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct SelfLeaveBalanceView {
-    pub employee_id: Uuid,
-    pub name: String,
-    pub accrued_units: Option<LeaveBalanceAmount>,
-    pub used_units: Option<LeaveBalanceAmount>,
-    pub remaining_units: Option<LeaveBalanceAmount>,
-    /// Filing is ready only when the trusted employee identity has an active
-    /// home branch. History and balances remain readable in either state.
-    pub filing_state: SelfLeaveFilingState,
-    pub home_branch_id: Option<Uuid>,
-}
-
 /// Closed set for the engine-submission state attached to a statutory push.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

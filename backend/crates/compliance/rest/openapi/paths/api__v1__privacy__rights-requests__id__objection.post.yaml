@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [Compliance]
+operationId: objectPrivacyRightsRequest
+summary: File an objection against a prior privacy rights request decision
+security: [{ bearerAuth: [] }]
+parameters:
+- { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 16, maxLength: 200 } }
+- { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        additionalProperties: false
+        required: [kinds]
+        properties:
+          kinds: { type: array, minItems: 1, items: { type: string, enum: [ACCESS, CORRECTION, DELETION, SUSPENSION, WITHDRAWAL] } }
+          detail: { type: string, maxLength: 2000, default: '' }
+          channel: { type: string, enum: [IN_APP, PHONE, LETTER, EMAIL, IN_PERSON] }
+          agent: { type: string, enum: [SUBJECT, LEGAL_REPRESENTATIVE, AUTHORIZED] }
+          mandate_received: { type: boolean, default: false }
+          identity_method: { type: string, enum: [SIGNED_IN, PASSKEY, ID_DOCUMENT_SEEN, KNOWN_CONTACT, AGENT_MANDATE] }
+          received_on: { type: string, format: date, nullable: true }
+responses:
+  '200': { description: Objection receipt or exact idempotent replay., content: { application/json: { schema: { $ref: '#/components/schemas/PrivacyRightsReceipt' } } } }
+  '401': { $ref: '#/components/responses/Unauthorized' }
+  '403': { $ref: '#/components/responses/Forbidden' }
+  '404': { $ref: '#/components/responses/NotFound' }
+  '409': { $ref: '#/components/responses/Conflict' }
+  '422': { $ref: '#/components/responses/ValidationError' }
+  '503': { $ref: '#/components/responses/ServiceUnavailable' }

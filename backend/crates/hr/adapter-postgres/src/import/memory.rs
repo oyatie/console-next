@@ -13,6 +13,7 @@ use console_platform_db::with_org_conn;
 use sqlx::Postgres;
 use uuid::Uuid;
 
+use crate::import::header::allowed_column_target;
 use crate::{HrError, HrService};
 
 impl HrService {
@@ -29,7 +30,14 @@ impl HrService {
                 .bind(*org.as_uuid())
                 .fetch_all(tx.as_mut())
                 .await?;
-                Ok(rows.into_iter().collect())
+                Ok(rows
+                    .into_iter()
+                    .filter(|(key, target)| {
+                        target
+                            .as_deref()
+                            .is_none_or(|target| allowed_column_target(key, target))
+                    })
+                    .collect())
             })
         })
         .await
@@ -44,6 +52,12 @@ pub async fn remember_columns(
     labels: &[(String, Option<String>)],
 ) -> Result<(), HrError> {
     for (key, target) in labels {
+        if target
+            .as_deref()
+            .is_some_and(|target| !allowed_column_target(key, target))
+        {
+            continue;
+        }
         sqlx::query(
             "INSERT INTO import_column_memory (org_id, header_key, target, updated_by) \
              VALUES ($1, $2, $3, $4) ON CONFLICT (org_id, header_key) \

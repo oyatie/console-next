@@ -1,22 +1,14 @@
-import { lazy, Suspense, useId, useRef, useState, type ButtonHTMLAttributes, type FormHTMLAttributes, type ReactNode, type Ref } from "react";
+import { lazy, Suspense, useId, useRef, useState, type ButtonHTMLAttributes, type FormHTMLAttributes, type ReactNode } from "react";
 import { t } from "@console/i18n";
 import { chunk } from "../../lib/chunk-guard";
 import type { ErrorSummaryItem } from "../error-summary";
 import type { ButtonSize, ButtonVariant } from "./button-class";
 import { Button } from "./button-base";
-export { Button } from "./button-base";
+export { Button, IconButton } from "./button-base";
 
 const ErrorSummary = lazy(() => chunk(import("../error-summary")).then(m => ({ default: m.ErrorSummary })));
 
 export type { ButtonSize, ButtonVariant };
-
-/**
- * An icon-only button (a close ×, a row's ⋯, a zoom step): square, its name in `label` (the accessible name and the
- * tooltip). Never for a destructive act, which always says what it does in words (design-language §5.1).
- */
-export function IconButton({ label, variant = "ghost", ...rest }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "aria-label" | "title"> & { label: string; variant?: Exclude<ButtonVariant, "danger" | "ghost-danger">; size?: ButtonSize; ref?: Ref<HTMLButtonElement> }) {
-  return <Button {...rest} variant={variant} icon aria-label={label} title={label} />;
-}
 
 /** An on/off button (`aria-pressed`): a filter or a view switch in a toolbar. */
 export function ToggleButton({ pressed, look, count, countTone, className, children, ...rest }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "aria-pressed"> & {
@@ -26,8 +18,8 @@ export function ToggleButton({ pressed, look, count, countTone, className, child
   look?: "chip";
   /** The server's count after the label: it keeps its width while it loads, so nothing beside it moves. */
   count?: ReactNode;
-  /** `warn`: a to-do count (something waits on someone). */
-  countTone?: "warn";
+  /** `warn` or `danger`: a to-do or overdue count waiting on someone. */
+  countTone?: "warn" | "danger";
 }) {
   const cls = [look === "chip" && "btn--chip", className].filter(Boolean).join(" ") || undefined;
   return (
@@ -89,12 +81,25 @@ export function Form({ onSubmit, children, onChangeCapture, ...rest }: Omit<Form
   );
 }
 
-/** A checkbox with a visible statement, or an accessible label for table selection. */
-export function Check({ checked, onChange, children, "aria-label": label }: { checked: boolean; onChange: (v: boolean) => void; children?: ReactNode; "aria-label"?: string }) {
+/**
+ * A checkbox with a visible statement, or an accessible label for table selection. `switch` is for a setting that is
+ * on or off and applies as soon as the box changes: the same box, with the switch role, so it is announced as on or off.
+ */
+export function Check({ checked, onChange, children, count, switch: asSwitch, "aria-label": label, "aria-describedby": describedBy }: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  children?: ReactNode;
+  /** Optional facet or item count shown beside the checkbox statement. */
+  count?: ReactNode;
+  switch?: boolean;
+  "aria-label"?: string;
+  "aria-describedby"?: string;
+}) {
   return (
     <label className="check">
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} aria-label={label} />
+      <input type="checkbox" role={asSwitch ? "switch" : undefined} checked={checked} onChange={(e) => onChange(e.target.checked)} aria-label={label} aria-describedby={describedBy} />
       {children != null && <span>{children}</span>}
+      {count !== undefined && <data className="btn__count" value={typeof count === "number" || typeof count === "string" ? String(count) : undefined}>{count}</data>}
     </label>
   );
 }

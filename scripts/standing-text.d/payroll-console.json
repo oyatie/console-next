@@ -1,0 +1,15 @@
+{
+  "baseline": {
+    "apps/web/src/features/payroll/ui/run-console.tsx#RunConsole": 10
+  },
+  "newScreens": {
+    "apps/web/src/features/payroll/ui/run-console.tsx#RunConsole": {
+      "FACT": 7,
+      "REFUSAL": 0,
+      "EMPTY": 1,
+      "LEGAL": 0,
+      "RECEIPT": 2,
+      "EXPLANATION": 0
+    }
+  }
+}

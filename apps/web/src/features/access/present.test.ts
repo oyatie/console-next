@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { beforeAll, expect, test } from "vitest";
 import { loadCatalog, t } from "@console/i18n";
-import { accountLabel } from "./present";
+import { accessRefusal, accountLabel } from "./present";
 
 beforeAll(() => loadCatalog("ko"));
 
@@ -20,4 +20,23 @@ test("missing employee number uses primary placement, and missing all facts uses
 
 test("an empty name never leaves an empty interpolation", () => {
   expect(accountLabel({ id: "a", display_name: "  ", employee_number: "E-1" }, "a")).toBe(`${t("people.label.unnamed")} · E-1`);
+});
+
+test("all five access refusal codes resolve in both ko and en catalogs", async () => {
+  const codes = [
+    "role_not_draft",
+    "role_has_active_grants",
+    "access_request_note_required",
+    "access_request_closed",
+    "access_request_not_found",
+  ] as const;
+  for (const locale of ["ko", "en"] as const) {
+    await loadCatalog(locale);
+    for (const code of codes) {
+      const msg = accessRefusal(code);
+      expect(msg).toBeTruthy();
+      expect(msg).not.toContain(code);
+    }
+  }
+  await loadCatalog("ko");
 });

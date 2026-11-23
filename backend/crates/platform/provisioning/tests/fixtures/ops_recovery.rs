@@ -191,7 +191,7 @@ impl Harness {
         sqlx::query("UPDATE auth_bootstrap_credentials SET issued_at=clock_timestamp()-interval '2 hours',expires_at=clock_timestamp()-interval '1 hour' WHERE id=(SELECT code_credential_id FROM ops_recovery_requests WHERE org_id=$1 AND id=$2)")
             .bind(self.org.as_uuid()).bind(id).execute(&self.owner).await.unwrap();
         assert!(matches!(
-            BootstrapCredentialStore
+            BootstrapCredentialStore::default()
                 .redeem_otp(&self.runtime, token, OffsetDateTime::now_utc())
                 .await,
             Err(ProvisioningError::InvalidBootstrapCredential)

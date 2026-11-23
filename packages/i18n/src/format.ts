@@ -8,6 +8,7 @@ type Formatters = {
   weekdayShort: Intl.DateTimeFormat;
   weekdayLong: Intl.DateTimeFormat;
   dateTime: Intl.DateTimeFormat;
+  time: Intl.DateTimeFormat;
   month: Intl.DateTimeFormat;
   monthShort: Intl.DateTimeFormat;
   number: Intl.NumberFormat;
@@ -25,6 +26,7 @@ const fmt = () => {
         weekdayShort: new Intl.DateTimeFormat(tag, { timeZone: TZ, weekday: "short" }),
         weekdayLong: new Intl.DateTimeFormat(tag, { timeZone: TZ, weekday: "long" }),
         dateTime: new Intl.DateTimeFormat(tag, { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }),
+        time: new Intl.DateTimeFormat(tag, { timeZone: TZ, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }),
         month: new Intl.DateTimeFormat(tag, { timeZone: "UTC", year: "numeric", month: "long" }),
         monthShort: new Intl.DateTimeFormat(tag, { timeZone: "UTC", year: "numeric", month: "short" }),
         number: new Intl.NumberFormat(tag),
@@ -83,10 +85,25 @@ export function fmtDateInput(v: unknown) {
   return i18n.locale === "ko" ? `${year}. ${month}. ${day}.` : `${month}/${day}/${year}`;
 }
 
+/** A compact month-day and short weekday display (e.g. `MM-DD (weekday)` in Korean), or `""` when invalid. */
+export function fmtDateShortWeekday(v: unknown) {
+  const d = typeof v === "string" ? dateOnly(v) : null;
+  if (!d) return "";
+  const [, month, day] = (v as string).split("-");
+  const weekday = fmt().weekdayShort.format(d);
+  return i18n.locale === "ko" ? `${month}-${day} (${weekday})` : `${weekday}, ${month}/${day}`;
+}
+
 /** A timestamp in Korean business time; every display includes the KST zone label. */
 export function fmtDateTime(v: unknown) {
   const d = parseTimestamp(v);
   return d ? `${fmt().dateTime.format(d)} KST` : "—";
+}
+
+/** A clock time (HH:MM KST) in Korean business time for live staleness labels. */
+export function fmtTimeKst(v: unknown) {
+  const d = typeof v === "number" && Number.isFinite(v) ? new Date(v) : parseTimestamp(v);
+  return d && Number.isFinite(d.getTime()) ? `${fmt().time.format(d)} KST` : "—";
 }
 
 /** Compatibility export for callers owned by other lanes. */

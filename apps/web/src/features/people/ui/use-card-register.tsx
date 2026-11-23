@@ -2,7 +2,6 @@ import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { registerGaps, registerItems, type RegisterItem } from "../domain/card";
 import type { Card } from "./use-card";
-import s from "./card.module.css";
 
 /** The nine register items of one person and what each holds, as words (masked items say only "present, masked"). */
 export function useCardRegister(c: Card) {
@@ -23,7 +22,7 @@ export function useCardRegister(c: Card) {
   });
   const gaps = registerGaps(items);
   const value = (i: RegisterItem) => {
-    if (!i.present) return <span className={s.gap}>{t("empCard.reg.gap")}</span>;
+    if (!i.present) return <span className="t-warn t-medium">{t("empCard.reg.gap")}</span>;
     switch (i.key) {
       case "name": return e.name;
       case "sex": return r?.sex ? t(`empCard.sex.${r.sex}`) : "";

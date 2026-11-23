@@ -37,7 +37,13 @@ responses:
   '403':
     $ref: '#/components/responses/Forbidden'
   '409':
-    description: The linked active employee has no explicit home branch (`leave_home_branch_review_required`), or the supplied `idempotency_key` is already bound to different client intent (`leave_create.idempotency_conflict`).
+    description: >-
+      The linked active employee has no explicit home branch
+      (`leave_home_branch_review_required`), the requested dates overlap an
+      existing pending or approved request (`leave_overlapping_request`), the
+      requested dates fall inside a closed attendance or payroll period
+      (`leave_period_closed`), or the supplied `idempotency_key` is already
+      bound to different client intent (`leave_create.idempotency_conflict`).
     content:
       application/json:
         schema:

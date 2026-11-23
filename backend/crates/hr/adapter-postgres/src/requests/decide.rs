@@ -14,7 +14,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::cedar::{DecideFacts, enforce_change_request_decide};
-use super::read::change_request_from_row;
+use super::read::{change_request_from_row, hydrate_subject_meta};
 use super::{
     ChangeRequestResponse, DecideChangeRequest, approval_class, note, reason_code, refusal,
 };
@@ -166,7 +166,8 @@ impl HrService {
                 .bind(note.as_deref())
                 .fetch_one(tx.as_mut())
                 .await?;
-                let closed = change_request_from_row(&row)?;
+                let mut closed = change_request_from_row(&row)?;
+                hydrate_subject_meta(tx, org_uuid, &mut closed).await?;
                 let event = AuditEvent::new(
                     Some(principal.user_id),
                     AuditAction::new("change_request.decide").map_err(HrError::from_kernel)?,

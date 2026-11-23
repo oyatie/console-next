@@ -2,6 +2,8 @@
 
 #[cfg(feature = "ontology")]
 pub(crate) mod dispatch;
+#[cfg(feature = "attendance")]
+pub(crate) mod leave_calendar;
 #[cfg(feature = "mail")]
 pub(crate) mod mail;
 pub(crate) mod orgchange_people;

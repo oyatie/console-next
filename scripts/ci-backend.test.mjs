@@ -61,12 +61,19 @@ test("release policy CI evidence runs on every dev push and is required by ci-ok
   }
 });
 
+test("the live retention proof runs even when its database shard is red", () => {
+  const db = yaml.load(readFileSync(new URL("../.github/workflows/db-tests.yml", import.meta.url), "utf8"));
+  const steps = Object.values(db.jobs).flatMap(job => job.steps ?? []).filter(s => s.name === "Verify SeaweedFS compliance retention");
+  assert.equal(steps.length, 1);
+  assert.equal(steps[0].if, "${{ !cancelled() && matrix.shard == 1 }}");
+});
+
 test("Home uses a release artifact on every candidate; every Rust check stays required", () => {
   assert.deepEqual(ci.jobs.home.needs, ["affected", "backend-release"]);
   assert.equal(ci.jobs["d10-probes"], undefined);
   for (const name of backendJobs) assert.ok(ci.jobs["ci-ok"].needs.includes(name), name);
   assert.ok(ci.jobs.backend.steps.some(s => s.run === "cargo fmt --check"));
-  assert.ok(ci.jobs.backend.steps.some(s => s.run === "cargo clippy --workspace --all-targets --locked -- -D warnings"));
+  assert.ok(ci.jobs.backend.steps.some(s => s.run === "cargo clippy --workspace --all-targets --locked --features console-platform-storage/test-seaweedfs -- -D warnings"));
   assert.ok(ci.jobs["backend-gates"].steps.some(s => s.run === "cargo test --locked -p console-gate-migration-safety"));
   assert.ok(ci.jobs["backend-release"].steps.some(s => s.run === "cargo build --release --locked -p console-app --features e2e-test-support"));
 });
@@ -591,4 +598,44 @@ test("backend artifacts have one same-run producer and no staleness or promotion
   assert.equal(upload.if, undefined);
   assert.ok(!upload["continue-on-error"]);
   assert.equal(upload.with.path, "backend/target/release/console-app");
+});
+
+test("a design-system PR runs the repository text gates and passes ci-ok with every backend job skipped", () => {
+  const outputs = { backend: "false", web: "true", docs: "only" };
+  const github = { event_name: "pull_request" };
+  const needs = { affected: { result: "success", outputs } };
+  const active = expression => new Function("github", "needs", "cancelled", `return ${expression.replace(/^\$\{\{\s*|\s*\}\}$/g, "")}`)(github, needs, () => false);
+  assert.equal(ci.jobs.affected.outputs.docs, "${{ steps.paths.outputs.docs }}");
+  for (const name of backendJobs) {
+    assert.equal(active(ci.jobs[name].if), false, name);
+    needs[name] = { result: "skipped" };
+  }
+  assert.equal(active(ci.jobs.home.if), false);
+  const textGate = ci.jobs.web.steps.find(step => step.run?.includes("console-gate-vendor-lockin"));
+  assert.equal(textGate["working-directory"], "backend");
+  assert.match(textGate.run, /cargo run --locked -p console-gate-vendor-lockin/);
+  assert.match(textGate.run, /cargo run --locked -p console-gate-layer-boundary/);
+  assert.ok(!textGate["continue-on-error"]);
+  const aggregate = ci.jobs["ci-ok"];
+  for (const name of aggregate.needs) {
+    needs[name] ??= { result: ["home", "states-timings", "backend-cache", "dev-artifacts", "release-evidence"].includes(name) ? "skipped" : "success" };
+  }
+  const run = () => spawnSync("bash", ["-e", "-c", aggregate.steps[0].run], {
+    encoding: "utf8", env: { ...process.env, GITHUB_EVENT_NAME: github.event_name, NEEDS: JSON.stringify(needs) },
+  });
+  assert.equal(run().status, 0);
+  needs.web.result = "failure";
+  assert.notEqual(run().status, 0);
+  for (const value of ["only", "mixed", "none"]) {
+    outputs.docs = value;
+    assert.equal(active(textGate.if), value !== "none");
+    assert.equal(active(ci.jobs["backend-release"].if), value !== "only");
+  }
+  outputs.docs = "only";
+  outputs.backend = "true";
+  assert.equal(active(textGate.if), false);
+  assert.equal(active(ci.jobs["backend-release"].if), true);
+  outputs.backend = "false";
+  github.event_name = "merge_group";
+  assert.equal(active(ci.jobs["backend-release"].if), true);
 });

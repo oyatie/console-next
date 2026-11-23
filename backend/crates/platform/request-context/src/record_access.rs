@@ -38,6 +38,9 @@ pub async fn may_read(
     if kind == "employee_views" {
         return employee_views::may_read(pool, principal, id).await;
     }
+    if kind == "access_log_review" {
+        return access::may_read_log_review(pool, principal).await;
+    }
     if hr::handles(kind) {
         return hr::may_read(pool, principal, kind, id).await;
     }

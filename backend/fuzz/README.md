@@ -38,7 +38,7 @@ product fix is open the test is `#[ignore]`d (it fails on the current tree:
 |---|---|---|---|---|
 | FZ-1 | `import-cells` | RRN parsing refuses invalid character boundaries without panicking | `hr/domain/tests/fuzz_regressions.rs` | fixed |
 | FZ-2 | `import-cells` | (withdrawn: the target's own invariant was wrong; `is_rrn_value` is a superset of `contains_rrn_shaped` by design) | — | — |
-| FZ-3 | `kr-ids` | `PhoneE164` stores `00 82 10-…` / `+82 0…` as `+820…`, which re-parses to another number | `kernel/core/tests/fuzz_regressions.rs` | open, kernel |
+| FZ-3 | `kr-ids` | `PhoneE164` round-trips stored phone numbers, including international dial prefixes and redundant Korean trunk zeros | `kernel/core/tests/fuzz_regressions.rs` | fixed |
 | FZ-4 | `import-cells` | Every RRN spelling accepted by the vault is caught by the import scrub | `hr/domain/tests/fuzz_regressions.rs` | fixed |
 | FZ-5 | `xlsx-read` | a reversed `<dimension ref="B2:A1"/>` underflows in calamine `get_dimension` (panic wherever overflow checks are on) | `app/src/hr/workbook_read_tests.rs`, input `regressions/fz5-reversed-dimension.xlsx` | fixed; preflight refuses invalid dimensions and non-UTF-8 XML; vendored calamine checks dimension, cell and row arithmetic |
 

@@ -57,4 +57,10 @@ ladder!(Live {
     Reconnecting,
     Offline
 });
-ladder!(WorkKind { Page = "page", Overdue = "overdue", Due = "due", Ticket = "ticket" });
+ladder!(WorkKind {
+    Page = "page",
+    Overdue = "overdue",
+    Due = "due",
+    Ticket = "ticket",
+    Obligation = "obligation"
+});

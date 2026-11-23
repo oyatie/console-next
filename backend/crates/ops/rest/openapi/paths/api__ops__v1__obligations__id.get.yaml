@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+operationId: "opsObligationDetail"
+summary: "Read Obligation Detail"
+x-cedar-action: "obligation.read"
+security: [{"accessJwt": []}]
+description: "Returns a single operational obligation and its full spool event log."
+parameters: [{"in": "path", "name": "id", "required": true, "schema": {"$ref": "#/components/schemas/Text"}}]
+responses: {"200": {"description": "Obligation detail.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ObligationDetail"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}

@@ -111,6 +111,7 @@ for (const picker of ["code", "address"] as const) for (const width of [1440, 39
       await page.goto(`/org/entities/new?kind=CORPORATION&name=${encodeURIComponent("검증사업자")}`);
       const input = page.getByRole("combobox", { name: t(picker === "code" ? "entityCreate.field.taxOffice" : "entityCreate.field.businessAddress") });
       await input.scrollIntoViewIfNeeded();
+      await expect(input).toBeVisible();
       await input.focus();
       await page.evaluate(() => document.fonts.ready.then(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))));
       await input.fill("검증");

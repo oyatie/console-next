@@ -2,8 +2,9 @@ import { api, unwrap } from "./client";
 import { platform } from "./platform";
 import type { components } from "./schema";
 
-/** The BW-29 step-up kinds a web command binds its passkey assertion to (the server's step_up_kind.rs). */
-export type StepUpKind = "PII_REVEAL" | "PII_RECORD" | "PERIOD_UNLOCK" | "IDENTITY_MERGE" | "EXCEPTION_DECIDE" | "OPERATOR_RECOVERY" | "SUPPORT_SESSION" | "PRIVACY_REQUEST";
+/** The step-up kinds a web command binds its passkey assertion to (the server's step_up_kind.rs). */
+export type StepUpKind = "PII_REVEAL" | "PII_RECORD" | "PERIOD_UNLOCK" | "IDENTITY_MERGE" | "EXCEPTION_DECIDE" | "OPERATOR_RECOVERY" | "SUPPORT_SESSION" | "PRIVACY_REQUEST" | "PRIVACY_REQUEST_DECIDE" | "SETTINGS_CHANGE";
+const NIL_UUID = "00000000-0000-0000-0000-000000000000";
 const reasonKey = (kind: StepUpKind): `passkey_step_up_${Lowercase<StepUpKind>}` => `passkey_step_up_${kind.toLowerCase() as Lowercase<StepUpKind>}`;
 
 type Envelope = components["schemas"]["MobilePasskeyStepUpEnvelope"];
@@ -31,4 +32,17 @@ export async function assertBoundPasskeyHash(kind: StepUpKind, objectId: string,
   const credential = await platform().passkeys.get(publicKey);
   if (!credential) throw new Error("passkey_cancelled");
   return { binding: binding, assertion: { ceremony_id: start.ceremony_id, credential: credential as Record<string, unknown> } };
+}
+
+/**
+ * Serializes the exact `{ "key": ..., "value": ... }` JSON expected by
+ * `backend/crates/settings/adapter-postgres/src/tx.rs::settings_change_payload`.
+ */
+function settingsChangePayload(key: string, value: unknown): string {
+  return JSON.stringify({ key, value });
+}
+
+/** Bind a SETTINGS_CHANGE passkey assertion to the target setting key, next value, and optional scope entity. */
+export async function assertSettingsChangeStepUp(key: string, value: unknown, scopeEntityId?: string | null): Promise<Envelope> {
+  return assertBoundPasskey("SETTINGS_CHANGE", scopeEntityId ?? NIL_UUID, settingsChangePayload(key, value));
 }

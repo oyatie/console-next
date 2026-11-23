@@ -14,9 +14,8 @@ use crate::import::apply::{
     Checked, apply_failure, apply_support_reference, check_and_build, conflict,
     with_apply_support_reference,
 };
-use crate::import::apply_job::{
-    ApplyJob, DriverSlot, STALE_AFTER_SECS, progress_audit, read_job, write_job,
-};
+use crate::import::apply_drive_helpers::fresh;
+use crate::import::apply_job::{ApplyJob, DriverSlot, progress_audit, read_job, write_job};
 use crate::import::apply_progress;
 use crate::import::apply_report::final_report;
 use crate::import::settle::{Chunk, SETTLE_CHUNK_ROWS, settle_chunk, settle_keys};
@@ -56,22 +55,6 @@ pub async fn refuse_while_running(
     }
 }
 
-async fn fresh(
-    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-    org: Uuid,
-    run: Uuid,
-) -> Result<bool, HrError> {
-    Ok(sqlx::query_scalar(
-        "SELECT COALESCE(apply_heartbeat_at > now() - make_interval(secs => $3), false) \
-           FROM data_import_runs WHERE org_id = $1 AND id = $2",
-    )
-    .bind(org)
-    .bind(run)
-    .bind(f64::from(STALE_AFTER_SECS))
-    .fetch_one(tx.as_mut())
-    .await?)
-}
-
 impl HrService {
     /// Checks synchronously, then records the job for the caller to drive.
     pub async fn start_apply(
@@ -82,6 +65,7 @@ impl HrService {
     ) -> Result<Started, HrError> {
         let org = principal.org_id;
         let digest = body.dry_run_digest.trim().to_owned();
+        let rrn_vault = self.rrn_vault.clone();
         with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
                 let org_uuid = *org.as_uuid();
@@ -98,22 +82,28 @@ impl HrService {
                         return Ok((Started::Running(job.clone()), Vec::new()));
                     }
                 }
-                let started = match check_and_build(tx, org_uuid, run_id, &digest).await? {
-                    Checked::Replay(report) => match job {
-                        Some(job) if job.state == "done" => {
-                            return Ok((Started::Done(job.report.unwrap_or(report)), Vec::new()));
-                        }
-                        // Applied before jobs or with settle unfinished: finish it.
-                        _ => ApplyJob {
-                            state: "settling".into(),
+                let started =
+                    match check_and_build(tx, org_uuid, run_id, &digest, rrn_vault.as_deref())
+                        .await?
+                    {
+                        Checked::Replay(report) => match job {
+                            Some(job) if job.state == "done" => {
+                                return Ok((
+                                    Started::Done(job.report.unwrap_or(report)),
+                                    Vec::new(),
+                                ));
+                            }
+                            // Applied before jobs or with settle unfinished: finish it.
+                            _ => ApplyJob {
+                                state: "settling".into(),
+                                ..ApplyJob::queued(run_id, &digest, principal.user_id)
+                            },
+                        },
+                        Checked::Apply(_) => ApplyJob {
+                            total: settle_keys(tx, org, run_id).await?.len(),
                             ..ApplyJob::queued(run_id, &digest, principal.user_id)
                         },
-                    },
-                    Checked::Apply(_) => ApplyJob {
-                        total: settle_keys(tx, org, run_id).await?.len(),
-                        ..ApplyJob::queued(run_id, &digest, principal.user_id)
-                    },
-                };
+                    };
                 apply_progress::reset(tx, org_uuid, &started).await?;
                 write_job(tx, org_uuid, &started).await?;
                 let audit = progress_audit(org, &started)?;
@@ -139,45 +129,6 @@ impl HrService {
         .ok_or_else(|| {
             HrError::from_kernel(KernelError::not_found("no apply was started for this run"))
         })
-    }
-
-    async fn save_job(&self, org: OrgId, job: &ApplyJob) -> Result<(), HrError> {
-        let job = job.clone();
-        with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
-            Box::pin(async move {
-                sqlx::query("SELECT 1 FROM data_import_runs WHERE org_id=$1 AND id=$2 FOR UPDATE")
-                    .bind(org.as_uuid())
-                    .bind(job.run_id)
-                    .execute(tx.as_mut())
-                    .await?;
-                if read_job(tx, *org.as_uuid(), job.run_id)
-                    .await?
-                    .is_some_and(|stored| stored.state == "done")
-                {
-                    return Ok(((), Vec::new()));
-                }
-                if job.state == "applying" {
-                    apply_progress::reset(tx, *org.as_uuid(), &job).await?;
-                }
-                write_job(tx, *org.as_uuid(), &job).await?;
-                let audit = progress_audit(org, &job)?;
-                Ok(((), vec![audit]))
-            })
-        })
-        .await
-    }
-
-    async fn fail(&self, org: OrgId, job: ApplyJob, error: HrError) -> HrError {
-        let support_ref = apply_support_reference();
-        if error.status.is_server_error() && error.status != http::StatusCode::SERVICE_UNAVAILABLE {
-            tracing::error!(%support_ref, code = error.code, detail = %error.message, "import apply job failed");
-        } else {
-            tracing::warn!(%support_ref, code = error.code, detail = %error.message, "import apply job failed");
-        }
-        if let Err(stored) = self.save_job(org, &job.failed(&error)).await {
-            tracing::warn!(error = %stored.message, "import apply job failure could not be stored");
-        }
-        error
     }
 
     /// Drives to `done` or `failed`; without a leave store only settle can run.
@@ -220,7 +171,7 @@ impl HrService {
         let run_id = job.run_id;
         let actor = UserId::from_uuid(job.requested_by);
         job.state = "applying".into();
-        self.save_job(org, &job).await?;
+        self.save_apply_job(org, &job).await?;
         let failure_job = job.clone();
         let capability = match command_store {
             Some(store) => console_platform_request_context::scope_org(
@@ -233,13 +184,22 @@ impl HrService {
         };
         let capability = match capability {
             Ok(token) => token,
-            Err(error) => return Err(self.fail(org, failure_job, error).await),
+            Err(error) => return Err(self.fail_apply_job(org, failure_job, error).await),
         };
         let progress_pool = self.pool.clone();
+        let rrn_vault = self.rrn_vault.clone();
         let applied = with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
                 import_apply::require(tx, org, *actor.as_uuid()).await.map_err(HrError::from_kernel)?;
-                match check_and_build(tx, *org.as_uuid(), run_id, &job.dry_run_digest).await? {
+                match check_and_build(
+                    tx,
+                    *org.as_uuid(),
+                    run_id,
+                    &job.dry_run_digest,
+                    rrn_vault.as_deref(),
+                )
+                .await?
+                {
                     Checked::Replay(_) => {
                         if let Some(done) = read_job(tx, *org.as_uuid(), run_id).await?
                             && done.state == "done"
@@ -277,7 +237,7 @@ impl HrService {
                         last,
                         job: Some(job.clone()),
                     };
-                    settle_chunk(org, actor, run_id, chunk)(tx).await?;
+                    settle_chunk(org, actor, run_id, chunk, rrn_vault.clone())(tx).await?;
                     if !last
                         && let Err(error) = apply_progress::publish(&progress_pool, org, job.clone()).await
                     {
@@ -293,7 +253,7 @@ impl HrService {
         }).await;
         let report = match applied {
             Ok(report) => report,
-            Err(error) => return Err(self.fail(org, failure_job, error).await),
+            Err(error) => return Err(self.fail_apply_job(org, failure_job, error).await),
         };
         crate::import::statistics::refresh_after_apply(&self.pool, org, report.inserted).await;
         record_hr_import(report.inserted, report.updated);

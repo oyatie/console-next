@@ -12,7 +12,7 @@ import s from "./target-tree.module.css";
  * disabled, with its reason as text (`why`); other entities are not listed at all. `workplaces` says whether a
  * workplace itself can be chosen (a move can, a merge cannot).
  */
-export function TargetTree({ label, entity, show, why, right, workplaces, value, onChange, hint, selectable = () => true }: {
+export function TargetTree({ label, entity, show, why, right, workplaces, value, onChange, hint, selectable = () => true, flat = false }: {
   label: string;
   entity: Node;
   /** Visible nodes, including ancestors needed to reach a selectable descendant. */
@@ -24,6 +24,7 @@ export function TargetTree({ label, entity, show, why, right, workplaces, value,
   onChange: (id: string) => void;
   hint?: ReactNode;
   selectable?: (n: Node) => boolean;
+  flat?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const searchId = useId();
@@ -41,8 +42,8 @@ export function TargetTree({ label, entity, show, why, right, workplaces, value,
       <span className="field__label">{label}</span>
       <label htmlFor={searchId} className="sr-only">{t("orgUnit.target.search", { label })}</label>
       <TextInput id={searchId} type="search" value={query} placeholder={t("orgUnit.target.searchHint")} onChange={(e) => setQuery(e.target.value)} />
-      {sites.length === 0 && <p className={s.hint}>{t("orgUnit.target.noMatch", { query: q })}</p>}
-      <div className={s.list}>
+      {sites.length === 0 && <p className={s.hint}>{q ? t("orgUnit.target.noMatch", { query: q }) : t("bulkMove.pickTarget")}</p>}
+      <div className={flat ? s.scroll : s.list}>
         <TreeView
           label={label}
           roots={[entity]}

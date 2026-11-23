@@ -63,11 +63,21 @@ An item, `KeyValueItem`, has:
 | Part | Element | Holds |
 |---|---|---|
 | Root | `<dl>` | `aria-label` from `label`. |
-| Stat | `<div>`, one for each item | The label over the value. |
+| Stat | `<div>`, one for each item | The label over the value and optional meta, with `data-tone` and `data-active`. |
 | Label | `<dt>` | The item's `label`. |
 | Value | `<dd>` | The item's `value`. |
+| Meta | `<dd>` | The item's `meta`, rendered when `meta != null`. |
 
-An item of `StatRow` has `key`, `label` and `value`.
+An item, `StatRowItem`, has:
+
+| Member | Required | Type | Holds |
+|---|---|---|---|
+| `key` | yes | `string` | The React key. Unique within the row. |
+| `label` | yes | `ReactNode` | The label. |
+| `value` | yes | `ReactNode` | The value. |
+| `meta` | no | `ReactNode` | Optional secondary context line below `value`. |
+| `tone` | no | `"warn" \| "danger" \| "ok" \| "primary"` | Optional Console semantic tint (`data-tone`). |
+| `active` | no | `boolean` | Marks the selected filter tile in Console (`data-active`). |
 
 Neither component takes `className` or passes another attribute through.
 
@@ -96,10 +106,11 @@ Neither component takes `className` or passes another attribute through.
 
 | Part | Look |
 |---|---|
-| Row | One line of equal columns, one for each item. A 1 px `--border` border and a 6 px radius (`--radius`). |
-| Stat | 8 px padding top and bottom (`--space-2`), 12 px at the sides (`--space-3`). The label and the value are 4 px apart (`--space-1`). A 1 px `--border-soft` line on the left of every stat but the first. |
-| Label | 12 px (`--text-xs`), `--steel`. |
-| Value | 16 px (`--text-lg`), `--fw-strong`, tabular numbers. It may break anywhere. |
+| Row | One line of equal columns, one for each item. In `baseline`, a 1 px `--border` border and a 6 px radius (`--radius`); in Console (`:where([data-experience]:not([data-experience="baseline"]))`), flush edge-to-edge (`border: 0`, `border-radius: 0`). |
+| Stat | 8 px padding top and bottom (`--space-2`), 12 px at the sides (`--space-3`). The label, value, and optional meta are 4 px apart (`--space-1`). A 1 px `--border-soft` (Console `--border`) line on the left of every stat but the first. |
+| Label | 12 px (`--text-xs`), `--steel` (in Console, tinted and `--fw-semibold` when `tone` or `active` is set). |
+| Value | 16 px (`--text-lg`) in `baseline`, 22 px (`--text-2xl`) with `--lh-tight` in Console, `--fw-strong`, tabular numbers. It may break anywhere. |
+| Meta | 12 px (`--text-xs`), `--steel`, omitted when `meta` is `null` or `undefined`. |
 
 ## States
 
@@ -131,8 +142,7 @@ rule, so it is a single item of the grid and takes the first column, 110 px wide
 browser's default start margin for a `<dd>`, 40 px in the HTML standard's style sheet: the loading, error and
 empty rules do not reset it, and no global rule does.
 
-`StatRow` has no states: no hover, no focus, no loading, no error and no empty text. With no items it is an empty
-bordered `<dl>`.
+`StatRow` has no hover, focus, loading, error, or empty states: with no items it is an empty `<dl>`. In Console, individual stat tiles accept `tone` (`"warn"`, `"danger"`, `"ok"`, `"primary"`) for semantic background/label fills (`--warn-bg`/`--warn-tx`, `--danger-bg`/`--danger-tx`, `--ok-bg`/`--ok-tx`, `--primary-soft`/`--primary`) and `active` (`--primary-soft` fill with `--active-bar` `inset 0 2px 0 var(--primary)` top indicator).
 
 ## Keyboard
 
@@ -210,11 +220,11 @@ skips itself on the served build, which is the one the workflows use. The comman
   words only, and one word wider than the column overflows it.
 - The action column fits its content at every width.
 
-`StatRow` has one media query, `(max-width: 767px)`:
+`StatRow` has media queries at `(max-width: 767px)` and `(max-width: 359px)`:
 
-- The stats go two to a row instead of all on one line.
-- The left stat of each row has no dividing line. There is no line between one row and the next.
-- With an odd number of stats, the last one is alone in the left column.
+- In `baseline` (`(max-width: 767px)`), stats wrap two to a row; the left stat of each row has no dividing line, and an odd trailing stat sits in the left column.
+- In Console (`(max-width: 767px)`), rows of up to three stats stay on one horizontal row at `--text-lg` (`grid-auto-flow: column`), while rows of four or more stats (`:has(> :nth-child(4))`) wrap into a 2-column grid with `1px solid var(--border)` row and column hairlines.
+- Below `360 px` in Console (`(max-width: 359px)`), tile horizontal padding narrows to `--space-1-5` and `Value` scales to `--text-xs` so multi-tile counts stay legible without overflowing.
 
 The query is written as a literal width. It is not the shared phone breakpoint that `app.css` uses, which is
 `width < 768px`; the two differ only between 767 px and 768 px. It is a query on the screen, not on the
@@ -248,6 +258,7 @@ Neither component has a target of its own. The size of an action is that control
 | Prop | Required | Type | Default | Description |
 | --- | --- | --- | --- | --- |
 | `items` | yes | `readonly KeyValueItem[]` |  |  |
+| `columns` | no | `1 \| 2` |  |  |
 | `density` | no | `"default" \| "dense"` |  |  |
 | `empty` | no | `ReactNode` |  |  |
 | `error` | no | `ReactNode` |  |  |
@@ -259,8 +270,9 @@ Neither component has a target of its own. The size of an action is that control
 
 | Prop | Required | Type | Default | Description |
 | --- | --- | --- | --- | --- |
-| `items` | yes | `readonly { key: string; label: ReactNode; value: ReactNode; }[]` |  |  |
+| `items` | yes | `readonly StatRowItem[]` |  |  |
 | `label` | no | `string` |  |  |
+| `phoneCols` | no | `2 \| 3` |  |  |
 
 <!-- /ds:props -->
 
@@ -272,23 +284,39 @@ The members of `KeyValueItem` are under Anatomy.
 
 | Token | Read by |
 | --- | --- |
-| `--border` | `border` |
+| `--active-bar` | `box-shadow` |
+| `--border` | `border`, `border-left`, `border-left-color`, `border-top` |
 | `--border-soft` | `background`, `border-left` |
+| `--danger-bg` | `background` |
 | `--danger-solid` | `color` |
+| `--danger-tx` | `color` |
 | `--focus` | `box-shadow` |
+| `--fw-semibold` | `font-weight` |
 | `--fw-strong` | `font-weight` |
 | `--ink` | `color` |
+| `--lh-tight` | `line-height` |
+| `--ok-bg` | `background` |
+| `--ok-tx` | `color` |
 | `--panel-w` | `grid-template-columns` |
+| `--primary` | `--active-bar`, `color`, `outline` |
+| `--primary-soft` | `background` |
 | `--radius` | `border-radius` |
 | `--radius-sm` | `border-radius` |
 | `--space-1` | `gap` |
-| `--space-2` | `gap`, `padding` |
+| `--space-1-5` | `padding` |
+| `--space-2` | `column-gap`, `gap`, `padding` |
 | `--space-3` | `gap`, `padding` |
 | `--space-6` | `height` |
 | `--steel` | `color` |
+| `--surface-2` | `background` |
+| `--surface-hover` | `background` |
+| `--text-2xl` | `font-size` |
+| `--text-body` | `font-size` |
 | `--text-lg` | `font-size` |
 | `--text-sm` | `font-size` |
 | `--text-xs` | `font-size` |
+| `--warn-bg` | `background` |
+| `--warn-tx` | `color` |
 
 <!-- /ds:tokens -->
 

@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [me]
+operationId: createMyProfileChangeRequest
+summary: File an approval-gated self-service change request (address or bank_account_registered)
+description: >
+  Submits a PROFILE_CORRECTION change request for the caller's linked employee
+  for fields requiring HR approval (address or boolean bank_account_registered
+  attestation). Rejects raw bank account identifiers.
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/CreateSelfChangeRequest'
+responses:
+  '201':
+    description: Change request created and routed to HR.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ChangeRequest'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Forbidden for unlinked users or support sessions.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '409':
+    description: An open change request already exists for this field.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: Validation error or unknown/restricted field rejected.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

@@ -207,7 +207,9 @@ title row, which wraps too. So there the line shares a wrapping row with any oth
 | `--primary` | `background`, `border-color` |
 | `--radius-lg` | `border-radius` |
 | `--space-1` | `gap` |
+| `--space-1-5` | `gap` |
 | `--space-2` | `gap`, `margin-right` |
+| `--space-3` | `gap` |
 | `--space-5` | `height`, `width` |
 | `--space-6` | `width` |
 | `--steel` | `color` |

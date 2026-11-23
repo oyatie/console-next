@@ -41,12 +41,23 @@ impl LifecycleScheduleHandle {
     }
 }
 
+pub(crate) struct S3PurgeTargets {
+    pub store: std::sync::Arc<dyn console_platform_storage::S3ObjectStore>,
+    pub primary_bucket: String,
+    pub replica_bucket: Option<String>,
+}
+
 #[must_use]
 pub fn spawn(
     pool: sqlx::PgPool,
     worker: bool,
     force_pool: Option<sqlx::PgPool>,
+    s3_purge_targets: Option<S3PurgeTargets>,
     nts: std::sync::Arc<console_entity_adapter_nts::NtsClient>,
+    rrn_vault: Option<std::sync::Arc<dyn console_hr_domain::import::rrn_value::RrnVault>>,
+    #[cfg(feature = "mail")] mail_cipher: Option<
+        std::sync::Arc<dyn console_comms_application::CredentialCipher>,
+    >,
 ) -> LifecycleScheduleHandle {
     let (shutdown_tx, mut shutdown_rx) = watch::channel(false);
     let today_file = dev_today_file();
@@ -58,6 +69,7 @@ pub fn spawn(
     tokio::spawn(async move {
         // LC-B3: the day the case clock tick last finished in every tenant.
         let mut case_clock_day: Option<Date> = None;
+        let mut last_witness_seq: i64 = 0;
         let mut ticker = tokio::time::interval(period);
         ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         loop {
@@ -95,6 +107,7 @@ pub fn spawn(
                     // W11: an import apply job whose driver died (both roles; the
                     // claim is SKIP LOCKED, so replicas never drive one twice).
                     match console_hr_adapter_postgres::HrService::new(pool.clone())
+                        .with_rrn_vault(rrn_vault.clone())
                         .resume_stale_applies()
                         .await
                     {
@@ -119,8 +132,37 @@ pub fn spawn(
                     if worker {
                         if let Some(force_pool) = &force_pool {
                             match console_platform_provisioning::PlatformProvisioner::run_due_tenant_erases(force_pool).await {
-                                Ok(erased) => metrics::counter!("console_platform_tenant_erase_total", "action" => "run").increment(erased.cast_unsigned()),
+                                Ok(erased) => {
+                                    metrics::counter!("console_platform_tenant_erase_total", "action" => "run").increment(erased.cast_unsigned());
+                                    if erased > 0 {
+                                        match console_platform_provisioning::PlatformProvisioner::emit_erase_witnesses_after(&pool, last_witness_seq).await {
+                                            Ok((_, max_seq)) => {
+                                                last_witness_seq = max_seq;
+                                            }
+                                            Err(error) => tracing::warn!(%error, "tenant erasure witness log emission failed"),
+                                        }
+                                    }
+                                }
                                 Err(error) => tracing::error!(%error,"tenant erasure worker failed"),
+                            }
+                        }
+                        if let Some(targets) = &s3_purge_targets {
+                            match console_platform_provisioning::PlatformProvisioner::drain_erased_tenant_objects(
+                                &pool,
+                                &*targets.store,
+                                &targets.primary_bucket,
+                                targets.replica_bucket.as_deref(),
+                            )
+                            .await
+                            {
+                                Ok(stats) if stats.deleted == 0 && stats.deferred_worm == 0 && stats.retried == 0 => {}
+                                Ok(stats) => tracing::info!(
+                                    deleted = stats.deleted,
+                                    deferred_worm = stats.deferred_worm,
+                                    retried = stats.retried,
+                                    "erased tenant S3 outbox pass complete"
+                                ),
+                                Err(error) => tracing::warn!(%error, "erased tenant S3 outbox drain failed"),
                             }
                         }
                         match console_hr_adapter_postgres::HrService::new(pool.clone())
@@ -150,6 +192,23 @@ pub fn spawn(
                             Ok(pruned) => tracing::debug!(pruned, "auth rate-limit windows pruned"),
                             Err(error) => tracing::warn!(%error, "auth rate-limit prune failed"),
                         }
+                        if let Some(vault) = rrn_vault.clone() {
+                            match console_hr_adapter_postgres::HrService::new(pool.clone())
+                                .backfill_rrn_blind_indexes(vault)
+                                .await
+                            {
+                                Ok(0) => {}
+                                Ok(updated) => tracing::info!(updated, "employee RRN blind indexes backfilled"),
+                                Err(error) => tracing::warn!(error = %error.message, "employee RRN blind-index backfill failed"),
+                            }
+                        }
+                        crate::crypto_reseal::run_worker_tick(
+                            &pool,
+                            rrn_vault.clone(),
+                            #[cfg(feature = "mail")]
+                            mail_cipher.clone(),
+                        )
+                        .await;
                     }
                 }
             }

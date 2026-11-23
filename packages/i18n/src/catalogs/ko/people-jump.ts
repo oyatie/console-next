@@ -35,7 +35,7 @@ export const koPeopleJump: Record<keyof typeof enPeopleJump, string> = {
   "peopleJump.keys.find": "목록 안에서 찾기",
   "peopleJump.keys.peek": "미리 보기",
   "peopleJump.keys.open": "인사카드 열기",
-  "peopleJump.keys.section": "구획으로 이동 (1 인적사항 … 8 문서)",
+  "peopleJump.keys.section": "그 번호의 구획으로 이동",
   "peopleJump.keys.walk": "목록의 다음·이전 사람",
   "peopleJump.keys.quick": "바로 수정 저장·취소",
   "peopleJump.keys.undo": "방금 바로 수정한 값 되돌리기 · 입력 칸 안에서는 글자 되돌리기",

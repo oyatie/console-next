@@ -9,7 +9,7 @@ async fn unnamed_platform_admin_can_enroll_with_account_identifier(owner: PgPool
         .execute(&owner)
         .await
         .unwrap();
-    let store = BootstrapCredentialStore;
+    let store = BootstrapCredentialStore::default();
     store
         .seed_cold_start_credential(
             &owner,

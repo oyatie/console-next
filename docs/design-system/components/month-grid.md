@@ -112,10 +112,11 @@ stop.
 | Enter, Space | With `onSelect`: calls it with the focused date. Without it: nothing, and the key keeps its default, so Space scrolls the page. |
 | Any other key | Left alone. |
 
-- Moves stop at the first and the last day shown. They do not change the month: there is no Page Up or Page
+- Moves stop at the edges of the grid. They do not change the month: there is no Page Up or Page
   Down, and nothing is called when a move runs off the grid.
-- A move that would run off the grid lands on the first or the last day shown. Up in the first week therefore
-  goes to the first day of that week, not to the same weekday, and Down in the last week goes to its last day.
+- Up in the first week and Down in the last week stay on the current day rather than jumping horizontally across
+  columns, preserving the weekday column. Left on the first day and Right on the last day likewise stay in place.
+- `End` clamps to the last cell of the grid when the final week row has fewer than seven cells.
 - Focus moves onto days outside the month like any other day.
 - Every key the grid handles has its default prevented.
 - The handler reads no modifier key. An arrow, Home or End pressed with Ctrl, Alt, Meta or Shift moves focus the
@@ -131,8 +132,10 @@ The component takes no text. It has one `keydown` handler, with no `isComposing`
 no composition event. It compares `key` with the names above, so a key that the Korean input method reports under
 another name is left alone.
 
-No test was found that presses a key in this grid. The unit test renders to a string. A search of `e2e` for the
-grid's label id and for `data-date` found one spec, and it checks only that the grid is visible.
+`apps/web/src/ui/month-grid/month-grid.test.tsx` renders to a string, while
+`apps/web/src/ui/month-grid/month-grid.browser.test.tsx` exercises keyboard navigation in Chromium (column-preserving
+`ArrowUp`/`ArrowDown` at edges and interior rows, `ArrowLeft`/`ArrowRight`, `Home`/`End`, `Enter`/`Space`, and
+`preventDefault` behaviour).
 
 ## Accessibility contract
 
@@ -203,6 +206,7 @@ What tests it:
 | Test | Covers |
 |---|---|
 | `apps/web/src/ui/month-grid/month-grid.test.tsx` | That there is one tab stop, on the selected day or else the month's first day; that a day outside the month carries `data-out`; that a holiday carries its tone and the caller's words. |
+| `apps/web/src/ui/month-grid/month-grid.browser.test.tsx` | Keyboard navigation in Chromium: `ArrowUp`/`ArrowDown` preserving weekday column at top/bottom edges and moving ±7 inside the grid, `ArrowLeft`/`ArrowRight` wrapping across weeks and stopping at bounds, `Home`/`End`, `Enter`/`Space` with and without `onSelect`, and `defaultPrevented`. |
 | `e2e/states/attendance-schedule.spec.ts` | The attendance calendar in each of its states at 1440 px and 390 px, ending with the fit check and an axe scan. |
 | `e2e/mock/attendance-calendar-stability.spec.ts` | That the grid, found by its name, stays on screen when the history read beside it fails and then recovers. |
 

@@ -9,10 +9,10 @@ import { EmptyState } from "../../../ui/empty-state";
 import { KeyValue } from "../../../ui/key-value/key-value";
 import type { AttentionInboxItem } from "../domain/inbox-filter";
 import { InboxActivity } from "./inbox-activity";
-import { KIND_TEXT, Subject, reasonLines, recordAction, type RowAction } from "./grouped-queue";
+import { Subject, reasonLines, recordAction, taskTitleKey, type RowAction } from "./grouped-queue";
 
 /** Item facts come from the loaded queue; opening a column reads only the item's own activity. */
-export function InboxRecord({ item, action, extra, onBack }: { item?: AttentionInboxItem; action?: RowAction; extra?: RowAction; onBack: () => void }) {
+export function InboxRecord({ item, action, extra, focusAfter, onBack }: { item?: AttentionInboxItem; action?: RowAction; extra?: RowAction; focusAfter?: string; onBack: () => void }) {
   if (!item) return <EmptyState title={t("common.read.notFound.title")} reason={t("common.read.notFound.reason")} actions={<Button onClick={onBack}>{t("home.inbox.record.back")}</Button>} />;
   const facts = [
     { key: "subject", label: t("home.inbox.column.subject"), value: <Subject item={item} /> },
@@ -26,10 +26,10 @@ export function InboxRecord({ item, action, extra, onBack }: { item?: AttentionI
   const reason = reasonLines(item).join(" · ");
   if (reason) facts.push({ key: "reason", label: t("home.inbox.record.reason"), value: reason });
   return <>
-    <h3>{t(item.context?.unlock?.exceptionId ? "periodLocks.review.title" : KIND_TEXT[item.kind] ?? "home.inbox.unknown")}</h3>
+    <h3>{t(taskTitleKey(item))}</h3>
     <div><Chip tone={item.dueTone}>{t(`home.inbox.filter.${item.lane}`)}</Chip></div>
     <KeyValue items={facts} />
-    <div className="row">{action?.(item)}{recordAction(item, undefined, "home.inbox.record.original")}{extra?.(item)}</div>
+    <div className="row">{action?.(item, focusAfter)}{recordAction(item, undefined, "home.inbox.record.original", focusAfter)}{extra?.(item)}</div>
     <InboxActivity id={item.id} />
   </>;
 }

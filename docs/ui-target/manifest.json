@@ -3,7 +3,7 @@
  "today": "2026-11-10",
  "boards": [
   {
-   "style": "control-room",
+   "style": "console",
    "status": "target",
    "screen": "approval",
    "title": "Approval document and decision",
@@ -14,11 +14,11 @@
     900
    ],
    "theme": "light",
-   "file": "boards/d/1440/approval.png",
-   "tokens": "tokens/control-room.board.css"
+   "file": "boards/console/1440/approval.png",
+   "tokens": "tokens/console.board.css"
   },
   {
-   "style": "control-room",
+   "style": "console",
    "status": "target",
    "screen": "attendance",
    "title": "Attendance month",
@@ -29,11 +29,11 @@
     900
    ],
    "theme": "light",
-   "file": "boards/d/1440/attendance.png",
-   "tokens": "tokens/control-room.board.css"
+   "file": "boards/console/1440/attendance.png",
+   "tokens": "tokens/console.board.css"
   },
   {
-   "style": "control-room",
+   "style": "console",
    "status": "target",
    "screen": "home",
    "title": "Home: work list",
@@ -44,11 +44,11 @@
     900
    ],
    "theme": "light",
-   "file": "boards/d/1440/home.png",
-   "tokens": "tokens/control-room.board.css"
+   "file": "boards/console/1440/home.png",
+   "tokens": "tokens/console.board.css"
   },
   {
-   "style": "control-room",
+   "style": "console",
    "status": "target",
    "screen": "payroll",
    "title": "Payroll run",
@@ -59,11 +59,11 @@
     900
    ],
    "theme": "light",
-   "file": "boards/d/1440/payroll.png",
-   "tokens": "tokens/control-room.board.css"
+   "file": "boards/console/1440/payroll.png",
+   "tokens": "tokens/console.board.css"
   },
   {
-   "style": "control-room",
+   "style": "console",
    "status": "target",
    "screen": "people",
    "title": "People list with the employee record panel",
@@ -74,11 +74,11 @@
     900
    ],
    "theme": "light",
-   "file": "boards/d/1440/people.png",
-   "tokens": "tokens/control-room.board.css"
+   "file": "boards/console/1440/people.png",
+   "tokens": "tokens/console.board.css"
   },
   {
-   "style": "control-room",
+   "style": "console",
    "status": "target",
    "screen": "leave",
    "title": "Leave request (employee, phone)",
@@ -89,11 +89,11 @@
     844
    ],
    "theme": "light",
-   "file": "boards/d/390/leave.png",
-   "tokens": "tokens/control-room.board.css"
+   "file": "boards/console/390/leave.png",
+   "tokens": "tokens/console.board.css"
   },
   {
-   "style": "control-room",
+   "style": "console",
    "status": "target",
    "screen": "payslip",
    "title": "Payslip (employee, phone)",
@@ -104,11 +104,11 @@
     950
    ],
    "theme": "light",
-   "file": "boards/d/390/payslip.png",
-   "tokens": "tokens/control-room.board.css"
+   "file": "boards/console/390/payslip.png",
+   "tokens": "tokens/console.board.css"
   },
   {
-   "style": "control-room",
+   "style": "console",
    "status": "target",
    "screen": "profile",
    "title": "My profile (employee, phone)",
@@ -119,8 +119,8 @@
     844
    ],
    "theme": "light",
-   "file": "boards/d/390/profile.png",
-   "tokens": "tokens/control-room.board.css"
+   "file": "boards/console/390/profile.png",
+   "tokens": "tokens/console.board.css"
   },
   {
    "style": "warm-clear",

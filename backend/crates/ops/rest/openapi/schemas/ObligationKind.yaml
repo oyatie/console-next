@@ -1,0 +1,3 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "string"
+enum: ["professional-review", "credential-rotation", "escrow", "drill", "launch-gate", "owner-decision", "regulatory-watch"]

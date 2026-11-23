@@ -11,7 +11,19 @@ import s from "./tenants.module.css";
  * Replaces the first admin's sign-in code while that admin has no passkey (the previous code stops
  * working). The server fact disables this control once the ops account enrolls; governed recovery is beside it.
  */
-export function Reissue({ org, enrolled, onEnrolled, onIssued }: { org: Org; enrolled: boolean; onEnrolled: () => void; onIssued: (r: Issued) => void }) {
+export function Reissue({
+  org,
+  enrolled,
+  embedded = false,
+  onEnrolled,
+  onIssued,
+}: {
+  org: Org;
+  enrolled: boolean;
+  embedded?: boolean;
+  onEnrolled: () => void;
+  onIssued: (r: Issued) => void;
+}) {
   const reissue = useCommand({
     run: async () => {
       try {
@@ -24,19 +36,22 @@ export function Reissue({ org, enrolled, onEnrolled, onIssued }: { org: Org; enr
     onSuccess: onIssued,
     forget: true,
   });
+  const btnSize = embedded ? "sm" : undefined;
   const label = <><KeyRound size={16} aria-hidden /> {t("tenants.reissue")}</>;
+  const body = enrolled ? (
+    <DisabledReason control={(p) => <Button size={btnSize} {...p}>{label}</Button>} reason={t("tenants.reissue.enrolled", { org: org.name })} />
+  ) : (
+    <>
+      <p id="tenant-code-pre" className={s.note}>{t("tenants.reissue.consequence", { org: org.name })} {t("tenants.reissue.precondition")}</p>
+      {conflict(reissue.error) ? <div className="alert" role="alert">{t("tenants.reissue.inactive", { org: org.name })}</div> : <PasskeyError error={reissue.error} />}
+      <Button size={btnSize} aria-describedby="tenant-code-pre" disabled={reissue.isPending} onClick={() => reissue.mutate(undefined)}>{label}</Button>
+    </>
+  );
+  if (embedded) return <div className={s.embedded}>{body}</div>;
   return (
     <section className={s.section} aria-labelledby="tenant-code">
       <h3 id="tenant-code" className={s.heading}>{t("tenants.section.code")}</h3>
-      {enrolled ? (
-        <DisabledReason control={(p) => <Button {...p}>{label}</Button>} reason={t("tenants.reissue.enrolled", { org: org.name })} />
-      ) : (
-        <>
-          <p id="tenant-code-pre" className={s.note}>{t("tenants.reissue.consequence", { org: org.name })} {t("tenants.reissue.precondition")}</p>
-          {conflict(reissue.error) ? <div className="alert" role="alert">{t("tenants.reissue.inactive", { org: org.name })}</div> : <PasskeyError error={reissue.error} />}
-          <Button aria-describedby="tenant-code-pre" disabled={reissue.isPending} onClick={() => reissue.mutate(undefined)}>{label}</Button>
-        </>
-      )}
+      {body}
     </section>
   );
 }

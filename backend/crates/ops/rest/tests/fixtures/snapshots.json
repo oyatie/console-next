@@ -55,7 +55,7 @@
             "reason": null
           },
           "next": {
-            "href": "/alerts/SyntheticAlert",
+            "href": "/alerts/bcdc0d0d",
             "label": "Read alert"
           }
         }
@@ -78,7 +78,7 @@
       "evaluated_at": "2026-01-01T00:00:00Z",
       "groups": [
         {
-          "key": "SyntheticAlert×fixture",
+          "key": "bcdc0d0d",
           "alertname": "SyntheticAlert",
           "component": {
             "state": "Unknown",
@@ -187,7 +187,7 @@
     "alert": {
       "evaluated_at": "2026-01-01T00:00:00Z",
       "group": {
-        "key": "SyntheticAlert×fixture",
+        "key": "bcdc0d0d",
         "alertname": "SyntheticAlert",
         "component": {
           "state": "Unknown",
@@ -333,7 +333,7 @@
             "reason": null
           }
         ],
-        "footer_key": "SyntheticAlert×fixture"
+        "footer_key": "bcdc0d0d"
       }
     },
     "running": {
@@ -524,7 +524,7 @@
       "evaluated_at": "2026-01-01T00:00:00Z",
       "groups": [
         {
-          "key": "SyntheticAlert×fixture",
+          "key": "bcdc0d0d",
           "alertname": "SyntheticAlert",
           "component": {
             "state": "Unknown",
@@ -633,7 +633,7 @@
     "alert": {
       "evaluated_at": "2026-01-01T00:00:00Z",
       "group": {
-        "key": "SyntheticAlert×fixture",
+        "key": "bcdc0d0d",
         "alertname": "SyntheticAlert",
         "component": {
           "state": "Unknown",
@@ -779,7 +779,7 @@
             "reason": null
           }
         ],
-        "footer_key": "SyntheticAlert×fixture"
+        "footer_key": "bcdc0d0d"
       }
     },
     "running": {
@@ -970,7 +970,7 @@
       "evaluated_at": "2026-01-01T00:00:00Z",
       "groups": [
         {
-          "key": "SyntheticAlert×fixture",
+          "key": "bcdc0d0d",
           "alertname": "SyntheticAlert",
           "component": {
             "state": "Unknown",
@@ -1079,7 +1079,7 @@
     "alert": {
       "evaluated_at": "2026-01-01T00:00:00Z",
       "group": {
-        "key": "SyntheticAlert×fixture",
+        "key": "bcdc0d0d",
         "alertname": "SyntheticAlert",
         "component": {
           "state": "Unknown",
@@ -1225,7 +1225,7 @@
             "reason": null
           }
         ],
-        "footer_key": "SyntheticAlert×fixture"
+        "footer_key": "bcdc0d0d"
       }
     },
     "running": {
@@ -1416,7 +1416,7 @@
       "evaluated_at": "2026-01-01T00:00:00Z",
       "groups": [
         {
-          "key": "SyntheticAlert×fixture",
+          "key": "bcdc0d0d",
           "alertname": "SyntheticAlert",
           "component": {
             "state": "Unknown",
@@ -1525,7 +1525,7 @@
     "alert": {
       "evaluated_at": "2026-01-01T00:00:00Z",
       "group": {
-        "key": "SyntheticAlert×fixture",
+        "key": "bcdc0d0d",
         "alertname": "SyntheticAlert",
         "component": {
           "state": "Unknown",
@@ -1671,7 +1671,7 @@
             "reason": null
           }
         ],
-        "footer_key": "SyntheticAlert×fixture"
+        "footer_key": "bcdc0d0d"
       }
     },
     "running": {
@@ -1872,7 +1872,7 @@
     "alert": {
       "evaluated_at": "2026-01-01T00:00:00Z",
       "group": {
-        "key": "SyntheticAlert×fixture",
+        "key": "bcdc0d0d",
         "alertname": "SyntheticAlert",
         "component": {
           "state": "Unknown",
@@ -2018,7 +2018,7 @@
             "reason": null
           }
         ],
-        "footer_key": "SyntheticAlert×fixture"
+        "footer_key": "bcdc0d0d"
       }
     },
     "running": {

@@ -156,7 +156,7 @@ for (const locale of ["ko", "en"] as const) test(`row reasons add state without 
   i18n.set(locale);
   try {
     for (const kind of ["identifier_correction_waiting", "identifier_correction_decide", "identifier_correction_apply", "identifier_correction_review", "approval", "org_change_waiting", "org_change_scheduled", "org_change_approve", "org_change_apply", "org_change_draft", "org_change_rejected", "org_change_settle", "hr_exit_confirm", "hr_exit_confirm_hq", "hr_exit_settle", "hr_request", "period_unlock"])
-      expect(html([item(kind, { kind, links: [] })])).toContain(t(`home.inbox.reason.${kind}` as Parameters<typeof t>[0]));
+      expect(html([item(kind, { kind, links: [], context: kind === "period_unlock" ? { unlock: { domain: "payroll", periodStart: "2026-09-01", periodEnd: "2026-09-30", requester: null, reason_code: "RETRO_CORRECTION" } } : undefined })])).toContain(t(`home.inbox.reason.${kind}` as Parameters<typeof t>[0]));
     for (const kind of ["registration_check", "support_access", "org_change", "hr_exit", "hr_lifecycle", "lifecycle_apply_failed", "register_review", "identity_review", "unplaced", "insurance_filing", "grant_notice", "dispatch", "support", "work", "payroll", "governance", "unknown"])
       expect(html([item(kind, { kind, links: [] })]).split("</td>")[0]).not.toContain('class="muted"');
     expect(html([item("future", { kind: "future_kind" })]).split("</td>")[0]).not.toContain('class="muted"');

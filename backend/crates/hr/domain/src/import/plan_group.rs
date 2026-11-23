@@ -10,8 +10,9 @@ use super::plan::{Decisions, Exclusion, PlannedRow};
 use super::review::{Resolution, ReviewItem};
 
 /// The row-level reasons a group answer may name.
-pub const GROUP_REASONS: [&str; 15] = [
+pub const GROUP_REASONS: [&str; 22] = [
     "invalid_date",
+    "two_digit_year",
     "hire_date_required",
     "duplicate_in_file",
     "employee_number_taken",
@@ -26,6 +27,12 @@ pub const GROUP_REASONS: [&str; 15] = [
     "exit_date_required",
     "former_load_closed",
     "unresolved_identity",
+    "not_issued_requires_pre_hire",
+    "not_issued_with_rrn",
+    "not_issued_secondary_key_required",
+    "id_type_invalid",
+    "id_type_rrn_mismatch",
+    "rrn_mod11_invalid",
 ];
 
 /// The group key of a row the plan did not settle: `reason:field`, and the

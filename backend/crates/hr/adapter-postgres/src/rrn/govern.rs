@@ -27,7 +27,7 @@ pub fn reveal_binding(employee: Uuid, field: &str, reason: &str) -> MobilePasske
     )
 }
 
-pub(super) fn required() -> HrError {
+pub(crate) fn required() -> HrError {
     refused(
         http::StatusCode::UNAUTHORIZED,
         "step_up_required",
@@ -45,7 +45,7 @@ pub(crate) fn refused(status: http::StatusCode, code: &'static str, message: &st
     }
 }
 
-pub(super) async fn within_rate(
+pub(crate) async fn within_rate(
     tx: &mut Transaction<'_, Postgres>,
     principal: &Principal,
     actions: &[&str],
@@ -174,7 +174,7 @@ pub(super) async fn authorize(
 }
 
 // Storage failures stop the transaction; invalid or stale assertions become Cedar facts.
-pub(super) async fn verify_binding(
+pub(crate) async fn verify_binding(
     tx: &mut Transaction<'_, Postgres>,
     principal: &Principal,
     binding: MobilePasskeyStepUpBinding,

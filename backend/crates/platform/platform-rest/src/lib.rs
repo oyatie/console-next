@@ -20,6 +20,7 @@ mod error;
 mod groups;
 mod listing_authority;
 mod onboard;
+mod operators;
 mod ops_recovery;
 mod orgs;
 use onboard::{create_group, create_org};
@@ -40,6 +41,9 @@ pub use company_domain::TENANT_DOMAIN_REQUEST_PATH;
 pub use state_builders::{OpsNotices, PlatformRestState};
 pub use support_store::{tenant_support_permission, tenant_support_permission_with_facts};
 
+pub use operators::{
+    PLATFORM_OPERATOR_REISSUE_PATH, PLATFORM_OPERATOR_REVOKE_PATH, PLATFORM_OPERATORS_PATH,
+};
 pub use support::{
     PLATFORM_SUPPORT_APPROVE_PATH, PLATFORM_SUPPORT_END_PATH, PLATFORM_SUPPORT_SESSIONS_PATH,
     PLATFORM_SUPPORT_START_PATH,
@@ -168,7 +172,7 @@ pub fn router(state: PlatformRestState) -> Router {
         verifier.clone(),
         pool.clone(),
     );
-    let router = tenant_erase::routes(support::routes(router)).with_state(state);
+    let router = operators::routes(tenant_erase::routes(support::routes(router))).with_state(state);
     // PLATFORM extractor: resolves the PlatformPrincipal and REJECTS any tenant
     // token. Deliberately NOT the tenant org middleware â the platform tier is
     // not tenant-scoped, and each handler arms the TARGET org per action.

@@ -12,6 +12,10 @@ properties:
     x-extensible-enum: [EMPLOYEE, USER_ACCOUNT, BRANCH, ORGANIZATION, DATA_IMPORT_RUN]
   subject_id:
     $ref: '#/components/schemas/Uuid'
+  subject_name:
+    type: [string, 'null']
+  subject_number:
+    type: [string, 'null']
   payload:
     type: object
     additionalProperties: true

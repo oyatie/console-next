@@ -5,6 +5,7 @@ import { ApiError } from "@console/api";
 import { loadCatalog, t } from "@console/i18n";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Denied } from "./denied";
+import { DeniedRequestForm } from "./denied-request-form";
 
 vi.mock("@tanstack/react-router", () => ({ Link: ({ children }: { children: React.ReactNode }) => <a href="/">{children}</a> }));
 beforeAll(() => loadCatalog("ko"));
@@ -33,4 +34,16 @@ test.each([new ApiError(403, "forbidden", "internal basis"), new TypeError("Fail
   const markup = renderToStaticMarkup(<QueryClientProvider client={new QueryClient()}><Denied error={error} /></QueryClientProvider>);
   expect(markup).not.toContain('<div class="muted"></div>');
   expect(markup).not.toContain("data-support-reference");
+});
+
+test("Denied keeps the request form deferred until opened, and DeniedRequestForm renders reason and submit controls", () => {
+  const closed = renderToStaticMarkup(<QueryClientProvider client={new QueryClient()}><Denied /></QueryClientProvider>);
+  expect(closed).toContain(t("common.denied.request"));
+  expect(closed).not.toContain("<form");
+  expect(closed).not.toContain(t("common.denied.request.reason"));
+
+  const form = renderToStaticMarkup(<QueryClientProvider client={new QueryClient()}><DeniedRequestForm screen="/people" /></QueryClientProvider>);
+  expect(form).toContain("<form");
+  expect(form).toContain(t("common.denied.request.reason"));
+  expect(form).toContain(t("common.denied.request.send"));
 });

@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+operationId: "opsIncidentDetail"
+summary: "Read Incident"
+x-cedar-action: "read.home"
+security: [{"accessJwt": []}]
+description: "Returns incident detail, timeline, legal clocks, and attached public card."
+parameters: [{"in": "path", "name": "id", "required": true, "schema": {"$ref": "#/components/schemas/Text"}}]
+responses: {"200": {"description": "Incident detail.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/IncidentResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}

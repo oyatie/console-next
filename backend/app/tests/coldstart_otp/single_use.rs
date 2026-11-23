@@ -50,7 +50,7 @@ pub(super) fn router(pool: PgPool) -> Router {
 }
 
 async fn seed(pool: &PgPool, otp: &str) -> bool {
-    BootstrapCredentialStore
+    BootstrapCredentialStore::default()
         .seed_cold_start_credential(pool, otp, Duration::hours(1), OffsetDateTime::now_utc())
         .await
         .unwrap()

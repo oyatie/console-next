@@ -111,3 +111,11 @@ test("a 429 or 503 with Retry-After is retried after that wait; a wait past 30 s
   expect(queryDefaults.retry(0, busy(429))).toBe(false);
   expect(queryDefaults.retry(0, busy(503))).toBe(true); // a fault without a hint keeps the backoff
 });
+
+test("a client deadline TimeoutError is not retried after exhausting the 30s server budget + slack", () => {
+  const deadlineErr = new TypeError("Failed to fetch", {
+    cause: new DOMException("Signal timed out", "TimeoutError"),
+  });
+  expect(queryDefaults.retry(0, deadlineErr)).toBe(false);
+  expect(queryDefaults.retry(0, new TypeError("Failed to fetch"))).toBe(true);
+});

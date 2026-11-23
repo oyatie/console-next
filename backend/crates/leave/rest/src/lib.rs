@@ -16,6 +16,7 @@
 
 mod openapi;
 pub use openapi::OPENAPI_FRAGMENT;
+mod self_service;
 
 use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, StatusCode};
@@ -55,6 +56,8 @@ pub const LEAVE_CHARGE_RESOLUTION_V2_PATH_TEMPLATE: &str =
 pub const LEAVE_ALTERNATE_DATES_V2_PATH_TEMPLATE: &str =
     "/api/v2/leave/requests/{id}/alternate-dates";
 pub const MY_LEAVE_V2_PATH: &str = "/api/v2/me/leave";
+pub const MY_LEAVE_TEAM_OVERLAP_V2_PATH: &str = "/api/v2/me/leave/team-overlap";
+pub const MY_LEAVE_APPROVAL_PREVIEW_V2_PATH: &str = "/api/v2/me/leave/approval-preview";
 pub const LEAVE_BALANCES_PATH: &str = "/api/v1/leave/balances";
 pub const LEAVE_PROMOTIONS_PATH: &str = "/api/v1/leave/promotions";
 pub const LEAVE_REFUSAL_NOTICES_PATH: &str = "/api/v1/leave/refusal-notices";
@@ -67,6 +70,8 @@ pub const LEAVE_ROUTE_PATHS: &[&str] = &[
     LEAVE_CHARGE_RESOLUTION_V2_PATH_TEMPLATE,
     LEAVE_ALTERNATE_DATES_V2_PATH_TEMPLATE,
     MY_LEAVE_V2_PATH,
+    MY_LEAVE_TEAM_OVERLAP_V2_PATH,
+    MY_LEAVE_APPROVAL_PREVIEW_V2_PATH,
     LEAVE_BALANCES_PATH,
     LEAVE_PROMOTIONS_PATH,
     LEAVE_REFUSAL_NOTICES_PATH,
@@ -116,6 +121,14 @@ pub fn router(state: LeaveRestState) -> Router {
             post(propose_alternate_dates_v2),
         )
         .route(MY_LEAVE_V2_PATH, get(get_my_leave_v2))
+        .route(
+            MY_LEAVE_TEAM_OVERLAP_V2_PATH,
+            get(self_service::get_my_leave_team_overlap),
+        )
+        .route(
+            MY_LEAVE_APPROVAL_PREVIEW_V2_PATH,
+            get(self_service::get_my_leave_approval_preview),
+        )
         .route(LEAVE_BALANCES_PATH, get(list_balances))
         .route(LEAVE_PROMOTIONS_PATH, post(push_promotion))
         .route(LEAVE_REFUSAL_NOTICES_PATH, post(push_refusal))
@@ -806,15 +819,15 @@ struct ErrorPayload {
 }
 
 #[derive(Debug)]
-struct RestError {
+pub(crate) struct RestError {
     status: StatusCode,
     code: &'static str,
     message: String,
-    reasons: Vec<String>,
+    pub(crate) reasons: Vec<String>,
 }
 
 impl RestError {
-    fn new(status: StatusCode, code: &'static str, message: impl Into<String>) -> Self {
+    pub(crate) fn new(status: StatusCode, code: &'static str, message: impl Into<String>) -> Self {
         Self {
             status,
             code,
@@ -831,7 +844,7 @@ impl RestError {
         Self::new(StatusCode::SERVICE_UNAVAILABLE, "unavailable", message)
     }
 
-    fn from_kernel(err: KernelError) -> Self {
+    pub(crate) fn from_kernel(err: KernelError) -> Self {
         Self::new(
             StatusCode::from_u16(err.status_code()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
             err.code.unwrap_or(err.kind.code()),
@@ -839,46 +852,8 @@ impl RestError {
         )
     }
 
-    fn from_store(err: PgLeaveError) -> Self {
-        match err {
-            PgLeaveError::Domain(err) => Self::from_kernel(err),
-            PgLeaveError::MissingHomeBranch => Self::new(
-                StatusCode::CONFLICT,
-                "leave_home_branch_review_required",
-                "an active linked employee needs an explicit home branch before filing leave",
-            ),
-            PgLeaveError::ChargeReviewRequired(reasons) => {
-                let mut error = Self::new(
-                    StatusCode::CONFLICT,
-                    "leave_calendar_review_required",
-                    "leave charge evidence must be resolved before approval",
-                );
-                error.reasons = reasons
-                    .into_iter()
-                    .map(|reason| reason.as_str().to_owned())
-                    .collect();
-                error
-            }
-            PgLeaveError::ConcurrentModification => Self::new(
-                StatusCode::CONFLICT,
-                "leave_concurrent_modification",
-                "leave request_version changed since it was read; reload before retrying",
-            ),
-            PgLeaveError::CommandUnavailable => Self::new(
-                StatusCode::SERVICE_UNAVAILABLE,
-                "leave_command_unavailable",
-                "leave command database is not configured or unavailable",
-            ),
-            PgLeaveError::Db(_) => {
-                // Never leak sqlx/schema internals (OWASP A05). Log server-side.
-                tracing::error!(error = %err, "leave store error");
-                Self::new(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "internal",
-                    "internal server error",
-                )
-            }
-        }
+    pub(crate) fn from_store(err: PgLeaveError) -> Self {
+        self_service::map_store_error(err)
     }
 }
 
@@ -898,7 +873,7 @@ impl IntoResponse for RestError {
     }
 }
 
-async fn principal_from_headers(
+pub(crate) async fn principal_from_headers(
     state: &LeaveRestState,
     headers: &HeaderMap,
 ) -> Result<Principal, RestError> {

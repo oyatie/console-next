@@ -1,0 +1,106 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.tableSection {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.taskCell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.taskCell > strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.foldBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.foldBtn svg[data-expanded="true"] {
+  transform: rotate(90deg);
+}
+
+.subjectCell {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: nowrap;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.subjectPrimary {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subjectMeta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.phoneDue {
+  display: none;
+}
+
+.dateCol {
+  white-space: nowrap;
+}
+
+.actionsCell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  white-space: nowrap;
+}
+
+@container list-table (max-width: 480px) {
+  .phoneDue {
+    display: inline;
+  }
+}
+
+@media (--phone) {
+  .subjectCell {
+    flex-wrap: wrap;
+  }
+
+  .phoneDue {
+    display: inline;
+  }
+
+  .actionsCell {
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+  }
+}
+
+.toolsRow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+}
+
+.colDialogList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.tableWrap {
+  min-width: 0;
+}

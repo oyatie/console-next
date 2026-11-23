@@ -46,7 +46,7 @@ for (const { state, registry } of homeSetupCases) for (const width of [1440, 390
         await expect(main.locator('[aria-busy="true"]').last()).toBeVisible({ timeout: 20_000 });
         await expect(rail).toHaveCount(0);
       } else if (state === "failed") {
-        await expect(main.getByText("불러오지 못했습니다", { exact: true }).first()).toBeVisible({ timeout: 20_000 });
+        await expect(main.getByText("불러오지 못했습니다", { exact: true }).first()).toBeVisible();
         await expect(main.getByRole("button", { name: "다시 불러오기", exact: true }).first()).toBeVisible();
         await expect(main.getByText(failure("service_unavailable").error.operation_id!, { exact: true }).first()).toBeVisible();
         await expect(rail).toHaveCount(0);

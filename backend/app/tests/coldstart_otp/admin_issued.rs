@@ -9,7 +9,7 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 async fn issue(pool: &PgPool, user: Uuid) -> BootstrapCredentialIssue {
-    BootstrapCredentialStore
+    BootstrapCredentialStore::default()
         .issue_for_zero_credential_user(
             pool,
             None,

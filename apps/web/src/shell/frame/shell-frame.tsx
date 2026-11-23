@@ -25,7 +25,10 @@ import { PageMain } from "../../ui/page/page-main";
 import { meQuery } from "../../features/account/api";
 import { useMainScrollRestoration } from "../scroll-restoration";
 import { checklistQuery, modulesQuery } from "../../features/onboarding/api";
+import { canReadSetupChecklist } from "../../features/onboarding/domain/phase";
 import { fixFor } from "../../features/onboarding/domain/rail";
+import { useExperienceSync } from "../../experience/store";
+import { useActiveExperienceId } from "../../experience/dom";
 import type { NavHub } from "../nav";
 
 // ⌘K: the jump palette loads with its first use, never in the entry bundle.
@@ -35,10 +38,25 @@ export interface ShellLayoutProps {
   children: ReactNode;
   platform: boolean;
   restoring: boolean;
+  tenantName?: string;
+  tenantPhase?: string;
+  userProfile?: {
+    display_name?: string | null;
+    employee_org_unit?: string | null;
+    employee_position?: string | null;
+  };
   menu: readonly NavHub[] | undefined;
   navigationState: "loading" | "failed" | "ready";
   navigationNotice: ReactNode;
   onSearch: () => void;
+  phoneHeader?: {
+    title?: ReactNode;
+    context?: ReactNode;
+    shellOwnsH1?: boolean;
+    hideActions?: boolean;
+    phoneNav?: "self-service";
+    back?: { label: string; href?: string; onBack?: () => void };
+  };
 }
 
 export function ShellFrame({ layout: Layout, children = <Outlet />, pending = false }: {
@@ -55,15 +73,17 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
   const [savedRail, setSavedRail] = useState(() => ({ key: railKey, answer: rememberedRail(railKey) }));
   if (savedRail.key !== railKey) setSavedRail({ key: railKey, answer: rememberedRail(railKey) });
   const platform = !!claims?.platform;
+  useExperienceSync(!platform && active && !pending);
   const identity = useQuery({ ...meQuery, enabled: !platform && active && !pending });
   const router = useRouter();
   useMainScrollRestoration(router);
   const access = useQuery({ ...myAccessQuery, enabled: !platform && active });
   const support = useQuery({ ...activeSupportQuery, enabled: !platform && active });
   // Keep the rail snapshot separate, but share the identity request with the shell and page.
-  const me = useQuery({ ...navigationRead(meQuery), queryFn: ({ client }) => client.fetchQuery({ ...meQuery, staleTime: 0, retry: false }), enabled: !platform && active && !pending });
+  // Allow fresh cache reuse on remount so an experience-pack swap on the same route does not duplicate /api/v1/users/me.
+  const me = useQuery({ ...navigationRead(meQuery), refetchOnMount: true, queryFn: ({ client }) => client.fetchQuery({ ...meQuery, staleTime: 0, retry: false }), enabled: !platform && active && !pending });
   const phase = me.isSuccess ? me.data?.tenant?.phase : undefined;
-  const checklist = useQuery({ ...checklistQuery, enabled: !platform && active && phase === "SETUP", retry: false });
+  const checklist = useQuery({ ...checklistQuery, enabled: !platform && active && phase === "SETUP" && canReadSetupChecklist(access.data), retry: false });
   const modules = useQuery({ ...modulesQuery, enabled: !platform && active });
   const { refetch: refetchMe, isEnabled: meEnabled } = me;
   const { refetch: refetchChecklist, isEnabled: checklistEnabled } = checklist;
@@ -76,13 +96,13 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
     if (meEnabled) void refetchMe({ cancelRefetch: false });
     if (checklistEnabled) void refetchChecklist({ cancelRefetch: false });
   }, [pathname, meEnabled, refetchMe, checklistEnabled, refetchChecklist]);
-  const ready = !access.isPending && !support.isPending && !me.isPending && (phase !== "SETUP" || !checklist.isPending) && (!modulesEnabled || !modules.isPending);
+  const ready = !access.isPending && !support.isPending && !me.isPending && (!checklistEnabled || !checklist.isPending) && (!modulesEnabled || !modules.isPending);
   const setupTargets = checklist.data?.steps.filter(s => s.state !== "blocked")
     .flatMap(s => { const target = fixFor(s.action); return target ? [target.to] : []; });
   const [railTargets, setRailTargets] = useState<{ key: typeof railKey; pathname: string; phase: typeof phase; value: typeof setupTargets; modules: typeof modules.data | null; access: typeof access.data; supportApproval: boolean }>();
   const modulesFault = modules.isError && !isAnswer(modules.error);
   const supportFault = support.isError && !isAnswer(support.error);
-  const checklistFault = checklist.isError && !isAnswer(checklist.error);
+  const checklistFault = checklistEnabled && checklist.isError && !isAnswer(checklist.error);
   const hasSupportNotice = Boolean(support.data && (support.data.sessions?.length || (support.data.can_approve && support.data.pending_count)));
   const [pageFailures, setPageFailures] = useState(0);
   const registerFailure = useMemo(() => () => {
@@ -133,10 +153,48 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [platform]);
+  const experience = useActiveExperienceId();
   const scope = platform ? t("shell.hub.platform") : identity.data?.tenant?.name ?? (identity.isPending ? "" : undefined);
+  const employeeName = identity.data?.employee_name?.trim() || identity.data?.display_name?.trim();
+  const employeeUnit = identity.data?.employee_org_unit?.trim();
+  const employeeNumber = identity.data?.employee_number?.trim();
+  const employeeContext = identity.data?.employee_link_status === "LINKED" && employeeName
+    ? [employeeName, employeeUnit].filter(Boolean).join(" · ")
+    : identity.data?.tenant?.name;
+  const payslipContext = identity.data?.employee_link_status === "LINKED" && employeeName
+    ? [employeeName, employeeNumber].filter(Boolean).join(" · ")
+    : identity.data?.tenant?.name;
+  const hasDeskLinks = menu.some(hub =>
+    hub.links.some(link => link.to !== "/" && link.to !== "/people/requests" && link.to !== "/approvals"),
+  );
+  const isSelfService =
+    !platform &&
+    identity.data?.employee_link_status === "LINKED" &&
+    Boolean(displayed) &&
+    !displayed?.access.is_ops &&
+    !displayed?.supportApproval &&
+    !hasDeskLinks;
+  const phoneHeader = pathname === "/account" || pathname.startsWith("/account/")
+    ? {
+        title: pathname === "/account" ? t(experience === "baseline" ? "shell.account" : "shell.profile") : undefined,
+        context: pathname === "/account" && experience !== "baseline" && !platform ? identity.data?.employee_company ?? undefined : undefined,
+        shellOwnsH1: pathname === "/account" || pathname === "/account/privacy",
+        ...(isSelfService ? { phoneNav: "self-service" as const } : {}),
+      }
+    : pathname === "/leave"
+      ? { title: t("shell.title.leave"), context: employeeContext, shellOwnsH1: true, hideActions: true, phoneNav: "self-service" as const }
+      : pathname === "/payslips"
+        ? { title: t("shell.title.payslip"), context: payslipContext, shellOwnsH1: true, hideActions: true, phoneNav: "self-service" as const }
+        : pathname === "/me/attendance"
+          ? { title: t("shell.link.meAttendance"), context: employeeContext, phoneNav: "self-service" as const }
+          : pathname === "/me/desk"
+            ? { title: t("shell.link.meDesk"), context: employeeContext, phoneNav: "self-service" as const }
+            : isSelfService
+              ? { phoneNav: "self-service" as const }
+              : undefined;
   return (<>
     <a className="skip" href="#main">{t("shell.skip")}</a>
-    <Layout platform={platform} restoring={restoring} menu={platform || displayed ? menu : undefined}
+    <Layout platform={platform} restoring={restoring} tenantName={identity.data?.tenant?.name} tenantPhase={identity.data?.tenant?.phase ?? phase} userProfile={identity.data} phoneHeader={phoneHeader} menu={platform || displayed ? menu : undefined}
       navigationState={platform || displayed ? "ready" : supportOwnsFailure || railError ? "failed" : "loading"} onSearch={() => setJump(true)}
       navigationNotice={!platform && !displayed ? (supportOwnsFailure
         ? <p role="status" className="muted">{t("shell.nav.failed")}</p>

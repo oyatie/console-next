@@ -7,7 +7,7 @@ export const koAccessCodes: Record<keyof typeof enAccessCodes, string> = {
   "accessCodes.domain.hr_basic": "인사기본",
   "accessCodes.domain.hr_basic.help": "인사카드, 직원 등록과 정보 수정",
   "accessCodes.domain.appointment": "발령",
-  "accessCodes.domain.appointment.help": "입사·이동·승진·휴직 등 발령",
+  "accessCodes.domain.appointment.help": "입사·전보·전근·승진·휴직 등 발령",
   "accessCodes.domain.exit": "퇴직",
   "accessCodes.domain.exit.help": "퇴직 처리와 정산",
   "accessCodes.domain.attendance": "근태·휴가",
@@ -89,4 +89,9 @@ export const koAccessCodes: Record<keyof typeof enAccessCodes, string> = {
   "accessCodes.refusal.scope_not_enforceable_in_pilot": "이 범위는 아직 적용할 수 없습니다",
   "accessCodes.refusal.self_grant_forbidden": "본인에게는 부여할 수 없습니다",
   "accessCodes.refusal.valid_range_invalid": "기간이 맞지 않습니다",
+  "accessCodes.refusal.role_not_draft": "사용 중인 역할은 바로 삭제할 수 없습니다. 폐기 절차를 사용하십시오",
+  "accessCodes.refusal.role_has_active_grants": "이 역할을 가진 사람이 남아 있습니다. 부여를 먼저 회수하십시오",
+  "accessCodes.refusal.access_request_note_required": "「기타」를 선택하면 요청 사유를 적어야 합니다",
+  "accessCodes.refusal.access_request_closed": "이미 처리되었거나 철회된 권한 요청입니다",
+  "accessCodes.refusal.access_request_not_found": "권한 요청을 찾을 수 없습니다",
 };

@@ -1,0 +1,59 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.page {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  background: var(--surface);
+}
+
+.metaText {
+  font-size: var(--text-xs);
+  color: var(--steel);
+  white-space: nowrap;
+}
+
+.warnBanner {
+  padding: var(--space-2) var(--space-4);
+  border-block-end: 1px solid var(--warn-bd);
+  background: var(--warn-bg);
+  color: var(--warn-tx);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-medium);
+}
+
+.readerStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.anchorNav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  padding-block-end: var(--space-2);
+  border-block-end: 1px solid var(--border-soft);
+}
+
+.emptyNote {
+  margin: 0;
+  padding: var(--space-4);
+  color: var(--steel);
+  font-size: var(--text-sm);
+}
+
+.mobileBack {
+  display: none;
+}
+
+@media (--phone) {
+  .mobileBack {
+    display: block;
+  }
+
+  .warnBanner {
+    padding: var(--space-2) var(--space-3);
+  }
+}

@@ -5,6 +5,26 @@
  */
 
 export interface paths {
+    "/api/ops/v1/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Actions
+         * @description Returns Cmd hand-off history and pending actions from actions spool.
+         */
+        get: operations["opsActions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ops/v1/alerts": {
         parameters: {
             query?: never;
@@ -45,6 +65,106 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ops/v1/alerts/{key}/ack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Acknowledge AlertGroup
+         * @description Access JWT identity only; Cedar decides before reading or writing. Non-GET/HEAD requires configured Origin plus Sec-Fetch-Site: same-origin.
+         */
+        post: operations["opsAlertAck"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/v1/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Changes
+         * @description Returns release gates, timeline, and DORA-5 metrics.
+         */
+        get: operations["opsChanges"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/v1/changes/canary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Draft Canary Cmd
+         * @description Records signed canary hold/promote/abort Cmd hand-off in actions spool.
+         */
+        post: operations["opsChangesCanary"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/v1/changes/freeze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Draft Freeze Cmd
+         * @description Records signed freeze/unfreeze Cmd hand-off in actions spool.
+         */
+        post: operations["opsChangesFreeze"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/v1/changes/rollback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Draft Rollback Cmd
+         * @description Records signed rollback Cmd hand-off in actions spool.
+         */
+        post: operations["opsChangesRollback"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ops/v1/events": {
         parameters: {
             query?: never;
@@ -57,6 +177,26 @@ export interface paths {
          * @description Access JWT identity only; cookies ignored. Cedar decides before reading any source or count. No CORS headers or Set-Cookie. Non-GET/HEAD requires configured Origin plus Sec-Fetch-Site: same-origin, otherwise 403 origin_refused; allowed non-GET falls through to 405.
          */
         get: operations["opsEvent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/v1/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read ServiceHealth
+         * @description Returns internal SLOs, evidence truth, and external public status feed without blending.
+         */
+        get: operations["opsHealth"];
         put?: never;
         post?: never;
         delete?: never;
@@ -85,6 +225,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ops/v1/incidents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Incidents
+         * @description Lists incidents replayed from the incidents spool.
+         */
+        get: operations["opsIncidentsList"];
+        put?: never;
+        /**
+         * Declare Incident
+         * @description Declares a new incident in the incidents spool.
+         */
+        post: operations["opsIncidentDeclare"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/v1/incidents/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Incident
+         * @description Returns incident detail, timeline, legal clocks, and attached public card.
+         */
+        get: operations["opsIncidentDetail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/v1/incidents/{id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record Incident Event
+         * @description Appends an incident mutation with prev/expected_seq optimistic lock and SEV1/2 postmortem gate.
+         */
+        post: operations["opsIncidentEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/v1/incidents/{id}/public-draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Draft Public Status Update
+         * @description Records public update draft and generates tb status publish Cmd hand-off.
+         */
+        post: operations["opsIncidentPublicDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ops/v1/me": {
         parameters: {
             query?: never;
@@ -97,6 +321,290 @@ export interface paths {
          * @description Access JWT identity only; cookies ignored. Cedar decides before reading any source or count. No CORS headers or Set-Cookie. Non-GET/HEAD requires configured Origin plus Sec-Fetch-Site: same-origin, otherwise 403 origin_refused; allowed non-GET falls through to 405.
          */
         get: operations["opsMe"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/v1/obligations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Obligations
+         * @description Lists operational obligations and launch readiness status; degrades to Unknown on broken record chain.
+         */
+        get: operations["opsObligationsList"];
+        put?: never;
+        /**
+         * Open Obligation
+         * @description Opens a new operational obligation in obligations spool.
+         */
+        post: operations["opsObligationOpen"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/v1/obligations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Obligation Detail
+         * @description Returns a single operational obligation and its full spool event log.
+         */
+        get: operations["opsObligationDetail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/v1/obligations/{id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Append Obligation Event
+         * @description Appends an obligation lifecycle transition to the obligations spool.
+         */
+        post: operations["opsObligationEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/v1/oncall": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Oncall
+         * @description Returns on-call schedule configuration and synthetic page test status.
+         */
+        get: operations["opsOncall"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/v1/oncall/page-test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Draft Synthetic Page Test Cmd
+         * @description Records signed Cmd hand-off for synthetic on-call page test.
+         */
+        post: operations["opsOncallPageTest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/v1/promote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Promote
+         * @description Returns staging promotion candidate, signoffs, feedback queue, and request handoff state.
+         */
+        get: operations["opsPromote"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/v1/promote/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Triage Beta Feedback
+         * @description Records beta feedback triage disposition in feedback spool.
+         */
+        post: operations["opsPromoteFeedback"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/v1/promote/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Draft Promote Cmd
+         * @description Records signed promote Cmd hand-off in actions spool.
+         */
+        post: operations["opsPromoteRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/v1/promote/signoff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record Promotion Signoff
+         * @description Records signed staging promotion signoff in promote spool.
+         */
+        post: operations["opsPromoteSignoff"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/v1/recovery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Recovery
+         * @description Returns backup RPO, base backups, drill records, and RTO Unknown status.
+         */
+        get: operations["opsRecovery"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/v1/recovery/backup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Draft Backup Cmd
+         * @description Records signed backup-now Cmd hand-off in actions spool.
+         */
+        post: operations["opsRecoveryBackup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/v1/recovery/drill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Draft Recovery Drill Cmd
+         * @description Records signed recovery drill Cmd hand-off in actions spool; rejects tenant inputs.
+         */
+        post: operations["opsRecoveryDrill"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/v1/runbooks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Runbooks
+         * @description Lists markdown runbooks available in the mounted runbooks directory.
+         */
+        get: operations["opsRunbooks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/v1/runbooks/{path}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Runbook Document
+         * @description Reads a single validated runbook markdown document and headings.
+         */
+        get: operations["opsRunbookDoc"];
         put?: never;
         post?: never;
         delete?: never;
@@ -145,6 +653,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ops/v1/running/jobs/{name}/rerun": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Draft Job Rerun Cmd
+         * @description Validates job in known_jobs and records signed Cmd hand-off.
+         */
+        post: operations["opsJobRerun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ops/v1/silences": {
         parameters: {
             query?: never;
@@ -158,8 +686,32 @@ export interface paths {
          */
         get: operations["opsSilences"];
         put?: never;
-        post?: never;
+        /**
+         * Create Silence
+         * @description Writes silences spool first then calls Alertmanager. Refuses Watchdog, non-exact matchers, short comments, and exceeded TTLs.
+         */
+        post: operations["opsSilenceCreate"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ops/v1/silences/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Expire Silence
+         * @description Writes silences spool first then expires silence in Alertmanager.
+         */
+        delete: operations["opsSilenceDelete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -189,11 +741,42 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AckRecord: {
+            seq: number;
+            hash: components["schemas"]["Text"];
+            support_ref: components["schemas"]["Text"];
+            at: components["schemas"]["Timestamp"];
+            operator: components["schemas"]["Text"];
+            group_key: components["schemas"]["Text"];
+            alertname: components["schemas"]["Text"];
+            component: string;
+            note?: string | null;
+        };
+        AckRequest: {
+            note?: string | null;
+        };
+        AckResponse: {
+            evaluated_at: components["schemas"]["Timestamp"];
+            record: components["schemas"]["AckRecord"];
+            group: components["schemas"]["AlertGroupDetail"];
+        };
+        ActionRecord: components["schemas"]["CmdHandOff"] & {
+            seq: number;
+            hash: components["schemas"]["Text"];
+            support_ref: components["schemas"]["Text"];
+            /** @enum {string} */
+            status: "pending" | "executed" | "superseded";
+        };
+        ActionsList: {
+            evaluated_at: components["schemas"]["Timestamp"];
+            actions: components["schemas"]["ActionRecord"][];
+            count: components["schemas"]["ObservedCount"];
+        };
         AlertDetail: {
             evaluated_at: components["schemas"]["Timestamp"];
             group: components["schemas"]["AlertGroupDetail"];
         };
-        /** @description Group key is alertname × component; until AS-SCHEMA-LINT instruments component, fall back to alertname × job. Missing component, impact and first_action are Unknown: not instrumented, never fabricated. A missing or empty field on one member and a present value on another is Unknown: members disagree. An instrumented severity outside page/ticket is Unknown: severity <value> not on the ladder. */
+        /** @description Group key is lowercase 8-hex SHA-256 of alertname|component (16-hex on collision), using component or alertgroup label fallback. Missing component, impact and first_action are Unknown: not instrumented, never fabricated. */
         AlertGroup: {
             key: components["schemas"]["Text"];
             alertname: components["schemas"]["Text"];
@@ -237,6 +820,12 @@ export interface components {
         AlertMessage: "FIRING" | "UPDATE" | "STILL FIRING" | "RESOLVED";
         /** @enum {string} */
         AlertState: "Firing" | "Acked" | "Silenced" | "Inhibited" | "Resolved";
+        BackupRequest: {
+            /** @enum {string} */
+            backup_type: "full" | "diff" | "incr";
+            /** @enum {string} */
+            window: "window" | "now";
+        };
         Budget: {
             key: components["schemas"]["Text"];
             remaining_percent: components["schemas"]["ObservedNumber"];
@@ -245,9 +834,33 @@ export interface components {
             exhaustion_s: components["schemas"]["ObservedNumber"];
             requests_30d: components["schemas"]["ObservedCount"];
         };
+        CanaryRequest: {
+            /** @enum {string} */
+            decision: "hold" | "promote" | "abort";
+            reason: components["schemas"]["Text"];
+        };
         Change: {
             at: components["schemas"]["ObservedTimestamp"];
             summary: components["schemas"]["ObservedText"];
+        };
+        ChangesView: {
+            evaluated_at: components["schemas"]["Timestamp"];
+            releases: {
+                digest: components["schemas"]["Text"];
+                state: components["schemas"]["EvidenceState"];
+                gates?: Record<string, never>;
+                reason?: string | null;
+            }[];
+            timeline: {
+                at: components["schemas"]["Timestamp"];
+                kind: components["schemas"]["Text"];
+                summary: components["schemas"]["Text"];
+                status: components["schemas"]["Text"];
+            }[];
+            dora5: components["schemas"]["Dora5Metrics"];
+            freeze: components["schemas"]["ObservedBoolean"];
+            canary_percent: components["schemas"]["ObservedNumber"];
+            bundle_sha: components["schemas"]["ObservedText"];
         };
         Changing: {
             key: components["schemas"]["Text"];
@@ -261,6 +874,21 @@ export interface components {
             watch_until: components["schemas"]["ObservedTimestamp"];
             freeze: components["schemas"]["ObservedBoolean"];
             next: components["schemas"]["Link"];
+        };
+        CmdHandOff: {
+            action_id: components["schemas"]["Text"];
+            kind: components["schemas"]["Text"];
+            command: components["schemas"]["Text"];
+            target: components["schemas"]["Text"];
+            consequence: components["schemas"]["Text"];
+            expected_result: components["schemas"]["Text"];
+            verify_step: components["schemas"]["Text"];
+            operator: components["schemas"]["Text"];
+            at: components["schemas"]["Timestamp"];
+        };
+        CmdResponse: {
+            evaluated_at: components["schemas"]["Timestamp"];
+            action: components["schemas"]["CmdHandOff"];
         };
         /** @description Declared but absent is Missing; observed but undeclared is Extra (inventory membership, not a health ladder word). Image, digest, started and last_error, when included, carry their own evidence. */
         Component: {
@@ -296,15 +924,43 @@ export interface components {
             last_base_backup: components["schemas"]["ObservedTimestamp"];
             last_proven_restore: components["schemas"]["ObservedTimestamp"];
         };
+        DeclareIncidentRequest: {
+            title: components["schemas"]["Text"];
+            sev: components["schemas"]["IncidentSeverity"];
+            lead?: string | null;
+            affected_components?: string[];
+            personal_data_impact: components["schemas"]["PersonalDataImpact"];
+            intrusion?: boolean;
+            discovered_at: components["schemas"]["Timestamp"];
+            next_public_update_at?: components["schemas"]["Timestamp"] | null;
+            public_incident_id?: string | null;
+        };
+        Dora5Metrics: {
+            deployment_frequency: components["schemas"]["ObservedNumber"];
+            lead_time_s: components["schemas"]["ObservedNumber"];
+            change_failure_rate: components["schemas"]["ObservedNumber"];
+            mttr_s: components["schemas"]["ObservedNumber"];
+            rework_rate: components["schemas"]["ObservedNumber"];
+            n: number;
+        };
         /** @enum {string} */
         Drift: "Synced" | "OutOfSync" | "Unknown";
+        DrillRequest: {
+            /** @enum {string} */
+            repo: "1" | "2" | "auto";
+            /** @enum {string} */
+            drill_type: "name" | "time";
+            target?: string | null;
+            /** @enum {string} */
+            window: "window" | "now";
+        };
         Error: {
             evaluated_at: components["schemas"]["Timestamp"];
             support_ref: components["schemas"]["Text"];
             code: components["schemas"]["RefusalCode"];
             message: components["schemas"]["Text"];
         };
-        /** @description SSE event/data type and monotonic id agree. Filter home by read.home, alert groups by read.alerts, components/jobs by read.running, sources by read.sources. Heartbeat every 15 s. Resume from Last-Event-ID; an evicted sequence emits resync. No event data is delivered to a refused operator. */
+        /** @description SSE event/data type and monotonic id agree. Filter home/incidents by read.home, alert groups/silences by read.alerts, components/jobs/actions/promotions by read.running, sources by read.sources, obligations by obligation.read. Heartbeat every 15 s. Resume from Last-Event-ID; an evicted sequence emits resync. No event data is delivered to a refused operator. */
         Event: {
             /** @constant */
             type: "home.changed";
@@ -343,6 +999,37 @@ export interface components {
             source: components["schemas"]["Source"];
         } | {
             /** @constant */
+            type: "obligation.changed";
+            id: number;
+            evaluated_at: components["schemas"]["Timestamp"];
+            item: components["schemas"]["ObligationItem"];
+        } | {
+            /** @constant */
+            type: "incident.changed";
+            id: number;
+            evaluated_at: components["schemas"]["Timestamp"];
+            incident: components["schemas"]["IncidentSummary"];
+        } | {
+            /** @constant */
+            type: "action.changed";
+            id: number;
+            evaluated_at: components["schemas"]["Timestamp"];
+            action: components["schemas"]["CmdHandOff"];
+        } | {
+            /** @constant */
+            type: "silence.changed";
+            id: number;
+            evaluated_at: components["schemas"]["Timestamp"];
+            silence_id: components["schemas"]["Text"];
+            active: boolean;
+        } | {
+            /** @constant */
+            type: "promotion.changed";
+            id: number;
+            evaluated_at: components["schemas"]["Timestamp"];
+            digest: components["schemas"]["Text"];
+        } | {
+            /** @constant */
             type: "heartbeat";
             id: number;
             evaluated_at: components["schemas"]["Timestamp"];
@@ -363,11 +1050,42 @@ export interface components {
         };
         /** @enum {string} */
         EvidenceState: "Verified" | "Monitoring" | "Stale" | "Unknown";
+        FeedbackRequest: {
+            feedback_id: components["schemas"]["Text"];
+            digest: string;
+            /** @enum {string} */
+            severity: "P0" | "P1" | "P2";
+            /** @enum {string} */
+            disposition: "open" | "triaged" | "resolved" | "wontfix";
+            note: components["schemas"]["Text"];
+        };
+        FeedbackResponse: {
+            evaluated_at: components["schemas"]["Timestamp"];
+            feedback: components["schemas"]["FeedbackTriage"];
+        };
+        FeedbackTriage: {
+            seq: number;
+            hash: components["schemas"]["Text"];
+            support_ref: components["schemas"]["Text"];
+            at: components["schemas"]["Timestamp"];
+            operator: components["schemas"]["Text"];
+            feedback_id: components["schemas"]["Text"];
+            digest: components["schemas"]["Text"];
+            /** @enum {string} */
+            severity: "P0" | "P1" | "P2";
+            /** @enum {string} */
+            disposition: "open" | "triaged" | "resolved" | "wontfix";
+            note: components["schemas"]["Text"];
+        };
         FreeTierMeter: {
             key: components["schemas"]["Text"];
             used: components["schemas"]["ObservedNumber"];
             limit: components["schemas"]["ObservedNumber"];
             warning_ratio: components["schemas"]["ObservedNumber"];
+        };
+        FreezeRequest: {
+            freeze: boolean;
+            reason: components["schemas"]["Text"];
         };
         Grant: {
             action: components["schemas"]["Text"];
@@ -379,6 +1097,7 @@ export interface components {
         HomeSnapshot: {
             evaluated_at: components["schemas"]["Timestamp"];
             verdict: components["schemas"]["Verdict"];
+            launch_readiness?: components["schemas"]["Verdict"];
             worklist: components["schemas"]["WorkItem"][];
             changing: components["schemas"]["Changing"][];
             budgets: components["schemas"]["Budget"][];
@@ -388,8 +1107,64 @@ export interface components {
         };
         /** @enum {string} */
         Incident: "Investigating" | "Identified" | "Monitoring" | "Resolved";
+        IncidentDetail: components["schemas"]["IncidentState"] & {
+            legal_clocks: components["schemas"]["LegalClock"][];
+            public_card?: Record<string, never>;
+        };
+        IncidentEventRequest: {
+            expected_seq?: number;
+            prev?: number;
+            /** @enum {string} */
+            event: "lead_assigned" | "note_added" | "severity_changed" | "status_changed" | "postmortem_linked" | "public_attached" | "mitigation_added" | "notice_sent" | "resolved";
+            fields: Record<string, never>;
+        };
+        IncidentResponse: {
+            evaluated_at: components["schemas"]["Timestamp"];
+            incident: components["schemas"]["IncidentDetail"];
+        };
         /** @enum {string} */
         IncidentSeverity: "SEV1" | "SEV2" | "SEV3" | "SEV4";
+        IncidentState: {
+            id: components["schemas"]["Text"];
+            title: components["schemas"]["Text"];
+            sev: components["schemas"]["IncidentSeverity"];
+            status: components["schemas"]["Incident"];
+            lead: components["schemas"]["Text"] | null;
+            affected_components: components["schemas"]["Text"][];
+            personal_data_impact: components["schemas"]["PersonalDataImpact"];
+            intrusion: boolean;
+            opened_at: components["schemas"]["Timestamp"];
+            discovered_at: components["schemas"]["Timestamp"];
+            next_public_update_at: components["schemas"]["Timestamp"] | null;
+            public_incident_id: components["schemas"]["Text"] | null;
+            postmortem_ref: components["schemas"]["Text"] | null;
+            mitigations: components["schemas"]["Text"][];
+            timeline: components["schemas"]["IncidentTimelineEntry"][];
+            head_seq: number;
+            head_hash: components["schemas"]["Text"];
+        };
+        IncidentSummary: {
+            id: components["schemas"]["Text"];
+            title: components["schemas"]["Text"];
+            sev: components["schemas"]["IncidentSeverity"];
+            status: components["schemas"]["Incident"];
+            lead: components["schemas"]["Text"] | null;
+            head_seq: number;
+            next_public_update_at: components["schemas"]["Timestamp"] | null;
+            legal_clocks: components["schemas"]["LegalClock"][];
+        };
+        IncidentTimelineEntry: {
+            seq: number;
+            at: components["schemas"]["Timestamp"];
+            actor: components["schemas"]["Text"];
+            kind: components["schemas"]["Text"];
+            summary: components["schemas"]["Text"];
+        };
+        IncidentsList: {
+            evaluated_at: components["schemas"]["Timestamp"];
+            incidents: components["schemas"]["IncidentSummary"][];
+            count: components["schemas"]["ObservedCount"];
+        };
         Job: {
             name: components["schemas"]["Text"];
             state: components["schemas"]["ObservedJobState"];
@@ -404,6 +1179,12 @@ export interface components {
             evaluated_at: components["schemas"]["Timestamp"];
             jobs: components["schemas"]["Job"][];
             count: components["schemas"]["ObservedCount"];
+        };
+        LegalClock: {
+            kind: components["schemas"]["Text"];
+            deadline: components["schemas"]["Timestamp"];
+            remaining_s: number;
+            overdue: boolean;
         };
         /** @description Same-origin cockpit navigation only. Runbook and GitHub URLs are plain-text evidence fields, never external navigation links. */
         Link: {
@@ -428,6 +1209,65 @@ export interface components {
             };
             grants: components["schemas"]["Grant"][];
             allowed_actions: components["schemas"]["Text"][];
+        };
+        ObligationDetail: {
+            evaluated_at: components["schemas"]["Timestamp"];
+            verdict: components["schemas"]["Verdict"];
+            item: components["schemas"]["ObligationItem"] | null;
+            history: components["schemas"]["ObligationRecord"][];
+            sources: components["schemas"]["Source"][];
+        };
+        ObligationEventRequest: {
+            /** @enum {string} */
+            event: "in_review" | "redated" | "done" | "waived";
+            fields: Record<string, never>;
+        };
+        ObligationItem: {
+            id: components["schemas"]["Text"];
+            kind: components["schemas"]["ObligationKind"];
+            reviewer_role: components["schemas"]["ObligationReviewerRole"];
+            title: components["schemas"]["Text"];
+            due: string | null;
+            state: components["schemas"]["ObligationState"];
+            evidence_ref: string | null;
+            signer: string | null;
+            signed_on: string | null;
+            deadline: components["schemas"]["Text"];
+        };
+        /** @enum {string} */
+        ObligationKind: "professional-review" | "credential-rotation" | "escrow" | "drill" | "launch-gate" | "owner-decision" | "regulatory-watch";
+        ObligationOperator: {
+            person: components["schemas"]["Text"];
+            method: components["schemas"]["Text"];
+        };
+        ObligationRecord: {
+            seq: number;
+            hash: components["schemas"]["Text"];
+            support_ref: components["schemas"]["Text"];
+            at: components["schemas"]["Timestamp"];
+            operator: components["schemas"]["ObligationOperator"];
+            obligation_id: components["schemas"]["Text"];
+            /** @enum {string} */
+            event: "opened" | "in_review" | "redated" | "done" | "waived";
+            fields: Record<string, never>;
+        };
+        /** @enum {string} */
+        ObligationReviewerRole: "labor-attorney" | "lawyer" | "tax-accountant" | "owner";
+        /** @enum {string} */
+        ObligationState: "open" | "in-review" | "done" | "waived";
+        ObligationWriteResponse: {
+            evaluated_at: components["schemas"]["Timestamp"];
+            id: components["schemas"]["Text"];
+            item: components["schemas"]["ObligationItem"];
+            record: components["schemas"]["ObligationRecord"];
+        };
+        ObligationsList: {
+            evaluated_at: components["schemas"]["Timestamp"];
+            verdict: components["schemas"]["Verdict"];
+            launch_readiness: components["schemas"]["Verdict"];
+            items: components["schemas"]["ObligationItem"][];
+            count: components["schemas"]["ObservedCount"];
+            sources: components["schemas"]["Source"][];
         };
         /** @description Every displayed value carries evidence. Age > 2 × declared interval becomes Unknown, drops the current value and gives reason stale <age>. Unknown renders as Unknown: <reason>; absent series, failed reads and not instrumented are never green. */
         Observation: {
@@ -489,22 +1329,97 @@ export interface components {
         ObservedTimestamp: components["schemas"]["Observation"] & {
             value?: components["schemas"]["Timestamp"] | null;
         };
+        OncallView: {
+            evaluated_at: components["schemas"]["Timestamp"];
+            config?: Record<string, never>;
+            display_status: components["schemas"]["ObservedText"];
+            last_page_test_at: components["schemas"]["ObservedTimestamp"];
+            last_page_test_ok: components["schemas"]["ObservedBoolean"];
+        };
+        OpenObligationRequest: {
+            kind: components["schemas"]["ObligationKind"];
+            reviewer_role: components["schemas"]["ObligationReviewerRole"];
+            title: components["schemas"]["Text"];
+            due?: string | null;
+            evidence_ref?: string | null;
+        };
+        /** @enum {string} */
+        PersonalDataImpact: "yes" | "no" | "unknown";
+        PromoteRequest: {
+            digest: string;
+            /** @enum {string} */
+            bake: "normal" | "long";
+        };
+        PromoteView: {
+            evaluated_at: components["schemas"]["Timestamp"];
+            candidate_digest: components["schemas"]["ObservedText"];
+            state: components["schemas"]["Observation"] & {
+                value?: components["schemas"]["Promotion"] | null;
+            };
+            signoffs: components["schemas"]["PromotionSignoff"][];
+            feedback: components["schemas"]["FeedbackTriage"][];
+        };
         /** @enum {string} */
         Promotion: "Watching" | "Blocked" | "Ready" | "Promoting" | "Superseded" | "Integration-only";
+        PromotionSignoff: {
+            seq: number;
+            hash: components["schemas"]["Text"];
+            support_ref: components["schemas"]["Text"];
+            at: components["schemas"]["Timestamp"];
+            operator: components["schemas"]["Text"];
+            digest: components["schemas"]["Text"];
+            /** @enum {string} */
+            verdict: "ready" | "blocked";
+            note: components["schemas"]["Text"];
+        };
         /** @enum {string} */
         PublicComponent: "Operational" | "Degraded performance" | "Partial outage" | "Major outage" | "Maintenance" | "Unknown";
+        PublicDraftRequest: {
+            expected_seq?: number;
+            prev?: number;
+            stage: components["schemas"]["Incident"] | components["schemas"]["PublicComponent"];
+            components: components["schemas"]["Text"][];
+            message_ko: components["schemas"]["Text"];
+            message_en: components["schemas"]["Text"];
+            rev: number;
+        };
+        PublicDraftResponse: {
+            evaluated_at: components["schemas"]["Timestamp"];
+            incident: components["schemas"]["IncidentDetail"];
+            action: components["schemas"]["CmdHandOff"];
+        };
         /** @enum {string} */
         Recovery: "Queued" | "Deferred to window" | "Running" | "Done" | "Failed";
+        RecoveryRepoView: {
+            repository: components["schemas"]["Text"];
+            rpo_s: components["schemas"]["ObservedNumber"];
+            limit_s: components["schemas"]["ObservedNumber"];
+            last_base_backup: components["schemas"]["ObservedTimestamp"];
+            push_failures: components["schemas"]["ObservedNumber"];
+        };
+        RecoveryView: {
+            evaluated_at: components["schemas"]["Timestamp"];
+            repos: components["schemas"]["RecoveryRepoView"][];
+            rto: components["schemas"]["ObservedNumber"];
+            deferred_since: components["schemas"]["ObservedTimestamp"];
+            last_exit_code: components["schemas"]["ObservedNumber"];
+            lvm_snapshot_at: components["schemas"]["ObservedTimestamp"];
+            onprem_mount_expected: components["schemas"]["ObservedBoolean"];
+        };
         /**
          * @description OPS_CONFIG_INVALID is a startup refusal (exit 78, file and JSON pointer), never an HTTP response. origin_refused is the whole-router non-GET/HEAD origin guard.
          * @enum {string}
          */
-        RefusalCode: "OPS_ACCESS_JWT_MISSING" | "OPS_ACCESS_JWT_INVALID" | "OPS_ACCESS_AUD_MISMATCH" | "OPS_NOT_OPERATOR" | "OPS_GRANT_NOT_LIVE" | "OPS_ACTION_DENIED" | "OPS_CONFIG_INVALID" | "origin_refused";
+        RefusalCode: "OPS_ACCESS_JWT_MISSING" | "OPS_ACCESS_JWT_INVALID" | "OPS_ACCESS_AUD_MISMATCH" | "OPS_NOT_OPERATOR" | "OPS_GRANT_NOT_LIVE" | "OPS_ACTION_DENIED" | "OPS_CONFIG_INVALID" | "origin_refused" | "OPS_NOT_FOUND" | "OPS_TIMEOUT" | "OPS_RECORD_CHAIN_BROKEN" | "OPS_RECORD_WRITE_FAILED" | "OPS_ALERT_ACK_INVALID" | "OPS_SILENCE_INVALID" | "OPS_SILENCE_TTL_EXCEEDED" | "OPS_WATCHDOG_UNSILENCEABLE" | "OPS_UPSTREAM_FAILED" | "OPS_INCIDENT_INVALID" | "OPS_INCIDENT_NOT_FOUND" | "OPS_INCIDENT_CONFLICT" | "OPS_POSTMORTEM_REQUIRED" | "OPS_INCIDENT_FINAL" | "OPS_OBLIGATION_INVALID" | "OPS_OBLIGATION_INCOMPLETE" | "OPS_OBLIGATION_FINAL" | "OPS_OBLIGATION_NOT_FOUND" | "OPS_RUNBOOK_NOT_FOUND" | "bad_request" | "not_found" | "method_not_allowed" | "internal";
         /**
          * @description Canary is a state; its numeric weight is carried separately as Changing.weight_percent.
          * @enum {string}
          */
         Release: "Building" | "Signed" | "On preview" | "Canary" | "Watching" | "Active" | "Rolled back" | "Failed";
+        RollbackRequest: {
+            digest: string;
+            reason: components["schemas"]["Text"];
+        };
         Rollup: {
             key: components["schemas"]["Text"];
             health: components["schemas"]["ObservedHealth"];
@@ -514,6 +1429,35 @@ export interface components {
             expression: components["schemas"]["ObservedText"];
             current_value: components["schemas"]["ObservedNumber"];
         };
+        RunbookAnchor: {
+            slug: components["schemas"]["Text"];
+            /** @enum {string} */
+            kind: "html_id" | "heading";
+            title?: string | null;
+        };
+        RunbookDoc: {
+            path: components["schemas"]["Text"];
+            content: string;
+            anchors: components["schemas"]["RunbookAnchor"][];
+        };
+        RunbookDocMeta: {
+            path: components["schemas"]["Text"];
+            anchors: components["schemas"]["RunbookAnchor"][];
+        };
+        RunbookDocView: {
+            evaluated_at: components["schemas"]["Timestamp"];
+            bundle_sha?: string | null;
+            deployed_sha?: string | null;
+            stale_warning?: string | null;
+            doc: components["schemas"]["RunbookDoc"];
+        };
+        RunbookListView: {
+            evaluated_at: components["schemas"]["Timestamp"];
+            bundle_sha?: string | null;
+            deployed_sha?: string | null;
+            stale_warning?: string | null;
+            docs: components["schemas"]["RunbookDocMeta"][];
+        };
         Running: {
             evaluated_at: components["schemas"]["Timestamp"];
             components: components["schemas"]["Component"][];
@@ -521,8 +1465,58 @@ export interface components {
             groups: components["schemas"]["Rollup"][];
             count: components["schemas"]["ObservedCount"];
         };
+        ServiceHealthView: {
+            evaluated_at: components["schemas"]["Timestamp"];
+            internal_slos: {
+                key: components["schemas"]["Text"];
+                remaining_percent: components["schemas"]["ObservedNumber"];
+                burn_30m: components["schemas"]["ObservedNumber"];
+                burn_1h: components["schemas"]["ObservedNumber"];
+                burn_6h: components["schemas"]["ObservedNumber"];
+                burn_3d: components["schemas"]["ObservedNumber"];
+                burn_30d: components["schemas"]["ObservedNumber"];
+                exhaustion_s: components["schemas"]["ObservedNumber"];
+                requests_30d: components["schemas"]["ObservedNumber"];
+                low_sample: boolean;
+                low_sample_note?: string | null;
+            }[];
+            page_load_error_rate_5m: components["schemas"]["ObservedNumber"];
+            page_loads_rate_5m: components["schemas"]["ObservedNumber"];
+            evidence_truth: {
+                source: components["schemas"]["Text"];
+                ok: components["schemas"]["ObservedBoolean"];
+            }[];
+            textfiles: {
+                file: components["schemas"]["Text"];
+                age_s: components["schemas"]["ObservedNumber"];
+                max_age_s: components["schemas"]["ObservedNumber"];
+            }[];
+            public_status: {
+                feed_ok: components["schemas"]["ObservedBoolean"];
+                revision: components["schemas"]["ObservedCount"];
+                published_at: components["schemas"]["ObservedTimestamp"];
+                observed_at: components["schemas"]["ObservedTimestamp"];
+                expires_at: components["schemas"]["ObservedTimestamp"];
+                unknown_components: components["schemas"]["ObservedCount"];
+                components: {
+                    [key: string]: components["schemas"]["Observation"] & {
+                        value?: components["schemas"]["PublicComponent"] | null;
+                    };
+                };
+            };
+        };
         /** @enum {string} */
         Severity: "Page" | "Ticket";
+        SignoffRequest: {
+            digest: string;
+            /** @enum {string} */
+            verdict: "ready" | "blocked";
+            note: components["schemas"]["Text"];
+        };
+        SignoffResponse: {
+            evaluated_at: components["schemas"]["Timestamp"];
+            signoff: components["schemas"]["PromotionSignoff"];
+        };
         Silence: {
             id: components["schemas"]["Text"];
             matchers: components["schemas"]["Matcher"][];
@@ -530,6 +1524,27 @@ export interface components {
             ends: components["schemas"]["ObservedTimestamp"];
             author: components["schemas"]["ObservedText"];
             comment: components["schemas"]["ObservedText"];
+        };
+        SilenceCreateRequest: {
+            matchers: components["schemas"]["SilenceMatcherInput"][];
+            ends_at: components["schemas"]["Timestamp"];
+            comment: components["schemas"]["Text"];
+            group_key?: string | null;
+        };
+        SilenceCreateResponse: {
+            evaluated_at: components["schemas"]["Timestamp"];
+            silence_id: components["schemas"]["Text"];
+        };
+        SilenceDeleteResponse: {
+            evaluated_at: components["schemas"]["Timestamp"];
+            silence_id: components["schemas"]["Text"];
+            deleted: boolean;
+        };
+        SilenceMatcherInput: {
+            name: components["schemas"]["Text"];
+            value: components["schemas"]["Text"];
+            is_regex?: boolean;
+            is_equal?: boolean;
         };
         Silences: {
             evaluated_at: components["schemas"]["Timestamp"];
@@ -540,7 +1555,7 @@ export interface components {
         Source: {
             name: components["schemas"]["Text"];
             /** @enum {string} */
-            kind: "alertmanager" | "vmalert" | "victoriametrics" | "bundle" | "textfile" | "access_jwks" | "evaluator";
+            kind: "alertmanager" | "vmalert" | "victoriametrics" | "bundle" | "textfile" | "access_jwks" | "evaluator" | "obligations" | "releases" | "runbooks" | "oncall" | "status_feed";
             producer: components["schemas"]["Text"];
             interval: number;
             observed_at: components["schemas"]["Timestamp"] | null;
@@ -586,7 +1601,7 @@ export interface components {
             next: components["schemas"]["Link"];
         };
         /** @enum {string} */
-        WorkKind: "page" | "overdue" | "due" | "ticket";
+        WorkKind: "page" | "overdue" | "due" | "ticket" | "obligation";
     };
     responses: {
         /** @description OPS_NOT_OPERATOR, OPS_GRANT_NOT_LIVE, OPS_ACTION_DENIED, origin_refused */
@@ -623,6 +1638,29 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    opsActions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Actions list. */
+            200: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionsList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
     opsAlertGroups: {
         parameters: {
             query?: {
@@ -675,6 +1713,139 @@ export interface operations {
             403: components["responses"]["Forbidden"];
         };
     };
+    opsAlertAck: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: components["schemas"]["Text"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AckRequest"];
+            };
+        };
+        responses: {
+            /** @description Alert group acknowledged and recorded. */
+            200: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AckResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    opsChanges: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Changes view. */
+            200: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangesView"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    opsChangesCanary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CanaryRequest"];
+            };
+        };
+        responses: {
+            /** @description Cmd hand-off recorded. */
+            201: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CmdResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    opsChangesFreeze: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FreezeRequest"];
+            };
+        };
+        responses: {
+            /** @description Cmd hand-off recorded. */
+            201: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CmdResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    opsChangesRollback: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RollbackRequest"];
+            };
+        };
+        responses: {
+            /** @description Cmd hand-off recorded. */
+            201: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CmdResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
     opsEvent: {
         parameters: {
             query?: never;
@@ -694,6 +1865,29 @@ export interface operations {
                 };
                 content: {
                     "text/event-stream": components["schemas"]["Event"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    opsHealth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Service health. */
+            200: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceHealthView"];
                 };
             };
             401: components["responses"]["Unauthorized"];
@@ -723,6 +1917,139 @@ export interface operations {
             403: components["responses"]["Forbidden"];
         };
     };
+    opsIncidentsList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Incidents list. */
+            200: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncidentsList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    opsIncidentDeclare: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeclareIncidentRequest"];
+            };
+        };
+        responses: {
+            /** @description Incident declared. */
+            201: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncidentResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    opsIncidentDetail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Text"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Incident detail. */
+            200: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncidentResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    opsIncidentEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Text"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IncidentEventRequest"];
+            };
+        };
+        responses: {
+            /** @description Incident updated. */
+            200: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncidentResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    opsIncidentPublicDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Text"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublicDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Public update draft and Cmd hand-off recorded. */
+            201: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicDraftResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
     opsMe: {
         parameters: {
             query?: never;
@@ -740,6 +2067,388 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Me"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    opsObligationsList: {
+        parameters: {
+            query?: {
+                kind?: components["schemas"]["ObligationKind"];
+                state?: components["schemas"]["ObligationState"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Obligations list. */
+            200: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObligationsList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    opsObligationOpen: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpenObligationRequest"];
+            };
+        };
+        responses: {
+            /** @description Obligation opened. */
+            201: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObligationWriteResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    opsObligationDetail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Text"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Obligation detail. */
+            200: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObligationDetail"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    opsObligationEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Text"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ObligationEventRequest"];
+            };
+        };
+        responses: {
+            /** @description Obligation updated. */
+            200: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObligationWriteResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    opsOncall: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description On-call status. */
+            200: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OncallView"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    opsOncallPageTest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Cmd hand-off recorded. */
+            201: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CmdResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    opsPromote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Promote view. */
+            200: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromoteView"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    opsPromoteFeedback: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeedbackRequest"];
+            };
+        };
+        responses: {
+            /** @description Feedback triage recorded. */
+            201: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    opsPromoteRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PromoteRequest"];
+            };
+        };
+        responses: {
+            /** @description Cmd hand-off recorded. */
+            201: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CmdResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    opsPromoteSignoff: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignoffRequest"];
+            };
+        };
+        responses: {
+            /** @description Signoff recorded. */
+            201: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignoffResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    opsRecovery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Recovery view. */
+            200: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryView"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    opsRecoveryBackup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BackupRequest"];
+            };
+        };
+        responses: {
+            /** @description Cmd hand-off recorded. */
+            201: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CmdResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    opsRecoveryDrill: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DrillRequest"];
+            };
+        };
+        responses: {
+            /** @description Cmd hand-off recorded. */
+            201: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CmdResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    opsRunbooks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Runbook catalog. */
+            200: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunbookListView"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    opsRunbookDoc: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                path: components["schemas"]["Text"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Runbook document. */
+            200: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunbookDocView"];
                 };
             };
             401: components["responses"]["Unauthorized"];
@@ -795,6 +2504,31 @@ export interface operations {
             403: components["responses"]["Forbidden"];
         };
     };
+    opsJobRerun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: components["schemas"]["Text"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Cmd hand-off recorded. */
+            201: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CmdResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
     opsSilences: {
         parameters: {
             query?: never;
@@ -812,6 +2546,58 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Silences"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    opsSilenceCreate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SilenceCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Silence recorded and created. */
+            201: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SilenceCreateResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    opsSilenceDelete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Text"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Silence expired. */
+            200: {
+                headers: {
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SilenceDeleteResponse"];
                 };
             };
             401: components["responses"]["Unauthorized"];

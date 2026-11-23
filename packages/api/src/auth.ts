@@ -42,8 +42,11 @@ export const assertPasskey = async (): Promise<Assertion> => assertWith(await au
 export async function loginWithPasskey(opts: { identifier?: string; onStart?: (expiresAt: string) => void; onAsserted?: () => void } & PasskeyGet = {}) {
   const { identifier, onStart, onAsserted, ...how } = opts;
   const start = await authPost<Ceremony>(START, identifier ? { identifier } : {});
+  // A manual sign-in can take over while either the challenge or the credential is pending.
+  how.signal?.throwIfAborted();
   onStart?.(start.expires_at);
   const assertion = await assertWith(start, how);
+  how.signal?.throwIfAborted();
   onAsserted?.();
   const done = await authPost<TokenPair>("/api/v1/auth/passkey/login/finish", assertion);
   signedInAs = identifier;

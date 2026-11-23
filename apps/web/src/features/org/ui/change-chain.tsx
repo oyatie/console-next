@@ -10,7 +10,7 @@ type Detail = components["schemas"]["OrgChangeDetail"];
  * The approval chain by role, with the decider's name once decided. Steps the change never reached after a
  * rejection or a cancellation read "not reached", not "waiting" (D5). Named approvers wait on BW-01.
  */
-export function ChangeChain({ d }: { d: Detail }) {
+export function ChangeChain({ d, flat = false }: { d: Detail; flat?: boolean }) {
   const decided = d.approvalSteps.filter((s) => s.decision === "APPROVED").length;
   const ended = d.status === "REJECTED" || d.status === "CANCELLED";
   const current = d.status === "IN_APPROVAL" ? d.approvalSteps.find((s) => s.decision === "PENDING")?.id : undefined;
@@ -26,10 +26,12 @@ export function ChangeChain({ d }: { d: Detail }) {
     if (s.id === current) return { key: s.id, who: role, state: "current", meta: t("orgChange.chain.current"), note: t("orgChange.turn.who") };
     return { key: s.id, who: role, state: "waiting", meta: ended ? t("orgChange.chain.skipped") : undefined };
   });
+  const body = <ChainStepper steps={steps} label={t("orgChange.chain.title", { n: decided, total: d.approvalSteps.length })} />;
+  if (flat) return body;
   return (
     <section className="card panel" aria-labelledby="approvals">
       <h2 id="approvals" className="panel__title" tabIndex={-1}>{t("orgChange.chain.title", { n: decided, total: d.approvalSteps.length })}</h2>
-      <ChainStepper steps={steps} label={t("orgChange.chain.title", { n: decided, total: d.approvalSteps.length })} />
+      {body}
     </section>
   );
 }

@@ -64,6 +64,17 @@ describe("dry run answers", () => {
     expect(picksPending(d, initialPicks())).toBe(true);
   });
 
+  it("server-persisted inline cell repairs in decisions.cells do not block apply or trigger pending dry-run", () => {
+    const d = dry({
+      decisions: {
+        cells: { "A:5": { hire_date: "2026-11-01" } },
+      },
+      review: { count: 0, blocking: 0, items: [], groups: [] },
+    });
+    expect(picksPending(d, initialPicks())).toBe(false);
+    expect(applyBlockers(d, initialPicks())).toEqual({ rows: 0, pending: false, any: false });
+  });
+
   it("the served queue's blocking items block apply; the rest never do", () => {
     expect(applyBlockers(dry({ review: { count: 3, blocking: 2, items: [], groups: [] } }), initialPicks())).toMatchObject({ rows: 2, any: true });
     expect(applyBlockers(dry({ review: { count: 3, blocking: 0, items: [], groups: [] } }), initialPicks())).toMatchObject({ rows: 0, any: false });

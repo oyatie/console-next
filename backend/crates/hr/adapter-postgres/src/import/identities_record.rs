@@ -1,0 +1,247 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
+//! IMPORT-2: promotion and form-entry recording for sealed RRNs with dual-read
+//! conflict checks across v1 and tenant-bound v2+ blind indexes.
+
+use std::collections::BTreeMap;
+
+use console_hr_domain::import::rrn_value::RrnVault;
+use console_hr_domain::profile::enums::IdType;
+use console_hr_domain::profile::identity::infer_id_type_from_seventh;
+use console_kernel_core::{TraceContext, UserId};
+use console_ontology_canonical_adapter_postgres::id_registered::{
+    IdRegisteredWrite, set_employee_id_type_in_tx,
+};
+use sqlx::Postgres;
+use uuid::Uuid;
+
+use super::identities::{lock_recording, sealed_from_row};
+use crate::HrError;
+
+/// Moves the run's staged identities to the people the run inserted or
+/// matched (`source_key` -> employee). Returns how many were recorded.
+pub async fn record(
+    tx: &mut sqlx::Transaction<'_, Postgres>,
+    org: Uuid,
+    actor: Uuid,
+    run: Uuid,
+    people: &BTreeMap<String, Uuid>,
+    vault: Option<&dyn RrnVault>,
+) -> Result<usize, HrError> {
+    lock_recording(tx, org).await?;
+    let keys: Vec<&String> = people.keys().collect();
+    let employees: Vec<Uuid> = people.values().copied().collect();
+    if has_record_conflict(tx, org, run, &keys, people, vault).await? {
+        return Err(HrError::from_kernel(
+            console_kernel_core::KernelError::conflict(
+                "resident registration number is already in use",
+            )
+            .with_code("rrn_in_use"),
+        ));
+    }
+    let staged_meta: Vec<(String, Uuid, Option<String>, String)> = sqlx::query_as(
+        "SELECT p.source_key, p.employee, s.id_type, s.masked \
+         FROM unnest($3::TEXT[], $4::UUID[]) AS p(source_key, employee) \
+         JOIN data_import_row_identities s ON s.source_key = p.source_key \
+         WHERE s.org_id = $1 AND s.run_id = $2",
+    )
+    .bind(org)
+    .bind(run)
+    .bind(&keys)
+    .bind(&employees)
+    .fetch_all(tx.as_mut())
+    .await?;
+    let recorded_rows: Vec<(Uuid,)> = sqlx::query_as(
+        "WITH recorded AS ( \
+         INSERT INTO employee_rrn (org_id, employee_id, rrn_hmac, hmac_key_version, \
+           rrn_hmac_v2, blind_index_version, ciphertext, nonce, dek_wrapped, dek_nonce, \
+           key_version, masked, alg_id, kek_id, msg_id, commitment_tag, source, import_run_id, \
+           recorded_by) \
+         SELECT s.org_id, p.employee, s.rrn_hmac, s.hmac_key_version, s.rrn_hmac_v2, \
+                s.blind_index_version, s.ciphertext, s.nonce, s.dek_wrapped, s.dek_nonce, \
+                s.key_version, s.masked, s.alg_id, s.kek_id, s.msg_id, s.commitment_tag, \
+                'IMPORT', s.run_id, $5 \
+         FROM unnest($3::TEXT[], $4::UUID[]) WITH ORDINALITY p(source_key, employee, n) \
+         JOIN data_import_row_identities s ON s.source_key = p.source_key \
+         WHERE s.org_id = $1 AND s.run_id = $2 ORDER BY p.n \
+         ON CONFLICT (org_id, employee_id) DO NOTHING RETURNING org_id, employee_id) \
+         , effects AS (INSERT INTO import_run_effects (org_id, run_id, employee_id, effect, target_id, previous_id_type) \
+         SELECT r.org_id, $2, r.employee_id, 'rrn_recorded', r.employee_id, e.id_type \
+         FROM recorded r \
+         JOIN employees e ON e.org_id = r.org_id AND e.id = r.employee_id \
+         ON CONFLICT (org_id, run_id, employee_id, effect, target_id) DO NOTHING RETURNING 1) \
+         SELECT employee_id FROM recorded",
+    )
+    .bind(org)
+    .bind(run)
+    .bind(&keys)
+    .bind(&employees)
+    .bind(actor)
+    .fetch_all(tx.as_mut())
+    .await?;
+    let recorded = recorded_rows.len();
+    let recorded_set: std::collections::BTreeSet<Uuid> =
+        recorded_rows.into_iter().map(|(id,)| id).collect();
+    if !recorded_set.is_empty() {
+        let dry_rows: Option<serde_json::Value> = sqlx::query_scalar(
+            "SELECT dry_run_summary->'rows' FROM data_import_runs WHERE org_id = $1 AND id = $2",
+        )
+        .bind(org)
+        .bind(run)
+        .fetch_optional(tx.as_mut())
+        .await?
+        .flatten();
+        let mut planned_id_types: BTreeMap<String, String> = BTreeMap::new();
+        for item in dry_rows
+            .as_ref()
+            .and_then(|v| v.as_array())
+            .into_iter()
+            .flatten()
+        {
+            if let (Some(k), Some(t)) = (
+                item["source_key"].as_str(),
+                item["new_person"]["id_type"].as_str(),
+            ) {
+                planned_id_types.insert(k.to_owned(), t.to_owned());
+            }
+        }
+        for (source_key, employee_id, staged_id_type, masked) in staged_meta {
+            if !recorded_set.contains(&employee_id) {
+                continue;
+            }
+            let effective = planned_id_types
+                .get(&source_key)
+                .map(String::as_str)
+                .or(staged_id_type.as_deref())
+                .or_else(|| {
+                    masked
+                        .as_bytes()
+                        .get(7)
+                        .and_then(|b| b.checked_sub(b'0'))
+                        .and_then(infer_id_type_from_seventh)
+                        .map(IdType::as_str)
+                });
+            if let Some(new_id_type) = effective.filter(|t| *t != "NOT_ISSUED") {
+                set_employee_id_type_in_tx(
+                    tx,
+                    IdRegisteredWrite {
+                        org_id: org,
+                        employee_id,
+                        actor: Some(UserId::from_uuid(actor)),
+                        new_id_type,
+                        source: "IMPORT",
+                        trace: TraceContext::generate(),
+                    },
+                )
+                .await
+                .map_err(|e| HrError::internal(e.to_string()))?;
+            }
+        }
+    }
+    sqlx::query(
+        "DELETE FROM data_import_row_identities \
+          WHERE org_id = $1 AND run_id = $2 AND source_key = ANY($3)",
+    )
+    .bind(org)
+    .bind(run)
+    .bind(&keys)
+    .execute(tx.as_mut())
+    .await?;
+    Ok(recorded)
+}
+
+async fn has_record_conflict(
+    tx: &mut sqlx::Transaction<'_, Postgres>,
+    org: Uuid,
+    run: Uuid,
+    keys: &[&String],
+    people: &BTreeMap<String, Uuid>,
+    vault: Option<&dyn RrnVault>,
+) -> Result<bool, HrError> {
+    use sqlx::Row;
+    let staged_rows = sqlx::query(
+        "SELECT source_key, rrn_hmac, hmac_key_version, rrn_hmac_v2, blind_index_version, \
+                ciphertext, nonce, dek_wrapped, dek_nonce, key_version, masked, \
+                alg_id, kek_id, msg_id, commitment_tag \
+         FROM data_import_row_identities \
+         WHERE org_id = $1 AND run_id = $2 AND source_key = ANY($3)",
+    )
+    .bind(org)
+    .bind(run)
+    .bind(keys)
+    .fetch_all(tx.as_mut())
+    .await?;
+    if staged_rows.is_empty() {
+        return Ok(false);
+    }
+    let scoped = match vault {
+        Some(v) => v
+            .scoped_for_org(org)
+            .await
+            .map_err(|_| crate::rrn::unavailable())?,
+        None => None,
+    };
+    let vault = scoped.as_deref().or(vault);
+
+    let mut v2_employees: Vec<Uuid> = Vec::new();
+    let mut v2_hashes: Vec<Vec<u8>> = Vec::new();
+    let mut v1_employees: Vec<Uuid> = Vec::new();
+    let mut v1_hashes: Vec<Vec<u8>> = Vec::new();
+    let mut v1_has_v2: Vec<bool> = Vec::new();
+
+    for row in &staged_rows {
+        let source_key: String = row.try_get("source_key")?;
+        let Some(&employee) = people.get(&source_key) else {
+            continue;
+        };
+        let sealed = sealed_from_row(row)?;
+        let candidates = match vault {
+            Some(v) => v
+                .blind_index_v2_candidates_from_sealed(org, &sealed)
+                .map_err(|_| crate::rrn::unavailable())?,
+            None => sealed.hmac_v2.clone().into_iter().collect(),
+        };
+        let has_v2 = !candidates.is_empty();
+        for candidate in candidates {
+            v2_employees.push(employee);
+            v2_hashes.push(candidate);
+        }
+        v1_employees.push(employee);
+        v1_hashes.push(sealed.hmac);
+        v1_has_v2.push(has_v2);
+    }
+
+    let conflict: bool = sqlx::query_scalar(
+        "SELECT EXISTS( \
+           SELECT 1 FROM unnest($2::uuid[], $3::bytea[]) p(employee, candidate_hmac) \
+           JOIN employee_rrn r ON r.org_id = $1 \
+            AND r.rrn_hmac_v2 IS NOT NULL \
+            AND r.rrn_hmac_v2 = p.candidate_hmac \
+            AND r.employee_id <> p.employee \
+         ) OR EXISTS( \
+           SELECT 1 FROM unnest($4::uuid[], $5::bytea[], $6::bool[]) p(employee, v1_hmac, has_v2) \
+           JOIN employee_rrn r ON r.org_id = $1 \
+            AND (r.rrn_hmac_v2 IS NULL OR NOT p.has_v2) \
+            AND r.rrn_hmac = p.v1_hmac \
+            AND r.employee_id <> p.employee \
+         ) OR EXISTS( \
+           SELECT 1 FROM unnest($2::uuid[], $3::bytea[]) p1(employee, candidate_hmac) \
+           JOIN unnest($2::uuid[], $3::bytea[]) p2(employee, candidate_hmac) \
+             ON p1.candidate_hmac = p2.candidate_hmac AND p1.employee <> p2.employee \
+         ) OR EXISTS( \
+           SELECT 1 FROM unnest($4::uuid[], $5::bytea[], $6::bool[]) p1(employee, v1_hmac, has_v2) \
+           JOIN unnest($4::uuid[], $5::bytea[], $6::bool[]) p2(employee, v1_hmac, has_v2) \
+             ON (NOT p1.has_v2 OR NOT p2.has_v2) \
+            AND p1.v1_hmac = p2.v1_hmac \
+            AND p1.employee <> p2.employee \
+         )",
+    )
+    .bind(org)
+    .bind(&v2_employees)
+    .bind(&v2_hashes)
+    .bind(&v1_employees)
+    .bind(&v1_hashes)
+    .bind(&v1_has_v2)
+    .fetch_one(tx.as_mut())
+    .await?;
+    Ok(conflict)
+}

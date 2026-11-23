@@ -1,0 +1,47 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+x-console-authz: {"permission": "EmployeeDirectoryManage", "scope": "hr"}
+tags:
+- employees
+operationId: recordImportRowIdentifier
+summary: Stage a step-up sealed registration number onto a draft employee import row
+description: Requires EmployeeDirectoryManage and a fresh PII_RECORD passkey step-up assertion bound to (run_id, source_key). Validates and seals the registration number into data_import_row_identities without mutating raw import rows or echoing sensitive digits.
+security:
+- bearerAuth: []
+parameters:
+- name: run_id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+- name: source_key
+  in: path
+  required: true
+  schema:
+    type: string
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/ImportRowIdentifierRequest'
+responses:
+  '200':
+    description: Sealed draft identifier staged for dry run and apply.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ImportRowIdentifierResponse'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '429':
+    description: rrn_record_rate_limited.
+  '503':
+    description: rrn_vault_unavailable.

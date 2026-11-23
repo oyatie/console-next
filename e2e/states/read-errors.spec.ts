@@ -1,14 +1,18 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { setTimeout as delay } from "node:timers/promises";
 import { expect, test } from "@playwright/test";
+import { REALTIME } from "../../apps/web/src/lib/freshness";
 import type { components } from "@console/api";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
+import { routeReady } from "../flows";
 import { accountReads } from "../mock/account";
 import { AT, failure, id, modules, user } from "../mock/fixtures";
 import { mockPeopleImport } from "../mock/people-import";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
+import { faultAttempts, installFaultClock } from "./fault-clock";
 
 const run: components["schemas"]["EmployeeImportRun"] = {
   id: id(4000), source_filename: "synthetic-roster.xlsx", status: "APPLIED", apply_job_state: "done",
@@ -64,11 +68,16 @@ for (const fault of ["503", "network"] as const) test(`cold modules ${fault}: in
 });
 
 for (const fault of ["503", "network"] as const) for (const reference of [false, true]) test(`cold page and modules ${fault}: one recovery with ${reference ? "a reference" : "no reference"} @ui-state`, async ({ page }) => {
+  // Modules fail immediately. Only the page read schedules automatic retries.
+  await installFaultClock(page, request => new URL(request.url()).pathname === screens[2].read);
   const fixture = await mockScreen(page, screens[2], "populated");
   let failing = true;
   const attempts = { page: 0, modules: 0 };
-  await page.route(url => ["/api/v1/org-structure", "/api/v1/onboarding/modules"].includes(url.pathname), route => {
-    attempts[new URL(route.request().url()).pathname.endsWith("modules") ? "modules" : "page"]++;
+  await page.route(url => [screens[2].read, "/api/v1/onboarding/modules"].includes(url.pathname), async route => {
+    const read = new URL(route.request().url()).pathname.endsWith("modules") ? "modules" : "page";
+    attempts[read]++;
+    // A slow first reply must not advance the stream watchdog or trigger another round of reads.
+    if (fault === "503" && !reference && read === "page" && attempts.page === 1) await delay(1500);
     return !failing ? route.fallback() : fault === "network" ? route.abort("failed") : route.fulfill({ status: 503,
       json: { error: { code: "service_unavailable", ...(reference ? { support_ref: id(98), support_ref_at: AT } : {}) } } });
   });
@@ -76,7 +85,11 @@ for (const fault of ["503", "network"] as const) for (const reference of [false,
     await page.goto("/org");
     const rail = page.getByRole("navigation", { name: t("shell.nav"), includeHidden: true });
     const main = page.getByRole("main");
-    await expect(main.getByRole("alert").getByRole("heading")).toHaveText(t("common.loadFailed.title"), { timeout: 20_000 });
+    await expect.poll(() => attempts.page).toBe(faultAttempts);
+    await expect(main.getByRole("alert").getByRole("heading")).toHaveText(t("common.loadFailed.title"));
+    expect(attempts).toEqual({ page: faultAttempts, modules: 1 });
+    const clockLead = await page.evaluate(() => Date.now()) - Date.now();
+    expect(clockLead).toBeLessThan(REALTIME.heartbeatInterval * REALTIME.deadAfterHeartbeats);
     await expect(page.getByRole("alert", { includeHidden: true })).toHaveCount(1);
     await expect(rail.getByRole("link")).toHaveText([t("shell.link.home"), t("shell.link.requests")]);
     await expect(rail.getByRole("status")).toHaveText(t("shell.nav.failed"));
@@ -108,6 +121,7 @@ const singleCardOutage = (path: string) =>
   path.startsWith("/org") || path.startsWith("/access") || path.startsWith("/attendance") || path === "/audit/support-access";
 for (const path of outageRoutes) for (const reference of [false, true]) {
   test(`${path}: one outage with ${reference ? "a server reference" : "no reference"} @ui-state`, async ({ page }) => {
+    await installFaultClock(page);
     const fixture = await mockScreen(page, screens[2], "populated");
     await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { account_id: user.id, is_ops: true, phase: "OPERATING", as_of: AT, entries: [] } });
     try {
@@ -125,10 +139,11 @@ for (const path of outageRoutes) for (const reference of [false, true]) {
       const failed = main.getByRole("alert").filter({ has: page.getByRole("heading", { name: t("common.loadFailed.title"), exact: true }) });
       // Other page owners remove their own duplicate cards; this slice asserts the shell on those routes.
       if (singleCardOutage(path)) {
-        await expect(failed).toHaveCount(1, { timeout: 20_000 });
+        await routeReady(page);
+        await expect(failed).toHaveCount(1);
         await expect(main.getByRole("alert")).toHaveCount(1);
         await expect(main.locator("[data-support-reference]")).toHaveCount(reference ? 1 : 0);
-      } else await expect(main.getByRole("alert").first()).toBeVisible({ timeout: 20_000 });
+      } else await expect(main.getByRole("alert").first()).toBeVisible();
       await expect(rail.getByRole("link")).toHaveText(links);
       await expect(main.locator('[data-placement="page"]')).toHaveCount(0);
       await expect(page.getByRole("region", { name: t("supportAccess.title"), exact: true })).toHaveCount(0);
@@ -144,6 +159,7 @@ for (const path of outageRoutes) for (const reference of [false, true]) {
 
 for (const path of outageRoutes.filter(singleCardOutage)) {
   test(`${path}: the owning page shows one card when its reads and checklist fail @ui-state`, async ({ page }) => {
+    await installFaultClock(page);
     const fixture = await mockScreen(page, screens[2], "populated");
     const shellReads = ["/api/v1/access/me", "/api/v1/users/me", "/api/v1/me/authz", "/api/v1/onboarding/modules", "/api/v1/support-sessions/active"];
     await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { account_id: user.id, is_ops: true, phase: "OPERATING", as_of: AT, entries: [] } });
@@ -152,9 +168,9 @@ for (const path of outageRoutes.filter(singleCardOutage)) {
     try {
       await page.goto(path);
       const main = page.getByRole("main");
-      await expect(main.getByRole("alert")).toHaveCount(1, { timeout: 20_000 });
+      await expect(main.getByRole("alert")).toHaveCount(1);
       // Failed reads reserve their layout with a hidden skeleton; only visible loading must settle.
-      await expect(main.locator('[aria-busy="true"]').filter({ visible: true })).toHaveCount(0, { timeout: 20_000 });
+      await expect(main.locator('[aria-busy="true"]').filter({ visible: true })).toHaveCount(0);
       await expect(main.getByRole("alert")).toHaveCount(1);
       await expect(main.getByRole("alert").getByRole("heading")).toHaveText(t("common.loadFailed.title"));
       await expect(main.locator(`[data-support-reference="${id(98)}"]`)).toBeVisible();
@@ -171,6 +187,7 @@ for (const [path, read] of [
   ["/access/grants", "/api/v1/access/grants"], ["/audit/support-access", "/api/v1/support-sessions"],
 ] as const) {
   test(`${path}: active support and page read outage shows one card and retries together @ui-state`, async ({ page }) => {
+    await installFaultClock(page);
     const fixture = await mockScreen(page, screens[2], "populated");
     const shellReads = ["/api/v1/access/me", "/api/v1/users/me", "/api/v1/me/authz", "/api/v1/onboarding/modules"];
     await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { account_id: user.id, is_ops: true, phase: "OPERATING", as_of: AT, entries: [] } });
@@ -190,11 +207,14 @@ for (const [path, read] of [
       const main = page.getByRole("main");
       const failed = main.locator(".page").getByRole("alert");
       // The shell can fail before the page; its card alone does not mean the page has settled.
-      await expect(page.getByRole("region", { name: t("supportAccess.title"), exact: true }).getByRole("alert")).toHaveCount(1, { timeout: 20_000 });
+      const supportAlert = page.getByRole("region", { name: t("supportAccess.title"), exact: true }).getByRole("alert");
+      await expect(supportAlert).toHaveCount(1);
+      expect(supportAttempts).toBe(faultAttempts);
       await expect(failed).toHaveCount(0);
       releasePage();
-      await expect(failed).toHaveCount(1, { timeout: 20_000 });
-      await expect(main.getByRole("alert")).toHaveCount(1, { timeout: 20_000 });
+      await expect(failed).toHaveCount(1);
+      expect(pageAttempts).toBe(faultAttempts);
+      await expect(main.getByRole("alert")).toHaveCount(1);
       await expect(page.getByRole("region", { name: t("supportAccess.title"), exact: true })).toHaveCount(0);
       await expect(main.locator(`[data-support-reference="${id(98)}"]`)).toBeVisible();
       const before = { support: supportAttempts, page: pageAttempts };
@@ -203,8 +223,7 @@ for (const [path, read] of [
       const retriedSupport = page.waitForResponse(response => new URL(response.url()).pathname === "/api/v1/support-sessions/active" && ++supportResponses === before.support);
       const retriedPage = page.waitForResponse(response => new URL(response.url()).pathname === read && ++pageResponses === before.page);
       await main.getByRole("button", { name: t("common.retry"), exact: true }).click();
-      await expect.poll(() => supportAttempts).toBeGreaterThan(before.support);
-      await expect.poll(() => pageAttempts).toBeGreaterThan(before.page);
+      await expect.poll(() => [supportAttempts, pageAttempts]).toEqual([before.support * 2, before.page * 2]);
       await Promise.all([retriedSupport, retriedPage]);
       await expect(main.getByRole("alert")).toHaveCount(1);
       await expect(page.getByRole("region", { name: t("supportAccess.title"), exact: true })).toHaveCount(0);
@@ -216,6 +235,7 @@ for (const [path, read] of [
 for (const screen of ["support", "certificates", "rollback-reasons", "passkey-policy", "notice-candidates"] as const) {
   for (const status of [503, 403] as const) test(`${screen}: ${status} uses the shared read state @ui-state`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 900 });
+    if (status === 503) await installFaultClock(page);
     const fixture = screen === "rollback-reasons" ? await mockPeopleImport(page, "populated") : await mockScreen(page, screens[2], "populated");
     await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { account_id: user.id, is_ops: true, phase: "OPERATING", as_of: AT, entries: [] } });
     let failing = true;
@@ -223,7 +243,11 @@ for (const screen of ["support", "certificates", "rollback-reasons", "passkey-po
     const problem = { error: { ...failure(status === 403 ? "forbidden" : "read_outage").error, message: "raw upstream detail", support_ref: id(98), support_ref_at: AT } };
     const read = screen === "support" ? "/api/v1/support-sessions/active" : screen === "certificates" ? "/api/v1/hr/certificates" : screen === "rollback-reasons" ? "/api/v1/reason-codes" : screen === "passkey-policy" ? "/api/v1/auth/passkeys/policy" : "/api/v1/appointment-notices/candidates";
     page.on("request", request => { if (new URL(request.url()).pathname === read) attempts++; });
-    const fail = () => ({ status, json: problem });
+    let faults = 0;
+    const fail = () => {
+      faults++;
+      return { status, json: problem };
+    };
     let path = "/org";
     if (screen === "support") {
       await mockRoute(page, "get", "/api/v1/support-sessions/active", () => failing ? fail() : { status: 200, json: { sessions: [], pending_count: 0, pending_approvals: [], can_approve: false } });
@@ -259,6 +283,7 @@ for (const screen of ["support", "certificates", "rollback-reasons", "passkey-po
       if (status === 403) {
         const denied = region.getByRole("region", { name: t("common.denied.title.plain"), exact: true });
         await expect(denied).toBeVisible({ timeout: 20_000 });
+        expect(faults).toBe(1);
         await expect(denied).toContainText("김권한담당");
         if (screen === "certificates") {
           await expect(region.getByRole("gridcell", { name: "TEST-10", exact: true })).toHaveCount(0);
@@ -266,7 +291,8 @@ for (const screen of ["support", "certificates", "rollback-reasons", "passkey-po
         }
       } else {
         const notice = region.getByRole(screen === "certificates" ? "status" : "alert").filter({ hasText: t(screen === "certificates" ? "common.read.stale" : "common.loadFailed.title") });
-        await expect(notice).toHaveCount(1, { timeout: 20_000 });
+        await expect(notice).toHaveCount(1);
+        expect(faults).toBe(faultAttempts);
         if (screen === "certificates") await expect(region.getByRole("alert")).toHaveCount(0);
         await expect(region.locator(`[data-support-reference="${id(98)}"]`)).toBeVisible();
         if (screen === "certificates") await expect(region.getByRole("gridcell", { name: "TEST-10", exact: true })).toBeVisible();
@@ -276,10 +302,19 @@ for (const screen of ["support", "certificates", "rollback-reasons", "passkey-po
         await fits(page, `${screen}/${status}`);
         const before = attempts;
         failing = false;
+        const retried = page.waitForResponse(response =>
+          new URL(response.url()).pathname === read &&
+          response.status() === 200 &&
+          (screen !== "rollback-reasons" || new URL(response.url()).searchParams.get("domain") === "import_rollback"),
+        );
         await region.getByRole("button", { name: t("common.retry"), exact: true }).click();
+        await retried;
         await expect(notice).toHaveCount(0);
-        expect(attempts).toBeGreaterThan(before);
+        await expect.poll(() => attempts).toBeGreaterThan(before);
+        if (screen === "support") await expect(region).toHaveCount(0);
         if (screen === "certificates") await expect(region.getByRole("gridcell", { name: "TEST-11", exact: true })).toBeVisible();
+        if (screen === "rollback-reasons") await expect(region.getByRole("radiogroup", { name: t("importRollback.reason"), exact: false })).toBeVisible();
+        if (screen === "passkey-policy") await expect(region.getByRole("textbox", { name: t("account.passkey.label"), exact: false })).toBeVisible();
         if (screen === "notice-candidates") await expect(region.getByText(t("notice.pick.empty"), { exact: true })).toBeVisible();
       }
       await expect(page.getByRole("navigation", { name: "주 메뉴", includeHidden: true })).toBeAttached();

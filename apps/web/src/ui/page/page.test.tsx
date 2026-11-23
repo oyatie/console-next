@@ -11,6 +11,7 @@ import { loadCatalog, t } from "@console/i18n";
 import { beforeAll, expect, test } from "vitest";
 import { Page } from "./page";
 import { PageMain } from "./page-main";
+import { PagePhase, PageScope } from "./page-scope";
 import { Crumbs } from "../page-head/crumbs";
 
 beforeAll(() => loadCatalog("ko"));
@@ -66,4 +67,26 @@ test.each(["loading", "empty", "failed", "refused", "populated"])("the %s read r
     expect(html).not.toContain("Visible record");
     expect(html).not.toContain("Register");
   }
+});
+
+test("the page leaves the shared hold to the shell and keeps its read boundary", async () => {
+  const view = (settled: boolean, error: unknown = null) => markup(<PagePhase value={{ slot: null, settled }}>
+    <Page floorplan="P-02" head={{ title: "Record" }} q={{ ...q, error }}>
+      {rows => <p>{rows.join(", ")}</p>}
+    </Page>
+  </PagePhase>);
+  const pending = await view(false);
+  expect(pending).not.toContain('data-read-layout="list"');
+  expect(pending).toContain("Visible record");
+  expect(pending).not.toContain('hidden=""');
+  expect(pending).toContain("<h1");
+  expect(await view(true)).toContain("Visible record");
+  const embedded = await markup(<PagePhase value={{ slot: null, settled: false }}><PageScope value={{ landmark: true, embedded: true }}>
+    <Page floorplan="P-04" head={{ title: "Correction" }}>{copy.fields}</Page>
+  </PageScope></PagePhase>);
+  expect(embedded).toContain("Fields");
+  expect(embedded).not.toContain('hidden=""');
+  const failed = await view(false, new ApiError(503, "service_unavailable", "", [], "read-reference"));
+  expect(failed).toContain("read-reference");
+  expect(failed).not.toContain('hidden=""');
 });

@@ -16,7 +16,7 @@ export async function tableTest() {
       name: "long-table-test",
       resolveId: id => id === "/long-table-test.js" ? "\0long-table-test" : undefined,
       load: id => id === "\0long-table-test" ? `
-        import React,{useState} from 'react'; import {createRoot} from 'react-dom/client';
+        import React,{useState} from 'react'; import {createRoot} from 'react-dom/client'; import {flushSync} from 'react-dom';
         import {loadCatalog} from '@console/i18n';
         import {LongTable,TableControl} from '/apps/web/src/ui/long-table/long-table.tsx';
         import {Button} from '/apps/web/src/ui/button/button.tsx';
@@ -47,8 +47,15 @@ export async function tableTest() {
           const [values,setValues]=useState({});
           const [sort,setSort]=useState({column:'name',direction:'ascending'});
           const [selection,setSelection]=useState(NO_SELECTION);
+          const [syncTag,setSyncTag]=useState('v1');
           const collision=location.search.startsWith('?collision');
           const keyboardOpen=location.search==='?keyboard-open';
+          const syncRef=location.search==='?sync-ref';
+          if(syncRef) window.syncTableAndAct=()=>{
+            flushSync(()=>setSyncTag('v2'));
+            const row=document.querySelector('[role="row"][data-row-id="a"]');
+            row?.dispatchEvent(new KeyboardEvent('keydown',{key:'o',code:'KeyO',bubbles:true,cancelable:true}));
+          };
           const targets=location.search.startsWith('?targets');
           const stopKey=e=>{if(e.key==='Enter'||e.key===' ')e.stopPropagation();};
           const action=React.createElement(Button,{className:location.search==='?targets-tiny'?'tiny':undefined,size:'sm',onKeyDown:stopKey,onKeyUp:stopKey,onClick:e=>{e.stopPropagation();document.body.dataset.pressed='true';}},'지정');
@@ -61,9 +68,9 @@ export async function tableTest() {
             editable:location.search==='?typing-editable',
             caption:sort.column+':'+sort.direction,
             sortDescriptor:sort,onSortChange:location.search==='?readonly'?undefined:setSort,
-            ...(collision||keyboardOpen ? {...(location.search==='?collision' ? {selection,onSelectionChange:s=>{setSelection(s);document.body.dataset.selection=JSON.stringify(s.kind==='ids'?[...s.ids]:[...s.excluded]);}} : {}),
-              rowKeys:keyboardOpen?{onOpen:id=>document.body.dataset.keyboardOpen=id}:{},...(keyboardOpen?{}:{onRowAction:id=>document.body.dataset.action=id}),
-              onRowFocus:id=>document.body.dataset.focus=id,onRowHover:id=>document.body.dataset.hover=id} : {}),
+            ...(collision||keyboardOpen||syncRef ? {...(location.search==='?collision' ? {selection,onSelectionChange:s=>{setSelection(s);document.body.dataset.selection=JSON.stringify(s.kind==='ids'?[...s.ids]:[...s.excluded]);}} : {}),
+              rowKeys:keyboardOpen||syncRef?{onOpen:id=>document.body.dataset.keyboardOpen=syncRef?id+':'+syncTag:id}:{},...(keyboardOpen||syncRef?{}:{onRowAction:id=>document.body.dataset.action=id}),
+              onRowFocus:id=>document.body.dataset.focus=syncRef?id+':'+syncTag:id,onRowHover:id=>document.body.dataset.hover=id} : {}),
             columns:[{id:'name',header:'이름',card:editing||location.search==='?rows'?undefined:'title',rowHeader:true,allowsSorting:true,focusMode:location.search.endsWith('-arrows')?'child':undefined,cell:r=>location.search.endsWith('-arrows') ? React.createElement(Button,{size:'sm',onKeyDown:stopKey,onKeyUp:stopKey,onClick:e=>{e.stopPropagation();document.body.dataset.pressed='true';}},r.name) : r.name},
               {id:'note',header:'메모',allowsSorting:true,focusMode:location.search==='?typing-child'?'child':undefined,cell:r=>editing ? React.createElement(TableControl,null,React.createElement(TextInput,{'aria-label':r.name+' 메모',value:values[r.id]??'',onChange:e=>setValues(v=>({...v,[r.id]:e.target.value}))})) : r.note},
               {id:'fixed',header:'고정',type:targets?'action':undefined,width:targets?160:undefined,cell:()=>targets ? (location.search.startsWith('?targets-wrapped') ? React.createElement('span',null,action) : action) : '-'}]

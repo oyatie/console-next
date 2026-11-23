@@ -37,15 +37,15 @@ impl ExitCaseFilters {
             builder.push(")");
         }
         if let Some(search) = self.search.as_deref() {
-            let pattern = format!("%{search}%");
+            let pattern = format!("%{}%", crate::scope_sql::escape_like(search));
             builder.push(
                 " AND EXISTS (SELECT 1 FROM employees se WHERE se.org_id = c.org_id \
                  AND se.id = c.employee_id AND (se.name ILIKE ",
             );
             builder.push_bind(pattern.clone());
-            builder.push(" OR se.employee_number ILIKE ");
+            builder.push(" ESCAPE '\\' OR se.employee_number ILIKE ");
             builder.push_bind(pattern);
-            builder.push("))");
+            builder.push(" ESCAPE '\\'))");
         }
     }
 }

@@ -1,8 +1,8 @@
-//! r3:hire-16 / records-02: the worker register (Enforcement Decree of the
-//! Labor Standards Act §20) sex of an imported person, from the file's sex
-//! column, else from the resident registration number's 7th digit (odd male,
-//! even female). #25: only that meaning leaves the parse; the number itself is
-//! sealed and never stored in a row.
+//! Worker register sex of an imported person (Labor Standards Act Enforcement Decree Art. 20):
+//! reads the explicit sex column when provided, and intentionally falls back to deriving sex from
+//! the 7th digit (odd = MALE, even = FEMALE across RRN, ARC, and DOMESTIC_RESIDENCE) when omitted.
+//! Only that derived value leaves the parser; the registration number itself is sealed and never
+//! stored in canonical import rows.
 
 /// A sex cell as people write it, as `MALE` / `FEMALE`; anything else is no
 /// answer (never a guess).

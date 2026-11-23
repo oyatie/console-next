@@ -9,18 +9,9 @@ use console_kernel_core::kr::{
 };
 use libfuzzer_sys::fuzz_target;
 
-/// Known findings, skipped so the run explores past them. Each is pinned by an
-/// ignored regression test (kernel/core/tests/fuzz_regressions.rs); delete the
-/// line when that test passes.
-fn known(stored: &str) -> bool {
-    stored.starts_with("+820") // FZ-3: a `00`/`0` after +82 is stored, then re-parses to another value
-}
-
 macro_rules! canonical {
     ($ty:ty, $text:expr) => {
-        if let Ok(v) = <$ty>::parse($text)
-            && !known(v.as_str())
-        {
+        if let Ok(v) = <$ty>::parse($text) {
             let again = <$ty>::parse(v.as_str()).expect("stored form re-parses");
             assert_eq!(again.as_str(), v.as_str(), "{:?}", $text);
             let shown = <$ty>::parse(&v.display()).expect("display form re-parses");

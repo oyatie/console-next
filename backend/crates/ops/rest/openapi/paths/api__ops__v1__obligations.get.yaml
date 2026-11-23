@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+operationId: "opsObligationsList"
+summary: "List Obligations"
+x-cedar-action: "obligation.read"
+security: [{"accessJwt": []}]
+description: "Lists operational obligations and launch readiness status; degrades to Unknown on broken record chain."
+parameters: [{"in": "query", "name": "kind", "required": false, "schema": {"$ref": "#/components/schemas/ObligationKind"}}, {"in": "query", "name": "state", "required": false, "schema": {"$ref": "#/components/schemas/ObligationState"}}]
+responses: {"200": {"description": "Obligations list.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ObligationsList"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}

@@ -10,6 +10,8 @@ mod access_revocation;
 mod employee_view;
 pub use employee_view::{EmployeeView, EmployeeViewFilters};
 pub mod holders;
+mod me_access_log;
+pub use me_access_log::{MyAccessLogEvent, MyAccessLogPage, MyAccessLogQuery};
 mod org;
 mod tenant_facts;
 pub use tenant_facts::{CurrentUser, TenantFactsRead, UserTenant};

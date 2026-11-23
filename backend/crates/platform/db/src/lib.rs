@@ -44,6 +44,9 @@ pub mod period_lock;
 pub mod settings_read;
 pub mod statutory_read;
 pub mod support;
+pub mod tenant_keys;
+mod tenant_keys_rotation;
+mod tenant_keys_sql;
 pub mod versioning;
 
 pub use audit_tx::{

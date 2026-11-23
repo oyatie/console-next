@@ -22,7 +22,7 @@ use super::numbering::Numbering;
 pub const ENTITY_UNDECIDED: &str = "법인 미정";
 
 /// A person on file, as the plan compares them (merged-away rows excluded).
-#[derive(Debug, Clone, Default)]
+#[derive(Clone, Default)]
 pub struct OnFile {
     pub id: Uuid,
     pub employee_number: Option<String>,
@@ -43,10 +43,41 @@ pub struct OnFile {
     pub employment_type: Option<String>,
     /// The head's `updated_at` (RFC 3339): apply refuses if it moved.
     pub observed: String,
-    /// IMPORT-2: the keyed hash of the stored resident registration number, if any.
+    /// IMPORT-2: the legacy v1 keyed hash of the stored resident registration number, if any.
     pub rrn_hmac: Option<Vec<u8>>,
+    /// Tenant-bound v2+ blind index of the stored resident registration number, if any.
+    pub rrn_hmac_v2: Option<Vec<u8>>,
     /// IMPORT-2: earlier employee numbers that still find this person.
     pub aliases: Vec<String>,
+    /// Current persisted identity type (`RRN`, `ARC`, `DOMESTIC_RESIDENCE`, `NOT_ISSUED`).
+    pub id_type: Option<String>,
+}
+
+impl std::fmt::Debug for OnFile {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("OnFile")
+            .field("id", &self.id)
+            .field("employee_number", &self.employee_number)
+            .field("name", &self.name)
+            .field("status", &self.status)
+            .field("company", &self.company)
+            .field(
+                "rrn_hmac",
+                &self
+                    .rrn_hmac
+                    .as_ref()
+                    .map(|h| format!("[redacted; {} bytes]", h.len())),
+            )
+            .field(
+                "rrn_hmac_v2",
+                &self
+                    .rrn_hmac_v2
+                    .as_ref()
+                    .map(|h| format!("[redacted; {} bytes]", h.len())),
+            )
+            .field("aliases", &self.aliases)
+            .finish_non_exhaustive()
+    }
 }
 
 /// The group answers a run takes (`Decisions::group_answers`).
@@ -144,6 +175,8 @@ pub struct NewPerson {
     pub contract_end_date: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub probation_end_date: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id_type: Option<String>,
 }
 
 /// The per-row result of the dry run. `outcome` is one of `insert`, `update`,

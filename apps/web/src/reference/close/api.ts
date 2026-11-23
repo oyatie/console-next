@@ -1,5 +1,5 @@
 // The workplace close job (UX-R2 ENDS): what a close must plan for, the plan itself and its withdrawal.
-import { api, ApiError, assertPasskey, unwrap } from "@console/api";
+import { api, ApiError, assertPasskey, hrWaterfallApi, unwrap } from "@console/api";
 import type { components } from "@console/api/schema";
 import { get, read, type PathPrefix } from "../../lib/query";
 import type { ClosePlanRequest } from "./domain/plan";
@@ -27,21 +27,71 @@ export const refusalsOf = (e: unknown): { employee_id?: string; org_unit_id?: st
 
 /** A legal entity's end options: its open exit cases among them (company-52). */
 export const entityEndQuery = (entityId: string) => get("/api/v1/legal-entities/{entityId}/end-options", { params: { path: { entityId } } });
+const CLOSE_PEOPLE_STATUSES: ("ACTIVE" | "ON_LEAVE" | "UNKNOWN" | "PRE_HIRE")[] = ["ACTIVE", "ON_LEAVE", "UNKNOWN", "PRE_HIRE"];
+const CLOSE_PEOPLE_LIMIT = 1000;
+const BULK_EXIT_LIMIT = 500;
+
 /** Who is still employed at the legal entity (not exited): the people its close must see leave first. */
 export const entityPeopleQuery = (entityId: string) =>
-  get("/api/v1/employees", { params: { query: { legal_entity_id: entityId, status: ["ACTIVE", "ON_LEAVE", "UNKNOWN", "PRE_HIRE"], limit: 1000 } } });
+  read(
+    "/api/v1/employees",
+    async () => {
+      const items: components["schemas"]["Employee"][] = [];
+      const seen = new Set<string>();
+      let total = 0;
+      let cursor: string | undefined;
+      do {
+        const page = await unwrap(
+          api.GET("/api/v1/employees", {
+            params: {
+              query: {
+                legal_entity_id: entityId,
+                status: [...CLOSE_PEOPLE_STATUSES],
+                sort: "name",
+                limit: CLOSE_PEOPLE_LIMIT,
+                ...(cursor ? { cursor } : {}),
+              },
+            },
+          }),
+        );
+        total = page.total;
+        items.push(...page.items);
+        cursor = page.next_cursor ?? undefined;
+        if (!cursor || seen.has(cursor) || page.items.length === 0) break;
+        seen.add(cursor);
+      } while (cursor);
+      return { items, total, limit: CLOSE_PEOPLE_LIMIT, offset: 0, next_cursor: null };
+    },
+    { query: { legal_entity_id: entityId, status: [...CLOSE_PEOPLE_STATUSES] } },
+  );
 
-/** One exit report per person (the record's own report, same server checks), each with its own intent key. */
+/** Bulk exit reports in batches of <= 500, each batch carrying a deterministic signature idempotency key. */
 export async function reportCloseExits(people: readonly { id: string; name: string }[], body: { date: string; reason: string; note: string }, keys: Map<string, string>) {
+  if (people.length === 0) return [];
+  const names = new Map(people.map((p) => [p.id, p.name]));
+  const waterfall = hrWaterfallApi(api);
   const out: { id: string; name: string; code?: string }[] = [];
-  for (const p of people) {
-    const key = keys.get(p.id) ?? crypto.randomUUID();
-    keys.set(p.id, key);
-    const { error, response } = await api.POST("/api/v1/hr/exit-cases", {
-      params: { header: once(key) },
-      body: { employee_id: p.id, effective_exit_date: body.date, site_manager_note: body.note, exit_reason_code: body.reason },
-    });
-    out.push({ id: p.id, name: p.name, code: response.ok ? undefined : (ApiError.fromBody(response, error).code) });
+  for (let i = 0; i < people.length; i += BULK_EXIT_LIMIT) {
+    const chunk = people.slice(i, i + BULK_EXIT_LIMIT);
+    const sig = JSON.stringify([body.date, body.reason, body.note, chunk.map((p) => p.id)]);
+    const key = keys.get(sig) ?? crypto.randomUUID();
+    keys.set(sig, key);
+    const res = await waterfall.bulkReportExitCases(
+      {
+        effective_exit_date: body.date,
+        site_manager_note: body.note,
+        exit_reason_code: body.reason,
+        items: chunk.map((p) => ({ employee_id: p.id })),
+      },
+      key,
+    );
+    for (const item of res.results) {
+      out.push({
+        id: item.employee_id,
+        name: names.get(item.employee_id) ?? "",
+        code: item.ok ? undefined : (item.code || "failed"),
+      });
+    }
   }
   return out;
 }

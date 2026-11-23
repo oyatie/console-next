@@ -91,7 +91,7 @@ test("Firefox live discovery preserves Chromium's live scope except visual basel
     const chromium = discover("chromium");
     assert.ok(chromium.length > 0);
     assert.deepEqual(discover("firefox"), chromium);
-    for (const config of ["playwright.coldstart.config.ts", "playwright.live-renew.config.ts"])
+    for (const config of ["playwright.coldstart.config.ts", "playwright.live-renew.config.ts", "playwright.nts.config.ts"])
       assert.ok(discover("firefox", config).length > 0, `${config} must retain its dedicated Firefox coverage`);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
@@ -114,8 +114,8 @@ test("live shards reserve cleanup time and run auxiliary suites independently", 
       assert.ok(!run.run.includes('"$SHARD" == 1'), "auxiliary suites must not accumulate on shard 1");
       const suites = job.strategy.matrix.include.map(entry => entry.shard);
       assert.deepEqual(suites, name === "chromium"
-        ? ["clock", "coldstart", "live-renew", "navigation", "focus-stress"]
-        : ["coldstart", "live-renew", "navigation", "focus-stress"]);
+        ? ["clock", "coldstart", "live-renew", "navigation", "focus-stress", "nts"]
+        : ["coldstart", "live-renew", "navigation", "focus-stress", "nts"]);
       assert.match(run.run, /--config="\$CONFIG"/);
       assert.equal(run.env.CONFIG, "${{ matrix.config || 'playwright.config.ts' }}");
       const project = name === "chromium" ? "parallel" : "firefox";
@@ -145,6 +145,7 @@ test("the workflow reaches every previously dormant Playwright surface", () => {
     "playwright.live-renew.config.ts",
     "playwright.navigation.config.ts",
     "e2e/mock/focus-stress.config.ts",
+    "playwright.nts.config.ts",
   ]) assert.ok(source.includes(file), file);
   assert.match(source, /--project=clock/);
 });
