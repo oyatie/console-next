@@ -112,7 +112,7 @@ test.each([390, 180])("a grid with one total column keeps it at the right edge o
   for (const to of [0, 100, end]) await expect.poll(async () => (await total(to)).ends, { message: `scrolled to ${to}` }).toEqual([0, 0]);
 });
 
-// Fewer rows than the box was scrolled past: until the box reports its new scroll, no person row is drawn.
+// At least eight rows fewer than the box was scrolled past: until the box reports its new scroll, no person row is drawn.
 test("rows that shrink under a range of many people, with the box scrolled past them, leave the grid drawn", async () => {
   const errors: string[] = [];
   const onError = (error: Error) => errors.push(error.message);

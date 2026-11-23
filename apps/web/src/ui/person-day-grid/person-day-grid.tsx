@@ -34,7 +34,7 @@ type Props<R> = {
   lead: readonly SideColumn<R>[];
   days: readonly DayColumn[];
   tail: readonly SideColumn<R>[];
-  /** Optional group header above the tail columns, in a head row of its own (2-row thead). */
+  /** Optional group header above the tail columns, at the end of the first head row; the tail headers move to a second row (2-row thead). */
   tailGroupHeader?: ReactNode;
   /** Active/selected employee row key highlighted with the selected row bar. */
   activeRowId?: string;
@@ -131,7 +131,7 @@ export function PersonDayGrid<R>(p: Props<R>) {
   useEffect(() => {
     const el = box.current;
     // Any drawn body row has one cell per column (a head row may span the totals); the focused one may not be drawn yet,
-    // and none is while the rows have shrunk below a scroll the box has not reported yet.
+    // and none is while the rows have shrunk to at least OVERSCAN fewer than the box was scrolled past, until it reports its scroll.
     const drawn = el?.querySelector("tbody tr:not([aria-hidden])");
     // A press on a lead selects its row with the focus on the last day: the box stays where the person has it.
     if (!el || !drawn || focusCol === undefined || rowPress.current) return void (rowPress.current = false);

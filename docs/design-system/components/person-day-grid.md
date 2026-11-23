@@ -39,7 +39,7 @@ That list was found by searching `apps`, `e2e` and `scripts` for an import of th
 |---|---|---|
 | Box | `<div>` | The table. It is the scroll container, in both directions. |
 | Grid | `<table role="grid">` | `aria-label` from `label`, `aria-rowcount`, `aria-colcount`, `aria-multiselectable="true"`, `aria-activedescendant` and `tabindex="0"`. The key handler and the focus handler are here. The grid's own keys act only on a key pressed on the table itself: see Keyboard. |
-| Head row | `<tr aria-rowindex="1">` in `<thead>` | The lead headers, the day headers, the tail headers, in that order. With `tailGroupHeader` the head has two rows, and the second holds the tail headers. The first ends in the group header: over every tail column but the last, with an empty cell over the last; over the one tail column when there is one; and with no tail column, in a cell with `colSpan` 0. |
+| Head row | `<tr aria-rowindex="1">` in `<thead>` | The lead headers, the day headers, the tail headers, in that order. With `tailGroupHeader` the head has two rows, and the second holds the tail headers. The first ends in the group header: over every tail column but the last, with an empty cell over the last; over the one tail column when there is one; and with no tail column, in a cell with `colSpan` 0, which the HTML table rules count as 1. |
 | Lead header, tail header | `<th>` | The column's `header`. `data-w` carries the column's `width`. |
 | Day header | `<th>` | Two `<span>`s: the day's `label`, then its `sub` on a second line. `data-tone` and `aria-selected`. |
 | Spacer row | `<tr aria-hidden>` holding one `<td aria-hidden>` across every column | Nothing. It stands for the rows above or below the ones rendered, and has their height. |
@@ -265,30 +265,38 @@ While the editor is closed:
   stops the press.
 - The attendance view stops `pointerdown` on the assign button it puts in a lead cell, so a press on the button
   does not select the row. It does not stop it on the name link it puts there: a press on the link selects the
-  row. The keys of both are their own. `person-day-grid.browser-editing.ts` runs the keys in a browser: Enter on
-  the name link follows it and opens no editor, and `p`, Backspace, Delete, `]`, a digit, F2 and Arrow Down
-  pressed on the link change nothing in the grid, and Ctrl+S, Ctrl+Z and Ctrl+Y pressed on it save, undo and
-  redo. On the assign button, Enter presses it, the same keys change nothing in the grid, and the same chords
-  save, undo and redo.
+  row. Neither stops a key: a key on either goes on to the table's handler, where the grid takes none and the
+  view takes only Ctrl or Meta with S, Z or Y, and then to the page's own keys, such as Ctrl or Meta with K for
+  the jump palette and, in the console look, `/` for search. `person-day-grid.browser-editing.ts` runs the keys
+  in a browser, each time with the selection on a draft: Enter on the name link follows it and opens no editor,
+  `p`, Backspace, Delete, `]`, a digit, F2 and Arrow Down pressed on the link leave the selection and the draft
+  as they were and open nothing, and Ctrl+S, Ctrl+Z and Ctrl+Y pressed on it save, undo and redo. On the assign
+  button, Enter presses it, the same keys leave the selection and the draft as they were and open nothing, and
+  the same chords save, undo and redo.
 - The attendance view listens for a paste on the window: the browser sends a paste to where the text selection
   is, a cell, not to the focused table. It acts only while its own table, read through `tableRef`, has the focus.
   A paste with the editor, a name link or the button focused is not the grid's, nor one with the focus on another
   grid on the screen, such as the console month's list of open exceptions. The browser test pastes on the link
   and on that list and a row of it, where no paste preview opens, and on the grid, where one does. It also pastes
   from the keyboard after a focus and after a press on a cell, and the preview opens both times.
-- A change of focus row scrolls the box up or down so that the row is in view below the sticky head row. The grid
-  scrolls it up or down for nothing else. A row scrolled out of view by hand is not brought back by a key that
-  keeps the focus row, such as Arrow Left, nor by an editor opening in it. The browser's own scroll to the
-  focused input can leave it under the sticky head row, which was read from the code, not run, and an editor
-  whose row is more than eight rows out of view is not drawn at all.
+- A change of focus row, or of the row height the grid reads, scrolls the box up or down so that the focus row is
+  in view below the sticky head row. The row height changes, for one, when a window resize crosses the console
+  look's phone width, where `--row-h-compact` goes from 24 px to 40 px. The grid scrolls the box up or down for
+  nothing else. A row scrolled out of view by hand is not brought back by a key that keeps the focus row, such as
+  Arrow Left.
+- An editor opening in such a row takes the focus without `preventScroll`, so the browser scrolls for it. A row
+  that is drawn and wholly outside the box is scrolled to the middle of the box. A row under the sticky head row,
+  wholly or in part, stays there, since it is inside the box. A row more than eight rows out of view has no
+  editor drawn. The browser's scroll was measured in Chromium and Firefox on a plain page built like the grid,
+  not on the grid itself.
 - The box scrolls sideways so that the focus cell's column shows whole between the sticky lead columns and the
   last total. The grid reads where the columns are from a drawn person row, which has one cell per column, where a
   head row may span the totals; the focus row may not be drawn yet. A lead column that scrolls with the days, or
   is not drawn at this width, is left out. It does so each time a range is set, not only when the column changes,
   and when an editor opens or closes, and it scrolls by whole pixels, since a column can start on a fraction of
   one. When no person row is drawn it does not scroll, and the next range set, or an editor opening or closing,
-  scrolls again. No row is drawn when the rows shrink to fewer than the box was scrolled past, until the box
-  reports its new scroll.
+  scrolls again. No row is drawn when the rows shrink to at least eight fewer than the box was scrolled past,
+  until the box reports its new scroll.
   - A movement key brings the focus cell back into view after the box was scrolled by hand, even a key with
     nowhere further to go.
   - An editor that opens widens its column, and the box scrolls until the column shows whole.
@@ -435,10 +443,10 @@ next `pointerup`, and while it is set the range extends to any day cell the poin
   mark are exposed only when the caller's text names them: `look` sets no `aria-invalid`, no `aria-readonly` and
   no description.
 - **The active descendant.** It is worked out from the range's focus over every loaded row. Only rendered rows
-  have cells with an `id`. The grid scrolls the focus row into view when it changes, and the focus column
-  sideways when a range is set: see Keyboard. Once the box is scrolled so that the focus row is more than eight
-  rows out of view, the row is not rendered and `aria-activedescendant` names an `id` that is not in the
-  document.
+  have cells with an `id`. The grid scrolls the focus row into view when it or the row height changes, and the
+  focus column sideways when a range is set: see Keyboard. Once the box is scrolled so that the focus row is more
+  than eight rows out of view, the row is not rendered and `aria-activedescendant` names an `id` that is not in
+  the document.
 - **Counts.** `aria-rowcount` is the server's total. `aria-rowindex` counts loaded rows in the order they are
   drawn now.
 - **Groups.** A group is not exposed. Its name is a `data-group` attribute and its mark is a line.
@@ -455,8 +463,9 @@ Known gaps:
   set, the focus cell can be out of view or under a sticky column. A column wider than the room between the
   sticky columns keeps its end covered, and a lead column that scrolls with the days is not brought back by
   Home. See Keyboard.
-- A row scrolled out of view by hand is not brought back by a key that keeps the focus row, or by an editor
-  opening in it: see Keyboard.
+- A row scrolled out of view by hand is not brought back by a key that keeps the focus row. An editor opening in
+  it brings it to the middle of the box only when the row is drawn and wholly outside the box: a row under the
+  sticky head row stays under it, and a row more than eight rows away has no editor. See Keyboard.
 - When the editor's row is scrolled out of the window, its input is removed and the grid does not take the
   focus: see Anatomy.
 - A double-click on a cell in the open editor's column, or to the right of it, can open the editor on a
@@ -513,7 +522,7 @@ The WCAG 2.2 criteria that apply:
 | 2.1.1 Keyboard | Every day cell can be reached, selected and edited with keys. Lead and tail cells are not reached by the grid's keys. A link or a button the caller puts in a cell is a tab stop and keeps its own keys: the grid's own keys act only on a key pressed on the table, and the attendance view takes only its save, undo and redo chords on such a control. While the editor is open, neither the table's keys nor the view's act. A browser test runs Enter and those chords on the attendance view's name link and on its assign button. |
 | 2.4.3 Focus Order | When an edit ends by a key, the grid takes the focus again, so the next key lands where the person was working. A browser test covers Enter, Tab and Escape. Not answered when the editor's row is scrolled out of the window: the input is removed and the grid does not take the focus. |
 | 2.4.7 Focus Visible | Not met for a focused draft or refused cell. |
-| 2.4.11 Focus Not Obscured (Minimum) | Up and down: when the focus row changes, the box scrolls so that the row shows below the head row. Sideways: each time a range is set, by a key, a press or from outside the grid, and when an editor opens or closes, the box scrolls so that the focus cell's column shows whole between the sticky columns. A browser test covers Arrow Down in the grid alone, and left and right in the attendance view in today's look and in the console month. Not answered up and down after the box is scrolled by hand, until the focus row changes: a key that keeps the row, or an editor opening in it, does not bring the row back. Not answered sideways after a hand scroll or a press on a lead cell, until the next range is set, nor for a column wider than the room between the sticky columns. See the gaps. |
+| 2.4.11 Focus Not Obscured (Minimum) | Up and down: when the focus row or the row height changes, the box scrolls so that the row shows below the head row. Sideways: each time a range is set, by a key, a press or from outside the grid, and when an editor opens or closes, the box scrolls so that the focus cell's column shows whole between the sticky columns. A browser test covers Arrow Down in the grid alone, and left and right in the attendance view in today's look and in the console month. Not answered up and down after the box is scrolled by hand, until the focus row or the row height changes: a key that keeps the row does not bring it back, and an editor opening in it brings it to the middle of the box only when the row is drawn and wholly outside the box, while a row under the head row stays under it. Not answered sideways after a hand scroll or a press on a lead cell, until the next range is set, nor for a column wider than the room between the sticky columns. See the gaps. |
 | 2.5.7 Dragging Movements | A range can be made without a drag: Shift and a press, or the keys. Both need a keyboard. A press on a day header or a lead cell selects a whole day or row. |
 | 2.5.8 Target Size (Minimum) | A day cell is at least 44 px wide and 32 px high. |
 | 4.1.2 Name, Role, Value | The table above. The state behind a look is not exposed. |
@@ -628,7 +637,7 @@ uses touch: `e2e` was searched for `hasTouch`, `tap(`, `touchscreen` and `isMobi
 | `footerRows` | no | `readonly GridFooterRow[]` |  | Optional summary rows rendered inside tfoot beneath the grid body. |
 | `groupOf` | no | `(r: R) => string` |  | A row group's head is drawn above the first row of each group. |
 | `tableRef` | no | `RefObject<HTMLTableElement \| null>` |  | The grid's table, for a caller that must tell the grid itself having the focus from a control in it. |
-| `tailGroupHeader` | no | `ReactNode` |  | Optional group header above the tail columns, in a head row of its own (2-row thead). |
+| `tailGroupHeader` | no | `ReactNode` |  | Optional group header above the tail columns, at the end of the first head row; the tail headers move to a second row (2-row thead). |
 
 <!-- /ds:props -->
 

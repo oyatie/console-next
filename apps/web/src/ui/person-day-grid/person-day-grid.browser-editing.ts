@@ -187,6 +187,9 @@ export function editingCases(view: () => MonthView) {
     await page.keyboard.type("9-18");
     await page.keyboard.press("Enter");
     await element(drafts).toHaveText(`{${FIRST}}`);
+    // The selection back on the draft, which Backspace or Delete on the grid would clear.
+    await page.keyboard.press("ArrowUp");
+    await expect.poll(active).toBe("0,0");
     const assign = grid.getByRole("button"), acts = page.locator("#acts");
     await assign.focus();
     for (const key of ["p", "Backspace", "Delete", "]", "8", "F2", "ArrowDown"]) await page.keyboard.press(key);
@@ -194,6 +197,7 @@ export function editingCases(view: () => MonthView) {
     await element(editor).toHaveCount(0);
     await element(drafts).toHaveText(`{${FIRST}}`);
     await element(acts).toHaveText("");
+    expect(await active()).toBe("0,0");
     await page.keyboard.press("Enter");
     await element(acts).toHaveText("assign");
     await page.keyboard.press("Control+s");
