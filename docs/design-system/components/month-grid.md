@@ -131,7 +131,7 @@ stop.
 
 The component takes no text. It has one `keydown` handler and no composition event. The handler returns first on
 a key the input method owns, which `isImeKey` (`lib/pure/ime.ts`) tells by `isComposing`, key code 229 or the key
-name `Process`: that key moves nothing and keeps its default. So an arrow pressed while a syllable is composing in
+name `Process`: that key moves nothing, chooses nothing and keeps its default. So an arrow pressed while a syllable is composing in
 a text field the caller put in a cell stays with the input method. Otherwise the handler compares `key` with the
 names above, so a key that the Korean input method reports under another name is left alone.
 
