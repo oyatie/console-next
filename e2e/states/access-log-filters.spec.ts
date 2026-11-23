@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { installFaultClock } from "./fault-clock";
 import { expect, test, type Page } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
 import { AT, id } from "../mock/fixtures";
 import { mockScreen } from "../mock/screen";
@@ -9,12 +10,13 @@ import { expectStable, recordShifts } from "../stability";
 
 async function filtersFixture(page: Page) {
   const shell = await mockScreen(page, screens[0], "empty");
+  const actor = { id: id(101), label: "김민수" };
   const requests: URLSearchParams[] = [];
   await page.route(url => url.pathname === "/api/v1/access/access-log", async route => {
     const query = new URL(route.request().url()).searchParams;
     requests.push(query);
     const items = query.get("action") === "employee.rrn_reveal" ? [] : [{
-      event_id: id(7100), created_at: AT, occurred_at: AT, actor_id: id(101), actor_name: "김민수",
+      event_id: id(7100), created_at: AT, occurred_at: AT, actor_id: actor.id, actor_name: actor.label,
       principal_type: "TENANT_USER", action: "employee.export", target_type: "employee", subject_count: 1,
       ip: "203.0.113.10", outcome: "ALLOWED", export_purpose: "급여 신고", row_count: 1, flags: ["download"],
     }];
@@ -23,13 +25,13 @@ async function filtersFixture(page: Page) {
       totals: { events: items.length, flagged: items.length, by_flag: { download: items.length } },
       items, next_cursor: null,
       filter_options: {
-        actors: [{ id: id(101), label: "김민수" }],
+        actors: [actor],
         actions: [{ id: "employee.export", label_key: "accessLog.action.employee.export" }, { id: "employee.rrn_reveal", label_key: "accessLog.action.employee.rrn_reveal" }],
         target_types: [{ id: "employee", label_key: "accessLog.target.employee" }],
       },
     } });
   });
-  return { ...shell, requests };
+  return { ...shell, requests, actor };
 }
 
 for (const state of ["available", "absent", "failed", "search_invalid"] as const) {
@@ -67,6 +69,39 @@ for (const state of ["available", "absent", "failed", "search_invalid"] as const
     } finally { release(); fixture.release(); }
   });
 }
+
+test("access-log keeps reset in place and presents the applied filters together @ui-state", async ({ page }) => {
+  await loadCatalog("ko");
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const fixture = await filtersFixture(page);
+  const read = Promise.withResolvers<void>();
+  const requested = Promise.withResolvers<void>();
+  await page.route(url => url.pathname === "/api/v1/access/access-log", async route => {
+    requested.resolve();
+    await read.promise;
+    await route.fallback();
+  });
+  const reset = page.getByRole("button", { name: t("accessLog.clearSearch"), exact: true });
+  const summary = page.getByLabel(t("accessLog.appliedFilters"), { exact: true });
+  const enabledReview = page.getByRole("button", { name: t("accessLog.review.open"), exact: true, disabled: false });
+  try {
+    const query = new URLSearchParams({ period: "2026-10", actor: fixture.actor.id, action: "employee.export",
+      target_type: "employee", from: "2026-10-05", to: "2026-10-20" });
+    await page.goto(`/audit/access-log?${query}`);
+    await requested.promise;
+    await expect(reset).toBeVisible();
+    await page.evaluate(() => document.fonts.ready);
+    const before = await reset.boundingBox();
+    expect.soft(await summary.count()).toBe(0);
+    await expect(enabledReview).toHaveCount(0);
+    read.resolve();
+    await expect(summary.locator("dd")).toHaveText([fixture.actor.label, t("accessLog.action.employee.export"),
+      t("accessLog.target.employee"), "2026. 10. 05.", "2026. 10. 20."]);
+    await expect(enabledReview).toBeVisible();
+    expect(await reset.boundingBox()).toEqual(before);
+    expect(fixture.unexpected).toEqual([]);
+  } finally { read.resolve(); fixture.release(); }
+});
 
 test("access-log keeps filter selection disabled after the page read fails @ui-state", async ({ page }, testInfo) => {
   await installFaultClock(page);

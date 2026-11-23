@@ -127,7 +127,7 @@ export function AccessLogBaselineView({
           <SearchField label={t("accessLog.search")} value={searchText} onChange={onSearchChange} onCompositionStart={onCompositionStart} onCompositionEnd={onCompositionEnd} />
           <div className="row wrap">
             <Button disabled={!first && !filterInvalid} onClick={onOpenFilter}>{t("accessLog.chooseFilters")}</Button>
-            {Boolean(first && period) && <Button onClick={() => onOpenReview(null)}>{t("accessLog.review.open")}</Button>}
+            <Button disabled={!first || !period} onClick={() => onOpenReview(null)}>{t("accessLog.review.open")}</Button>
             {filtered && <Button onClick={onClear}>{t("accessLog.clearSearch")}</Button>}
           </div>
           {!!appliedFilters.length && <KeyValue label={t("accessLog.appliedFilters")} items={appliedFilters} readOnly />}

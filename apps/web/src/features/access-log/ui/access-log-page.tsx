@@ -69,7 +69,8 @@ export function AccessLogPage() {
   // Until choices have their own endpoint, recover with the smallest authorized log read.
   const choices = useInfiniteQuery({ ...accessLogPages(search.period, false, undefined, {}, 1), enabled: filterInvalid && !first?.filter_options });
   const source = first ?? (filterInvalid ? choices.data?.pages[0] : undefined);
-  const appliedFilters = [
+  const waitingForActor = actor && !source && (filterInvalid ? choices.isPending : q.isPending);
+  const appliedFilters = waitingForActor ? [] : [
     { key: "actor", label: t("accessLog.actor"), value: actor && source?.filter_options && (source.filter_options.actors.find(choice => choice.id === actor)?.label ?? t("accessLog.actorUnavailable")) },
     { key: "action", label: t("accessLog.action"), value: action && codeText(`accessLog.action.${action}`, action) },
     { key: "target_type", label: t("accessLog.targetType"), value: target_type && codeText(`accessLog.target.${target_type}`, target_type) },
@@ -146,11 +147,9 @@ export function AccessLogPage() {
             <Button size="sm" variant="secondary" disabled={!first && !filterInvalid} onClick={() => setFilterOpen(true)}>
               {t("accessLog.chooseFilters")}
             </Button>
-            {Boolean(first && period) && (
-              <Button size="sm" variant="secondary" onClick={() => { setReviewEventId(null); setReviewOpen(true); }}>
-                {t("accessLog.review.open")}
-              </Button>
-            )}
+            <Button size="sm" variant="secondary" disabled={!first || !period} onClick={() => { setReviewEventId(null); setReviewOpen(true); }}>
+              {t("accessLog.review.open")}
+            </Button>
             {filtered && (
               <Button size="sm" variant="ghost" onClick={clear}>
                 {t("accessLog.clearSearch")}
