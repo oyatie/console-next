@@ -192,6 +192,11 @@ for (const width of [1440, 390]) {
         await expect(kpiStrip).toBeVisible();
         await expect(kpiStrip.getByRole("button")).toHaveCount(6);
 
+        const bottomBar = width === 390
+          ? page.getByRole("navigation", { name: t("shell.nav"), exact: true })
+          : page.getByRole("contentinfo", { name: t("shell.status.label"), exact: true });
+        await expect(bottomBar).toBeVisible();
+
         if (width === 1440) {
           const initialSidePane = page.locator('aside[data-pane="record"]');
           await expect(initialSidePane).toBeVisible();
@@ -236,17 +241,9 @@ for (const width of [1440, 390]) {
         }
 
         await withFullPage(page, () => shot(page, `approvals--${width}-${theme}`));
-        if (width === 1440) {
-          const statusBar = page.getByRole("contentinfo").last();
-          const barBox = await statusBar.boundingBox();
-          expect(barBox).not.toBeNull();
-          expect(barBox!.y + barBox!.height).toBeGreaterThanOrEqual(899);
-        } else {
-          const phoneNav = page.locator('[data-console-shell] nav').last();
-          const navBox = await phoneNav.boundingBox();
-          expect(navBox).not.toBeNull();
-          expect(navBox!.y + navBox!.height).toBeGreaterThanOrEqual(899);
-        }
+        const barBox = await bottomBar.boundingBox();
+        expect(barBox).not.toBeNull();
+        expect(barBox!.y + barBox!.height).toBeGreaterThanOrEqual(899);
         await fits(page, `Console /approvals ${width} ${theme}`);
         await expectAxe(page, `Console /approvals ${width} ${theme}`);
 
@@ -624,6 +621,7 @@ test("Console /approvals/$approvalId DocQueueStepper avoids multi-query concaten
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
+  const statusBar = page.getByRole("contentinfo", { name: t("shell.status.label"), exact: true });
 
   // (a) /approvals?q=0418 -> reset filters -> open OC-2026-0418 -> 1 of 6 -> Next goes to AP-2026-0419 (not self-loop)
   {
@@ -640,7 +638,7 @@ test("Console /approvals/$approvalId DocQueueStepper avoids multi-query concaten
       await grid.locator(`tbody tr[data-id="${saeonUniverse.approval.documentNumber}"]`).getByRole("link", { name: t("home.inbox.open"), exact: true }).click();
       await expect(page).toHaveURL(new RegExp(`/approvals/${saeonUniverse.approval.documentNumber}$`));
       await expect(page.getByRole("main").getByText(t("approvals.console.queuePos", { n: 1, total: 6 }), { exact: true })).toBeVisible();
-      await expect(page.getByRole("contentinfo").last().getByText(t("approvals.console.queuePos", { n: 1, total: 6 }), { exact: true })).toBeVisible();
+      await expect(statusBar.getByText(t("approvals.console.queuePos", { n: 1, total: 6 }), { exact: true })).toBeVisible();
 
       const nextLink = page.getByRole("link", { name: t("approvals.console.nextDoc"), exact: true });
       await expect(nextLink).toHaveAttribute("href", "/approvals/AP-2026-0419");
@@ -672,7 +670,7 @@ test("Console /approvals/$approvalId DocQueueStepper avoids multi-query concaten
       await grid.locator('tbody tr[data-id="AP-2026-0419"]').getByRole("link", { name: t("home.inbox.open"), exact: true }).click();
       await expect(page).toHaveURL(/\/approvals\/AP-2026-0419$/);
       await expect(page.getByRole("main").getByText(t("approvals.console.queuePos", { n: 1, total: 1 }), { exact: true })).toBeVisible();
-      await expect(page.getByRole("contentinfo").last().getByText(t("approvals.console.queuePos", { n: 1, total: 1 }), { exact: true })).toBeVisible();
+      await expect(statusBar.getByText(t("approvals.console.queuePos", { n: 1, total: 1 }), { exact: true })).toBeVisible();
       await expect(page.getByRole("button", { name: t("approvals.console.nextDoc"), exact: true })).toBeDisabled();
       expect(fixture.unexpected).toEqual([]);
     } finally {

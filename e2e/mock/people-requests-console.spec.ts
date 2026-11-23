@@ -202,7 +202,8 @@ for (const width of [1440, 390] as const) {
           expect(gridBox).not.toBeNull();
           expect(sideBox).not.toBeNull();
           expect(gridBox!.x + gridBox!.width).toBeLessThanOrEqual(sideBox!.x + 1);
-          const statusBar = page.locator('[data-status-bar], footer').last();
+          const statusBar = page.getByRole("contentinfo", { name: t("shell.status.label"), exact: true });
+          await expect(statusBar).toBeVisible();
           const statusBox = await statusBar.boundingBox();
           expect(statusBox).not.toBeNull();
           expect(statusBox!.y + statusBox!.height).toBeLessThanOrEqual(900);

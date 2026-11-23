@@ -41,11 +41,8 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) for (con
       await result.press("Enter");
       await expect(palette).toHaveCount(0);
       await expect(page).toHaveURL(new RegExp(`/requests/${encodeURIComponent(key).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`));
-      if (missing) {
-        await expect(page.getByRole("main").first()).toContainText(t("requestOutcome.notFound"));
-      } else {
-        await expect(page.getByRole("main").first()).toContainText(t("common.failed.code.change_request_not_assignee"));
-      }
+      const main = page.getByRole("main", { name: t("shell.main"), exact: true });
+      await expect(main).toContainText(t(missing ? "requestOutcome.notFound" : "common.failed.code.change_request_not_assignee"));
       await fits(page, `request resolver/${width}/${theme}`);
       await page.screenshot({ path: info.outputPath("outcome.png"), fullPage: true });
       await expectAxe(page, `request resolver/${width}/${theme}`);

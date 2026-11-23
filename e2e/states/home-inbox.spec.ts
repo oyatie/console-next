@@ -26,7 +26,7 @@ for (const width of [1440, 390]) {
       await mockRoute(page, "get", "/api/v1/requests/{key}", { status: 404, json: failure("request_not_found") });
       try {
         await page.goto(path);
-        const main = page.getByRole("main").first();
+        const main = page.getByRole("main", { name: t("shell.main"), exact: true });
         if (path === "/requests") {
           await expect(main.getByText(t("requestOutcome.empty"), { exact: true })).toBeVisible();
           await expect(main.getByRole("textbox")).toHaveValue("");
@@ -100,7 +100,7 @@ for (const width of [1440, 390]) {
       } });
       try {
         await page.goto(`/requests/${id(99)}`);
-        const alert = page.getByRole("main").first().locator('[data-tone="danger"]');
+        const alert = page.getByRole("main", { name: t("shell.main"), exact: true }).locator('[data-tone="danger"]');
         await expect(alert).toContainText(t(`common.failed.code.${code}`));
         await expect(alert).not.toContainText(code);
         const requests = alert.getByRole("link", { name: t("requests.title"), exact: true });

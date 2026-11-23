@@ -55,7 +55,7 @@ async function waitForChromeAndFonts(page: Page, width: 1440 | 390) {
   if (width === 390) {
     await expect(page.locator('header[data-surface="chrome"]')).toBeVisible();
     await expect(page.getByRole("button", { name: t("shell.jumpLabel"), exact: true })).toBeVisible();
-    await expect(page.locator("nav[aria-label]").last()).toBeVisible();
+    await expect(page.getByRole("navigation", { name: t("shell.nav"), exact: true })).toBeVisible();
   }
   await page.evaluate(() => document.fonts.ready);
 }
