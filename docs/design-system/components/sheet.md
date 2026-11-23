@@ -199,8 +199,8 @@ opens nothing that Escape closes. Escape from it is handled like any other Escap
 the first press shows the unsaved line and the second closes.
 `apps/web/src/features/org/ui/target-tree.browser.test.tsx` drives this in Chromium from both, in a sheet that is
 told it is dirty. The tree there has `required`, so it leaves Escape to the sheet: see [Tree](tree.md).
-Four other Escape guards (the side panel, the pane grid, flexible columns and the dirty-escape hook) still treat
-every expanded control as a popup.
+The Escape handlers of the side panel, the pane grid, flexible columns and the dirty-escape hook use the same
+test: each stands aside for a control whose popup is open, and not for one that is only expanded.
 
 The last case is the sheet's rule for the Korean input method. `sheet-dismiss.ts` checks `isComposing` and
 nothing else: it does not check key code 229 and listens for no composition event. An Escape flagged as composing
