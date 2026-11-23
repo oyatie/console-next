@@ -35,7 +35,7 @@ component's own test and two browser-test fixtures: `person-day-grid.browser-fix
 | Part | Element | Holds |
 |---|---|---|
 | Box | `<div>` | The table. It is the scroll container, in both directions. |
-| Grid | `<table role="grid">` | `aria-label` from `label`, `aria-rowcount`, `aria-colcount`, `aria-multiselectable="true"`, `aria-activedescendant` and `tabindex="0"`. The key handler, the focus handler and the paste handler are here. The grid's own keys act only on a key pressed on the table itself: see Keyboard. |
+| Grid | `<table role="grid">` | `aria-label` from `label`, `aria-rowcount`, `aria-colcount`, `aria-multiselectable="true"`, `aria-activedescendant` and `tabindex="0"`. The key handler and the focus handler are here. The grid's own keys act only on a key pressed on the table itself: see Keyboard. |
 | Head row | `<tr aria-rowindex="1">` in `<thead>` | The lead headers, the day headers, the tail headers, in that order. With `tailGroupHeader` the head has two rows: the first ends in the group header over every tail column but the last and an empty cell over the last, and the second holds the tail headers. |
 | Lead header, tail header | `<th>` | The column's `header`. `data-w` carries the column's `width`. |
 | Day header | `<th>` | Two `<span>`s: the day's `label`, then its `sub` on a second line. `data-tone` and `aria-selected`. |
@@ -76,8 +76,8 @@ prop speaks of a head; the code draws the rule only.
 - Its own keys. `onKey` is called first for every key pressed in the grid while the editor is closed: on the table
   itself, and on a link or a button inside a cell. On such a control the grid's own keys do nothing, so a key the
   caller does not take is the control's. The caller tells the two apart by `e.target`.
-- Its paste. `onPaste` is called for a paste anywhere in the grid, on its editor and its links too. The caller
-  tells a paste on the grid itself apart by `e.target`.
+- Its paste. The grid handles none. `tableRef` hands the caller the table, so that it can tell the grid itself
+  having the focus from a control in it.
 - Loading more rows. `total` is the server's count of rows and `rows` is what has been loaded. The grid has no way
   to ask for more.
 
@@ -265,10 +265,12 @@ While the editor is closed:
   Enter on the name link follows it and opens no editor, and `p`, Backspace, Delete, `]`, a digit, F2 and Arrow
   Down pressed on the link change nothing in the grid, and Ctrl+S, Ctrl+Z and Ctrl+Y pressed on it save, undo
   and redo.
-- The attendance view handles a paste through `onPaste` and acts only on one pasted on the table itself. A paste
-  with the editor, a name link or the button focused is not the grid's, nor one on another grid on the screen,
-  such as the console month's list of open exceptions. The browser test pastes on the link and on a row of that
-  list, where no paste preview opens, and on the grid, where one does.
+- The attendance view listens for a paste on the window: the browser sends a paste to where the text selection
+  is, a cell, not to the focused table. It acts only while its own table, read through `tableRef`, has the focus.
+  A paste with the editor, a name link or the button focused is not the grid's, nor one with the focus on another
+  grid on the screen, such as the console month's list of open exceptions. The browser test pastes on the link
+  and on a row of that list, where no paste preview opens, and on the grid, where one does. It also pastes from
+  the keyboard after a focus and after a press on a cell, and the preview opens both times.
 - A change of focus row scrolls the box up or down so that the row is in view below the sticky head row. A row
   scrolled out of view by hand is not brought back by a key that keeps the focus row, such as Arrow Left.
 - The box scrolls sideways so that the focus cell's column shows whole between the sticky lead columns and the
@@ -511,7 +513,7 @@ What tests it:
 |---|---|
 | `apps/web/src/ui/person-day-grid/person-day-grid.test.tsx` | The role, the row count, a row index, the selected cells and the active descendant. That the editor and the focus stay in their person's row through a re-sort, a row added above and a filter, and go to nobody when that person is not shown. In a browser, with the real stylesheet and tokens: the refused outline is 2 px, solid and at least 3:1 against the cell's fill, in both themes, on a plain day, a holiday, a rest day and a selected focused cell; the group rule is 2 px, solid and at least 3:1. |
 | `apps/web/src/ui/person-day-grid/person-day-grid.browser.test.tsx`, with its probes in `person-day-grid.browser-probes.ts` and its sideways cases in `person-day-grid.browser-sideways.ts` | In a browser, served with the real stylesheet. The grid alone, with 400 people: the rows drawn and the spacers stand for every row at a row height of 32, 24 and 40 px; Arrow Down keeps the focus cell in view below the head row; a box taller than 600 px is filled with rows before the first scroll; a lone total stays at the right edge of a box 390 px and 180 px wide. The attendance view, with twelve people over 31 days, in today's look and in the console month at a desk and on a 390 px screen: nothing covers either edge of the focus cell through the arrow keys, Home, End, an opening editor, a hand scroll, a press on a cell that shows in part and a range set from outside the grid; a press on a lead cell leaves the box where it is. In the console month: the name and the number stick, the third lead column is static and is not drawn on the phone, and a paste on a row of the open-exceptions list opens no paste preview. |
-| `apps/web/src/ui/person-day-grid/person-day-grid.browser-editing.ts`, the editing cases of the test above, in the same three looks | In the attendance view: the grid has the focus again after an edit ends by Enter, Tab or Escape; after a press on the grid that ends an edit it has the focus without the focus outline; a press outside the grid keeps the focus there; a Tab pressed during a composition keeps the focus in the editor; a press that ends an edit selects the pressed cell alone; Enter on a name link follows it, the grid's keys and a paste on the link are not the grid's, and Ctrl+S, Ctrl+Z and Ctrl+Y on it save, undo and redo; a press inside the open editor, or on its cell beside the text, keeps the editor; Enter, F2 and a double-click open the editor on a draft's text, and an edit left unchanged writes nothing. |
+| `apps/web/src/ui/person-day-grid/person-day-grid.browser-editing.ts`, the editing cases of the test above, in the same three looks | In the attendance view: the grid has the focus again after an edit ends by Enter, Tab or Escape; after a press on the grid that ends an edit it has the focus without the focus outline; a press outside the grid keeps the focus there; a Tab pressed during a composition keeps the focus in the editor; a press that ends an edit selects the pressed cell alone; Enter on a name link follows it, the grid's keys and a paste on the link are not the grid's, and Ctrl+S, Ctrl+Z and Ctrl+Y on it save, undo and redo; a paste from the keyboard on the grid opens the paste preview; a press inside the open editor, or on its cell beside the text, keeps the editor; Enter, F2 and a double-click open the editor on a draft's text, and an edit left unchanged writes nothing. |
 | `apps/web/src/ui/ime-keys.browser.test.tsx` | In a browser: Enter, Tab and Escape sent to the editor as keys the input method owns commit nothing and close nothing, and no handler above the grid hears the Escape or the Tab. A plain Enter then commits. |
 | `apps/web/src/lib/pure/ime.test.ts` | The two helpers the editor uses: which keys the input method owns, and that an Escape or a Tab it owns is stopped while its Enter and a plain Escape or Tab go on. |
 | `apps/web/src/ui/sheet-grid/range.test.ts` | Moving, extending and stopping at the edge; a cell staying on its person; a focus that is gone starting again from the first cell; the rows a range covers. |
@@ -597,8 +599,8 @@ uses touch: `e2e` was searched for `hasTouch`, `tap(`, `touchscreen` and `isMobi
 | `lead` | yes | `readonly SideColumn<R>[]` |  |  |
 | `look` | yes | `(r: R, day: number) => CellLook` |  |  |
 | `onCommit` | yes | `(then: "down" \| "right" \| "stay") => void` |  | Commit the open editor; the grid then moves `then`. |
-| `onEdit` | yes | `(value: string \| null) => void` |  | With no editor open: a typed character starts an edit on that character, and "" (Enter, F2, a double-click) asks for one on what the cell holds, which only the caller knows. With one open: its new text. null closes it unsaved. |
-| `onKey` | yes | `(e: KeyboardEvent<Element>) => boolean` |  | The feature's keys first (⌘D, ⌘↵, =, Delete, P …); true when handled. It also sees a key pressed on a link or a button in a cell (`e.target` is not the grid), which is that control's unless the feature takes it (⌘S). |
+| `onEdit` | yes | `(value: string \| null) => void` |  | Closed: a typed character opens the editor on it, "" (Enter, F2, a double-click) on what the cell holds. Open: its new text; null cancels. |
+| `onKey` | yes | `(e: KeyboardEvent<Element>) => boolean` |  | The feature's keys first (⌘D, ⌘↵, =, Delete, P …), also those on a link or a button in a cell; true when handled. |
 | `onRange` | yes | `(range: Range) => void` |  | The new selection. Never a commit: the grid commits the open editor itself before a person moves the selection, and its own collapse (the people under a range changed) leaves the editor and what is being typed alone. |
 | `range` | yes | `Range \| null` |  | By row and column key; null (or a corner not shown) selects nothing. |
 | `rowKey` | yes | `(r: R) => string` |  |  |
@@ -608,7 +610,7 @@ uses touch: `e2e` was searched for `hasTouch`, `tap(`, `touchscreen` and `isMobi
 | `activeRowId` | no | `string` |  | Active/selected employee row key highlighted with the selected row bar. |
 | `footerRows` | no | `readonly GridFooterRow[]` |  | Optional summary rows rendered inside tfoot beneath the grid body. |
 | `groupOf` | no | `(r: R) => string` |  | A row group's head is drawn above the first row of each group. |
-| `onPaste` | no | `(e: ClipboardEvent<HTMLTableElement>) => void` |  | A paste with the focus anywhere in the grid: on the grid itself, its editor, or a link or a button in a cell. |
+| `tableRef` | no | `RefObject<HTMLTableElement \| null>` |  | The grid's table, for a caller that must tell the grid itself having the focus from a control in it. |
 | `tailGroupHeader` | no | `ReactNode` |  | Optional group header spanning all tail columns (2-row thead). |
 
 <!-- /ds:props -->
