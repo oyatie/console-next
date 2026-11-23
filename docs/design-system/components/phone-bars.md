@@ -95,19 +95,18 @@ Designed specifically for 390 px phone viewports (`52px` top bar, five `78px × 
 | `--fw-strong` | `font-weight` |
 | `--ink` | `color` |
 | `--muted` | `background` |
+| `--phone-nav-h` | `min-height` |
 | `--phone-safe-bottom` | `padding-block-end` |
+| `--phone-top-h` | `min-height` |
 | `--primary` | `border-block-start`, `color`, `outline` |
 | `--radius` | `border-radius` |
-| `--space-1` | `gap`, `min-height`, `padding`, `padding-inline-start` |
+| `--space-1` | `gap`, `padding`, `padding-inline-start` |
 | `--space-2` | `gap` |
-| `--space-3` | `min-height` |
 | `--space-4` | `padding` |
-| `--space-5` | `min-height` |
-| `--space-6` | `min-height` |
 | `--space-half` | `border-block-start`, `gap` |
 | `--steel` | `color` |
 | `--surface` | `background` |
-| `--target-touch` | `height`, `min-height`, `width` |
+| `--target-touch` | `height`, `width` |
 | `--text-lg` | `font-size` |
 | `--text-xs` | `font-size` |
 
