@@ -107,9 +107,11 @@ test.each([
   await button(opener()).focus();
   await page.keyboard.press("Enter");
   await row("Support").focus();
-  await page.keyboard.press("Enter");
-  await element(group("Seoul office › Support", count)).toBeVisible();
+  // Held, as a person holds a key: the button is focused before the key is let go.
+  await page.keyboard.down("Enter");
   await element(button(opener())).toBeFocused();
+  await page.keyboard.up("Enter");
+  await element(group("Seoul office › Support", count)).toBeVisible();
   await element(page.getByRole("treegrid")).toHaveCount(0);
 });
 
