@@ -11,11 +11,21 @@ import { ALL, matchChange, matchRecord, type Match } from "./topics";
 /** A record on screen changed, and not by this tab's own write: `at` is the server's emit time (else arrival). */
 export type RecordChange = { type: string; id: string; at: string };
 
-const IDLE: StreamSnapshot = { state: "offline", since: 0, partial: [] };
+const IDLE: StreamSnapshot = { state: "offline", since: 0, lastEventAt: null, partial: [] };
 let stream: EventStream | null = null;
 let stop: (() => void) | null = null;
+let retryQueries: (() => Promise<void>) | null = null;
 const statusListeners = new Set<() => void>();
 const changeListeners = new Set<(c: RecordChange) => void>();
+
+/** Forces an immediate reconnect attempt on the active stream (no-op when closed). */
+export const reconnectLive = () => stream?.reconnect();
+
+/** Reconnects the live stream and refetches active errored or invalidated queries. */
+export const retryLive = () => {
+  stream?.reconnect();
+  return retryQueries?.() ?? Promise.resolve();
+};
 
 /** The stream's state for the shell, as a `useSyncExternalStore` source. */
 export const liveStatus = {
@@ -125,6 +135,7 @@ export function openLive(qc: QueryClient, url = `${location.origin}/api/v1/event
     pending.push(m);
   };
   applyHeld = () => qc.refetchQueries({ type: "active", predicate: (q) => q.state.isInvalidated });
+  retryQueries = () => qc.refetchQueries({ type: "active", predicate: (q) => q.state.status === "error" || q.state.isInvalidated });
 
   const onFrame = ({ event, data }: StreamFrame) => {
     if (event === "privacy_consent") {
@@ -196,6 +207,7 @@ export function openLive(qc: QueryClient, url = `${location.origin}/api/v1/event
   stream = s;
   stop = () => {
     applyHeld = null;
+    retryQueries = null;
     held = 0;
     applying = false;
     emitHeld();

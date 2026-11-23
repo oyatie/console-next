@@ -27,6 +27,16 @@ parameters:
     type: integer
     format: int64
     minimum: 0
+- name: missing_bank_only
+  in: query
+  required: false
+  schema:
+    type: boolean
+- name: q
+  in: query
+  required: false
+  schema:
+    type: string
 responses:
   '200':
     description: The run, its legal/source-summary context, and a page of lines.

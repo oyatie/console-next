@@ -1,0 +1,149 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.column {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  width: 100%;
+  max-width: min(100%, var(--card-w));
+  margin-inline: auto;
+  min-width: 0;
+  background: var(--surface);
+}
+
+.summary {
+  min-width: 0;
+  border-block-end: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.sections {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border-block-end: 1px solid var(--border);
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .column {
+  flex: 0 0 auto;
+  border-inline: 1px solid var(--border);
+  border-block-end: 1px solid var(--border);
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .form {
+  flex: none;
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .column :is(select, input, textarea) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .form [data-sticky] {
+  margin-top: 0;
+  padding: 0;
+  gap: 0;
+  border-top: 1px solid var(--border-strong);
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .form [data-sticky] > :not([data-consequence]):not(:last-child) {
+  flex-basis: 100%;
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .form [data-sticky] > [data-consequence] {
+  flex-basis: 100%;
+  border-bottom: 1px solid var(--border);
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .form [data-sticky] > :last-child {
+  flex-basis: 100%;
+  padding: var(--space-3) var(--space-4);
+}
+
+.rowList {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.rowItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-half);
+  padding-block: var(--space-2);
+  border-block-start: 1px solid var(--border-soft);
+  min-width: 0;
+}
+
+.rowItem:last-child {
+  padding-block-end: 0;
+}
+
+.rowTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.rowPrimary {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--fw-medium);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.rowEnd {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+}
+
+.rowSecondary {
+  min-width: 0;
+  font-size: var(--text-xs);
+  color: var(--steel);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (--phone) {
+  :where([data-experience]:not([data-experience="baseline"])) .column {
+    flex: 1;
+    max-width: 100%;
+    border-inline: 0;
+    border-block-end: 0;
+  }
+
+  :where([data-experience]:not([data-experience="baseline"])) .form {
+    flex: 1;
+  }
+
+  :where([data-experience]:not([data-experience="baseline"])) .column .form [data-sticky] {
+    position: static;
+    margin-top: auto;
+  }
+
+  .form [data-sticky] > :last-child > :is(button, a) {
+    flex: 1 1 0%;
+    justify-content: center;
+  }
+}

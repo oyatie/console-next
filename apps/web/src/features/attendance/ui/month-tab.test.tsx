@@ -9,7 +9,13 @@ import { MonthTab } from "./month-tab";
 const state = vi.hoisted(() => ({
   cursor: 0, people: 1, drafts: {} as Drafts, receipt: false, saveDock: false,
   load: "ready" as "ready" | "loading" | "error",
+  experience: "baseline" as "baseline" | "console",
+  blocking: 0,
 }));
+vi.mock("../../../experience/dom", async (original) => {
+  const actual = await original<typeof import("../../../experience/dom")>();
+  return { ...actual, useActiveExperienceId: () => state.experience };
+});
 vi.mock("react", async (original) => {
   const actual = await original<typeof import("react")>();
   return { ...actual, useState: (initial: unknown) => {
@@ -27,7 +33,18 @@ vi.mock("@tanstack/react-query", async original => ({ ...await original<typeof i
   isPending: state.load === "loading", isSuccess: state.load === "ready", isError: state.load === "error",
   error: state.load === "error" ? new Error("unavailable") : null,
   data: state.load === "ready" ? { pages: [{ people_total: state.people, rows: state.people ? [
-    { employee_id: "person", name: "Person", own: false, month_state: { state: "OPEN" }, cells: [] },
+    {
+      employee_id: "person",
+      employee_number: "10587",
+      name: "Person",
+      own: false,
+      month_state: { state: "OPEN" },
+      totals: { recognised: 9600, approved: 120, unrecognised: 60, not_worked: 0, blocking: state.blocking, decision: 1 },
+      cells: [
+        { date: "2026-10-01", plan_kind: "WORK", recognised: 480, unrecognised: 0, not_worked: 0, marks: state.blocking > 0 ? ["NO_RECORD"] : [] },
+        { date: "2026-10-05", plan_kind: "SUBSTITUTE_HOLIDAY", recognised: 0, unrecognised: 0, not_worked: 0, marks: [] },
+      ],
+    },
   ] : [] }] } : undefined,
 }) }));
 vi.mock("./use-drafts", () => ({ useDrafts: () => ({ drafts: state.drafts }) }));
@@ -43,6 +60,8 @@ beforeEach(() => {
   state.receipt = false;
   state.saveDock = false;
   state.load = "ready";
+  state.experience = "baseline";
+  state.blocking = 0;
 });
 const render = () => renderToStaticMarkup(<MonthTab />);
 
@@ -98,4 +117,29 @@ test("opening save with a draft mounts the save dock", () => {
   state.saveDock = true;
   state.drafts = { "person|2026-10-06": { value: "=", base: null } };
   expect(render()).toContain('data-testid="save-dock"');
+});
+
+test("Console P5 renders MonthGridPattern, 6 StatRow tiles, recognition basis without contrary overtime claim, and disables Month Close when blocking > 0", () => {
+  state.experience = "console";
+  state.blocking = 1;
+  const html = render();
+  expect(html).toContain('data-pattern="month-grid"');
+  expect(html).toContain(t("attendanceRecords.recognition.basis"));
+  expect(html).toContain(t("attendance.monthConsole.bottom.blocksClose"));
+  expect(html).toContain('aria-disabled="true"');
+  expect(html).toContain(t("attendance.monthConsole.summary.weekdayHolidays"));
+  expect(html).toContain(t("attendance.monthConsole.filter.issues"));
+  expect(html).toContain(t("attendance.monthConsole.filter.overtime"));
+  expect(html).toContain(t("attendance.monthConsole.actions.reviewIssues"));
+  expect(html).toMatch(new RegExp(`btn--primary[^>]*>${t("attendance.monthConsole.actions.reviewIssues")}`));
+  expect(html).not.toMatch(new RegExp(`btn--primary[^>]*>${t("attendance.tab.close")}`));
+});
+
+test("Console P5 mounts SaveDock inside SidePane when save is open with drafts", () => {
+  state.experience = "console";
+  state.saveDock = true;
+  state.drafts = { "person|2026-10-06": { value: "=", base: null } };
+  const html = render();
+  expect(html).toContain('data-pane="record"');
+  expect(html).toContain('data-testid="save-dock"');
 });

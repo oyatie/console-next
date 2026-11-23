@@ -20,10 +20,7 @@ use serde_json::{Value, json};
 use sqlx::PgPool;
 use std::{
     collections::BTreeSet,
-    sync::{
-        Arc,
-        atomic::{AtomicUsize, Ordering},
-    },
+    sync::{Arc, atomic::Ordering},
 };
 use tower::ServiceExt;
 use uuid::Uuid;
@@ -32,30 +29,13 @@ use uuid::Uuid;
 mod emergency_contacts;
 #[path = "rrn_record_http/governance.rs"]
 mod governance;
-
-#[derive(Default)]
-struct Vault(AtomicUsize);
-impl RrnVault for Vault {
-    fn seal(&self, _: Uuid, r: &Rrn) -> Result<SealedRrn, VaultError> {
-        self.0.fetch_add(1, Ordering::SeqCst);
-        Ok(SealedRrn {
-            hmac: self.blind_index(r),
-            hmac_key_version: 1,
-            ciphertext: vec![0; 16],
-            nonce: vec![0; 24],
-            dek_wrapped: vec![0; 16],
-            dek_nonce: vec![0; 24],
-            key_version: 1,
-            masked: r.masked(),
-        })
-    }
-    fn blind_index(&self, r: &Rrn) -> Vec<u8> {
-        r.digits().bytes().cycle().take(32).collect()
-    }
-    fn open(&self, _: Uuid, _: &SealedRrn) -> Result<Rrn, VaultError> {
-        Err(VaultError)
-    }
-}
+#[path = "rrn_record_http/id_registered.rs"]
+mod id_registered;
+#[path = "rrn_record_http/id_registered_draft.rs"]
+mod id_registered_draft;
+#[path = "rrn_record_http/vault.rs"]
+mod vault;
+use vault::Vault;
 struct Fixture {
     hr: HrService,
     principal: Principal,

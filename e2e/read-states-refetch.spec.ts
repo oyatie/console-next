@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
+import type { components } from "@console/api/schema";
+import { apiOf, bearerOf, stepUpAssertion } from "./helpers/api";
 import { go, kstDate, registerEmployee, routeReady } from "./flows";
-import { SETUP_DEPARTMENT, setupCompany, tenantBeforeSetup } from "./setup-flows";
+import { EXEC_NAME, SETUP_DEPARTMENT, setupCompany, tenantBeforeSetup } from "./setup-flows";
 import { openAsOf } from "./dates";
 
 const cases = [
@@ -11,8 +13,9 @@ const cases = [
   { path: "/statutory", read: "/api/v1/statutory/insurance-filings", button: "처리 내역" },
   { path: "/statutory", read: "/api/v1/statutory/insurance-filings", search: "이름·사번 검색" },
   { path: "/statutory?tab=register&site=$site", read: "/api/v1/statutory/worker-register", date: true },
-  { path: "/attendance?tab=day", read: "/api/v1/attendance/days", button: "이전 날" },
-  { path: "/attendance?tab=day", read: "/api/v1/attendance/days", button: "확인 필요만" },
+  // 8633bdf705 and a6e60f5a68 reserve the grid for a changed date or filter.
+  { path: "/attendance?tab=day", read: "/api/v1/attendance/days", button: "이전 날", reserve: "grid" },
+  { path: "/attendance?tab=day", read: "/api/v1/attendance/days", button: "확인 필요만", reserve: "grid" },
   { path: "/attendance?tab=month", read: "/api/v1/attendance/month", button: "이전 달" },
   { path: "/attendance?tab=schedule", read: "/api/v1/attendance/schedule/calendar", button: "이전 달" },
   { path: "/attendance?tab=schedule&view=holidays", read: "/api/v1/attendance/holidays", button: "이전 연도" },
@@ -36,11 +39,12 @@ test.describe("read boundaries keep chrome, previous content and keyboard focus"
   let role: { id: string; name_ko: string };
   let employee: string;
   let exit: string;
-  let headers: { authorization: string };
+  let api: ReturnType<typeof apiOf>;
   test.beforeAll(async ({ browser }) => {
     test.setTimeout(300_000);
     const tenant = await tenantBeforeSetup(browser, `refetch-${test.info().workerIndex}`, "읽기 유지", false, "none");
     admin = tenant.admin;
+    api = apiOf(admin, bearerOf(admin));
     await tenant.exec.context().close();
     await setupCompany(admin, "읽기 유지 법인");
     entity = new URL(admin.url()).pathname;
@@ -53,10 +57,28 @@ test.describe("read boundaries keep chrome, previous content and keyboard focus"
     site = sites[0].id;
     const roles = admin.waitForResponse(r => new URL(r.url()).pathname === "/api/v1/access/roles" && r.ok());
     await go(admin, "/access/grants");
-    headers = { authorization: (await roles).request().headers()["authorization"]! };
-    const created = await admin.request.post("/api/v1/access/roles", { headers, data: { name_ko: "읽기 유지 역할", status: "ACTIVE", lines: [{ domain: "org", levels: ["view"] }] } });
+    await roles;
+    const created = await api("/access/roles", "POST", { name_ko: "읽기 유지 역할", status: "ACTIVE", lines: [{ domain: "org", levels: ["view"] }] });
     expect(created.status()).toBe(201);
     role = await created.json();
+    const listed = await api("/access/roles?status=ACTIVE");
+    expect(listed.status()).toBe(200);
+    expect(await listed.json()).toEqual(expect.arrayContaining([expect.objectContaining({ id: role.id, name_ko: role.name_ko })]));
+    // 6aaa2db324 shows the role filter only when the grant list is non-empty.
+    const accounts = await api("/users");
+    expect(accounts.status()).toBe(200);
+    const account = ((await accounts.json()).items as components["schemas"]["UserSummary"][]).find(user => user.display_name === EXEC_NAME);
+    expect(account).toBeTruthy();
+    const previewResponse = await api("/access/grants/preview", "POST", {
+      operations: [{ op: "grant", account_id: account!.id, role_id: role.id, scope: { kind: "TENANT", include_descendants: true }, effective_in_setup: true }],
+      reason_code: "PROMOTION_OR_REASSIGNMENT",
+    } satisfies components["schemas"]["AccessGrantBatchRequest"]);
+    expect(previewResponse.status(), await previewResponse.text()).toBe(200);
+    const preview = await previewResponse.json() as components["schemas"]["AccessGrantPreview"];
+    expect(preview.refused).toBe(0);
+    const applied = await api("/access/grants/apply", "POST", { receipt_id: preview.receipt_id, step_up: await stepUpAssertion(admin, api) }, { "Idempotency-Key": randomUUID() });
+    expect(applied.status(), await applied.text()).toBe(200);
+    expect((await applied.json()).items).toEqual([expect.objectContaining({ account_id: account!.id, role_id: role.id, enforcement: "ENFORCED" })]);
   });
   test.afterAll(async () => { await admin?.context().close(); });
 
@@ -120,34 +142,53 @@ test.describe("read boundaries keep chrome, previous content and keyboard focus"
           await field.fill("읽기 유지");
           control = field;
           await control.focus();
-          await control.press("Enter");
         } else if ("select" in row) {
-          control = main.getByRole("button", { name: /역할/ });
+          control = main.getByRole("button", { name: / 역할$/ });
           await control.click();
           await page.getByRole("option", { name: role.name_ko, exact: true }).click();
         } else {
           const name = { name: row.button, exact: typeof row.button === "string" };
           control = main.getByRole("button", name).or(main.getByRole("link", name));
           await control.focus();
-          await control.press("Enter");
         }
+        const mountedControl = await control.elementHandle();
+        if ("search" in row || "button" in row) await control.press("Enter");
         await expect.poll(() => requested).toBe(true);
-        await expect(main.locator('[data-read-region][aria-busy="true"]').last()).toBeVisible();
-        const index = (await Promise.all(regions.map(region => region.evaluate(el => el instanceof Element && el.isConnected && el.getAttribute("aria-busy") === "true")))).findIndex(Boolean);
-        expect(index).toBeGreaterThanOrEqual(0);
+        const reserve = "reserve" in row ? row.reserve : undefined;
+        if (reserve) await expect(main.locator(`[data-read-layout="${reserve}"]`)).toBeVisible();
+        else await expect(main.locator('[data-read-region][aria-busy="true"]').last()).toBeVisible();
+        const index = reserve ? -1 : (await Promise.all(regions.map(region => region.evaluate(el => el instanceof Element && el.isConnected && el.getAttribute("aria-busy") === "true")))).findIndex(Boolean);
+        if (!reserve) expect(index).toBeGreaterThanOrEqual(0);
         let intact = true;
         const started = Date.now();
         await expect.poll(async () => {
-          intact &&= await control.count() === 1 && await control.evaluate(el => el.isConnected && document.activeElement === el);
+          intact &&= await control.count() === 1 && await mountedControl!.evaluate(el => el.isConnected && document.activeElement === el);
           intact &&= await mountedHead!.evaluate(el => el.isConnected);
           for (const bar of chrome) intact &&= await bar.evaluate(el => el instanceof Element && el.isConnected && el.getClientRects().length > 0);
-          intact &&= await regions[index]!.evaluate(el => el.isConnected);
-          if (content[index]) intact &&= await content[index]!.evaluate(el => el.isConnected);
-          intact &&= await main.locator("[data-read-layout]").count() === 0;
+          if (reserve) {
+            // The page-level region holds the head and toolbar and stays; the board region it reserved is gone.
+            for (const region of regions) intact &&= await region.evaluate((el, head) => el.contains(head) ? el.isConnected : !el.isConnected, mountedHead!);
+            intact &&= await main.locator(`[data-read-layout="${reserve}"]`).isVisible();
+          } else {
+            intact &&= await regions[index]!.evaluate(el => el.isConnected);
+            if (content[index]) intact &&= await content[index]!.evaluate(el => el.isConnected);
+            intact &&= await main.locator("[data-read-layout]").count() === 0;
+          }
           return Date.now() - started;
         }, { intervals: [100, 200, 250] }).toBeGreaterThanOrEqual(1500);
         expect(intact).toBe(true);
         await expect(control).toBeFocused();
+        if (reserve) {
+          const refreshed = page.waitForResponse(r => r.request().method() === "GET" && new URL(r.url()).pathname === read);
+          held = false; release();
+          const response = await refreshed;
+          expect(response.status(), await response.text()).toBe(200);
+          await expect(main.locator('[aria-busy="true"]')).toHaveCount(0);
+          await expect(main.locator("[data-read-layout]")).toHaveCount(0);
+          await expect(main.locator("[data-read-region]")).toHaveCount(regions.length);
+          // An empty region wrapper is not an answer: the released read must render content.
+          await expect(main.locator("[data-read-region]").last().locator(":scope > *")).not.toHaveCount(0);
+        }
       } finally {
         held = false; release();
         await page.unrouteAll({ behavior: "wait" });
@@ -192,7 +233,7 @@ test.describe("read boundaries keep chrome, previous content and keyboard focus"
     { path: "/people/exits/$exit", read: "/api/v1/hr/exit-cases/$exit", record: true },
   ]) for (const status of "record" in row ? [403, 404] : [403]) test(`${row.path}: refetch into ${status} removes refused controls and record facts`, async () => {
     if (row.path.includes("$exit") && !exit) {
-      const reported = await admin.request.post("/api/v1/hr/exit-cases", { headers: { ...headers, "Idempotency-Key": randomUUID() }, data: { employee_id: employee, effective_exit_date: kstDate(30), site_manager_note: "읽기 유지 확인" } });
+      const reported = await api("/hr/exit-cases", "POST", { employee_id: employee, effective_exit_date: kstDate(30), site_manager_note: "읽기 유지 확인" }, { "Idempotency-Key": randomUUID() });
       expect(reported.status()).toBe(201);
       exit = (await reported.json()).id;
     }

@@ -2,6 +2,8 @@
 
 pub(crate) mod healthcheck;
 pub(crate) mod migrate;
+pub(crate) mod ops_cockpit;
+pub(crate) mod ops_cockpit_http;
 pub(crate) mod schema_check;
 pub(crate) mod serve;
 pub(crate) mod shutdown;

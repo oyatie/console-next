@@ -29,7 +29,7 @@ for (const screen of orgWorkScreens) for (const state of Object.keys(screen.stat
       if (state === "loading") {
         await expect(main.locator("[data-read-layout]")).toBeVisible();
       } else if (state === "failed") {
-        await expect(main.getByText(t("common.loadFailed.title"), { exact: true })).toHaveCount(1, { timeout: 20_000 });
+        await expect(main.getByText(t("common.loadFailed.title"), { exact: true })).toHaveCount(1);
         await expect(main.getByText(fixture.operationId, { exact: true })).toBeVisible();
         await expect(main.getByRole("button", { name: t("common.retry"), exact: true })).toBeEnabled();
       } else if (state === "refused") {
@@ -128,6 +128,7 @@ test("org: pending end reason appears on keyboard focus and hover @ui-state", as
     await expect(control).toHaveAttribute("aria-disabled", "true");
     const reason = page.locator(`[id='${await control.getAttribute("aria-describedby")}']`);
     await expect(reason).toBeHidden();
+    await expect(control).toBeVisible();
     await control.focus();
     await expect(reason).toBeVisible();
     await control.press("Enter");

@@ -27,8 +27,8 @@ the existing [nextest configuration](../../.config/nextest.toml) owns execution 
 Run `node scripts/backend-tests.mjs` for the same non-database selection as CI. It builds with
 `cargo nextest list --workspace --locked`, derives database cases from existing `#[sqlx::test]`
 attributes within each Cargo package and runs the remaining tests, including ordinary tests in mixed
-binaries, including cases emitted by SQLx test macros. The `test-postgres` features stay disabled;
-the container-backed census opts in through `console-gate-writer-ownership/test-postgres`.
+binaries, including cases emitted by SQLx test macros. The database job runs the canonical writer
+census against the registered tables after applying migrations as `console_app`.
 Ambiguous names or unsupported test macro signatures fail classification.
 Database connection environment variables are removed for this run: a missing database failure is a
 classification defect, not a reason to add an exclusion. The filter and complete identity inventory are

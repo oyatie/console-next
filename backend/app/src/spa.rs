@@ -16,20 +16,53 @@ const SPA_EXCLUDED_PATHS: &[&str] = &["/api", "/healthz", "/readyz", "/metrics"]
 const SPA_CSP: &str = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; \
     font-src 'self'; connect-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'none'; form-action 'self'";
 
-pub(crate) fn spa_csp(storage: Option<&console_platform_storage::S3StorageConfig>) -> HeaderValue {
-    let origin = storage.and_then(|storage| {
-        let endpoint = url::Url::parse(&storage.endpoint_url).ok()?;
-        matches!(endpoint.scheme(), "http" | "https")
-            .then(|| endpoint.origin().ascii_serialization())
-    });
-    let policy = origin.map_or_else(
-        || SPA_CSP.to_owned(),
-        |origin| {
-            SPA_CSP.replace(
-                "connect-src 'self'",
-                &format!("connect-src 'self' {origin}"),
-            )
-        },
+fn sanitize_csp_origin(raw: &str) -> Option<String> {
+    if raw.bytes().any(|b| {
+        b.is_ascii_control()
+            || b.is_ascii_whitespace()
+            || matches!(b, b';' | b',' | b'*' | b'\'' | b'"' | b'\\')
+    }) {
+        return None;
+    }
+    let parsed = url::Url::parse(raw).ok()?;
+    if !matches!(parsed.scheme(), "http" | "https")
+        || !matches!(parsed.origin(), url::Origin::Tuple(..))
+        || parsed.port() == Some(0)
+        || parsed
+            .host_str()
+            .is_none_or(|h| h.is_empty() || h.contains('*'))
+    {
+        return None;
+    }
+    let origin = parsed.origin().ascii_serialization();
+    if origin.bytes().any(|b| {
+        b.is_ascii_control()
+            || b.is_ascii_whitespace()
+            || matches!(b, b';' | b',' | b'*' | b'\'' | b'"' | b'\\')
+    }) {
+        return None;
+    }
+    Some(origin)
+}
+
+pub(crate) fn spa_csp(
+    storage: Option<&console_platform_storage::S3StorageConfig>,
+    status_origin: Option<&str>,
+) -> HeaderValue {
+    let mut tokens = vec!["'self'".to_owned()];
+    if let Some(origin) = status_origin.and_then(sanitize_csp_origin)
+        && !tokens.contains(&origin)
+    {
+        tokens.push(origin);
+    }
+    if let Some(origin) = storage.and_then(|s| sanitize_csp_origin(&s.endpoint_url))
+        && !tokens.contains(&origin)
+    {
+        tokens.push(origin);
+    }
+    let policy = SPA_CSP.replace(
+        "connect-src 'self'",
+        &format!("connect-src {}", tokens.join(" ")),
     );
     HeaderValue::try_from(policy).unwrap_or_else(|_| HeaderValue::from_static(SPA_CSP))
 }
@@ -193,4 +226,41 @@ pub(crate) async fn serve_spa(
         .extensions_mut()
         .insert(crate::http::metrics::StaticRoute(label));
     response
+}
+
+#[cfg(test)]
+mod tests {
+    use super::spa_csp;
+    use console_platform_storage::S3StorageConfig;
+
+    fn storage(endpoint_url: &str) -> S3StorageConfig {
+        S3StorageConfig {
+            endpoint_url: endpoint_url.to_owned(),
+            access_key_id: "test".to_owned(),
+            secret_access_key: "test".to_owned(),
+            primary_bucket: "a".to_owned(),
+            replica_bucket: "b".to_owned(),
+            region: "ap-northeast-2".to_owned(),
+            force_path_style: true,
+        }
+    }
+
+    #[test]
+    fn spa_csp_drops_unsafe_status_origin_and_deduplicates_origins() {
+        let csp = spa_csp(None, Some("https://evil.test; script-src 'unsafe-inline'"));
+        assert!(csp.to_str().unwrap().contains("connect-src 'self';"));
+
+        let s3 = storage("https://status.example.test/bucket");
+        let dedup = spa_csp(Some(&s3), Some("https://status.example.test"));
+        assert!(
+            dedup
+                .to_str()
+                .unwrap()
+                .contains("connect-src 'self' https://status.example.test;")
+        );
+
+        let zero_port_s3 = storage("https://objects.example.test:0");
+        let dropped = spa_csp(Some(&zero_port_s3), Some("https://status.example.test:0"));
+        assert!(dropped.to_str().unwrap().contains("connect-src 'self';"));
+    }
 }

@@ -86,4 +86,9 @@ export const enAccessCodes = {
   "accessCodes.refusal.scope_not_enforceable_in_pilot": "This scope cannot be enforced yet",
   "accessCodes.refusal.self_grant_forbidden": "You cannot grant to yourself",
   "accessCodes.refusal.valid_range_invalid": "The period is not valid",
+  "accessCodes.refusal.role_not_draft": "An active role cannot be deleted directly; retire it instead",
+  "accessCodes.refusal.role_has_active_grants": "People still hold this role. Revoke their grants first",
+  "accessCodes.refusal.access_request_note_required": "Enter a note when choosing “Other”",
+  "accessCodes.refusal.access_request_closed": "This access request has already been closed or withdrawn",
+  "accessCodes.refusal.access_request_not_found": "Access request not found",
 } as const;

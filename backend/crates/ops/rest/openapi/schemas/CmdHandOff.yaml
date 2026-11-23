@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["action_id", "kind", "command", "target", "consequence", "expected_result", "verify_step", "operator", "at"]
+properties:
+  action_id: {"$ref": "#/components/schemas/Text"}
+  kind: {"$ref": "#/components/schemas/Text"}
+  command: {"$ref": "#/components/schemas/Text"}
+  target: {"$ref": "#/components/schemas/Text"}
+  consequence: {"$ref": "#/components/schemas/Text"}
+  expected_result: {"$ref": "#/components/schemas/Text"}
+  verify_step: {"$ref": "#/components/schemas/Text"}
+  operator: {"$ref": "#/components/schemas/Text"}
+  at: {"$ref": "#/components/schemas/Timestamp"}

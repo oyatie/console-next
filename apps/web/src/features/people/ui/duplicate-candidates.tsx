@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useQueries } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { EMPLOYEE_STATUS, labeled } from "../../../lib/labels";
@@ -9,7 +8,7 @@ import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
 import { Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
-import { employeeQuery, type DuplicateCandidate as Candidate, type DuplicateOverride } from "../api";
+import type { DuplicateCandidate as Candidate, DuplicateOverride } from "../api";
 import { Muted } from "../../../ui/muted/muted";
 
 const NOTE_MAX = 1000;
@@ -25,7 +24,6 @@ export function DuplicateCandidates({ name, candidates, pending, onOverride }: {
   pending: boolean;
   onOverride: (o: DuplicateOverride) => void;
 }) {
-  const reads = useQueries({ queries: candidates.map((c) => employeeQuery(c.employee_id)) });
   const [code, setCode] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [tried, setTried] = useState(false);
@@ -43,13 +41,12 @@ export function DuplicateCandidates({ name, candidates, pending, onOverride }: {
       </h2>
       <p>{t("people.duplicate.body")}</p>
       <ul className="list-plain">
-        {candidates.map((c, i) => {
-          const d = reads[i]?.data?.employee;
+        {candidates.map((c) => {
           const status = labeled(EMPLOYEE_STATUS, c.status);
           return (
             <li key={c.employee_id} className="row">
               <Link to="/people/$id" params={{ id: c.employee_id }} search={{}}>
-                {t("people.sameName.other", { name: d?.name ?? name, number: c.employee_number ?? "—" })}
+                {t("people.sameName.other", { name: c.name ?? name, number: c.employee_number ?? "—" })}
               </Link>
               <Chip tone={status.tone}>{status.label}</Chip>
               <Muted>{t(`people.duplicate.basis.${c.basis}`)}</Muted>

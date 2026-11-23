@@ -209,3 +209,22 @@ test("reconnect() drops a live connection at once and cuts a backoff wait short 
   await tick(60_000);
   expect(conns).toHaveLength(2);
 });
+
+test("records lastEventAt on received heartbeat or frame bytes without notifying live subscribers", async () => {
+  const { s, states } = open();
+  await tick();
+  expect(s.get().lastEventAt).toBeNull();
+  await tick(10_000);
+  conns[0]!.send(":\n\n");
+  await tick();
+  const heartbeatAt = Date.now();
+  expect(states).toEqual(["live"]);
+  expect(s.get().lastEventAt).toBeNull(); // snap updates on transition, zero extra live renders
+
+  await tick(5_000);
+  conns[0]!.end();
+  await tick();
+  expect(states).toEqual(["live", "connecting"]);
+  expect(s.get().lastEventAt).toBe(heartbeatAt);
+  s.close();
+});

@@ -36,6 +36,4 @@ The reader must support null LCP for unknown rows. Evidence older than seven day
 
 ## Existing producers
 
-`ci` publishes `d7-evidence` (`e2e.json`, `nextest.json`), `d10-evidence` (`authorization.json`) and `d8-evidence` (`states.json`, `write-probe.json`, `e2e.json`). The D10 normalizer consumes `scripts/d10-census.mjs`; it does not publish a separate census envelope. Use the existing D7/D10 pull commands for those sources.
-
-Support-reference observations already cover failed, refused and no-reference cases per route, including observed and declared floorplans. To ingest those existing states without rerunning the browser, download `d8-evidence` from a trusted **ci** dev push, verify its commit as above, and ingest its `states.json` with the same command. These observations do not establish loading or empty coverage. D8 additionally needs the live refused-write reference lookup and client-error beacon evidence; a states artifact alone cannot raise it.
+`ci` publishes `d7-evidence` (`e2e.json`, `nextest.json`), `d10-evidence` (`authorization.json`) and `d8-evidence` (`write-probe.json`, `e2e.json`). The D10 normalizer consumes `scripts/d10-census.mjs`; it does not publish a separate census envelope. Use the existing D7/D10 pull commands for those sources.

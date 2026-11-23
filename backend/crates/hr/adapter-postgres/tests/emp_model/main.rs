@@ -11,6 +11,7 @@ mod authz;
 mod contracts;
 mod facts;
 mod fixture;
+mod id_type_status;
 
 mod warnings;
 

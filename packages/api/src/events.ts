@@ -87,7 +87,7 @@ export type RealtimeTunables = {
  * `offline`: not retrying, because the session is gone (refresh failed) or `close()` was called.
  */
 export type StreamState = "live" | "connecting" | "offline";
-export type StreamSnapshot = { state: StreamState; since: number; partial: readonly string[] };
+export type StreamSnapshot = { state: StreamState; since: number; lastEventAt: number | null; partial: readonly string[] };
 export type StreamFrame = { event: string; data: unknown };
 
 export type StreamOptions = {
@@ -123,12 +123,13 @@ export type EventStream = {
  */
 export function openEventStream(o: StreamOptions): EventStream {
   const cursor: Cursor = { lastEventId: o.lastEventId ?? "" };
-  let snap: StreamSnapshot = { state: "connecting", since: Date.now(), partial: [] };
+  let lastEventAt: number | null = null;
+  let snap: StreamSnapshot = { state: "connecting", since: Date.now(), lastEventAt, partial: [] };
   const listeners = new Set<() => void>();
   const set = (patch: Partial<StreamSnapshot>) => {
     if (patch.state === snap.state) delete patch.state;
     if (!Object.keys(patch).length) return;
-    snap = { ...snap, ...patch, since: patch.state ? Date.now() : snap.since };
+    snap = { ...snap, ...patch, since: patch.state ? Date.now() : snap.since, lastEventAt };
     listeners.forEach((l) => l());
   };
 
@@ -188,7 +189,10 @@ export function openEventStream(o: StreamOptions): EventStream {
         const { done, value } = await reader.read();
         if (done) break;
         arm();
-        if (value) push(value);
+        if (value) {
+          if (value.byteLength > 0) lastEventAt = Date.now();
+          push(value);
+        }
       }
     } catch {
       // Network error, abort (dead or closed), or a refresh that threw: all retry.

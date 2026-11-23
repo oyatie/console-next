@@ -1,5 +1,5 @@
 /* ui/command-palette: the ⌘K jump palette (mockup S1-jump). */
-.overlay { position: fixed; inset: 0; z-index: 50; display: flex; justify-content: center; align-items: flex-start; padding-top: calc(var(--frame-top) * 2); background: var(--scrim); }
+.overlay { position: fixed; inset: 0; z-index: 50; display: flex; justify-content: center; align-items: flex-start; overflow: hidden; overscroll-behavior: contain; padding-top: calc(var(--frame-top) * 2); background: var(--scrim); }
 .modal { width: min(940px, calc(100vw - var(--space-6) * 2)); outline: none; }
 .dialog { display: flex; flex-direction: column; max-height: calc(100vh - var(--frame-top) * 4); overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-pop); outline: none; }
 .field { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border); color: var(--steel); }
@@ -8,7 +8,7 @@
 .input::-webkit-search-cancel-button { display: none; }
 .kbd, .meta { padding: 0 var(--space-1); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--kbd-bg); font-family: var(--font-mono); font-size: var(--text-xs); color: var(--steel); }
 .meta { border: 0; background: none; font-family: inherit; font-size: var(--text-sm); margin-left: auto; }
-.menu { flex: 1; overflow: auto; outline: none; }
+.menu { flex: 1; overflow: auto; overscroll-behavior: contain; outline: none; }
 .section { display: flex; flex-direction: column; }
 .header { padding: var(--space-2) var(--space-4); border-bottom: 1px solid var(--border-soft); font-size: var(--text-xs); color: var(--steel); }
 .item { display: flex; align-items: center; gap: var(--space-2); min-height: var(--row-h); padding: 0 var(--space-4); border-bottom: 1px solid var(--border-soft); font-size: var(--text-sm); cursor: pointer; outline: none; }

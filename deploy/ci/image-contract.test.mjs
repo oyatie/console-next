@@ -32,11 +32,164 @@ test('every Docker COPY source exists in the tracked, admitted context', () => {
   }
 });
 
+export function stripCfgTestItems(source) {
+  const skipCommentOrLiteral = (index) => {
+    const char = source[index];
+    const next = source[index + 1];
+    if (char === '/' && next === '/') {
+      let cursor = index + 2;
+      while (cursor < source.length && source[cursor] !== '\n') cursor += 1;
+      return { kind: 'comment', nextIndex: cursor };
+    }
+    if (char === '/' && next === '*') {
+      let depth = 1;
+      let cursor = index + 2;
+      while (cursor < source.length && depth > 0) {
+        if (source[cursor] === '/' && source[cursor + 1] === '*') {
+          depth += 1;
+          cursor += 2;
+        } else if (source[cursor] === '*' && source[cursor + 1] === '/') {
+          depth -= 1;
+          cursor += 2;
+        } else {
+          cursor += 1;
+        }
+      }
+      return { kind: 'comment', nextIndex: cursor };
+    }
+    const prev = index > 0 ? source[index - 1] : '';
+    if (!/[A-Za-z0-9_]/.test(prev)) {
+      const raw = source.slice(index).match(/^(?:[bc])?r(#*)"/);
+      if (raw) {
+        const terminator = `"${raw[1]}`;
+        const end = source.indexOf(terminator, index + raw[0].length);
+        return { kind: 'literal', nextIndex: end === -1 ? source.length : end + terminator.length };
+      }
+    }
+    if (char === '"') {
+      let cursor = index + 1;
+      while (cursor < source.length) {
+        const inner = source[cursor];
+        cursor += 1;
+        if (inner === '\\') {
+          if (cursor < source.length) cursor += 1;
+          continue;
+        }
+        if (inner === '"') break;
+      }
+      return { kind: 'literal', nextIndex: cursor };
+    }
+    if (char === '\'') {
+      const literal = source.slice(index).match(/^'(?:\\(?:[^u]|u\{[^}]*\})|[^\\'\n])'/);
+      if (literal) return { kind: 'literal', nextIndex: index + literal[0].length };
+    }
+    return null;
+  };
+
+  const skipBracketGroup = (startIndex, openChar, closeChar) => {
+    let depth = 1;
+    let cursor = startIndex + 1;
+    while (cursor < source.length && depth > 0) {
+      const skipped = skipCommentOrLiteral(cursor);
+      if (skipped) {
+        cursor = skipped.nextIndex;
+        continue;
+      }
+      if (source[cursor] === openChar) depth += 1;
+      else if (source[cursor] === closeChar) depth -= 1;
+      cursor += 1;
+    }
+    return cursor;
+  };
+
+  let output = '';
+  let index = 0;
+  while (index < source.length) {
+    const skipped = skipCommentOrLiteral(index);
+    if (skipped) {
+      output += skipped.kind === 'comment' ? ' ' : source.slice(index, skipped.nextIndex);
+      index = skipped.nextIndex;
+      continue;
+    }
+    if (source[index] === '#') {
+      const attr = source.slice(index).match(/^#\s*\[\s*cfg\s*\(\s*test\s*\)\s*\]/);
+      if (attr) {
+        index += attr[0].length;
+        while (index < source.length) {
+          const innerSkipped = skipCommentOrLiteral(index);
+          if (innerSkipped) {
+            index = innerSkipped.nextIndex;
+            continue;
+          }
+          if (/\s/.test(source[index])) {
+            index += 1;
+            continue;
+          }
+          if (source[index] === '#') {
+            const nextBracket = source.slice(index).match(/^#\s*\[/);
+            if (nextBracket) {
+              index = skipBracketGroup(index + nextBracket[0].length - 1, '[', ']');
+              continue;
+            }
+          }
+          if (source[index] === ';') {
+            index += 1;
+            break;
+          }
+          if (source[index] === '{') {
+            index = skipBracketGroup(index, '{', '}');
+            break;
+          }
+          index += 1;
+        }
+        output += ' ';
+        continue;
+      }
+    }
+    output += source[index];
+    index += 1;
+  }
+  return output;
+}
+
+export function compileTimeFileInputs(source) {
+  return [...stripCfgTestItems(source).matchAll(/include_(?:str|bytes)!\(\s*"([^"]+)"\s*\)/g)].map(m => m[1]);
+}
+
+test('stripCfgTestItems strips #[cfg(test)] items while preserving subsequent production include_str!', () => {
+  const sample = `
+    // #[cfg(test)] must not truncate production code
+    const DECOY: &str = "#[cfg(test)]";
+    #[cfg(test)]
+    mod frozen_keys;
+
+    #[cfg(test)]
+    #[path = "grammar_tests.rs"]
+    mod external_tests;
+
+    #[cfg(test)]
+    mod inline_tests {
+        const BRACE: &str = "}";
+        const RAW: &str = r#"} still inside test"#;
+        // } comment brace
+        const TEST_ONLY: &str = include_str!("test-only.json");
+    }
+
+    pub fn prod() -> &'static str {
+        include_str!("../../../../../packages/i18n/src/catalogs/uncopied-prod.json")
+    }
+  `;
+  const inputs = compileTimeFileInputs(sample);
+  assert.deepEqual(inputs, ['../../../../../packages/i18n/src/catalogs/uncopied-prod.json']);
+  const unresolved = inputs.map(rel => relative(root, resolve(root, dirname('backend/crates/platform/request-context/src/error_i18n.rs'), rel)))
+    .filter(path => !(tracked.includes(path) && admitted(path) && copied(path)));
+  assert.deepEqual(unresolved, ['packages/i18n/src/catalogs/uncopied-prod.json']);
+});
+
 test('Rust compile-time file inputs are copied from the admitted context', () => {
   for (const file of tracked.filter(p => /^backend\/.*\/src\/.*\.rs$/.test(p) && !/test/.test(p))) {
-    const source = read(file).split('#[cfg(test)]')[0];
-    for (const match of source.matchAll(/include_(?:str|bytes)!\(\s*"([^"]+)"\s*\)/g)) {
-      const path = relative(root, resolve(root, dirname(file), match[1]));
+    for (const rel of compileTimeFileInputs(read(file))) {
+      const path = relative(root, resolve(root, dirname(file), rel));
       assert.ok(tracked.includes(path) && admitted(path) && copied(path), `${file} needs ${path} in its image stage`);
     }
   }

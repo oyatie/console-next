@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+operationId: "opsIncidentDeclare"
+summary: "Declare Incident"
+x-cedar-action: "incident.write"
+security: [{"accessJwt": []}]
+description: "Declares a new incident in the incidents spool."
+requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/DeclareIncidentRequest"}}}}
+responses: {"201": {"description": "Incident declared.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/IncidentResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}

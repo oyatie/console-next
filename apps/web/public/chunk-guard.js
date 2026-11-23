@@ -6,10 +6,85 @@
 (function () {
   var PREFIX = "console.chunk-reload:";
   var BUST = /([?&])_r=\d+$/;
+  var DEFAULT_STATUS_ORIGIN = "https://status.cosskorea.com";
   var reloading = false;
   var gaveUp = false;
   var started = false;
   var leaving = false;
+  var statusOrigin = DEFAULT_STATUS_ORIGIN;
+  function isLoopbackHost(hostname) {
+    return hostname === "127.0.0.1" || hostname === "[::1]" || hostname === "localhost";
+  }
+  function hasAsciiControl(value) {
+    for (var i = 0; i < value.length; i++) {
+      var code = value.charCodeAt(i);
+      if (code <= 0x1f || code === 0x7f) return true;
+    }
+    return false;
+  }
+  function hasUnsafeOriginChars(value) {
+    if (hasAsciiControl(value) || /\s/.test(value)) return true;
+    for (var i = 0; i < value.length; i++) {
+      var ch = value[i];
+      if (ch === "*" || ch === ";" || ch === "," || ch === "'" || ch === '"' || ch === "\\" || ch === "%" || ch === "@") {
+        return true;
+      }
+    }
+    return false;
+  }
+  function resolveOrigin(raw) {
+    if (typeof raw !== "string" || !raw || hasAsciiControl(raw)) return DEFAULT_STATUS_ORIGIN;
+    var trimmed = raw.trim();
+    if (!trimmed) return DEFAULT_STATUS_ORIGIN;
+    if (
+      hasUnsafeOriginChars(trimmed) ||
+      trimmed.slice(-1) === "/" ||
+      trimmed.slice(-2) === "/." ||
+      trimmed.slice(-3) === "/.."
+    ) {
+      return DEFAULT_STATUS_ORIGIN;
+    }
+    if (typeof URL === "function") {
+      try {
+        var parsed = new URL(trimmed);
+        if (parsed.username || parsed.password || parsed.search || parsed.hash) return DEFAULT_STATUS_ORIGIN;
+        if (parsed.pathname !== "/" || parsed.port === "0") return DEFAULT_STATUS_ORIGIN;
+        if (
+          parsed.origin === "null" ||
+          !parsed.hostname ||
+          hasUnsafeOriginChars(parsed.hostname) ||
+          hasUnsafeOriginChars(parsed.origin)
+        ) {
+          return DEFAULT_STATUS_ORIGIN;
+        }
+        if (parsed.protocol === "https:") return parsed.origin;
+        if (parsed.protocol === "http:" && isLoopbackHost(parsed.hostname)) return parsed.origin;
+        return DEFAULT_STATUS_ORIGIN;
+      } catch {
+        return DEFAULT_STATUS_ORIGIN;
+      }
+    }
+    var match = /^(https?):\/\/([^/?#]+)$/i.exec(trimmed);
+    if (!match) return DEFAULT_STATUS_ORIGIN;
+    var scheme = match[1].toLowerCase();
+    var hostMatch = /^(\[[0-9a-fA-F:]+\]|[^:[\]]+)(?::(\d+))?$/.exec(match[2]);
+    if (!hostMatch) return DEFAULT_STATUS_ORIGIN;
+    var host = hostMatch[1].toLowerCase();
+    var portStr = hostMatch[2];
+    if (host.charAt(0) !== "[" && !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$/i.test(host)) {
+      return DEFAULT_STATUS_ORIGIN;
+    }
+    var port = "";
+    if (portStr !== undefined) {
+      var portNum = Number(portStr);
+      if (portNum < 1 || portNum > 65535) return DEFAULT_STATUS_ORIGIN;
+      var isDefault = (scheme === "https" && portNum === 443) || (scheme === "http" && portNum === 80);
+      if (!isDefault) port = ":" + String(portNum);
+    }
+    if (scheme === "https") return "https://" + host + port;
+    if (scheme === "http" && isLoopbackHost(host)) return "http://" + host + port;
+    return DEFAULT_STATUS_ORIGIN;
+  }
   // Firefox aborts imports before pagehide; recovery must not cancel the navigation that aborted them.
   window.addEventListener("beforeunload", function () { leaving = true; });
   window.addEventListener("pageshow", function () { leaving = false; });
@@ -54,8 +129,8 @@
   // The static error screen (common.crashed.* in packages/i18n boot.ts; a test keeps them equal). Plain DOM with the
   // DS class names: the stylesheet may be what failed, so it reads unstyled too.
   var COPY = {
-    ko: ["화면을 표시하지 못했습니다", "새 버전이 배포되었거나 일시적인 오류일 수 있습니다. 페이지를 새로 고치십시오.", "페이지 새로 고침", "지원 참조 번호", "지원 참조 번호 복사", "지원 참조 번호를 복사했습니다", "복사하지 못했습니다. 지원 참조 번호를 선택해 직접 복사하십시오."],
-    en: ["Couldn’t show this screen", "A new version may have been released, or this may be a temporary error. Reload the page.", "Reload page", "Support reference", "Copy support reference", "Support reference copied", "Could not copy. Select and copy the full support reference."],
+    ko: ["화면을 표시하지 못했습니다", "새 버전이 배포되었거나 일시적인 오류일 수 있습니다. 페이지를 새로 고치십시오.", "페이지 새로 고침", "지원 참조 번호", "지원 참조 번호 복사", "지원 참조 번호를 복사했습니다", "복사하지 못했습니다. 지원 참조 번호를 선택해 직접 복사하십시오.", "상태 페이지 보기", "작성 중이던 내용은 이 탭을 닫기 전까지 유지됩니다."],
+    en: ["Couldn’t show this screen", "A new version may have been released, or this may be a temporary error. Reload the page.", "Reload page", "Support reference", "Copy support reference", "Support reference copied", "Could not copy. Select and copy the full support reference.", "View status page", "Unsaved input stays in this tab until you close it."],
   };
   function fail() {
     if (document.getElementById("chunk-fallback")) return;
@@ -73,6 +148,24 @@
     var button = main.querySelector("button");
     button.textContent = c[2];
     button.addEventListener("click", reload);
+    var rootEl = document.documentElement;
+    var exp = rootEl && typeof rootEl.getAttribute === "function" ? rootEl.getAttribute("data-experience") : null;
+    if (exp === "console" || exp === "warm-clear") {
+      var extras = document.createElement("div");
+      extras.className = "state__extras";
+      var link = document.createElement("a");
+      link.className = "btn btn--sm";
+      link.href = statusOrigin;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = c[7];
+      var note = document.createElement("div");
+      note.className = "muted";
+      note.textContent = c[8];
+      extras.appendChild(link);
+      extras.appendChild(note);
+      main.querySelector(".state").appendChild(extras);
+    }
     var root = document.getElementById("root");
     if (root) root.hidden = true;
     (document.body || document.documentElement).appendChild(main);
@@ -136,8 +229,9 @@
     reload: reload,
     loaded: loaded,
     fail: fail,
-    start: function () {
+    start: function (origin) {
       started = true;
+      statusOrigin = resolveOrigin(origin);
     },
   };
 })();

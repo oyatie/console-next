@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { isMessageId, t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
 import { useCommand } from "../../../lib/react/command";
-import { CommandError } from "../../../lib/react/command-error";
+import { PasskeyError } from "../../../lib/react/passkey-error";
 import { Button, Form } from "../../../ui/button/button";
 import { Dialog } from "../../../ui/dialog";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
@@ -14,7 +14,7 @@ import { recoveryAction } from "../domain/ops-recovery";
 import { OpsRecoveryOpenSheet } from "./ops-recovery-open-sheet";
 import s from "./tenants.module.css";
 
-export function OpsRecovery({ org, data, onIssued }: { org: Org; data: OpsRecoveryRead; onIssued: (issued: Issued) => void }) {
+export function OpsRecovery({ org, data, embedded = false, onIssued }: { org: Org; data: OpsRecoveryRead; embedded?: boolean; onIssued: (issued: Issued) => void }) {
   const [opening, setOpening] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [reason, setReason] = useState("");
@@ -51,22 +51,22 @@ export function OpsRecovery({ org, data, onIssued }: { org: Org; data: OpsRecove
     : primary === "noSecondOperator" ? t("opsRecovery.noSecondOperator")
       : primary === "otherOperator" ? t("opsRecovery.otherOperator")
         : primary === "notParty" ? t("opsRecovery.notParty") : undefined;
-  return <section className={s.section} aria-labelledby="tenant-ops-recovery">
-    <h3 id="tenant-ops-recovery" className={s.heading}>{t("opsRecovery.title")}</h3>
+  const btnSize = embedded ? "sm" : undefined;
+  const content = <>
     {request && <p className={s.note}>
       {t("opsRecovery.openedBy", { actor: request.requested_by_name ?? t("opsRecovery.operator") })} {data.state === "WAITING_APPROVAL" && t("opsRecovery.waiting")}
       {request.hold_until && (data.state === "HOLD" || data.state === "READY") && <>{t("opsRecovery.holdUntil", { at: fmtDateTime(request.hold_until) })} {t("opsRecovery.cancellable")}</>}
       {primary === "issued" && t("opsRecovery.issued", { minutes: data.code_ttl_minutes })}
       {primary === "cancelled" && t("opsRecovery.cancelled", { actor: request.cancelled_by_name ?? t("opsRecovery.operator"), reason: request.cancel_reason ?? "—" })}
     </p>}
-    {!cancelling && <CommandError error={write.error} own={refusal} />}
+    {!cancelling && <PasskeyError error={write.error} own={refusal} />}
     <div className={s.actions}>
-      {(primary === "open" || ((primary === "cancelled" || primary === "issued") && data.recovery_available && data.second_operator_available && org.status === "ACTIVE")) && <Button onClick={() => setOpening(true)}>{t("opsRecovery.open")}</Button>}
+      {(primary === "open" || ((primary === "cancelled" || primary === "issued") && data.recovery_available && data.second_operator_available && org.status === "ACTIVE")) && <Button size={btnSize} onClick={() => setOpening(true)}>{t("opsRecovery.open")}</Button>}
       {primary === "approve" && <Button disabled={write.isPending} onClick={() => write.mutate({ action: "approve" })}>{t("opsRecovery.approve")}</Button>}
       {primary === "issue" && <Button disabled={write.isPending} onClick={() => write.mutate({ action: "issue" })}>{t("opsRecovery.issue")}</Button>}
-      {reasonText && <DisabledReason reason={reasonText} control={(p) => <Button {...p}>{data.state === "WAITING_APPROVAL" ? t("opsRecovery.approve") : data.state === "READY" ? t("opsRecovery.issue") : t("opsRecovery.open")}</Button>} />}
-      {primary === "hold" && <DisabledReason reason={t("opsRecovery.hold")} control={(p) => <Button {...p}>{t("opsRecovery.issue")}</Button>} />}
-      {canCancel && <Button disabled={write.isPending} onClick={() => { setTried(false); setCancelling(true); }}>{t("opsRecovery.cancel")}</Button>}
+      {reasonText && <DisabledReason reason={reasonText} control={(p) => <Button size={btnSize} {...p}>{data.state === "WAITING_APPROVAL" ? t("opsRecovery.approve") : data.state === "READY" ? t("opsRecovery.issue") : t("opsRecovery.open")}</Button>} />}
+      {primary === "hold" && <DisabledReason reason={t("opsRecovery.hold")} control={(p) => <Button size={btnSize} {...p}>{t("opsRecovery.issue")}</Button>} />}
+      {canCancel && <Button size={btnSize} disabled={write.isPending} onClick={() => { setTried(false); setCancelling(true); }}>{t("opsRecovery.cancel")}</Button>}
     </div>
     {opening && <OpsRecoveryOpenSheet org={org} data={data} onClose={() => setOpening(false)} />}
     {cancelling && <Dialog open title={t("opsRecovery.cancel")} onClose={() => setCancelling(false)} dismissable={!reason && !write.isPending}>
@@ -74,12 +74,17 @@ export function OpsRecovery({ org, data, onIssued }: { org: Org; data: OpsRecove
         <Field label={t("opsRecovery.cancelReason")} required error={tried && !reason.trim() ? t("opsRecovery.required") : undefined}>
           {(p) => <TextArea {...p} value={reason} onChange={(e) => setReason(e.target.value)} disabled={write.isPending} />}
         </Field>
-        <CommandError error={write.error} own={refusal} />
+        <PasskeyError error={write.error} own={refusal} />
         <div className="form__actions">
           <Button onClick={() => setCancelling(false)} disabled={write.isPending}>{t("common.cancel")}</Button>
           <Button type="submit" variant="primary" disabled={write.isPending}>{t("opsRecovery.cancel")}</Button>
         </div>
       </Form>
     </Dialog>}
+  </>;
+  if (embedded) return <div className={s.embedded}>{content}</div>;
+  return <section className={s.section} aria-labelledby="tenant-ops-recovery">
+    <h3 id="tenant-ops-recovery" className={s.heading}>{t("opsRecovery.title")}</h3>
+    {content}
   </section>;
 }

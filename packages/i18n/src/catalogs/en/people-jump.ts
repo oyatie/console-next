@@ -34,7 +34,7 @@ export const enPeopleJump = {
   "peopleJump.keys.find": "Find in the list",
   "peopleJump.keys.peek": "Preview",
   "peopleJump.keys.open": "Open the record",
-  "peopleJump.keys.section": "Go to a section (1 personal … 8 documents)",
+  "peopleJump.keys.section": "Go to the section with that number",
   "peopleJump.keys.walk": "Next · previous person in the list",
   "peopleJump.keys.quick": "Save · cancel a quick edit",
   "peopleJump.keys.undo": "Undo the last quick edit · inside a field, the text",

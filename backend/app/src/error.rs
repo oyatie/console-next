@@ -7,6 +7,8 @@ use console_platform_storage::StorageError;
 pub enum AppError {
     #[error("configuration error: {0}")]
     Config(String),
+    #[error("{0}")]
+    OpsConfig(String),
     #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
     #[error("database unavailable: {0}")]

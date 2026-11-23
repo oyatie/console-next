@@ -24,6 +24,7 @@ for (const asset of ["js", "css"] as const) {
       const trigger = page.getByRole("button", { name: t("uiDate.calendar.open"), exact: true }).first();
       await name.fill("김보존");
       await birth.fill("19900101");
+      await expect(trigger).toBeVisible();
       await trigger.focus();
       await trigger.press("Enter");
       const calendar = page.getByRole("dialog", { name: t("uiDate.calendar.label"), exact: true });

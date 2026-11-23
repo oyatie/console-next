@@ -5,6 +5,7 @@ import { beforeEach, expect, test, vi } from "vitest";
 import type { Checklist } from "@console/api/pending";
 import type { components } from "@console/api/schema";
 import { cursorPages, readIdentity } from "../lib/query";
+import { PagePhase } from "../ui/page/page-scope";
 import { HomeScreen } from "./home-screen";
 
 type Item = components["schemas"]["ActionInboxItem"];
@@ -142,19 +143,13 @@ test("only painted queue rows need a live hold", () => {
   expect(state.hold).toHaveBeenLastCalledWith(true, true);
 });
 
-test.each(["phase", "access", "settings"] as const)("Home waits for its first %s read even when the inbox is refused", (source) => {
-  landed(); state.inbox.isError = true;
-  state[source] = { isPending: true, isFetching: false, isError: false };
-  expect(render()).toContain('data-pending="true"');
-  state[source] = { isPending: false, isFetching: false, isError: true };
-  expect(render()).toContain('data-pending="false"');
-});
-
-test.each(["phase", "access", "settings"] as const)("Home waits for a cached %s refresh only before its first paint", (source) => {
-  landed(); state[source].isFetching = true;
-  expect(render()).toContain('data-pending="true"');
-  state[source].isFetching = false;
-  expect(render()).toContain('data-pending="false"');
-  state[source].isFetching = true;
-  expect(render()).toContain('data-pending="false"');
+test("Home lays out its content during the shared hold and starts live updates after reveal", () => {
+  landed(); state.inbox.data!.pages[0]!.items = [item()];
+  const view = (settled: boolean) => renderToStaticMarkup(<PagePhase value={{ slot: null, settled }}><HomeScreen /></PagePhase>);
+  expect(view(false)).toContain('data-pending="false"');
+  expect(state.hold).toHaveBeenLastCalledWith(false, true);
+  expect(view(true)).toContain('data-pending="false"');
+  expect(state.hold).toHaveBeenLastCalledWith(true, true);
+  state.phase.isFetching = state.access.isFetching = state.settings.isFetching = true;
+  expect(view(true)).toContain('data-pending="false"');
 });

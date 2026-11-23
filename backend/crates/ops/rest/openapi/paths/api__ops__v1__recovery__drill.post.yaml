@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+operationId: "opsRecoveryDrill"
+summary: "Draft Recovery Drill Cmd"
+x-cedar-action: "change.request.drill"
+x-cedar-actions: ["change.request.drill", "change.request.drill-at"]
+security: [{"accessJwt": []}]
+description: "Records signed recovery drill Cmd hand-off in actions spool; rejects tenant inputs."
+requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/DrillRequest"}}}}
+responses: {"201": {"description": "Cmd hand-off recorded.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CmdResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}

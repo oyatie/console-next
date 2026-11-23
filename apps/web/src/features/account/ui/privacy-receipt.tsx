@@ -8,6 +8,22 @@ import { Card } from "../../../ui/card/card";
 import { ReceiptReference } from "../../../ui/composer/receipt-reference";
 import s from "./account.module.css";
 
+export function PrivacyDueCell({
+  clock,
+  withoutDelay,
+}: {
+  clock: PrivacyRightsReceipt["clock"];
+  withoutDelay?: boolean;
+}) {
+  return (
+    <>
+      {clock && <DeadlineChip days={clock.days_left} severity={clock.severity} />}
+      {withoutDelay && t("account.privacy.withoutDelay")}
+      {!clock && !withoutDelay && t("account.privacy.noClock")}
+    </>
+  );
+}
+
 export function PrivacyReceipt({ request }: { request: PrivacyRightsReceipt }) {
   return <div className={s.pad}>
     <ReceiptReference value={request.receipt_no} />

@@ -32,7 +32,7 @@ const PLACEMENT_VIA_ASSIGNMENT: &str = "the 법인, 사업장 and 부서 change 
 
 /// Every scalar field of the employee record and its route. One table: the
 /// PATCH, a filed PROFILE_CORRECTION and the facts PATCH all read it.
-pub const CORRECTABLE_FIELDS: [(&str, CorrectionRoute); 35] = [
+pub const CORRECTABLE_FIELDS: [(&str, CorrectionRoute); 36] = [
     ("name", CorrectionRoute::Low),
     ("phone", CorrectionRoute::Low),
     ("job", CorrectionRoute::Low),
@@ -90,6 +90,7 @@ pub const CORRECTABLE_FIELDS: [(&str, CorrectionRoute); 35] = [
     ("emergency_contacts", CorrectionRoute::Low),
     ("photo", CorrectionRoute::Low),
     ("group_service_start_date", CorrectionRoute::High),
+    ("bank_account_registered", CorrectionRoute::Low),
 ];
 
 /// The route of one PATCH / PROFILE_CORRECTION field. An unknown field is a

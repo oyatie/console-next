@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::{
-    BranchRef, IssueMode, NormalizedRosterUser, ProvisioningError, RosterImportReport,
+    BranchRef, IssueMode, NormalizedRosterUser, OtpHmacKey, ProvisioningError, RosterImportReport,
     issue_bootstrap_if_needed_tx,
 };
 use console_kernel_core::OrgId;
@@ -12,6 +12,7 @@ use uuid::Uuid;
 
 pub(crate) async fn apply_roster_tx(
     tx: &mut Transaction<'_, Postgres>,
+    hmac_key: &OtpHmacKey,
     users: Vec<NormalizedRosterUser>,
     now: OffsetDateTime,
     bootstrap_ttl: Duration,
@@ -137,6 +138,7 @@ pub(crate) async fn apply_roster_tx(
 
             if let Some(issue) = issue_bootstrap_if_needed_tx(
                 tx,
+                hmac_key,
                 user_id,
                 OrgId::one(),
                 now,

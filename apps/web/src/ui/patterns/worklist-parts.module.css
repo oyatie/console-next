@@ -1,0 +1,352 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+@property --pct {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 0%;
+}
+
+.moreBar {
+  display: flex;
+  align-items: center;
+  padding: var(--space-1) var(--cell-px);
+  background: var(--surface-2);
+  border-block-start: 1px solid var(--border-soft);
+}
+
+.bandsGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  min-width: 0;
+  border-block-start: 1px solid var(--border);
+}
+
+.bandCol {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.bandCol + .bandCol {
+  border-inline-start: 1px solid var(--border);
+}
+
+.bandBlock {
+  min-width: 0;
+}
+
+.bandBlock + .bandBlock {
+  border-block-start: 1px solid var(--border);
+}
+
+.emptyBand {
+  padding: var(--space-3);
+  color: var(--faint);
+  font-size: var(--text-sm);
+}
+
+.subCheck {
+  padding-inline-start: var(--space-4);
+  color: var(--steel);
+}
+
+.opsDue {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  white-space: nowrap;
+}
+
+.opsAction {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  width: 100%;
+  white-space: nowrap;
+}
+
+.opsTaskCell {
+  display: contents;
+}
+
+.opsTaskTitle {
+  white-space: nowrap;
+}
+
+.opsPhoneMeta {
+  display: none;
+}
+
+.statWrap {
+  padding: 0;
+  border-block-end: 1px solid var(--border);
+}
+
+.barCell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+
+.barTrack {
+  display: inline-flex;
+  width: calc(var(--space-6) * 3);
+  height: var(--space-1-5);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  overflow: hidden;
+  flex: none;
+}
+
+.barFill {
+  display: block;
+  height: 100%;
+  width: var(--pct, 0%);
+  background: var(--ink);
+}
+
+.summaryHead {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-block-end: 1px solid var(--border);
+}
+
+.kicker {
+  font-size: var(--text-xs);
+  color: var(--faint);
+}
+
+.docTitle {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  color: var(--ink);
+  word-break: keep-all;
+}
+
+.statusLine {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--steel);
+  font-variant-numeric: tabular-nums;
+}
+
+.section {
+  border-block-end: 1px solid var(--border);
+}
+
+.kvPad {
+  padding: var(--space-2) var(--space-3);
+}
+
+.chainList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chainStep {
+  display: grid;
+  grid-template-columns: minmax(calc(var(--space-6) * 2.25), auto) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1-5) var(--space-3);
+  border-block-end: 1px solid var(--border-soft);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.chainStep:last-child {
+  border-block-end: 0;
+}
+
+.chainStep[data-state="current"] {
+  background: var(--surface-selected);
+  font-weight: var(--fw-semibold);
+}
+
+.stepRole {
+  font-size: var(--text-xs);
+  color: var(--faint);
+}
+
+.stepMeta {
+  font-size: var(--text-xs);
+  color: var(--faint);
+}
+
+.chainStep[data-state="current"] .stepMeta {
+  color: var(--primary);
+  font-weight: var(--fw-semibold);
+}
+
+.tableWrap {
+  min-width: 0;
+}
+
+.clampSubject {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: nowrap;
+  gap: var(--space-1);
+  min-width: 0;
+  max-width: calc(var(--space-6) * 11);
+  overflow: hidden;
+}
+
+.clampReason {
+  display: block;
+  min-width: 0;
+  max-width: calc(var(--space-6) * 5.5);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (--phone) {
+  .clampSubject {
+    flex-wrap: wrap;
+    max-width: none;
+    overflow: visible;
+  }
+
+  .clampReason {
+    max-width: none;
+    white-space: normal;
+    overflow: visible;
+  }
+
+  .opsTableWrap :global(table.table) {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .opsTaskCell {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-half);
+    min-width: 0;
+    max-width: calc(var(--space-6) * 4.25);
+    padding-block: var(--space-1);
+  }
+
+  .opsTaskTitle {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .opsPhoneMeta {
+    display: block;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .opsDue {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-half);
+    max-width: calc(var(--space-6) * 4);
+    min-width: 0;
+    white-space: normal;
+    padding-block: var(--space-1);
+  }
+
+  .opsAction {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    width: 100%;
+    max-width: calc(var(--space-6) * 3.5);
+    min-width: 0;
+    margin-inline-start: auto;
+    white-space: normal;
+    overflow-wrap: normal;
+    word-break: keep-all;
+  }
+
+  .opsAction > * {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--space-1);
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .opsAction :is(a, button) {
+    height: auto;
+    min-height: var(--target);
+    width: max-content;
+    max-width: 100%;
+    padding-block: var(--space-1);
+    white-space: normal;
+    overflow-wrap: normal;
+    word-break: keep-all;
+    text-align: center;
+    justify-content: center;
+    line-height: var(--lh-tight);
+  }
+
+  .opsAction :is([role="alert"], [role="status"]) {
+    max-width: 100%;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+@container list-table (481px <= width <= 960px) {
+  :global([data-compact-rows]) :global(.wide-only) {
+    display: none;
+  }
+
+  :global([data-compact-rows]) .clampSubject {
+    flex-wrap: nowrap;
+    max-width: calc(var(--space-6) * 8);
+    overflow: hidden;
+  }
+}
+
+@container list-table (481px <= width <= 780px) {
+  :global([data-compact-rows]) .clampSubject {
+    max-width: calc(var(--space-6) * 6);
+  }
+}
+
+@container list-table (481px <= width <= 620px) {
+  :global([data-compact-rows]) .clampSubject {
+    max-width: calc(var(--space-6) * 3.5);
+  }
+}
+
+@container list-table (max-width: 480px) {
+  :global([data-compact-rows]) .clampSubject {
+    display: flex;
+    flex-wrap: nowrap;
+    max-width: 100%;
+    overflow: hidden;
+  }
+}
+
+@media (max-width: 960px) {
+  .bandsGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bandCol + .bandCol {
+    border-inline-start: 0;
+    border-block-start: 1px solid var(--border);
+  }
+}
+
+.clampSubject a {
+  color: inherit;
+  text-decoration: none;
+}

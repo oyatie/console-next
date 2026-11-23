@@ -29,7 +29,7 @@ async fn seed_user(pool: &PgPool) -> uuid::Uuid {
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn concurrent_consume_burns_the_otp_exactly_once(pool: PgPool) {
     let user_id = seed_user(&pool).await;
-    let store = BootstrapCredentialStore;
+    let store = BootstrapCredentialStore::default();
     let now = OffsetDateTime::now_utc();
 
     let issue = store
@@ -46,7 +46,7 @@ async fn concurrent_consume_burns_the_otp_exactly_once(pool: PgPool) {
 
     // Two concurrent redeems contend for the same persistent claim.
     let barrier = Arc::new(Barrier::new(2));
-    let (store_a, store_b) = (store, store);
+    let (store_a, store_b) = (store.clone(), store.clone());
     let (pool_a, pool_b) = (pool.clone(), pool.clone());
     let (token_a, token_b) = (
         issue.token.as_str().to_owned(),
@@ -77,7 +77,7 @@ async fn concurrent_consume_burns_the_otp_exactly_once(pool: PgPool) {
 
     // Two concurrent registration-consumes: exactly one matches the open row.
     let barrier = Arc::new(Barrier::new(2));
-    let (store_a, store_b) = (store, store);
+    let (store_a, store_b) = (store.clone(), store.clone());
     let (pool_a, pool_b) = (pool.clone(), pool.clone());
     let (barrier_a, barrier_b) = (Arc::clone(&barrier), Arc::clone(&barrier));
     let consume_a = tokio::spawn(async move {

@@ -62,17 +62,19 @@ export function SecRecords({ c, quick }: { c: Card; quick: Quick }) {
       <SubHead tools={c.editable && <ListAdd object={careerLabel} onAdd={() => setCareer({ at: null })} />}>{tx("empRec.career.head", { count: careers?.length ?? 0 })}</SubHead>
       {careers?.length ? (
         <RecordRows
+          mobileLayout="console-cards"
           label={careerLabel}
           rows={careers}
           rowId={(x) => `${x.employer_name}${x.from}`}
           columns={[
-            { header: t("empRec.career.employer_name"), cell: (x) => x.employer_name },
-            { header: t("empRec.career.period"), cell: (x) => <span className={s.num}>{months(x)}</span> },
-            { header: t("empRec.career.position"), cell: (x) => x.position ?? "—" },
-            { header: t("empRec.career.duty"), cell: (x) => x.duty ?? "—" },
-            { header: t("empRec.career.leave_reason"), cell: (x) => x.leave_reason ?? "—" },
+            { header: t("empRec.career.employer_name"), card: "title", cell: (x) => x.employer_name },
+            { header: t("empRec.career.period"), card: "fact", cell: (x) => <span className={s.num}>{months(x)}</span> },
+            { header: t("empRec.career.position"), card: "fact", cell: (x) => x.position ?? "—" },
+            { header: t("empRec.career.duty"), card: "fact", cell: (x) => x.duty ?? "—" },
+            { header: t("empRec.career.leave_reason"), card: "fact", cell: (x) => x.leave_reason ?? "—" },
             {
               end: true,
+              card: "action",
               cell: (x) =>
                 c.editable && (
                   <RowActions
@@ -91,25 +93,25 @@ export function SecRecords({ c, quick }: { c: Card; quick: Quick }) {
       {careerEditor}
       {head("education", e.of("education").length)}
       {e.rows("education", [
-        { cell: (x) => v(x).school as string },
-        { cell: (x) => [word("education", "level", v(x).level), v(x).major].filter(Boolean).join(" · ") },
-        { cell: (x) => <span className={s.num}>{span(v(x).entered_on, v(x).ended_on)}</span> },
-        { cell: (x) => word("education", "status", v(x).status) },
+        { card: "title", cell: (x) => v(x).school as string },
+        { card: "fact", cell: (x) => [word("education", "level", v(x).level), v(x).major].filter(Boolean).join(" · ") },
+        { card: "fact", cell: (x) => <span className={s.num}>{span(v(x).entered_on, v(x).ended_on)}</span> },
+        { card: "status", cell: (x) => word("education", "status", v(x).status) },
       ], (x) => v(x).school as string)}
       {e.editor("education")}
       {head("qualification", e.of("qualification").length)}
       {e.rows("qualification", [
-        { header: t("empRec.qualification.name"), cell: (x) => v(x).name as string },
-        { header: t("empRec.qualification.kind"), cell: (x) => word("qualification", "kind", v(x).kind) },
-        { header: t("empRec.qualification.issuer"), cell: (x) => (v(x).issuer as string) ?? "—" },
-        { header: t("empRec.qualification.acquired_on"), cell: (x) => <span className={s.num}>{d(v(x).acquired_on as string) || "—"}</span> },
-        { header: t("empRec.qualification.expires_on"), cell: (x) => <span className={s.num}>{d(v(x).expires_on as string) || t("empCard.none")}</span> },
+        { header: t("empRec.qualification.name"), card: "title", cell: (x) => v(x).name as string },
+        { header: t("empRec.qualification.kind"), card: "fact", cell: (x) => word("qualification", "kind", v(x).kind) },
+        { header: t("empRec.qualification.issuer"), card: "fact", cell: (x) => (v(x).issuer as string) ?? "—" },
+        { header: t("empRec.qualification.acquired_on"), card: "fact", cell: (x) => <span className={s.num}>{d(v(x).acquired_on as string) || "—"}</span> },
+        { header: t("empRec.qualification.expires_on"), card: "fact", cell: (x) => <span className={s.num}>{d(v(x).expires_on as string) || t("empCard.none")}</span> },
       ], (x) => v(x).name as string)}
       {e.editor("qualification")}
       <SubHead tools={<>{e.add("military")}{e.add("language")}{e.add("training")}</>}>{t("empRec.misc.head")}</SubHead>
-      {e.rows("military", [{ cell: () => t("empRec.military") }, { cell: (x) => [word("military", "status", v(x).status), word("military", "branch", v(x).branch), v(x).rank, span(v(x).served_from, v(x).served_to)].filter(Boolean).join(" · ") }], () => t("empRec.military"))}
-      {e.rows("language", [{ cell: () => t("empRec.language") }, { cell: (x) => [v(x).language, v(x).test, v(x).score, d(v(x).taken_on as string)].filter(Boolean).join(" · ") }], (x) => v(x).language as string)}
-      {e.rows("training", [{ cell: () => t("empRec.training") }, { cell: (x) => [v(x).course, v(x).provider, word("training", "status", v(x).status), span(v(x).started_on, v(x).ended_on)].filter(Boolean).join(" · ") }], (x) => v(x).course as string)}
+      {e.rows("military", [{ card: "title", cell: () => t("empRec.military") }, { card: "fact", cell: (x) => [word("military", "status", v(x).status), word("military", "branch", v(x).branch), v(x).rank, span(v(x).served_from, v(x).served_to)].filter(Boolean).join(" · ") }], () => t("empRec.military"))}
+      {e.rows("language", [{ card: "title", cell: () => t("empRec.language") }, { card: "fact", cell: (x) => [v(x).language, v(x).test, v(x).score, d(v(x).taken_on as string)].filter(Boolean).join(" · ") }], (x) => v(x).language as string)}
+      {e.rows("training", [{ card: "title", cell: () => t("empRec.training") }, { card: "fact", cell: (x) => [v(x).course, v(x).provider, word("training", "status", v(x).status), span(v(x).started_on, v(x).ended_on)].filter(Boolean).join(" · ") }], (x) => v(x).course as string)}
       {e.of("military").length + e.of("language").length + e.of("training").length === 0 && <SectionLine>{t("empRec.misc.none")}</SectionLine>}
       {e.editor("military")}
       {e.editor("language")}

@@ -59,7 +59,7 @@ requestBody:
               Columns need header_row; the sheet needs
               a name column. 422 mapping_invalid, mapping_unknown_sheet, mapping_unknown_target,
               mapping_bad_column, mapping_header_row_required, mapping_header_row_out_of_range,
-              mapping_name_required, mapping_duplicate_target.'
+              mapping_name_required, mapping_duplicate_target, mapping_restricted_column.'
 responses:
   '200':
     description: Import run preview with masked sample rows and mapping profile.

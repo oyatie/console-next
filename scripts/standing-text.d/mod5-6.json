@@ -1,0 +1,33 @@
+{
+  "baseline": {
+    "apps/web/src/features/me/ui/me-attendance-page.tsx#MeAttendancePage": 33,
+    "apps/web/src/features/me/ui/me-desk-page.tsx#MeDeskPage": 33,
+    "apps/web/src/features/team/ui/team-page.tsx#TeamPage": 14
+  },
+  "newScreens": {
+    "apps/web/src/features/me/ui/me-attendance-page.tsx#MeAttendancePage": {
+      "FACT": 10,
+      "REFUSAL": 12,
+      "EMPTY": 1,
+      "LEGAL": 0,
+      "RECEIPT": 10,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/me/ui/me-desk-page.tsx#MeDeskPage": {
+      "FACT": 10,
+      "REFUSAL": 12,
+      "EMPTY": 1,
+      "LEGAL": 0,
+      "RECEIPT": 10,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/team/ui/team-page.tsx#TeamPage": {
+      "FACT": 8,
+      "REFUSAL": 5,
+      "EMPTY": 1,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    }
+  }
+}

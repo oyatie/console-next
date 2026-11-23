@@ -25,12 +25,18 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) for (con
       }] : authz.capabilities } };
     });
     const reads: URLSearchParams[] = [];
+    const countReads: URLSearchParams[] = [];
     const results = Promise.withResolvers<void>();
     await mockRoute(page, "get", "/api/v1/change-requests", async request => {
       const query = new URL(request.url()).searchParams;
       reads.push(query);
       await results.promise;
       return { status: 200, json: { items: [], total: 0, offset: 0, limit: Number(query.get("limit")) } };
+    });
+    await mockRoute(page, "get", "/api/v1/change-requests/counts", async request => {
+      countReads.push(new URL(request.url()).searchParams);
+      await results.promise;
+      return { status: 200, json: { all: 0, me: 0, role: 0 } };
     });
     try {
       await page.goto("/people/requests");
@@ -40,12 +46,14 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) for (con
       await expect(statuses).toHaveCount(0);
       await expect(page.getByRole("group", { name: t("requests.lanes"), exact: true, includeHidden: true })).toHaveCount(0);
       expect(reads).toHaveLength(0);
+      expect(countReads).toHaveLength(0);
       const loaded = page.waitForResponse(response => new URL(response.url()).pathname === "/api/v1/me/authz");
       release();
       await loaded;
       await expect(statuses).toBeVisible();
       await expect(lanes).toHaveCount(hr ? 1 : 0);
-      await expect.poll(() => reads.length).toBe(hr ? 4 : 1);
+      await expect.poll(() => reads.length).toBe(1);
+      await expect.poll(() => countReads.length).toBe(hr ? 1 : 0);
       const listReads = reads.filter(query => query.get("limit") === "20");
       expect(listReads.map(query => query.get("requester"))).toEqual([hr ? null : "me"]);
       if (!hr) {

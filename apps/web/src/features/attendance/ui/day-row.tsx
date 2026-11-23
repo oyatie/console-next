@@ -36,7 +36,7 @@ export function DayRow({ row, draft, grammarHintId, onDraft, onOpen, onAssign }:
           aria-describedby={[grammarHintId, p["aria-describedby"]].filter(Boolean).join(" ")}
           value={typed}
           maxLength={40}
-          placeholder={undefined}
+          placeholder={start !== undefined ? "18:00" : "9-18"}
           onChange={(e) => {
             const v = e.target.value.trim();
             onDraft(v ? (start !== undefined ? `${clock(start)}-${v}` : v) : null);
@@ -48,15 +48,15 @@ export function DayRow({ row, draft, grammarHintId, onDraft, onOpen, onAssign }:
     <Button size="sm" onClick={onOpen}>{t("attendanceRecords.board.open")}</Button>
   );
   return (
-    <div className={s.boardRow}>
+    <div className={s.boardRow} data-day-row="">
       <span aria-hidden>{tone ? GLYPH[tone] : ""}</span>
       <span>
         <Link from="/attendance" to="." search={(x) => ({ ...x, month: monthOf(row.day.date), person: row.employee_id })}>{row.name}</Link> <span className="muted num">{row.employee_number}</span>
         {row.own && <span className="muted"> {t("attendanceRecords.grid.ownTag")}</span>}
       </span>
       <DayBar day={row.day} />
-      <span>{mark && <strong>{t(`attendanceRecords.mark.${mark}`)} </strong>}{problemText(row)}{row.day.entry && <><br /><Chip>{t(`attendanceRecords.source.${row.day.entry.source}`)}</Chip></>}</span>
-      <div className={s.rowAction} role="group" aria-label={t("attendanceRecords.board.nextActionFor", { name: row.name })}>
+      <span>{mark && <strong>{t(`attendanceRecords.mark.${mark}`)} </strong>}{problemText(row)}{row.day.entry && <bdi data-day-source=""><br /><Chip>{t(`attendanceRecords.source.${row.day.entry.source}`)}</Chip></bdi>}</span>
+      <div className={s.rowAction} data-day-action="" role="group" aria-label={t("attendanceRecords.board.nextActionFor", { name: row.name })}>
         {action}
       </div>
     </div>

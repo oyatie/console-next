@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { installFaultClock } from "../states/fault-clock";
 import type { Page } from "@playwright/test";
 import type { components } from "@console/api";
 import { AT, failure, id, token, user } from "./fixtures";
@@ -16,6 +17,10 @@ const run: components["schemas"]["EmployeeImportRun"] = {
 };
 
 export async function mockPeopleImport(page: Page, state: PeopleImportState) {
+  if (state === "token-refresh-failed") {
+    // The read's 401 starts a token refresh. Its 503 is the fault the query client retries.
+    await installFaultClock(page, request => new URL(request.url()).pathname === "/api/v1/auth/token/refresh");
+  } else if (state.endsWith("-failed")) await installFaultClock(page);
   // LAND-ORDER: reuse the shared shell until UI-DECOUPLE can spread this lane's screen records.
   const shell = await mockScreen(page, screens[0], "empty");
   let release!: () => void;

@@ -1,11 +1,15 @@
+import { koShellRoutes } from "./ko/shell-routes";
 import { koUiFlexibleColumns } from "./ko/ui-flexible-columns";
 import { koGovernanceRefusals } from "./ko/governance";
 import { koDirectoryViews } from "./ko/directory-views";
 import { koAccountLinkRefusals } from "./ko/account_link";
 import { koPeriodUnlockRefusals } from "./ko/period_unlock";
-import { koLeaveRefusals } from "./ko/leave";
+import { koPrivacyRefusals } from "./ko/privacy";
+import { koLeave } from "./ko/leave";
 import { koOrgChangeRefusals } from "./ko/org_change";
 import { koPayroll } from "./ko/payroll";
+import { koPayrollRun } from "./ko/payroll-run";
+import { koPayslip } from "./ko/payslip";
 import { koUiShiftBar } from "./ko/ui-shift-bar";
 import { koNts } from "./ko/nts";
 import { koSupport } from "./ko/support";
@@ -43,6 +47,8 @@ import { koAttendanceHolidays } from "./ko/attendance-holidays";
 import { koAttendanceCrews } from "./ko/attendance-crews";
 import { koAttendanceOverview } from "./ko/attendance-overview";
 import { koAttendanceRecords } from "./ko/attendance-records";
+import { koMe } from "./ko/me";
+import { koTeam } from "./ko/team";
 import { koImport } from "./ko/import";
 import { koImportSheet } from "./ko/import-sheet";
 import { koImportReview } from "./ko/import-review";
@@ -124,6 +130,7 @@ import { koCrud } from "./ko/crud";
 import { koRegister } from "./ko/register";
 import { koUnplaced } from "./ko/unplaced";
 import { koBulkGrid } from "./ko/bulk-grid";
+import { koDataHealth } from "./ko/data-health";
 import { koUiRecord } from "./ko/ui-record";
 import { koEmpCard } from "./ko/emp-card";
 import { koEmpFix } from "./ko/emp-fix";
@@ -131,6 +138,8 @@ import { koEmpRec } from "./ko/emp-rec";
 import { koEmpDoc } from "./ko/emp-doc";
 import { koPeopleJump } from "./ko/people-jump";
 import { koSettingsHub } from "./ko/settings-hub";
+import { koUiWorklist } from "./ko/ui-worklist";
+import { koUiLedger } from "./ko/ui-ledger";
 
 export const ko: Record<ScreenMessageId, string> = {
   ...koUiFlexibleColumns,
@@ -138,7 +147,7 @@ export const ko: Record<ScreenMessageId, string> = {
   ...koGovernanceRefusals,
   ...koAccountLinkRefusals,
   ...koPeriodUnlockRefusals,
-  ...koLeaveRefusals,
+  ...koLeave,
   ...koOrgChangeRefusals,
   ...koUiShiftBar,
   ...koStatutory,
@@ -249,6 +258,7 @@ export const ko: Record<ScreenMessageId, string> = {
   ...koRegister,
   ...koUnplaced,
   ...koBulkGrid,
+  ...koDataHealth,
   ...koTimeline,
   ...koRequestOutcome,
   ...koUiRecord,
@@ -258,9 +268,15 @@ export const ko: Record<ScreenMessageId, string> = {
   ...koEmpDoc,
   ...koPeopleJump,
   ...koOpsRecovery,
-  ...koNts, ...koPayroll,
+  ...koNts, ...koPayroll, ...koPayrollRun, ...koPayslip,
   ...koCommon,
   ...koSupport,
   ...koSupportAccess,
+  ...koPrivacyRefusals,
   ...koDirectoryViews,
+  ...koUiWorklist,
+  ...koUiLedger,
+  ...koMe,
+  ...koTeam,
+  ...koShellRoutes,
 };

@@ -101,6 +101,7 @@ impl PlatformProvisioner {
         }
         let phone = phone.map(str::trim).filter(|value| !value.is_empty());
         let ttl = self.onboarding_otp_ttl;
+        let hmac_key = self.resolve_otp_hmac_key()?;
 
         let mut tx = pool.begin().await?;
         let user_id: Option<Uuid> =
@@ -126,6 +127,7 @@ impl PlatformProvisioner {
         // transaction; keep it armed so the bootstrap credential passes FORCE RLS.
         let issue = issue_bootstrap_if_needed_tx(
             &mut tx,
+            &hmac_key,
             user_id,
             OrgId::from_uuid(org_id),
             now,

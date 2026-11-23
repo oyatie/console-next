@@ -80,6 +80,23 @@ pub fn address(si: &str, sgg: &str) -> String {
         .join(" ")
 }
 
+/// Self-service summary mask showing administrative si/sgg/emd without road
+/// or building detail. Never alters [`RevealField::Address::masked`].
+#[must_use]
+pub fn address_dong(si: &str, sgg: Option<&str>, emd: Option<&str>) -> String {
+    let parts: Vec<&str> = [Some(si), sgg, emd]
+        .into_iter()
+        .flatten()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .collect();
+    if parts.is_empty() {
+        DOTS.to_owned()
+    } else {
+        parts.join(" ")
+    }
+}
+
 #[must_use]
 pub fn phone(e164: &str) -> String {
     let digits: String = e164.chars().filter(char::is_ascii_digit).collect();
@@ -105,6 +122,11 @@ mod tests {
         );
         assert_eq!(address("경기도", "평택시"), "경기도 평택시 ••••");
         assert_eq!(address("", ""), DOTS);
+        assert_eq!(
+            address_dong("Gyeonggi", Some("Pyeongtaek"), Some("Godeok")),
+            "Gyeonggi Pyeongtaek Godeok"
+        );
+        assert_eq!(address_dong("", None, None), DOTS);
         assert_eq!(phone("+821012345821"), "010-••••-5821");
         assert_eq!(phone("010-1234-5821"), "010-••••-5821");
         assert_eq!(phone("123"), DOTS);

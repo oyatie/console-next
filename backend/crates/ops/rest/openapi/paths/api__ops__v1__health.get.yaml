@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+operationId: "opsHealth"
+summary: "Read ServiceHealth"
+x-cedar-action: "read.home"
+security: [{"accessJwt": []}]
+description: "Returns internal SLOs, evidence truth, and external public status feed without blending."
+responses: {"200": {"description": "Service health.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ServiceHealthView"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}

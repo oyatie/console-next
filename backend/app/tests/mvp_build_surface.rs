@@ -27,12 +27,15 @@ const AUDIENCE: &str = "console-api";
 
 #[cfg(feature = "mvp")]
 #[test]
-fn mvp_includes_payroll() {
-    assert!(
-        CONFIGURED_ROUTE_SURFACES
-            .iter()
-            .any(|s| s.name == "payroll")
-    );
+fn mvp_includes_payroll_leave_and_inbox() {
+    for surface_name in ["payroll", "leave", "inbox"] {
+        assert!(
+            CONFIGURED_ROUTE_SURFACES
+                .iter()
+                .any(|s| s.name == surface_name),
+            "mvp must include {surface_name} route surface"
+        );
+    }
 }
 
 /// (module feature, its route surface name, a GET path it serves when compiled in).
@@ -41,6 +44,10 @@ const COMPILED_OUT: &[(&str, &str, &str)] = &[
     ("attendance", "attendance", "/api/v1/attendance/exceptions"),
     #[cfg(not(feature = "payroll"))]
     ("payroll", "payroll", "/api/v1/payroll/runs"),
+    #[cfg(not(feature = "leave"))]
+    ("leave", "leave", "/api/v2/me/leave"),
+    #[cfg(not(feature = "inbox"))]
+    ("inbox", "inbox", "/api/v1/me/inbox-docs"),
     #[cfg(not(feature = "inventory"))]
     ("inventory", "inventory", "/api/v1/inventory/items"),
     #[cfg(not(feature = "workorder"))]
@@ -176,6 +183,16 @@ async fn compiled_out_module_routes_answer_404_and_mvp_routes_answer(
         {
             let (status, body) = get(&app, "/api/v1/payroll/payslips/me", &token).await?;
             assert_eq!(status, StatusCode::OK, "{body}");
+            let (status, body) = get(&app, "/api/v1/me/inbox-docs?filter=payslip", &token).await?;
+            assert_eq!(status, StatusCode::OK, "{body}");
+            let (status, body) = get(&app, "/api/v2/leave/requests", &token).await?;
+            assert_eq!(status, StatusCode::OK, "{body}");
+            let (status, body) = get(&app, "/api/v2/me/leave", &token).await?;
+            assert_ne!(
+                status,
+                StatusCode::NOT_FOUND,
+                "leave self route missing: {body}"
+            );
         }
         for (module, _, path) in COMPILED_OUT {
             let (status, body) = get(&app, path, &token).await?;

@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: string
+x-extensible-enum:
+- PENDING_ENROLMENT
+- ACTIVE
+- REVOKED
+- EXPIRED

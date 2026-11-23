@@ -138,6 +138,7 @@ There is one look and one size. No prop changes either, apart from the width a l
 | Day header | At least `44px` wide, centred, with a pointer cursor. `sub` is on its own line at 12 px (`--text-xs`). |
 | Person row | `--row-h-compact` high, 32 px. Every cell has a 1 px `--border` line below. |
 | Group rule | A 2 px `--control-border` line above every cell of the first row of a group. |
+| In a visual style | Where a visual style is chosen (any `data-experience` but `baseline`), the line below a row and the group rule are drawn inside the cell and take no room, so a cell's content box is the whole row height. A link placed directly in a lead cell is as tall as the row and at least `--target` wide, so it is still a whole pointer target when it is scrolled half under the sticky head. Today's look keeps its borders and its text-height links. |
 | Day cell | Centred, 4 px side padding, one line, with the `cell` cursor. |
 | Editor | The width of its cell and at least `88px`. No border, `--surface` fill, `--ink` text, the cell's font, centred, `outline: none`. |
 
@@ -446,6 +447,13 @@ uses touch: `e2e` was searched for `hasTouch`, `tap(`, `touchscreen` and `isMobi
 
 <!-- ds:props apps/web/src/ui/person-day-grid/person-day-grid.tsx -->
 
+### GridCellBadge
+
+| Prop | Required | Type | Default | Description |
+| --- | --- | --- | --- | --- |
+| `children` | yes | `ReactNode` |  | Short 1-2 character badge text or glyph. |
+| `tone` | yes | `CellBadgeTone` |  | Semantic visual tone for the cell badge. |
+
 ### PersonDayGrid
 
 | Prop | Required | Type | Default | Description |
@@ -466,7 +474,10 @@ uses touch: `e2e` was searched for `hasTouch`, `tap(`, `touchscreen` and `isMobi
 | `rows` | yes | `readonly R[]` |  |  |
 | `tail` | yes | `readonly SideColumn<R>[]` |  |  |
 | `total` | yes | `number` |  | Rows matching the scope on the server (aria-rowcount), loaded or not. |
+| `activeRowId` | no | `string` |  | Active/selected employee row key highlighted with the selected row bar. |
+| `footerRows` | no | `readonly GridFooterRow[]` |  | Optional summary rows rendered inside tfoot beneath the grid body. |
 | `groupOf` | no | `(r: R) => string` |  | A row group's head is drawn above the first row of each group. |
+| `tailGroupHeader` | no | `ReactNode` |  | Optional group header spanning all tail columns (2-row thead). |
 
 <!-- /ds:props -->
 
@@ -484,25 +495,43 @@ Two descriptions say more than the code does. `groupOf` draws a rule above the f
 
 | Token | Read by |
 | --- | --- |
-| `--border` | `background-image`, `border-bottom`, `border-left` |
+| `--border` | `--rules`, `background-image`, `border`, `border-bottom`, `border-left`, `border-top` |
 | `--canvas` | `background` |
-| `--control-border` | `border-top` |
+| `--control-border` | `--rules`, `border-top` |
+| `--control-selected` | `background` |
 | `--danger-bg` | `background` |
-| `--danger-solid` | `outline` |
-| `--danger-tx` | `color` |
+| `--danger-solid` | `border`, `outline` |
+| `--danger-tx` | `border`, `color` |
+| `--faint` | `color` |
 | `--font-mono` | `font-family` |
 | `--fw-body` | `font-weight` |
 | `--fw-medium` | `font-weight` |
+| `--fw-semibold` | `font-weight` |
+| `--fw-strong` | `font-weight` |
 | `--ink` | `color` |
-| `--primary` | `outline` |
+| `--on-control-selected` | `color` |
+| `--primary` | `color`, `outline` |
+| `--primary-bd` | `border` |
 | `--primary-soft` | `background` |
-| `--row-h-compact` | `height` |
+| `--radius-sm` | `border-radius` |
+| `--row-h-compact` | `height`, `line-height`, `min-height` |
+| `--rules` | `box-shadow` |
+| `--selected-bar` | `--rules` |
 | `--space-1` | `padding` |
+| `--space-1-5` | `padding` |
 | `--space-2` | `padding` |
+| `--space-5` | `padding-inline-start` |
+| `--space-half` | `padding` |
 | `--steel` | `color` |
 | `--surface` | `background` |
+| `--surface-2` | `background` |
+| `--surface-rest` | `background` |
+| `--surface-selected` | `background` |
+| `--target` | `min-width` |
 | `--text-sm` | `font-size` |
 | `--text-xs` | `font-size` |
+| `--warn-bg` | `background` |
+| `--warn-tx` | `border`, `color` |
 
 <!-- /ds:tokens -->
 

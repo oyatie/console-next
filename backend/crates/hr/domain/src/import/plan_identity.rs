@@ -66,12 +66,10 @@ pub(super) fn identify<'a>(
                     .map(|p| (p, "alias"))
             })
     });
-    let by_rrn: Vec<&OnFile> = row.rrn_hmac.as_ref().map_or_else(Vec::new, |hash| {
-        people
-            .iter()
-            .filter(|p| p.rrn_hmac.as_ref() == Some(hash))
-            .collect()
-    });
+    let by_rrn: Vec<&OnFile> = people
+        .iter()
+        .filter(|p| row.matches_person_rrn(p) == Some(true))
+        .collect();
     match (by_number, by_rrn.as_slice()) {
         (Some((person, how)), others) if others.iter().all(|o| o.id == person.id) => {
             Identity::Known(person, how)

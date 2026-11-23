@@ -71,6 +71,7 @@ export const koRoster: Record<keyof typeof enRoster, string> = {
   "roster.head.today": "오늘",
   "roster.head.register": "근로자 명부",
   "roster.head.import": "가져오기",
+  "roster.head.dataHealth": "데이터 점검",
   "roster.view.label": "보기",
   "roster.view.unplaced": "미배치",
   "roster.view.current": "전체 (퇴직 제외)",

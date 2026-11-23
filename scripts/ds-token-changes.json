@@ -1,0 +1,4 @@
+{
+  "--frame-top": { "light": "calc(48px + 0px)", "dark": "calc(48px + 0px)" },
+  "--frame-bottom": { "light": "calc(0px + 0px)", "dark": "calc(0px + 0px)" }
+}

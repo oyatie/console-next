@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["evaluated_at", "action"]
+properties:
+  evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+  action: {"$ref": "#/components/schemas/CmdHandOff"}

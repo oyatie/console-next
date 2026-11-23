@@ -1,0 +1,137 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.summary {
+  min-width: 0;
+  border-block-end: 1px solid var(--border-strong);
+  background: var(--surface);
+}
+
+.gridWrap {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior: contain;
+}
+
+.bottom {
+  min-width: 0;
+  background: var(--surface);
+}
+
+:where([data-experience]:not([data-experience="baseline"])) :global([data-pattern="month-grid"]):has(.gridWrap) {
+  flex: 1 1 0%;
+  min-height: 0;
+  height: calc(100dvh - var(--frame-top) - var(--frame-bottom));
+  max-height: 100%;
+  overflow: hidden;
+}
+
+:where([data-experience]:not([data-experience="baseline"])) :global([data-pattern="month-grid"]) :global([data-pane-grid]) {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+:where([data-experience]:not([data-experience="baseline"])) :global([data-pattern="month-grid"]) :global([data-pane-grid]) > div:has(.gridWrap) {
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+:where([data-experience]:not([data-experience="baseline"])) :global([data-pattern="month-grid"]) :global([data-pane-grid]) > div > div:has(> .gridWrap) {
+  flex: 1 1 0%;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+:where([data-experience]:not([data-experience="baseline"])) :global([data-pattern="month-grid"]) .summary {
+  flex: none;
+}
+
+:where([data-experience]:not([data-experience="baseline"])) :global([data-pattern="month-grid"]) .gridWrap {
+  flex: 1 1 0%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+:where([data-experience]:not([data-experience="baseline"])) :global([data-pattern="month-grid"]) .bottom {
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+@media (min-width: 1024px) {
+  :where([data-experience]:not([data-experience="baseline"])) :global([data-pattern="month-grid"]) :global([data-pane-grid]) > div:has(.gridWrap) > div:has(> .bottom) {
+    max-height: 36%;
+  }
+}
+
+@media (--phone) {
+  :where([data-experience]:not([data-experience="baseline"])) :global([data-pattern="month-grid"]) :global(header[data-band]) {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  :where([data-experience]:not([data-experience="baseline"])) :global([data-pattern="month-grid"]) :global(header[data-band]) > div > div:has([role="group"]),
+  :where([data-experience]:not([data-experience="baseline"])) :global([data-pattern="month-grid"]) :global(header[data-band]) > div > div:has([role="group"]) > div {
+    display: contents;
+  }
+
+  :where([data-experience]:not([data-experience="baseline"])) :global([data-pattern="month-grid"]) :global(header[data-band]) > div > div:has([role="group"]) > div > :first-child {
+    order: 2;
+    flex: 1 0 100%;
+    min-width: 0;
+  }
+
+  :where([data-experience]:not([data-experience="baseline"])) :global([data-pattern="month-grid"]) :global(header[data-band]) > div > div:has([role="group"]) > div > :nth-child(2) {
+    order: 3;
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  :where([data-experience]:not([data-experience="baseline"])) :global([data-pattern="month-grid"]) :global(header[data-band]) > div > span ~ div:last-child {
+    order: 3;
+    flex: 0 1 auto;
+    flex-basis: auto;
+    margin-inline-start: auto;
+  }
+
+  :where([data-experience]:not([data-experience="baseline"])) :global([data-pattern="month-grid"]) select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  :where([data-experience]:not([data-experience="baseline"])) :global([data-pattern="month-grid"][data-detail]):has([data-pane="record"]) .summary {
+    display: none;
+  }
+
+  :where([data-experience]:not([data-experience="baseline"])) :global([data-pattern="month-grid"][data-detail]):has([data-pane="record"]) :global([data-pane-grid]) > aside[data-pane="record"] {
+    flex: 1 1 0%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  :where([data-experience]:not([data-experience="baseline"])) :global([data-pattern="month-grid"]) :global([data-pane-grid]) > div:has(.gridWrap) > div:has(> .bottom) {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-height: 64%;
+    overflow: hidden;
+  }
+
+  :where([data-experience]:not([data-experience="baseline"])) :global([data-pattern="month-grid"]) .bottom {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+  }
+
+  :where([data-experience]:not([data-experience="baseline"])) :global([data-pattern="month-grid"]) .gridWrap {
+    min-height: calc(var(--row-h-compact) * 3);
+  }
+}
+
+@media (--phone) and (max-height: 700px) {
+  :where([data-experience]:not([data-experience="baseline"])) :global([data-pattern="month-grid"]) .summary {
+    display: none;
+  }
+}

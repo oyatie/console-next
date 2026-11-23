@@ -104,7 +104,7 @@ async fn first_passkey_enrollment_requires_privacy_terms(pool: PgPool) {
         .unwrap(),
     );
 
-    let issue = BootstrapCredentialStore
+    let issue = BootstrapCredentialStore::default()
         .issue_for_zero_credential_user(
             &pool,
             None,
@@ -206,7 +206,7 @@ async fn privacy_consent_status_returns_500_under_db_fault(pool: PgPool) {
         .unwrap(),
     );
 
-    let issue = BootstrapCredentialStore
+    let issue = BootstrapCredentialStore::default()
         .issue_for_zero_credential_user(
             &pool,
             None,

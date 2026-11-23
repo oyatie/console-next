@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { t } from "@console/i18n";
+import { modChord } from "../../lib/pure/keys";
 import { Button, Form } from "../button/button";
 import { Checks } from "../choice/checks";
 import { DisabledReason } from "../disabled-reason/disabled-reason";
@@ -91,8 +92,8 @@ export function Composer(p: {
       {contents}
     </Form>
   ) : <div className="form">{contents}</div>;
-  const commit = p.onSubmit && <Button className={s.commit} ref={submitter} id={p.commitId} type="submit" form={id} variant={p.tone ?? "primary"} aria-disabled={p.incomplete || undefined} disabled={p.pending || p.loading || locked}>{commitLabel(p.action)}<Kbd keys="⌘↵" /></Button>;
-  const actions = <div className={p.layout === "page" ? s.pageActions : s.actions}>{p.recovery ?? <>
+  const commit = p.onSubmit && <Button className={s.commit} ref={submitter} id={p.commitId} type="submit" form={id} variant={p.tone ?? "primary"} aria-disabled={p.incomplete || undefined} disabled={p.pending || p.loading || locked}>{commitLabel(p.action)}<Kbd keys={modChord("↵", typeof document !== "undefined" ? navigator : undefined)} /></Button>;
+  const actions = <div className={p.layout === "page" ? s.pageActions : s.actions} data-recovery={p.recovery ? "" : undefined}>{p.recovery ?? <>
     {p.blocked && !refused ? <DisabledReason control={(props) => <Button {...props} ref={submitter} className={`${props.className} ${s.commit}`} id={p.commitId} variant={p.tone ?? "primary"} onClick={(event) => { props.onClick(event); if (!p.pending && !p.loading && !locked) p.blocked?.press?.(); }}>{commitLabel(p.action)}</Button>} reason={p.blocked.reason} remedy={p.blocked.remedy} /> : commit}
     {p.missing ? <span role="status">{t("composer.missing", { count: p.missing })}</span> : null}
     {refused && p.secondary ? <div inert>{p.secondary}</div> : p.secondary}

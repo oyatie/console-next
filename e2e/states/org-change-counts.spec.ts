@@ -17,7 +17,7 @@ for (const width of [1440, 390]) {
       await page.goto(orgChangeList.path);
       const main = page.getByRole("main");
       if (state === "loading") await expect(main.locator('[aria-busy="true"]').last()).toBeVisible();
-      else await expect(main.getByText(t("common.loadFailed.title"), { exact: true })).toBeVisible({ timeout: 20_000 });
+      else await expect(main.getByText(t("common.loadFailed.title"), { exact: true })).toBeVisible();
       const views = main.getByRole("group", { name: t("orgChange.list.views") });
       for (const view of ["open", "mine", "ready", "done", "cancelled", "all"] as const) {
         const button = views.getByRole("button", { name: t(`orgChange.list.view.${view}`, { count: state === "failed" ? "—" : "" }).trim(), exact: true });

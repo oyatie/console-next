@@ -1,7 +1,8 @@
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useId, useRef, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { t } from "@console/i18n";
 import { useLiveHold } from "../../lib/live/hold";
+import { useMountFocus } from "../page/use-mount-focus";
 import { Sheet } from "../sheet/sheet";
 import { useCurrentSheetDraft } from "../sheet/sheet-draft";
 import { useSheetDismiss } from "../sheet/sheet-dismiss";
@@ -35,17 +36,11 @@ export function DockSheet(p: Props) {
 
 function WideDockSheet(p: Props) {
   const head = useRef<HTMLHeadingElement>(null);
-  const back = useRef<Element | null>(null);
   const id = useId();
   const draft = useCurrentSheetDraft();
   useLiveHold(p.open);
   const { ref, dirty, armed, requestClose, onInput } = useSheetDismiss<HTMLElement>({ ...p, dirty: draft?.dirty ?? p.dirty, nativeEscape: true });
-  useEffect(() => {
-    if (!p.open) return;
-    back.current = document.activeElement;
-    head.current?.focus();
-    return () => (back.current as HTMLElement | null)?.focus?.();
-  }, [p.open]);
+  useMountFocus(p.open, () => head.current, ref);
   return (
     <aside ref={ref} className={s.dock} aria-labelledby={id} data-sheet-layer>
       <div className={s.head}>

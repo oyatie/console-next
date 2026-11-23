@@ -6,6 +6,8 @@ pub enum ProvisioningError {
     TenantErase(&'static str),
     #[error("{0}")]
     OpsRecovery(&'static str),
+    #[error("{0}")]
+    PlatformOperator(&'static str),
     #[error("ops_recovery_hold_active")]
     OpsRecoveryHoldActive(Option<time::OffsetDateTime>),
     #[error("database error: {0}")]

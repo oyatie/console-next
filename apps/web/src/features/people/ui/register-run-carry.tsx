@@ -2,7 +2,7 @@ import { Check } from "lucide-react";
 import { t } from "@console/i18n";
 import { fmtNumber } from "@console/i18n/format";
 import { label } from "../../../lib/labels";
-import { Button } from "../../../ui/button/button";
+import { Button, ToggleButton } from "../../../ui/button/button";
 import { CARRY, EMPLOYMENT_TYPES, type CarryKey, type Draft } from "../domain/register";
 import s from "./register-run.module.css";
 
@@ -13,7 +13,7 @@ const FIELD = { place: "register.run.col.place", hire: "register.run.col.hire", 
  * The carry chips (spec E3-run): every one off at first. A chip reads as the value it would carry (the start date and its value)
  * and switches that value on for the next people of this run; a field still empty says to fill it first.
  */
-export function RunCarry({ d, carry, onCarry, placeName }: { d: Draft; carry: ReadonlySet<CarryKey>; onCarry: (c: ReadonlySet<CarryKey>) => void; placeName: string }) {
+export function RunCarry({ d, carry, onCarry, placeName, consoleMode = false }: { d: Draft; carry: ReadonlySet<CarryKey>; onCarry: (c: ReadonlySet<CarryKey>) => void; placeName: string; consoleMode?: boolean }) {
   const value: Record<CarryKey, string> = {
     place: placeName,
     hire: d.hire,
@@ -32,6 +32,15 @@ export function RunCarry({ d, carry, onCarry, placeName }: { d: Draft; carry: Re
       {CARRY.map((k) => {
         const field = t(FIELD[k]);
         const on = carry.has(k);
+        if (consoleMode) {
+          return value[k] ? (
+            <ToggleButton key={k} size="sm" pressed={on} onClick={() => toggle(k)}>
+              {on && <Check size={14} aria-hidden />}{field} {value[k]}
+            </ToggleButton>
+          ) : (
+            <Button key={k} size="sm" aria-disabled="true" title={t("register.run.carryEmpty", { field })}>{field}</Button>
+          );
+        }
         return value[k] ? (
           <Button key={k} variant="ghost" className={s.carryChip} aria-pressed={on} onClick={() => toggle(k)}>
             {on && <Check size={14} aria-hidden />}{field} {value[k]}

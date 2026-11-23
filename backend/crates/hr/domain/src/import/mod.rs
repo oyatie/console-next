@@ -12,6 +12,7 @@ pub mod rrn;
 // --- lane: IMPORT (BW-10) ---
 pub mod cells;
 pub mod plan;
+pub mod plan_cells_id;
 pub mod plan_people;
 mod plan_place;
 pub mod plan_rows;
@@ -38,3 +39,6 @@ pub mod summary;
 
 // --- lane: UX-R3 IMPORT ---
 pub mod sex;
+
+#[cfg(test)]
+mod detect_restricted_tests;

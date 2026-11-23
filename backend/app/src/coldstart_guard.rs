@@ -68,9 +68,39 @@ pub(crate) fn refuse_dev_audit_chain_signer(
     Ok(())
 }
 
+pub(crate) fn require_otp_hmac_key(
+    has_key: bool,
+    role_is_api: bool,
+    api_needs_otp_key: bool,
+    build_profile: BuildProfile,
+) -> Result<(), String> {
+    if build_profile == BuildProfile::NonDevelopment && role_is_api && api_needs_otp_key && !has_key
+    {
+        return Err(
+            "CONSOLE_OTP_HMAC_KEY is required for the api role in non-development builds"
+                .to_owned(),
+        );
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{BuildProfile, refuse_dev_audit_chain_signer, refuse_dev_auth, refuse_dev_literal};
+    use super::{
+        BuildProfile, refuse_dev_audit_chain_signer, refuse_dev_auth, refuse_dev_literal,
+        require_otp_hmac_key,
+    };
+
+    #[test]
+    fn non_development_api_role_requires_otp_hmac_key_when_db_or_auth_configured() {
+        let err = require_otp_hmac_key(false, true, true, BuildProfile::NonDevelopment)
+            .expect_err("release api builds must fail closed without CONSOLE_OTP_HMAC_KEY");
+        assert!(err.contains("CONSOLE_OTP_HMAC_KEY"), "{err}");
+        assert!(require_otp_hmac_key(true, true, true, BuildProfile::NonDevelopment).is_ok());
+        assert!(require_otp_hmac_key(false, false, true, BuildProfile::NonDevelopment).is_ok());
+        assert!(require_otp_hmac_key(false, true, false, BuildProfile::NonDevelopment).is_ok());
+        assert!(require_otp_hmac_key(false, true, true, BuildProfile::Development).is_ok());
+    }
 
     #[test]
     fn non_development_profile_refuses_dev_audit_chain_signer() {

@@ -261,8 +261,23 @@ pub fn korean_message(code: &str, message: &str) -> String {
         return format!("알 수 없는 역할입니다: {role}");
     }
     lookup(CODES, code)
+        .or_else(|| lookup_privacy_error(code))
         .unwrap_or("요청을 처리하지 못했습니다.")
         .to_owned()
+}
+
+fn lookup_privacy_error(code: &str) -> Option<&'static str> {
+    static PRIVACY_CODES: std::sync::OnceLock<std::collections::BTreeMap<String, String>> =
+        std::sync::OnceLock::new();
+    PRIVACY_CODES
+        .get_or_init(|| {
+            serde_json::from_str(include_str!(
+                "../../../../../packages/i18n/src/catalogs/privacy-errors.ko.json"
+            ))
+            .unwrap_or_default()
+        })
+        .get(code)
+        .map(String::as_str)
 }
 
 /// Whether `Accept-Language` ranks Korean strictly above every other listed

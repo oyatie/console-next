@@ -18,7 +18,7 @@ test("pilot roles: no presets, a role made in setup, granted for go-live, enforc
   // The 관리 ▸ 권한 link opens the roles view.
   await admin.getByRole("navigation", { name: "주 메뉴" }).getByRole("link", { name: "권한" }).click();
   await expect(admin).toHaveURL(/\/access\/roles$/);
-  await expect(admin.getByRole("heading", { name: "아직 역할이 없습니다" })).toBeVisible();
+  await expect(admin.getByRole("heading", { name: "역할이 없습니다" })).toBeVisible();
   await expect(admin.getByText("설정 단계 · 부여는 운영 시작과 함께 적용됩니다")).toBeVisible();
   await expectAccessible(admin, "roles (empty)");
 
@@ -48,7 +48,7 @@ test("pilot roles: no presets, a role made in setup, granted for go-live, enforc
   await expect(row).toContainText("0명");
 
   // Duplicate, then delete the copy (no holders: a reason, nothing revoked).
-  await admin.getByRole("link", { name: "인사 조회 역할 복제" }).click();
+  await admin.getByRole("link", { name: "인사 조회 역할 사본 생성" }).click();
   await expect(admin.getByRole("textbox", { name: /^역할 이름/ })).toHaveValue("인사 조회 사본");
   await expect(admin.getByRole("checkbox", { name: "인사기본 조회", checked: true })).toBeVisible();
   await admin.getByRole("button", { name: "역할 추가" }).click();

@@ -35,6 +35,25 @@ fn days_in_month(year: u32, month: u32) -> u32 {
     }
 }
 
+pub fn normalize_header_label(raw: &str) -> String {
+    raw.chars()
+        .filter(|ch| !ch.is_whitespace())
+        .collect::<String>()
+}
+
+pub fn import_header_match_key(header: &str) -> String {
+    normalize_header_label(header)
+        .chars()
+        .filter(|ch| {
+            !matches!(
+                ch,
+                '(' | ')' | '[' | ']' | '{' | '}' | '_' | '-' | '/' | '\\' | '.' | '·' | ':'
+            )
+        })
+        .collect::<String>()
+        .to_ascii_lowercase()
+}
+
 /// English restricted header fragments, matched case-insensitively. No
 /// canonical import alias contains one, so matching the key alone stays the
 /// rule (0249 mirrors it with `lower(key)`).
@@ -42,17 +61,27 @@ const ENGLISH_RESTRICTED: [&str; 8] = [
     "ssn", "rrn", "phone", "mobile", "salary", "wage", "account", "bank",
 ];
 
+const WORK_LOCATION_EN: [&str; 3] = ["worksite", "workplace", "site"];
+const KO_PII2: (&str, &str, [&str; 4]) = ("주소", "생년월일", ["근무지", "현장", "사업장", "회사"]);
+
 /// Restricted headers added in PII-2 to both the employee and the attendance
 /// list: the English fragments, the Korean "date of birth" header, and a bare
 /// Korean "address" header (a home address; a work address is always
 /// qualified, e.g. "work location address").
 pub fn is_pii2_restricted_header(header: &str) -> bool {
     let lower = header.to_lowercase();
-    header == "주소"
-        || header.contains("생년월일")
+    let match_key = import_header_match_key(header);
+    let (ko_addr, ko_dob, ko_work) = KO_PII2;
+    let has_work_qualifier = ko_work.iter().any(|q| match_key.contains(q))
+        || WORK_LOCATION_EN.iter().any(|q| match_key.contains(q));
+    let restricted_addr = match_key == ko_addr
+        || ((header.contains(ko_addr) || match_key.contains(ko_addr)) && !has_work_qualifier);
+    restricted_addr
+        || header.contains(ko_dob)
+        || match_key.contains(ko_dob)
         || ENGLISH_RESTRICTED
             .iter()
-            .any(|fragment| lower.contains(fragment))
+            .any(|fragment| lower.contains(fragment) || match_key.contains(fragment))
 }
 
 #[cfg(test)]
@@ -151,6 +180,35 @@ mod tests {
         ] {
             assert!(
                 !is_pii2_restricted_header(miss),
+                "{miss} must not be restricted"
+            );
+        }
+        let ko = |cps: &[u32]| -> String {
+            cps.iter()
+                .map(|&c| char::from_u32(c).unwrap())
+                .collect::<String>()
+        };
+        for hit in [
+            ko(&[0x5B, 0xC8FC, 0xC18C, 0x5D]),
+            ko(&[0xC8FC, 0xC18C, 0x28, 0xAC1C, 0xC778, 0x29]),
+            ko(&[0xAC1C, 0xC778, 0x5F, 0xC8FC, 0xC18C]),
+            ko(&[0xAC70, 0xC8FC, 0x5F, 0xC8FC, 0xC18C]),
+            ko(&[0xAC1C, 0xC778, 0x2D, 0xC8FC, 0xC18C]),
+            ko(&[0xC790, 0xD0DD, 0xC8FC, 0xC18C]),
+            ko(&[0xC0DD, 0xB144, 0x5F, 0xC6D4, 0xC77C]),
+            "s_s_n".to_owned(),
+            "b-a-n-k".to_owned(),
+        ] {
+            assert!(is_pii2_restricted_header(&hit), "{hit} must be restricted");
+        }
+        for miss in [
+            ko(&[0xD604, 0xC7A5, 0xC8FC, 0xC18C]),
+            ko(&[0xC0AC, 0xC5C5, 0xC7A5, 0xC8FC, 0xC18C]),
+            ko(&[0xD68C, 0xC0AC, 0xC8FC, 0xC18C]),
+            ko(&[0xADFC, 0xBB34, 0xC9C0, 0x5F, 0xC8FC, 0xC18C]),
+        ] {
+            assert!(
+                !is_pii2_restricted_header(&miss),
                 "{miss} must not be restricted"
             );
         }

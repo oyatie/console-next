@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { loadCatalog, t } from "@console/i18n";
+import { installFaultClock } from "./fault-clock";
 import { expect, test } from "@playwright/test";
 import { expectAxe, fits } from "../a11y";
 import { AT, failure, id, user } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { accessRole, accessScreens, mockAccessScreen } from "./access";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as const) {
   test(`role editor shows its served version and distinct holders at ${width}px ${colorScheme} @ui-state`, async ({ page }) => {
@@ -20,16 +24,19 @@ for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as 
     await mockRoute(page, "get", "/api/v1/access/grants", { status: 200, json: [f.grants[0]!, { ...f.grants[0]!, id: id(800) }, f.grants[1]!] });
     await page.goto(`/access/roles/${role.id}`);
     await expect(page.getByText("버전 7", { exact: true })).toBeVisible();
-    const holders = page.getByRole("region", { name: "보유자", exact: true });
-    await expect(holders.getByRole("listitem")).toHaveCount(2);
+    await page.getByRole("tab", { name: new RegExp(t("access.role.tab.holders")) }).click();
+    const holders = page.getByRole("region", { name: new RegExp(t("access.role.tab.holders")) });
+    const rows = holders.locator("tbody tr");
+    await expect(rows).toHaveCount(2);
     for (const account of f.accounts.slice(0, 2)) await expect(holders.getByRole("link", { name: new RegExp(`${account.display_name}.*${account.employee_number}`) }))
       .toHaveAttribute("href", `/access/people/${account.id}`);
-    const linked = holders.getByRole("listitem").first();
+    const linked = rows.first();
     await expect(linked.getByText("ACC-0001 · 연결회사 · 인사팀", { exact: true })).toHaveCount(1);
     await expect(linked.getByRole("link", { name: "김직원", exact: true })).toHaveAttribute("href", `/people/${id(900)}`);
-    await expect(holders.getByRole("listitem").nth(1).getByText("ACC-0002", { exact: true })).toHaveCount(1);
-    await expect(page.getByRole("table", { name: "역할 버전", exact: true }).getByRole("row")).toHaveCount(3);
-    await expect(page.getByRole("table", { name: "역할 버전", exact: true }).getByText("인사 기초 조회", { exact: true })).toBeVisible();
+    await expect(rows.nth(1).getByText("ACC-0002", { exact: true })).toHaveCount(1);
+    await page.getByRole("tab", { name: new RegExp(t("access.role.tab.history")) }).click();
+    await expect(page.locator('table', { hasText: "인사 기초 조회" }).locator("tr")).toHaveCount(3);
+    await expect(page.getByText("인사 기초 조회", { exact: true })).toBeVisible();
     await expectAxe(page, "role holders and version");
     await fits(page, "role holders and version");
     expect(f.unexpected).toEqual([]);
@@ -49,6 +56,7 @@ test("missing and refused role reads retain a route back to roles @ui-state", as
 });
 
 for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as const) test(`a failed holder read offers one error and prevents a blind role edit at ${width}px ${colorScheme} @ui-state`, async ({ page }) => {
+  await installFaultClock(page);
   await page.setViewportSize({ width, height: 900 });
   await page.emulateMedia({ colorScheme });
   const f = await mockAccessScreen(page, accessScreens[1], "populated");
@@ -56,16 +64,18 @@ for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as 
   await mockRoute(page, "get", "/api/v1/access/roles/{roleId}/versions", { status: 200, json: [] });
   await mockRoute(page, "get", "/api/v1/access/grants", { status: 503, json: failure("service_unavailable") });
   await page.goto(`/access/roles/${accessRole.id}`);
-  const holders = page.getByRole("region", { name: "보유자", exact: true });
-  await expect(holders.getByRole("alert")).toContainText("불러오지 못했습니다", { timeout: 20_000 });
+  await expect(page.getByRole("button", { name: "역할 저장", exact: true })).toBeDisabled();
+  await page.getByRole("tab", { name: new RegExp(t("access.role.tab.holders")) }).click();
+  const holders = page.getByRole("region", { name: new RegExp(t("access.role.tab.holders")) });
+  await expect(holders.getByRole("alert")).toContainText("불러오지 못했습니다");
   await expect(page.getByText("불러오지 못했습니다", { exact: true })).toHaveCount(1);
   await expect(page.getByRole("button", { name: "다시 불러오기", exact: true })).toHaveCount(1);
-  await expect(page.getByRole("button", { name: "역할 저장", exact: true })).toBeDisabled();
   await expectAxe(page, "failed role holders");
   await fits(page, "failed role holders");
   await mockRoute(page, "get", "/api/v1/access/grants", { status: 200, json: f.grants });
   await holders.getByRole("button", { name: "다시 불러오기", exact: true }).click();
-  await expect(holders.getByRole("listitem")).toHaveCount(3);
+  await expect(holders.locator("tbody tr")).toHaveCount(3);
+  await page.getByRole("tab", { name: t("access.role.tab.permissions"), exact: true }).click();
   await expect(page.getByRole("button", { name: "역할 저장", exact: true })).toBeEnabled();
   expect(f.unexpected).toEqual([]);
 });

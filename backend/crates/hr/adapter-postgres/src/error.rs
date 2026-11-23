@@ -159,7 +159,10 @@ impl HrError {
                 "employee changed since it was read; reload before retrying the protected leave change",
             )),
             PgLeaveError::Db(error) => Self::from(error),
-            PgLeaveError::MissingHomeBranch | PgLeaveError::ChargeReviewRequired(_) => {
+            PgLeaveError::MissingHomeBranch
+            | PgLeaveError::ChargeReviewRequired(_)
+            | PgLeaveError::OverlappingRequest
+            | PgLeaveError::PeriodClosed => {
                 tracing::error!(error = ?error, "unexpected protected employee leave command result");
                 Self::internal("protected employee leave change failed")
             }
@@ -187,6 +190,18 @@ impl From<DbError> for HrError {
                 status: StatusCode::CONFLICT,
                 code: "employee_number_taken",
                 message: "another employee, or a cancelled registration, already holds this employee number".into(),
+                refusals: None,
+            };
+        }
+        if let DbError::Sqlx(sqlx::Error::Database(db)) = &value
+            && db.code().as_deref() == Some("23505")
+            && db.constraint() == Some("employees_prehire_not_issued_identity_idx")
+        {
+            return Self {
+                errors: None,
+                status: StatusCode::CONFLICT,
+                code: "duplicate_candidate",
+                message: "a pending hire with the same name and birth date already exists without an issued identifier".into(),
                 refusals: None,
             };
         }

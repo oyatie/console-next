@@ -118,3 +118,47 @@ test("an unknown reference entity makes no rates request and can be replaced wit
     expect(fixture.unexpected).toEqual([]);
   } finally { await page.close(); fixture.release(); }
 });
+
+test("payroll home paginates over 100 runs with server pay_group_id filter @ui-state", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const fixture = await mockScreen(page, payrollScreens[0], "populated");
+  const manyRuns = Array.from({ length: 120 }, (_, n) => ({
+    id: id(9000 + n),
+    legal_entity_id: payGroups.items[0]!.legal_entity_id,
+    pay_group_id: payGroups.items[0]!.id,
+    kind: "REGULAR" as const,
+    attribution_month: `2026-${String((n % 12) + 1).padStart(2, "0")}`,
+    pay_date: "2026-10-25",
+    period_start: "2026-10-01",
+    period_end: "2026-10-31",
+    variable_period_start: "2026-09-16",
+    variable_period_end: "2026-10-15",
+    source_label: `Synthetic bulk run ${n + 1}`,
+    status: "CALCULATED" as const,
+    calculation_enabled: false,
+    created_at: "2026-10-01T00:00:00Z",
+    updated_at: "2026-10-01T00:00:00Z",
+  }));
+  const seenOffsets: number[] = [];
+  await page.route(url => url.pathname === "/api/v1/payroll/runs", route => {
+    const q = new URL(route.request().url()).searchParams;
+    const groupId = q.get("pay_group_id");
+    const offset = Number(q.get("offset") ?? 0);
+    const limit = Number(q.get("limit") ?? 50);
+    if (groupId === payGroups.items[0]!.id) seenOffsets.push(offset);
+    const matched = groupId === payGroups.items[0]!.id ? manyRuns : [];
+    return route.fulfill({ json: { items: matched.slice(offset, offset + limit), total: matched.length, limit, offset } });
+  });
+  try {
+    await page.goto("/payroll");
+    const card = page.getByRole("region", { name: payGroups.items[0]!.name, exact: true });
+    await expect(card).toBeVisible();
+    const grid = card.getByRole("grid");
+    await expect(grid).toBeVisible();
+    await grid.evaluate((el) => { el.scrollTop = el.scrollHeight; });
+    await expect.poll(() => seenOffsets).toContain(50);
+    await grid.evaluate((el) => { el.scrollTop = el.scrollHeight; });
+    await expect.poll(() => seenOffsets).toContain(100);
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});

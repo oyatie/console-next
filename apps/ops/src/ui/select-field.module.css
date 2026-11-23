@@ -1,0 +1,32 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.select {
+  appearance: none;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  height: var(--field-h-toolbar);
+  padding-inline-start: var(--space-2);
+  padding-inline-end: var(--space-5);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--text-sm);
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.chevron {
+  position: absolute;
+  inset-inline-end: var(--space-1-5);
+  color: var(--steel);
+  pointer-events: none;
+}

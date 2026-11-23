@@ -132,6 +132,33 @@ impl DecisionFacts {
         )
     }
 
+    /// Privacy rights decision and postponement admission: placement permission plus Cedar SoD facts.
+    ///
+    /// # Errors
+    /// A Cedar compilation or evaluation failure.
+    pub fn authorize_privacy_request_decide(
+        &self,
+        node: NodeRef,
+        subject: Uuid,
+        filed_by: Option<Uuid>,
+        original_decided_by: Option<Uuid>,
+    ) -> Result<(bool, Vec<String>), String> {
+        let holds_permission = self
+            .authorize(crate::Feature::PrivacyRequestDecide.as_str(), node)
+            .map_err(|e| e.to_string())?;
+        super::actions::privacy_request_decide::decide(
+            &self.actor.to_string(),
+            &self.org.to_string(),
+            &self.org.to_string(),
+            super::actions::privacy_request_decide::DecisionFacts {
+                actor_is_requester: self.actor == subject,
+                actor_contributed: filed_by == Some(self.actor),
+                actor_holds_permission: holds_permission,
+                actor_decided_original: original_decided_by == Some(self.actor),
+            },
+        )
+    }
+
     /// The caller's employee link, resolved under the same tenant RLS snapshot.
     #[must_use]
     pub fn linked_employee_id(&self) -> Option<Uuid> {

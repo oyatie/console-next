@@ -1,6 +1,6 @@
 @import "@console/tokens/tokens.css";
 @import "@console/tokens/experiences/warm-clear.css";
-@import "@console/tokens/experiences/control-room.css";
+@import "@console/tokens/experiences/console.css";
 @import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 @import "./generated/fonts/catalog.css";
 @property --trigger-width { syntax: "*"; inherits: true; }
@@ -36,6 +36,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .t-2xl { font-size: var(--text-2xl); }
 .t-regular { font-weight: var(--fw-body); }
 .t-medium { font-weight: var(--fw-medium); }
+.t-semibold { font-weight: var(--fw-semibold); }
 .t-strong { font-weight: var(--fw-strong); }
 .t-mono { font-family: var(--font-mono); }
 .t-ink { color: var(--ink); }
@@ -48,7 +49,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .t-label { font-size: var(--text-xs); color: var(--steel); letter-spacing: var(--tracking-label); }
 .skip { position: absolute; left: var(--space-2); top: calc(-1 * var(--space-6) * 2); }
 .skip:focus { top: var(--space-2); z-index: 10; background: var(--surface); padding: var(--space-2) var(--space-3); }
-@media print { .skip { display: none; } }
+@media print { .skip, [data-pattern="record"]:has([data-print-doc]) > div:first-child { display: none; } }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 
 /* ── links (design-language §5.4) ──────────────────────
@@ -57,11 +58,68 @@ button, input, select, textarea { font: inherit; color: inherit; }
    under 3:1 against --ink (2.47 light, 2.63 dark), so colour alone cannot mark it (WCAG 1.4.1, G183): a thin
    --primary-bd underline stays at rest and takes the link's colour on hover and focus. `.link` is the same look on a
    <button>. :where() keeps the element rules at zero specificity, so .btn, .rail__link and module classes win. */
-:where(a) { color: inherit; font-weight: var(--fw-medium); text-decoration: none; text-underline-offset: 0.2em; }
+:where(a) { color: inherit; font-weight: var(--fw-medium); text-decoration: none; text-decoration-line: var(--link-decoration); text-underline-offset: 0.2em; }
 :where(a:hover, a:focus-visible) { text-decoration-line: underline; }
 :where(p, .notice, .alert, .field__error, .prose) :where(a), .link { color: var(--primary); text-decoration: underline 1px var(--primary-bd); text-underline-offset: 0.2em; }
 :where(p, .notice, .alert, .field__error, .prose) :where(a:hover, a:focus-visible), .link:hover, .link:focus-visible { text-decoration-color: currentcolor; }
 .link { align-self: flex-start; min-height: var(--space-5); padding: 0; border: 0; background: none; font-weight: var(--fw-medium); cursor: pointer; }
+
+/* Frame surface scope: re-declares surface, hover, selected, ink, border and focus roles to the frame roles, plus
+   every token in tokens.css whose value references a re-declared token, so controls placed on the frame take frame
+   colours without a dedicated variant while portalled overlays attached to <body> inherit page colours. */
+[data-surface="chrome"] {
+  --canvas: var(--chrome);
+  --surface: var(--chrome);
+  --muted: var(--chrome-hover);
+  --surface-2: var(--chrome-raised);
+  --surface-rest: var(--chrome);
+  --surface-hover: var(--chrome-hover);
+  --surface-pressed: var(--chrome-hover);
+  --surface-selected: var(--chrome-raised);
+  --border: var(--chrome-border);
+  --border-soft: var(--chrome-border);
+  --border-strong: var(--chrome-border);
+  --control-border: var(--chrome-control-border);
+  --control-selected: var(--chrome-raised);
+  --on-control-selected: var(--on-chrome);
+  --control-selected-border: var(--chrome-accent);
+  --ink: var(--on-chrome);
+  --steel: var(--on-chrome-muted);
+  --faint: var(--on-chrome-muted);
+  --primary: var(--chrome-accent);
+  --primary-hover: var(--chrome-accent);
+  --primary-soft: var(--chrome-raised);
+  --primary-bd: var(--chrome-control-border);
+  --on-primary: var(--chrome);
+  --warn-bg: var(--chrome-warn-bg);
+  --warn-bd: var(--chrome-warn-bd);
+  --warn-tx: var(--chrome-attention);
+  --danger-bg: var(--chrome-danger-bg);
+  --danger-bd: var(--chrome-danger-bd);
+  --danger-tx: var(--chrome-danger);
+  --danger-solid: var(--chrome-danger-solid);
+  --on-danger: var(--chrome-on-danger);
+  --over-bg: var(--danger-bg);
+  --over-bd: var(--danger-bd);
+  --over-tx: var(--danger-tx);
+  --grid-err: var(--danger-solid);
+  --neutral-solid: var(--control-border);
+  --chart-cat-6: var(--faint);
+  --chart-axis: var(--control-border);
+  --chart-grid: var(--border-soft);
+  --chart-edge-entity: var(--ink);
+  --chart-edge-dept: var(--control-border);
+  --grid-rng: var(--primary);
+  --selected-bar: inset 3px 0 0 var(--primary);
+  --tab-selected: inset 0 -2px 0 var(--primary);
+  --derived-bg: var(--muted);
+  --derived-tx: var(--steel);
+  --kbd-bg: var(--muted);
+  --focus: 0 0 0 2px var(--surface), 0 0 0 4px var(--primary);
+  color-scheme: var(--chrome-scheme);
+  background: var(--chrome);
+  color: var(--on-chrome);
+}
 
 /* ── shell ─────────────────────────────────────────── */
 .shell { display: grid; grid-template: "rail top" var(--topbar-h) "rail main" 1fr / var(--rail-w) 1fr; height: 100%; }
@@ -82,8 +140,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .top__jumpLabel { display: none; }
 .top[data-task-menu] .top__jump { min-width: var(--target); }
 @media (--below-wide) {
-  .top[data-task-menu] { gap: var(--space-1); }
-  .top[data-task-menu] .btn { padding-inline: var(--space-2); }
+  .top[data-task-menu] { gap: var(--space-1); padding-inline: var(--space-2); }
+  .top[data-task-menu] .btn { gap: var(--space-1); padding-inline: var(--space-2); }
+  .top[data-task-menu] > select { padding-inline: var(--space-2); }
   .top[data-task-menu] .top__kbd, .top__jumpHint { display: none; }
   .top__jumpLabel { display: inline; }
 }
@@ -115,7 +174,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .top__name span { min-inline-size: 0; }
 }
 .top__kbd { padding: 0 var(--space-1); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); font-family: var(--font-mono); font-size: var(--text-xs); }
-.page { padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-4); min-height: 100%; }
+.page { padding: var(--page-pad); display: flex; flex-direction: column; gap: var(--space-4); min-height: 100%; }
 .page__head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
 .page__title { margin: 0; font-size: var(--text-xl); font-weight: var(--fw-strong); }
 /* Phone widths: the rail becomes a disclosure opened from the top bar's menu button. */
@@ -130,8 +189,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 
 /* ── controls ──────────────────────────────────────── */
-.btn { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--ink); text-decoration: none; min-height: calc(var(--row-h) - var(--space-1)); padding: 0 var(--space-3); border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); font-weight: var(--fw-medium); cursor: pointer; }
-.btn:hover { background: var(--muted); }
+.btn { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--ink); text-decoration: none; min-height: var(--control-h); padding: 0 var(--space-3); border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); font-size: var(--control-text); font-weight: var(--fw-medium); cursor: pointer; }
+:where([data-experience]:not([data-experience="baseline"])) .btn { border-color: var(--control-border); white-space: nowrap; flex-shrink: 0; }
+:where([data-experience]:not([data-experience="baseline"])) :where(.btn:not(.btn--block)) { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+:where([data-experience]:not([data-experience="baseline"])) .btn.btn--block { flex-shrink: 1; }
+.btn:hover { background: var(--surface-hover); }
 .btn--primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
 .btn--primary:hover { background: var(--primary-hover); }
 .btn--ghost { border-color: transparent; background: transparent; }
@@ -141,25 +203,53 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .btn--ghost.btn--danger { background: transparent; border-color: transparent; color: var(--danger-tx); }
 .btn--ghost.btn--danger:hover { background: var(--danger-bg); }
 .btn[disabled], .btn[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; }
+.btn[data-pending="true"] { cursor: progress; }
 /* A primary whose pick is missing stays focusable and readable (spec R9, ER-14): soft fill, dashed border, full contrast. */
-.btn--primary[aria-disabled="true"] { opacity: 1; border-style: dashed; border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
+.btn--primary[aria-disabled="true"]:not([data-pending="true"]) { opacity: 1; border-style: dashed; border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
+:where([data-experience]:not([data-experience="baseline"])) .btn--primary[aria-disabled="true"]:not([data-pending="true"]),
+:where([data-experience]:not([data-experience="baseline"])) .btn--primary[aria-disabled="true"]:not([data-pending="true"]):hover { opacity: 1; border-style: solid; border-color: var(--border); background: var(--muted); color: var(--steel); }
+:where([data-experience]:not([data-experience="baseline"])) .btn[disabled]:hover { background: var(--surface); }
+:where([data-experience]:not([data-experience="baseline"])) .btn--primary[disabled]:hover { background: var(--primary); }
+:where([data-experience]:not([data-experience="baseline"])) .btn--danger[disabled]:hover { background: var(--danger-solid); border-color: var(--danger-solid); }
+:where([data-experience]:not([data-experience="baseline"])) .btn--ghost[disabled]:hover { background: transparent; border-color: transparent; }
 /* ToggleButton look="chip": a filter as a pill (kit .optchip); pressed takes the shared pressed look above. */
 .btn--chip { min-height: calc(var(--space-6) - var(--space-1)); padding: 0 var(--space-2) 0 var(--space-3); border-color: var(--control-border); border-radius: calc(var(--radius-lg) * 10); background: var(--surface); font-size: var(--text-sm); font-weight: var(--fw-body); white-space: nowrap; }
+:where([data-experience]:not([data-experience="baseline"])) .btn--chip { border-radius: calc(var(--radius) * 2); }
 .btn--chip[aria-pressed="true"] { font-weight: var(--fw-medium); }
 .btn__count { display: inline-block; min-width: 3ch; font-variant-numeric: tabular-nums; color: var(--steel); font-weight: var(--fw-medium); }
 .btn__count[data-tone="warn"] { color: var(--warn-tx); }
+.btn__count[data-tone="danger"] { color: var(--danger-tx); }
 .btn[aria-pressed="true"] .btn__count { color: var(--primary); }
 /* A card mounted inside a record section (data-embed) reads as the section body, not a card in a card, and never sticks. */
 [data-embed] .card { border: 0; box-shadow: none; background: none; padding-inline: 0; position: static; }
 [data-embed] .panel { position: static; }
 .field { display: flex; flex-direction: column; gap: var(--space-1); }
 .field__label { font-size: var(--text-sm); font-weight: var(--fw-medium); color: var(--steel); }
-.field__input { height: var(--row-h); padding: 0 var(--space-3); border: 1px solid var(--control-border); border-radius: var(--radius); background: var(--surface); }
+.field__input { height: var(--field-h); max-width: 100%; padding: 0 var(--space-3); border: 1px solid var(--control-border); border-radius: var(--radius); background: var(--surface); }
+:where([data-experience]:not([data-experience="baseline"])) select.field__input {
+  min-width: 0;
+  max-width: 100%;
+  appearance: none;
+  padding-inline-end: var(--space-6);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2355616d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-2) center;
+  background-size: 14px 14px;
+}
+:root[data-theme="dark"]:where([data-experience]:not([data-experience="baseline"])) select.field__input {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23c3cdd8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+/* In a toolbar a field has a height of its own, so a style can draw it level with the controls beside it. The toolbar
+   adds no weight to the selector: every rule that outranks a field's height today outranks this one as well. */
+:where(.toolbar) .field__input { height: var(--field-h-toolbar); }
 .field__error { font-size: var(--text-sm); color: var(--danger-tx); }
-/* Button sizes (ui/button size="sm", IconButton): the kit's .btn--sm and .btn--icon. */
+/* Button sizes (ui/button size="sm" | "lg", block, IconButton): the kit's .btn--sm, .btn--lg, .btn--block and .btn--icon. */
 .btn--sm { min-height: var(--target); padding: 0 var(--space-2); font-size: var(--text-sm); }
-.btn--icon { justify-content: center; width: calc(var(--row-h) - var(--space-1)); padding: 0; }
+.btn--lg { min-height: var(--control-h-lg); }
+.btn--block { width: 100%; justify-content: center; }
+.btn--icon { justify-content: center; width: var(--control-h); padding: 0; }
 .btn--sm.btn--icon { width: var(--target); }
+.btn--lg.btn--icon { width: var(--control-h-lg); }
 /* ToggleButton on (aria-pressed): the kit's .optchip / .seg pressed look, so a filter or option reads as chosen in words
    and in fill; view switches inside .tabs keep their underline instead. */
 .btn[aria-pressed="true"]:where(:not(.tabs > .btn)) { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
@@ -182,11 +272,14 @@ aside.panel { position: sticky; top: 0; }
 
 /* ── table ─────────────────────────────────────────── */
 .table { width: 100%; border-collapse: collapse; }
-.table th { position: sticky; top: 0; background: var(--surface); text-align: left; font-size: var(--text-xs); letter-spacing: var(--tracking-label); color: var(--steel); font-weight: var(--fw-medium); padding: 0 var(--space-3); height: var(--row-h); border-bottom: 1px solid var(--border); }
-.table td { padding: 0 var(--space-3); height: var(--row-h); border-bottom: 1px solid var(--border-soft); }
+.table th { position: sticky; top: 0; background: var(--surface); text-align: left; font-size: var(--text-xs); letter-spacing: var(--tracking-label); color: var(--steel); font-weight: var(--fw-medium); padding: 0 var(--cell-px); height: var(--row-h); border-bottom: 1px solid var(--border); }
+:where([data-experience]:not([data-experience="baseline"])) .table th { background: var(--surface-2); font-weight: var(--fw-semibold); }
+.table td { padding: 0 var(--cell-px); height: var(--row-h); border-bottom: 1px solid var(--border-soft); }
 .table[data-selectable="true"] tbody tr { cursor: pointer; }
-.table[data-selectable="true"] tbody tr:hover { background: var(--muted); }
-.table tbody tr[aria-selected="true"] { background: var(--primary-soft); }
+.table[data-selectable="true"] tbody tr:hover { background: var(--surface-hover); }
+.table tbody tr[data-checked="true"], .table tbody tr[aria-selected="true"] { background: var(--surface-selected); }
+:where([data-experience]:not([data-experience="baseline"])) .table[data-selectable="true"] tbody tr[aria-selected="true"]:hover { background: var(--surface-selected); }
+:where([data-experience]:not([data-experience="baseline"])) .table tbody tr[aria-selected="true"] { font-weight: var(--fw-semibold); }
 .table tbody tr[aria-selected="true"] td:first-child { box-shadow: var(--selected-bar); }
 .table tbody tr[data-tone="danger"] { background: var(--danger-bg); }
 .table tbody tr[data-tone="warn"] { background: var(--warn-bg); }
@@ -198,16 +291,19 @@ aside.panel { position: sticky; top: 0; }
 .stat__value { font-size: var(--text-lg); font-weight: var(--fw-strong); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 
 /* ── chips and states ──────────────────────────────── */
-.chip { display: inline-flex; align-items: center; height: calc(var(--space-5) - var(--space-1)); padding: 0 var(--space-2); border-radius: var(--radius-sm); border: 1px solid; font-size: var(--text-xs); font-weight: var(--fw-medium); white-space: nowrap; }
+.chip { display: inline-flex; align-items: center; flex-shrink: 0; height: calc(var(--space-5) - var(--space-1)); padding: 0 var(--space-2); border-radius: var(--radius-sm); border: 1px solid; font-size: var(--text-xs); font-weight: var(--fw-medium); white-space: nowrap; }
 .chip--ok { background: var(--ok-bg); border-color: var(--ok-bd); color: var(--ok-tx); }
 .chip--warn { background: var(--warn-bg); border-color: var(--warn-bd); color: var(--warn-tx); }
 .chip--danger { background: var(--danger-bg); border-color: var(--danger-bd); color: var(--danger-tx); }
 .chip--info { background: var(--info-bg); border-color: var(--info-bd); color: var(--info-tx); }
 .chip--neutral { background: var(--muted); border-color: var(--border); color: var(--steel); }
+.chip--outline { background: var(--surface); border-color: var(--border-strong); color: var(--ink); font-weight: var(--fw-semibold); }
 .state { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); padding: var(--space-5); }
 .state__title { margin: 0; font-size: var(--text-lg); font-weight: var(--fw-strong); }
 .state__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .state__actions > * { flex: none; max-width: 100%; }
+.state__extras { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); margin-top: var(--space-2); min-width: 0; max-width: 100%; }
+.state__extras .muted { font-size: var(--text-xs); }
 .state--compact { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; padding: 0; }
 .state--compact > .state__title { grid-column: 1 / -1; font-size: var(--text-sm); }
 .state--compact > .muted { grid-column: 1 / -1; }
@@ -224,7 +320,7 @@ aside.panel { position: sticky; top: 0; }
 .alert { padding: var(--space-3); border-radius: var(--radius); border: 1px solid var(--danger-bd); background: var(--danger-bg); color: var(--danger-tx); font-size: var(--text-sm); }
 
 /* ── dialog ────────────────────────────────────────── */
-.overlay { position: fixed; inset: 0; z-index: var(--z-sheet); display: grid; place-items: center; padding: var(--space-4); background: color-mix(in srgb, var(--ink) 40%, transparent); }
+.overlay { position: fixed; inset: 0; z-index: var(--z-sheet); display: grid; place-items: center; overflow: hidden; padding: var(--space-4); background: color-mix(in srgb, var(--ink) 40%, transparent); }
 .dialog { width: min(100%, var(--dialog-w-md)); max-height: calc(100dvh - var(--space-6)); overflow: auto; padding: var(--space-5); color: var(--ink); }
 .dialog[data-size="sm"] { width: min(100%, var(--dialog-w-sm)); }
 .dialog__body { display: flex; flex-direction: column; gap: var(--space-4); outline: none; }
@@ -233,13 +329,20 @@ aside.panel { position: sticky; top: 0; }
 .form { display: flex; flex-direction: column; gap: var(--space-3); }
 .form__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); }
 .secret { font-family: var(--font-mono); font-size: var(--text-xl); letter-spacing: var(--tracking-label); padding: var(--space-3); background: var(--muted); border-radius: var(--radius); text-align: center; user-select: all; }
+.qr-group { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); }
+.qr-slot { display: block; width: calc(var(--space-6) * 4 + var(--space-2) * 2 + 2px); height: calc(var(--space-6) * 4 + var(--space-2) * 2 + 2px); border: 1px solid var(--border); border-radius: var(--radius); background: var(--qr-bg); }
 /* As tall as a button from the start: a command that renders once permissions load must not grow the row and push
    what is below it under a pointer already there. */
-.toolbar { display: flex; align-items: center; gap: var(--space-2); min-height: calc(var(--row-h) - var(--space-1) + var(--space-3) * 2); padding: var(--space-3) var(--space-4); }
+.toolbar { display: flex; align-items: center; gap: var(--space-2); min-height: var(--toolbar-h); padding: var(--toolbar-py) var(--space-4); }
 .toolbar__title { margin: 0; font-size: var(--text-lg); font-weight: var(--fw-strong); flex: 1; }
 .consent { border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-3); margin: 0; }
 .check { min-height: var(--target); display: flex; gap: var(--space-2); align-items: flex-start; font-size: var(--text-sm); cursor: pointer; }
 .check input { flex: none; width: var(--space-6); height: var(--space-6); margin-top: 0; }
+:where([data-experience]:not([data-experience="baseline"])) .check { align-items: center; gap: var(--space-1-5); }
+:where([data-experience]:not([data-experience="baseline"])) .check input { position: relative; appearance: none; display: inline-grid; place-items: center; width: var(--target); height: var(--target); margin: 0; background: transparent; cursor: pointer; }
+:where([data-experience]:not([data-experience="baseline"])) .check input::before { content: ""; width: calc(var(--space-3) + var(--space-half)); height: calc(var(--space-3) + var(--space-half)); border: 1px solid var(--control-border); border-radius: var(--radius-sm); background: var(--surface); }
+:where([data-experience]:not([data-experience="baseline"])) .check input:checked::before { background: var(--primary); border-color: var(--primary); }
+:where([data-experience]:not([data-experience="baseline"])) .check input:checked::after { content: ""; position: absolute; width: var(--space-2); height: var(--space-1); border-left: 2px solid var(--on-primary); border-bottom: 2px solid var(--on-primary); transform: translateY(calc(-1 * var(--space-half) / 2)) rotate(-45deg); }
 .tabs { display: flex; flex-wrap: wrap; gap: var(--space-1); }
 .tabs .btn[aria-pressed="true"] { box-shadow: var(--tab-selected); }
 .search { display: flex; gap: var(--space-2); min-width: 0; }
@@ -266,10 +369,13 @@ aside.panel { position: sticky; top: 0; }
 .rail-steps__item[data-state="failed"] { color: var(--danger-tx); border-color: var(--danger-bd); background: var(--danger-bg); font-weight: var(--fw-strong); }
 .steps-plain { margin: 0; padding-left: var(--space-5); display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--text-sm); }
 .list-plain { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.list-divided { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.list-divided > li + li { border-top: 1px solid var(--border-soft); }
+.list-divided--rows > li { padding: var(--space-3) var(--space-4); }
 .row { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
 .grow { flex: 1; }
 .page__sub { display: flex; flex-direction: column; gap: var(--space-4); }
-.field__area { height: auto; min-height: calc(var(--row-h) * 2); padding: var(--space-2) var(--space-3); resize: vertical; }
+.field__area { height: auto; min-height: calc(var(--field-h) * 2); padding: var(--space-2) var(--space-3); resize: vertical; }
 
 /* ── org tree (React Aria Tree) ────────────────────── */
 .tree__row { display: flex; align-items: center; gap: var(--space-2); min-height: var(--row-h); padding-inline-start: calc((var(--tree-item-level, 1) - 1) * var(--space-5) + var(--space-2)); padding-inline-end: var(--space-2); }
@@ -281,11 +387,11 @@ aside.panel { position: sticky; top: 0; }
 .form--wide { max-width: calc(var(--panel-w) * 2.2); }
 .form__group { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }
 .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(calc(var(--panel-w) / 2), 1fr)); gap: var(--space-3); }
-.field__static { min-height: var(--row-h); display: flex; align-items: center; color: var(--steel); }
+.field__static { min-height: var(--field-h); display: flex; align-items: center; color: var(--steel); }
 .combo { display: flex; }
 .combo__input { flex: 1; border-top-right-radius: 0; border-bottom-right-radius: 0; }
 .combo__button { border: 1px solid var(--control-border); border-left: 0; background: var(--surface); border-radius: 0 var(--radius) var(--radius) 0; padding: 0 var(--space-2); cursor: pointer; color: var(--steel); }
-.popover { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-pop); width: var(--trigger-width); overflow: auto; max-height: calc(var(--row-h) * 8); }
+.popover { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-pop); width: var(--trigger-width); overflow: auto; overscroll-behavior: contain; max-height: calc(var(--row-h) * 8); }
 .listbox { outline: none; padding: var(--space-1); }
 .listbox__item { display: flex; gap: var(--space-2); align-items: center; padding: 0 var(--space-3); height: var(--row-h); border-radius: var(--radius-sm); cursor: pointer; outline: none; }
 .listbox__item[data-focused] { background: var(--muted); }
@@ -300,3 +406,81 @@ aside.panel { position: sticky; top: 0; }
    injection. shortcut: the id follows react-aria's injection guard, revisit when upgrading react-aria. */
 @layer { [data-react-aria-pressable] { touch-action: pan-x pan-y pinch-zoom; } }
 @layer { .overlay, .overlay * { overscroll-behavior: contain; } }
+
+/* ── console access pages ──────────────────────────── */
+:where([data-experience]:not([data-experience="baseline"])) [data-access-page] {
+  gap: 0;
+  background: var(--surface);
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-access-page] > header {
+  padding-top: var(--space-2);
+  gap: var(--space-1);
+  background: var(--surface);
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-access-page] > header > :not(nav) {
+  padding-inline: var(--space-4);
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-access-page] > header > nav {
+  padding-inline: var(--space-1);
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-access-page] > header:not([data-tabs]) {
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-access-subhead] {
+  padding: var(--space-2) var(--space-4);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-access-subhead] h2 {
+  font-size: var(--text-lg);
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-access-page] > section,
+:where([data-experience]:not([data-experience="baseline"])) [data-access-page] :is([data-access-split], [role="tabpanel"]) :is(section, aside.card) {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  border-bottom: 1px solid var(--border);
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-access-page] [data-access-split] {
+  gap: 0;
+  align-items: stretch;
+  flex: 1 1 auto;
+  --access-split-inline: 1px solid var(--border-strong);
+  --access-split-block: 0;
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-access-page] [data-access-split] > :is(section, aside.card):not(:first-child):last-child {
+  border-bottom: 0;
+  border-inline-start: var(--access-split-inline);
+  border-block-start: var(--access-split-block);
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-access-page] td a:not(:hover):not(:focus-visible) {
+  text-decoration-line: none;
+}
+:where([data-experience]:not([data-experience="baseline"])) [data-access-page] .btn--chip {
+  border-radius: var(--space-1);
+  padding: 0 var(--space-3);
+}
+@media (--phone) {
+  :where([data-experience]:not([data-experience="baseline"])) [data-access-page] {
+    padding-bottom: var(--space-4);
+  }
+  :where([data-experience]:not([data-experience="baseline"])) [data-access-page] [data-access-split] {
+    flex: 0 0 auto;
+    align-content: start;
+  }
+  :where([data-experience]:not([data-experience="baseline"])) [data-access-page] > header > nav {
+    padding-inline: var(--space-2);
+  }
+  :where([data-experience]:not([data-experience="baseline"])) [data-access-subhead] {
+    padding: var(--space-1-5) var(--space-4);
+  }
+  :where([data-experience]:not([data-experience="baseline"])) [data-access-split] > section > :first-child {
+    min-height: var(--row-h);
+    padding-block: var(--space-1);
+  }
+  :where([data-experience]:not([data-experience="baseline"])) [data-access-split] > section > :nth-child(2):not([data-flush]) {
+    padding-block: var(--space-2) var(--space-3);
+    gap: var(--space-2);
+  }
+}

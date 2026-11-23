@@ -79,6 +79,15 @@ pub struct EmployeeCanonicalFields {
     pub leave_type: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub leave_return_date: Option<String>,
+    /// Explicit or normalized identity type (`RRN`, `ARC`, `DOMESTIC_RESIDENCE`, `NOT_ISSUED`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id_type: Option<String>,
+    /// Identity class (`RRN` or `ARC`) inferred from a staged registration number's 7th digit.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub inferred_id_type: Option<String>,
+    /// Non-empty when a submitted registration number failed Mod-11 validation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rrn_validation_error: Option<String>,
 }
 
 impl EmployeeCanonicalFields {

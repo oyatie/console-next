@@ -114,7 +114,7 @@ test("an empty tenant builds its structure on the chart", { tag: "@org" }, async
   await expect(box(admin, "생산2팀")).toHaveCount(0);
 
   // Search to focus: type and Enter, no clicks; the current hit says so.
-  const find = admin.getByRole("searchbox", { name: "조직 찾기" });
+  const find = admin.getByRole("searchbox", { name: t("structure.find.label") });
   await find.fill("관리");
   await find.press("Enter");
   await expect(admin.getByText("1 / 1 · 지금 보고 있는 결과")).toBeVisible();

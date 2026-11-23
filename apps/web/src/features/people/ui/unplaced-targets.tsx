@@ -2,17 +2,19 @@ import { Building2, Network } from "lucide-react";
 import type { ReactNode } from "react";
 import { t } from "@console/i18n";
 import { Button } from "../../../ui/button/button";
+import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { Kbd } from "../../../ui/kbd/kbd";
 import { PathPicker, type PathOption } from "../../../ui/path-picker/path-picker";
 import type { Suggestion } from "../domain/unplaced";
 import s from "./unplaced.module.css";
+import c from "./unplaced-console.module.css";
 
 /**
  * The right pane (spec E8): where the picked people go. Suggestions by number key (names alike, then the places
  * used last), a search limited to the company, directly under the workplace, or leave them unplaced. Nothing is placed until a place is
  * pressed; with nobody picked every place says so.
  */
-export function UnplacedTargets({ where, count, suggestions, options, sitePath, chosen, onChoose, onPlace, onSite, onSkip, pending, entity, when }: {
+export function UnplacedTargets({ where, count, suggestions, options, sitePath, chosen, onChoose, onPlace, onSite, onSkip, pending, entity, when, consoleMode = false, blockReason }: {
   where: string;
   count: number;
   suggestions: readonly Suggestion[];
@@ -29,9 +31,12 @@ export function UnplacedTargets({ where, count, suggestions, options, sitePath, 
   entity: string | null;
   value: string;
   when?: ReactNode;
+  consoleMode?: boolean;
+  blockReason?: string | null;
 }) {
   const none = count === 0;
   const place = (id: string) => !none && !pending && onPlace(id);
+  const blockedWhy = consoleMode ? (blockReason ?? (none ? t("unplaced.disabled.pick") : null)) : null;
   return (
     <aside className={s.targets} aria-label={none ? t("unplaced.target.titleNone") : t("unplaced.target.title", { n: count })}>
       <div className={s.targetsHead}>
@@ -45,7 +50,11 @@ export function UnplacedTargets({ where, count, suggestions, options, sitePath, 
         {when}
         <div className={s.findRow}>
           <PathPicker options={options} value={chosen} onChange={onChoose} placeholder={entity ? t("unplaced.target.find", { entity }) : t("unplaced.target.findAll")} label={t("unplaced.target.findLabel")} openLabel={t("unplaced.target.open")} />
-          {chosen && <Button variant="primary" aria-disabled={none || pending || undefined} onClick={() => place(chosen)}>{t("unplaced.target.place")}</Button>}
+          {chosen && (blockedWhy ? (
+            <DisabledReason layout="inline" reason={blockedWhy} control={(p) => <Button {...p} variant="primary" className={c.nowrap}>{t("unplaced.target.place")}</Button>} />
+          ) : (
+            <Button variant="primary" className={consoleMode ? c.nowrap : undefined} aria-disabled={none || pending || undefined} onClick={() => place(chosen)}>{t("unplaced.target.place")}</Button>
+          ))}
         </div>
         <div className={s.sec}>
           <span className={s.secHead}>{t("unplaced.target.suggest")}</span>
@@ -59,8 +68,12 @@ export function UnplacedTargets({ where, count, suggestions, options, sitePath, 
           ))}
         </div>
         <div className={s.row}>
-          {onSite ? <Button aria-disabled={none || pending || undefined} onClick={() => !none && !pending && onSite()}>{t("unplaced.target.toSite")}</Button> : null}
-          <Button variant="ghost" onClick={onSkip}>{t("unplaced.target.keep")}</Button>
+          {onSite ? (blockedWhy ? (
+            <DisabledReason layout="inline" reason={blockedWhy} control={(p) => <Button {...p} className={c.nowrap}>{t("unplaced.target.toSite")}</Button>} />
+          ) : (
+            <Button className={consoleMode ? c.nowrap : undefined} aria-disabled={none || pending || undefined} onClick={() => !none && !pending && onSite()}>{t("unplaced.target.toSite")}</Button>
+          )) : null}
+          <Button variant="ghost" className={consoleMode ? c.nowrap : undefined} onClick={onSkip}>{t("unplaced.target.keep")}</Button>
         </div>
 
       </div>

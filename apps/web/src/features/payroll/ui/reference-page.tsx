@@ -7,10 +7,15 @@ import { Page } from "../../../ui/page/page";
 import { EmptyState } from "../../../ui/empty-state";
 import { SelectField } from "../../../ui/select/select-field";
 import { payGroupsQuery, payrollRatesQuery } from "../api";
+import { PayrollReferenceConsole } from "./reference-console";
 import { ReferenceRegister } from "./reference-register";
 import s from "./payroll.module.css";
 
 export function PayrollReference() {
+  return <PayrollReferenceConsole baseline={() => <BaselinePayrollReference />} />;
+}
+
+function BaselinePayrollReference() {
   const groups = useQuery(payGroupsQuery);
   const { entity } = useSearch({ from: "/app/payroll/reference" });
   const navigate = useNavigate({ from: "/payroll/reference" });

@@ -1,0 +1,23 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.frame {
+  margin: 0;
+  display: inline-flex;
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--qr-bg);
+}
+
+.svg {
+  display: block;
+  width: calc(var(--space-6) * 4);
+  height: calc(var(--space-6) * 4);
+}
+
+.bg {
+  fill: var(--qr-bg);
+}
+
+.fg {
+  fill: var(--qr-fg);
+}

@@ -24,6 +24,18 @@ properties:
     description: Always false until the labor attorney / tax accountant release gate flips the stored rows.
   kernel_rate_table:
     type: string
+  total_gross_won:
+    type:
+    - integer
+    - 'null'
+    format: int64
+    description: Whole KRW won. null unless EVERY line of the run calculated — never a partial sum presented as a total.
+  total_deductions_won:
+    type:
+    - integer
+    - 'null'
+    format: int64
+    description: Whole KRW won. null unless EVERY line of the run calculated — never a partial sum presented as a total.
   total_net_won:
     type:
     - integer

@@ -50,6 +50,9 @@ pub struct ReviewItem {
     /// W03: the records a unit / workplace text may mean (`names`), best first.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub candidates: Vec<NameCandidate>,
+    /// Expected format hint for inline cell repair (for example `"YYYY-MM-DD"`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expected_format: Option<&'static str>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
@@ -112,6 +115,7 @@ impl Builder<'_> {
             rows: 1,
             resolution: res,
             candidates: Vec::new(),
+            expected_format: None,
         });
     }
 
@@ -153,6 +157,7 @@ impl Builder<'_> {
                 .collect(),
             ),
             candidates: Vec::new(),
+            expected_format: None,
         });
     }
 }
@@ -190,6 +195,7 @@ pub fn review_queue(
             rows: 1,
             resolution: res,
             candidates: Vec::new(),
+            expected_format: None,
         });
     }
     for (row, plan) in rows.iter().zip(plans) {
@@ -227,6 +233,18 @@ pub fn review_queue(
                     plan.refusal_field,
                     resolution("identity", &plan.source_key, ids()),
                 );
+            }
+            ("refused", Some("two_digit_year")) => {
+                b.row(
+                    plan,
+                    "two_digit_year",
+                    true,
+                    plan.refusal_field,
+                    resolution("cells", &plan.source_key, Vec::new()),
+                );
+                if let Some(last) = b.items.last_mut() {
+                    last.expected_format = Some("YYYY-MM-DD");
+                }
             }
             ("refused", Some(code)) => {
                 b.row(

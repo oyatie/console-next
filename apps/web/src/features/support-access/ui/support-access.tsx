@@ -20,6 +20,7 @@ import { Composer } from "../../../ui/composer/composer";
 import { commitLabel } from "../../../ui/composer/actions";
 import { codeText, SUPPORT_SESSION_STATE } from "../../../lib/labels";
 import { EnumValue } from "../../../ui/enum-value";
+import { AuditTabs } from "../../../reference/audit/ui/audit-tabs";
 import { ApiError, decideSupportSession, endSupportSession, session, SUPPORT_READS, supportRefusal, supportSessionsQuery, type Sessions, type SupportDecision, type SupportSession } from "../../../reference/support-access/api";
 
 const route = getRouteApi("/app/audit/support-access");
@@ -33,7 +34,7 @@ const decisionText = (decision: string) => {
 export function SupportAccess() {
   const q = useQuery({ ...supportSessionsQuery, enabled: !!session.token });
   const visible = q.error instanceof ApiError && q.error.status === 403 ? { ...q, data: undefined } : q;
-  return <Page floorplan="P-01" head={{ title: t("supportAccess.title") }} q={visible} own={supportRefusal}>
+  return <Page floorplan="P-01" head={{ title: t("supportAccess.title"), tabs: <AuditTabs /> }} q={visible} own={supportRefusal}>
     {data => data.sessions.length ? <SessionsList data={data} /> : <Card flush label={t("supportAccess.description")}>
       <EmptyState title={t("supportAccess.emptyTitle")} reason={t("supportAccess.emptyReason")} />
     </Card>}
@@ -96,7 +97,7 @@ function SessionDetails({ session: s, canApprove, onClose }: { session: SupportS
   const refusal = error && <div ref={notice} tabIndex={-1}><CommandError error={error} own={supportRefusal} /></div>;
   const facts = <KeyValue items={[
       { key: "operator", label: t("supportAccess.operator"), value: s.operator_label },
-      { key: "reason", label: t("supportAccess.reason"), value: <>{s.reason} <span className="muted">({s.reason_code})</span></> },
+      { key: "reason", label: t("supportAccess.reason"), value: <>{s.reason} <bdi className="muted">({s.reason_code})</bdi></> },
       { key: "scope", label: t("supportAccess.scope"), value: <>{s.scope.map(scopeText).join(" · ")} · {t("supportAccess.readOnly")} · {t(s.masked ? "supportAccess.masked" : "supportAccess.unmasked")}</> },
       { key: "requested", label: t("supportAccess.requestedDuration"), value: durationText(s.requested_duration_seconds) },
       { key: "approved", label: t("supportAccess.approvedDuration"), value: s.approved_duration_seconds == null ? "—" : durationText(s.approved_duration_seconds) },

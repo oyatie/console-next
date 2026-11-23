@@ -91,7 +91,7 @@ The height is always `100dvh`.
 | Kicker | 12 px (`--text-xs`), `--steel`. A row with a 4 px gap, for an icon and a path. |
 | Title | 16 px (`--text-lg`), weight 700 (`--fw-strong`). |
 | Subtitle | 13 px (`--text-sm`), `--steel`. |
-| Close button | The `ghost` button look: transparent until hovered, at least 36 px high (`calc(var(--row-h) - var(--space-1))`), 12 px side padding. With its 16 px icon and 1 px border that is 42 px wide. |
+| Close button | The `ghost` button look: transparent until hovered, at least 36 px high (`--control-h`), 12 px side padding. With its 16 px icon and 1 px border that is 42 px wide. |
 | Body | The same padding as the head. A column with a 24 px gap (`--space-5`). It takes the height the head and the foot leave and scrolls inside it. |
 | Foot | The same padding. A 1 px `--border` line above it and a `--canvas` fill. A column with a 12 px gap (`--space-3`). |
 | Consequence | 13 px (`--text-sm`). A column with a 4 px gap. `<b>` and `<strong>` inside it are weight 700. |

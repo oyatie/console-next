@@ -108,6 +108,15 @@ impl<'a> TenantDeps<'a> {
             DatabaseDependency::NotConfigured => PgOntologyStore::new(pool.clone()),
         };
         let leave_store = {
+            #[cfg(feature = "attendance")]
+            let store = PgLeaveStore::with_work_calendar(
+                pool.clone(),
+                Arc::new(PgInboxStore::new(pool.clone())),
+                Arc::new(
+                    crate::wiring::leave_calendar::AttendanceWorkCalendarPort::new(pool.clone()),
+                ),
+            );
+            #[cfg(not(feature = "attendance"))]
             let store = PgLeaveStore::new(pool.clone(), Arc::new(PgInboxStore::new(pool.clone())));
             match &state.leave_command_database {
                 DatabaseDependency::Postgres(command_pool) => {
@@ -273,14 +282,13 @@ pub fn build_router(state: AppState) -> Router {
     // production); browsers ignore HSTS over plain http anyway.
     let router = match state.config.web_dist.clone() {
         Some(dist) => {
-            let hsts = state
-                .config
-                .auth_rest
-                .as_ref()
-                .is_none_or(|auth| auth.cookie_secure);
+            let hsts = state.config.cookie_secure;
             let dist: Arc<std::path::Path> = dist.into();
             let etag = crate::spa::dist_etag(&dist);
-            let csp = crate::spa::spa_csp(state.config.storage.as_ref());
+            let csp = crate::spa::spa_csp(
+                state.config.storage.as_ref(),
+                state.config.status_origin.as_deref(),
+            );
             router.fallback(move |request: Request<Body>| {
                 serve_spa(dist.clone(), etag.clone(), hsts, csp.clone(), request)
             })
