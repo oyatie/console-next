@@ -100,6 +100,7 @@ test("in a visual style, names stay evenly spaced and each is a whole pointer ta
       gaps: centres.slice(1).map((centre, i) => centre - centres[i]!),
       smallest: Math.min(...links.flatMap(b => [b.width, b.height])),
       rules: [rules(3), rules(4)],
+      underlines: [...new Set(rows.map(row => getComputedStyle(row.querySelector("a")!).textDecorationLine))],
     };
   });
   const nine = <T,>(value: T) => Array.from({ length: 9 }, () => value);
@@ -108,6 +109,8 @@ test("in a visual style, names stay evenly spaced and each is a whole pointer ta
   expect(drawn.smallest).toBeGreaterThanOrEqual(24);
   // The fourth person starts a group and has its rule above the line every row has below; the fifth has the line only.
   expect(drawn.rules).toEqual([2, 1]);
+  // A name is a link, and is underlined as every link in the style is drawn.
+  expect(drawn.underlines).toEqual(["underline"]);
 
   // Scrolled so that one name is half under the sticky head, the names still meet the target-size rule.
   await grid.locator("..").evaluate(el => { el.scrollTop = 24 * 5 + 12; });

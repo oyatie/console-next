@@ -393,7 +393,6 @@ global `btn` classes. Both are in `app.css` and are not listed here: see the tok
 | `--border-soft` | `border-bottom`, `border-top` |
 | `--card-w` | `width` |
 | `--control-h-lg` | `min-height` |
-| `--field-h` | `height`, `min-height` |
 | `--fw-medium` | `font-weight` |
 | `--fw-semibold` | `font-weight` |
 | `--fw-strong` | `font-weight` |
@@ -405,7 +404,8 @@ global `btn` classes. Both are in `app.css` and are not listed here: see the tok
 | `--primary-soft` | `background` |
 | `--radius` | `border-radius` |
 | `--radius-sm` | `border-radius` |
-| `--row-h-compact` | `min-height` |
+| `--row-h` | `height`, `min-height` |
+| `--row-h-sm` | `min-height` |
 | `--space-1` | `gap`, `padding` |
 | `--space-1-5` | `gap` |
 | `--space-2` | `gap`, `margin`, `padding` |

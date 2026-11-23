@@ -16,7 +16,7 @@
 .arrow,
 .after {
   margin: 0;
-  min-height: var(--row-h-compact);
+  min-height: var(--row-h-sm);
   display: flex;
   align-items: center;
   padding: var(--space-half) var(--cell-px);
