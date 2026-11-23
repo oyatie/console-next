@@ -28,6 +28,8 @@ export async function mountBrowserModule({
     configFile: false,
     cacheDir: `.cache/${slug}`,
     logLevel: "error",
+    // React Aria's collections read this flag; without it a table or list in the module throws on render.
+    define: { "process.env.VIRT_ON": "true" },
     optimizeDeps: browserTestOptimizeDeps,
     resolve: { dedupe: ["react", "react-dom"] },
     server: {

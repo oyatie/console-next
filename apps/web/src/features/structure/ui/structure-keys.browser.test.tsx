@@ -44,3 +44,15 @@ test("with single keys off ? waits, the help button stops announcing it, and the
   await help.click();
   await element(off).toBeVisible();
 }, 60_000);
+
+test("the help button follows a change made in another tab, without a reload", async () => {
+  const help = page.getByRole("button", { name: t("structure.shortcuts.title"), exact: true });
+  await page.evaluate(key => localStorage.removeItem(key), SINGLE_KEYS_KEY);
+  await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}structure-keys-test`, help);
+  await element(help).toHaveAttribute("aria-keyshortcuts", "Shift+/");
+  await page.evaluate(key => {
+    localStorage.setItem(key, "off");
+    window.dispatchEvent(new StorageEvent("storage", { key, oldValue: null, newValue: "off", storageArea: localStorage }));
+  }, SINGLE_KEYS_KEY);
+  await element(help).not.toHaveAttribute("aria-keyshortcuts");
+}, 60_000);
