@@ -134,6 +134,22 @@ test("a digit or H pressed in the print view leaves the tab and the current sect
   await element(second).toHaveAttribute("aria-current", "true");
 }, 90_000);
 
+test("the card's key caps hide while single keys are off, and follow a change made in another tab", async () => {
+  await open();
+  const caps = page.locator("kbd").filter({ hasText: /^[JKH?]$/ });
+  await element(caps).toHaveCount(4);
+  const set = (value: string | null) => page.evaluate(([key, next]) => {
+    if (next === null) localStorage.removeItem(key!); else localStorage.setItem(key!, next);
+    window.dispatchEvent(new StorageEvent("storage", { key, newValue: next, storageArea: localStorage }));
+  }, [SINGLE_KEYS_KEY, value] as const);
+  try {
+    await set("off");
+    await element(caps).toHaveCount(0);
+    await element(page.getByText(t("empCard.walk"))).toHaveCount(0);
+  } finally { await set(null); }
+  await element(caps).toHaveCount(4);
+}, 90_000);
+
 test("the digits wait while single keys are off or a key is composing, and a click or Enter on a link still opens its section", async () => {
   await open();
   const [first, fourth] = [links().first(), links().nth(3)];
