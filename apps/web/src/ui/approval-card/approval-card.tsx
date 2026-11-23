@@ -83,7 +83,8 @@ export function ApprovalCard(p: ReturnProps & {
   const recorded = Boolean(p.receipt);
   const wasRecorded = useRef(recorded);
   useEffect(() => {
-    if (recorded && !wasRecorded.current) doneHead.current?.focus();
+    // The receipt replaces the buttons, so focus they held is on the page by now; focus the person put elsewhere stays.
+    if (recorded && !wasRecorded.current && document.activeElement === document.body) doneHead.current?.focus();
     wasRecorded.current = recorded;
   }, [recorded]);
   useEffect(() => {
