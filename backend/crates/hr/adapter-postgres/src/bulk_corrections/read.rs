@@ -11,33 +11,31 @@ use sqlx::Row;
 use uuid::Uuid;
 
 use super::plan::{plan, preview};
-use super::select::{check_shape, resolve};
+use super::select::{Targets, check_targets, resolve};
 use super::{
     BulkCorrectionCounts, BulkCorrectionJob, BulkCorrectionPreview, BulkCorrectionRequest,
 };
 use crate::authz::authorize_hr_org_wide;
-use crate::corrections::{SecondPersonContext, normalize_value, route_or_refuse};
+use crate::corrections::SecondPersonContext;
 use crate::directory::access_log::{DirectoryAccess, access_event, actor_employee_id};
 use crate::requests::{note, reason_code};
 use crate::{HrError, HrService};
 
+pub(super) struct CheckedRequest {
+    pub targets: Targets,
+    pub reason: String,
+    pub note: Option<String>,
+}
+
 /// The request-level checks shared by preview and commit: the shape, the
 /// reason, and for a selection the shared values once (a bad value is the
 /// request's error, not a refusal repeated on every row).
-pub(super) fn check_request(
-    body: &BulkCorrectionRequest,
-) -> Result<(String, Option<String>), HrError> {
-    check_shape(body)?;
-    if let Some(changes) = &body.changes {
-        for (field, value) in changes {
-            route_or_refuse(field)?;
-            normalize_value(field, value)?;
-        }
-    }
-    Ok((
-        reason_code(&body.reason_code, "reason_code")?,
-        note(body.note.as_deref())?,
-    ))
+pub(super) fn check_request(body: BulkCorrectionRequest) -> Result<CheckedRequest, HrError> {
+    Ok(CheckedRequest {
+        targets: check_targets(body.selection, body.changes, body.rows)?,
+        reason: reason_code(&body.reason_code, "reason_code")?,
+        note: note(body.note.as_deref())?,
+    })
 }
 
 fn count(row: &sqlx::postgres::PgRow, column: &str) -> Result<usize, HrError> {
@@ -56,12 +54,16 @@ impl HrService {
         holders: SecondPersonContext,
     ) -> Result<BulkCorrectionPreview, HrError> {
         authorize_hr_org_wide(&principal, Feature::EmployeeDirectoryManage)?;
-        let (reason, note) = check_request(&body)?;
+        let CheckedRequest {
+            targets,
+            reason,
+            note,
+        } = check_request(body)?;
         let org = principal.org_id;
         let org_uuid = *org.as_uuid();
         with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
-                let inputs = resolve(tx, &body).await?;
+                let inputs = resolve(tx, &targets).await?;
                 let planned = plan(tx, org_uuid, &inputs, holders).await?;
                 let preview = preview(&planned, &reason, note.as_deref())?;
                 let shown: Vec<Uuid> = planned

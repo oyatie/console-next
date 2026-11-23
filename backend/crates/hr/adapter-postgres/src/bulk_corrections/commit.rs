@@ -20,7 +20,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::plan::{PlannedRow, plan, preview};
-use super::read::check_request;
+use super::read::{CheckedRequest, check_request};
 use super::select::resolve;
 use super::{BulkCorrectionRequest, BulkCorrectionResult, BulkCorrectionResultRow};
 use crate::authz::authorize_hr_org_wide;
@@ -81,18 +81,22 @@ impl HrService {
         principal: Principal,
         passkeys: &PasskeyService,
         idempotency_key: Option<String>,
-        body: BulkCorrectionRequest,
+        mut body: BulkCorrectionRequest,
         holders: SecondPersonContext,
     ) -> Result<Value, HrError> {
         authorize_hr_org_wide(&principal, Feature::EmployeeDirectoryManage)?;
         let key =
             validate_idempotency_key(idempotency_key.as_deref()).map_err(HrError::validation)?;
-        let (reason, note) = check_request(&body)?;
-        let expected = body
-            .preview_digest
-            .clone()
-            .ok_or_else(|| HrError::validation("preview_digest is required; preview first"))?;
         let fingerprint = body.fingerprint();
+        let expected = body.preview_digest.take();
+        let step_up = body.step_up.take();
+        let CheckedRequest {
+            targets,
+            reason,
+            note,
+        } = check_request(body)?;
+        let expected = expected
+            .ok_or_else(|| HrError::validation("preview_digest is required; preview first"))?;
         let passkeys = passkeys.clone();
         let (org, actor) = (principal.org_id, principal.user_id);
         let (org_uuid, me) = (*org.as_uuid(), *actor.as_uuid());
@@ -103,7 +107,7 @@ impl HrService {
                     IdempotencyClaim::Mismatch => return Err(idempotency_key_reused()),
                     IdempotencyClaim::Fresh => {}
                 }
-                let inputs = resolve(tx, &body).await?;
+                let inputs = resolve(tx, &targets).await?;
                 let ids: Vec<Uuid> = inputs.iter().map(|input| input.employee_id).collect();
                 // Id order: the lock order of the bulk lifecycle path and change sets.
                 sqlx::query("SELECT id FROM employees WHERE org_id = $1 AND id = ANY($2) ORDER BY id FOR UPDATE")
@@ -130,7 +134,7 @@ impl HrService {
                 let sole = fresh.step_up_required;
                 let mut assertion = None;
                 if sole {
-                    let envelope = body.step_up.ok_or_else(|| {
+                    let envelope = step_up.ok_or_else(|| {
                         refusal(StatusCode::UNAUTHORIZED, "step_up_required", "a sole holder's correction of these fields needs a passkey step-up")
                     })?;
                     assertion = Some(
@@ -178,7 +182,7 @@ impl HrService {
                     if review {
                         sole_holder_cedar(&principal, p.row.employee_id, holders)?;
                     }
-                    let now: Vec<_> = p.writes.iter().filter(|(_, path)| *path != FieldPath::SecondPerson).map(|(pair, _)| pair.clone()).collect();
+                    let now: Vec<_> = p.writes.iter().filter(|(_, path)| *path != FieldPath::SecondPerson).map(|&(pair, _)| pair.clone()).collect();
                     if !now.is_empty() {
                         let meta = LedgerMeta {
                         import_run_id: None, reason_code: &reason, note: note.as_deref(), corrected_by: me, change_request_id: None, review_required: review, batch_id: Some(job) };

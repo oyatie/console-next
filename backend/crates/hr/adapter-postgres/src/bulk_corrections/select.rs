@@ -2,22 +2,39 @@
 //! roster filters minus exclusions) or the grid's rows, in id order (the lock
 //! order of every bulk HR write, so two never deadlock).
 
+use std::borrow::Cow;
 use std::collections::BTreeSet;
 
+use console_hr_domain::corrections::CorrectionRoute;
 use serde_json::{Map, Value};
 use sqlx::{Postgres, Transaction};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::{BulkCorrectionRequest, BulkSelection, MAX_BULK_CORRECTION_ROWS};
+use super::plan::{client, refused_by};
+use super::{BulkCorrectionRefusal, BulkCorrectionRow, BulkSelection, MAX_BULK_CORRECTION_ROWS};
 use crate::HrError;
+use crate::corrections::{FieldValue, normalize_value, route_or_refuse};
 use crate::directory::read_list::{EmployeeListFilters, EmployeeListQuery, filtered_employees};
 use console_kernel_core::BranchScope;
 
+pub(super) type RoutedField = (FieldValue, CorrectionRoute);
+
+pub(super) enum Targets {
+    Selection(BulkSelection, Vec<RoutedField>),
+    Grid(Vec<BulkCorrectionRow>),
+}
+
+fn checked_field(field: &str, value: &Value) -> Result<RoutedField, HrError> {
+    let route = route_or_refuse(field)?;
+    Ok(((field.to_owned(), normalize_value(field, value)?), route))
+}
+
 /// One employee to plan: the values to write and the grid's pin, if any.
-pub(super) struct RowInput {
+pub(super) struct RowInput<'a> {
     pub employee_id: Uuid,
-    pub changes: Map<String, Value>,
+    pub changes: Cow<'a, [RoutedField]>,
+    pub refusals: Vec<BulkCorrectionRefusal>,
     pub expected_updated_at: Option<OffsetDateTime>,
 }
 
@@ -69,48 +86,69 @@ fn pin(raw: Option<&str>) -> Result<Option<OffsetDateTime>, HrError> {
 }
 
 /// The request's shape: selection + changes, or rows; checked before any read.
-pub(super) fn check_shape(body: &BulkCorrectionRequest) -> Result<(), HrError> {
-    match (&body.selection, &body.changes, body.rows.is_empty()) {
-        (Some(_), Some(changes), true) if !changes.is_empty() => Ok(()),
-        (None, None, false) if body.rows.len() <= MAX_BULK_CORRECTION_ROWS => {
-            if body.rows.iter().any(|row| row.changes.is_empty()) {
+pub(super) fn check_targets(
+    selection: Option<BulkSelection>,
+    changes: Option<Map<String, Value>>,
+    rows: Vec<BulkCorrectionRow>,
+) -> Result<Targets, HrError> {
+    match (selection, changes, rows.is_empty()) {
+        (Some(selection), Some(changes), true) if !changes.is_empty() => {
+            let fields = changes
+                .iter()
+                .map(|(field, value)| checked_field(field, value))
+                .collect::<Result<_, _>>()?;
+            Ok(Targets::Selection(selection, fields))
+        }
+        (None, None, false) if rows.len() <= MAX_BULK_CORRECTION_ROWS => {
+            if rows.iter().any(|row| row.changes.is_empty()) {
                 return Err(HrError::validation(
                     "every row must change at least one field",
                 ));
             }
-            let distinct: BTreeSet<Uuid> = body.rows.iter().map(|row| row.employee_id).collect();
-            if distinct.len() == body.rows.len() {
-                Ok(())
+            let distinct: BTreeSet<Uuid> = rows.iter().map(|row| row.employee_id).collect();
+            if distinct.len() == rows.len() {
+                Ok(Targets::Grid(rows))
             } else {
                 Err(HrError::validation("rows must not repeat an employee"))
             }
         }
-        (None, None, false) => Err(too_many(body.rows.len())),
+        (None, None, false) => Err(too_many(rows.len())),
         _ => Err(HrError::validation(
             "send either selection with changes, or rows; changes must name at least one field",
         )),
     }
 }
 
+fn grid_row(row: &BulkCorrectionRow) -> Result<RowInput<'static>, HrError> {
+    let expected_updated_at = pin(row.expected_updated_at.as_deref())?;
+    let mut changes = Vec::with_capacity(row.changes.len());
+    let mut refusals = Vec::new();
+    for (field, value) in &row.changes {
+        match checked_field(field, value) {
+            Ok(checked) => changes.push(checked),
+            Err(error) => refusals.push(refused_by(Some(field), &client(error)?)),
+        }
+    }
+    Ok(RowInput {
+        employee_id: row.employee_id,
+        changes: Cow::Owned(changes),
+        refusals,
+        expected_updated_at,
+    })
+}
+
 /// Every employee the request names, in id order, with its values.
-pub(super) async fn resolve(
+pub(super) async fn resolve<'a>(
     tx: &mut Transaction<'_, Postgres>,
-    body: &BulkCorrectionRequest,
-) -> Result<Vec<RowInput>, HrError> {
-    let (Some(selection), Some(changes)) = (&body.selection, &body.changes) else {
-        let mut rows = body
-            .rows
-            .iter()
-            .map(|row| {
-                Ok(RowInput {
-                    employee_id: row.employee_id,
-                    changes: row.changes.clone(),
-                    expected_updated_at: pin(row.expected_updated_at.as_deref())?,
-                })
-            })
-            .collect::<Result<Vec<_>, HrError>>()?;
-        rows.sort_by_key(|row| row.employee_id);
-        return Ok(rows);
+    targets: &'a Targets,
+) -> Result<Vec<RowInput<'a>>, HrError> {
+    let (selection, changes) = match targets {
+        Targets::Selection(selection, changes) => (selection, changes),
+        Targets::Grid(grid) => {
+            let mut rows = grid.iter().map(grid_row).collect::<Result<Vec<_>, _>>()?;
+            rows.sort_by_key(|row| row.employee_id);
+            return Ok(rows);
+        }
     };
     let filters = filters(selection)?;
     let mut query = filtered_employees("SELECT e.id", &filters);
@@ -118,6 +156,10 @@ pub(super) async fn resolve(
     query.push_bind(selection.exclude_ids.clone());
     query.push(")) ORDER BY e.id");
     let ids: Vec<Uuid> = query.build_query_scalar().fetch_all(tx.as_mut()).await?;
+    selected_rows(ids, changes)
+}
+
+fn selected_rows(ids: Vec<Uuid>, changes: &[RoutedField]) -> Result<Vec<RowInput<'_>>, HrError> {
     if ids.is_empty() {
         return Err(HrError::validation("the selection matches no employee"));
     }
@@ -128,8 +170,38 @@ pub(super) async fn resolve(
         .into_iter()
         .map(|employee_id| RowInput {
             employee_id,
-            changes: changes.clone(),
+            changes: Cow::Borrowed(changes),
+            refusals: Vec::new(),
             expected_updated_at: None,
         })
         .collect())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::bulk_corrections::{BulkCorrectionRequest, read::check_request};
+    use serde_json::json;
+
+    #[test]
+    #[allow(clippy::unwrap_used)]
+    fn selected_rows_share_the_normalized_change() {
+        let body: BulkCorrectionRequest = serde_json::from_value(json!({
+            "selection": {}, "changes": {"job": " engineer "}, "reason_code": "TYPO"
+        }))
+        .unwrap();
+        let request = check_request(body).unwrap();
+        let Targets::Selection(_, fields) = request.targets else {
+            unreachable!()
+        };
+        let ids = vec![Uuid::from_u128(1), Uuid::from_u128(2)];
+        let rows = selected_rows(ids, &fields).unwrap();
+        assert!(std::ptr::eq(
+            rows[0].changes.as_ref(),
+            rows[1].changes.as_ref()
+        ));
+        let ((field, value), _) = &rows[0].changes[0];
+        assert_eq!(field, "job");
+        assert_eq!(value.as_deref(), Some("engineer"));
+    }
 }

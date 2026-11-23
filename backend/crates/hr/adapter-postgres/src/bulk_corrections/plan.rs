@@ -20,17 +20,16 @@ use super::{
 };
 use crate::HrError;
 use crate::corrections::{
-    FieldValue, LockedEmployee, SecondPersonContext, check_against_record, normalize_value,
-    read_employee, refusal, route_or_refuse,
+    FieldValue, LockedEmployee, SecondPersonContext, check_against_record, read_employee, refusal,
 };
 use crate::digest::sha256_hex;
 
 /// One employee's plan: the preview row, and for CHANGE / PENDING the record
 /// read and the differing values with their path.
-pub(super) struct PlannedRow {
+pub(super) struct PlannedRow<'a> {
     pub row: BulkCorrectionPreviewRow,
     pub head: Option<LockedEmployee>,
-    pub writes: Vec<(FieldValue, FieldPath)>,
+    pub writes: Vec<(&'a FieldValue, FieldPath)>,
 }
 
 /// The recorded value of `field` in the form `normalize_value` gives: the
@@ -62,7 +61,7 @@ fn writes(head: &LockedEmployee, field: &str, value: Option<&str>) -> bool {
 }
 
 /// One refusal of a row: the field it is about (`None`: the whole row).
-fn refused_by(field: Option<&str>, error: &HrError) -> BulkCorrectionRefusal {
+pub(super) fn refused_by(field: Option<&str>, error: &HrError) -> BulkCorrectionRefusal {
     BulkCorrectionRefusal {
         field: field.map(str::to_owned),
         code: error.code,
@@ -72,7 +71,7 @@ fn refused_by(field: Option<&str>, error: &HrError) -> BulkCorrectionRefusal {
 
 /// A client error is the row's (or one field's) refusal; a server fault
 /// aborts the whole plan.
-fn client(error: HrError) -> Result<HrError, HrError> {
+pub(super) fn client(error: HrError) -> Result<HrError, HrError> {
     if error.status.is_client_error() {
         Ok(error)
     } else {
@@ -86,7 +85,7 @@ fn client(error: HrError) -> Result<HrError, HrError> {
 async fn record_refusals(
     tx: &mut Transaction<'_, Postgres>,
     org: Uuid,
-    input: &RowInput,
+    input: &RowInput<'_>,
     head: &LockedEmployee,
     values: &[FieldValue],
 ) -> Result<Vec<BulkCorrectionRefusal>, HrError> {
@@ -116,24 +115,16 @@ async fn record_refusals(
 
 /// The values of `input` that differ from the record, each with its path;
 /// `Err` lists every refusal of the row (a field's, or the row's).
-async fn plan_row(
+async fn plan_row<'a>(
     tx: &mut Transaction<'_, Postgres>,
     org: Uuid,
-    input: &RowInput,
+    input: &'a RowInput<'_>,
     holders: SecondPersonContext,
     numbers: &mut BTreeSet<String>,
 ) -> Result<
-    Result<(LockedEmployee, Vec<(FieldValue, FieldPath)>), Vec<BulkCorrectionRefusal>>,
+    Result<(LockedEmployee, Vec<(&'a FieldValue, FieldPath)>), Vec<BulkCorrectionRefusal>>,
     HrError,
 > {
-    let mut refusals = Vec::new();
-    let mut checked = Vec::with_capacity(input.changes.len());
-    for (field, value) in &input.changes {
-        match route_or_refuse(field).and_then(|route| Ok((normalize_value(field, value)?, route))) {
-            Ok((value, route)) => checked.push(((field.clone(), value), route)),
-            Err(error) => refusals.push(refused_by(Some(field), &client(error)?)),
-        }
-    }
     let head = match read_employee(tx, org, input.employee_id).await {
         Ok(head) => head,
         Err(error) => return Ok(Err(vec![refused_by(None, &client(error)?)])),
@@ -149,7 +140,12 @@ async fn plan_row(
         );
         return Ok(Err(vec![refused_by(None, &stale)]));
     }
-    checked.retain(|((field, value), _)| writes(&head, field, value.as_deref()));
+    let mut refusals = input.refusals.clone();
+    let mut checked: Vec<_> = input
+        .changes
+        .iter()
+        .filter(|((field, value), _)| writes(&head, field, value.as_deref()))
+        .collect();
     checked.sort_by(|a, b| a.0.0.cmp(&b.0.0));
     // check_against_record sees the database only: an employee number given
     // twice in one batch is refused here, before the commit could meet it.
@@ -174,7 +170,7 @@ async fn plan_row(
     let mut writes = Vec::with_capacity(checked.len());
     for (pair, route) in checked {
         match field_path(
-            route_for_current(route, head.current(&pair.0).is_some()),
+            route_for_current(*route, head.current(&pair.0).is_some()),
             high,
         ) {
             Some(path) => writes.push((pair, path)),
@@ -198,12 +194,12 @@ async fn plan_row(
 
 /// Plans every input in order. A client error is the row's refusal; a server
 /// fault aborts the whole plan.
-pub(super) async fn plan(
+pub(super) async fn plan<'a>(
     tx: &mut Transaction<'_, Postgres>,
     org: Uuid,
-    inputs: &[RowInput],
+    inputs: &'a [RowInput<'_>],
     holders: SecondPersonContext,
-) -> Result<Vec<PlannedRow>, HrError> {
+) -> Result<Vec<PlannedRow<'a>>, HrError> {
     let mut numbers = BTreeSet::new();
     let mut planned = Vec::with_capacity(inputs.len());
     for input in inputs {
