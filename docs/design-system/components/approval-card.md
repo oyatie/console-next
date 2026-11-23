@@ -242,10 +242,10 @@ offers no decision, with no receipt, no command on its way and no command error,
 it draws the `approvals.viewer.unavailable` message as a `<p role="status" tabindex="-1">`: in a [`Card`](card.md)
 titled `approvals.viewer.decision`, or, when docked, in `DocDecisionPad` (`ui/patterns/document-decision-parts.tsx`).
 That line takes focus if `document.activeElement` is the `<body>`, which is where the browser leaves focus once the
-card that held it is gone. Otherwise focus stays where it is, and the panel passes the line's words to `announce`
-(`lib/react/announce`), the shell's one polite live region: a `role="status"` drawn with its words already in it is
-not read out by every screen reader. A command still on its way passes through the same state just before its
-receipt, and shows no such line. After a command error the panel shows the error in the card's place instead.
+card that held it is gone. When focus is on any element other than the line, it stays there, and the panel passes
+the line's words to `announce` (`lib/react/announce`), the shell's one polite live region: a `role="status"` drawn
+with its words already in it is not read out by every screen reader. A command still on its way passes through the
+same state just before its receipt, and shows no such line. After a command error the panel shows the error in the card's place instead.
 
 The panel keeps the card's place, and the Console document page and the Console list keep the panel, while the
 document whose decision was offered stays the one shown: all three ask `useDecisionOffered`
@@ -322,8 +322,8 @@ show a card without request changes.
 The component has its own SSR unit test (`apps/web/src/ui/approval-card/approval-card.test.tsx`) and real-browser focus test (`apps/web/src/ui/approval-card/approval-card.browser.test.tsx`), covering `aria-labelledby` in both shapes, transition-only focus move into the recorded heading (including when a reason form was open), `:focus-visible` on keyboard-driven transitions, no focus steal on pre-recorded mount or subsequent re-renders, and a receipt that arrives while focus is on a control outside the card leaving focus there. `ui/ime-keys.browser.test.tsx` presses Escape in the reason with `isComposing` true, and with key code 229, and checks that the form stays open until a plain Escape.
 
 `features/approvals/ui/approval-decision.browser.test.tsx`, a Vitest browser test in Chromium at 1440 px, drives the
-panel on a mocked server in each screen that draws it. The baseline cases put a text field above the viewer that
-stands for the find box of the list:
+panel on a mocked server in each screen that draws it, under StrictMode as the app is drawn. The baseline cases put a
+text field above the viewer that stands for the find box of the list:
 
 - After approve, reject and request changes made by keyboard on the viewer's own page, no button is left, focus is
   on the recorded heading, axe passes, and an observer inside the page finds that `approvals.viewer.unavailable`
