@@ -127,8 +127,9 @@ export async function publishEnvironment({github, proof, environment, predicate,
   assertPromotion(proof, root);
   const {channel} = readEnvironment(environment, root);
   assert.ok(channel, 'PROMOTE_ENVIRONMENT: select a configured channel');
+  // The renderer also imports this module from deploy-only trees where the gate's .github policies are absent.
   const {assertEnvironmentSuites} = await import('./gates.mjs');
-  await assertEnvironmentSuites(github, environment, proof);
+  const suites = await assertEnvironmentSuites(github, environment, proof);
   const deploy = `ghcr.io/${proof.repository.toLowerCase()}/console-deploy`;
   const issuer = '--certificate-oidc-issuer=https://token.actions.githubusercontent.com';
   const identity = workflow => `--certificate-identity=https://github.com/${proof.repository}/.github/workflows/${workflow}.yml@refs/heads/dev`;
@@ -219,5 +220,5 @@ export async function publishEnvironment({github, proof, environment, predicate,
       'PROMOTE_GATES: attestation must belong to this repository');
   }
   execute('flux', ['tag', 'artifact', `oci://${artifact}`, `--tag=${channel}`]);
-  return artifact;
+  return {artifact, suites};
 }

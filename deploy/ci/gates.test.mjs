@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
+import { suiteFixture } from './fixtures/suite-runs.mjs';
 import { buildPredicate, classifyBake } from './gates.mjs';
 import admission from '../../.github/release-admission.cjs';
 import { resolve } from 'node:path';
@@ -303,4 +304,106 @@ for (const [reason, override, expected] of [
     }});
     assert.equal(result.status, expected, result.stdout + result.stderr);
   } finally { rmSync(directory, {recursive:true, force:true}); }
+});
+
+const candidate = {sha, repository:'example/console'};
+const dbJob = f => f.jobs.get(f.db.id)[1];
+const suiteGate = f => collector.assertEnvironmentSuites(f.github, 'production', candidate);
+
+for (const [reason, change, refused] of [
+  ['a missing run', f => f.runs['db-tests.yml'].pop(), 'db-tests.yml (missing candidate run)'],
+  ['another SHA', f => { f.db.head_sha = 'b'.repeat(40); }, 'db-tests.yml (missing candidate run)'],
+  ['another branch', f => { f.db.head_branch = 'main'; }, 'db-tests.yml (missing candidate run)'],
+  ['another workflow', f => { f.db.path = f.live.path; }, 'db-tests.yml (missing candidate run)'],
+  ['a fork run', f => { f.db.head_repository.full_name = 'other/console'; }, 'db-tests.yml (missing candidate run)'],
+  ...['pull_request', 'merge_group'].map(event => [`a lone ${event} run`,
+    f => { f.db.event = event; }, 'db-tests.yml (missing candidate run)']),
+  ['a red push followed by a green pull request', f => {
+    f.db.conclusion = 'failure';
+    f.addRun('db-tests.yml', 'pull_request');
+  }, 'db-tests.yml (failure)'],
+  ['an unfinished run', f => { f.live.status = 'in_progress'; }, 'e2e-live.yml (in_progress)'],
+  ['a missing run conclusion', f => { f.db.conclusion = null; }, 'db-tests.yml (missing conclusion)'],
+  ['a newer failed run', f => { f.addRun('e2e-live.yml', 'schedule').conclusion = 'failure'; }, 'e2e-live.yml (failure)'],
+  ['an older failed run followed by green', f => {
+    f.live.conclusion = 'failure';
+    f.addRun('e2e-live.yml', 'schedule');
+  }, 'e2e-live.yml (failure)'],
+  ['an older cancelled run followed by green', f => {
+    f.load.conclusion = 'cancelled';
+    f.addRun('route-load.yml', 'schedule');
+  }, 'route-load.yml (cancelled)'],
+  ['a green nightly after a dispatch skipped Firefox', f => {
+    f.live.event = 'workflow_dispatch';
+    Object.assign(f.jobs.get(f.live.id)[1], {name:'firefox-states', conclusion:'skipped'});
+    f.addRun('e2e-live.yml', 'schedule');
+  }, 'e2e-live.yml (job firefox-states: skipped)'],
+  ['a successful rerun of a failed job', f => {
+    f.live.run_attempt = 2;
+    const job = f.jobs.get(f.live.id)[1];
+    f.jobs.get(f.live.id).push({...job, run_attempt:2});
+    job.conclusion = 'failure';
+  }, 'e2e-live.yml (expected first attempt)'],
+  ['an unknown run attempt', f => { delete f.db.run_attempt; }, 'db-tests.yml (expected first attempt)'],
+  ['an invalid run ID', f => { f.db.id = 0; }, 'db-tests.yml (invalid run ID)'],
+  ['a noninteger run ID', f => { f.db.id = 1.5; }, 'db-tests.yml (invalid run ID)'],
+  ['an empty job list', f => { f.jobs.get(f.load.id).length = 0; }, 'route-load.yml (missing jobs)'],
+  ['another job SHA', f => { dbJob(f).head_sha = 'b'.repeat(40); }, 'db-tests.yml (job identity mismatch)'],
+  ['another job run', f => { dbJob(f).run_id = f.load.id; }, 'db-tests.yml (job identity mismatch)'],
+  ...[undefined, 0, 2].map(attempt => [`a job with attempt ${attempt}`,
+    f => { dbJob(f).run_attempt = attempt; }, 'db-tests.yml (job identity mismatch)']),
+  ['an unnamed job', f => { dbJob(f).name = ''; }, 'db-tests.yml (job identity mismatch)'],
+  ['a nonstring job name', f => { dbJob(f).name = 1; }, 'db-tests.yml (job identity mismatch)'],
+  ['duplicate job names', f => { dbJob(f).name = 'build'; }, 'db-tests.yml (ambiguous job name)'],
+  ['an unfinished job', f => { dbJob(f).status = 'in_progress'; }, 'db-tests.yml (job tests: in_progress)'],
+  ...['failure', 'skipped', 'cancelled', null].map(conclusion => [`a job with conclusion ${conclusion}`,
+    f => { dbJob(f).conclusion = conclusion; }, `db-tests.yml (job tests: ${conclusion ?? 'missing conclusion'})`]),
+  ['missing and red suites together', f => {
+    f.runs['db-tests.yml'].pop();
+    f.jobs.get(f.live.id)[0].conclusion = 'cancelled';
+    f.load.conclusion = 'failure';
+  }, 'db-tests.yml (missing candidate run), e2e-live.yml (job build: cancelled), route-load.yml (failure)'],
+  ...[403, 404].map(status => [`HTTP ${status} reading a workflow`, f => {
+    const {paginate} = f.github;
+    f.github.paginate = async (route, params) => {
+      if (params.workflow_id === 'db-tests.yml') throw Object.assign(new Error('unavailable'), {status});
+      return paginate(route, params);
+    };
+  }, `db-tests.yml (evidence unavailable: HTTP ${status})`]),
+]) test(`production suite gate refuses ${reason}`, async () => {
+  const f = suiteFixture(sha, candidate.repository);
+  change(f);
+  await assert.rejects(() => suiteGate(f), {name:'AssertionError',
+    message:`PROMOTE_SUITES: production refused at ${sha}: ${refused}`});
+  assert.deepEqual(await collector.assertEnvironmentSuites(f.github, 'preview', candidate), []);
+});
+
+test('production suite gate admits first-attempt successes and ignores a newer fork run', async () => {
+  const f = suiteFixture(sha, candidate.repository);
+  f.addRun('db-tests.yml', 'push').head_repository.full_name = 'other/console';
+  assert.deepEqual(await suiteGate(f), [f.db, f.live, f.load].map(({id, path, run_attempt, html_url}) =>
+    ({workflow:path.split('/').at(-1), id, run_attempt, html_url})));
+  for (const {route, params} of f.requests) {
+    assert.equal(params.owner + '/' + params.repo, candidate.repository);
+    assert.equal(params.per_page, 100);
+    if (params.workflow_id) {
+      assert.equal(route, 'GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}/runs');
+      assert.equal(params.branch, 'dev');
+      assert.equal(params.head_sha, sha);
+    } else {
+      assert.equal(route, 'GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}/jobs');
+      assert.equal(params.attempt_number, 1);
+    }
+  }
+});
+
+test('production suite gate propagates a programming error unchanged', async () => {
+  const error = new TypeError('invalid jobs response');
+  const github = {paginate:async () => { throw error; }};
+  await assert.rejects(collector.assertEnvironmentSuites(github, 'production', candidate), e => e === error);
+});
+
+test('suite gate refuses an environment without an explicit policy', async () => {
+  await assert.rejects(() => collector.assertEnvironmentSuites({}, 'candidate', candidate),
+    {name:'AssertionError', message:/^PROMOTE_SUITES: candidate has no suite policy$/});
 });

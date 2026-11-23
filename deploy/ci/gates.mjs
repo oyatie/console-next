@@ -43,62 +43,64 @@ export function buildPredicate({sha, gateChecks, changedPaths, longBakePaths, ru
   };
 }
 
-async function latestDevRun(github, params, workflow, sha, event) {
-  const runs = await github.paginate('GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}/runs',
-    {...params, workflow_id:workflow, head_sha:sha, branch:'dev', ...(event && {event})}).catch(error => {
-    if (error.status === 404) return [];
-    throw error;
-  });
-  const run = runs.sort((a, b) => b.id - a.id)[0];
-  if (run?.head_sha === sha && run.head_branch === 'dev' && run.path === `.github/workflows/${workflow}` &&
-    (!event || run.event === event)) return run;
+function devRuns(github, params, workflow, sha, event) {
+  return github.paginate('GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}/runs',
+    {...params, workflow_id:workflow, head_sha:sha, branch:'dev', ...(event && {event})});
 }
 
-async function suiteRefusal(github, params, workflow, sha) {
-  const run = await latestDevRun(github, params, workflow, sha);
-  if (!run || run.head_repository?.full_name !== `${params.owner}/${params.repo}`) return 'missing candidate run';
-  if (run.status !== 'completed') return run.status || 'unfinished run';
-  if (run.conclusion !== 'success') return run.conclusion || 'missing conclusion';
-  if (!Number.isSafeInteger(run.id) || run.id < 1 || !Number.isSafeInteger(run.run_attempt) || run.run_attempt < 1)
-    return 'unknown run or attempt';
+function isCandidateRun(run, workflow, sha) {
+  return run?.head_sha === sha && run.head_branch === 'dev' && run.path === `.github/workflows/${workflow}`;
+}
 
-  // A partial rerun can omit a skipped sibling. Keep the latest execution of each job across attempts.
-  const jobs = await github.paginate('GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs',
-    {...params, run_id:run.id, filter:'all'});
-  if (!jobs.some(job => job.run_attempt === run.run_attempt)) return 'missing jobs for the current attempt';
-  const latest = new Map();
-  const executions = new Set();
-  for (const job of jobs) {
-    if (job.run_id !== run.id || job.head_sha !== sha || !Number.isSafeInteger(job.run_attempt) ||
-      job.run_attempt < 1 || job.run_attempt > run.run_attempt || typeof job.name !== 'string' || !job.name)
-      return 'job identity mismatch';
-    const key = `${job.run_attempt}/${job.name}`;
-    if (executions.has(key)) return 'ambiguous job name';
-    executions.add(key);
-    if (!latest.has(job.name) || job.run_attempt > latest.get(job.name).run_attempt) latest.set(job.name, job);
+function attemptJobs(github, params, runId, attempt) {
+  return github.paginate('GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}/jobs',
+    {...params, run_id:runId, attempt_number:attempt});
+}
+
+async function suiteEvidence(github, params, workflow, sha) {
+  const history = await devRuns(github, params, workflow, sha);
+  const runs = history.filter(run => isCandidateRun(run, workflow, sha) &&
+    run.head_repository?.full_name === `${params.owner}/${params.repo}` &&
+    ['push', 'schedule', 'workflow_dispatch'].includes(run.event));
+  if (!runs.length) return {refusal:'missing candidate run'};
+  for (const run of runs) {
+    if (run.status !== 'completed') return {refusal:run.status || 'unfinished run'};
+    if (run.conclusion !== 'success') return {refusal:run.conclusion || 'missing conclusion'};
+    if (!Number.isSafeInteger(run.id) || run.id < 1) return {refusal:'invalid run ID'};
+    if (run.run_attempt !== 1) return {refusal:'expected first attempt'};
+    const jobs = await attemptJobs(github, params, run.id, 1);
+    if (!jobs.length) return {refusal:'missing jobs'};
+    const names = new Set();
+    for (const job of jobs) {
+      if (job.run_id !== run.id || job.head_sha !== sha || job.run_attempt !== 1 ||
+        typeof job.name !== 'string' || !job.name) return {refusal:'job identity mismatch'};
+      if (names.has(job.name)) return {refusal:'ambiguous job name'};
+      names.add(job.name);
+      if (job.status !== 'completed' || job.conclusion !== 'success') {
+        const reason = job.status === 'completed' ? job.conclusion ?? 'missing conclusion' : job.status ?? 'unfinished';
+        return {refusal:`job ${job.name}: ${reason}`};
+      }
+    }
   }
-  const red = [...latest.values()].find(job => job.status !== 'completed' || job.conclusion !== 'success');
-  if (red) return `job ${red.status === 'completed' ? red.conclusion ?? 'missing conclusion' : red.status}`;
+  return {runs:runs.map(({id, run_attempt, html_url}) => ({workflow, id, run_attempt, html_url}))};
 }
 
 export async function assertEnvironmentSuites(github, environment, {sha, repository}) {
   const suites = gatesPolicy.environmentSuites[environment];
-  if (!Array.isArray(suites)) throw Object.assign(new Error(
-    `PROMOTE_SUITES: ${environment} has no suite policy`), {code:'PROMOTE_SUITES'});
+  assert.ok(Array.isArray(suites), `PROMOTE_SUITES: ${environment} has no suite policy`);
   const [owner, repo] = repository.split('/');
+  const accepted = [];
   const refusals = [];
-  const errors = [];
   for (const workflow of suites) {
-    try {
-      const refusal = await suiteRefusal(github, {owner, repo, per_page:100}, workflow, sha);
-      if (refusal) refusals.push(`${workflow} (${refusal})`);
-    } catch (error) {
-      errors.push(error);
-      refusals.push(`${workflow} (evidence unavailable)`);
-    }
+    const evidence = await suiteEvidence(github, {owner, repo, per_page:100}, workflow, sha).catch(error => {
+      if (!error?.status) throw error;
+      return {refusal:`evidence unavailable: HTTP ${error.status}`};
+    });
+    if (evidence.refusal) refusals.push(`${workflow} (${evidence.refusal})`);
+    else accepted.push(...evidence.runs);
   }
-  if (refusals.length) throw Object.assign(new AggregateError(errors,
-    `PROMOTE_SUITES: ${environment} refused at ${sha}: ${refusals.join(', ')}`), {code:'PROMOTE_SUITES'});
+  assert.ok(!refusals.length, `PROMOTE_SUITES: ${environment} refused at ${sha}: ${refusals.join(', ')}`);
+  return accepted;
 }
 
 export async function collectChecks(github, sha) {
@@ -109,9 +111,13 @@ export async function collectChecks(github, sha) {
   const workflows = new Map();
   for (const {workflow} of Object.values(gatesPolicy.checks).flat()) {
     if (workflows.has(workflow)) continue;
-    const run = await latestDevRun(github, params, workflow, sha, 'push');
-    const jobs = run ? await github.paginate('GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}/jobs',
-      {...params, run_id:run.id, attempt_number:run.run_attempt}) : [];
+    const runs = await devRuns(github, params, workflow, sha, 'push').catch(error => {
+      if (error.status === 404) return [];
+      throw error;
+    });
+    const run = runs.sort((a, b) => b.id - a.id)[0];
+    const jobs = isCandidateRun(run, workflow, sha) && run.event === 'push'
+      ? await attemptJobs(github, params, run.id, run.run_attempt) : [];
     workflows.set(workflow, {run, jobs});
   }
   return Object.fromEntries(Object.entries(gatesPolicy.checks).map(([gate, definitions]) => [gate, definitions.flatMap(def => {
