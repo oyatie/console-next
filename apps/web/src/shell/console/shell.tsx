@@ -157,9 +157,8 @@ function ConsoleLayout({
   const displayName = rawName && roleMeta ? `${shortName} · ${roleMeta}` : shortName;
   const phoneActiveId = pathname === "/leave" || pathname === "/payslips"
     ? pathname
-    : phoneHeader?.phoneNav === "self-service" &&
-        (pathname === "/people/certificates" || pathname.startsWith("/people/certificates/"))
-      ? "/people/certificates"
+    : phoneHeader?.phoneNav === "self-service" && pathname === "/account" && location.search.sheet === "certificates"
+      ? "/account?sheet=certificates"
       : pathname === "/me/attendance" || pathname === "/me/desk" || pathname === "/account" || pathname.startsWith("/account/")
         ? "/account"
         : currentModuleTo;
@@ -218,7 +217,7 @@ function ConsoleLayout({
             ) : null}
           </>
         ) : !restoring ? (
-          <div className={s.phoneTop}>
+          <div className={s.phoneTop} data-pinned-bar>
             <Suspense fallback={null}>
               <ConsolePhoneTop
                 title={phoneHeader?.title ?? currentTitle}
@@ -258,7 +257,7 @@ function ConsoleLayout({
             ) : null}
           </div>
         ) : !restoring ? (
-          <div className={s.phoneNav}>
+          <div className={s.phoneNav} data-pinned-bar>
             <Suspense fallback={null}>
               <ConsolePhoneBottom
                 links={allLinks}
@@ -266,6 +265,7 @@ function ConsoleLayout({
                 approvalsCount={approvalsCount}
                 platform={platform}
                 mode={phoneHeader?.phoneNav}
+                unlinked={userProfile?.employee_link_status === "UNLINKED"}
                 activeId={phoneActiveId}
                 onNavigate={navigateToHref}
               />

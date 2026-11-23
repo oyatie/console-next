@@ -186,12 +186,21 @@ draft in a browser. It has no test of `pending`.
 The sheet's own Escape handler stands aside, and so does not show the unsaved line, in these cases:
 
 - another handler has already prevented the event's default;
-- it is pressed in a list box, or on an element with `aria-expanded="true"`, such as an open picker;
+- it is pressed in a list box, or on a control whose popup is open, such as an open picker: `aria-expanded="true"`
+  with an `aria-haspopup` other than `false`, or an expanded `combobox` (`popupOpen` in `lib/pure/popup.ts`);
 - it is pressed inside another dialog nested in the sheet;
 - the event's `isComposing` flag is set.
 
 On a dirty sheet that has not yet shown the unsaved line, such an Escape does nothing to the sheet. On a clean
 sheet, React Aria's overlay still closes the sheet if the Escape reaches it.
+
+A control that is expanded without declaring a popup, such as a disclosure button or an open branch of a tree,
+opens nothing that Escape closes. Escape from it is handled like any other Escape in the sheet: on a dirty sheet
+the first press shows the unsaved line and the second closes.
+`apps/web/src/features/org/ui/target-tree.browser.test.tsx` drives this in Chromium from both, in a sheet that is
+told it is dirty. The tree there has `required`, so it leaves Escape to the sheet: see [Tree](tree.md).
+Four other Escape guards (the side panel, the pane grid, flexible columns and the dirty-escape hook) still treat
+every expanded control as a popup.
 
 The last case is the sheet's rule for the Korean input method. `sheet-dismiss.ts` checks `isComposing` and
 nothing else: it does not check key code 229 and listens for no composition event. An Escape flagged as composing
@@ -282,7 +291,9 @@ Tests: `ui/sheet` has no unit test of its own. The sheet is proved in a browser 
 `apps/web/src/ui/dialog.browser.test.tsx`, by `e2e/mock/sheet-interactions.spec.ts` and by
 `e2e/mock/sheet-layout.spec.ts`. The last opens a real sheet at 1440 and 390 px in the light and the dark theme,
 checks that it fits, runs axe over the dialog, and checks that the record behind it does not change width when
-the sheet opens or closes.
+the sheet opens or closes. Two browser tests of features press Escape on a row of a tree inside a sheet:
+`apps/web/src/features/org/ui/target-tree.browser.test.tsx` and
+`apps/web/src/features/access/ui/scope-picker.browser.test.tsx`. See Keyboard, and [Tree](tree.md).
 
 Other specs drive a sheet on the screen that owns it. One example: `e2e/states/structure-sheet-read.spec.ts` holds
 a read back and expects a `common.loading` status inside the sheet. Where this page traced it, for the sheet that

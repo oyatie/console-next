@@ -68,7 +68,7 @@ export const koMe: Record<keyof typeof enMe, string> = {
   "me.desk.links.requests": "내 변경 요청",
   "me.desk.links.privacy": "개인정보 권리",
   "me.desk.profile.title": "내 인사 정보",
-  "me.desk.profile.unlinked": "계정이 아직 인사카드에 연결되지 않았습니다.",
+  "me.desk.profile.unlinked": "계정이 아직 인사카드에 연결되지 않았습니다. 계정 관리 권한이 있는 담당자에게 인사카드 연결을 요청하십시오.",
   "me.desk.leave.title": "최근 휴가 신청",
   "me.desk.leave.empty": "신청한 휴가 내역이 없습니다.",
   "me.desk.requests.title": "진행 중인 정보 변경 요청",
