@@ -241,7 +241,9 @@ offers no decision, with no receipt, no command on its way and no command error,
 it draws the `approvals.viewer.unavailable` message as a `<p role="status" tabindex="-1">`: in a [`Card`](card.md)
 titled `approvals.viewer.decision`, or, when docked, in `DocDecisionPad` (`ui/patterns/document-decision-parts.tsx`).
 That line takes focus if `document.activeElement` is the `<body>`, which is where the browser leaves focus once the
-card that held it is gone. A command still on its way passes through the same state just before its receipt, and
+card that held it is gone. Otherwise focus stays where it is, and the panel passes the line's words to `announce`
+(`lib/react/announce`), the shell's one polite live region: a `role="status"` drawn with its words already in it is
+not read out by every screen reader. A command still on its way passes through the same state just before its receipt, and
 shows no such line. After a command error the panel shows the error in the card's place instead. The Console
 document page keeps the panel once it has drawn the card, and the Console list keeps it while that document stays
 open, so the line shows there too. A document opened again later that offers nothing has no panel, as any decided
@@ -325,8 +327,9 @@ stands for the find box of the list:
   while the person types in the text field leaves focus there.
 - When the document is read again without its decision and none was sent, with focus in the opinion field, the
   card gives way to `approvals.viewer.unavailable`, which has focus, on the viewer's own page, in the Console list
-  and on the Console document page. When the decision is then offered again and made by keyboard, focus is on the
-  recorded heading.
+  and on the Console document page, and nothing is passed to `announce`. On the viewer's own page, with focus in
+  the text field, the line leaves focus there and its words are passed to `announce`. When the decision is then
+  offered again and made by keyboard, focus is on the recorded heading.
 - While the server holds an approve and the document is read again without its decision, the card stays busy and
   no status line is drawn. Once the server answers, focus is on the recorded heading.
 - In the Console list, when a document whose decision was withdrawn while it was open is opened again after one

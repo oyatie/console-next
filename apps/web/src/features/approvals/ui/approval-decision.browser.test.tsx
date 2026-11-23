@@ -107,6 +107,8 @@ const withdrawn = () => page.getByRole("status").filter({ hasText: t("approvals.
 const watchForWithdrawn = () => page.evaluate(line => {
   new MutationObserver(() => { if (document.body.textContent.includes(line)) document.title = line; }).observe(document.body, { childList: true, subtree: true, characterData: true });
 }, t("approvals.viewer.unavailable"));
+/** What the shell's live region was given last, which the fixture keeps on the body. */
+const announced = () => page.locator("body").getAttribute("data-announced");
 /** Coming back to the tab reads the document again. */
 const readAgain = () => page.evaluate(() => window.dispatchEvent(new Event("visibilitychange")));
 const receiptOf = (decision: Decision) => page.getByRole("status").filter({ hasText: t(RECORDED[decision].receipt) });
@@ -207,6 +209,17 @@ test.each(["page", "console", "console-page"] as const)("on %s, a decision that 
   await expect.poll(() => page.title()).toBe(t("approvals.viewer.unavailable"));
   await element(approve()).toHaveCount(0);
   await expect.poll(focused).toBe(t("approvals.viewer.unavailable"));
+  expect(await announced(), "the focused line is read where it is, not said a second time").toBeNull();
+});
+
+test("a decision withdrawn while the person is in another control is said through the live region, and focus stays there", async () => {
+  const { withdraw } = await open();
+  await find().click();
+  withdraw();
+  await readAgain();
+  await element(withdrawn()).toBeVisible();
+  await expect.poll(announced).toBe(t("approvals.viewer.unavailable"));
+  expect(await focused()).toBe("INPUT");
 });
 
 test("in the Console inbox, a document whose decision was withdrawn and that is opened again after one that offers none has no empty footer", async () => {

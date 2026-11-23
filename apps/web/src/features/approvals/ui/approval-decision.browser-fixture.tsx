@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, Outlet, RouterProvider } from "@tanstack/react-router";
 import { loadCatalog, t } from "@console/i18n";
+import { bindAnnouncer } from "../../../lib/react/announce";
 import { QueryState } from "../../../lib/react/query-state";
 import { Field, TextInput } from "../../../ui/field/field";
 import { approvalDocumentQuery } from "../api";
@@ -14,6 +15,8 @@ import "../../../app.css";
 await loadCatalog("ko");
 const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 const host = new URLSearchParams(location.search).get("host") ?? "page";
+// The shell's live region is not drawn here: what it is given last is kept on the body for the test to read.
+bindAnnouncer(text => { document.body.dataset.announced = text; });
 
 /**
  * The baseline hosts of the decision: the document on a page of its own (`page`), or in the record column of the

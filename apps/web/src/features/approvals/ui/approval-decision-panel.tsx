@@ -5,6 +5,7 @@ import { Link } from "@tanstack/react-router";
 import { isMessageId, t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { reasonCodesQuery, reasonOptions, type ReasonDomain } from "../../../lib/reason-codes";
+import { announce } from "../../../lib/react/announce";
 import { readsAreStale } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { ApprovalCard } from "../../../ui/approval-card/approval-card";
@@ -34,10 +35,16 @@ const consequenceText = (key: string) => {
 };
 
 /**
- * A line that replaces the card takes the focus the card held, which the browser has left on the page by then; focus
- * the person put elsewhere stays. Defined once, so React calls it when the line is drawn and not on every render.
+ * A line that replaces the card takes the focus the card held, which the browser has left on the page by then. Focus
+ * the person put elsewhere stays, and the line is said through the shell's live region instead: a status drawn with
+ * its words already in it is not read out by every screen reader. Defined once, so React calls it when the line is
+ * drawn and not on every render.
  */
-const takeDroppedFocus = (line: HTMLElement | null) => { if (line && document.activeElement === document.body) line.focus(); };
+const takeDroppedFocus = (line: HTMLElement | null) => {
+  if (!line) return;
+  if (document.activeElement === document.body) line.focus();
+  else announce(line.textContent);
+};
 
 /** The reasons of one decision, from the catalog domain the server names. */
 function useDecisionReasons(domain: string | undefined) {
