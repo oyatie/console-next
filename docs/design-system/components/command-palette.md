@@ -124,6 +124,12 @@ Opening the palette is the caller's. The shell opens `JumpPalette` on Command+K 
 button in the top bar. It matches the physical K key (`code`), not the character, so the chord does not depend on
 the input language.
 
+The Console shell also opens it on `/` (`shell.search` in `lib/pure/keys.ts`, handled in `shell/console/shell.tsx`).
+`/` is a single key, so it acts only while single keys are on for the device (`singleKeysOn`) and focus is not in a
+field. When the page shows its own find box (`[data-list-find]` or a search input in `#main`), `/` focuses and
+selects that box instead of opening the palette. The top bar's search button names all three keys in
+`aria-keyshortcuts`, and `/` only while single keys are on.
+
 The component has one key handler. It sits on the input and runs in the capture phase, before React Aria's
 handlers, and it acts on Enter, on Escape, on a key the input method owns and on the six keys that move through
 the list. Everything else in the table is React Aria's, read from the installed version
