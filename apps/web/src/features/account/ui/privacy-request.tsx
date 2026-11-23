@@ -14,14 +14,38 @@ import { Checks } from "../../../ui/choice/checks";
 import { EmptyState } from "../../../ui/empty-state";
 import { Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
+import { RecordPaneSection } from "../../../ui/patterns/list-record-parts";
 import { filePrivacyRequest, privacyFilingOptionsQuery, privacyReceipt } from "../api";
 import s from "./account.module.css";
 
-export function PrivacyRequest({ onFiled }: { onFiled: (receipt: PrivacyRightsReceipt) => void }) {
+export function PrivacyRequest({
+  onFiled,
+  hideWhenUnavailable = false,
+  sectionLayout = false,
+}: {
+  onFiled: (receipt: PrivacyRightsReceipt) => void;
+  hideWhenUnavailable?: boolean;
+  sectionLayout?: boolean;
+}) {
   const q = useQuery({ ...privacyFilingOptionsQuery, retry: false });
-  return <Card title={t("account.privacy.file")}>
-    <QueryState q={q} layout="record">{options => options.controllers.length ? <PrivacyRequestForm options={options} onFiled={onFiled} /> : <EmptyState title={t("account.privacy.unavailable")} reason={null} />}</QueryState>
-  </Card>;
+  if (hideWhenUnavailable && q.data && q.data.controllers.length === 0) {
+    return null;
+  }
+  const body = (
+    <QueryState q={q} layout="record">
+      {options =>
+        options.controllers.length ? (
+          <PrivacyRequestForm options={options} onFiled={onFiled} />
+        ) : (
+          <EmptyState title={t("account.privacy.unavailable")} reason={null} />
+        )
+      }
+    </QueryState>
+  );
+  if (sectionLayout) {
+    return <RecordPaneSection title={t("account.privacy.file")}>{body}</RecordPaneSection>;
+  }
+  return <Card title={t("account.privacy.file")}>{body}</Card>;
 }
 
 export function PrivacyRequestForm({ options, onFiled }: { options: PrivacyFilingOptions; onFiled: (receipt: PrivacyRightsReceipt) => void }) {
@@ -56,8 +80,10 @@ export function PrivacyRequestForm({ options, onFiled }: { options: PrivacyFilin
     {chosen.some(kind => !kind.due_on && !kind.without_delay) && <div>{t("account.privacy.noClock")}</div>}
     <div>{t("account.privacy.identity")}</div>
     <PasskeyError error={command.error} />
-    <Button variant="primary" disabled={!valid || command.isPending} onClick={() => {
-      command.mutate({ controller: controller as PrivacyFiling["controller"], kinds: kinds as PrivacyFiling["kinds"], detail });
-    }}>{t("account.privacy.submit")}</Button>
+    <div className="form__actions">
+      <Button variant="primary" disabled={!valid || command.isPending} onClick={() => {
+        command.mutate({ controller: controller as PrivacyFiling["controller"], kinds: kinds as PrivacyFiling["kinds"], detail });
+      }}>{t("account.privacy.submit")}</Button>
+    </div>
   </div>;
 }

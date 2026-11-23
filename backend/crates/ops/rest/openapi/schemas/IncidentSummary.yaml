@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["id", "title", "sev", "status", "lead", "head_seq", "next_public_update_at", "legal_clocks"]
+properties:
+  id: {"$ref": "#/components/schemas/Text"}
+  title: {"$ref": "#/components/schemas/Text"}
+  sev: {"$ref": "#/components/schemas/IncidentSeverity"}
+  status: {"$ref": "#/components/schemas/Incident"}
+  lead: {"anyOf": [{"$ref": "#/components/schemas/Text"}, {"type": "null"}]}
+  head_seq: {"type": "integer", "minimum": 1}
+  next_public_update_at: {"anyOf": [{"$ref": "#/components/schemas/Timestamp"}, {"type": "null"}]}
+  legal_clocks: {"type": "array", "items": {"$ref": "#/components/schemas/LegalClock"}}

@@ -1001,9 +1001,13 @@ test("CI gives state and web checks their full run budget after measured setup",
   const timings = JSON.parse(readFileSync(new URL("../e2e/mock/timings.json", import.meta.url), "utf8"));
   assert.equal(timings.setupAllowanceSeconds, (9 + 3) * 60);
   const check = web.steps.find(s => s.run?.includes("npm run check"));
-  assert.equal(check["timeout-minutes"], 30);
-  assert.deepEqual(check.run.trim().split("\n"), [
-    "npm run check",
+  assert.equal(check?.name, "Web checks");
+  assert.equal(check["timeout-minutes"], 45);
+  assert.equal(check.run.trim(), "npm run check");
+  const scriptTests = web.steps.find(s => s.name === "CI and evidence script tests");
+  assert.ok(scriptTests);
+  assert.equal(scriptTests["timeout-minutes"], 5);
+  assert.deepEqual(scriptTests.run.trim().split("\n"), [
     "node --test scripts/ci-backend.test.mjs",
     "node --test scripts/cache-retention.test.mjs",
     "node --test scripts/ghcr-retention.test.mjs",
@@ -1013,9 +1017,24 @@ test("CI gives state and web checks their full run budget after measured setup",
     "python3 scripts/d10_evidence_test.py",
     "python3 scripts/d8_evidence_test.py",
     "python3 scripts/pull_measured_evidence_test.py",
-    "CONSOLE_WEB_PORT=58743 npx playwright test --config apps/web/src/features/people/ui/grid-table.playwright.ts grid-table.spec.ts grid-table-focus.spec.ts grid-table-paste.spec.ts",
   ]);
-  assert.equal(web["timeout-minutes"], Math.ceil(timings.setupAllowanceSeconds / 60) + check["timeout-minutes"]);
+  const gridTests = web.steps.find(s => s.name === "Grid table browser tests");
+  assert.ok(gridTests && !gridTests.if && !gridTests["continue-on-error"]);
+  assert.equal(gridTests["timeout-minutes"], 10);
+  assert.equal(
+    gridTests.run.trim(),
+    "CONSOLE_WEB_PORT=58743 npx playwright test --config apps/web/src/features/people/ui/grid-table.playwright.ts grid-table.spec.ts grid-table-focus.spec.ts grid-table-paste.spec.ts",
+  );
+  const opsTests = web.steps.find(s => s.name === "Ops cockpit browser tests");
+  assert.ok(opsTests);
+  assert.equal(opsTests["timeout-minutes"], 5);
+  assert.equal(opsTests.run.trim(), "E2E_WORKERS=2 npx playwright test --config playwright.ops.config.ts");
+  assert.ok(
+    web.steps.indexOf(check) < web.steps.indexOf(scriptTests)
+      && web.steps.indexOf(scriptTests) < web.steps.indexOf(gridTests)
+      && web.steps.indexOf(gridTests) < web.steps.indexOf(opsTests),
+  );
+  assert.equal(web["timeout-minutes"], Math.ceil(timings.setupAllowanceSeconds / 60) + 45 + 5 + 10 + 5);
 });
 
 test("both jobs cache Chromium by exact locked Playwright version using existing cache actions", () => {

@@ -40,8 +40,8 @@ test("regression (people-self-46): a grant on a deactivated account reads 멈춤
 
 test("regression (governance-32): the bulk preview says 부여 가능 before commit and names who has no passkey", () => {
   const preview: AccessGrantPreview = {
-    receipt_id: "r", phase: "OPERATING", step_up_required: true, refused: 0, accounts_affected: 1,
-    items: [{ index: 0, op: "grant", outcome: "OK", account_id: "a1", enforcement_after: "ENFORCED" }],
+    receipt_id: "r", expires_at: "2026-10-01T01:00:00Z", digest: "d", phase: "OPERATING", step_up_required: true, refused: 0, accounts_affected: 1,
+    items: [{ index: 0, op: "grant", outcome: "OK", account_id: "a1", enforcement_after: "ENFORCED", gains: [], losses: [] }],
   };
   const accounts = [{ id: "a1", display_name: "박담당", employee_number: "E-1", has_passkey: false, is_active: true }] as unknown as Account[];
   // The role's name goes in as a plain prop object (a JSX `role=` would read as an ARIA role to the linter).
@@ -68,8 +68,8 @@ test("F8: a pending grant shows its configured activation date", () => {
 });
 
 test("F8: bulk delayed grants never promise application today", () => {
-  const preview: AccessGrantPreview = { receipt_id: "r", phase: "OPERATING", step_up_required: true, refused: 0, accounts_affected: 1,
-    items: [{ index: 0, op: "grant", outcome: "OK", account_id: "a1", enforcement_after: "SCHEDULED" }] };
+  const preview: AccessGrantPreview = { receipt_id: "r", expires_at: "2026-10-01T01:00:00Z", digest: "d", phase: "OPERATING", step_up_required: true, refused: 0, accounts_affected: 1,
+    items: [{ index: 0, op: "grant", outcome: "OK", account_id: "a1", enforcement_after: "SCHEDULED", gains: [], losses: [] }] };
   const props = { preview, accounts: [], role: "역할", scope: "전체", end: "2027-04-08", pending: false, error: null, onBack: () => {}, onDropRefused: () => {}, onApply: () => {} };
   const html = renderToStaticMarkup(<BulkPreview {...props} />);
   expect(html).not.toContain("오늘 ~");
@@ -97,7 +97,7 @@ test("F8: scheduled preview shows the server deadline without promising immediat
 test("F8: the confirm sheet body lists grants without repeating the footer deadline", () => {
   const at = "2026-10-03T02:34:00Z";
   const items: AccessGrantPreview["items"] = [
-    { index: 0, op: "grant", outcome: "OK", account_id: "a1", enforcement_after: "SCHEDULED", activates_at: at },
+    { index: 0, op: "grant", outcome: "OK", account_id: "a1", enforcement_after: "SCHEDULED", activates_at: at, gains: [], losses: [] },
   ];
   const html = renderToStaticMarkup(<GrantPreviewSummary items={items} named={["인사 담당 (전체)"]} />);
   expect(html).toContain("인사 담당 (전체)");
@@ -108,7 +108,7 @@ test("F8: the confirm sheet body lists grants without repeating the footer deadl
 test("F8: scheduled grants use truthful copy before and after save", () => {
   const at = "2026-10-03T02:34:00Z";
   const item: AccessGrantPreview["items"][number] = {
-    index: 0, op: "grant", outcome: "OK", account_id: "a1", enforcement_after: "SCHEDULED", activates_at: at,
+    index: 0, op: "grant", outcome: "OK", account_id: "a1", enforcement_after: "SCHEDULED", activates_at: at, gains: [], losses: [],
   };
   expect(scheduledText(item)).toContain(`보안 대기 · ${fmtDateTime(at)}부터 적용`);
   const done = grantDoneText("김부장", [grant({ enforcement: "SCHEDULED", activates_at: at })]);

@@ -19,14 +19,14 @@ Partially exposed operations keep their current route and component; their refus
 | `POST /api/v1/users/me/employee-link` | exposed | expose | `/people/$id` · `SelfAccountLink` submits the command-bound passkey assertion. |
 | `POST /api/v1/users/me/employee-link/withdraw` | exposed | expose | `/people/$id` · `SelfAccountLink` withdraws its unreviewed receipt with a fresh passkey. |
 | `POST /api/v1/users/employee-link-attestations/{id}/review` | exposed | expose | `/inbox` · `SelfBindingReview` confirms or revokes an independently reviewed account link with a fresh passkey. |
-| `GET /api/platform/groups` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/platform/groups` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `PATCH /api/platform/groups/{id}` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `GET /api/platform/groups/{id}/accounts` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/platform/groups/{id}/accounts` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `DELETE /api/platform/groups/{id}/accounts/{user_id}/roles/{group_role}` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `PUT /api/platform/groups/{id}/organizations/{org_id}` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `DELETE /api/platform/groups/{id}/organizations/{org_id}` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
+| `GET /api/platform/groups` | hidden | internal | Vendor-tier group operation wrapped by `packages/api/src/platform-groups.ts` outside tenant screens. |
+| `POST /api/platform/groups` | hidden | internal | Vendor-tier group operation wrapped by `packages/api/src/platform-groups.ts` outside tenant screens. |
+| `PATCH /api/platform/groups/{id}` | hidden | internal | Vendor-tier group operation wrapped by `packages/api/src/platform-groups.ts` outside tenant screens. |
+| `GET /api/platform/groups/{id}/accounts` | hidden | internal | Vendor-tier group operation wrapped by `packages/api/src/platform-groups.ts` outside tenant screens. |
+| `POST /api/platform/groups/{id}/accounts` | hidden | internal | Vendor-tier group operation wrapped by `packages/api/src/platform-groups.ts` outside tenant screens. |
+| `DELETE /api/platform/groups/{id}/accounts/{user_id}/roles/{group_role}` | hidden | internal | Vendor-tier group operation wrapped by `packages/api/src/platform-groups.ts` outside tenant screens. |
+| `PUT /api/platform/groups/{id}/organizations/{org_id}` | hidden | internal | Vendor-tier group operation wrapped by `packages/api/src/platform-groups.ts` outside tenant screens. |
+| `DELETE /api/platform/groups/{id}/organizations/{org_id}` | hidden | internal | Vendor-tier group operation wrapped by `packages/api/src/platform-groups.ts` outside tenant screens. |
 | `PATCH /api/platform/orgs/{id}` | partial | expose | `/platform` · `Tenants`; complete refusal recovery copy. |
 | `DELETE /api/platform/orgs/{id}` | partial | expose | `/platform` · `Tenants`; complete refusal recovery copy. |
 | `POST /api/platform/orgs/{id}/admin-otp` | partial | expose | `/platform` · `Tenants`; complete refusal recovery copy. |
@@ -35,7 +35,7 @@ Partially exposed operations keep their current route and component; their refus
 | `POST /api/platform/support-sessions/{id}/approve` | hidden | allow-list | Platform administration: The tenant support-consent screen is not the platform session console. Deliver audited session review and lifecycle controls in platform administration before MVP release. Release gate: mvp. |
 | `POST /api/platform/support-sessions/{id}/end` | hidden | allow-list | Platform administration: The tenant support-consent screen is not the platform session console. Deliver audited session review and lifecycle controls in platform administration before MVP release. Release gate: mvp. |
 | `POST /api/platform/support-sessions/{id}/start` | hidden | allow-list | Platform administration: The tenant support-consent screen is not the platform session console. Deliver audited session review and lifecycle controls in platform administration before MVP release. Release gate: mvp. |
-| `GET /api/v1/access/ops-usage` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
+| `GET /api/v1/access/ops-usage` | exposed | expose | `/access/people/$accountId` · `OpsUsageCard` renders the emergency access usage log (omitted on 403). |
 | `POST /api/v1/access/requests` | partial | expose | `/access/grants` · `AccessRequests`; complete refusal recovery copy. |
 | `POST /api/v1/access/requests/{requestId}/close` | partial | expose | `/access/grants` · `AccessRequests`; complete refusal recovery copy. |
 | `DELETE /api/v1/access/roles/{roleId}` | partial | expose | `/access/roles` · `RolesPage`; complete refusal recovery copy. |
@@ -123,13 +123,13 @@ Partially exposed operations keep their current route and component; their refus
 | `PUT /api/v1/employees/{id}/records/{section}/{entry_id}` | partial | expose | `/people/$id` · `EmployeeCard`; complete refusal recovery copy. |
 | `POST /api/v1/employees/{id}/rehire` | partial | expose | `/people/$id` · `EmployeeCard`; complete refusal recovery copy. |
 | `GET /api/v1/hr/absence-exit-dashboard` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/hr/attendance-import/preview` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `GET /api/v1/hr/attendance-import/summary` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/hr/attendance-import/{run_id}/apply` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/hr/attendance-import/{run_id}/dry-run` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
+| `POST /api/v1/hr/attendance-import/preview` | exposed | expose | `/attendance?tab=import` · `ImportConsoleView` uploads spreadsheets for column preview. |
+| `GET /api/v1/hr/attendance-import/summary` | exposed | expose | `/attendance?tab=import` · `ImportConsoleView` loads prior attendance import history. |
+| `POST /api/v1/hr/attendance-import/{run_id}/apply` | exposed | expose | `/attendance?tab=import` · `ImportConsoleView` applies validated import runs with acknowledgement. |
+| `POST /api/v1/hr/attendance-import/{run_id}/dry-run` | exposed | expose | `/attendance?tab=import` · `ImportConsoleView` runs dry-run validation and exception checks. |
 | `GET /api/v1/hr/attendance-records` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `GET /api/v1/hr/attendance-records/me` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/hr/attendance-records/me` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
+| `GET /api/v1/hr/attendance-records/me` | exposed | expose | `/me/attendance` · `MeAttendanceSections` displays the signed-in employee's clock records. |
+| `POST /api/v1/hr/attendance-records/me` | exposed | expose | `/me/attendance` · `MeAttendanceSections` records clock-in and clock-out punches for the signed-in employee. |
 | `GET /api/v1/hr/attendance-summary` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `GET /api/v1/hr/leave-balances` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `GET /api/v1/hr/minimum-wage` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
@@ -146,35 +146,35 @@ Partially exposed operations keep their current route and component; their refus
 
 | Operation | Measured | Disposition | Destination or reason |
 | --- | --- | --- | --- |
-| `POST /api/v1/attendance/closes` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/attendance/closes/preflight` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/attendance/closes/{close_id}/amendments` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/attendance/exceptions` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `GET /api/v1/attendance/exceptions/{exception_id}` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/attendance/exceptions/{exception_id}/resolve` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `GET /api/v1/attendance/me/exceptions` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
+| `POST /api/v1/attendance/closes` | exposed | expose | `/attendance?tab=close` · `CloseConsoleView` executes monthly attendance close. |
+| `POST /api/v1/attendance/closes/preflight` | exposed | expose | `/attendance?tab=close` · `CloseConsoleView` evaluates preflight checks before closing. |
+| `POST /api/v1/attendance/closes/{close_id}/amendments` | exposed | expose | `/attendance?tab=close` · `CloseConsoleView` files post-close amendments. |
+| `POST /api/v1/attendance/exceptions` | exposed | expose | `/attendance?tab=issues` · `IssuesConsoleView` opens attendance exceptions from the board. |
+| `GET /api/v1/attendance/exceptions/{exception_id}` | exposed | expose | `/attendance` · `IssuesConsoleView` loads attendance exception details and evidence in the side record pane. |
+| `POST /api/v1/attendance/exceptions/{exception_id}/resolve` | exposed | expose | `/attendance?tab=issues` · `IssuesConsoleView` resolves open attendance exceptions. |
+| `GET /api/v1/attendance/me/exceptions` | exposed | expose | `/me/attendance` · `MeAttendanceSections` displays the signed-in employee's attendance exceptions. |
 | `GET /api/v1/attendance/me/schedule` | exposed | expose | `/leave` · `LeaveRequestPage` reads the signed-in employee's work schedule to count scheduled workdays across multi-day leave ranges. |
-| `GET /api/v1/attendance/me/week52` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `GET /api/v1/attendance/substitution-candidates` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `GET /api/v1/attendance/substitutions` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/attendance/substitutions` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/attendance/substitutions/{substitution_id}/cancel` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/attendance/week52/acks` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
+| `GET /api/v1/attendance/me/week52` | exposed | expose | `/me/attendance` · `MeAttendanceSections` displays the signed-in employee's weekly 52-hour projection. |
+| `GET /api/v1/attendance/substitution-candidates` | exposed | expose | `/attendance?tab=day` · `SubstitutionsSheet` searches eligible shift substitution candidates. |
+| `GET /api/v1/attendance/substitutions` | exposed | expose | `/attendance?tab=day` · `SubstitutionsSheet` lists scheduled shift substitutions. |
+| `POST /api/v1/attendance/substitutions` | exposed | expose | `/attendance?tab=day` · `SubstitutionsSheet` records shift substitutions. |
+| `POST /api/v1/attendance/substitutions/{substitution_id}/cancel` | exposed | expose | `/attendance?tab=day` · `SubstitutionsSheet` cancels scheduled substitutions. |
+| `POST /api/v1/attendance/week52/acks` | exposed | expose | `/attendance?tab=overtime` · `OvertimeConsoleView` records 52-hour warning acknowledgements. |
 
 ## payroll
 
 | Operation | Measured | Disposition | Destination or reason |
 | --- | --- | --- | --- |
 | `GET /api/v1/payroll/payslips/me` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/payroll/runs/{id}/calculate` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/payroll/runs/{id}/close-attendance` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `GET /api/v1/payroll/runs/{id}/close-preflight` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/payroll/runs/{id}/decision` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/payroll/runs/{id}/disbursement/attest` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `GET /api/v1/payroll/runs/{id}/exceptions` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/payroll/runs/{id}/exceptions/{exceptionId}/resolve` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/payroll/runs/{id}/issue-payslips` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `GET /api/v1/payroll/runs/{id}/payslip-delivery` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/payroll/runs/{id}/schedule-disbursement` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/payroll/runs/{id}/submit` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/payroll/runs/{id}/withdraw` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
+| `POST /api/v1/payroll/runs/{id}/calculate` | exposed | expose | `/payroll/runs/$id` · `RunConsole` triggers payroll run calculation. |
+| `POST /api/v1/payroll/runs/{id}/close-attendance` | exposed | expose | `/payroll/runs/$id` · `RunConsole` snapshots attendance close into the payroll run. |
+| `GET /api/v1/payroll/runs/{id}/close-preflight` | exposed | expose | `/payroll/runs/$id` · `RunConsole` loads attendance close preflight before calculation. |
+| `POST /api/v1/payroll/runs/{id}/decision` | exposed | expose | `/payroll/runs/$id` · `RunConsole` records approve or return decisions on submitted runs. |
+| `POST /api/v1/payroll/runs/{id}/disbursement/attest` | exposed | expose | `/payroll/runs/$id` · `RunConsole` attests payroll disbursement completion. |
+| `GET /api/v1/payroll/runs/{id}/exceptions` | exposed | expose | `/payroll/runs/$id` · `RunConsole` lists open and carried payroll exceptions. |
+| `POST /api/v1/payroll/runs/{id}/exceptions/{exceptionId}/resolve` | exposed | expose | `/payroll/runs/$id` · `RunConsole` resolves or acknowledges payroll exceptions. |
+| `POST /api/v1/payroll/runs/{id}/issue-payslips` | exposed | expose | `/payroll/runs/$id` · `RunConsole` issues employee payslips for approved runs. |
+| `GET /api/v1/payroll/runs/{id}/payslip-delivery` | exposed | expose | `/payroll/runs/$id` · `RunConsole` tracks payslip issuance and delivery status. |
+| `POST /api/v1/payroll/runs/{id}/schedule-disbursement` | exposed | expose | `/payroll/runs/$id` · `RunConsole` schedules payroll disbursement dates. |
+| `POST /api/v1/payroll/runs/{id}/submit` | exposed | expose | `/payroll/runs/$id` · `RunConsole` submits calculated payroll runs for approval. |
+| `POST /api/v1/payroll/runs/{id}/withdraw` | exposed | expose | `/payroll/runs/$id` · `RunConsole` withdraws submitted payroll runs back to draft. |

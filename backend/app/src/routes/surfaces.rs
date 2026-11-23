@@ -160,6 +160,10 @@ pub const CONFIGURED_ROUTE_SURFACES: &[ConfiguredRouteSurface] = &[
         console_hr_rest::identity::IDENTITY_ROUTE_PATHS,
     ),
     surface(
+        "hr-data-health",
+        console_hr_rest::data_health::DATA_HEALTH_ROUTE_PATHS,
+    ),
+    surface(
         "hr-change-sets",
         console_hr_rest::change_sets::CHANGE_SET_ROUTE_PATHS,
     ),

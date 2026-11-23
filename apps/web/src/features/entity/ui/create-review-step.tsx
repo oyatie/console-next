@@ -15,12 +15,11 @@ import { Muted } from "../../../ui/muted/muted";
 
 type Row = { key: string; step: WizardStep; title: string; text: string; state: "ok" | "warn" | "todo" };
 
-/** The last step (spec S4-review): what appears on the chart, everything typed with a way back, and what comes next. */
-export function ReviewStep({ c, goTo }: { c: CreateState; goTo: (s: WizardStep) => void }) {
+function reviewRowsFor(c: CreateState): Row[] {
   const d = c.draft;
   const corp = d.bizKind === "CORPORATION";
   const founding = isFounding(d);
-  const rows: Row[] = [
+  return [
     { key: "basics", step: "basics", title: t("entityCreate.review.basics"), text: [d.bizKind && label(BIZ_KIND, d.bizKind), d.name.trim(), d.displayName.trim() && t("entityCreate.review.short", { name: d.displayName.trim() })].filter(Boolean).join(" · "), state: "ok" },
     ...(founding ? [] : [{
       key: "certificate", step: "certificate" as const, title: t(d.bizKind === "ID_NUMBER_ORG" ? "entityCreate.step.idCert" : "entityCreate.step.certificate"),
@@ -34,42 +33,57 @@ export function ReviewStep({ c, goTo }: { c: CreateState; goTo: (s: WizardStep) 
     ...(corp ? [{ key: "registry", step: "registry" as const, title: t("entityCreate.step.registry"), text: registryText(c), state: "ok" as const }] : []),
     { key: "original", step: "certificate", title: t("entityCreate.original.title"), text: c.doc ? t("entityCreate.review.kept", { name: c.doc.file_name }) : t("entityCreate.review.noOriginal"), state: c.doc ? "ok" : "todo" },
   ];
-  const todos = rows.filter((r) => r.state !== "ok").length;
+}
+
+export function ReviewNextAside({ c, flat }: { c: CreateState; flat?: boolean }) {
+  const todos = reviewRowsFor(c).filter((r) => r.state !== "ok").length;
+  return (
+    <section className={flat ? s.side : `card ${s.side}`} aria-labelledby="next-title">
+      <div className={s.cardHead}><h2 id="next-title" className={s.cardTitle}>{t("entityCreate.review.next")}</h2></div>
+      <div className={s.cardBody}>
+        {/* company-30: the foot's primary already adds the first workplace; this card only says what follows. */}
+        <div className={s.nextCard}>
+          <Plus size={18} aria-hidden /><b>{t("entityCreate.review.firstWorkplace")}</b><Muted>{t("entityCreate.review.firstWorkplaceHint")}</Muted>
+        </div>
+        {/* company-10: pasting many workplace works once the entity exists (the chart's paste); never called "coming soon". */}
+        <div className={s.nextCard}>
+          <ClipboardPaste size={18} aria-hidden /><b>{t("entityCreate.review.paste")}</b>
+        </div>
+        <p className={s.note}><Info size={14} aria-hidden /> {todos ? t("entityCreate.review.todos", { count: todos }) : t("entityCreate.review.noTodos")}</p>
+      </div>
+    </section>
+  );
+}
+
+/** The last step (spec S4-review): what appears on the chart, everything typed with a way back, and what comes next. */
+export function ReviewStep({ c, goTo, flat }: { c: CreateState; goTo: (s: WizardStep) => void; flat?: boolean }) {
+  const rows = reviewRowsFor(c);
+  const main = (
+    <div className={s.col}>
+      <section className={flat ? undefined : "card"} aria-labelledby="preview-title">
+        <div className={s.cardHead}><h2 id="preview-title" className={s.cardTitle}>{t("entityCreate.review.preview")}</h2><span className={s.legend}><i aria-hidden />{t("entityCreate.review.new")}</span></div>
+        <Preview c={c} />
+      </section>
+      <section className={flat ? undefined : "card"} aria-labelledby="typed-title">
+        <div className={s.cardHead}><h2 id="typed-title" className={s.cardTitle}>{t("entityCreate.review.typed")}</h2><Muted>{t("entityCreate.review.typedHint")}</Muted></div>
+        <ul className={s.reviewRows}>
+          {rows.map((r) => (
+            <li key={r.key}>
+              {r.state === "ok" ? <Check size={16} aria-hidden className={s.okMark} /> : r.state === "warn" ? <TriangleAlert size={16} aria-hidden className={s.warnMark} /> : <Circle size={16} aria-hidden className={s.mark} />}
+              <b>{r.title}</b>
+              <Muted>{r.text}</Muted>
+              <Button variant="ghost" aria-label={t("entityCreate.review.editOf", { what: r.title })} onClick={() => goTo(r.step)}>{t("entityCreate.review.edit")}</Button>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  );
+  if (flat) return main;
   return (
     <div className={s.reviewLayout}>
-      <div className={s.col}>
-        <section className="card" aria-labelledby="preview-title">
-          <div className={s.cardHead}><h2 id="preview-title" className={s.cardTitle}>{t("entityCreate.review.preview")}</h2><span className={s.legend}><i aria-hidden />{t("entityCreate.review.new")}</span></div>
-          <Preview c={c} />
-        </section>
-        <section className="card" aria-labelledby="typed-title">
-          <div className={s.cardHead}><h2 id="typed-title" className={s.cardTitle}>{t("entityCreate.review.typed")}</h2><Muted>{t("entityCreate.review.typedHint")}</Muted></div>
-          <ul className={s.reviewRows}>
-            {rows.map((r) => (
-              <li key={r.key}>
-                {r.state === "ok" ? <Check size={16} aria-hidden className={s.okMark} /> : r.state === "warn" ? <TriangleAlert size={16} aria-hidden className={s.warnMark} /> : <Circle size={16} aria-hidden className={s.mark} />}
-                <b>{r.title}</b>
-                <Muted>{r.text}</Muted>
-                <Button variant="ghost" aria-label={t("entityCreate.review.editOf", { what: r.title })} onClick={() => goTo(r.step)}>{t("entityCreate.review.edit")}</Button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      </div>
-      <section className={`card ${s.side}`} aria-labelledby="next-title">
-        <div className={s.cardHead}><h2 id="next-title" className={s.cardTitle}>{t("entityCreate.review.next")}</h2></div>
-        <div className={s.cardBody}>
-          {/* company-30: the foot's primary already adds the first workplace; this card only says what follows. */}
-          <div className={s.nextCard}>
-            <Plus size={18} aria-hidden /><b>{t("entityCreate.review.firstWorkplace")}</b><Muted>{t("entityCreate.review.firstWorkplaceHint")}</Muted>
-          </div>
-          {/* company-10: pasting many workplace works once the entity exists (the chart's paste); never called "coming soon". */}
-          <div className={s.nextCard}>
-            <ClipboardPaste size={18} aria-hidden /><b>{t("entityCreate.review.paste")}</b>
-          </div>
-          <p className={s.note}><Info size={14} aria-hidden /> {todos ? t("entityCreate.review.todos", { count: todos }) : t("entityCreate.review.noTodos")}</p>
-        </div>
-      </section>
+      {main}
+      <ReviewNextAside c={c} />
     </div>
   );
 }

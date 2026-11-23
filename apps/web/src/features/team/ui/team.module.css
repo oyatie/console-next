@@ -1,0 +1,84 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.controls {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.scopeSelect {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.tableWrap {
+  min-width: 0;
+}
+
+.personCell {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.nowrap {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.actionsGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.baselineWrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.filterFindRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.desktopOnly {
+  display: inline-flex;
+}
+
+.phoneFilterSelect {
+  display: none;
+  min-width: 0;
+}
+
+@media (--phone) {
+  .controls {
+    width: auto;
+    max-width: 100%;
+  }
+
+  .filterFindRow {
+    width: 100%;
+  }
+
+  .desktopOnly {
+    display: none;
+  }
+
+  .phoneFilterSelect {
+    display: inline-flex;
+    flex: 0 0 auto;
+    max-width: 42%;
+  }
+
+  .filterFindRow > [data-list-find] {
+    flex: 1 1 0%;
+    min-width: 0;
+  }
+}

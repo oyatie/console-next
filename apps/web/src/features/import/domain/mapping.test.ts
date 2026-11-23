@@ -85,3 +85,24 @@ test("un-skipping a sheet that was never read sends skip: false, and the draft n
   expect(sheetMapping({ ...d, skip: true })).toEqual({ skip: true });
   expect(rereadsSkipped({ ...skipped, status: "needs_mapping" }, d)).toBe(false);
 });
+
+test("draftOf normalizes legacy disallowed restricted targets to null while keeping governed and ordinary targets", () => {
+  const legacy: ImportSheet = {
+    name: "Legacy",
+    status: "mapped",
+    rows: 2,
+    header_row: 1,
+    columns: [
+      { column: "A", label: "name", target: "name", source: "catalog" },
+      { column: "B", label: "rrn", target: "rrn", source: "catalog" },
+      { column: "G", label: "BaseSalary", target: "job", source: "remembered" },
+    ],
+  };
+  const d = draftOf(legacy);
+  expect(d.columns).toEqual([
+    { column: "A", label: "name", target: "name" },
+    { column: "B", label: "rrn", target: "rrn" },
+    { column: "G", label: "BaseSalary", target: null },
+  ]);
+  expect(draftProblem(d)).toBeNull();
+});

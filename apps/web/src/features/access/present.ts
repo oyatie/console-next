@@ -1,7 +1,7 @@
 // Labels for the access screens: domains, levels, reasons and states by catalog id (never the server key), one-line role
 // summaries, and the scope as every consequence names it.
-import { t } from "@console/i18n";
-import { fmtDate, fmtDateTime } from "@console/i18n/format";
+import { isMessageId, t } from "@console/i18n";
+import { fmtDateTime } from "@console/i18n/format";
 import { codeText } from "../../lib/labels";
 import { personLabel, type PersonIdentity } from "../../reference/person/present";
 import { domainText, levelText } from "../../reference/authz/present";
@@ -23,6 +23,11 @@ export const grantDoneText = (name: string, grants: readonly AccessGrant[]) => {
 };
 /** Why the server refused one operation of a batch, by its code; an unknown code falls back to the server's own words. */
 export const refusalText = (r: { code: string; message: string } | null | undefined) => (r ? codeText(`accessCodes.refusal.${r.code}`, r.message) : t("access.refused"));
+/** Screen refusal lookup for role delete / access request commands (`CommandError` / `failureText` `own`). */
+export const accessRefusal = (code: string) => {
+  const key = `accessCodes.refusal.${code}`;
+  return isMessageId(key) ? t(key) : undefined;
+};
 
 /** "HR records create & edit, org view": each line by the levels beyond view (view alone when it is the only one). */
 export const linesText = (lines: readonly AccessRoleLine[]) =>
@@ -45,17 +50,24 @@ export const storedScope = (s: AccessScope, roots: readonly OrgNode[] = []) =>
 /** A stored scope with today's headcount when the tree still holds its node (name, "and below", today's count). */
 export const scopeText = (roots: readonly OrgNode[], s: AccessScope) => (reach(roots, s) == null ? storedScope(s, roots) : scopeLabel(roots, s));
 
+const ISO_DAY = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" });
+const fmtIsoDay = (v: string) => {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? v : ISO_DAY.format(d);
+};
+
 /** "go-live ~ last day" for a grant waiting for go-live, else its first day; an open end reads "from ...". */
 export function periodText(g: { valid_from: string; valid_to?: string | null; activates_at?: string | null; enforcement: string }) {
-  const from = g.enforcement === "PREPARED" ? t("access.period.golive") : g.enforcement === "SCHEDULED" && g.activates_at ? fmtDateTime(g.activates_at) : fmtDate(g.valid_from);
+  const from = g.enforcement === "PREPARED" ? t("access.period.golive") : g.enforcement === "SCHEDULED" && g.activates_at ? fmtDateTime(g.activates_at) : fmtIsoDay(g.valid_from);
   const to = lastDay(g.valid_to);
-  return to ? t("access.period", { from, to: fmtDate(to) }) : t("access.period.open", { from });
+  return to ? t("access.period", { from, to: fmtIsoDay(to) }) : t("access.period.open", { from });
 }
 
 /** "until <date>" or "no end date" from an exclusive wire end. */
 export const untilText = (validTo: string | null | undefined) => {
   const d = lastDay(validTo);
-  return d ? t("access.until", { date: fmtDate(d) }) : t("access.until.none");
+  return d ? t("access.until", { date: fmtIsoDay(d) }) : t("access.until.none");
 };
 
 export const accountLabel = (a: PersonIdentity | undefined, fallback: string, peers: readonly PersonIdentity[] = []) =>

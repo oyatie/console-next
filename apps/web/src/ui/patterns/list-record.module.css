@@ -40,6 +40,7 @@
     overflow-y: auto;
   }
   :where([data-experience]:not([data-experience="baseline"])) .frame :is([data-pane="record"], [data-pane="related"]) {
+    --pane-footer-max-h: max(0px, min(65%, calc(100% - var(--row-h) - 120px)));
     height: 100%;
     min-height: 0;
     overflow: hidden;

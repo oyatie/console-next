@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["evaluated_at", "candidate_digest", "state", "signoffs", "feedback"]
+properties:
+  evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+  candidate_digest: {"$ref": "#/components/schemas/ObservedText"}
+  state:
+    allOf: [{"$ref": "#/components/schemas/Observation"}, {"properties": {"value": {"anyOf": [{"$ref": "#/components/schemas/Promotion"}, {"type": "null"}]}}}]
+  signoffs: {"type": "array", "items": {"$ref": "#/components/schemas/PromotionSignoff"}}
+  feedback: {"type": "array", "items": {"$ref": "#/components/schemas/FeedbackTriage"}}

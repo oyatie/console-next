@@ -16,6 +16,8 @@ export default function Buttons() {
         <Button variant="ghost">{tg("button.ghost")}</Button>
         <Button variant="danger">{tg("button.danger")}</Button>
         <Button variant="ghost-danger">{tg("button.danger")}</Button>
+        <Button variant="primary" aria-disabled="true">{tg("button.primary")}</Button>
+        <Button variant="primary" disabled>{tg("button.primary")}</Button>
         <Button disabled>{tg("form.saveDraft")}</Button>
         <ToggleButton pressed={on} onClick={() => setOn(!on)}>{tg("button.toggle")}</ToggleButton>
       </div>

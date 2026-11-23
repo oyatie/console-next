@@ -17,6 +17,8 @@ pub mod create_prepare;
 pub mod create_rehire;
 pub mod create_rehire_input;
 mod create_types;
+pub mod data_health;
+mod data_health_types;
 mod employee_number;
 pub mod home_branch;
 pub mod normalize;

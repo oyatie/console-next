@@ -137,6 +137,31 @@ for (const width of [1440, 390]) {
           await table.locator("tbody tr[data-id]").first().locator("label.check").click();
         }
 
+        const entitySelectButton = root.getByRole("button", { name: new RegExp(t("payroll.entity")) });
+        await expect(entitySelectButton).toBeVisible();
+        await expect(entitySelectButton).toHaveAttribute("aria-haspopup", "listbox");
+        await expect(entitySelectButton).toContainText(saeonUniverse.entities[0]!.name);
+        const selectBoxes = await root.locator("select").evaluateAll(els =>
+          els.map(el => {
+            const hiddenParent = el.closest('[aria-hidden="true"]');
+            return {
+              hidden: Boolean(hiddenParent),
+              wrapperWidth: hiddenParent ? Math.round(hiddenParent.getBoundingClientRect().width) : Math.round(el.getBoundingClientRect().width),
+            };
+          }),
+        );
+        for (const box of selectBoxes) {
+          expect(box.hidden && box.wrapperWidth <= 2).toBe(true);
+        }
+        if (width === 1440) {
+          await entitySelectButton.click();
+          const listbox = page.getByRole("listbox", { name: t("payroll.entity") });
+          await expect(listbox).toBeVisible();
+          await expect(listbox.getByRole("option", { name: saeonUniverse.entities[0]!.name })).toBeVisible();
+          await page.keyboard.press("Escape");
+          await expect(listbox).toHaveCount(0);
+        }
+
         if (width === 390) {
           const previewHeading = root.getByRole("heading", { name: t("payroll.run.previewTitle"), exact: true });
           const previewClipped = await previewHeading.evaluate(el => el.scrollWidth > el.clientWidth + 1);

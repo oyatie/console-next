@@ -8,7 +8,8 @@ import { Field, TextInput } from "../../../ui/field/field";
 import { Dialog } from "../../../ui/dialog";
 import { useCommand, outcomeUnknown } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
-import { changeDomainSafely, verifyDomainChange, domainQuery, type Org, type Recorded } from "../api";
+import { PasskeyError } from "../../../lib/react/passkey-error";
+import { ApiError, changeDomainSafely, verifyDomainChange, domainQuery, type Org, type Recorded } from "../api";
 import { asSlug, slugProblem } from "../domain/slug";
 
 export function DomainDialog({ org, onClose, onDone }: { org: Org; onClose: () => void; onDone: (r: Recorded) => void }) {
@@ -33,7 +34,11 @@ export function DomainDialog({ org, onClose, onDone }: { org: Org; onClose: () =
         {(p) => <TextInput {...p} value={slug} onChange={(e) => setSlug(asSlug(e.target.value))} />}
       </Field>
       {available.error && <QueryState q={available}>{() => null}</QueryState>}
-      <CommandError error={change.error}>{checking && <Button onClick={() => change.check()}>{t("requestOutcome.find")}</Button>}</CommandError>
+      {change.error instanceof ApiError ? (
+        <CommandError error={change.error}>{checking && <Button onClick={() => change.check()}>{t("requestOutcome.find")}</Button>}</CommandError>
+      ) : (
+        <PasskeyError error={change.error} />
+      )}
       <div className="form__actions">
         <Button onClick={onClose} disabled={change.isPending && !checking}>{t("common.cancel")}</Button>
         <Button type="submit" variant="primary" disabled={slug === org.slug || change.isPending || available.isFetching || !valid || available.data?.available !== true}>{t("tenants.domain.change")}</Button>

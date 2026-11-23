@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useContext, useState, type ReactNode } from "react";
 import { useActiveExperienceId } from "../../experience/dom";
+import type { ReadBack } from "../../lib/react/denied";
 import { QueryState } from "../../lib/react/query-state";
 import { queryView, type ReadState } from "../../lib/react/query-view";
 import { PageReadGate } from "../../reference/authz/ui/access-gate";
 import { Band } from "../band/band";
-import { Button } from "../button/button";
+import { Button } from "../button/button-base";
 import type { MenuAction } from "../menu/action-menu";
 import { PageHead, type PageHeadProps } from "../page-head/page-head";
 import { PageHeadActions } from "../page-head/page-head-actions";
@@ -20,9 +21,9 @@ import s from "./pattern-shell.module.css";
 /** Shared page-head slot contract used across Page Patterns `P3`–`P7` and `P12`–`P13`. */
 export type PatternHead = Pick<
   PageHeadProps,
-  "title" | "titleId" | "crumbs" | "meta" | "filters" | "tools" | "asOf" | "actions"
+  "title" | "titleId" | "crumbs" | "meta" | "filters" | "tools" | "asOf" | "actions" | "tabs"
 > & {
-  primary?: MenuAction;
+  primary?: MenuAction & { disabled?: boolean; icon?: ReactNode };
   commands?: { label: string; items: readonly MenuAction[] };
 };
 
@@ -44,6 +45,14 @@ export type PatternBaseProps = {
   overlays?: ReactNode;
   /** Status-bar segments published while mounted in an experience with a status bar. */
   statusSegments?: Parameters<typeof useScreenStatusBar>[0];
+  /** Preserve already-loaded record content behind an `inert` banner if a background refetch returns 403/404. */
+  keepOnLoss?: boolean;
+  /** Optional return link rendered on initial 403/404 refusal or missing-record empty states. */
+  back?: ReadBack;
+  /** Optional error-code copy resolver forwarded to `PageReadGate` and `QueryState`. */
+  own?: (code: string) => string | undefined;
+  /** Optional explanation rendered when the record has been deleted (`404`). */
+  removed?: string;
   /** Temporary Classic (`baseline`) fallback renderer kept until Phase 7. */
   baseline?: () => ReactNode;
 };
@@ -63,6 +72,10 @@ export function PatternShell({
   detailActive = false,
   phoneHeadAware = false,
   statusSegments,
+  keepOnLoss,
+  back,
+  own,
+  removed,
   baseline,
   children,
 }: {
@@ -76,6 +89,10 @@ export function PatternShell({
   detailActive?: boolean;
   phoneHeadAware?: boolean;
   statusSegments?: Parameters<typeof useScreenStatusBar>[0];
+  keepOnLoss?: boolean;
+  back?: ReadBack;
+  own?: (code: string) => string | undefined;
+  removed?: string;
   baseline?: () => ReactNode;
   children: () => ReactNode;
 }) {
@@ -95,9 +112,10 @@ export function PatternShell({
 
   const secondary = scope.embedded || level === 2;
   const Root = scope.landmark || secondary ? "div" : "main";
+  const lost = Boolean(keepOnLoss && q.data !== undefined && refused && !(q.isPlaceholderData && latchedRefusal));
   const gateRefused = refused || Boolean(q.isPlaceholderData && latchedRefusal);
   const showDetail =
-    detailActive && !gateRefused && Boolean(q.data) && (view === "ready" || view === "stale" || view === "offline");
+    detailActive && (!gateRefused || lost) && Boolean(q.data) && (view === "ready" || view === "stale" || view === "offline" || lost);
 
   return (
     <PageScope value={{ landmark: true, embedded: true }}>
@@ -110,6 +128,10 @@ export function PatternShell({
         {tabs}
         <PageReadGate
           q={q}
+          keepOnLoss={keepOnLoss}
+          back={back}
+          own={own}
+          removed={removed}
           head={available => {
             const hasExtra =
               available &&
@@ -141,7 +163,8 @@ export function PatternShell({
                     primary={
                       available &&
                       head.primary && (
-                        <Button variant="primary" onClick={head.primary.onAction}>
+                        <Button variant="primary" disabled={head.primary.disabled} onClick={head.primary.onAction}>
+                          {head.primary.icon}
                           {head.primary.label}
                         </Button>
                       )
@@ -154,6 +177,7 @@ export function PatternShell({
                         </>
                       ) : undefined
                     }
+                    tabs={available ? head.tabs : undefined}
                   />
                 </PageHeadingLevel>
               </Band>
@@ -162,7 +186,7 @@ export function PatternShell({
         >
           {overlays}
           <PageHeadingLevel value={2}>
-            <QueryState q={q} layout={queryLayout}>
+            <QueryState q={q} layout={queryLayout} keepOnLoss={keepOnLoss} back={back} own={own} removed={removed}>
               {children}
             </QueryState>
           </PageHeadingLevel>

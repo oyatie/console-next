@@ -98,18 +98,19 @@ Built-in labels read `common.back`, `common.closePanel`, `common.closeRelated`, 
 | `--cell-px` | `padding` |
 | `--faint` | `color` |
 | `--focus` | `box-shadow` |
-| `--frame-bottom` | `max-height` |
-| `--frame-top` | `max-height` |
+| `--frame-bottom` | `--pane-footer-max-h`, `max-height` |
+| `--frame-top` | `--pane-footer-max-h`, `max-height` |
 | `--fw-body` | `font-weight` |
 | `--fw-semibold` | `font-weight` |
 | `--ink` | `color` |
+| `--pane-footer-max-h` | `max-height` |
 | `--pane-record-w` | `flex`, `width` |
 | `--pane-related-w` | `flex`, `width` |
 | `--pane-start-w` | `flex`, `width` |
 | `--panel-w` | `--pane-record-w` |
 | `--primary` | `border-inline-start` |
 | `--queue-w` | `--pane-record-w`, `--pane-related-w`, `min-width` |
-| `--row-h` | `min-height` |
+| `--row-h` | `--pane-footer-max-h`, `min-height` |
 | `--space-1` | `gap`, `margin-inline-end`, `padding` |
 | `--space-1-5` | `flex`, `padding-block` |
 | `--space-2` | `gap`, `padding` |

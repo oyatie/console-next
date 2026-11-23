@@ -2,43 +2,41 @@
 import { expect, test } from "vitest";
 import { resolveAppHref } from "../../ui/workspace-tabs/open-tab";
 import {
+  canonicalHref,
+  isViewQueryRoute,
+  normalizeAppPath,
+  sameCanonicalHref,
+} from "./tab-href";
+import { MAX_WORKSPACE_TABS, readStoredActiveWorkspaceTab, readStoredWorkspaceTabs } from "./tab-storage";
+import {
   appendExplicitWorkspaceTab,
   closeWorkspaceTab,
-  MAX_WORKSPACE_TABS,
-  readStoredWorkspaceTabs,
   reconcileWorkspaceTabs,
 } from "./workspace-tabs-state";
+
+const nav = (pathname: string, pathLabel = "Home", isFallbackLabel = false) => ({
+  defaultHref: "/",
+  defaultLabel: "Home",
+  pathname,
+  pathLabel,
+  isFallbackLabel,
+});
 
 test("readStoredWorkspaceTabs rejects malformed payloads and returns null when empty", () => {
   expect(readStoredWorkspaceTabs(null)).toBeNull();
 });
 
 test("reconcileWorkspaceTabs pins index 0 and reuses the active working tab on normal navigation", () => {
-  const step1 = reconcileWorkspaceTabs([], undefined, {
-    defaultHref: "/",
-    defaultLabel: "Home",
-    pathname: "/",
-    pathLabel: "Home",
-  });
+  const step1 = reconcileWorkspaceTabs([], undefined, nav("/"));
   expect(step1.tabs).toEqual([{ id: "pinned-home", href: "/", label: "Home", pinned: true }]);
   expect(step1.activeId).toBe("pinned-home");
 
-  const step2 = reconcileWorkspaceTabs(step1.tabs, step1.activeId, {
-    defaultHref: "/",
-    defaultLabel: "Home",
-    pathname: "/people",
-    pathLabel: "Employees",
-  });
+  const step2 = reconcileWorkspaceTabs(step1.tabs, step1.activeId, nav("/people", "Employees"));
   expect(step2.tabs).toHaveLength(2);
   expect(step2.tabs[1]?.href).toBe("/people");
 
   // Navigating from /people to /org reuses the working tab in place instead of piling up tabs.
-  const step3 = reconcileWorkspaceTabs(step2.tabs, step2.activeId, {
-    defaultHref: "/",
-    defaultLabel: "Home",
-    pathname: "/org",
-    pathLabel: "Org structure",
-  });
+  const step3 = reconcileWorkspaceTabs(step2.tabs, step2.activeId, nav("/org", "Org structure"));
   expect(step3.tabs).toHaveLength(2);
   expect(step3.tabs[1]?.href).toBe("/org");
 });
@@ -67,22 +65,12 @@ test("appendExplicitWorkspaceTab caps open tabs at MAX_WORKSPACE_TABS and closeW
 });
 
 test("reconcileWorkspaceTabs preserves query and hash on explicit tabs when reconciled against bare pathname", () => {
-  const initial = reconcileWorkspaceTabs([], undefined, {
-    defaultHref: "/",
-    defaultLabel: "Home",
-    pathname: "/",
-    pathLabel: "Home",
-  });
+  const initial = reconcileWorkspaceTabs([], undefined, nav("/"));
   const opened = appendExplicitWorkspaceTab(initial.tabs, {
     href: "/org/entities?correction=corr-1#identifier-corrections",
     label: "Entities",
   });
-  const afterNav = reconcileWorkspaceTabs(opened.tabs, opened.activeId, {
-    defaultHref: "/",
-    defaultLabel: "Home",
-    pathname: "/org/entities",
-    pathLabel: "Entities",
-  });
+  const afterNav = reconcileWorkspaceTabs(opened.tabs, opened.activeId, nav("/org/entities", "Entities"));
   expect(afterNav.activeId).toBe(opened.activeId);
   expect(afterNav.tabs.find(tab => tab.id === opened.activeId)?.href).toBe(
     "/org/entities?correction=corr-1#identifier-corrections",
@@ -90,36 +78,11 @@ test("reconcileWorkspaceTabs preserves query and hash on explicit tabs when reco
 });
 
 test("reconcileWorkspaceTabs assigns distinct tab ids after working-tab reuse and returning home", () => {
-  const step1 = reconcileWorkspaceTabs([], undefined, {
-    defaultHref: "/",
-    defaultLabel: "Home",
-    pathname: "/",
-    pathLabel: "Home",
-  });
-  const step2 = reconcileWorkspaceTabs(step1.tabs, step1.activeId, {
-    defaultHref: "/",
-    defaultLabel: "Home",
-    pathname: "/people",
-    pathLabel: "People",
-  });
-  const step3 = reconcileWorkspaceTabs(step2.tabs, step2.activeId, {
-    defaultHref: "/",
-    defaultLabel: "Home",
-    pathname: "/org",
-    pathLabel: "Org",
-  });
-  const step4 = reconcileWorkspaceTabs(step3.tabs, step3.activeId, {
-    defaultHref: "/",
-    defaultLabel: "Home",
-    pathname: "/",
-    pathLabel: "Home",
-  });
-  const step5 = reconcileWorkspaceTabs(step4.tabs, step4.activeId, {
-    defaultHref: "/",
-    defaultLabel: "Home",
-    pathname: "/people",
-    pathLabel: "People",
-  });
+  const step1 = reconcileWorkspaceTabs([], undefined, nav("/"));
+  const step2 = reconcileWorkspaceTabs(step1.tabs, step1.activeId, nav("/people", "People"));
+  const step3 = reconcileWorkspaceTabs(step2.tabs, step2.activeId, nav("/org", "Org"));
+  const step4 = reconcileWorkspaceTabs(step3.tabs, step3.activeId, nav("/"));
+  const step5 = reconcileWorkspaceTabs(step4.tabs, step4.activeId, nav("/people", "People"));
 
   expect(step5.tabs.map(t => t.href)).toEqual(["/", "/org", "/people"]);
   const ids = step5.tabs.map(t => t.id);
@@ -196,7 +159,128 @@ test("readStoredWorkspaceTabs filters out protocol-relative hrefs", () => {
     expect(readStoredWorkspaceTabs("console.tabs.user1")).toEqual([
       { id: "pinned-home", href: "/", label: "Home", pinned: true },
     ]);
+    store.set("console.tabs.user1.active", "tab-/payroll");
+    expect(readStoredActiveWorkspaceTab("console.tabs.user1")).toBe("tab-/payroll");
+    const next = reconcileWorkspaceTabs(
+      [
+        { id: "pinned-home", href: "/", label: "Home", pinned: true },
+        { id: "tab-/payroll", href: "/payroll", label: "Payroll" },
+      ],
+      readStoredActiveWorkspaceTab("console.tabs.user1"),
+      { defaultHref: "/", defaultLabel: "Home", pathname: "/payroll/setup", pathLabel: "Pay group setup" },
+    );
+    expect(next.tabs).toHaveLength(2);
+    expect(next.tabs[1]).toEqual({ id: "tab-/payroll", href: "/payroll/setup", label: "Pay group setup" });
   } finally {
     Object.defineProperty(globalThis, "localStorage", { configurable: true, value: origLocalStorage });
   }
+});
+
+test("canonicalHref and normalizeAppPath deduplicate trailing slashes and query order while distinguishing view-query routes", () => {
+  expect(normalizeAppPath("/people/exits///")).toBe("/people/exits");
+  expect(normalizeAppPath("/")).toBe("/");
+  expect(sameCanonicalHref("/people/exits/", "/people/exits")).toBe(true);
+  expect(sameCanonicalHref("/org?filter=history&tab=changes", "/org?tab=changes&filter=history")).toBe(true);
+  expect(canonicalHref("/people/10587/?b=2&a=1")).toBe("/people/10587?a=1&b=2");
+  expect(isViewQueryRoute("/org?tab=entities")).toBe(true);
+  expect(isViewQueryRoute("/org?sel=u1")).toBe(false);
+  expect(isViewQueryRoute("/people?tab=2")).toBe(true);
+  expect(isViewQueryRoute("/people/10587?tab=events")).toBe(false);
+});
+
+test("reconcileWorkspaceTabs deduplicates stored duplicates while keeping distinct /people?tab=1..7 tabs", () => {
+  const stored = [
+    { id: "pinned-home", href: "/", label: "Home", pinned: true },
+    { id: "t1", href: "/people/exits", label: "Exit management" },
+    { id: "t2", href: "/people/exits/", label: "Exit management dup" },
+    { id: "t3", href: "/people?tab=1", label: "Tab 1" },
+    { id: "t4", href: "/people?tab=2", label: "Tab 2" },
+  ];
+  expect(reconcileWorkspaceTabs(stored, "t2", nav("/")).tabs.map(t => t.href)).toEqual([
+    "/",
+    "/people/exits",
+    "/people?tab=1",
+    "/people?tab=2",
+  ]);
+  const inactiveTrailing = reconcileWorkspaceTabs(
+    [
+      { id: "pinned-home", href: "/", label: "Home", pinned: true },
+      { id: "t1", href: "/people/exits/", label: "Exit management" },
+      { id: "t2", href: "/people/exits", label: "Exit management dup" },
+    ],
+    "pinned-home",
+    nav("/"),
+  );
+  expect(inactiveTrailing.tabs.map(t => t.href)).toEqual(["/", "/people/exits"]);
+});
+
+test("reconcileWorkspaceTabs deduplicates colliding tab ids from localStorage", () => {
+  const res = reconcileWorkspaceTabs(
+    [
+      { id: "pinned-home", href: "/", label: "Home", pinned: true },
+      { id: "pinned-home", href: "/people", label: "People", pinned: true },
+      { id: "tab-/people", href: "/org", label: "Org" },
+      { id: "tab-/people", href: "/people/exits/", label: "Exits" },
+    ],
+    "pinned-home",
+    nav("/"),
+  );
+  const ids = res.tabs.map(t => t.id);
+  expect(new Set(ids).size).toBe(ids.length);
+  expect(res.tabs[0]?.id).toBe("pinned-home");
+  expect(res.tabs[1]?.id).not.toBe("pinned-home");
+  expect(res.tabs[1]?.pinned).toBeUndefined();
+  expect(res.tabs[3]?.href).toBe("/people/exits");
+});
+
+test("reconcileWorkspaceTabs preserves hash fragments on view-query routes when reconciled with hashless tabTarget", () => {
+  const initial = reconcileWorkspaceTabs([], undefined, nav("/"));
+  for (const [hashedHref, tabTarget, label] of [
+    ["/org?tab=entities#identifier-corrections", "/org?tab=entities", "Entities"],
+    ["/org?sel=ent-1&tab=entities#identifier-corrections", "/org?tab=entities", "Entities"],
+    ["/people?view=accounts#account-42", "/people?view=accounts", "Accounts"],
+    ["/attendance?tab=close#step-2", "/attendance?tab=close", "Close"],
+    ["/statutory?tab=register#row-9", "/statutory?tab=register", "Register"],
+  ] as const) {
+    const opened = appendExplicitWorkspaceTab(initial.tabs, { href: hashedHref, label });
+    const active = reconcileWorkspaceTabs(opened.tabs, opened.activeId, nav(tabTarget, label));
+    expect(active.activeId).toBe(opened.activeId);
+    expect(active.tabs.find(tab => tab.id === opened.activeId)?.href).toBe(hashedHref);
+
+    // Reload / cold hydration (`activeId = undefined`) must also focus and preserve the hash without duplicating.
+    const reload = reconcileWorkspaceTabs(opened.tabs, undefined, nav(tabTarget, label));
+    expect(reload.tabs).toHaveLength(2);
+    expect(reload.activeId).toBe(opened.activeId);
+    expect(reload.tabs[1]?.href).toBe(hashedHref);
+  }
+  const orgEntities = appendExplicitWorkspaceTab(initial.tabs, {
+    href: "/org?tab=entities#identifier-corrections",
+    label: "Entities",
+  });
+  expect(reconcileWorkspaceTabs(orgEntities.tabs, orgEntities.activeId, nav("/org", "Org chart")).tabs[1]?.href).toBe("/org");
+});
+
+test("appendExplicitWorkspaceTab reuses non-view query variants of the same record path and respects isFallbackLabel", () => {
+  const initial = reconcileWorkspaceTabs([], undefined, nav("/"));
+  const opened = appendExplicitWorkspaceTab(initial.tabs, {
+    href: "/people/10587?tab=events",
+    label: "Ha-jun Yoon",
+  });
+  const reopened = appendExplicitWorkspaceTab(opened.tabs, {
+    href: "/people/10587",
+    label: "Ha-jun Yoon",
+  });
+  expect(reopened.tabs).toHaveLength(2);
+  expect(reopened.activeId).toBe(opened.activeId);
+
+  const loading = reconcileWorkspaceTabs(reopened.tabs, reopened.activeId, nav("/people/10587", "Employee card", true));
+  expect(loading.tabs[1]?.label).toBe("Ha-jun Yoon");
+
+  const loaded = reconcileWorkspaceTabs(loading.tabs, loading.activeId, nav("/people/10587", "Ha-jun Yoon · 10587"));
+  expect(loaded.tabs[1]?.label).toBe("Ha-jun Yoon · 10587");
+
+  const onEntities = reconcileWorkspaceTabs(initial.tabs, initial.activeId, nav("/org?tab=entities", "Entities & workplaces"));
+  const backToChart = reconcileWorkspaceTabs(onEntities.tabs, onEntities.activeId, nav("/org", "Departments & org chart"));
+  expect(backToChart.tabs[1]?.href).toBe("/org");
+  expect(backToChart.tabs[1]?.label).toBe("Departments & org chart");
 });

@@ -7,6 +7,7 @@ import { PhaseLine } from "../../../ui/page-head/phase-line";
 import { tabClass } from "../../../ui/tabs/tab-class";
 import { TabNav } from "../../../ui/tabs/tabs";
 import type { Tab } from "./attendance-page";
+import s from "./attendance-console.module.css";
 
 /**
  * The attendance page head: title, phase line and available tabs. The chain waits for served steps. Only built tabs are listed (a tab the
@@ -15,11 +16,13 @@ import type { Tab } from "./attendance-page";
  */
 export function AttendanceTabNav({ tab }: { tab: Tab }) {
   return (
-    <TabNav label={t("attendance.tabs")} overflow="scroll">
-      {(["day", "month", "overtime", "schedule", "issues", "close"] as const).map((k) => (
-        <Link key={k} from="/attendance" to="/attendance" search={search => ({ ...search, tab: k, person: undefined })} className={tabClass} aria-current={(tab === "week" ? "overtime" : tab) === k ? "page" : undefined}>{t(`attendance.tab.${k}`)}</Link>
-      ))}
-    </TabNav>
+    <div className={s.tabNavWrap}>
+      <TabNav label={t("attendance.tabs")} overflow="scroll">
+        {(["day", "month", "overtime", "schedule", "issues", "close", "import"] as const).map((k) => (
+          <Link key={k} from="/attendance" to="/attendance" search={search => ({ ...search, tab: k, person: undefined })} className={tabClass} aria-current={(tab === "week" ? "overtime" : tab) === k ? "page" : undefined}>{t(`attendance.tab.${k}`)}</Link>
+        ))}
+      </TabNav>
+    </div>
   );
 }
 

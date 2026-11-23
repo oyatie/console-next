@@ -6,7 +6,7 @@ import type { Facts } from "../domain/facts";
 
 const read = vi.hoisted(() => ({ data: {} as Facts }));
 vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: read.data }) }));
-vi.mock("../api", () => ({ factsQuery: vi.fn(), confirmProbation: vi.fn() }));
+vi.mock("../api", () => ({ factsQuery: vi.fn(), confirmProbation: vi.fn(), isFieldConflict: () => false, patchFacts: vi.fn() }));
 vi.mock("../../../lib/react/command", () => ({ useCommand: () => ({}) }));
 
 let FactsCard: typeof import("./facts-card").FactsCard;
@@ -43,4 +43,18 @@ test("a read-only record retains probation facts and offers no profile or probat
   expect(html).toContain(t("facts.probation"));
   expect(html).not.toContain(t("facts.edit"));
   expect(html).not.toContain(t("facts.probation.confirm"));
+});
+
+test("FactsForm filters NOT_ISSUED out of ID_TYPE choices unless employeeStatus is PRE_HIRE", () => {
+  card(null);
+  const activeHtml = renderToStaticMarkup(
+    <FactsCard e={{ id: "person", name: "Sample", status: "ACTIVE" } as Parameters<typeof FactsCard>[0]["e"]} editing={true} onEdit={() => {}} />,
+  );
+  expect(activeHtml).toContain(t("enum.idType.DOMESTIC_RESIDENCE"));
+  expect(activeHtml).not.toContain(t("enum.idType.NOT_ISSUED"));
+
+  const preHireHtml = renderToStaticMarkup(
+    <FactsCard e={{ id: "person", name: "Sample", status: "PRE_HIRE" } as Parameters<typeof FactsCard>[0]["e"]} editing={true} onEdit={() => {}} />,
+  );
+  expect(preHireHtml).toContain(t("enum.idType.NOT_ISSUED"));
 });

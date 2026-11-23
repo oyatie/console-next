@@ -3,9 +3,12 @@
 
 use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, StatusCode};
-use axum::routing::{get, post};
+use axum::routing::{get, post, put};
 use axum::{Extension, Json, Router};
 use console_hr_adapter_postgres::authz::authorize_hr_org_wide;
+use console_hr_adapter_postgres::import::cells_repair::{
+    ImportCellsRepairRequest, ImportCellsRepairResponse,
+};
 use console_hr_adapter_postgres::import::rollback::{
     RollbackCredentials, RollbackOutcome, RollbackPreview, RollbackRequest,
 };
@@ -22,12 +25,14 @@ use uuid::Uuid;
 
 use crate::HrApiError;
 
+pub const IMPORT_CELLS_PATH: &str = "/api/v1/employees/import/{run_id}/cells";
 pub const IMPORT_RUNS_PATH: &str = "/api/v1/employee-import-runs";
 pub const IMPORT_RUN_PATH: &str = "/api/v1/employee-import-runs/{run_id}";
 pub const IMPORT_ROLLBACK_PREVIEW_PATH: &str =
     "/api/v1/employee-import-runs/{run_id}/rollback/preview";
 pub const IMPORT_ROLLBACK_PATH: &str = "/api/v1/employee-import-runs/{run_id}/rollback";
 pub const IMPORT_RUN_ROUTE_PATHS: &[&str] = &[
+    IMPORT_CELLS_PATH,
     IMPORT_RUNS_PATH,
     IMPORT_RUN_PATH,
     IMPORT_ROLLBACK_PREVIEW_PATH,
@@ -42,6 +47,7 @@ struct ImportRunsState {
 
 pub fn router(hr: HrService, passkeys: Option<PasskeyService>) -> Router {
     Router::new()
+        .route(IMPORT_CELLS_PATH, put(repair_cells))
         .route(IMPORT_RUNS_PATH, get(list))
         .route(IMPORT_RUN_PATH, get(record))
         .route(IMPORT_ROLLBACK_PREVIEW_PATH, post(preview))
@@ -146,4 +152,19 @@ async fn rollback(
         StatusCode::OK
     };
     Ok((status, Json(outcome)))
+}
+
+async fn repair_cells(
+    State(state): State<ImportRunsState>,
+    Extension(principal): Extension<Principal>,
+    Path(run_id): Path<Uuid>,
+    Json(body): Json<ImportCellsRepairRequest>,
+) -> Result<Json<ImportCellsRepairResponse>, HrApiError> {
+    authorize_hr_org_wide(&principal, Feature::EmployeeDirectoryManage)?;
+    Ok(Json(
+        state
+            .hr
+            .repair_import_cells(principal, run_id, body)
+            .await?,
+    ))
 }

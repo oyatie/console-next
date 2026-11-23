@@ -54,6 +54,7 @@ const screen = (q: ReadState = readyRead) => (
     find={mark("find")}
     filters={mark("filters")}
     tools={mark("tools")}
+    stats={mark("stats")}
     notes={mark("notes")}
     list={
       <div role="grid" aria-label="Worklist">
@@ -83,6 +84,7 @@ test.each([false, true])("Worklist places every supplied region once with one ma
     "find",
     "filters",
     "tools",
+    "stats",
     "notes",
     "list",
     "schedule",
@@ -115,6 +117,7 @@ test("Worklist strips every data region and command on 403 refusal while keeping
     "find",
     "filters",
     "tools",
+    "stats",
     "notes",
     "list",
     "schedule",
@@ -144,6 +147,7 @@ test.each(["loading", "failed"])("Worklist %s keeps commands and overlays mounte
   expect(html).toContain('data-contract-region="overlays"');
   expect(html).toContain(">New item</button>");
   expect(html).not.toContain('data-contract-region="list"');
+  expect(html).not.toContain('data-contract-region="stats"');
   expect(html).not.toContain('data-contract-region="schedule"');
   if (state === "failed") expect(html).toContain("worklist-failure");
 });

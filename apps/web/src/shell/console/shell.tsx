@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { lazy, Suspense, useCallback, useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react";
-import { Banknote, CalendarDays, Settings } from "lucide-react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { session } from "@console/api";
 import { i18n, t } from "@console/i18n";
@@ -18,6 +17,8 @@ import { WorkspaceTabs } from "../../ui/workspace-tabs/workspace-tabs";
 import { ShellFrame, type ShellLayoutProps } from "../frame/shell-frame";
 import { activeLink, type NavLink } from "../nav";
 import { ConsoleTopBar } from "./console-top-bar";
+import { tabIconForHref } from "./tab-icon";
+import { useResolvedTabTitle } from "./tab-titles";
 import { useConsoleCounts } from "./use-console-counts";
 import { useWorkspaceTabs } from "./workspace-tabs-state";
 import s from "./shell.module.css";
@@ -41,19 +42,6 @@ const ConsolePhoneBottom = lazy(() => chunk(import("./console-phone-chrome")).th
 const OutageBanner = lazy(() => chunk(import("../../ui/live/outage-banner")).then(m => ({ default: m.OutageBanner })));
 const StalenessBar = lazy(() => chunk(import("../../ui/live/staleness-bar")).then(m => ({ default: m.StalenessBar })));
 
-function tabIconForHref(href: string, allLinks: readonly NavLink[]): ReactNode {
-  const cut = href.search(/[?#]/);
-  const path = (cut === -1 ? href : href.slice(0, cut)) || "/";
-  if (path === "/leave") return <CalendarDays size={14} aria-hidden="true" />;
-  if (path === "/payslips") return <Banknote size={14} aria-hidden="true" />;
-  if (path === "/account" || path.startsWith("/account/")) return <Settings size={14} aria-hidden="true" />;
-  const matchedHref = path === "/" || path === "/inbox" ? "/" : activeLink(path, allLinks);
-  const Icon =
-    (matchedHref ? allLinks.find(link => link.to === matchedHref)?.icon : undefined) ??
-    allLinks[0]?.icon;
-  return Icon ? <Icon size={14} aria-hidden="true" /> : null;
-}
-
 export function ConsoleShell(props: { children?: ReactNode; pending?: boolean }) {
   return <ShellFrame layout={ConsoleLayout} {...props} />;
 }
@@ -71,7 +59,10 @@ function ConsoleLayout({
   onSearch,
   phoneHeader,
 }: ShellLayoutProps) {
-  const { pathname } = useLocation();
+  const location = useLocation();
+  const pathname = location.pathname;
+  const searchStr = location.searchStr ?? "";
+  const currentHref = location.href ?? `${pathname}${searchStr}${location.hash ?? ""}`;
   const navigate = useNavigate();
   const isPhone = useSyncExternalStore(subscribePhoneQuery, getPhoneSnapshot, () => false);
   const claims = useSyncExternalStore(session.subscribe, () => session.claims);
@@ -100,14 +91,12 @@ function ConsoleLayout({
     [allLinks, inboxCount, approvalsCount],
   );
 
-  const currentTitle = useMemo(() => {
-    if (pathname === "/leave") return t("leave.title");
-    if (pathname === "/payslips") return t("shell.title.payslip");
-    if (pathname === "/account" || pathname.startsWith("/account/")) return t("shell.profile");
-    const matched = allLinks.find(link => link.to === currentModuleTo);
-    if (matched) return t(matched.label);
-    return platform ? t("shell.link.tenants") : t("shell.link.home");
-  }, [pathname, allLinks, currentModuleTo, platform]);
+  const { title: currentTitle, isFallback, tabTarget } = useResolvedTabTitle({
+    pathname,
+    searchStr,
+    allLinks,
+    platform,
+  });
 
   const defaultHref = platform ? "/platform" : "/";
   const defaultLabel = platform ? t("shell.link.tenants") : t("shell.link.home");
@@ -123,8 +112,10 @@ function ConsoleLayout({
     principal: session.principal,
     defaultHref,
     defaultLabel,
-    pathname,
+    pathname: tabTarget,
+    currentHref,
     pathLabel: currentTitle,
+    isFallbackLabel: isFallback,
     onNavigate: navigateToHref,
   });
 
@@ -166,9 +157,12 @@ function ConsoleLayout({
   const displayName = rawName && roleMeta ? `${shortName} · ${roleMeta}` : shortName;
   const phoneActiveId = pathname === "/leave" || pathname === "/payslips"
     ? pathname
-    : pathname === "/account" || pathname.startsWith("/account/")
-      ? "/account"
-      : currentModuleTo;
+    : phoneHeader?.phoneNav === "self-service" &&
+        (pathname === "/people/certificates" || pathname.startsWith("/people/certificates/"))
+      ? "/people/certificates"
+      : pathname === "/me/attendance" || pathname === "/me/desk" || pathname === "/account" || pathname.startsWith("/account/")
+        ? "/account"
+        : currentModuleTo;
   const shellOwnsH1 = isPhone && Boolean(phoneHeader?.shellOwnsH1);
   const phoneHeaderValue = useMemo(() => ({ shellOwnsH1 }), [shellOwnsH1]);
 
@@ -202,6 +196,8 @@ function ConsoleLayout({
                   renderLink={(tab, props) => (
                     <Link
                       to={tab.href}
+                      activeOptions={{ exact: true, includeSearch: true }}
+                      activeProps={() => ({})}
                       className={props.className}
                       aria-current={props["aria-current"]}
                       data-workspace-tab=""

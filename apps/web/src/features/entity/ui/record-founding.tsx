@@ -18,11 +18,11 @@ import { useRecordLock } from "./use-record-lock";
 import s from "./record.module.css";
 
 /** A entity being founded (company-08): what it still waits for, and the one entry that ends the founding. */
-export function FoundingCard({ e }: { e: LegalEntity }) {
+export function FoundingCard({ e, flat }: { e: LegalEntity; flat?: boolean }) {
   const [open, setOpen] = useState(false);
   const locked = useRecordLock() !== null;
   return (
-    <section className="card" aria-labelledby="founding-title">
+    <section className={flat ? undefined : "card"} aria-labelledby="founding-title">
       <div className={s.cardHead}><Landmark size={16} aria-hidden /><h2 id="founding-title" className={s.cardTitle}>{t("entityOps.founding.chip")}</h2></div>
       <div className={s.cardBody}>
         <p>{t("entityOps.founding.waiting")}</p>

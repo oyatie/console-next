@@ -65,6 +65,7 @@ publish = false
 [workspace.dependencies]
 console-ops-domain = { path = "crates/ops/domain" }
 console-ops-application = { path = "crates/ops/application" }
+console-ops-adapter-fs = { path = "crates/ops/adapter-fs" }
 console-ops-adapter-http = { path = "crates/ops/adapter-http" }
 console-ops-rest = { path = "crates/ops/rest" }
 console-platform-key-notice = { path = "crates/platform/key-notice" }

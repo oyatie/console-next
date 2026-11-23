@@ -10,7 +10,7 @@ import { shown } from "../shown";
  * `look`: `outline` is a box inside a sheet, panel or section (no shadow: it is not lifted off the page); `dashed` a
  * proposal or a value not recorded yet; `muted` a quoted record (a log line, what the other writer saved).
  */
-export function Card({ title, titleId, label, meta, tools, level = 2, flush, look, id, loading, density, children }: {
+export function Card({ title, titleId, label, meta, tools, level = 2, flush, look, topRule, id, loading, density, children }: {
   title?: ReactNode;
   /** The title's id, for a screen that moves focus to it (the heading takes focus, never a tab stop). */
   titleId?: string;
@@ -20,7 +20,8 @@ export function Card({ title, titleId, label, meta, tools, level = 2, flush, loo
   tools?: ReactNode;
   level?: 2 | 3;
   flush?: boolean;
-  look?: "outline" | "dashed" | "muted";
+  look?: "outline" | "dashed" | "muted" | "flush";
+  topRule?: boolean;
   id?: string;
   loading?: boolean;
   density?: "dense" | "default";
@@ -30,7 +31,7 @@ export function Card({ title, titleId, label, meta, tools, level = 2, flush, loo
   const headId = titleId ?? autoId;
   const H = level === 3 ? "h3" : "h2";
   return (
-    <section id={id} className={s.card} data-look={look} data-density={density} aria-busy={loading || undefined} aria-labelledby={shown(title) ? headId : undefined} aria-label={shown(title) ? undefined : label}>
+    <section id={id} className={s.card} data-look={look} data-top-rule={topRule || undefined} data-density={density} aria-busy={loading || undefined} aria-labelledby={shown(title) ? headId : undefined} aria-label={shown(title) ? undefined : label}>
       {(shown(title) || shown(tools)) && (
         <div className={s.head}>
           {shown(title) && <H id={headId} className={s.title} tabIndex={-1}>{title}</H>}

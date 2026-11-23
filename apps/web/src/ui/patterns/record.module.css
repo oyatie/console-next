@@ -38,6 +38,10 @@
   border-block-end: 1px solid var(--border);
 }
 
+:where([data-experience]:not([data-experience="baseline"])) .strip {
+  padding: var(--space-3) var(--space-4);
+}
+
 .sections {
   display: flex;
   flex-direction: column;

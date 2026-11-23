@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { COPY } from "../copy";
@@ -16,6 +16,7 @@ import {
 import { classifyOpsError, hasOpsAction } from "../lib/auth";
 import { fmtJoin, formatCount, formatUtcShort, formatUtcTimestamp } from "../lib/format";
 import { useOpsContext } from "../lib/ops-context";
+import { useIsPhone } from "../lib/use-is-phone";
 import { CompactTable, type TableColumn } from "../ui/compact-table";
 import { O0State } from "../ui/o0-state";
 import { ObservedValue } from "../ui/observed-value";
@@ -24,6 +25,7 @@ import { PaneGrid } from "../ui/pane-grid";
 import { SelectField } from "../ui/select-field";
 import { StatRow } from "../ui/stat-row";
 import { AlertDetailCloseButton, AlertDetailPane } from "./alert-detail-pane";
+import { buildAlertsTabs } from "./hub-tabs";
 import s from "./alerts-screen.module.css";
 
 const STATE_OPTIONS = [
@@ -41,32 +43,20 @@ const SEVERITY_OPTIONS = [
   { value: "Ticket", label: "Ticket" },
 ] as const;
 
-const PHONE_QUERY = "(max-width: 767px)";
-
-function subscribePhoneQuery(listener: () => void): () => void {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => {};
-  const mql = window.matchMedia(PHONE_QUERY);
-  mql.addEventListener("change", listener);
-  return () => mql.removeEventListener("change", listener);
-}
-
-function getPhoneSnapshot(): boolean {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
-  return window.matchMedia(PHONE_QUERY).matches;
-}
-
 export function AlertsScreen({
   selectedKey,
+  initialAction,
   filters,
   onFiltersChange,
 }: {
   selectedKey?: string;
+  initialAction?: "ack";
   filters: { state?: OpsAlertState; severity?: OpsSeverity; component?: string };
   onFiltersChange: (next: { state?: OpsAlertState; severity?: OpsSeverity; component?: string }) => void;
 }) {
   const { me, live, reportEvaluatedAt } = useOpsContext();
   const navigate = useNavigate();
-  const isPhone = useSyncExternalStore(subscribePhoneQuery, getPhoneSnapshot, () => false);
+  const isPhone = useIsPhone();
   const allowed = hasOpsAction(me, "read.alerts");
 
   const query = useQuery({
@@ -99,7 +89,7 @@ export function AlertsScreen({
   if (query.isPending) {
     return (
       <div className={s.page}>
-        <PageHead title={COPY.alerts.title} meta={COPY.loading.alertsTitle} />
+        <PageHead title={COPY.alerts.title} meta={COPY.loading.alertsTitle} tabs={buildAlertsTabs("groups")} />
       </div>
     );
   }
@@ -197,13 +187,7 @@ export function AlertsScreen({
 
   const centerContent = (
     <div className={s.page}>
-      <PageHead
-        title={COPY.alerts.title}
-        tabs={[
-          { id: "groups", to: "/alerts", label: COPY.alerts.groupsTab, active: true },
-          { id: "silences", to: "/alerts/silences", label: COPY.alerts.silencesTab, active: false },
-        ]}
-      />
+      <PageHead title={COPY.alerts.title} tabs={buildAlertsTabs("groups")} />
       {deliveryUnverified ? (
         <div className={s.banner} role="alert">
           <strong>{COPY.alerts.deliveryUnverifiedTitle}</strong>
@@ -291,11 +275,13 @@ export function AlertsScreen({
       record={
         selectedKey ? (
           <AlertDetailPane
+            key={`${selectedKey}:${initialAction ?? ""}`}
             groupKey={selectedKey}
             liveStatus={live.status}
             disconnectedAgeS={live.disconnectedAgeS}
             closeHref="/alerts"
             isMobileFull
+            initialAction={initialAction}
           />
         ) : undefined
       }

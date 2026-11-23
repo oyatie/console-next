@@ -31,6 +31,11 @@ for (const input of ["wheel", "keyboard"]) test(`exit list prefetches only settl
     reads.push(key);
     return { status: 200, json: rows.find(row => row.id === key)! };
   });
+  // Register literal /counts after {id} so Playwright LIFO matches /counts before the {id} wildcard.
+  await mockRoute(page, "get", "/api/v1/hr/exit-cases/counts", {
+    status: 200,
+    json: { all: rows.length, open: rows.length, closed: 0, reported: rows.length, hr_confirmed: 0, hq_confirmed: 0, settlement_ready: 0, approval_drafted: 0, submitted: 0, rejected: 0, cancelled: 0 },
+  });
   try {
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.goto("/people?tab=exits");

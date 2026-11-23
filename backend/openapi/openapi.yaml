@@ -89,6 +89,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/audit:
     get:
+      x-console-authz: {"permission": "audit:view", "scope": "any"}
       tags:
         - audit
       operationId: listAuditLog
@@ -120,11 +121,21 @@ paths:
         required: false
         schema:
           type: string
+      - name: target_id
+        in: query
+        required: false
+        schema:
+          type: string
       - name: actor
         in: query
         required: false
         schema:
           $ref: '#/components/schemas/Uuid'
+      - name: trace_id
+        in: query
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           description: Paginated audit records.
@@ -143,6 +154,97 @@ paths:
                       type: object
                       required: [occurred_at]
                       properties:
+                        id:
+                          type: string
+                          format: uuid
+                        actor:
+                          type: string
+                          format: uuid
+                          nullable: true
+                        action:
+                          type: string
+                        target_type:
+                          type: string
+                        target_id:
+                          type: string
+                        branch_id:
+                          type: string
+                          format: uuid
+                          nullable: true
+                        before_snap:
+                          nullable: true
+                        after_snap:
+                          nullable: true
+                        ip:
+                          type: string
+                          nullable: true
+                        user_agent:
+                          type: string
+                          nullable: true
+                        auth_method:
+                          type: string
+                          nullable: true
+                        device:
+                          type: string
+                          nullable: true
+                        classification_badges:
+                          type: array
+                          items:
+                            type: string
+                          nullable: true
+                        anomaly:
+                          type: boolean
+                          nullable: true
+                        reason:
+                          type: string
+                          nullable: true
+                        trace_id:
+                          type: string
+                        span_id:
+                          type: string
+                        source:
+                          type: string
+                          nullable: true
+                        change_mode:
+                          type: string
+                          nullable: true
+                        reason_code:
+                          type: string
+                          nullable: true
+                        decision_snapshot:
+                          nullable: true
+                        command_id:
+                          type: string
+                          format: uuid
+                          nullable: true
+                        scope_ids:
+                          type: array
+                          items:
+                            type: string
+                            format: uuid
+                          nullable: true
+                        actor_kind:
+                          type: string
+                          nullable: true
+                        principal_type:
+                          type: string
+                          nullable: true
+                        session_id:
+                          type: string
+                          format: uuid
+                          nullable: true
+                        outcome:
+                          type: string
+                          nullable: true
+                        actor_display:
+                          type: string
+                          nullable: true
+                        actor_employer:
+                          type: string
+                          nullable: true
+                        row_hash_version:
+                          type: integer
+                          format: int32
                         occurred_at:
                           $ref: '#/components/schemas/Timestamp'
                       additionalProperties: true
@@ -2590,6 +2692,7 @@ paths:
   /api/v1/access/access-log:
     get:
       # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "audit:view", "scope": "tenant"}
       tags: [access]
       operationId: listAccessLog
       summary: Tenant access records with monthly flag totals
@@ -2679,6 +2782,234 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/access/access-log/reviews/{period}:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "audit:view", "scope": "tenant"}
+      tags: [access]
+      operationId: getAccessLogReview
+      summary: Read the monthly tenant access-log review state without exposing frozen chunks
+      description: Requires tenant-wide Cedar audit::view. Records access_log.review_read before returning.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: period
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'
+      responses:
+        '200':
+          description: Current monthly review projection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessLogReview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: access_denied or scope_tenant_wide_only.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/access/access-log/reviews/{period}/complete:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [access]
+      operationId: completeAccessLogReview
+      summary: Complete a monthly tenant access-log review after all findings and follow-ups resolve
+      description: Requires tenant-wide Cedar audit::approve and a fresh passkey step-up assertion once all frozen targets are resolved.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 16
+          maxLength: 200
+      - name: period
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                step_up:
+                  $ref: '#/components/schemas/PasskeyLoginFinishRequest'
+      responses:
+        '200':
+          description: Completed monthly review projection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessLogReview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: access_denied or scope_tenant_wide_only.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '428':
+          description: step_up_required — passkey step-up assertion required to sign off.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/access/access-log/reviews/{period}/findings:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [access]
+      operationId: recordAccessLogFinding
+      summary: Record or supersede a finding on a frozen flagged event or daily summary
+      description: Requires tenant-wide Cedar audit::approve. Appends an immutable finding audit record for the started review period.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 16
+          maxLength: 200
+      - name: period
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [disposition]
+              properties:
+                event_id:
+                  type: string
+                  format: uuid
+                  nullable: true
+                summary:
+                  type: object
+                  nullable: true
+                  additionalProperties: false
+                  required: [actor, day, flag]
+                  properties:
+                    actor: { type: string, format: uuid }
+                    day: { type: string, format: date }
+                    flag: { type: string }
+                disposition:
+                  type: string
+                  enum: [confirmed, action_required]
+                outcome:
+                  type: string
+                  nullable: true
+                note:
+                  type: string
+                  nullable: true
+                follow_up:
+                  type: object
+                  nullable: true
+                  additionalProperties: false
+                  required: [kind]
+                  properties:
+                    kind: { type: string }
+                    ref: { type: string, nullable: true }
+                    closed: { type: boolean, nullable: true }
+      responses:
+        '200':
+          description: Updated monthly review projection including the recorded finding.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessLogReview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: access_denied or scope_tenant_wide_only.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/access/access-log/reviews/{period}/start:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [access]
+      operationId: startAccessLogReview
+      summary: Start and freeze a monthly tenant access-log review
+      description: Requires tenant-wide Cedar audit::approve. Freezes flagged events and daily summaries once per closed period.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 16
+          maxLength: 200
+      - name: period
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'
+      responses:
+        '200':
+          description: Started or existing review projection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessLogReview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: access_denied or scope_tenant_wide_only.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/access/accounts/{accountId}/effective:
     get:
       x-console-authz: {"permission": "access:view", "scope": "any"}
@@ -8766,6 +9097,46 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/employees/import/{run_id}/cells:
+    put:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "EmployeeDirectoryManage", "scope": "hr"}
+      tags:
+      - employees
+      operationId: repairEmployeeImportCells
+      summary: Repair canonical cell values for staged candidate rows in an employee import run
+      description: Requires EmployeeDirectoryManage. Validates and merges inline canonical cell repairs into dry_run_decisions.cells while rejecting restricted PII targets and two-digit dates.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: run_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportCellsRepairRequest'
+      responses:
+        '200':
+          description: Validated cell repairs merged into the staged import run decisions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportCellsRepairResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /api/v1/employees/import/{run_id}/dry-run:
     post:
       tags:
@@ -8979,6 +9350,55 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
         '422':
           $ref: '#/components/responses/ValidationError'
+  /api/v1/employees/import/{run_id}/rows/{source_key}/identifier:
+    put:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "EmployeeDirectoryManage", "scope": "hr"}
+      tags:
+      - employees
+      operationId: recordImportRowIdentifier
+      summary: Stage a step-up sealed registration number onto a draft employee import row
+      description: Requires EmployeeDirectoryManage and a fresh PII_RECORD passkey step-up assertion bound to (run_id, source_key). Validates and seals the registration number into data_import_row_identities without mutating raw import rows or echoing sensitive digits.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: run_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      - name: source_key
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportRowIdentifierRequest'
+      responses:
+        '200':
+          description: Sealed draft identifier staged for dry run and apply.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportRowIdentifierResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          description: rrn_record_rate_limited.
+        '503':
+          description: rrn_vault_unavailable.
   /api/v1/employees/import/{run_id}/signoff:
     post:
       tags:
@@ -16610,6 +17030,61 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/hr/people/data-health:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "hr"}
+      tags:
+      - employees
+      operationId: getPeopleDataHealth
+      summary: Tenant- and branch-scoped people data-health overview
+      description: Returns batched statutory register completeness, identity document coverage, workplace and department placement counts, boolean-only bank account readiness, identity review counts, failed lifecycle action counts, bounded zero-PII drilldown items, and EmployeeDirectoryManage-gated latest import status.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: category
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - birth
+          - job
+          - hire
+          - contractEnd
+          - sex
+          - address
+          - career
+          - rrn_missing
+          - unplaced
+          - department_missing
+          - bank_account_missing
+          - identity_review
+          - failed_action
+          - register_incomplete
+        description: Filter drilldown items to employees missing the specified category.
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+        description: Maximum number of drilldown items returned (1..=50).
+      responses:
+        '200':
+          description: People data-health metrics and bounded zero-PII drilldown items.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PeopleDataHealthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /api/v1/hr/readiness-summary:
     get:
       tags:
@@ -26807,6 +27282,38 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
   /api/v1/privacy/rights-requests:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [Compliance]
+      operationId: listPrivacyRightsIntake
+      summary: List tenant privacy rights intake requests under live Cedar placement
+      security: [{ bearerAuth: [] }]
+      parameters:
+      - { name: cursor, in: query, required: false, schema: { type: string, format: uuid } }
+      - { name: status, in: query, required: false, schema: { type: string, enum: [RECEIVED, DECIDED] } }
+      responses:
+        '200':
+          description: Tenant intake page filtered by live Cedar placement.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, next_cursor, as_of]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [request, subject_name]
+                      properties:
+                        request: { $ref: '#/components/schemas/PrivacyRightsReceipt' }
+                        subject_name: { type: string }
+                  next_cursor: { type: string, nullable: true }
+                  as_of: { type: string, format: date }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
     post:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       tags: [Compliance]
@@ -26910,6 +27417,41 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /api/v1/privacy/rights-requests/received:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [Compliance]
+      operationId: receiveOffAppPrivacyRightsRequest
+      summary: Record an off-app privacy rights receipt on behalf of a tenant subject
+      security: [{ bearerAuth: [] }]
+      parameters:
+      - { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 16, maxLength: 200 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [subject_user_id, controller, channel, agent, identity_method, received_on, kinds]
+              properties:
+                subject_user_id: { type: string, format: uuid }
+                controller: { type: string, enum: [TENANT] }
+                channel: { type: string, enum: [PHONE, LETTER, EMAIL, IN_PERSON] }
+                agent: { type: string, enum: [SUBJECT, LEGAL_REPRESENTATIVE, AUTHORIZED] }
+                mandate_received: { type: boolean, default: false }
+                identity_method: { type: string, enum: [SIGNED_IN, PASSKEY, ID_DOCUMENT_SEEN, KNOWN_CONTACT, AGENT_MANDATE] }
+                received_on: { type: string, format: date }
+                kinds: { type: array, minItems: 1, items: { type: string, enum: [ACCESS, CORRECTION, DELETION, SUSPENSION, WITHDRAWAL] } }
+                detail: { type: string, maxLength: 2000, default: '' }
+      responses:
+        '200': { description: Recorded off-app receipt or exact idempotent replay., content: { application/json: { schema: { $ref: '#/components/schemas/PrivacyRightsReceipt' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
   /api/v1/privacy/rights-requests/{id}:
     get:
       # SPDX-License-Identifier: LicenseRef-Proprietary
@@ -26933,6 +27475,113 @@ paths:
                   as_of: { type: string, format: date }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /api/v1/privacy/rights-requests/{id}/decide:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [Compliance]
+      operationId: decidePrivacyRightsRequest
+      summary: Decide one requested privacy right with bound passkey step-up and SoD enforcement
+      security: [{ bearerAuth: [] }]
+      description: >
+        Requires a fresh PRIVACY_REQUEST_DECIDE passkey step-up bound to the request UUID
+        and SHA-256 of the serialized decision payload (kind, outcome, reason, note, decided_on).
+        Enforces Cedar permission, natural-person SoD against the subject, off-app filer,
+        and prior decision maker on objections.
+      parameters:
+      - { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 16, maxLength: 200 } }
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [kind, outcome, step_up]
+              properties:
+                kind: { type: string, enum: [ACCESS, CORRECTION, DELETION, SUSPENSION, WITHDRAWAL] }
+                outcome: { type: string, enum: [GRANTED, PARTIAL, REFUSED] }
+                reason: { type: string, nullable: true }
+                note: { type: string, nullable: true }
+                decided_on: { type: string, format: date, nullable: true }
+                step_up: { $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope' }
+      responses:
+        '200': { description: Updated privacy rights receipt or exact idempotent replay., content: { application/json: { schema: { $ref: '#/components/schemas/PrivacyRightsReceipt' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /api/v1/privacy/rights-requests/{id}/objection:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [Compliance]
+      operationId: objectPrivacyRightsRequest
+      summary: File an objection against a prior privacy rights request decision
+      security: [{ bearerAuth: [] }]
+      parameters:
+      - { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 16, maxLength: 200 } }
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [kinds]
+              properties:
+                kinds: { type: array, minItems: 1, items: { type: string, enum: [ACCESS, CORRECTION, DELETION, SUSPENSION, WITHDRAWAL] } }
+                detail: { type: string, maxLength: 2000, default: '' }
+                channel: { type: string, enum: [IN_APP, PHONE, LETTER, EMAIL, IN_PERSON] }
+                agent: { type: string, enum: [SUBJECT, LEGAL_REPRESENTATIVE, AUTHORIZED] }
+                mandate_received: { type: boolean, default: false }
+                identity_method: { type: string, enum: [SIGNED_IN, PASSKEY, ID_DOCUMENT_SEEN, KNOWN_CONTACT, AGENT_MANDATE] }
+                received_on: { type: string, format: date, nullable: true }
+      responses:
+        '200': { description: Objection receipt or exact idempotent replay., content: { application/json: { schema: { $ref: '#/components/schemas/PrivacyRightsReceipt' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /api/v1/privacy/rights-requests/{id}/postpone:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [Compliance]
+      operationId: postponePrivacyRightsRequest
+      summary: Postpone one requested privacy right with bound passkey step-up and SoD enforcement
+      security: [{ bearerAuth: [] }]
+      description: >
+        Requires a fresh PRIVACY_REQUEST_DECIDE passkey step-up bound to the request UUID
+        and SHA-256 of the serialized postponement payload (kind, reason, note, decided_on).
+      parameters:
+      - { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 16, maxLength: 200 } }
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [kind, reason, note, step_up]
+              properties:
+                kind: { type: string, enum: [ACCESS, CORRECTION, DELETION, SUSPENSION, WITHDRAWAL] }
+                reason: { type: string }
+                note: { type: string }
+                decided_on: { type: string, format: date, nullable: true }
+                step_up: { $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope' }
+      responses:
+        '200': { description: Updated privacy rights receipt or exact idempotent replay., content: { application/json: { schema: { $ref: '#/components/schemas/PrivacyRightsReceipt' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
         '503': { $ref: '#/components/responses/ServiceUnavailable' }
   /api/v1/production/capacity-slots:
     get:
@@ -35351,6 +36000,55 @@ components:
             target_types:
               type: array
               items: *access_log_code_choice
+    AccessLogReview:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [period, scope, reviewer, started_at, reviewed_at, due, flags_seen, findings, follow_up, state]
+      properties:
+        id:
+          type: string
+          format: uuid
+        period:
+          description: Review period metadata or YYYY-MM label before start.
+          oneOf:
+            - type: string
+            - type: object
+              properties:
+                from: { type: string, format: date-time }
+                to: { type: string, format: date-time }
+                time_zone: { type: string }
+        scope:
+          type: string
+        reviewer:
+          type: [string, 'null']
+          format: uuid
+        started_at:
+          type: [string, 'null']
+          format: date-time
+        reviewed_at:
+          type: [string, 'null']
+          format: date-time
+        due:
+          type: string
+          format: date-time
+        flags_seen:
+          type: object
+          nullable: true
+          additionalProperties: true
+        findings:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        follow_up:
+          type: object
+          required: [open, total]
+          properties:
+            open: { type: integer, minimum: 0 }
+            total: { type: integer, minimum: 0 }
+        state:
+          type: string
+          enum: [not_started, open, overdue, complete]
     AccessPerson:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
@@ -44555,14 +45253,20 @@ components:
               type: string
               format: date
               description: 'r3:hire-16: the employment profile''s probation end date.'
+            id_type:
+              type: string
+              enum: [RRN, ARC, DOMESTIC_RESIDENCE, NOT_ISSUED]
+              description: Resolved legal identity document type for the created employee.
         refusal_code:
           type: string
-          enum: [duplicate_in_file, invalid_date, identity_mismatch, hire_date_required, former_load_closed,
+          x-extensible-enum: [duplicate_in_file, invalid_date, two_digit_year, identity_mismatch, hire_date_required, former_load_closed,
             workplace_conflict, identity_conflict, employee_number_taken, status_unmapped, status_conflict,
-            exit_date_required, leave_start_required, leave_type_unmapped, leave_return_required]
+            exit_date_required, leave_start_required, leave_type_unmapped, leave_return_required,
+            not_issued_requires_pre_hire, not_issued_with_rrn, not_issued_secondary_key_required,
+            id_type_invalid, id_type_rrn_mismatch, rrn_mod11_invalid]
         refusal_field:
           type: string
-          x-extensible-enum: [employee_number, name, hire_date, exit_date, birth_date, worksite_name, rrn, employment_status,
+          x-extensible-enum: [employee_number, name, hire_date, exit_date, birth_date, worksite_name, rrn, id_type, employment_status,
             leave_start_date, leave_type, leave_return_date, contract_end_date, probation_end_date]
         matched_by:
           type: string
@@ -44898,7 +45602,7 @@ components:
             decision:
               type: string
               x-extensible-enum: [identity, exclusions, company_map, unit_map, workplace_map, employment_type_map, status_map, leave_type_map,
-                employee_numbers, mapping, group_exclusions]
+                employee_numbers, mapping, group_exclusions, cells]
             key:
               type: string
             choices:
@@ -44922,6 +45626,9 @@ components:
                 x-extensible-enum: [same_name, normalized, path, suffix, registration_number, alias]
               alias:
                 type: [string, 'null']
+        expected_format:
+          type: string
+          description: Expected format hint for inline cell repair (for example YYYY-MM-DD).
     EmployeeImportReviewQueue:
       type: object
       description: 'IMPORT-2 (decisions #25): the "needs checking" queue, counted. Blocking items keep apply closed (422
@@ -45988,6 +46695,10 @@ components:
           type: string
           writeOnly: true
           description: Resident registration number, validated by the server; never retained in a draft.
+        id_type:
+          type: string
+          enum: [RRN, ARC, DOMESTIC_RESIDENCE]
+          description: Optional explicit identity document type paired with the registration number.
         step_up:
           $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
     EmployeeRrnRevealRequest:
@@ -49481,12 +50192,87 @@ components:
           type:
           - boolean
           - 'null'
+    ImportCellsRepairRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      description: Map of candidate row source_key to canonical field repairs for a staged employee import run.
+      additionalProperties: false
+      required: [cells]
+      properties:
+        cells:
+          type: object
+          description: Per-row map of canonical target field names (excluding restricted columns) to repaired string values.
+          maxProperties: 5000
+          additionalProperties:
+            type: object
+            description: Map of canonical field names to repaired values for one row.
+            maxProperties: 64
+            additionalProperties:
+              type: string
+              maxLength: 500
+    ImportCellsRepairResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      description: Persisted inline cell repairs merged onto a staged employee import run.
+      additionalProperties: false
+      required: [cells, repaired_rows, run_id]
+      properties:
+        cells:
+          type: object
+          description: Effective per-row map of canonical field repairs persisted in dry_run_decisions.cells.
+          maxProperties: 5000
+          additionalProperties:
+            type: object
+            description: Map of canonical field names to repaired values for one row.
+            maxProperties: 64
+            additionalProperties:
+              type: string
+              maxLength: 500
+        repaired_rows:
+          type: integer
+          description: Count of candidate rows with persisted cell repairs.
+          minimum: 0
+        run_id:
+          $ref: '#/components/schemas/Uuid'
     ImportDryRunRequest:
       type: object
       additionalProperties: false
       properties:
         decisions:
           $ref: '#/components/schemas/EmployeeImportDecisions'
+    ImportRowIdentifierRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required: [rrn]
+      properties:
+        rrn:
+          type: string
+          writeOnly: true
+          description: Resident registration number validated by the server, sealed via RrnVault, and never logged or echoed.
+        id_type:
+          type: string
+          enum: [RRN, ARC, DOMESTIC_RESIDENCE]
+          description: Optional explicit identity document type paired with the registration number.
+        step_up:
+          $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
+    ImportRowIdentifierResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [run_id, source_key, id_type, recorded]
+      properties:
+        run_id:
+          $ref: '#/components/schemas/Uuid'
+        source_key:
+          type: string
+        id_type:
+          type: string
+          enum: [RRN, ARC, DOMESTIC_RESIDENCE]
+        recorded:
+          type: boolean
+        sex_derived:
+          type: string
+          enum: [MALE, FEMALE]
     InboxDocConfirmReceiptRequest:
       type: object
       description: >-
@@ -53097,6 +53883,7 @@ components:
             - passkey_step_up_pii_reveal
             - passkey_step_up_pii_record
             - passkey_step_up_privacy_request
+            - passkey_step_up_privacy_request_decide
         replay_attempt:
           type:
             - integer
@@ -53171,6 +53958,7 @@ components:
                 - PII_REVEAL
                 - PII_RECORD
                 - PRIVACY_REQUEST
+                - PRIVACY_REQUEST_DECIDE
             object_id:
               $ref: '#/components/schemas/Uuid'
             reason_key:
@@ -53192,6 +53980,7 @@ components:
                 - passkey_step_up_pii_reveal
                 - passkey_step_up_pii_record
                 - passkey_step_up_privacy_request
+                - passkey_step_up_privacy_request_decide
             replay_attempt:
               type:
                 - integer
@@ -53225,6 +54014,7 @@ components:
         - PII_REVEAL
         - PII_RECORD
         - PRIVACY_REQUEST
+        - PRIVACY_REQUEST_DECIDE
     MobileVotePollRequest:
       type: object
       required:
@@ -57210,6 +58000,171 @@ components:
             date, and not the latest promulgated slice.
         url: { type: string }
         retrieved_on: { type: string, format: date }
+    PeopleDataHealthResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required:
+      - cohort
+      - statutory_register
+      - id_summary
+      - placement_summary
+      - bank_account
+      - identity_review
+      - failed_actions
+      - drilldown_items
+      properties:
+        cohort:
+          type: object
+          required: [total, active, on_leave, pre_hire]
+          properties:
+            total:
+              type: integer
+              format: int64
+            active:
+              type: integer
+              format: int64
+            on_leave:
+              type: integer
+              format: int64
+            pre_hire:
+              type: integer
+              format: int64
+        statutory_register:
+          type: object
+          required: [complete_count, incomplete_count, missing_by_category]
+          properties:
+            complete_count:
+              type: integer
+              format: int64
+            incomplete_count:
+              type: integer
+              format: int64
+            missing_by_category:
+              type: object
+              required: [birth, job, hire, contract_end, sex, address, career]
+              properties:
+                birth:
+                  type: integer
+                  format: int64
+                job:
+                  type: integer
+                  format: int64
+                hire:
+                  type: integer
+                  format: int64
+                contract_end:
+                  type: integer
+                  format: int64
+                sex:
+                  type: integer
+                  format: int64
+                address:
+                  type: integer
+                  format: int64
+                career:
+                  type: integer
+                  format: int64
+        id_summary:
+          type: object
+          required: [rrn_recorded, not_issued, missing, by_type]
+          properties:
+            rrn_recorded:
+              type: integer
+              format: int64
+            not_issued:
+              type: integer
+              format: int64
+            missing:
+              type: integer
+              format: int64
+            by_type:
+              type: object
+              required: [rrn, arc, domestic_residence, not_issued, unset]
+              properties:
+                rrn:
+                  type: integer
+                  format: int64
+                arc:
+                  type: integer
+                  format: int64
+                domestic_residence:
+                  type: integer
+                  format: int64
+                not_issued:
+                  type: integer
+                  format: int64
+                unset:
+                  type: integer
+                  format: int64
+        placement_summary:
+          type: object
+          required: [placed, unplaced, department_missing]
+          properties:
+            placed:
+              type: integer
+              format: int64
+            unplaced:
+              type: integer
+              format: int64
+            department_missing:
+              type: integer
+              format: int64
+        bank_account:
+          type: object
+          required: [registered, missing]
+          properties:
+            registered:
+              type: integer
+              format: int64
+            missing:
+              type: integer
+              format: int64
+        identity_review:
+          type: object
+          required: [needs_review]
+          properties:
+            needs_review:
+              type: integer
+              format: int64
+        failed_actions:
+          type: object
+          required: [count]
+          properties:
+            count:
+              type: integer
+              format: int64
+        drilldown_items:
+          type: array
+          items:
+            type: object
+            required: [employee_id, employment_status, missing_categories]
+            properties:
+              employee_id:
+                $ref: '#/components/schemas/Uuid'
+              employee_number:
+                type: string
+              employment_status:
+                type: string
+                enum: [PRE_HIRE, ACTIVE, ON_LEAVE]
+              missing_categories:
+                type: array
+                items:
+                  type: string
+        latest_import:
+          type: object
+          required: [run_id, status, candidate_rows, created_at]
+          properties:
+            run_id:
+              $ref: '#/components/schemas/Uuid'
+            status:
+              type: string
+            candidate_rows:
+              type: integer
+              format: int32
+            created_at:
+              $ref: '#/components/schemas/Timestamp'
+            applied_at:
+              $ref: '#/components/schemas/Timestamp'
     Period:
       type: object
       required:
@@ -64460,6 +65415,22 @@ components:
             - string
             - 'null'
           format: date-time
+        request_expires_at:
+          type: string
+          format: date-time
+        requested_duration_seconds:
+          type: integer
+        scope:
+          type: array
+          items:
+            type: string
+        operator_approver_ref:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        tenant_approved:
+          type: boolean
       required:
         - id
         - org_id

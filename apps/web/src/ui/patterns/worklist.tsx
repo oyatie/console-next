@@ -30,12 +30,14 @@ export function Worklist({
   find,
   filters,
   tools,
+  stats,
   notes,
   list,
   schedule,
   bands,
   foot,
   facts: _facts,
+  viewportLock,
   statusSegments,
   baseline,
   overlays,
@@ -66,6 +68,7 @@ export function Worklist({
         data-pattern="worklist"
         data-floorplan="P-03"
         data-detail={showDetail || undefined}
+        data-viewport-lock={viewportLock || undefined}
       >
         {tabs}
         <PageReadGate
@@ -114,24 +117,27 @@ export function Worklist({
           <PageHeadingLevel value={2}>
             <QueryState q={q} layout="list">
               {() => (
-                <PaneGrid
-                  {...panes}
-                  main={
-                    <>
-                      {notes}
-                      {resolvedList}
-                      {foot}
-                    </>
-                  }
-                  bottom={
-                    hasLower ? (
-                      <div className={s.lower}>
-                        {resolvedSchedule}
-                        {resolvedBands}
-                      </div>
-                    ) : undefined
-                  }
-                />
+                <>
+                  {shown(stats) ? <div className={s.statsBand}>{stats}</div> : null}
+                  <PaneGrid
+                    {...panes}
+                    main={
+                      <>
+                        {notes}
+                        {resolvedList}
+                        {foot}
+                      </>
+                    }
+                    bottom={
+                      hasLower ? (
+                        <div className={s.lower}>
+                          {resolvedSchedule}
+                          {resolvedBands}
+                        </div>
+                      ) : undefined
+                    }
+                  />
+                </>
               )}
             </QueryState>
           </PageHeadingLevel>

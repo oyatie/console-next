@@ -46,13 +46,14 @@ export function RouteGuard({ children }: { children: ReactNode }) {
 }
 
 /** A refusal replaces the whole page body; loading and transient failures keep its controls mounted. */
-export function PageReadGate({ q, children, title, recovery, head, ...state }: { q: ReadState; children: ReactNode; title?: string; recovery?: ReactNode; head?: (available: boolean) => ReactNode; back?: ReadBack; removed?: string; own?: (code: string) => string | undefined }) {
+export function PageReadGate({ q, children, title, recovery, head, keepOnLoss, ...state }: { q: ReadState; children: ReactNode; title?: string; recovery?: ReactNode; head?: (available: boolean) => ReactNode; back?: ReadBack; removed?: string; own?: (code: string) => string | undefined; keepOnLoss?: boolean }) {
   const view = queryView(q);
   const [refusal, setRefusal] = useState<unknown>(null);
   const refused = view === "denied" || view === "not-found";
   if (refused && refusal !== q.error) setRefusal(q.error);
   if (view === "ready" && !q.isPlaceholderData && refusal) setRefusal(null);
-  if (!refused && !(q.isPlaceholderData && refusal)) return <>{head?.(true)}{children}</>;
+  const lost = Boolean(keepOnLoss && q.data !== undefined && (refused || (q.isPlaceholderData && refusal)));
+  if ((!refused && !(q.isPlaceholderData && refusal)) || lost) return <>{head?.(true)}{children}</>;
   return <>
     {head?.(false)}
     {title && <PageHead title={title} />}

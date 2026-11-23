@@ -260,3 +260,44 @@ fn duplicate_kinds_collapse_and_unrequested_or_backdated_decisions_do_not_write(
     );
     assert!(request.kinds()[&Kind::Access].decisions.is_empty());
 }
+#[test]
+fn stored_body_json_with_envelope_fields_round_trips_and_decides() {
+    let mut original = request(&[Kind::Access, Kind::Correction]);
+    original
+        .decide(
+            Kind::Access,
+            decision(Outcome::Postponed, Some(Ground::JustifiedReason)),
+            date!(2026 - 10 - 28),
+            date!(2026 - 11 - 07),
+            &reason_codes(),
+        )
+        .unwrap();
+    let mut stored = serde_json::to_value(&original).unwrap();
+    stored["id"] = serde_json::json!(original.receipt().id);
+    stored["receipt_no"] = serde_json::json!("PR-2026-00001");
+    stored["detail"] = serde_json::json!("my copy");
+    stored["status"] = serde_json::json!("RECEIVED");
+
+    let mut reloaded: RightsRequest = serde_json::from_value(stored).unwrap();
+    assert_eq!(reloaded, original);
+    reloaded
+        .decide(
+            Kind::Access,
+            decision(Outcome::Granted, None),
+            date!(2026 - 10 - 29),
+            date!(2026 - 11 - 07),
+            &reason_codes(),
+        )
+        .unwrap();
+    assert_eq!(reloaded.status(), Status::Received);
+    reloaded
+        .decide(
+            Kind::Correction,
+            decision(Outcome::Granted, None),
+            date!(2026 - 10 - 29),
+            date!(2026 - 11 - 07),
+            &reason_codes(),
+        )
+        .unwrap();
+    assert_eq!(reloaded.status(), Status::Decided);
+}

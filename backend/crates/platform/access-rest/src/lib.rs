@@ -15,6 +15,12 @@ use console_platform_auth::JwtVerifier;
 
 pub const ACCESS_CATALOG_PATH: &str = "/api/v1/access/catalog";
 pub const ACCESS_LOG_PATH: &str = "/api/v1/access/access-log";
+pub const ACCESS_LOG_REVIEW_PATH: &str = "/api/v1/access/access-log/reviews/{period}";
+pub const ACCESS_LOG_REVIEW_START_PATH: &str = "/api/v1/access/access-log/reviews/{period}/start";
+pub const ACCESS_LOG_REVIEW_FINDINGS_PATH: &str =
+    "/api/v1/access/access-log/reviews/{period}/findings";
+pub const ACCESS_LOG_REVIEW_COMPLETE_PATH: &str =
+    "/api/v1/access/access-log/reviews/{period}/complete";
 pub const ACCESS_ROLES_PATH: &str = "/api/v1/access/roles";
 pub const ACCESS_ROLE_PATH: &str = "/api/v1/access/roles/{roleId}";
 pub const ACCESS_ROLE_STATUS_PATH: &str = "/api/v1/access/roles/{roleId}/status";
@@ -35,6 +41,10 @@ pub const ACCESS_GRANTERS_PATH: &str = "/api/v1/access/granters";
 pub const ACCESS_ROUTE_PATHS: &[&str] = &[
     ACCESS_CATALOG_PATH,
     ACCESS_LOG_PATH,
+    ACCESS_LOG_REVIEW_PATH,
+    ACCESS_LOG_REVIEW_START_PATH,
+    ACCESS_LOG_REVIEW_FINDINGS_PATH,
+    ACCESS_LOG_REVIEW_COMPLETE_PATH,
     ACCESS_ROLES_PATH,
     ACCESS_ROLE_PATH,
     ACCESS_ROLE_STATUS_PATH,
@@ -76,6 +86,19 @@ pub fn router(state: AccessRestState) -> Router {
     let router = Router::new()
         .route(ACCESS_CATALOG_PATH, get(catalog::get_catalog))
         .route(ACCESS_LOG_PATH, get(h::access_log))
+        .route(ACCESS_LOG_REVIEW_PATH, get(h::get_access_log_review))
+        .route(
+            ACCESS_LOG_REVIEW_START_PATH,
+            post(h::start_access_log_review),
+        )
+        .route(
+            ACCESS_LOG_REVIEW_FINDINGS_PATH,
+            post(h::record_access_log_finding),
+        )
+        .route(
+            ACCESS_LOG_REVIEW_COMPLETE_PATH,
+            post(h::complete_access_log_review),
+        )
         .route(ACCESS_ROLES_PATH, get(h::list_roles).post(h::create_role))
         .route(
             ACCESS_ROLE_PATH,

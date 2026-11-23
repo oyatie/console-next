@@ -1,5 +1,6 @@
-// Vendor tier: tenant organizations, their usage rollup, and the lifecycle commands on them.
+// Vendor tier: tenant organizations, their usage rollup, groups, operators, support sessions, and lifecycle commands.
 import { ApiError, api, assertPasskey, assertBoundPasskey, session, unwrap } from "@console/api";
+export { ApiError };
 import type { components } from "@console/api/schema";
 import { COMMAND_NOT_APPLIED } from "../../lib/react/command";
 import { LANDED, landed } from "../../lib/react/landed";
@@ -8,8 +9,21 @@ import { get } from "../../lib/query";
 export type Org = components["schemas"]["PlatformOrg"];
 export type OrgStatus = Org["status"];
 export type Health = components["schemas"]["PlatformTenantHealth"];
-/** A first-admin code to hand over: from onboarding or a reissue. */
-export type Issued = { org: string; otp: string; expiresAt: string; signInId?: string | null; recoveryMinutes?: number };
+export type Group = components["schemas"]["PlatformGroup"];
+export type GroupRole = components["schemas"]["PlatformGroupRole"];
+export type TenantRole = components["schemas"]["PlatformTenantRole"];
+export type OperatorSummary = components["schemas"]["PlatformOperatorSummary"];
+export type SupportSessionMetadata = components["schemas"]["SupportSessionMetadata"];
+export type SupportStartOutcome = { id: string; access_token: string; token_type: string; expires_at: string };
+/** A first-admin, group-account, or operator code to hand over: from onboarding, reissue, or invite. */
+export type Issued = {
+  org: string;
+  otp: string;
+  expiresAt: string;
+  signInId?: string | null;
+  recoveryMinutes?: number;
+  kind?: "tenant" | "operator" | "groupAccount";
+};
 /** A recorded command's receipt, shown once at the top of the page. */
 export type Recorded = { message: string; meta?: string };
 
@@ -17,6 +31,14 @@ export type Recorded = { message: string; meta?: string };
 export const tenantsQuery = get("/api/platform/orgs");
 /** Per-tenant usage counts. Optional to every screen: the list still works when it fails. */
 export const opsQuery = get("/api/platform/ops");
+/** Platform customer groups and their member orgs. */
+export const groupsQuery = get("/api/platform/groups");
+/** Accounts belonging to a platform group. */
+export const groupAccountsQuery = (id: string) => get("/api/platform/groups/{id}/accounts", { params: { path: { id } } });
+/** Platform operators list. */
+export const operatorsQuery = get("/api/platform/operators");
+/** Vendor metadata for support sessions scoped to a customer account. */
+export const supportSessionsQuery = (org_id: string) => get("/api/platform/support-sessions", { params: { query: { org_id } } });
 
 export const onboard = (name: string, slug: string) => unwrap(api.POST("/api/platform/orgs", { body: { name, slug } }));
 
@@ -106,3 +128,132 @@ export async function eraseWrite(org: Org, id: string, action: EraseAction) {
   if (action === "approve") return unwrap(api.POST("/api/platform/orgs/{id}/erase/{rid}/approve", { params, body: { step_up } }));
   return unwrap(api.POST("/api/platform/orgs/{id}/erase/{rid}/cancel", { params, body: { step_up } }));
 }
+
+export const createGroup = (slug: string, name: string) =>
+  unwrap(api.POST("/api/platform/groups", { body: { slug, name } }));
+export const updateGroup = (id: string, body: { slug?: string; name?: string; status?: OrgStatus }) =>
+  unwrap(api.PATCH("/api/platform/groups/{id}", { params: { path: { id } }, body }));
+export const assignOrgToGroup = async (id: string, orgId: string) =>
+  unwrap(api.PUT("/api/platform/groups/{id}/organizations/{org_id}", {
+    params: { path: { id, org_id: orgId } },
+    body: { step_up: await assertPasskey() },
+  }));
+export const removeOrgFromGroup = (id: string, orgId: string) =>
+  unwrap(api.DELETE("/api/platform/groups/{id}/organizations/{org_id}", { params: { path: { id, org_id: orgId } } }));
+export const createGroupAccount = async (
+  id: string,
+  input: { org_id: string; display_name: string; phone?: string; tenant_roles: TenantRole[]; group_role: GroupRole },
+) => unwrap(api.POST("/api/platform/groups/{id}/accounts", {
+  params: { path: { id } },
+  body: { ...input, step_up: await assertPasskey() },
+}));
+export const revokeGroupRole = (id: string, userId: string, groupRole: GroupRole) =>
+  unwrap(api.DELETE("/api/platform/groups/{id}/accounts/{user_id}/roles/{group_role}", {
+    params: { path: { id, user_id: userId, group_role: groupRole } },
+  }));
+
+/** Exact bound step-up payload hashes matching backend `operators_types.rs`. */
+export const inviteOperator = async (id: string, display_name: string, login?: string | null) => {
+  const step_up = await assertBoundPasskey(
+    "OPERATOR_RECOVERY",
+    id,
+    JSON.stringify(["platform_operator", "invite", id, display_name.trim(), (login ?? "").trim()]),
+  );
+  return unwrap(api.POST("/api/platform/operators", {
+    body: { id, display_name: display_name.trim(), login: login?.trim() || null, step_up },
+  }));
+};
+
+export const reissueOperatorInvite = async (id: string) => {
+  const step_up = await assertBoundPasskey(
+    "OPERATOR_RECOVERY",
+    id,
+    JSON.stringify(["platform_operator", "reissue", id]),
+  );
+  return unwrap(api.POST("/api/platform/operators/{id}/reissue", {
+    params: { path: { id } },
+    body: { step_up },
+  }));
+};
+
+export const revokeOperator = async (id: string, note?: string | null) => {
+  const step_up = await assertBoundPasskey(
+    "OPERATOR_RECOVERY",
+    id,
+    JSON.stringify(["platform_operator", "revoke", id, (note ?? "").trim()]),
+  );
+  return unwrap(api.POST("/api/platform/operators/{id}/revoke", {
+    params: { path: { id } },
+    body: { reason: note?.trim() || null, step_up },
+  }));
+};
+
+/** Exact bound step-up payload hashes matching backend `support.rs`. */
+export const requestSupportSession = async (input: {
+  id: string;
+  org_id: string;
+  ticket_ref: string;
+  category: string;
+  purpose: string;
+  scope: string[];
+  duration_seconds: number;
+}) => {
+  const step_up = await assertBoundPasskey(
+    "SUPPORT_SESSION",
+    input.id,
+    JSON.stringify([
+      input.org_id,
+      input.id,
+      "request",
+      input.ticket_ref,
+      input.category,
+      input.purpose,
+      input.scope,
+      input.duration_seconds,
+    ]),
+  );
+  return unwrap(
+    api.POST("/api/platform/support-sessions", {
+      body: {
+        id: input.id,
+        org_id: input.org_id,
+        ticket_ref: input.ticket_ref,
+        reason_code: input.category,
+        reason: input.purpose,
+        scope: input.scope,
+        duration_seconds: input.duration_seconds,
+        step_up,
+      },
+    }),
+  );
+};
+
+export const approveSupportSession = async (id: string, org_id: string) => {
+  const step_up = await assertBoundPasskey(
+    "SUPPORT_SESSION",
+    id,
+    JSON.stringify([org_id, id, "approve"]),
+  );
+  return unwrap(api.POST("/api/platform/support-sessions/{id}/approve", {
+    params: { path: { id } },
+    body: { org_id, step_up },
+  }));
+};
+
+export const startSupportSession = async (id: string, org_id: string): Promise<SupportStartOutcome> => {
+  const step_up = await assertBoundPasskey(
+    "SUPPORT_SESSION",
+    id,
+    JSON.stringify([org_id, id, "start"]),
+  );
+  return unwrap(api.POST("/api/platform/support-sessions/{id}/start", {
+    params: { path: { id } },
+    body: { org_id, step_up },
+  }));
+};
+
+export const endSupportSession = (id: string, org_id: string) =>
+  unwrap(api.POST("/api/platform/support-sessions/{id}/end", {
+    params: { path: { id } },
+    body: { org_id },
+  }));

@@ -3,9 +3,11 @@ import { enUiLedger } from "./en/ui-ledger";
 import { enGovernanceRefusals } from "./en/governance";
 import { enAccountLinkRefusals } from "./en/account_link";
 import { enPeriodUnlockRefusals } from "./en/period_unlock";
+import { enPrivacyRefusals } from "./en/privacy";
 import { enLeave } from "./en/leave";
 import { enOrgChangeRefusals } from "./en/org_change";
 import { enPayroll } from "./en/payroll";
+import { enPayrollRun } from "./en/payroll-run";
 import { enPayslip } from "./en/payslip";
 import { enUiShiftBar } from "./en/ui-shift-bar";
 import { enNts } from "./en/nts";
@@ -42,6 +44,8 @@ import { enAttendanceHolidays } from "./en/attendance-holidays";
 import { enAttendanceCrews } from "./en/attendance-crews";
 import { enAttendanceOverview } from "./en/attendance-overview";
 import { enAttendanceRecords } from "./en/attendance-records";
+import { enMe } from "./en/me";
+import { enTeam } from "./en/team";
 import { enImport } from "./en/import";
 import { enImportSheet } from "./en/import-sheet";
 import { enImportReview } from "./en/import-review";
@@ -123,6 +127,7 @@ import { enCrud } from "./en/crud";
 import { enRegister } from "./en/register";
 import { enUnplaced } from "./en/unplaced";
 import { enBulkGrid } from "./en/bulk-grid";
+import { enDataHealth } from "./en/data-health";
 import { enUiRecord } from "./en/ui-record";
 import { enEmpCard } from "./en/emp-card";
 import { enEmpFix } from "./en/emp-fix";
@@ -253,6 +258,7 @@ export const en = {
   ...enRegister,
   ...enUnplaced,
   ...enBulkGrid,
+  ...enDataHealth,
   ...enTimeline,
   ...enRequestOutcome,
   ...enUiRecord,
@@ -262,16 +268,21 @@ export const en = {
   ...enEmpDoc,
   ...enPeopleJump,
   ...enOpsRecovery,
-  ...enNts, ...enPayroll, ...enPayslip,
+  ...enNts, ...enPayroll, ...enPayrollRun, ...enPayslip,
   ...enCommon,
   ...enSupport,
   ...enSupportAccess,
+  ...enPrivacyRefusals,
   ...enDirectoryViews,
   ...enUiWorklist,
   ...enUiLedger,
+  ...enMe,
+  ...enTeam,
+  ...enShellRoutes,
 } as const;
 
 export type ScreenMessageId = keyof typeof en;
 import { enDirectoryViews } from "./en/directory-views";
 import { enSettingsHub } from "./en/settings-hub";
+import { enShellRoutes } from "./en/shell-routes";
 import { enUiWorklist } from "./en/ui-worklist";

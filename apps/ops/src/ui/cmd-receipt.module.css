@@ -1,0 +1,38 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.receipt {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--ok-bd);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  min-width: 0;
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.title {
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--ok-tx);
+}
+
+.cmdRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.cmdLabel {
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--steel);
+}

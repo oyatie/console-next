@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { COPY } from "../copy";
 import { readObservedReason, readObservedValue, type OpsHomeSnapshot, type OpsLive } from "../lib/api";
-import { formatBurn, formatCount, formatDuration, formatPercent, formatUtcShort } from "../lib/format";
+import { formatBudgetPercent, formatBurn, formatCount, formatDuration, formatUtcShort } from "../lib/format";
 import { Badge } from "../ui/badge";
 import type { TableColumn } from "../ui/compact-table";
 import { ObservedValue } from "../ui/observed-value";
@@ -25,7 +25,7 @@ export function buildBudgetColumns(liveStatus: OpsLive, disconnectedAgeS: number
           observation={r.remaining_percent}
           liveStatus={liveStatus}
           disconnectedAgeS={disconnectedAgeS}
-          formatValue={(v) => formatPercent(Number(v))}
+          formatValue={(v) => formatBudgetPercent(Number(v))}
         />
       ),
     },

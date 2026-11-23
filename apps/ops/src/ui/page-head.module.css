@@ -98,4 +98,15 @@
     width: 100%;
     margin-inline-start: 0;
   }
+
+  .tabs {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    row-gap: 0;
+  }
+
+  .tab {
+    min-height: var(--target-touch);
+    padding: 0 var(--space-2);
+  }
 }

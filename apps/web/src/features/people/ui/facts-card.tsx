@@ -21,13 +21,13 @@ type Employee = components["schemas"]["Employee"];
  * its number), employment type with its worker classification, base pay with its unit, and probation with the
  * server's clock. Shown to employee_directory_manage only (the server refuses everyone else).
  */
-export function FactsCard({ e, editing, onEdit, readOnly = false }: { e: Employee; editing: boolean; readOnly?: boolean; onEdit: (open: boolean) => void }) {
+export function FactsCard({ e, editing, onEdit, readOnly = false, calm = false }: { e: Employee; editing: boolean; readOnly?: boolean; calm?: boolean; onEdit: (open: boolean) => void }) {
   const facts = useQuery(factsQuery(e.id));
   return (
     <section className="card panel" aria-labelledby="facts">
       <h2 id="facts" className="panel__title" tabIndex={-1}>{t("facts.title")}</h2>
       <QueryState q={facts}>
-        {(f) => (editing && !readOnly ? <FactsForm f={f} name={e.name} refetch={facts.refetch} onClose={() => onEdit(false)} /> : <FactsView f={f} name={e.name} onEdit={readOnly ? undefined : () => onEdit(true)} />)}
+        {(f) => (editing && !readOnly ? <FactsForm f={f} name={e.name} employeeStatus={e.status} refetch={facts.refetch} onClose={() => onEdit(false)} /> : <FactsView f={f} name={e.name} calm={calm} onEdit={readOnly ? undefined : () => onEdit(true)} />)}
       </QueryState>
     </section>
   );
@@ -35,7 +35,7 @@ export function FactsCard({ e, editing, onEdit, readOnly = false }: { e: Employe
 
 const notSet = <Muted>{t("facts.notSet")}</Muted>;
 
-function FactsView({ f, name, onEdit }: { f: Facts; name: string; onEdit?: () => void }) {
+function FactsView({ f, name, calm, onEdit }: { f: Facts; name: string; calm?: boolean; onEdit?: () => void }) {
   const m = f.employment ?? f.pending_employment;
   return (
     <>
@@ -55,7 +55,7 @@ function FactsView({ f, name, onEdit }: { f: Facts; name: string; onEdit?: () =>
       {!m && <p className="muted">{t("facts.noProfile")}</p>}
       {m && m.probation_state !== "NONE" && <Probation f={f} name={name} readOnly={!onEdit} />}
       {onEdit && <div className="row">
-        <Button onClick={onEdit}>{t("facts.edit")}</Button>
+        <Button variant={calm ? "ghost" : undefined} size={calm ? "sm" : undefined} onClick={onEdit}>{t("facts.edit")}</Button>
       </div>}
     </>
   );

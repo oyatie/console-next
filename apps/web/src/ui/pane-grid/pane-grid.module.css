@@ -3,6 +3,7 @@
   --pane-start-w: calc(var(--space-6) * 8);
   --pane-record-w: var(--panel-w);
   --pane-related-w: calc(var(--queue-w) * 0.9);
+  --pane-footer-max-h: max(0px, min(65dvh, calc(100dvh - var(--frame-top) - var(--frame-bottom) - var(--row-h) - 120px)));
   display: flex;
   align-items: stretch;
   min-width: 0;
@@ -170,6 +171,10 @@
 
 .paneFooter {
   flex: none;
+  max-height: var(--pane-footer-max-h);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
   border-block-start: 1px solid var(--border);
   background: var(--surface-2);
   padding: var(--space-2) var(--space-3);
@@ -258,6 +263,11 @@
     max-width: 100%;
     min-width: 0;
     border-inline-start: 0;
+  }
+
+  .paneFooter {
+    max-height: none;
+    overflow-y: visible;
   }
 
   .back {

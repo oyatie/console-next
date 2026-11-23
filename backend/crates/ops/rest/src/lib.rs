@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-//! Stage-0 operator API and server-loaded authorization facts.
+//! Operator cockpit API and server-loaded authorization facts.
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -7,7 +7,7 @@ use axum::Router;
 use axum::error_handling::HandleErrorLayer;
 use axum::http::{HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
-use axum::routing::get;
+use axum::routing::{delete, get, post};
 use console_ops_application::home::CockpitEvaluator;
 use time::OffsetDateTime;
 use tokio::sync::{Mutex, watch};
@@ -18,13 +18,31 @@ use crate::origin_guard::{OriginGuardConfig, origin_guard};
 use crate::state::OpsRestState;
 
 pub mod access_jwt;
+pub mod backends;
 pub mod error;
+mod error_ops;
 pub mod handlers;
+pub mod handlers_alerts;
+pub mod handlers_changes;
+mod handlers_common;
+pub mod handlers_incident_events;
+pub mod handlers_incidents;
+pub mod handlers_obligation_writes;
+pub mod handlers_obligations;
+pub mod handlers_ops;
+pub mod handlers_promote;
+pub mod handlers_recovery;
+pub mod handlers_silences;
 mod jwks_validate;
 pub mod operators;
+mod ops_metrics;
 pub mod origin_guard;
 pub mod sse;
 pub mod state;
+mod valid_actions;
+
+pub use backends::{FsBackendPaths, attach_fs_backends, validate_runbooks_dir};
+pub use ops_metrics::init_ops_metrics;
 
 pub fn api_routes(state: OpsRestState) -> Router {
     Router::new()
@@ -32,10 +50,104 @@ pub fn api_routes(state: OpsRestState) -> Router {
         .route("/api/ops/v1/home", get(handlers::get_home))
         .route("/api/ops/v1/alerts", get(handlers::get_alerts))
         .route("/api/ops/v1/alerts/{key}", get(handlers::get_alert_detail))
-        .route("/api/ops/v1/silences", get(handlers::get_silences))
+        .route(
+            "/api/ops/v1/alerts/{key}/ack",
+            post(handlers_alerts::ack_alert),
+        )
+        .route(
+            "/api/ops/v1/silences",
+            get(handlers::get_silences).post(handlers_silences::create_silence),
+        )
+        .route(
+            "/api/ops/v1/silences/{id}",
+            delete(handlers_silences::delete_silence),
+        )
+        .route("/api/ops/v1/oncall", get(handlers_ops::get_oncall))
+        .route(
+            "/api/ops/v1/oncall/page-test",
+            post(handlers_ops::request_page_test),
+        )
         .route("/api/ops/v1/running", get(handlers::get_running))
         .route("/api/ops/v1/running/jobs", get(handlers::get_jobs))
+        .route(
+            "/api/ops/v1/running/jobs/{name}/rerun",
+            post(handlers_ops::rerun_job),
+        )
         .route("/api/ops/v1/sources", get(handlers::get_sources))
+        .route("/api/ops/v1/health", get(handlers_ops::get_health))
+        .route(
+            "/api/ops/v1/incidents",
+            get(handlers_incidents::list_incidents).post(handlers_incidents::declare_incident),
+        )
+        .route(
+            "/api/ops/v1/incidents/{id}",
+            get(handlers_incidents::incident_detail),
+        )
+        .route(
+            "/api/ops/v1/incidents/{id}/events",
+            post(handlers_incident_events::record_incident_event),
+        )
+        .route(
+            "/api/ops/v1/incidents/{id}/public-draft",
+            post(handlers_incident_events::draft_public_update),
+        )
+        .route("/api/ops/v1/changes", get(handlers_changes::get_changes))
+        .route(
+            "/api/ops/v1/changes/rollback",
+            post(handlers_changes::request_rollback),
+        )
+        .route(
+            "/api/ops/v1/changes/canary",
+            post(handlers_changes::request_canary),
+        )
+        .route(
+            "/api/ops/v1/changes/freeze",
+            post(handlers_changes::request_freeze),
+        )
+        .route("/api/ops/v1/promote", get(handlers_promote::get_promote))
+        .route(
+            "/api/ops/v1/promote/signoff",
+            post(handlers_promote::signoff_promote),
+        )
+        .route(
+            "/api/ops/v1/promote/feedback",
+            post(handlers_promote::triage_feedback),
+        )
+        .route(
+            "/api/ops/v1/promote/request",
+            post(handlers_promote::request_promote),
+        )
+        .route("/api/ops/v1/recovery", get(handlers_recovery::get_recovery))
+        .route(
+            "/api/ops/v1/recovery/backup",
+            post(handlers_recovery::request_backup),
+        )
+        .route(
+            "/api/ops/v1/recovery/drill",
+            post(handlers_recovery::request_drill),
+        )
+        .route("/api/ops/v1/actions", get(handlers_ops::list_actions))
+        .route(
+            "/api/ops/v1/runbooks",
+            get(handlers_recovery::list_runbooks),
+        )
+        .route(
+            "/api/ops/v1/runbooks/{*path}",
+            get(handlers_recovery::read_runbook),
+        )
+        .route(
+            "/api/ops/v1/obligations",
+            get(handlers_obligations::list_obligations)
+                .post(handlers_obligation_writes::open_obligation),
+        )
+        .route(
+            "/api/ops/v1/obligations/{id}",
+            get(handlers_obligations::obligation_detail),
+        )
+        .route(
+            "/api/ops/v1/obligations/{id}/events",
+            post(handlers_obligation_writes::record_obligation_event),
+        )
         .with_state(state)
 }
 
@@ -87,62 +199,6 @@ fn timeout_response(error: BoxError, support_ref: String) -> Response {
     resp.headers_mut()
         .insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
     resp
-}
-
-pub fn init_ops_metrics() {
-    metrics::gauge!("ops_cockpit_evaluator_last_success_timestamp_seconds").set(0.0);
-    metrics::gauge!("ops_cockpit_access_jwks_age_seconds").set(0.0);
-    metrics::gauge!("ops_cockpit_sse_clients").set(0.0);
-    metrics::counter!("ops_cockpit_sse_resyncs_total").absolute(0);
-    metrics::describe_histogram!(
-        "ops_cockpit_evaluator_duration_seconds",
-        "Duration of ops cockpit evaluation cycles in seconds"
-    );
-    for outcome in ["success", "error"] {
-        metrics::counter!("ops_cockpit_evaluator_runs_total", "outcome" => outcome).absolute(0);
-        metrics::counter!("ops_cockpit_record_writes_total", "outcome" => outcome).absolute(0);
-        metrics::counter!("ops_cockpit_record_verifications_total", "outcome" => outcome)
-            .absolute(0);
-    }
-    for source in ["alertmanager", "vmalert", "victoriametrics", "access_jwks"] {
-        metrics::gauge!("ops_cockpit_source_age_seconds", "source" => source).set(0.0);
-        for outcome in ["success", "error"] {
-            metrics::counter!(
-                "ops_cockpit_source_reads_total",
-                "source" => source,
-                "outcome" => outcome
-            )
-            .absolute(0);
-        }
-    }
-    for kind in [
-        "home.changed",
-        "alert.group.changed",
-        "alert.group.resolved",
-        "component.changed",
-        "job.changed",
-        "source.changed",
-        "heartbeat",
-        "resync",
-    ] {
-        metrics::counter!("ops_cockpit_sse_events_total", "type" => kind).absolute(0);
-    }
-    for action in [
-        "read.me",
-        "read.home",
-        "read.alerts",
-        "read.running",
-        "read.sources",
-    ] {
-        for decision in ["allow", "deny"] {
-            metrics::counter!(
-                "ops_cockpit_authz_decisions_total",
-                "action" => action,
-                "decision" => decision
-            )
-            .absolute(0);
-        }
-    }
 }
 
 pub fn spawn_evaluator_loop(
