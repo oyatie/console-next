@@ -100,7 +100,8 @@ nothing.
 
 ## Looks and sizes
 
-There is one look and one size. No prop picks a variant.
+No prop picks a look. The table below is the look of the baseline. A Console screen draws the card in a look of its
+own, after the class table, and `compact` changes that look in a record pane.
 
 | Part | Look |
 |---|---|
@@ -131,6 +132,35 @@ The buttons take these classes:
 
 Reject, request changes and approve share one minimum height and sit side by side while the row has room. Approve
 differs only in its `btn--primary` colours.
+
+**The Console look.** Under a Console experience (an element above the card with a `data-experience` other than
+`baseline`), inside the decision column of `DocumentDecision` (`[data-pattern="document-decision"]`) or a record
+pane (`[data-pane="record"]`), the stylesheet changes these parts:
+
+| Part | Console look |
+|---|---|
+| Card | Full width, with no border, radius, shadow or fill. |
+| Progress | 8 px (`--space-2`) top and bottom, 12 px (`--space-3`) side padding. |
+| Body | 12 px (`--space-3`) padding, 8 px (`--space-2`) between its parts. |
+| Eyebrow | No extra letter spacing. |
+| Step | 2 px (`--space-half`) by 8 px (`--space-2`) padding, semibold (`--fw-semibold`). |
+| Title | 13 px (`--text-sm`), semibold, `--lh-tight` line height. |
+| Consequence | Plain text, not a box: no margin, border, radius or fill, 12 px (`--space-3`) padding at the sides and the bottom, 12 px (`--text-xs`) `--steel` text at `--lh-base`, and a following `<p>` the same size. It is drawn after the bar (`order: 1`). In a form it keeps its place before the bar and has no padding. |
+| Bar | 8 px (`--space-2`) by 12 px (`--space-3`) padding, and no spacer. The meta takes a row of its own. Each button in the bar grows to share its row, approve twice as much as the others, with its label centred and kept on one line. In a form the bar has 8 px of padding on top only. |
+| Form | 12 px (`--space-3`) padding and a `--border` line on top. Its parts have no side margins. |
+| Form heading | 13 px (`--text-sm`), no margin. |
+| Done | 12 px (`--space-3`) padding, 8 px (`--space-2`) between its parts. |
+
+With `compact`, in a record pane, these change again:
+
+| Part | Compact look |
+|---|---|
+| Card | Does not clip what overflows it. |
+| Pane head | Pulled out over the footer's padding, 8 px (`--space-2`) at the top and 12 px (`--space-3`) at the sides, and at least `--row-h-compact` high. |
+| Body | 4 px (`--space-1`) padding on top only, 4 px between its parts. A `<div>` in the body, as the opinion field is, lays out its first part and its second in a row 8 px (`--space-2`) apart: the first does not shrink or wrap, and the second takes the rest of the row. A text area is `--field-h` high, with 4 px (`--space-1`) by 8 px (`--space-2`) padding. |
+| Consequence, bar | 4 px (`--space-1`) padding on top only. |
+| Form | 8 px (`--space-2`) padding on top only. |
+| Done | 8 px (`--space-2`) padding on top only, 6 px (`--space-1-5`) between its parts. |
 
 ## States
 
@@ -212,8 +242,10 @@ it draws the `approvals.viewer.unavailable` message as a `<p role="status" tabin
 titled `approvals.viewer.decision`, or, when docked, in `DocDecisionPad` (`ui/patterns/document-decision-parts.tsx`).
 That line takes focus if `document.activeElement` is the `<body>`, which is where the browser leaves focus once the
 card that held it is gone. A command still on its way passes through the same state just before its receipt, and
-shows no such line. After a command error the panel shows the error in the card's place instead. The two Console
-screens keep the panel once it has drawn the card for the open document, so the line shows there too.
+shows no such line. After a command error the panel shows the error in the card's place instead. The Console
+document page keeps the panel once it has drawn the card, and the Console list keeps it while that document stays
+open, so the line shows there too. A document opened again later that offers nothing has no panel, as any decided
+document has none.
 
 ## Accessibility contract
 
@@ -297,6 +329,8 @@ stands for the find box of the list:
   recorded heading.
 - While the server holds an approve and the document is read again without its decision, the card stays busy and
   no status line is drawn. Once the server answers, focus is on the recorded heading.
+- In the Console list, when a document whose decision was withdrawn while it was open is opened again after one
+  that offers no decision, the record pane has no footer.
 - In the baseline list that drops a decided document, and in the Console list with the document chosen or opened
   by the list itself, Escape after an approve made by keyboard closes the column, and focus is on the row that is
   left, or in the find box when no row is left. In each the receipt shows before the Escape.
@@ -329,8 +363,23 @@ The same search finds tests of the opposite case, a document that draws no decis
 `e2e/mock/approvals.spec.ts`, `e2e/mock/approval-document.spec.ts`, `e2e/mock/approval-refusal.spec.ts`,
 `e2e/approval-document.spec.ts` and `features/approvals/ui/approvals-page.browser.test.tsx`.
 
-None of these asserts the `aria-describedby` targets, the blocked reason's row, the scroll position after a heading
-takes focus, or the docked card at 390 px.
+`e2e/mock/approvals-console.spec.ts` drives the docked card in the Console list and on the Console document page:
+
+- On the document page at 1440 px: after approve the recorded heading has focus and the receipt and the link to the
+  list show; reject with the other reason needs its memo, and Escape from the form returns focus to reject and keeps
+  the opinion; after a refusal because the document changed the opinion stays and a second approve is recorded; a
+  refusal by the server shows an alert and axe passes; a document that offers nothing draws no decision column.
+- In the Console list at 1440 px: the recorded heading has focus after approve while the list is read again late; a
+  refused reject keeps its commit disabled until the document is read again, and the alert stays when that read
+  offers nothing; Escape while a reject is on its way leaves the pane open.
+- At 1280 by 720 and 1366 by 768 px, after a refused reject, the pane body stays at least 80 px high and the footer
+  scrolls with the commit inside it.
+- After a refused approve on the document the list opened by itself, opening another document and coming back
+  leaves no empty footer.
+- At 320 px the record pane does not scroll sideways, and at 390 px the document page fits.
+
+None of these asserts the `aria-describedby` targets, the blocked reason's row, or the scroll position after a
+heading takes focus.
 
 No workflow runs the accessibility scan of the gallery. `e2e/visual.spec.ts` runs axe with the WCAG 2.2 A and AA
 rules over the whole gallery, in the light and the dark theme, when it is run against a development stack. It
