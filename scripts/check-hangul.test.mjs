@@ -36,6 +36,14 @@ test("ceiling uses the merge base, not later debt added on the target branch", t
   assert.match(f.run().stderr, /e2e: now 1, baseline 0/);
 });
 
+test("a merge base larger than one read of Git's output is read in batches", t => {
+  // Zeros cost Git almost nothing to store but expand past what a single bounded read of the tree holds.
+  const f = fixture(t, { "assets/zeros.bin": Buffer.alloc(129 * 1024 * 1024), "e2e/example.spec.ts": `// ${ko}` });
+  const result = f.run("--report");
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /Merge-base Hangul lines: .*"e2e":1/);
+});
+
 test("planted literal in shipped spec cannot hide behind removed test debt", t => {
   const file = "apps/web/src/features/entity/ui/name-correction-spec.tsx";
   const f = fixture(t, { [file]: "export {};", "apps/web/src/example.test.tsx": `// ${ko}` });
