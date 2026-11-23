@@ -34,7 +34,7 @@ use helpers::{LogSink, keyring_json, reveal_with_step_up, seed_mail_account, see
 use rrn_support::{TestEnvVault, seed_employee, seed_import_run, seed_tenant};
 use s3_ev_seed::seed_all_nine_s3_tables;
 use shred_assertions::{
-    assert_cold_pitr_fails_closed, assert_shredded_fail_closed_all_versions,
+    ShreddedTenant, assert_cold_pitr_fails_closed, assert_shredded_fail_closed_all_versions,
     seal_pre_shred_legacy_envelopes,
 };
 use shred_support::{
@@ -239,34 +239,19 @@ async fn two_operator_crypto_shred_survives_pitr_and_cleans_s3(owner: PgPool) {
     // Verify SHREDDED tombstones survive org deletion, triggers block restore, console_rt cannot insert SHREDDED, and erasure_ledger witnesses align.
     assert_shredded_triggers_and_witness(&owner, &a.rt, a.org).await;
     assert_console_rt_cannot_insert_shredded(&b.rt, b.org).await;
-    assert_shredded_fail_closed_all_versions(
-        &owner,
-        &a.rt,
-        a.org,
-        &store,
-        &vault_a,
-        &mail_base,
-        &sealed_a,
-        &stored_a.smtp_password,
-        &legacy_a,
-        *acc_a.as_uuid(),
-    )
-    .await;
+    let shredded = ShreddedTenant {
+        rt: &a.rt,
+        org: a.org,
+        mail_base: &mail_base,
+        rrn: &sealed_a,
+        smtp_password: &stored_a.smtp_password,
+        mail_account: *acc_a.as_uuid(),
+    };
+    assert_shredded_fail_closed_all_versions(&owner, &shredded, &store, &vault_a, &legacy_a).await;
 
     // PITR simulation: fresh cold cache/store + pre-erasure ciphertexts MUST fail closed.
-    assert_cold_pitr_fails_closed(
-        &a.rt,
-        a.org,
-        &ring,
-        &h_b64,
-        &mail_base,
-        &sealed_a,
-        &staged_a,
-        &stored_a.smtp_password,
-        &stored_a.imap_password,
-        *acc_a.as_uuid(),
-    )
-    .await;
+    assert_cold_pitr_fails_closed(&shredded, &ring, &h_b64, &staged_a, &stored_a.imap_password)
+        .await;
 
     // Control Org B still decrypts RRN, staged RRN, and mail credentials.
     let hr_b = HrService::new(b.rt.clone()).with_rrn_vault(Some(vault_b.clone()));
