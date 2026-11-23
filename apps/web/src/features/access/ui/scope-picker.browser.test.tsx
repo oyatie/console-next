@@ -29,18 +29,27 @@ afterAll(async () => { await browser?.close(); await server?.close(); });
 
 const row = (name: string) => page.getByRole("row", { name: new RegExp(`^${name} `) });
 
-test("Escape closes the scope sheet from a picked row, as it does from the Cancel button", async () => {
+test("a pick is unsaved input: Escape from the picked row warns first, then closes the scope sheet; with nothing picked it closes at once", async () => {
   const use = () => page.getByRole("button", { name: t("access.scope.done"), exact: true });
-  const steps = [
+  const picks = [
     async () => { await row("Seoul office").click(); await element(use()).toBeEnabled(); },
     async () => { await row("Seoul office").focus(); await page.keyboard.press("Enter"); await element(use()).toBeEnabled(); },
-    () => page.getByRole("button", { name: t("access.cancel"), exact: true }).focus(),
   ];
-  for (const step of steps) {
+  const load = async () => {
     await page.goto(`${server.resolvedUrls!.local[0]}scope-picker-test`);
     await element(page.getByRole("treegrid", { name: t("access.scope.tree") })).toBeVisible();
-    await step();
+  };
+  for (const pick of picks) {
+    await load();
+    await pick();
+    await page.keyboard.press("Escape");
+    await element(page.getByRole("status").filter({ hasText: t("composer.unsaved") })).toBeVisible();
+    await element(page.locator("#open")).toHaveText("open");
     await page.keyboard.press("Escape");
     await element(page.locator("#open")).toHaveText("closed");
   }
+  await load();
+  await page.getByRole("button", { name: t("access.cancel"), exact: true }).focus();
+  await page.keyboard.press("Escape");
+  await element(page.locator("#open")).toHaveText("closed");
 });
