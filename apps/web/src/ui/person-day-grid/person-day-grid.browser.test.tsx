@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { realpathSync } from "node:fs";
 import { dirname } from "node:path";
-import { afterAll, beforeAll, expect, test } from "vitest";
-import { expect as element, type Locator } from "@playwright/test";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { expect as element } from "@playwright/test";
 import { AxeBuilder } from "@axe-core/playwright";
 import { createServer, type ViteDevServer } from "vite";
 import { browserTestOptimizeDeps, chromium, type Browser, type Page } from "../../lib/browser-test";
-import { editingCases } from "./person-day-grid.browser-editing";
-import { activeShows, sideways } from "./person-day-grid.browser-probes";
+import { editingCases, paste } from "./person-day-grid.browser-editing";
+import { sidewaysCases } from "./person-day-grid.browser-sideways";
 
 const [fixture] = Object.values(import.meta.glob<string>("./person-day-grid.browser-fixture.tsx", { query: "?url", import: "default", eager: true }));
 // The grid as the attendance month view calls it: the real view, drafts, name links and side columns.
@@ -31,10 +31,10 @@ beforeAll(async () => {
       <style>main { display: flex; flex-direction: column; height: ${Number(query.get("box") ?? 320)}px; ${width ? `width: ${Number(width)}px;` : ""} ${row ? `--row-h-compact: ${Number(row)}px;` : ""} }</style>
       <div id="root"></div><script type="module" src="${fixture}"></script></html>` });
   });
-  // The month view in a box of `?w=` by `?h=` px: 31 days are wider than most boxes.
+  // The month view in a box of `?w=` by `?h=` px (31 days are wider than most boxes), in the visual style `?style=` names.
   await page.route("**/month-test*", route => {
-    const query = new URL(route.request().url()).searchParams;
-    return route.fulfill({ contentType: "text/html", body: `<html lang="ko"><title>Month grid</title>
+    const query = new URL(route.request().url()).searchParams, style = query.get("style");
+    return route.fulfill({ contentType: "text/html", body: `<html lang="ko"${style ? ` data-experience="${style}"` : ""}><title>Month grid</title>
       <style>main { display: flex; flex-direction: column; width: ${Number(query.get("w") ?? 900)}px; height: ${Number(query.get("h") ?? 320)}px; }</style>
       <div id="root"></div><script type="module" src="${monthFixture}"></script></html>` });
   });
@@ -113,180 +113,6 @@ test.each([390, 180])("a grid with one total column keeps it at the right edge o
   for (const to of [0, 100, end]) await expect.poll(async () => (await total(to)).ends, { message: `scrolled to ${to}` }).toEqual([0, 0]);
 });
 
-// The month view: twelve people, October's 31 days, no drafts. Keys after the first focus go to the page, as a person's do.
-let editor: Locator;
-const month = async (query = "") => {
-  await page.goto(`${server.resolvedUrls!.local[0]}month-test${query}`);
-  const grid = page.getByRole("grid");
-  editor = page.getByRole("textbox");
-  await element(grid.getByRole("link", { name: "Person 1", exact: true })).toBeVisible();
-  // The web font can still be arriving: a column it widens moves the side columns a frame later, so measures wait for it.
-  await page.evaluate(() => document.fonts.ready);
-  return grid;
-};
-const dayCell = (person: number, day: number) => page.locator("tbody tr").filter({ has: page.getByRole("link", { name: `Person ${person}`, exact: true }) }).locator("td").nth(day - 1);
-/** The active cell as "row,column", counted from 0. */
-const active = async () => (await page.getByRole("grid").getAttribute("aria-activedescendant"))?.match(/r(\d+)-c(\d+)$/)?.slice(1).join(",");
-
-// Its editing cases (typing, the editor's keys, presses, the name links) are in their own file and run here.
-editingCases(() => ({ page, month, dayCell, active }));
-
-// The month view passes four total columns and, when someone has no schedule, a third lead column.
-test.each([["", 2], ["&unscheduled", 3]] as const)("sticky side columns stand side by side at every sideways scroll position (%s)", async (extra, lead) => {
-  const grid = await month(`?w=1000${extra}`);
-  const { end } = await sideways(grid, 0, lead);
-  expect(end).toBeGreaterThan(600);
-  for (const to of [0, 300, end]) {
-    // All four totals stay at the right edge, with a week of days and more between the two sides.
-    const at = await sideways(grid, to, lead);
-    expect({ ...at, days: at.days >= 7 }, `scrolled to ${to}`).toEqual({ faults: [], days: true, totals: 4, end, totalsEnd: 0 });
-  }
-  // An open editor makes its day wider than the rest; the totals are held as before.
-  await grid.focus();
-  await page.keyboard.type("9");
-  await element(editor).toBeFocused();
-  expect(await sideways(grid, 0, lead)).toMatchObject({ faults: [], totals: 4, totalsEnd: 0 });
-});
-
-test("a box with less room holds the outer totals only, and a week of days stays in view", async () => {
-  // About the grid column beside a docked sheet on a laptop.
-  const grid = await month("?w=640");
-  const { end } = await sideways(grid, 0, 2);
-  for (const to of [0, 300]) {
-    const at = await sideways(grid, to, 2);
-    expect({ ...at, days: at.days >= 7 }, `scrolled to ${to}`).toEqual({ faults: [], days: true, totals: 2, end, totalsEnd: 0 });
-  }
-  // The other two are where the row ends, beside the two that were held.
-  expect(await sideways(grid, end, 2)).toMatchObject({ faults: [], totals: 4, totalsEnd: 0 });
-});
-
-// The last total stays at the right edge while a day shows beside it: a phone, and three lead columns in a wider box.
-test.each([["?w=358", 2], ["?w=452&unscheduled", 3]] as const)("a narrow box holds the last total only, with days in view beside it (%s)", async (query, lead) => {
-  const grid = await month(query);
-  const { end } = await sideways(grid, 0, lead);
-  for (const to of [0, 300]) {
-    const at = await sideways(grid, to, lead);
-    expect({ ...at, days: at.days >= 1 }, `scrolled to ${to}`).toEqual({ faults: [], days: true, totals: 1, end, totalsEnd: 0 });
-  }
-  // At the end of the row all four show whole (over the lead columns, which a box this narrow cannot also show).
-  const last = await sideways(grid, end, lead);
-  expect(last.faults.filter(fault => fault.includes("total"))).toEqual([]);
-  expect(last).toMatchObject({ totals: 4, totalsEnd: 0 });
-});
-
-test("a box with no room for a day beside a total holds none: they scroll with the days and end the row", async () => {
-  // Three lead columns on a phone.
-  const grid = await month("?w=358&unscheduled");
-  const { end } = await sideways(grid, 0, 3);
-  for (const to of [0, 300]) {
-    const at = await sideways(grid, to, 3);
-    expect({ ...at, days: at.days >= 1 }, `scrolled to ${to}`).toEqual({ faults: [], days: true, totals: 0, end, totalsEnd: at.totalsEnd });
-  }
-  const last = await sideways(grid, end, 3);
-  expect(last.faults.filter(fault => fault.includes("total"))).toEqual([]);
-  expect(last).toMatchObject({ totals: 4, totalsEnd: 0 });
-});
-
-test("a grid that fits its box has every column where the table puts it", async () => {
-  await page.setViewportSize({ width: 2300, height: 720 });
-  try {
-    const grid = await month("?w=2200&unscheduled");
-    await expect.poll(() => sideways(grid, 0, 3)).toEqual({ faults: [], days: 31, totals: 4, end: 0, totalsEnd: 0 });
-  } finally {
-    await page.setViewportSize({ width: 1280, height: 720 });
-  }
-});
-
-test("a grid that fits its box places its side columns again when what a column holds changes width with no render", async () => {
-  await page.setViewportSize({ width: 2300, height: 720 });
-  try {
-    const grid = await month("?w=2200&unscheduled");
-    const fits = { faults: [], days: 31, totals: 4, end: 0, totalsEnd: 0 };
-    await expect.poll(() => sideways(grid, 0, 3)).toEqual(fits);
-    const widths = () => page.locator("thead th").evaluateAll(cells => cells.map(cell => cell.getBoundingClientRect().width));
-    const before = await widths();
-    // As a font arriving does: the table keeps the box's width, and shares it out again between the columns.
-    await page.addStyleTag({ content: "thead th:nth-last-child(-n+4) { letter-spacing: 2px; }" });
-    await expect.poll(async () => (await widths()).slice(-4).some((width, k) => width !== before.at(k - 4))).toBe(true);
-    await expect.poll(() => sideways(grid, 0, 3)).toEqual(fits);
-  } finally {
-    await page.setViewportSize({ width: 1280, height: 720 });
-  }
-});
-
-// The box's width, and the day column that starts in view and ends under the totals before any scroll.
-test.each([[1000, 12], [640, 7]])("moving the active cell sideways keeps it in view between the sticky columns (a %s px box)", async (width, cut) => {
-  const grid = await month(`?w=${width}`);
-  await grid.focus();
-  expect(await activeShows(grid)).toBe("in view");
-  for (let i = 0; i < 14; i++) await page.keyboard.press("ArrowRight");
-  await expect.poll(active).toBe("0,14");
-  await expect.poll(() => activeShows(grid)).toBe("in view");
-  // The editor is wider than a day, and shows whole too.
-  await page.keyboard.type("9");
-  await element(editor).toBeFocused();
-  await expect.poll(() => activeShows(grid)).toBe("in view");
-  await page.keyboard.press("Escape");
-  await page.keyboard.press("End");
-  await expect.poll(active).toBe("0,30");
-  await expect.poll(() => activeShows(grid)).toBe("in view");
-  // Back the other way the lead columns cover the left of the box.
-  for (let i = 0; i < 20; i++) await page.keyboard.press("ArrowLeft");
-  await expect.poll(active).toBe("0,10");
-  await expect.poll(() => activeShows(grid)).toBe("in view");
-  await page.keyboard.press("Home");
-  await expect.poll(active).toBe("0,0");
-  await expect.poll(() => grid.locator("..").evaluate(el => el.scrollLeft)).toBe(0);
-  // A press on a person's number selects the row, to its last day, and the box stays where it is.
-  await grid.getByText("1002", { exact: true }).click();
-  await element(grid.locator('td[aria-selected="true"]')).toHaveCount(31);
-  expect(await active()).toBe("1,30");
-  expect(await grid.locator("..").evaluate(el => el.scrollLeft)).toBe(0);
-  // A press on the part of a cell that shows brings the rest of it into view, and selects that cell alone.
-  await dayCell(2, cut + 1).click({ position: { x: 6, y: 10 } });
-  await expect.poll(active).toBe(`1,${cut}`);
-  await expect.poll(() => activeShows(grid)).toBe("in view");
-  await element(grid.locator('td[aria-selected="true"]')).toHaveCount(1);
-});
-
-test("a key that keeps the active cell's column brings it back into view after the box was moved without it", async () => {
-  const grid = await month("?w=1000");
-  const box = grid.locator(".."), scrollTo = (left: number) => box.evaluate((el, to) => { el.scrollLeft = to; }, left);
-  await grid.focus();
-  // On day 1 with the box scrolled away by hand: a move down, then two keys with nowhere further to go.
-  for (const [key, cell] of [["ArrowDown", "1,0"], ["ArrowLeft", "1,0"], ["Home", "1,0"]] as const) {
-    await scrollTo(500);
-    await page.keyboard.press(key);
-    await expect.poll(active).toBe(cell);
-    await expect.poll(() => activeShows(grid), { message: key }).toBe("in view");
-  }
-  // On day 31 with the box scrolled back to the start.
-  await page.keyboard.press("End");
-  for (const [key, cell] of [["ArrowDown", "2,30"], ["Shift+ArrowDown", "3,30"]] as const) {
-    await scrollTo(0);
-    await page.keyboard.press(key);
-    await expect.poll(active).toBe(cell);
-    await expect.poll(() => activeShows(grid), { message: key }).toBe("in view");
-  }
-  // A press on a person's number leaves the box where it is; the next key is followed.
-  await scrollTo(0);
-  await grid.getByText("1002", { exact: true }).click();
-  expect(await active()).toBe("1,30");
-  expect(await box.evaluate(el => el.scrollLeft)).toBe(0);
-  await page.keyboard.press("ArrowDown");
-  await expect.poll(active).toBe("2,30");
-  await expect.poll(() => activeShows(grid)).toBe("in view");
-  // So is the key after a press on a number that the browser cancelled (a touch that became a pan).
-  await scrollTo(0);
-  const number = grid.getByText("1004", { exact: true });
-  await number.dispatchEvent("pointerdown");
-  await number.dispatchEvent("pointercancel");
-  await expect.poll(active).toBe("3,30");
-  await page.keyboard.press("ArrowLeft");
-  await expect.poll(active).toBe("3,29");
-  await expect.poll(() => activeShows(grid)).toBe("in view");
-});
-
 // Rows 24 px apart leave two neighbouring names exactly the spacing a pointer needs. So in a visual style a row's rules
 // take no room in it, and a name is a target as tall as its row.
 test("in a visual style, names stay evenly spaced and each is a whole pointer target, also half under the head", async () => {
@@ -316,4 +142,51 @@ test("in a visual style, names stay evenly spaced and each is a whole pointer ta
   await grid.locator("..").evaluate(el => { el.scrollTop = 24 * 5 + 12; });
   const { violations } = await new AxeBuilder({ page }).withRules(["target-size"]).setLegacyMode(true).analyze();
   expect(violations.flatMap(v => v.nodes.map(n => n.target.join(" ")))).toEqual([]);
+});
+
+// The month view: twelve people, October's 31 days, no drafts. Keys after the first focus go to the page, as a person's do.
+type Look = { style?: string; phone?: boolean };
+const month = (look: Look) => async (query = "") => {
+  await page.setViewportSize(look.phone ? { width: 390, height: 844 } : { width: 1280, height: 720 });
+  const search = new URLSearchParams(query);
+  if (look.style) search.set("style", look.style);
+  // A phone's box is as wide as its screen.
+  if (look.phone) search.set("w", "390");
+  await page.goto(`${server.resolvedUrls!.local[0]}month-test?${search}`);
+  const grid = page.locator("main").getByRole("grid");
+  await element(grid.getByRole("link", { name: "Person 1", exact: true })).toBeVisible();
+  // The web font can still be arriving: a column it widens moves the others a frame later, so measures wait for it.
+  await page.evaluate(() => document.fonts.ready);
+  return grid;
+};
+const dayCell = (person: number, day: number) => page.locator("main tbody tr").filter({ has: page.getByRole("link", { name: `Person ${person}`, exact: true }) }).locator("td").nth(day - 1);
+/** The active cell as "row,column", counted from 0. */
+const active = async () => (await page.locator("main").getByRole("grid").getAttribute("aria-activedescendant"))?.match(/r(\d+)-c(\d+)$/)?.slice(1).join(",");
+
+// Each case runs in the classic look and in the console month screen's, at a desk and on a phone. Its editing and
+// sideways cases are in their own files. Last in the file: the cases leave the page at their screen size.
+describe.each([["classic", {}], ["console", { style: "console" }], ["console on a phone", { style: "console", phone: true }]] as const)("the month view, %s", (_, look: Look) => {
+  const view = () => ({ page, month: month(look), dayCell, active });
+  editingCases(view);
+  // A desk's box, and about the grid column beside a docked sheet on a laptop.
+  sidewaysCases(view, look.phone ? [""] : ["?w=1000", "?w=640"]);
+
+  test.runIf(look.style)("the console's lead columns are drawn as the screen draws them", async () => {
+    const grid = await month(look)();
+    // Name and number are held; the unit scrolls with the days at a desk and is not drawn on a phone.
+    const leads = await grid.locator("tbody tr:not([aria-hidden])").first().locator("th").evaluateAll(cells => cells.map(cell => ({ position: getComputedStyle(cell).position, width: cell.getBoundingClientRect().width })));
+    expect(leads.map(lead => lead.position)).toEqual(["sticky", "sticky", "static"]);
+    expect(leads[2]!.width === 0).toBe(!!look.phone);
+  });
+
+  test.runIf(look.style)("a paste while a row of another grid on the screen has the focus opens no paste preview", async () => {
+    const grid = await month(look)();
+    await grid.focus();
+    await page.getByRole("grid").last().getByRole("row").nth(1).focus();
+    await paste(page);
+    await element(page.getByRole("dialog")).toHaveCount(0);
+    await grid.focus();
+    await paste(page);
+    await element(page.getByRole("dialog")).toHaveCount(1);
+  });
 });

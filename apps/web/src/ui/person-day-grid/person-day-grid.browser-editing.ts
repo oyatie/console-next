@@ -4,14 +4,22 @@
 import { beforeAll, expect, test } from "vitest";
 import { expect as element, type Locator, type Page } from "@playwright/test";
 
-type MonthView = {
+export type MonthView = {
   page: Page;
-  /** Opens the month view and returns its grid. */
+  /** Opens the month view, in a box of `?w=` px when the query gives one, and returns its grid. */
   month: (query?: string) => Promise<Locator>;
   dayCell: (person: number, day: number) => Locator;
   /** The active cell as "row,column", counted from 0. */
   active: () => Promise<string | undefined>;
 };
+
+/** A paste on what has the focus, read a frame later, once the page has drawn what it asked for. */
+export const paste = (page: Page) => page.evaluate(() => {
+  const data = new DataTransfer();
+  data.setData("text/plain", "9-18");
+  document.activeElement!.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }));
+  return new Promise(done => requestAnimationFrame(() => setTimeout(done)));
+});
 
 /** Registers the cases; `view` is read once the test file's page is up. */
 export function editingCases(view: () => MonthView) {
@@ -160,18 +168,19 @@ export function editingCases(view: () => MonthView) {
     await element(drafts).toHaveText(`{${FIRST}}`);
     await element(page.locator("#acts")).toHaveText("");
     expect(await active()).toBe("0,0");
-    // Nor is a paste on the link the grid's: the paste preview opens for one on the grid itself. (Read a frame later,
-    // once the page has drawn what the paste asked for.)
-    const paste = () => page.evaluate(() => {
-      const data = new DataTransfer();
-      data.setData("text/plain", "9-18");
-      document.activeElement!.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }));
-      return new Promise(done => requestAnimationFrame(() => setTimeout(done)));
-    });
-    await paste();
+    // The month view's chords are the page's wherever the focus is in the grid: save, undo and redo.
+    await page.keyboard.press("Control+s");
+    await element(page.locator("#acts")).toHaveText("save");
+    await page.keyboard.press("Control+z");
+    await element(drafts).toHaveText("{}");
+    await page.keyboard.press("Control+y");
+    await element(drafts).toHaveText(`{${FIRST}}`);
+    await element(link).toBeFocused();
+    // Nor is a paste on the link the grid's: the paste preview opens for one on the grid itself.
+    await paste(page);
     await element(page.getByRole("dialog")).toHaveCount(0);
     await grid.focus();
-    await paste();
+    await paste(page);
     await element(page.getByRole("dialog")).toHaveCount(1);
   });
 
