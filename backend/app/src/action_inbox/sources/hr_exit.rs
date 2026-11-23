@@ -182,9 +182,8 @@ pub(crate) async fn page(
 #[path = "../../../tests/inbox_exit_scale/mod.rs"]
 mod scale_tests;
 
-#[cfg(test)]
+#[cfg(all(test, feature = "test-postgres"))]
 mod tests {
-    #![cfg(feature = "test-postgres")]
 
     use super::*;
     use console_kernel_core::{BranchScope, OrgId};
