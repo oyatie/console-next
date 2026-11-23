@@ -23,7 +23,7 @@ async fn ops_recovery_lost_or_expired_issue_restarts_the_same_two_person_hold(po
             .unwrap();
     assert!(facts.ops_enrolled && facts.recovery_available && !facts.ops_has_passkey);
     assert!(
-        BootstrapCredentialStore
+        BootstrapCredentialStore::default()
             .redeem_otp(
                 &h.runtime,
                 issued.otp.as_ref().unwrap(),
@@ -47,7 +47,7 @@ async fn ops_recovery_lost_or_expired_issue_restarts_the_same_two_person_hold(po
     let replacement = h.vendor(h.a, second, C::Issue).await.unwrap();
     assert_ne!(issued.otp, replacement.otp);
     assert!(
-        BootstrapCredentialStore
+        BootstrapCredentialStore::default()
             .redeem_otp(
                 &h.runtime,
                 issued.otp.as_ref().unwrap(),
@@ -57,7 +57,7 @@ async fn ops_recovery_lost_or_expired_issue_restarts_the_same_two_person_hold(po
             .is_err()
     );
     assert!(
-        BootstrapCredentialStore
+        BootstrapCredentialStore::default()
             .redeem_otp(
                 &h.runtime,
                 replacement.otp.as_ref().unwrap(),

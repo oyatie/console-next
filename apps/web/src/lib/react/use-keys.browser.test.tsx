@@ -27,12 +27,18 @@ beforeAll(async () => {
       load: id => id === FIXTURE ? `
         import React from "react";
         import { createRoot } from "react-dom/client";
+        import { flushSync } from "react-dom";
         import { useKeys } from "/apps/web/src/lib/react/use-keys.ts";
         const h = React.createElement;
         window.heard = [];
         function App() {
           const [dialog, setDialog] = React.useState(false);
-          useKeys({ "card.next": () => window.heard.push("next"), "card.section": (_, n) => window.heard.push("section " + n), "registerRun.next": () => window.heard.push("save") });
+          const [tag, setTag] = React.useState("initial");
+          window.syncAndPress = () => {
+            flushSync(() => setTag("updated"));
+            document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "j", code: "KeyJ", bubbles: true, cancelable: true }));
+          };
+          useKeys({ "card.next": () => window.heard.push("next:" + tag), "card.section": (_, n) => window.heard.push("section " + n), "registerRun.next": () => window.heard.push("save") });
           // Like the app's text input: Enter's default is prevented so the form does not submit, and the event goes on.
           const enter = e => e.key === "Enter" && e.preventDefault();
           return h("main", null, h("h1", null, "Keys"), h("input", { "aria-label": "Name", onKeyDown: enter }),
@@ -58,12 +64,12 @@ const send = (init: { key: string; code: string; isComposing?: boolean }) =>
 test("a screen's keys work in a Korean input mode, stay out of fields and composition, reach a field chord, and wait for a dialog", async () => {
   await page.keyboard.press("j");
   await page.keyboard.press("3");
-  expect(await heard()).toEqual(["next", "section 3"]);
+  expect(await heard()).toEqual(["next:initial", "section 3"]);
 
   await send(jamo);
   await send({ ...jamo, isComposing: true });
   await send({ key: "Process", code: "KeyJ" });
-  expect(await heard()).toEqual(["next"]);
+  expect(await heard()).toEqual(["next:initial"]);
 
   await page.getByRole("textbox", { name: "Name" }).fill("");
   await page.keyboard.press("j");
@@ -83,7 +89,7 @@ test("with single keys off on this device a page key calls nothing, a chord stil
   await page.reload({ waitUntil: "commit" });
   await waitForBrowserTestPage(page, page.getByRole("heading", { name: "Keys" }));
   await page.keyboard.press("j");
-  expect(await heard()).toEqual(["next"]);
+  expect(await heard()).toEqual(["next:initial"]);
   try {
     await page.evaluate(() => localStorage.setItem("console.singleKeys", "off"));
     await page.keyboard.press("j");
@@ -95,6 +101,13 @@ test("with single keys off on this device a page key calls nothing, a chord stil
     await page.evaluate(() => localStorage.removeItem("console.singleKeys"));
     await page.keyboard.press("j");
     await page.keyboard.press("3");
-    expect(await heard()).toEqual(["next", "section 3"]);
+    expect(await heard()).toEqual(["next:initial", "section 3"]);
   } finally { await page.evaluate(() => localStorage.removeItem("console.singleKeys")); }
+}, 60_000);
+
+test("useKeys sees updated handler refs synchronously after flushSync before passive effects", async () => {
+  await page.reload({ waitUntil: "commit" });
+  await waitForBrowserTestPage(page, page.getByRole("heading", { name: "Keys" }));
+  await page.evaluate(() => (window as unknown as { syncAndPress: () => void }).syncAndPress());
+  expect(await heard()).toEqual(["next:updated"]);
 }, 60_000);

@@ -210,6 +210,8 @@ pub struct GridRow {
     pub employee_number: Option<String>,
     pub name: String,
     pub unit_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub position: Option<String>,
     pub own: bool,
     pub cells: Vec<GridCell>,
     pub totals: GridTotals,
@@ -218,12 +220,29 @@ pub struct GridRow {
     pub month_state: MonthState,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Default)]
+pub struct MonthGridSummary {
+    pub scheduled_days: i64,
+    pub weekday_holidays: i64,
+    pub recognised_minutes: i64,
+    pub outside_minutes: i64,
+    pub unapproved_minutes: i64,
+    pub blocking_count: i64,
+    pub decision_count: i64,
+    pub issue_people_count: i64,
+    pub overtime_people_count: i64,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct MonthGrid {
     pub month: String,
     pub rows: Vec<GridRow>,
     pub people_total: i64,
     pub next_cursor: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub work_pattern_summary: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub summary: Option<MonthGridSummary>,
 }
 
 #[derive(Debug, Clone, Serialize)]

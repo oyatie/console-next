@@ -35,7 +35,7 @@ test("failed grants read has no zero count, empty claim, header writes, open req
   state.error = new ApiError(503, "service_unavailable", "private server detail");
   const html = render();
   expect(html).toContain("불러오지 못했습니다");
-  for (const text of ["부여 0건", "부여가 없습니다", "권한 부여", "여러 사람에게 부여", "data-requests-stub", "이름·사번·역할 찾기", "일 안에 끝나는 부여", "private server detail"])
+  for (const text of ["부여 0건", "부여가 없습니다", "권한 부여", "여러 사람에게 부여", "data-requests-stub", "이름, 사번, 역할 검색", "일 안에 끝나는 부여", "private server detail"])
     expect(html).not.toContain(text);
 });
 
@@ -64,5 +64,5 @@ test("populated grants have one search and a header grant action", () => {
 test("empty grants name the grant action and hide filters", () => {
   const html = render();
   expect(html).toContain("「권한 부여」로 역할을 부여하십시오.");
-  expect(html).not.toContain("이름·사번·역할 찾기");
+  expect(html).not.toContain("이름, 사번, 역할 검색");
 });

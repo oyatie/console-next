@@ -71,8 +71,8 @@ test.each([360, 320])("at %i px wide the open list fits inside the screen and no
     const pop = list().locator("xpath=..");
     const options = await list().getByRole("option").all();
     expect(options).toHaveLength(count);
-    // The trigger is narrower still, so the list takes its capped minimum: the screen less 12 px at each side.
-    expect((await box(pop)).width).toBeCloseTo(width - 24, 1);
+    // The trigger is narrower still, so the list takes its capped minimum: the screen less 16 px.
+    expect((await box(pop)).width).toBeCloseTo(width - 16, 1);
     // An option's own widths count its padding, so text that runs only into the padding is caught on the spans inside it.
     for (const part of [pop, ...options, ...await list().locator("span").all()]) {
       const { x, width: w } = await box(part);

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! The erasure receipt retains the target identity after the tenant is gone.
+use aws_lc_rs::digest::{SHA256, digest};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -21,8 +21,13 @@ impl TenantEraseCommand {
         }
     }
     pub fn payload_hash(self, org: Uuid, id: Uuid) -> String {
-        let bytes = Sha256::digest(format!("tenant_erase:{org}:{id}:{}", self.action()));
-        bytes.iter().map(|byte| format!("{byte:02x}")).collect()
+        let payload = format!("tenant_erase:{org}:{id}:{}", self.action());
+        let bytes = digest(&SHA256, payload.as_bytes());
+        bytes
+            .as_ref()
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect()
     }
 }
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
@@ -47,4 +52,17 @@ pub struct TenantEraseRead {
     pub archived: bool,
     pub legal_hold: bool,
     pub cooling_hours: i64,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn payload_hash_matches_sha256_vector() {
+        assert_eq!(
+            TenantEraseCommand::Open.payload_hash(Uuid::nil(), Uuid::nil()),
+            "eb0bee879d3a5deae7f15b9236b30b8468b7ae144a28ba63a62c6207e85701c9"
+        );
+    }
 }

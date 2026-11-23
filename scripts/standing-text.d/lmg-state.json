@@ -1,7 +1,7 @@
 {
   "baseline": {
     "apps/web/src/features/access/ui/access-routes.tsx#BulkScreen": 68,
-    "apps/web/src/features/access/ui/access-routes.tsx#GrantsScreen": 105,
+    "apps/web/src/features/access/ui/access-routes.tsx#GrantsScreen": 104,
     "apps/web/src/features/access/ui/access-routes.tsx#PersonScreen": 97,
     "apps/web/src/features/access/ui/access-routes.tsx#ReadyScreen": 14,
     "apps/web/src/features/access/ui/access-routes.tsx#RoleNewScreen": 31,
@@ -11,7 +11,7 @@
     "apps/web/src/features/attendance/ui/attendance-page.tsx#AttendancePage": 118,
     "apps/web/src/features/attendance/ui/attendance-page.tsx#DayPage": 78,
     "apps/web/src/features/attendance/ui/attendance-page.tsx#MonthPage": 84,
-    "apps/web/src/features/attendance/ui/attendance-page.tsx#PersonPage": 23,
+    "apps/web/src/features/attendance/ui/attendance-page.tsx#PersonPage": 21,
     "apps/web/src/features/company-domain/ui/domain-page.tsx#default": 22,
     "apps/web/src/features/entity/ui/entity-routes.tsx#EntitiesScreen": 118,
     "apps/web/src/features/entity/ui/entity-routes.tsx#EntityScreen": 0,
@@ -28,7 +28,7 @@
     "apps/web/src/features/org/ui/bulk-move-page.tsx#BulkMovePage": 44,
     "apps/web/src/features/people/ui/certificate-page.tsx#CertificatePage": 28,
     "apps/web/src/features/people/ui/certificates-page.tsx#CertificatesPage": 43,
-    "apps/web/src/features/people/ui/exit-list.tsx#ExitCaseList": 28,
+    "apps/web/src/features/people/ui/exit-list.tsx#ExitCaseList": 27,
     "apps/web/src/features/people/ui/job-titles-page.tsx#JobTitlesPage": 26,
     "apps/web/src/features/people/ui/notice-list-page.tsx#NoticeListPage": 6,
     "apps/web/src/features/people/ui/notice-page.tsx#NoticePage": 10,

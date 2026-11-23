@@ -115,13 +115,16 @@ The values of `Tone` are the five tones under Looks and sizes.
 | Token | Read by |
 | --- | --- |
 | `--border` | `border-color` |
+| `--border-strong` | `border-color` |
 | `--danger-bd` | `border-color` |
 | `--danger-bg` | `background` |
 | `--danger-tx` | `color` |
 | `--fw-medium` | `font-weight` |
+| `--fw-semibold` | `font-weight` |
 | `--info-bd` | `border-color` |
 | `--info-bg` | `background` |
 | `--info-tx` | `color` |
+| `--ink` | `color` |
 | `--muted` | `background` |
 | `--ok-bd` | `border-color` |
 | `--ok-bg` | `background` |
@@ -131,6 +134,7 @@ The values of `Tone` are the five tones under Looks and sizes.
 | `--space-2` | `padding` |
 | `--space-5` | `height` |
 | `--steel` | `color` |
+| `--surface` | `background` |
 | `--text-xs` | `font-size` |
 | `--warn-bd` | `border-color` |
 | `--warn-bg` | `background` |

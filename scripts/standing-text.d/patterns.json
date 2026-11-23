@@ -1,10 +1,118 @@
 {
   "baseline": {
-    "apps/web/src/review/list-record-review.tsx#ListRecordReview": 10
+    "apps/web/src/review/canvas-review.tsx#CanvasReview": 17,
+    "apps/web/src/review/document-decision-review.tsx#DocumentDecisionReview": 10,
+    "apps/web/src/review/form-review.tsx#FormReview": 15,
+    "apps/web/src/review/list-record-review.tsx#ListRecordReview": 10,
+    "apps/web/src/review/month-grid-review.tsx#MonthGridReview": 8,
+    "apps/web/src/review/phone-hub-review.tsx#PhoneHubReview": 7,
+    "apps/web/src/review/phone-statement-review.tsx#PhoneStatementReview": 2,
+    "apps/web/src/review/record-review.tsx#RecordReview": 10,
+    "apps/web/src/review/register-totals-review.tsx#RegisterTotalsReview": 8,
+    "apps/web/src/review/settings-review.tsx#SettingsReview": 12,
+    "apps/web/src/review/sign-in-review.tsx#SignInReview": 11,
+    "apps/web/src/review/wizard-review.tsx#WizardReview": 23,
+    "apps/web/src/review/worklist-review.tsx#WorklistReview": 12
   },
   "newScreens": {
+    "apps/web/src/review/canvas-review.tsx#CanvasReview": {
+      "FACT": 14,
+      "REFUSAL": 1,
+      "EMPTY": 1,
+      "LEGAL": 0,
+      "RECEIPT": 1,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/review/document-decision-review.tsx#DocumentDecisionReview": {
+      "FACT": 7,
+      "REFUSAL": 1,
+      "EMPTY": 1,
+      "LEGAL": 0,
+      "RECEIPT": 1,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/review/form-review.tsx#FormReview": {
+      "FACT": 12,
+      "REFUSAL": 1,
+      "EMPTY": 1,
+      "LEGAL": 0,
+      "RECEIPT": 1,
+      "EXPLANATION": 0
+    },
     "apps/web/src/review/list-record-review.tsx#ListRecordReview": {
       "FACT": 6,
+      "REFUSAL": 1,
+      "EMPTY": 2,
+      "LEGAL": 0,
+      "RECEIPT": 1,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/review/month-grid-review.tsx#MonthGridReview": {
+      "FACT": 5,
+      "REFUSAL": 1,
+      "EMPTY": 1,
+      "LEGAL": 0,
+      "RECEIPT": 1,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/review/phone-hub-review.tsx#PhoneHubReview": {
+      "FACT": 4,
+      "REFUSAL": 1,
+      "EMPTY": 1,
+      "LEGAL": 0,
+      "RECEIPT": 1,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/review/phone-statement-review.tsx#PhoneStatementReview": {
+      "FACT": 1,
+      "REFUSAL": 0,
+      "EMPTY": 1,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/review/record-review.tsx#RecordReview": {
+      "FACT": 7,
+      "REFUSAL": 1,
+      "EMPTY": 1,
+      "LEGAL": 0,
+      "RECEIPT": 1,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/review/register-totals-review.tsx#RegisterTotalsReview": {
+      "FACT": 5,
+      "REFUSAL": 1,
+      "EMPTY": 1,
+      "LEGAL": 0,
+      "RECEIPT": 1,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/review/settings-review.tsx#SettingsReview": {
+      "FACT": 9,
+      "REFUSAL": 1,
+      "EMPTY": 1,
+      "LEGAL": 0,
+      "RECEIPT": 1,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/review/sign-in-review.tsx#SignInReview": {
+      "FACT": 9,
+      "REFUSAL": 1,
+      "EMPTY": 1,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/review/wizard-review.tsx#WizardReview": {
+      "FACT": 20,
+      "REFUSAL": 1,
+      "EMPTY": 1,
+      "LEGAL": 0,
+      "RECEIPT": 1,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/review/worklist-review.tsx#WorklistReview": {
+      "FACT": 8,
       "REFUSAL": 1,
       "EMPTY": 2,
       "LEGAL": 0,

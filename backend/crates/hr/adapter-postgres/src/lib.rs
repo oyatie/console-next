@@ -58,6 +58,7 @@ pub mod statutory;
 
 // --- lane: F5 ---
 pub mod certificates;
+pub mod me_profile;
 
 // --- lane: ECO-G5 ---
 pub mod person_binding;

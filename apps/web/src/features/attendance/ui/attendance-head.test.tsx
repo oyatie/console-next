@@ -2,8 +2,8 @@
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, expect, test, vi } from "vitest";
-import { loadCatalog } from "@console/i18n";
-import { AttendanceHead } from "./attendance-head";
+import { loadCatalog, t } from "@console/i18n";
+import { AttendanceHead, AttendanceTabNav } from "./attendance-head";
 
 vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({}) }));
 vi.mock("@tanstack/react-router", () => ({
@@ -11,11 +11,11 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 beforeAll(() => loadCatalog("ko"));
 
-const tabs = ["day", "month", "overtime", "schedule", "issues", "close"] as const;
+const tabs = ["day", "month", "overtime", "schedule", "issues", "close", "import"] as const;
 test.each(tabs)("T6 order and current URL view: %s", tab => {
   const html = renderToStaticMarkup(<AttendanceHead tab={tab} />);
   const links = [...html.matchAll(/<span\b([^>]*data-href="[^"]+"[^>]*)>(.*?)<\/span>/g)];
-  expect(links.map(link => link[2])).toEqual(["오늘", "근태 기록", "연장근로", "근무 일정", "확인 필요", "월 마감"]);
+  expect(links.map(link => link[2])).toEqual(["오늘", "근태 기록", "연장근로", "근무 일정", "확인 필요", "월 마감", "가져오기"]);
   expect(links.map(link => link[1]!.match(/data-href="([^"]+)"/)![1])).toEqual(tabs.map(id => `?tab=${id}`));
   expect(links.filter(link => link[1]!.includes('aria-current="page"')).map(link => link[2])).toEqual([links[tabs.indexOf(tab)]![2]]);
   expect(html).not.toContain(">휴가<");
@@ -32,4 +32,11 @@ test("a saved week URL selects the single overtime concept", () => {
   const html = renderToStaticMarkup(<AttendanceHead tab="week" />);
   expect(html).toMatch(/aria-current="page"[^>]*>연장근로</);
   expect(html).not.toContain('data-href="?tab=week"');
+});
+
+test("AttendanceTabNav renders standalone route tabs without a page heading", () => {
+  const html = renderToStaticMarkup(<AttendanceTabNav tab="month" />);
+  expect(html).toContain("<nav");
+  expect(html).not.toContain("<h1");
+  expect(html).toContain(`aria-current="page" data-href="?tab=month">${t("attendance.tab.month")}<`);
 });

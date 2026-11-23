@@ -1,0 +1,231 @@
+{
+  "baseline": {
+    "apps/web/src/features/access-log/ui/access-log-inspector.tsx#AccessLogInspector": 27,
+    "apps/web/src/features/access-log/ui/access-log-review-composer.tsx#AccessLogReviewComposer": 17,
+    "apps/web/src/features/access-log/ui/access-log-review-sheet.tsx#AccessLogReviewSheet": 17,
+    "apps/web/src/features/access/ui/access-review-detail-sheet.tsx#AccessReviewDetailSheet": 4,
+    "apps/web/src/features/access/ui/access-review-inspector.tsx#AccessReviewConsole": 21,
+    "apps/web/src/features/account/ui/privacy-intake-inspector.tsx#PrivacyIntakeInspector": 5,
+    "apps/web/src/features/account/ui/privacy-intake-queue.tsx#PrivacyIntakeQueue": 24,
+    "apps/web/src/features/account/ui/privacy-intake-workbench.tsx#PrivacyIntakeWorkbench": 34,
+    "apps/web/src/features/account/ui/privacy-objection-composer.tsx#PrivacyObjectionComposer": 19,
+    "apps/web/src/features/account/ui/privacy-off-app-composer.tsx#PrivacyOffAppComposer": 23,
+    "apps/web/src/features/attendance/ui/attendance-page.tsx#ImportPage": 47,
+    "apps/web/src/features/attendance/ui/close-console-actions.tsx#CloseConsoleActions": 22,
+    "apps/web/src/features/attendance/ui/close-console-sheets.tsx#CloseConfirmSheet": 21,
+    "apps/web/src/features/attendance/ui/issues-console-sheets.tsx#RaiseExceptionSheet": 17,
+    "apps/web/src/features/attendance/ui/overtime-ack-bar.tsx#OvertimeAckBar": 13,
+    "apps/web/src/features/attendance/ui/scope-picker-console.tsx#ScopePickerConsole": 0,
+    "apps/web/src/features/attendance/ui/substitutions-sheet.tsx#SubstitutionsSheet": 23,
+    "apps/web/src/features/audit/ui/audit-page.tsx#AuditPage": 21,
+    "apps/web/src/features/payroll/ui/run-lifecycle-pane.tsx#RunLifecyclePane": 21,
+    "apps/web/src/features/payroll/ui/run-lifecycle-sheets.tsx#RunLifecycleSheet": 30,
+    "apps/web/src/features/payroll/ui/run-open-exceptions-blocker.tsx#RunOpenExceptionsBlocker": 4,
+    "apps/web/src/features/settings/ui/policy-edit-sheet.tsx#PolicyEditSheet": 39,
+    "apps/web/src/features/settings/ui/policy-inspector.tsx#PolicyInspector": 11,
+    "apps/web/src/features/settings/ui/policy-reasons-panel.tsx#ReasonCodesPanel": 21,
+    "apps/web/src/features/settings/ui/policy-sections.tsx#PolicyCategoryPanel": 5
+  },
+  "newScreens": {
+    "apps/web/src/features/access-log/ui/access-log-inspector.tsx#AccessLogInspector": {
+      "FACT": 11,
+      "REFUSAL": 12,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 4,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/access/ui/access-review-detail-sheet.tsx#AccessReviewDetailSheet": {
+      "FACT": 4,
+      "REFUSAL": 0,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/access/ui/access-review-inspector.tsx#AccessReviewConsole": {
+      "FACT": 8,
+      "REFUSAL": 12,
+      "EMPTY": 1,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/access-log/ui/access-log-review-composer.tsx#AccessLogReviewComposer": {
+      "FACT": 6,
+      "REFUSAL": 10,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 1,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/access-log/ui/access-log-review-sheet.tsx#AccessLogReviewSheet": {
+      "FACT": 7,
+      "REFUSAL": 6,
+      "EMPTY": 2,
+      "LEGAL": 0,
+      "RECEIPT": 2,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/account/ui/privacy-intake-inspector.tsx#PrivacyIntakeInspector": {
+      "FACT": 5,
+      "REFUSAL": 0,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/account/ui/privacy-intake-queue.tsx#PrivacyIntakeQueue": {
+      "FACT": 11,
+      "REFUSAL": 8,
+      "EMPTY": 3,
+      "LEGAL": 0,
+      "RECEIPT": 2,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/account/ui/privacy-intake-workbench.tsx#PrivacyIntakeWorkbench": {
+      "FACT": 12,
+      "REFUSAL": 17,
+      "EMPTY": 0,
+      "LEGAL": 1,
+      "RECEIPT": 4,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/account/ui/privacy-objection-composer.tsx#PrivacyObjectionComposer": {
+      "FACT": 7,
+      "REFUSAL": 11,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 1,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/account/ui/privacy-off-app-composer.tsx#PrivacyOffAppComposer": {
+      "FACT": 10,
+      "REFUSAL": 12,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 1,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/attendance/ui/attendance-page.tsx#ImportPage": {
+      "FACT": 24,
+      "REFUSAL": 17,
+      "EMPTY": 3,
+      "LEGAL": 0,
+      "RECEIPT": 3,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/attendance/ui/close-console-actions.tsx#CloseConsoleActions": {
+      "FACT": 8,
+      "REFUSAL": 14,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/attendance/ui/close-console-sheets.tsx#CloseConfirmSheet": {
+      "FACT": 7,
+      "REFUSAL": 13,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 1,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/attendance/ui/issues-console-sheets.tsx#RaiseExceptionSheet": {
+      "FACT": 6,
+      "REFUSAL": 10,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 1,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/attendance/ui/overtime-ack-bar.tsx#OvertimeAckBar": {
+      "FACT": 3,
+      "REFUSAL": 10,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/attendance/ui/scope-picker-console.tsx#ScopePickerConsole": {
+      "FACT": 0,
+      "REFUSAL": 0,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/attendance/ui/substitutions-sheet.tsx#SubstitutionsSheet": {
+      "FACT": 9,
+      "REFUSAL": 10,
+      "EMPTY": 2,
+      "LEGAL": 0,
+      "RECEIPT": 2,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/audit/ui/audit-page.tsx#AuditPage": {
+      "FACT": 16,
+      "REFUSAL": 1,
+      "EMPTY": 4,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/payroll/ui/run-lifecycle-pane.tsx#RunLifecyclePane": {
+      "FACT": 12,
+      "REFUSAL": 6,
+      "EMPTY": 3,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/payroll/ui/run-lifecycle-sheets.tsx#RunLifecycleSheet": {
+      "FACT": 12,
+      "REFUSAL": 17,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 1,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/payroll/ui/run-open-exceptions-blocker.tsx#RunOpenExceptionsBlocker": {
+      "FACT": 3,
+      "REFUSAL": 1,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/settings/ui/policy-edit-sheet.tsx#PolicyEditSheet": {
+      "FACT": 15,
+      "REFUSAL": 21,
+      "EMPTY": 0,
+      "LEGAL": 1,
+      "RECEIPT": 2,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/settings/ui/policy-inspector.tsx#PolicyInspector": {
+      "FACT": 7,
+      "REFUSAL": 4,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/settings/ui/policy-reasons-panel.tsx#ReasonCodesPanel": {
+      "FACT": 10,
+      "REFUSAL": 10,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 1,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/settings/ui/policy-sections.tsx#PolicyCategoryPanel": {
+      "FACT": 2,
+      "REFUSAL": 3,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    }
+  }
+}

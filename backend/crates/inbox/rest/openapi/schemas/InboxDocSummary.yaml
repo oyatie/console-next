@@ -51,3 +51,7 @@ properties:
     description: When receipt was confirmed (the legal receipt timestamp); null until then.
   created_at:
     $ref: '#/components/schemas/Timestamp'
+  payslip_meta:
+    anyOf:
+    - $ref: '#/components/schemas/InboxPayslipMeta'
+    - type: 'null'

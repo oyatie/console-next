@@ -9,10 +9,10 @@ use crate::state::DatabaseDependency;
 use crate::telemetry::current_trace_context;
 use axum::Json;
 use axum::extract::{Extension, Query, State};
-use console_kernel_core::{AuditAction, AuditEvent, BranchId, BranchScope};
+use console_kernel_core::{AuditAction, AuditEvent, BranchId, BranchScope, KernelError, Timestamp};
 use console_platform_audit_chain::{ChainReport, SealConfig, verify_org_chain};
 use console_platform_authz::{
-    Action, Feature, Principal, authorize_capability, authorize_org_wide,
+    Action, AuthorizationResource, Feature, Principal, authorize_org_wide, cedar_pbac,
 };
 use console_platform_db::with_audit;
 use serde::{Deserialize, Serialize};
@@ -85,8 +85,8 @@ pub(crate) async fn audit_log(
     };
     authorize_audit_read(&principal)?;
     let query = normalize_audit_query(query)?;
-    let audit_event = audit_read_event(&principal)?;
     let branch_scope = principal.branch_scope.clone();
+    let audit_event = audit_read_event(&principal, audit_event_branch(&branch_scope))?;
     let limit = query.limit;
     let offset = query.offset;
 
@@ -161,13 +161,27 @@ pub(crate) async fn audit_attestation(
     Ok(Json(report))
 }
 
-/// `GET /api/audit` is a QUERY over the caller's whole branch scope, not a read of
-/// one branch's row — `fetch_audit_records` is already handed `branch_scope` and
-/// confines the rows. There is no single resource branch to authorize against, so
-/// this is a capability check. (Its sibling `authorize_audit_attestation` is
-/// deliberately org-wide; see its doc comment.)
+/// `GET /api/audit` evaluates Cedar for `Feature::AuditLogRead` while `fetch_audit_records`
+/// confines returned rows to the caller's live `branch_scope`. (Its sibling
+/// `authorize_audit_attestation` remains strictly org-wide; see its doc comment.)
 fn authorize_audit_read(principal: &Principal) -> Result<(), ApiError> {
-    authorize_capability(principal, Action::new(Feature::AuditLogRead))
+    if let Some(support) = &principal.support {
+        return cedar_pbac::actions::support_session::require_feature(
+            Feature::AuditLogRead,
+            &support.session_id.to_string(),
+            &principal.org_id.to_string(),
+            support.feature_facts(Feature::AuditLogRead),
+        )
+        .map_err(|code| {
+            ApiError::from_kernel(
+                KernelError::forbidden("support scope refuses this action").with_code(code),
+            )
+        });
+    }
+    let resource = AuthorizationResource::branchless(principal.org_id, "audit_log");
+    let facts =
+        cedar_pbac::actions::audit_log_read::decision_facts(principal, Timestamp::now_utc());
+    cedar_pbac::enforce::enforce_action(principal, Feature::AuditLogRead, resource, &facts)
         .map_err(ApiError::from_kernel)
 }
 
@@ -216,7 +230,10 @@ fn normalize_audit_query(query: AuditQuery) -> Result<NormalizedAuditQuery, ApiE
     })
 }
 
-fn audit_read_event(principal: &Principal) -> Result<AuditEvent, ApiError> {
+fn audit_read_event(
+    principal: &Principal,
+    branch_id: Option<BranchId>,
+) -> Result<AuditEvent, ApiError> {
     let event = AuditEvent::new(
         Some(principal.user_id),
         AuditAction::new("audit.read").map_err(ApiError::from_kernel)?,
@@ -230,7 +247,7 @@ fn audit_read_event(principal: &Principal) -> Result<AuditEvent, ApiError> {
     // an unset GUC and RLS fails closed (zero rows) as the `console_rt` role. Also
     // stamps the `audit.read` row with the caller's org instead of NULL.
     .with_org(principal.org_id);
-    Ok(match audit_event_branch(&principal.branch_scope) {
+    Ok(match branch_id {
         Some(branch_id) => event.with_branch(branch_id),
         None => event,
     })
@@ -324,9 +341,11 @@ mod audit_attestation_auth_tests {
     use std::collections::BTreeSet;
 
     use console_kernel_core::{BranchId, BranchScope, OrgId, UserId};
-    use console_platform_authz::{Principal, Role};
+    use console_platform_authz::{
+        EffectiveFeatureGrant, Feature, PermissionLevel, Principal, Role,
+    };
 
-    use super::authorize_audit_attestation;
+    use super::{authorize_audit_attestation, authorize_audit_read};
 
     fn principal(role: Role, branch_scope: BranchScope) -> Principal {
         Principal::new(
@@ -358,5 +377,59 @@ mod audit_attestation_auth_tests {
             authorize_audit_attestation(&principal(Role::Executive, BranchScope::All)).is_err(),
             "EXECUTIVE has org-wide scope semantics, but not AuditLogRead matrix permission"
         );
+    }
+
+    #[test]
+    fn audit_read_cedar_gate_allows_admin_and_super_admin_and_denies_others() {
+        assert!(authorize_audit_read(&principal(Role::SuperAdmin, BranchScope::All)).is_ok());
+        assert!(
+            authorize_audit_read(&principal(
+                Role::Admin,
+                BranchScope::single(BranchId::new())
+            ))
+            .is_ok()
+        );
+        assert!(
+            authorize_audit_read(&principal(
+                Role::Admin,
+                BranchScope::Branches(BTreeSet::new())
+            ))
+            .is_err(),
+            "revoked branch membership with empty selection must be denied"
+        );
+        assert!(authorize_audit_read(&principal(Role::Member, BranchScope::All)).is_err());
+        assert!(authorize_audit_read(&principal(Role::Mechanic, BranchScope::All)).is_err());
+        assert!(authorize_audit_read(&principal(Role::Executive, BranchScope::All)).is_err());
+
+        let branch_a = BranchId::new();
+        let branch_b = BranchId::new();
+        let granted_all =
+            principal(Role::Member, BranchScope::All).with_effective_feature_grants(vec![
+                EffectiveFeatureGrant::new(
+                    Feature::AuditLogRead,
+                    PermissionLevel::Allow,
+                    BranchScope::All,
+                ),
+            ]);
+        assert!(authorize_audit_read(&granted_all).is_ok());
+
+        let granted_narrow = principal(
+            Role::Member,
+            BranchScope::Branches(BTreeSet::from([branch_a, branch_b])),
+        )
+        .with_effective_feature_grants(vec![EffectiveFeatureGrant::new(
+            Feature::AuditLogRead,
+            PermissionLevel::Allow,
+            BranchScope::single(branch_a),
+        )]);
+        assert!(authorize_audit_read(&granted_narrow).is_err());
+
+        let granted_covered = principal(Role::Member, BranchScope::single(branch_a))
+            .with_effective_feature_grants(vec![EffectiveFeatureGrant::new(
+                Feature::AuditLogRead,
+                PermissionLevel::Allow,
+                BranchScope::single(branch_a),
+            )]);
+        assert!(authorize_audit_read(&granted_covered).is_ok());
     }
 }

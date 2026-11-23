@@ -3,8 +3,10 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use uuid::Uuid;
 
+use super::OnFile;
+
 /// One candidate row as the workbook gave it (cells trimmed, empty = None).
-#[derive(Debug, Clone, Default)]
+#[derive(Clone, Default)]
 pub struct ImportRow {
     pub source_key: String,
     pub sheet: String,
@@ -30,9 +32,13 @@ pub struct ImportRow {
     pub leave_type: Option<String>,
     /// Expected return date (required for childcare leave and maternity leave).
     pub leave_return_date: Option<String>,
-    /// IMPORT-2: the keyed hash of the row's resident registration number (never
+    /// IMPORT-2: the legacy v1 keyed hash of the row's resident registration number (never
     /// the number).
     pub rrn_hmac: Option<Vec<u8>>,
+    /// Tenant-bound v2+ blind index of the row's resident registration number.
+    pub rrn_hmac_v2: Option<Vec<u8>>,
+    /// All tenant-bound v2+ blind-index candidates for multi-version keyring rotation.
+    pub rrn_hmac_v2_candidates: Vec<Vec<u8>>,
     /// W12: the row has a mobile phone (the number stays in the stored row).
     pub has_phone: bool,
     /// r3:hire-16: `MALE` / `FEMALE` from the sex column or the resident
@@ -41,6 +47,75 @@ pub struct ImportRow {
     /// r3:hire-16: contract end date and probation end date as the file wrote them.
     pub contract_end_date: Option<String>,
     pub probation_end_date: Option<String>,
+    /// Explicit identity type (`RRN`, `ARC`, `DOMESTIC_RESIDENCE`, `NOT_ISSUED`).
+    pub id_type: Option<String>,
+    /// Inferred identity class (`RRN` or `ARC`) from the sealed registration number's 7th digit.
+    pub inferred_id_type: Option<String>,
+    /// Whether this row supplied a registration number cell.
+    pub has_rrn: bool,
+    /// Parse or Mod-11 validation failure detected when scanning the RRN cell.
+    pub rrn_validation_error: Option<String>,
+}
+
+impl std::fmt::Debug for ImportRow {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ImportRow")
+            .field("source_key", &self.source_key)
+            .field("sheet", &self.sheet)
+            .field("row", &self.row)
+            .field("name", &self.name)
+            .field("company", &self.company)
+            .field("employee_number", &self.employee_number)
+            .field(
+                "rrn_hmac",
+                &self
+                    .rrn_hmac
+                    .as_ref()
+                    .map(|h| format!("[redacted; {} bytes]", h.len())),
+            )
+            .field(
+                "rrn_hmac_v2",
+                &self
+                    .rrn_hmac_v2
+                    .as_ref()
+                    .map(|h| format!("[redacted; {} bytes]", h.len())),
+            )
+            .field(
+                "rrn_hmac_v2_candidates",
+                &format_args!(
+                    "[redacted; {} candidates]",
+                    self.rrn_hmac_v2_candidates.len()
+                ),
+            )
+            .field("has_phone", &self.has_phone)
+            .finish_non_exhaustive()
+    }
+}
+
+impl ImportRow {
+    /// All tenant-bound v2+ blind-index hashes carried by this row.
+    pub fn v2_hashes(&self) -> impl Iterator<Item = &[u8]> {
+        self.rrn_hmac_v2
+            .as_deref()
+            .into_iter()
+            .chain(self.rrn_hmac_v2_candidates.iter().map(Vec::as_slice))
+    }
+
+    /// Compare RRN blind indexes between `self` and `person`: prefers v2+ when both
+    /// carry v2, otherwise falls back to v1 during N-1 rollout/backfill.
+    #[must_use]
+    pub fn matches_person_rrn(&self, person: &OnFile) -> Option<bool> {
+        let has_row_v2 = self.rrn_hmac_v2.is_some() || !self.rrn_hmac_v2_candidates.is_empty();
+        if has_row_v2 && let Some(person_v2) = person.rrn_hmac_v2.as_deref() {
+            return Some(self.v2_hashes().any(|candidate| candidate == person_v2));
+        }
+        if let (Some(row_v1), Some(person_v1)) =
+            (self.rrn_hmac.as_deref(), person.rrn_hmac.as_deref())
+        {
+            return Some(row_v1 == person_v1);
+        }
+        None
+    }
 }
 
 /// The operator's choice for a row without an employee number that resembles
@@ -108,4 +183,7 @@ pub struct Decisions {
     /// in as pending hire).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub group_answers: BTreeMap<String, String>,
+    /// `source_key` -> inline cell repairs (`field` -> repaired value) applied on dry run.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub cells: BTreeMap<String, BTreeMap<String, String>>,
 }

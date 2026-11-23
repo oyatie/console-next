@@ -47,9 +47,10 @@ impl BootstrapCredentialStore {
         now: OffsetDateTime,
         ttl: Duration,
     ) -> Result<BootstrapCredentialIssue, ProvisioningError> {
-        with_audits::<_, BootstrapCredentialIssue, ProvisioningError>(pool, org, |tx| {
+        let store = self.clone();
+        with_audits::<_, BootstrapCredentialIssue, ProvisioningError>(pool, org, move |tx| {
             Box::pin(async move {
-                BootstrapCredentialStore
+                store
                     .reset_credentials_for_user_tx(tx, actor, user_id, org, now, ttl)
                     .await
             })
@@ -67,6 +68,7 @@ impl BootstrapCredentialStore {
         now: OffsetDateTime,
         ttl: Duration,
     ) -> Result<(BootstrapCredentialIssue, Vec<AuditEvent>), ProvisioningError> {
+        let hmac_key = self.resolve_hmac_key()?;
         require_active_account_tx(tx, org, user_id).await?;
         // (1) Revoke ALL of the target's passkeys. RETURNING the row ids so
         // each deletion is audited individually. The GUC armed by
@@ -112,9 +114,17 @@ impl BootstrapCredentialStore {
         // passkey-existence rejection (the rows were just deleted in this same
         // transaction) and revokes any stale open code so the new OTP is the
         // user's sole valid recovery credential.
-        let issue = issue_bootstrap_if_needed_tx(tx, user_id, org, now, ttl, IssueMode::ForceReset)
-            .await?
-            .ok_or(ProvisioningError::ActiveBootstrapCredentialExists)?;
+        let issue = issue_bootstrap_if_needed_tx(
+            tx,
+            &hmac_key,
+            user_id,
+            org,
+            now,
+            ttl,
+            IssueMode::ForceReset,
+        )
+        .await?
+        .ok_or(ProvisioningError::ActiveBootstrapCredentialExists)?;
 
         events.push(
             AuditEvent::new(
@@ -233,16 +243,24 @@ impl BootstrapCredentialStore {
         now: OffsetDateTime,
         ttl: Duration,
     ) -> Result<BootstrapCredentialIssue, ProvisioningError> {
-        with_audits::<_, BootstrapCredentialIssue, ProvisioningError>(pool, org, |tx| {
+        let hmac_key = self.resolve_hmac_key()?;
+        with_audits::<_, BootstrapCredentialIssue, ProvisioningError>(pool, org, move |tx| {
             Box::pin(async move {
                 // ForceReset: revoke any stale OPEN code for this user and mint a
                 // fresh one, WITHOUT requiring (or deleting) passkeys. Works both
                 // mid-onboarding (an open redeemed code is superseded) and for an
                 // already-enrolled add-device user (no open code -> clean insert).
-                let issue =
-                    issue_bootstrap_if_needed_tx(tx, user_id, org, now, ttl, IssueMode::ForceReset)
-                        .await?
-                        .ok_or(ProvisioningError::ActiveBootstrapCredentialExists)?;
+                let issue = issue_bootstrap_if_needed_tx(
+                    tx,
+                    &hmac_key,
+                    user_id,
+                    org,
+                    now,
+                    ttl,
+                    IssueMode::ForceReset,
+                )
+                .await?
+                .ok_or(ProvisioningError::ActiveBootstrapCredentialExists)?;
 
                 let event = AuditEvent::new(
                     Some(UserId::from_uuid(user_id)),

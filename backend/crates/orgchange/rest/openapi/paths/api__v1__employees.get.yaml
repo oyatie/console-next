@@ -91,6 +91,17 @@ parameters:
       type: string
   description: Exact employee numbers, comma-separated (`employee_number=A-1,A-2`), at most 500 (422 above). Resolves
     a pasted column in one read.
+- name: ids
+  in: query
+  required: false
+  style: form
+  explode: false
+  schema:
+    type: array
+    maxItems: 500
+    items:
+      $ref: '#/components/schemas/Uuid'
+  description: Exact employee IDs, comma-separated (`ids=<uuid>,<uuid>`), at most 500 (422 above).
 - name: contract_ending_before
   in: query
   required: false

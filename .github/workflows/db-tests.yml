@@ -73,6 +73,7 @@ jobs:
           --health-start-interval 1s
     env:
       CARGO_INCREMENTAL: '0'
+      CARGO_PROFILE_DEV_DEBUG: '0'
       CARGO_PROFILE_TEST_DEBUG: '0'
       CARGO_NEXTEST_VERSION: 0.9.138
       CARGO_TERM_COLOR: always
@@ -156,16 +157,29 @@ jobs:
       - name: Run duration shard
         run: node scripts/backend-tests.mjs --db --shard "${{ matrix.shard }}/4" --timings .cache/db-test-timings/timings.json
       - name: Verify SeaweedFS compliance retention
-        if: matrix.shard == 1
+        # Needs no database: a red database shard must not skip the retention proof.
+        if: ${{ !cancelled() && matrix.shard == 1 }}
         working-directory: backend
         env:
           AWS_ACCESS_KEY_ID: ${{ github.run_id }}
         run: |
           AWS_SECRET_ACCESS_KEY=$(node -p 'crypto.randomUUID()')
+          echo "::add-mask::$AWS_SECRET_ACCESS_KEY"
           export AWS_SECRET_ACCESS_KEY
           image=$(jq -er .images.seaweed ../deploy/versions.json)
-          container=$(docker run -d --rm -p 127.0.0.1::8333 -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY "$image")
-          trap 'docker stop "$container" >/dev/null' EXIT
+          container=$(docker create --hostname console-objects -p 127.0.0.1::8333 --entrypoint /usr/bin/weed "$image" \
+            server -ip=console-objects -ip.bind=0.0.0.0 -dir=/data -volume.max=0 -master.volumeSizeLimitMB=64 -s3 -s3.config=/run/s3/config.json)
+          config=$(mktemp -d)
+          cleanup() {
+            if [ "$?" != 0 ]; then docker logs --tail 200 "$container"; fi
+            docker rm -fv "$container" >/dev/null
+            rm -f "$config/config.json"
+            rmdir "$config"
+          }
+          trap cleanup EXIT
+          jq -n '{identities:[{name:"test",credentials:[{accessKey:env.AWS_ACCESS_KEY_ID,secretKey:env.AWS_SECRET_ACCESS_KEY}],actions:["Admin","Read","Write","List","Tagging"]}]}' > "$config/config.json"
+          docker cp "$config" "$container:/run/s3"
+          docker start "$container" >/dev/null
           address=$(docker port "$container" 8333/tcp)
           export CONSOLE_STORAGE_TEST_S3_ENDPOINT="http://$address"
           curl --fail --silent --show-error --retry 30 --retry-all-errors --retry-delay 1 --max-time 3 "$CONSOLE_STORAGE_TEST_S3_ENDPOINT/status"

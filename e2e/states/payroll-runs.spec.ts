@@ -12,7 +12,7 @@ import type { PayrollRunDetail } from "@console/api/pending";
 test.beforeAll(() => loadCatalog("ko"));
 const run = { id: id(880), legal_entity_id: payGroups.items[2]!.legal_entity_id, pay_group_id: payGroups.items[2]!.id, kind: "REGULAR" as const, attribution_month: "2026-10", pay_date: "2026-10-25", source_label: "모의 급여 상세", period_start: "2026-10-01", period_end: "2026-10-31", variable_period_start: "2026-09-16", variable_period_end: "2026-10-15", status: "STAGED" as const, calculation_enabled: false, created_at: AT, updated_at: AT };
 const runLabel = `${payGroups.items[2]!.name} · ${run.attribution_month} · 정기`;
-const detail: PayrollRunDetail = { run, legal_basis: {}, source_summary: {}, lines: [], lines_total: 0, lines_limit: 50, lines_offset: 0, exceptions_open: 0, exceptions_total: 0, calculation: null, disbursement: null, payslip_delivery: null };
+const detail: PayrollRunDetail = { run, legal_basis: {}, source_summary: {}, lines: [], lines_total: 0, lines_limit: 50, lines_offset: 0, missing_bank_account_count: 0, exceptions_open: 0, exceptions_total: 0, calculation: null, disbursement: null, payslip_delivery: null };
 const preview = { legal_entity_id: payGroups.items[0]!.legal_entity_id, pay_group_id: payGroups.items[0]!.id, kind: "REGULAR" as const, attribution_month: "2026-11", pay_date: "2026-11-25", pay_date_clamped: false, period_start: "2026-11-01", period_end: "2026-11-30", variable_period_start: "2026-10-16", variable_period_end: "2026-11-15" };
 const created = { ...run, ...preview, id: id(881), source_label: "모의 급여 그룹 1 · 2026-11 · REGULAR", status: "BLOCKED_LEGAL_GATE" as const };
 
@@ -32,7 +32,13 @@ for (const [width, colorScheme] of [[1440, "light"], [390, "dark"]] as const) te
     if (new URL(request.url()).pathname.startsWith("/api/v1/payroll/") && request.method() !== "GET") writes.push(request.url());
   });
   await page.route("**/api/v1/access/me", route => route.fulfill({ json: screenAccess("/payroll/setup") }));
-  await page.route("**/api/v1/payroll/runs", route => route.fulfill({ json: { items: [run], total: 1, limit: 50, offset: 0 } }));
+  await page.route(url => url.pathname === "/api/v1/payroll/runs", route => {
+    const q = new URL(route.request().url()).searchParams;
+    const groupId = q.get("pay_group_id");
+    const entityId = q.get("legal_entity_id");
+    const items = (!groupId || run.pay_group_id === groupId) && (!entityId || run.legal_entity_id === entityId) ? [run] : [];
+    return route.fulfill({ json: { items, total: items.length, limit: 50, offset: 0 } });
+  });
   await page.route(`**/api/v1/payroll/runs/${run.id}`, route => route.fulfill({ json: detail }));
   try {
     await page.goto("/payroll");

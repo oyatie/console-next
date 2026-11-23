@@ -4,10 +4,28 @@ import type { ReactNode } from "react";
 import { beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { loadCatalog, t } from "@console/i18n";
+import { ApiError } from "../../../reference/authz/api";
+import { queryPath } from "../../../lib/query";
+import { OpsUsageCard } from "./ops-usage";
 import { PersonAccess } from "./person-access";
 
-const state = vi.hoisted(() => ({ accounts: [] as { id: string; display_name: string; has_passkey: boolean; employee_id?: string; employee_name?: string; employee_number?: string }[], isOps: false }));
-vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: { entries: [], items: [], phase: "SETUP", is_ops: state.isOps }, isPending: false }) }));
+const state = vi.hoisted(() => ({
+  accounts: [] as { id: string; display_name: string; has_passkey: boolean; employee_id?: string; employee_name?: string; employee_number?: string }[],
+  isOps: false,
+  opsUsageStatus: 200 as 200 | 403 | 503,
+  opsUsageRows: [{ at: "2026-11-10T01:23:00Z", account_id: "a", method: "GET", path: "/api/v1/employees" }],
+}));
+vi.mock("@tanstack/react-query", () => ({
+  useQuery: (target: Parameters<typeof queryPath>[0]) => {
+    const key = queryPath(target);
+    if (key === "/api/v1/access/ops-usage") {
+      if (state.opsUsageStatus === 403) return { data: undefined, error: new ApiError(403, "forbidden", "forbidden"), isPending: false, isError: true, refetch: vi.fn() };
+      if (state.opsUsageStatus === 503) return { data: undefined, error: new ApiError(503, "service_unavailable", "unavailable"), isPending: false, isError: true, refetch: vi.fn() };
+      return { data: state.opsUsageRows, error: null, isPending: false, isSuccess: true, isError: false, refetch: vi.fn() };
+    }
+    return { data: { entries: [], items: [], phase: "SETUP", is_ops: state.isOps }, isPending: false };
+  },
+}));
 vi.mock("@tanstack/react-router", () => ({ Link: ({ children, to }: { children: ReactNode; to: string }) => <a href={to}>{children}</a> }));
 vi.mock("./use-access-context", () => ({ useAccessContext: () => ({ accounts: state.accounts, cat: { data: { domains: [] } }, roles: [], rolesLoaded: true }) }));
 vi.mock("./use-reasons", () => ({ useReasons: () => ({ codes: [] }) }));
@@ -15,7 +33,7 @@ vi.mock("./access-head", () => ({ AccessHead: () => null }));
 vi.mock("./grant-change", () => ({ GrantChange: () => null }));
 vi.mock("./grant-sheet", () => ({ GrantSheet: () => <div data-grant-sheet /> }));
 beforeAll(() => loadCatalog("ko"));
-beforeEach(() => { state.isOps = false; });
+beforeEach(() => { state.isOps = false; state.opsUsageStatus = 200; });
 
 test("an unknown account uses the generic card title without an empty name interpolation", () => {
   state.accounts = [];
@@ -47,5 +65,20 @@ test.each([false, true])("the served ops fact removes the grant action and direc
   const html = renderToStaticMarkup(<PersonAccess accountId="a" grant onGrant={() => undefined} />);
   expect(/<button[^>]*>.*?권한 부여<\/button>/.test(html)).toBe(!isOps);
   expect(html.includes("data-grant-sheet")).toBe(!isOps);
-  if (isOps) expect(html).toContain(t("access.person.ops"));
+  if (isOps) {
+    expect(html).toContain(t("access.person.ops"));
+    expect(html).not.toContain(t("access.grants.count", { count: 0 }));
+    expect(html).toContain(t("access.person.opsLog.title"));
+    expect(html).toContain(t("access.person.opsLog.resource.employees"));
+    expect(html).toContain('title="GET /api/v1/employees"');
+  }
+});
+
+test("OpsUsageCard omits completely on 403 and shows error state on 503", () => {
+  state.opsUsageStatus = 403;
+  expect(renderToStaticMarkup(<OpsUsageCard />)).toBe("");
+  state.opsUsageStatus = 503;
+  const outage = renderToStaticMarkup(<OpsUsageCard />);
+  expect(outage).toContain(t("access.person.opsLog.title"));
+  expect(outage).toContain(t("common.loadFailed.title"));
 });

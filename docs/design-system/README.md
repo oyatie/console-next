@@ -12,12 +12,12 @@ How a change is proved is in the [engineering guide](../engineering.md). This fo
 
 ## Working rules
 
-The console has one look today. A second visual style, Control room, is being built beside it. These five rules
+The console has one classic look today. Its target visual style, Console, is being built beside it. These five rules
 hold while that happens, and after.
 
 1. **One component per piece.** A button is one component, styled through role tokens. It is never copied and
    restyled for a visual style. A visual style changes token values; the component stays the same file.
-2. **Today's look does not move while Control room is built.** A new token enters `packages/tokens/tokens.css` at
+2. **Today's look does not move while Console is built.** A new token enters `packages/tokens/tokens.css` at
    the value today's look already has, so adding it changes nothing on screen.
 3. **A visual style changes how things look, and nothing else.** It never changes behaviour, copy or an accessible
    name. Where a style needs a different structure, that structure is a prop on the component, so it is tested and
@@ -52,7 +52,7 @@ What holds each rule today:
    `npx playwright test e2e/visual.spec.ts --project=parallel --grep "pass axe"`.
    It fails on a serious or critical axe violation anywhere in the gallery, in either theme.
 
-Thirty-three pages exist so far, listed at the foot of this page. Most components under `apps/web/src/ui` have none yet.
+Forty pages exist so far, listed at the foot of this page. Most components under `apps/web/src/ui` have none yet.
 
 ## The outline of a component page
 
@@ -152,27 +152,39 @@ The thirteen page patterns a screen is drawn through, and how a route names its 
 |---|---|---|
 | [Action bar](components/action-bar.md) | `ActionBar` | `apps/web/src/ui/action-bar` |
 | [Approval card](components/approval-card.md) | `ApprovalCard` | `apps/web/src/ui/approval-card` |
+| [Avatar](components/avatar.md) | `Avatar` | `apps/web/src/ui/avatar` |
+| [Badge](components/badge.md) | `Badge` | `apps/web/src/ui/badge` |
 | [Banner](components/banner.md) | `Banner` | `apps/web/src/ui/banner` |
 | [Button](components/button.md) | `Button`, `IconButton`, `ToggleButton`, `Segmented`, `Form`, `Check` | `apps/web/src/ui/button` |
 | [Card](components/card.md) | `Card`, `SectionHead` | `apps/web/src/ui/card` |
 | [Chain stepper](components/chain-stepper.md) | `ChainStepper` | `apps/web/src/ui/chain-stepper` |
+| [Change rows](components/change-rows.md) | `ChangeRows` | `apps/web/src/ui/change-rows` |
 | [Chip](components/chip.md) | `Chip` | `apps/web/src/ui/chip.tsx` |
 | [Choice](components/choice.md) | `ChoiceField`, `ChipChoice`, `Checks`, `GroupedChoice`, `ChoiceAdd` | `apps/web/src/ui/choice` |
 | [Command palette](components/command-palette.md) | `CommandPalette` | `apps/web/src/ui/command-palette` |
 | [Composer](components/composer.md) | `Composer`, `RoutingPreview`, `ReceiptReference` | `apps/web/src/ui/composer` |
 | [Date](components/date.md) | `DateField`, `DateInput`, `DateCalendar` | `apps/web/src/ui/date` |
 | [Deadline chip](components/deadline-chip.md) | `DeadlineChip` | `apps/web/src/ui/deadline-chip` |
+| [Deadline strip](components/deadline-strip.md) | `DeadlineStrip` | `apps/web/src/ui/deadline-strip` |
+| [Decision pane](components/decision-pane.md) | `DecisionPane` | `apps/web/src/ui/decision-pane` |
 | [Dialog](components/dialog.md) | `Dialog` | `apps/web/src/ui/dialog.tsx` |
 | [Disabled reason](components/disabled-reason.md) | `DisabledReason` | `apps/web/src/ui/disabled-reason` |
+| [Due cell](components/due-cell.md) | `DueCell` | `apps/web/src/ui/due-cell` |
 | [Field](components/field.md) | `Field`, `FieldSet`, `Marker`, `TextInput`, `TextArea`, `SelectInput`, `DerivedValue` | `apps/web/src/ui/field` |
 | [Item list](components/item-list.md) | `ItemList` | `apps/web/src/ui/item-list` |
 | [Key cap](components/kbd.md) | `Kbd` | `apps/web/src/ui/kbd` |
 | [Key-value](components/key-value.md) | `KeyValue`, `StatRow` | `apps/web/src/ui/key-value` |
+| [Ledger](components/ledger.md) | `Ledger` | `apps/web/src/ui/ledger` |
 | [Masked field](components/masked-field.md) | `MaskedField` | `apps/web/src/ui/masked-field` |
 | [Menu](components/menu.md) | `ActionMenu`, `MenuButton` | `apps/web/src/ui/menu` |
 | [Meter](components/meter.md) | `Meter` | `apps/web/src/ui/meter` |
+| [Module navigation](components/module-nav.md) | `ModuleNavBar` | `apps/web/src/ui/module-nav` |
 | [Month grid](components/month-grid.md) | `MonthGrid` | `apps/web/src/ui/month-grid` |
+| [Page head](components/page-head.md) | `PageHead`, `PageHeadActions`, `Crumbs`, `PhaseLine`, `AsOf` | `apps/web/src/ui/page-head` |
+| [Pane grid](components/pane-grid.md) | `PaneGrid`, `PaneHead` | `apps/web/src/ui/pane-grid` |
+| [Period stepper](components/period-stepper.md) | `PeriodStepper` | `apps/web/src/ui/period-stepper` |
 | [Person-day grid](components/person-day-grid.md) | `PersonDayGrid` | `apps/web/src/ui/person-day-grid` |
+| [Phone bars](components/phone-bars.md) | `PhoneTopBar`, `PhoneBottomNav` | `apps/web/src/ui/phone-bars` |
 | [Popover](components/popover.md) | `PopoverButton` | `apps/web/src/ui/popover` |
 | [Reason field](components/reason.md) | `ReasonField` | `apps/web/src/ui/reason` |
 | [Receipt](components/receipt.md) | `Receipt` | `apps/web/src/ui/receipt` |
@@ -181,5 +193,8 @@ The thirteen page patterns a screen is drawn through, and how a route names its 
 | [Search](components/search.md) | `SearchField` | `apps/web/src/ui/search` |
 | [Select](components/select.md) | `SelectField` | `apps/web/src/ui/select` |
 | [Sheet](components/sheet.md) | `Sheet` and its draft and read-context helpers | `apps/web/src/ui/sheet` |
+| [Sort control](components/sort-control.md) | `SortControl` | `apps/web/src/ui/sort-control` |
+| [Status bar](components/status-bar.md) | `StatusBar` | `apps/web/src/ui/status-bar` |
 | [Step line](components/step-line.md) | `StepLine` | `apps/web/src/ui/step-line` |
 | [Tree](components/tree.md) | `TreeView` | `apps/web/src/ui/tree` |
+| [Workspace tabs](components/workspace-tabs.md) | `WorkspaceTabs` | `apps/web/src/ui/workspace-tabs` |

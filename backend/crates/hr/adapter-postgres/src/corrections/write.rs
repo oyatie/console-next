@@ -37,7 +37,7 @@ pub(crate) struct LedgerMeta<'a> {
     pub batch_id: Option<Uuid>,
 }
 
-fn value_of<'a>(fields: &'a [FieldValue], name: &str) -> Option<Option<&'a str>> {
+pub(super) fn value_of<'a>(fields: &'a [FieldValue], name: &str) -> Option<Option<&'a str>> {
     fields
         .iter()
         .find(|(field, _)| field == name)
@@ -137,6 +137,7 @@ pub(crate) async fn check_against_record(
             ));
         }
     }
+    super::id_type::check_id_type_for_status(head, fields)?;
     let Some(current) = head.profile.as_ref() else {
         return Ok(());
     };
@@ -235,6 +236,8 @@ pub(crate) async fn apply_fields_in_tx(
     } else {
         correct_employee_head_in_tx(tx, org, employee_id, &columns).await?
     };
+    super::id_type::emit_if_id_registered(tx, org, employee_id, meta.corrected_by, head, fields)
+        .await?;
     if let (Some(_), Some(old)) = (
         value_of(fields, "employee_number"),
         head.current("employee_number"),
@@ -249,6 +252,28 @@ pub(crate) async fn apply_fields_in_tx(
         None
     };
     for (field, value) in fields {
+        if field == "bank_account_registered" {
+            let old_value = ledger_old(head, field).and_then(|v| v.as_bool());
+            let new_value = value.as_deref() == Some("true");
+            sqlx::query(
+                "INSERT INTO employee_bank_account_attestations \
+                 (org_id, employee_id, old_value, new_value, reason_code, note, \
+                  attested_by, change_request_id, review_required) \
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+            )
+            .bind(org)
+            .bind(employee_id)
+            .bind(old_value)
+            .bind(new_value)
+            .bind(meta.reason_code)
+            .bind(meta.note)
+            .bind(meta.corrected_by)
+            .bind(meta.change_request_id)
+            .bind(meta.review_required)
+            .execute(tx.as_mut())
+            .await?;
+            continue;
+        }
         let value = if field == "emergency_contacts" {
             stored_contacts.as_deref()
         } else {

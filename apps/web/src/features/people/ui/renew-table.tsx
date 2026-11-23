@@ -15,13 +15,14 @@ const CHOICES: readonly RenewChoice[] = ["renew", "convert", "leave"];
  * One row per person (spec E6-renew): their contract end, what the two-year rule leaves (the server's refusal, once
  * checked), their answer (no default; a person with no contract end is not decided here) and what it makes.
  */
-export function RenewTable({ people, choices, onChoice, refused, months, tried }: {
+export function RenewTable({ people, choices, onChoice, refused, months, tried, mobileLayout }: {
   people: readonly Employee[];
   choices: Readonly<Record<string, RenewChoice>>;
   onChoice: (id: string, c: RenewChoice) => void;
   refused: ReadonlyMap<string, string>;
   months: number;
   tried: boolean;
+  mobileLayout?: "cards" | "rows" | "compact";
 }) {
   const next = (e: Employee) => {
     const end = e.contract_end_date;
@@ -33,24 +34,28 @@ export function RenewTable({ people, choices, onChoice, refused, months, tried }
   };
   return (
     <section className={s.pane} aria-label={t("renew.crumb")}>
-      <div className={s.tableWrap}>
+      {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Horizontal scroll region needs keyboard access. */}
+      <div className={s.tableWrap} tabIndex={0} role="region" aria-label={t("renew.crumb")}>
       <Table
         label={t("renew.crumb")}
         rows={[...people]}
         rowId={(e) => e.id}
+        mobileLayout={mobileLayout}
         tone={(e) => (refused.has(e.id) ? "danger" : tried && e.contract_end_date && !choices[e.id] ? "warn" : undefined)}
         columns={[
-          { header: t("renew.col.number"), cell: (e) => <span className="num">{e.employee_number ?? "—"}</span>, fit: true },
-          { header: t("renew.col.name"), cell: (e) => e.name, fit: true },
-          { header: t("renew.col.unit"), cell: (e) => e.org_unit ?? "—" },
-          { header: t("renew.col.end"), cell: (e) => <span className="num">{e.contract_end_date ?? "—"}</span>, fit: true },
+          { header: t("renew.col.number"), cell: (e) => <span className="num">{e.employee_number ?? "—"}</span>, fit: true, card: "fact" },
+          { header: t("renew.col.name"), cell: (e) => e.name, fit: true, card: "title" },
+          { header: t("renew.col.unit"), cell: (e) => e.org_unit ?? "—", card: "fact" },
+          { header: t("renew.col.end"), cell: (e) => <span className="num">{e.contract_end_date ?? "—"}</span>, fit: true, card: "fact" },
           {
             header: t("renew.col.limit"),
             cell: (e) => (!e.contract_end_date ? t("renew.limit.noEnd") : refused.has(e.id) ? <span className={s.err} title={refusedText(refused.get(e.id)!)}>{t("renew.limit.over")}</span> : t("renew.limit.ok")),
             fit: true,
+            card: "status",
           },
           {
             header: t("renew.col.how"),
+            card: "action",
             cell: (e) =>
               e.contract_end_date ? (
                 <SelectInput aria-label={t("renew.howOf", { name: e.name })} value={choices[e.id] ?? ""} onChange={(x) => x.target.value && onChoice(e.id, x.target.value as RenewChoice)}>
@@ -59,7 +64,7 @@ export function RenewTable({ people, choices, onChoice, refused, months, tried }
                 </SelectInput>
               ) : null,
           },
-          { header: t("renew.col.next"), cell: next },
+          { header: t("renew.col.next"), cell: next, card: "fact" },
         ]}
       />
       </div>

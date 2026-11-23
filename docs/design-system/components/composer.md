@@ -88,7 +88,7 @@ The actions, in order:
 
 | Part | Element | Shown when |
 |---|---|---|
-| Commit | `<button type="submit" form="<form id>">`: the label from `action`, then a `Kbd` (see [Kbd](kbd.md)) with the text `⌘↵` | `onSubmit` is given and the commit is not blocked. Its id is `commitId`. |
+| Commit | `<button type="submit" form="<form id>">`: the label from `action`, then a `Kbd` (see [Kbd](kbd.md)) with the OS-aware shortcut hint (`⌘↵` on Apple platforms, `Ctrl+↵` elsewhere) | `onSubmit` is given and the commit is not blocked. Its id is `commitId`. |
 | Blocked commit | `DisabledReason` around a `<button type="button">` with the same label and no `Kbd`: see [DisabledReason](disabled-reason.md) | `blocked` is given and the server has not refused permission. It is shown with or without `onSubmit`. |
 | Missing line | `<span role="status">` with message `composer.missing` | `missing` is more than zero. |
 | Secondary | The caller's node | `secondary` is given. |
@@ -183,7 +183,7 @@ No prop picks a visual style. The stylesheet has no transition.
 | Rest | The commit is a primary button, or a danger button with `tone="danger"`. |
 | Hover, focus, pressed | The composer's stylesheet has no rule for them. Its buttons take the looks on the [Button](button.md) page, and the global focus outline. |
 | Selected | Does not exist. |
-| Incomplete (`incomplete`) | The commit gets `aria-disabled="true"`. A primary commit takes the look `app.css` gives that: a dashed `--primary` border, a `--primary-soft` fill and `--primary` text. A danger commit is drawn at half opacity. Both show a not-allowed cursor. The button is not disabled: a press, the key chord and Enter in a field still submit, and `onSubmit` still runs. |
+| Incomplete (`incomplete`) | The commit gets `aria-disabled="true"`. A primary commit takes the look `app.css` gives that: a dashed `--primary` border, `--primary-soft` fill and `--primary` text in `baseline`, and a solid `--border` border, `--muted` fill and `--steel` text in non-baseline experiences. A danger commit is drawn at half opacity. Both show a not-allowed cursor. The button is not disabled: a press, the key chord and Enter in a field still submit, and `onSubmit` still runs. |
 | Blocked (`blocked`) | The commit is replaced by the blocked commit, with `blocked.reason` and then `blocked.remedy` as its reason. A press does nothing, unless `blocked.press` is given: then a press runs it, as long as the composer is not pending, loading or locked. A submit that still reaches the form is dropped. |
 | Missing (`missing` above zero) | The missing line appears after the commit, with the count. |
 | Invalid | The composer has no invalid look, and neither the browser nor the shared form checks the fields on submit. The `<form>` has `novalidate`, which turns the browser's check off. The shared `Form` (`ui/button`) skips its own validity check and its error summary when it is given `noValidate`, as it is here. So `required` and the other native constraints do not stop a submit: the caller validates in `onSubmit` and returns `false`. Focus then moves on the next frame to the first element in the form that has `aria-invalid="true"` or is an `input` inside an element with `data-invalid`. With `signoffs.missing`, the sign-offs show message `composer.signoffs.missing`. |
@@ -238,8 +238,9 @@ chord commits once the composition has ended.
 A plain Enter has no such check in the composer, because the composer does not handle it. Whether an Enter that
 ends a composition also submits the form is the browser's to decide.
 
-The hint in the commit always reads `⌘↵`. It is not changed for a system where the chord is Control+Enter, and
-the blocked commit has no hint although the chord still reaches it.
+The hint in the commit uses `modChord("↵")` from `apps/web/src/lib/pure/keys.ts`: it renders `⌘↵` on Apple
+platforms (Mac, iPhone, iPad, iPod, iOS) and `Ctrl+↵` on Windows, Linux, and during SSR. The blocked commit has no
+hint although the chord still reaches it.
 
 ## Accessibility contract
 
@@ -389,7 +390,7 @@ Message ids the module uses for its own text:
 Two more ids start with `composer.` and are used elsewhere: `composer.unsaved` by the sheet, and
 `composer.reason` by callers that label a reason field with a verb.
 
-The text of the key hint, `⌘↵`, is a literal in `composer.tsx`, not a message.
+The text of the key hint is formatted by `modChord("↵")` in `apps/web/src/lib/pure/keys.ts` (`⌘↵` or `Ctrl+↵`), not a catalog message.
 
 ## Props
 

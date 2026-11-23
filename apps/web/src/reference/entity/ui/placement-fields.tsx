@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { entitiesRef } from "../api";
-import { PickOne } from "./pick-one";
+import { PickOne, type SinglePickRender } from "./pick-one";
 
 export type Placement = { legalEntityId: string | null; workplaceId: string | null; homeBranchId: string | null };
 
@@ -15,7 +15,7 @@ export type Placement = { legalEntityId: string | null; workplaceId: string | nu
  * workplace is said with the action that creates it. The home branch is the workplace's own default branch.
  * sub-branches inside a workplace are not offered until the workplace read lists them.
  */
-export function PlacementFields({ value, onChange, error }: { value: Placement; onChange: (p: Placement) => void; error?: { entity?: string; workplace?: string } }) {
+export function PlacementFields({ value, onChange, error, renderSingle }: { value: Placement; onChange: (p: Placement) => void; error?: { entity?: string; workplace?: string }; renderSingle?: SinglePickRender }) {
   const list = useQuery(entitiesRef);
   const entities = (list.data?.items ?? []).filter((e) => !e.closed_on);
   const only = entities.length === 1 ? entities[0]!.id : null;
@@ -43,6 +43,7 @@ export function PlacementFields({ value, onChange, error }: { value: Placement; 
         group={t("placement.entity")}
         empty={t("placement.noMatch")}
         required
+        renderSingle={renderSingle}
         options={entities.map((e) => ({ value: e.id, label: entityNameText(e), content: <EntityName entity={e} /> }))}
         value={entityId}
         onChange={(v) => onChange({ legalEntityId: v, workplaceId: null, homeBranchId: null })}
@@ -59,6 +60,7 @@ export function PlacementFields({ value, onChange, error }: { value: Placement; 
             group={t("placement.workplace")}
             empty={t("placement.noMatch")}
             required
+            renderSingle={renderSingle}
             options={workplaces.map((w) => ({ value: w.id, label: w.current?.name ?? w.id, description: w.is_primary ? t("placement.primary") : undefined }))}
             value={workplaceId}
             onChange={(v) => onChange({ legalEntityId: entityId, workplaceId: v, homeBranchId: branch(v) })}

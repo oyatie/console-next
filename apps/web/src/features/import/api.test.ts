@@ -1,7 +1,8 @@
 import { expect, test, vi } from "vitest";
+import * as consoleApi from "@console/api";
 import { api, ApiError } from "@console/api";
 import { readIdentity } from "../../lib/query";
-import { rollbackPreviewQuery, lostAnswer, previewRollback, requestRollback, runQuery, runsQuery } from "./api";
+import { recordImportRowIdentifier, repairImportCells, rollbackPreviewQuery, lostAnswer, previewRollback, requestRollback, runQuery, runsQuery } from "./api";
 
 test("a typed transport failure checks the existing import job", () => {
   expect(lostAnswer(new ApiError(0, "command_unknown", ""))).toBe(true);
@@ -57,4 +58,42 @@ test.each([
 
 test("a database timeout is a confirmed atomic refusal, not an uncertain transport result", () => {
   expect(lostAnswer(new ApiError(503, "import_apply_timed_out", ""))).toBe(false);
+});
+
+test("repairImportCells and recordImportRowIdentifier call #875 endpoints with bound PII_RECORD step-up", async () => {
+  const put = vi.spyOn(api, "PUT").mockImplementation((async (url: string) => ({
+    data: url.includes("/cells")
+      ? { run_id: "run-9", repaired_rows: 1, cells: { "S1:5": { hire_date: "2026-11-01" } } }
+      : { run_id: "run-9", source_key: "S1:2", id_type: "DOMESTIC_RESIDENCE", recorded: true, sex_derived: "FEMALE" },
+    response: new Response(null, { status: 200 }),
+  })) as never);
+  const stepUp = vi.spyOn(consoleApi, "assertBoundPasskey").mockResolvedValue({
+    ceremony_id: "cer-1",
+    credential: { id: "cred-1" },
+    binding: {
+      action_kind: "PII_RECORD",
+      object_id: "run-9",
+      reason_key: "passkey_step_up_pii_record",
+      replay_attempt: null,
+      payload_hash: "0".repeat(64),
+    },
+  } as never);
+  try {
+    await repairImportCells("run-9", { "S1:5": { hire_date: "2026-11-01" } });
+    expect(put).toHaveBeenCalledWith("/api/v1/employees/import/{run_id}/cells", {
+      params: { path: { run_id: "run-9" } },
+      body: { cells: { "S1:5": { hire_date: "2026-11-01" } } },
+    });
+
+    const out = await recordImportRowIdentifier("run-9", "S1:2", { rrn: "1".repeat(13), id_type: "DOMESTIC_RESIDENCE" });
+    expect(stepUp).toHaveBeenCalledWith("PII_RECORD", "run-9", "run-9:S1:2");
+    expect(put).toHaveBeenLastCalledWith("/api/v1/employees/import/{run_id}/rows/{source_key}/identifier", {
+      params: { path: { run_id: "run-9", source_key: "S1:2" } },
+      body: expect.objectContaining({ rrn: "1".repeat(13), id_type: "DOMESTIC_RESIDENCE" }),
+    });
+    expect(out).toMatchObject({ id_type: "DOMESTIC_RESIDENCE", recorded: true, sex_derived: "FEMALE" });
+  } finally {
+    put.mockRestore();
+    stepUp.mockRestore();
+  }
 });

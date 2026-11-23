@@ -8,7 +8,7 @@ type ApprovalsSearch = { box?: Exclude<ApprovalBox, "pending">; q?: string; sour
 export const approvalsRoute = createRoute({
   getParentRoute: () => app,
   path: "/approvals",
-  staticData: { access: "signed-in", module: APPROVALS_MODULE, floorplan: "P-03" },
+  staticData: { access: "signed-in", module: APPROVALS_MODULE, floorplan: "P-03", pattern: "worklist" },
   validateSearch: (search: Record<string, unknown>): ApprovalsSearch => {
     const box = approvalBox(search.box);
     // Links saved before the document column carried the selection as `focus`.
@@ -21,7 +21,7 @@ export const approvalsRoute = createRoute({
 export const approvalViewerRoute = createRoute({
   getParentRoute: () => app,
   path: "/approvals/$approvalId",
-  staticData: { access: "signed-in", module: APPROVALS_MODULE, floorplan: "P-02" },
+  staticData: { access: "signed-in", module: APPROVALS_MODULE, floorplan: "P-02", pattern: "document-decision" },
   remountDeps: ({ params }) => params.approvalId,
   component: lazyRouteComponent(screen(() => import("../features/approvals/ui/approval-viewer")), "ApprovalViewerPage"),
 });

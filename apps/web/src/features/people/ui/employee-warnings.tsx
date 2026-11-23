@@ -14,11 +14,36 @@ export function EmployeeWarnings({ warnings = [] }: { warnings?: readonly Warnin
 }
 
 function EmployeeWarning({ warning: w }: { warning: Warning }) {
-  const others = useQueries({ queries: w.employee_ids.map(employeeQuery) });
-  return <Banner tone="warn" live="polite">
-    {employeeWarningText(w)}
-    {others.map((q, i) => q.data ? <Link key={w.employee_ids[i]} to="/people/$id" params={{ id: w.employee_ids[i]! }} search={{}}>
-      {t("people.sameName.other", { name: q.data.employee.name, number: q.data.employee.employee_number ?? "—" })}
-    </Link> : t("people.sameName.loading"))}
-  </Banner>;
+  const matches = w.matches;
+  const extra = matches !== undefined ? Math.max(0, (w.total_count ?? matches.length) - matches.length) : 0;
+  return (
+    <Banner tone="warn" live="polite">
+      {employeeWarningText(w)}
+      {matches !== undefined ? (
+        <>
+          {matches.map((m) => (
+            <Link key={m.id} to="/people/$id" params={{ id: m.id }} search={{}}>
+              {t("people.sameName.other", { name: m.name, number: m.employee_number ?? "—" })}
+            </Link>
+          ))}
+          {extra > 0 ? <bdi>{t("people.sameName.more", { count: extra })}</bdi> : null}
+        </>
+      ) : w.employee_ids.length > 0 ? (
+        <EmployeeWarningFallbackIds ids={w.employee_ids} />
+      ) : null}
+    </Banner>
+  );
+}
+
+function EmployeeWarningFallbackIds({ ids }: { ids: readonly string[] }) {
+  const others = useQueries({ queries: ids.map(employeeQuery) });
+  return others.map((q, i) =>
+    q.data ? (
+      <Link key={ids[i]} to="/people/$id" params={{ id: ids[i]! }} search={{}}>
+        {t("people.sameName.other", { name: q.data.employee.name, number: q.data.employee.employee_number ?? "—" })}
+      </Link>
+    ) : (
+      t("people.sameName.loading")
+    ),
+  );
 }

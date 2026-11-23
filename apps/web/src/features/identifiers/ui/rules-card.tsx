@@ -45,6 +45,7 @@ export function RulesCard({ scopes }: { scopes: readonly Scope[] }) {
           {
             header: t("identifiers.rules.col.act"),
             fit: true,
+            card: "action",
             cell: (s) => (
               <span className="row">
                 <Button aria-expanded={open === scopeKey(s)} onClick={() => setOpen(open === scopeKey(s) ? null : scopeKey(s))}>{t(ruleOf(all, s) ? "identifiers.rules.edit" : "identifiers.rules.set", { scope: s.label })}</Button>

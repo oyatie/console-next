@@ -18,12 +18,15 @@ use console_hr_domain::import::normalize::employee_number;
 use console_hr_domain::import::review::Note;
 use console_hr_domain::import::roster_cells::{import_phone, is_summary_row};
 use console_hr_domain::import::rrn::is_rrn_value;
-use console_hr_domain::import::rrn_value::{Rrn, RrnVault, SealedRrn};
-use console_hr_domain::import::sex::{sex_of_rrn, sex_of_text};
+use console_hr_domain::import::rrn_value::{RrnVault, SealedRrn};
+use console_hr_domain::import::sex::sex_of_text;
+
+use crate::import::sheet_identity::{ExtractedIdentity, extract_row_identity};
 use serde_json::{Value, json};
 use uuid::Uuid;
 
 use crate::import::canonical::normalized_decimal_text;
+use crate::import::header::allowed_column_target;
 use crate::import::parsed::{EmployeeCanonicalFields, ImportRowStatus, ParsedEmployeeImportRow};
 use crate::import::persist::persistable_import_row;
 use crate::import::types::EmployeeImportColumn;
@@ -33,6 +36,7 @@ use crate::import::types::EmployeeImportColumn;
 pub struct StagedIdentity {
     pub source_key: String,
     pub sealed: SealedRrn,
+    pub id_type: Option<String>,
 }
 
 /// What one mapped sheet yields.
@@ -123,7 +127,7 @@ const DECIMAL_TARGETS: [&str; 8] = [
     "holiday_hours",
 ];
 
-fn canonical(row: &GridRow, t: &Targets<'_>, rrn_sex: Option<&str>) -> EmployeeCanonicalFields {
+fn canonical(row: &GridRow, t: &Targets<'_>, id: ExtractedIdentity) -> EmployeeCanonicalFields {
     let text = |target: &str| t.text(row, target);
     let decimal = |target: &str| text(target).and_then(|v| normalized_decimal_text(&v));
     let exit_date = text("exit_date");
@@ -146,10 +150,11 @@ fn canonical(row: &GridRow, t: &Targets<'_>, rrn_sex: Option<&str>) -> EmployeeC
         .to_owned(),
         exit_date,
         birth_date: text("birth_date"),
+        // Intentional policy: derive sex from the 7th digit (odd = MALE, even = FEMALE) when omitted.
         sex: text("sex")
             .as_deref()
             .and_then(sex_of_text)
-            .or(rrn_sex)
+            .or(id.rrn_sex.as_deref())
             .map(str::to_owned),
         contract_end_date: text("contract_end_date"),
         probation_end_date: text("probation_end_date"),
@@ -166,6 +171,9 @@ fn canonical(row: &GridRow, t: &Targets<'_>, rrn_sex: Option<&str>) -> EmployeeC
         leave_start_date: text("leave_start_date"),
         leave_type: text("leave_type"),
         leave_return_date: text("leave_return_date"),
+        id_type: id.id_type_stored,
+        inferred_id_type: id.inferred_id_type,
+        rrn_validation_error: id.rrn_validation_error,
     }
 }
 
@@ -177,7 +185,16 @@ pub fn sheet_rows(
     plans: &[ColumnPlan],
     source: &str,
 ) -> SheetRows {
-    let keys = keys(plans);
+    let plans: Vec<ColumnPlan> = plans
+        .iter()
+        .map(|plan| ColumnPlan {
+            target: plan
+                .target
+                .filter(|target| allowed_column_target(&plan.label, target)),
+            ..plan.clone()
+        })
+        .collect();
+    let keys = keys(&plans);
     let columns: Vec<EmployeeImportColumn> =
         plans.iter().zip(&keys).map(|(p, k)| column(p, k)).collect();
     let restricted: BTreeSet<&str> = columns
@@ -188,7 +205,7 @@ pub fn sheet_rows(
         })
         .map(|c| c.normalized_header.as_str())
         .collect();
-    let targets = Targets(plans);
+    let targets = Targets(&plans);
     let mut out = SheetRows {
         columns: columns.clone(),
         ..SheetRows::default()
@@ -241,36 +258,20 @@ pub fn sheet_rows(
             .filter(|(_, c)| row.get(*c).is_some())
             .map(|(t, c)| (t, cell_ref(c, row.index)))
             .collect();
-        let mut rrn_sex = None;
-        if let Some(column) = targets.column("rrn")
-            && let Some(cell) = row.get(column)
-            && name.is_some()
-        {
-            let parsed = Rrn::parse(&cell.text());
-            rrn_sex = parsed
-                .as_ref()
-                .ok()
-                .and_then(|rrn| sex_of_rrn(rrn.digits()));
-            match parsed {
-                Err(_) => {
-                    let at = cell_ref(column, row.index);
-                    out.notes
-                        .push(note("rrn_invalid", Some(source_row), Some(at)));
-                }
-                Ok(rrn) => match ctx.vault.map(|vault| vault.seal(ctx.org, &rrn)) {
-                    Some(Ok(sealed)) => out.identities.push(StagedIdentity {
-                        source_key: source_key.clone(),
-                        sealed,
-                    }),
-                    // No vault (or it failed): the value is dropped, never stored.
-                    _ if !unavailable => {
-                        unavailable = true;
-                        out.notes.push(note("rrn_unavailable", None, None));
-                    }
-                    _ => {}
-                },
-            }
-        }
+        let extracted = extract_row_identity(
+            ctx,
+            &sheet.name,
+            row.index,
+            source_row,
+            &source_key,
+            name.is_some(),
+            targets.text(row, "id_type"),
+            targets
+                .column("rrn")
+                .and_then(|c| row.get(c).map(|cell| (c, cell))),
+            &mut unavailable,
+            &mut out,
+        );
         // A number column's cell that is not a number is left out and said so,
         // never read as zero and never a reason to refuse the person.
         for target in DECIMAL_TARGETS {
@@ -294,7 +295,7 @@ pub fn sheet_rows(
         };
         out.rows.push(ParsedEmployeeImportRow {
             company: mapped_company.unwrap_or_default(),
-            canonical: name.as_ref().map(|_| canonical(row, &targets, rrn_sex)),
+            canonical: name.as_ref().map(|_| canonical(row, &targets, extracted)),
             row_status: if name.is_some() { ImportRowStatus::Candidate } else { ImportRowStatus::Preserved },
             name,
             source_filename: ctx.filename.to_owned(),

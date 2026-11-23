@@ -17,7 +17,17 @@ import { changeCommands, changeQuery } from "../api";
 import { EffectuateConsequence } from "./effectuate-consequence";
 
 /** The inbox keeps its inline verbs; the record supplies the current step and application consequence. */
-export function InboxCommand({ id, command }: { id: string; command: "approve" | "effectuate" }) {
+export function InboxCommand({
+  id,
+  command,
+  canDecide = true,
+  focusAfter = "inbox-title",
+}: {
+  id: string;
+  command: "approve" | "effectuate";
+  canDecide?: boolean;
+  focusAfter?: string;
+}) {
   const detail = freshOnOpen(useQuery({ ...changeQuery(id), refetchOnMount: "always" }));
   const step = detail.data?.approvalSteps.find((s) => s.decision === "PENDING");
   const role = step ? label(APPROVAL_ROLE, step.roleKey) : "";
@@ -27,10 +37,11 @@ export function InboxCommand({ id, command }: { id: string; command: "approve" |
     invalidates: ["/api/v1/me/action-inbox", ...ORG_READS, ...(command === "effectuate" ? ["/api/v1/employees", "/api/v1/employment-assignments"] as const : [])],
     onSuccess: () => {
       setOpen(false);
-      focusSoon("inbox-title");
+      focusSoon(focusAfter);
     },
     announce: command === "approve" ? () => t("org.change.decided.APPROVED", { role }) : undefined,
   });
+  if (command === "approve" && canDecide === false) return null;
   const disabled = !detail.isSuccess || detail.isPending || detail.isFetching || action.isPending;
   if (command === "approve") return <div className="row">
     {step && <Chip tone="info">{t("orgChange.turn", { role })}</Chip>}

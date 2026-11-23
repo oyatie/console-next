@@ -23,7 +23,7 @@ impl RrnVault for TestVault {
     fn seal(&self, _: Uuid, _: &Rrn) -> Result<SealedRrn, VaultError> {
         Err(VaultError)
     }
-    fn blind_index(&self, _: &Rrn) -> Vec<u8> {
+    fn blind_index(&self, _: Uuid, _: &Rrn) -> Vec<u8> {
         vec![0; 32]
     }
     fn open(&self, _: Uuid, _: &SealedRrn) -> Result<Rrn, VaultError> {

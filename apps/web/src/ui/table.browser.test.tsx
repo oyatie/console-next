@@ -52,6 +52,7 @@ beforeAll(async () => {
           }));
           if (mode.startsWith('empty')) return h('main', null, h(Card, { title: 'Permissions', flush: true }, h(Table, { label: 'Empty permissions', rows: [], mobileLayout: mode === 'empty-rows' ? 'rows' : undefined, rowId: r => r.id, columns: [{ header: 'Domain', cell: r => r.name }] })));
           if (mode === 'forced-rows') return h('main', null, h(Table, { label: 'Preview rows', rows: item, rowId: r => r.id, mobileLayout: 'rows', columns: wideCols }));
+          if (mode === 'compact-wide') return h('main', null, h('div', { style: { width: '600px', maxWidth: '100%' } }, h(Table, { label: 'Compact wide', rows: item, mobileLayout: 'compact', rowId: r => r.id, columns: wideCols.map((c, i) => ({ ...c, cell: r => h('span', { style: { whiteSpace: 'nowrap' } }, i === 0 ? r.name : 'Long column value that clips above 480px ' + i) })) })));
           if (mode === 'editor') return h('main', null, h(Table, { label: 'Editor', rows: item, rowId: r => r.id, columns: [
             ...wideCols.slice(0, 4), { header: 'Edit', cell: () => h('input', { 'aria-label': 'Editor value', defaultValue: 'Kept' }) },
           ] }));
@@ -198,6 +199,37 @@ test("read-only forced-row tables expose keyboard scroll and a clipping cue only
   await expectElement(cue).toHaveCount(0);
   await page.setViewportSize({ width: 1440, height: 844 });
   await expectElement(table).not.toHaveAttribute("tabindex", /.+/);
+  await expectElement(cue).toHaveCount(0);
+});
+
+test("compact tables scroll cleanly with a cue above 480px when overflowing and collapse without cues at 390px", async () => {
+  await page.setViewportSize({ width: 1440, height: 844 });
+  await page.goto("about:blank");
+  await page.goto(`${server.resolvedUrls!.local[0]}table-test#compact-wide`);
+  const table = page.getByRole("table", { name: "Compact wide", exact: true });
+  const scroller = table.locator("xpath=..");
+  const wrapper = scroller.locator("xpath=../..");
+  const cue = page.locator("[data-scroll-cue]");
+
+  await expectElement(table.locator("tbody > tr").first()).toHaveCSS("display", "table-row");
+  expect(await wrapper.evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+  await expectElement(scroller).toHaveCSS("overflow-x", "auto");
+  expect(await scroller.evaluate(el => el.scrollWidth > el.clientWidth)).toBe(true);
+  await expectElement(cue).toHaveCount(1);
+  await expectElement(cue).toBeVisible();
+  await expectElement(table).toHaveAttribute("tabindex", "0");
+
+  await scroller.evaluate(el => { el.scrollLeft = el.scrollWidth; });
+  await expectElement(cue).toHaveCount(0);
+  const lastCellFits = await scroller.evaluate(el => {
+    const cell = el.querySelector("tbody td:last-child");
+    return Boolean(cell && cell.getBoundingClientRect().right <= el.getBoundingClientRect().right + 1);
+  });
+  expect(lastCellFits).toBe(true);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expectElement(table).toHaveAttribute("data-compact-rows", "true");
+  expect(await scroller.evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
   await expectElement(cue).toHaveCount(0);
 });
 

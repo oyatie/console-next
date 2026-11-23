@@ -59,7 +59,7 @@ export function RowActions({ field, onEdit, edit = "edit", path, history, end, w
           <Button variant="ghost" size="sm" aria-label={t("uiRecordActions.of", { field, verb })} title={path ? t(`uiRecordActions.path.${path}`) : undefined} onClick={onEdit}>{verb}</Button>
         ))}
       {items.length > 0 && (
-        <MenuButton label={t("uiRecordActions.more", { field })} icon={<MoreHorizontal size={14} aria-hidden />} caret={false} items={items} onAction={(k) => (k === "history" ? history?.() : end?.onPress())} />
+        <MenuButton label={t("uiRecordActions.more", { field })} icon={<MoreHorizontal size={14} aria-hidden />} caret={false} quiet items={items} onAction={(k) => (k === "history" ? history?.() : end?.onPress())} />
       )}
     </span>
   );

@@ -110,6 +110,20 @@ pub(super) async fn apply(
     .bind(trace.span_id())
     .fetch_one(tx.as_mut())
     .await?;
+    let updated_employee_ids: Vec<Uuid> = p
+        .rows
+        .iter()
+        .filter(|r| !r.inserted)
+        .map(|r| r.employee_id)
+        .collect();
+    console_ontology_canonical_adapter_postgres::id_registered::revert_import_id_type_in_tx(
+        tx,
+        org,
+        run,
+        &updated_employee_ids,
+    )
+    .await
+    .map_err(|e| HrError::internal(e.to_string()))?;
     sqlx::query("SELECT import_api.remove_employee_import_effects($1,$2)")
         .bind(org)
         .bind(run)

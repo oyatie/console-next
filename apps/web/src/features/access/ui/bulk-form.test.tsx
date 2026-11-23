@@ -23,7 +23,10 @@ vi.mock("react", async (original) => {
     return actual.useState(initial);
   } };
 });
-vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: { entities: [], items: [] }, isSuccess: true }) }));
+vi.mock("@tanstack/react-query", () => ({
+  useQuery: () => ({ data: { entities: [], items: [] }, isSuccess: true }),
+  useInfiniteQuery: () => ({ data: { pages: [{ items: [], limit: 100, offset: 0, total: 0 }] }, hasNextPage: false, isFetchingNextPage: false, fetchNextPage: vi.fn() }),
+}));
 vi.mock("./use-access-context", () => ({ useAccessContext: () => ({
   cat: { data: {} }, accounts: [], accountsQ: { data: { items: [] }, isPending: false, error: null }, roles: [], setup: true, q: { data: true, isPending: false, error: null },
 }) }));

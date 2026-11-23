@@ -133,9 +133,12 @@ WITH import_rows AS (
         e.name AS employee_display_name,
         COALESCE(certificate.name, 'UNKNOWN_COMPANY') AS employee_company,
         e.leave_used,
-        e.leave_remaining
+        e.leave_remaining,
+        COALESCE(epf.bank_account_registered, FALSE) AS bank_account_registered
     -- The person projection: the name is the bound person's current legal name.
     FROM person_employees_current e
+    LEFT JOIN employee_personal_facts epf
+      ON epf.org_id = e.org_id AND epf.employee_id = e.id
     LEFT JOIN LATERAL (
         SELECT legal_entity_id FROM employment_assignments a
         WHERE a.org_id = e.org_id AND a.employee_id = e.id AND a.valid_from <= $4 AND a.superseded_at IS NULL
@@ -162,6 +165,7 @@ WITH import_rows AS (
         eb.employee_source_key,
         eb.employee_display_name,
         eb.employee_company,
+        eb.bank_account_registered,
         count(rm.id) FILTER (WHERE rm.is_payroll_source) AS payroll_source_row_count,
         count(rm.id) FILTER (WHERE rm.is_attendance_source) AS attendance_source_row_count,
         COALESCE(sum(rm.work_days_value), 0) AS work_days,
@@ -181,14 +185,15 @@ WITH import_rows AS (
      AND rm.canonical_source_key = eb.employee_source_key
     GROUP BY
         eb.org_id, eb.employee_id, eb.employee_source_key,
-        eb.employee_display_name, eb.employee_company, eb.leave_used, eb.leave_remaining
+        eb.employee_display_name, eb.employee_company, eb.bank_account_registered,
+        eb.leave_used, eb.leave_remaining
 )
 INSERT INTO payroll_draft_lines (
     org_id, run_id, employee_id, employee_source_key, employee_display_name,
     employee_company, payroll_source_row_count, attendance_source_row_count,
     attendance_event_count, work_days, regular_hours, overtime_hours, night_hours,
     holiday_hours, leave_used, leave_remaining, gross_pay_source_present,
-    net_pay_source_present, nts_tax_row_status, calculation_status, blockers,
+    net_pay_source_present, bank_account_registered, nts_tax_row_status, calculation_status, blockers,
     source_data_import_row_ids
 )
 SELECT
@@ -200,6 +205,7 @@ SELECT
     em.work_days, em.regular_hours, em.overtime_hours, em.night_hours,
     em.holiday_hours, em.leave_used, em.leave_remaining,
     em.gross_pay_source_present, em.net_pay_source_present,
+    em.bank_account_registered,
     'REQUIRED_NOT_SUPPLIED',
     'BLOCKED_LEGAL_GATE',
     jsonb_build_array(
@@ -230,6 +236,7 @@ ON CONFLICT (org_id, run_id, employee_source_key) DO UPDATE SET
     leave_remaining = EXCLUDED.leave_remaining,
     gross_pay_source_present = EXCLUDED.gross_pay_source_present,
     net_pay_source_present = EXCLUDED.net_pay_source_present,
+    bank_account_registered = EXCLUDED.bank_account_registered,
     nts_tax_row_status = 'REQUIRED_NOT_SUPPLIED',
     calculation_status = 'BLOCKED_LEGAL_GATE',
     blockers = EXCLUDED.blockers,

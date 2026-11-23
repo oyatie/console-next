@@ -22,10 +22,10 @@ test("the pack loader uses the boot attribute and falls back to baseline", async
   vi.unstubAllGlobals();
 });
 
-test("the chooser offers the built style and the one being built, and keeps an unlisted style only for a person already on it", () => {
-  expect(experiences.map(experience => [experience.id, experience.listing])).toEqual([["baseline", "listed"], ["control-room", "preview"], ["warm-clear", "unlisted"]]);
-  expect(offeredExperiences("baseline").map(experience => experience.id)).toEqual(["baseline", "control-room"]);
-  expect(offeredExperiences("control-room").map(experience => experience.id)).toEqual(["baseline", "control-room"]);
+test("the chooser offers the built style and the listed styles, and keeps an unlisted style only for a person already on it", () => {
+  expect(experiences.map(experience => [experience.id, experience.listing])).toEqual([["baseline", "listed"], ["console", "listed"], ["warm-clear", "unlisted"]]);
+  expect(offeredExperiences("baseline").map(experience => experience.id)).toEqual(["baseline", "console"]);
+  expect(offeredExperiences("console").map(experience => experience.id)).toEqual(["baseline", "console"]);
   // Leaving it must stay possible, and the select must show what is in force.
-  expect(offeredExperiences("warm-clear").map(experience => experience.id)).toEqual(["baseline", "control-room", "warm-clear"]);
+  expect(offeredExperiences("warm-clear").map(experience => experience.id)).toEqual(["baseline", "console", "warm-clear"]);
 });

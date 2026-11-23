@@ -3,7 +3,7 @@ import type { DepOptimizationOptions } from "vite";
 import type { Locator, Page } from "@playwright/test";
 import { chromium, firefox, webkit } from "@playwright/test";
 import { e2eBrowser } from "../../../../e2e/browser";
-export { chromium, type Browser, type Page } from "@playwright/test";
+export { chromium, type Browser, type BrowserContext, type Page } from "@playwright/test";
 
 export const browserEngine = () => ({ chromium, firefox, webkit }[e2eBrowser()]);
 

@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [me]
+operationId: revealMyProfileField
+summary: Step-up passkey reveal of one self-service personal field
+description: >
+  Verifies a fresh MobileStepUpActionKind::PiiReveal passkey assertion bound to
+  the caller's linked employee, commits an immutable audit event before reading,
+  and returns the plaintext phone, address, or emergency contacts with
+  Cache-Control: private, no-store.
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/SelfRevealRequest'
+responses:
+  '200':
+    description: Revealed personal field with display timer.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/SelfFieldRevealed'
+  '401':
+    description: Missing, invalid, or stale passkey step-up assertion.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '403':
+    description: Forbidden for unlinked users or support sessions.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '429':
+    description: Hourly reveal rate limit exceeded.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

@@ -1,8 +1,9 @@
 use crate::{
-    BootstrapCredentialStore, OTP_ALPHABET, OTP_GROUP_LEN, OTP_LEN, OtpRedemption, OtpSource,
-    ProvisioningError, count_user_passkeys_tx, hash_token, require_active_account_tx,
-    resolve_bootstrap_org,
+    BootstrapCredentialStore, OtpRedemption, OtpSource, PLATFORM_INVITE_TOKEN_PREFIX,
+    ProvisioningError, count_user_passkeys_tx, hash_platform_invite_token, otp_lookup_candidates,
+    require_active_account_tx, resolve_otp_candidate_org,
 };
+use aws_lc_rs::constant_time::verify_slices_are_equal;
 use console_kernel_core::{AuditAction, AuditEvent, OrgId, TraceContext, UserId};
 use console_platform_auth::authentication_time_tx;
 use console_platform_db::insert_audit_event;
@@ -64,26 +65,13 @@ impl BootstrapCredentialStore {
         token: &str,
         now: OffsetDateTime,
     ) -> Result<OtpRedemption, ProvisioningError> {
-        let mut token_hash = hash_token(token);
-        let mut resolved_org = resolve_bootstrap_org(tx, &token_hash).await?;
-        // Exact legacy hashes retain precedence over new-format normalization.
-        if resolved_org.is_none() {
-            let compact = token
-                .chars()
-                .filter(|symbol| !symbol.is_ascii_whitespace() && *symbol != '-')
-                .collect::<String>()
-                .to_ascii_uppercase();
-            if compact.len() == OTP_LEN && compact.bytes().all(|byte| OTP_ALPHABET.contains(&byte))
-            {
-                let canonical = format!(
-                    "{}-{}",
-                    &compact[..OTP_GROUP_LEN],
-                    &compact[OTP_GROUP_LEN..]
-                );
-                token_hash = hash_token(&canonical);
-                resolved_org = resolve_bootstrap_org(tx, &token_hash).await?;
-            }
-        }
+        let is_platform_invite = token.starts_with(PLATFORM_INVITE_TOKEN_PREFIX);
+        let candidates = if is_platform_invite {
+            vec![hash_platform_invite_token(token)]
+        } else {
+            otp_lookup_candidates(&self.resolve_hmac_key()?, token)
+        };
+        let resolved = resolve_otp_candidate_org(tx, &candidates).await?;
 
         // Resolve the credential's tenant from the token hash FIRST, then arm the
         // GUC, THEN do the RLS-gated read. `auth_bootstrap_credentials` is FORCE
@@ -94,7 +82,7 @@ impl BootstrapCredentialStore {
         // credential's org_id, breaking that chicken-and-egg so OTP first sign-in
         // works for ANY tenant. A NULL means the token is unknown: keep the same
         // generic invalid-OTP error (no row), revealing nothing.
-        let Some(org_uuid) = resolved_org else {
+        let Some((org_uuid, token_hash)) = resolved else {
             return Err(ProvisioningError::InvalidBootstrapCredential);
         };
         sqlx::query("SELECT set_config('app.current_org', $1, true)")
@@ -102,16 +90,19 @@ impl BootstrapCredentialStore {
             .execute(tx.as_mut())
             .await?;
 
-        let locator: Option<(Uuid, Uuid, i16)> = sqlx::query_as(
-            "SELECT id, user_id, issuance_version FROM auth_bootstrap_credentials WHERE token_hash=$1 AND org_id=$2",
+        let locator: Option<(Uuid, Uuid, i16, Vec<u8>)> = sqlx::query_as(
+            "SELECT id, user_id, issuance_version, token_hash FROM auth_bootstrap_credentials WHERE token_hash=$1 AND org_id=$2",
         )
         .bind(&token_hash)
         .bind(org_uuid)
         .fetch_optional(tx.as_mut())
         .await?;
-        let Some((credential_id, user_id, issuance_version)) = locator else {
+        let Some((credential_id, user_id, issuance_version, stored_hash)) = locator else {
             return Err(ProvisioningError::InvalidBootstrapCredential);
         };
+        if verify_slices_are_equal(&stored_hash, &token_hash).is_err() {
+            return Err(ProvisioningError::InvalidBootstrapCredential);
+        }
         if issuance_version == 1 {
             // The command role cannot lock `users` directly; this narrow
             // definer takes the same NO KEY UPDATE Account mutex and checks
@@ -173,6 +164,27 @@ impl BootstrapCredentialStore {
         .await?;
         if redeemed.rows_affected() != 1 {
             return Err(ProvisioningError::InvalidBootstrapCredential);
+        }
+
+        if is_platform_invite && org_uuid == *OrgId::platform().as_uuid() && issuance_version == 0 {
+            let has_invites_table: bool = sqlx::query_scalar(
+                "SELECT to_regclass('public.platform_operator_invites') IS NOT NULL",
+            )
+            .fetch_one(tx.as_mut())
+            .await?;
+            if has_invites_table {
+                sqlx::query(
+                    "UPDATE platform_operator_invites SET redeemed_at = COALESCE(redeemed_at, $2) \
+                     WHERE credential_id = $1 AND user_id = $3 AND org_id = $4 \
+                       AND accepted_at IS NULL AND revoked_at IS NULL",
+                )
+                .bind(credential_id)
+                .bind(now)
+                .bind(user_id)
+                .bind(org_uuid)
+                .execute(tx.as_mut())
+                .await?;
+            }
         }
 
         if issuance_version == 1 {

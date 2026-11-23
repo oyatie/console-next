@@ -1,5 +1,5 @@
 import { expect, test, vi } from "vitest";
-import { QueryClient, QueryObserver } from "@tanstack/react-query";
+import { InfiniteQueryObserver, QueryClient, QueryObserver } from "@tanstack/react-query";
 import { ApiError } from "@console/api";
 import { queryDefaults } from "./react/query-defaults";
 import { cursorRead, freshOnOpen, get, invalidatePaths, invalidateWhere, navigationRead, queryPath, read, readIdentity, underPath } from "./query";
@@ -96,5 +96,41 @@ test("background invalidation refreshes page facts while navigation facts wait f
     expect(rail.getCurrentResult().data).toBe("blocked");
     await Promise.all(invalidatePaths(client, ["/api/v1/onboarding"]));
     expect(rail.getCurrentResult().data).toBe("todo");
+  } finally { off.forEach(unsubscribe => unsubscribe()); client.clear(); }
+});
+
+test("live invalidateWhere marks deep cursor queries (>10 pages) stale without refetching, while <=10 pages and invalidatePaths refetch", async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } });
+  const makeDescriptor = (key: string, pageCount: number) => {
+    let fetches = 0;
+    const descriptor = cursorRead(key, {}, async cursor => {
+      fetches++;
+      const index = cursor ? Number(cursor) : 1;
+      return { items: [index], next_cursor: index < pageCount ? String(index + 1) : null };
+    });
+    return { descriptor, reads: () => fetches };
+  };
+  const shallow = makeDescriptor("/api/v1/employees-shallow", 10);
+  const deep = makeDescriptor("/api/v1/employees", 11);
+  const shallowObs = new InfiniteQueryObserver(client, shallow.descriptor);
+  const deepObs = new InfiniteQueryObserver(client, deep.descriptor);
+  const off = [shallowObs.subscribe(() => {}), deepObs.subscribe(() => {})];
+  try {
+    await vi.waitFor(() => expect(shallowObs.getCurrentResult().data?.pages.length).toBe(1));
+    await vi.waitFor(() => expect(deepObs.getCurrentResult().data?.pages.length).toBe(1));
+    for (let i = 1; i < 10; i++) await shallowObs.fetchNextPage();
+    await vi.waitFor(() => expect(shallowObs.getCurrentResult().data?.pages.length).toBe(10));
+    for (let i = 1; i < 11; i++) await deepObs.fetchNextPage();
+    await vi.waitFor(() => expect(deepObs.getCurrentResult().data?.pages.length).toBe(11));
+    expect(shallow.reads()).toBe(10);
+    expect(deep.reads()).toBe(11);
+
+    await invalidateWhere(client, path => path === "/api/v1/employees-shallow" || path === "/api/v1/employees");
+    expect(shallow.reads()).toBe(20);
+    expect(deep.reads()).toBe(11);
+    expect(deepObs.getCurrentResult().isStale).toBe(true);
+
+    await Promise.all(invalidatePaths(client, ["/api/v1/employees"]));
+    expect(deep.reads()).toBe(22);
   } finally { off.forEach(unsubscribe => unsubscribe()); client.clear(); }
 });

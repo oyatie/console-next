@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["evaluated_at", "display_status", "last_page_test_at", "last_page_test_ok"]
+properties:
+  evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+  config: {"type": "object"}
+  display_status: {"$ref": "#/components/schemas/ObservedText"}
+  last_page_test_at: {"$ref": "#/components/schemas/ObservedTimestamp"}
+  last_page_test_ok: {"$ref": "#/components/schemas/ObservedBoolean"}

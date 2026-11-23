@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { Building, Building2, ClipboardCheck, Clock, FileText, Home, KeyRound, ListChecks, ScrollText, Settings, Users, type LucideIcon } from "lucide-react";
+import { Building, Building2, ClipboardCheck, Clock, FileText, Home, KeyRound, ListChecks, ScrollText, Settings, Users, UsersRound, type LucideIcon } from "lucide-react";
 import type { StaticDataRouteOption } from "@tanstack/react-router";
 import type { MessageId } from "@console/i18n";
 import type { AllPaths } from "@console/api/pending";
@@ -9,7 +9,8 @@ import { SETTINGS_VIEWS } from "./settings-views";
 import { APPROVALS_MODULE, moduleReady, PAYROLL_MODULE } from "../reference/onboarding/api";
 
 type Modules = AllPaths["/api/v1/onboarding/modules"]["get"]["responses"][200]["content"]["application/json"];
-type NavLink = { to: string; label: MessageId; icon: LucideIcon; module?: Modules[number]["key"]; requireReadiness?: boolean; supportApproval?: boolean; views?: readonly { to: string }[] };
+type NavCountKey = "inbox" | "approvals";
+export type NavLink = { to: string; label: MessageId; icon: LucideIcon; countKey?: NavCountKey; module?: Modules[number]["key"]; requireReadiness?: boolean; supportApproval?: boolean; views?: readonly { to: string }[] };
 export type NavHub = { hub: MessageId; links: readonly NavLink[] };
 type Routes = Readonly<Record<string, { options: { staticData?: StaticDataRouteOption } }>>;
 // null preserves an unanswered modules read across reloads without treating it as ready.
@@ -19,15 +20,16 @@ const REQUESTS: NavLink = { to: "/people/requests", label: "shell.link.requests"
 // One entry table; future destinations appear only when their route is served.
 export const TENANT_NAV: readonly NavHub[] = [
   { hub: "shell.hub.work", links: [
-    { to: "/", label: "shell.link.home", icon: Home },
+    { to: "/", label: "shell.link.home", icon: Home, countKey: "inbox" },
     // Keep own requests reachable until the inbox page includes the requester's tab.
     REQUESTS,
   ] },
   { hub: "shell.hub.approvals", links: [
-    { to: "/approvals", label: "shell.link.approvals", icon: ClipboardCheck, module: APPROVALS_MODULE, requireReadiness: true },
+    { to: "/approvals", label: "shell.link.approvals", icon: ClipboardCheck, countKey: "approvals", module: APPROVALS_MODULE, requireReadiness: true },
   ] },
   { hub: "shell.hub.people", links: [
     { to: "/org", label: "shell.link.org", icon: Building2, module: "org" },
+    { to: "/team", label: "shell.link.team", icon: UsersRound, module: "people" },
     { to: "/people", label: "shell.link.people", icon: Users, module: "people" },
     { to: "/attendance", label: "shell.link.attendance", icon: Clock, module: "attendance" },
     { to: "/payroll", label: "shell.link.payroll", icon: FileText, module: PAYROLL_MODULE, requireReadiness: true },
@@ -35,7 +37,7 @@ export const TENANT_NAV: readonly NavHub[] = [
   ] },
   { hub: "shell.hub.admin", links: [
     { to: "/access", label: "shell.link.access", icon: KeyRound, module: "access" },
-    { to: "/audit/support-access", label: "shell.link.audit", icon: FileText, supportApproval: true },
+    { to: "/audit", label: "shell.link.audit", icon: FileText, supportApproval: true },
     { to: "/settings", label: "shell.link.settings", icon: Settings, views: SETTINGS_VIEWS },
   ] },
 ];
@@ -44,22 +46,26 @@ export const PLATFORM_NAV: readonly NavHub[] = [{ hub: "shell.hub.platform", lin
 /** Served destinations use their own requirement; readiness remains a server fact. */
 export function tenantNav(access: AccessEffective | undefined, routes: Routes, supportApproval = false,
   { phase, setupTargets, modules }: NavContext = { pathname: "/" }) {
-  const shown = (link: NavLink) => {
-    if (!routes[link.to]) return false;
-    if (link.to === "/") return true;
-    if (!access) return false;
-    if (link.requireReadiness && !modules) return false;
-    if (modules !== undefined && link.module && !moduleReady(modules, link.module)) return false;
+  const expand = (link: NavLink): readonly NavLink[] => {
+    const hasPrimary = !!routes[link.to];
+    const auditFallback = link.to === "/audit" && link.supportApproval && supportApproval && routes["/audit/support-access"];
+    if (!hasPrimary && !auditFallback) return [];
+    if (link.to === "/") return [link];
+    if (!access) return [];
+    if (link.requireReadiness && !modules) return [];
+    if (modules !== undefined && link.module && !moduleReady(modules, link.module)) return [];
     if (phase === "SETUP") {
       // Keep S1's safe destinations if the checklist is unavailable; readiness can narrow them further.
       const targets = setupTargets ?? ["/org", "/people", "/access"];
-      if (!targets.some(to => to === link.to || to.startsWith(link.to + "/"))) return false;
+      if (!targets.some(to => to === link.to || to.startsWith(link.to + "/"))) return [];
     }
-    if (link.supportApproval) return supportApproval;
     const need = routes[link.to]?.options.staticData?.access;
-    return need === "signed-in" || !!need && accessRefusal(access, need) === null;
+    const allowedPrimary = hasPrimary && (need === "signed-in" || !!need && accessRefusal(access, need) === null);
+    if (allowedPrimary) return [link];
+    if (auditFallback) return [{ ...link, to: "/audit/support-access" }];
+    return [];
   };
-  return TENANT_NAV.map(g => ({ ...g, links: g.links.filter(shown) })).filter(g => g.links.length);
+  return TENANT_NAV.map(g => ({ ...g, links: g.links.flatMap(expand) })).filter(g => g.links.length);
 }
 
 type RailAnswer = { access: AccessEffective; supportApproval: boolean; context: NavContext };

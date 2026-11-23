@@ -24,7 +24,7 @@ pub struct RuleGroup {
     pub rules: Vec<Rule>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Rule {
     pub id: String,
@@ -37,16 +37,18 @@ pub struct Rule {
     pub last_error: String,
     #[serde(with = "time::serde::rfc3339")]
     pub last_evaluation: OffsetDateTime,
+    #[serde(default)]
+    pub labels: BTreeMap<String, String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum RuleKind {
     Alerting,
     Recording,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum RuleState {
     #[serde(rename = "")]
@@ -59,7 +61,7 @@ pub enum RuleState {
     Ok,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum RuleHealth {
     Ok,
@@ -67,7 +69,7 @@ pub enum RuleHealth {
     Unknown,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RuleAlert {
     pub labels: BTreeMap<String, String>,
@@ -83,7 +85,7 @@ pub struct RuleAlert {
     pub expression: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum RuleAlertState {
     Pending,

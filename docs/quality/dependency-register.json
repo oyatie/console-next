@@ -3285,6 +3285,17 @@
           "target": null,
           "features": [],
           "defaultFeatures": true
+        },
+        {
+          "file": "backend/crates/platform/crypto/Cargo.toml",
+          "user": "console-platform-crypto",
+          "requirement": "^0.23.1",
+          "alias": "base64",
+          "layer": "frameworks & drivers/platform",
+          "kind": "normal",
+          "target": null,
+          "features": [],
+          "defaultFeatures": true
         }
       ],
       "callsites": [
@@ -3443,6 +3454,7 @@
         "console-hr-adapter-postgres",
         "console-notifications-adapter-postgres",
         "console-platform-auth",
+        "console-platform-crypto",
         "console-production-rest"
       ],
       "resolvedFootprint": [
@@ -3516,6 +3528,10 @@
           "user": "console-platform-auth"
         },
         {
+          "layer": "frameworks & drivers/platform",
+          "user": "console-platform-crypto"
+        },
+        {
           "layer": "interface adapters",
           "user": "console-comms-rest"
         },
@@ -3549,6 +3565,7 @@
         "console-hr-adapter-postgres",
         "console-notifications-adapter-postgres",
         "console-platform-auth",
+        "console-platform-crypto",
         "console-production-rest"
       ],
       "architectureRecord": "docs/architecture/backend-module-map.md",
@@ -8865,6 +8882,19 @@
             "rustls"
           ],
           "defaultFeatures": false
+        },
+        {
+          "file": "backend/crates/platform/crypto/Cargo.toml",
+          "user": "console-platform-crypto",
+          "requirement": "^0.13.4",
+          "alias": "reqwest",
+          "layer": "frameworks & drivers/platform",
+          "kind": "normal",
+          "target": null,
+          "features": [
+            "rustls"
+          ],
+          "defaultFeatures": false
         }
       ],
       "callsites": [
@@ -8945,6 +8975,7 @@
         "console-entity-adapter-juso",
         "console-entity-adapter-nts",
         "console-ops-adapter-http",
+        "console-platform-crypto",
         "console-platform-egress-fence",
         "console-platform-push",
         "console-platform-storage"
@@ -9357,6 +9388,17 @@
           "target": null,
           "features": [],
           "defaultFeatures": true
+        },
+        {
+          "file": "backend/crates/platform/crypto/Cargo.toml",
+          "user": "console-platform-crypto",
+          "requirement": "^0.10.3",
+          "alias": "secrecy",
+          "layer": "frameworks & drivers/platform",
+          "kind": "normal",
+          "target": null,
+          "features": [],
+          "defaultFeatures": true
         }
       ],
       "callsites": [
@@ -9419,7 +9461,8 @@
         "console-comms-adapter-smtp",
         "console-comms-application",
         "console-comms-credential-cipher",
-        "console-comms-rest"
+        "console-comms-rest",
+        "console-platform-crypto"
       ],
       "resolvedFootprint": [
         {
@@ -11440,6 +11483,19 @@
             "derive"
           ],
           "defaultFeatures": true
+        },
+        {
+          "file": "backend/crates/platform/crypto/Cargo.toml",
+          "user": "console-platform-crypto",
+          "requirement": "^1",
+          "alias": "serde",
+          "layer": "frameworks & drivers/platform",
+          "kind": "normal",
+          "target": null,
+          "features": [
+            "derive"
+          ],
+          "defaultFeatures": true
         }
       ],
       "callsites": [
@@ -13276,6 +13332,7 @@
         "console-platform-auth-rest",
         "console-platform-authz",
         "console-platform-authz-rest",
+        "console-platform-crypto",
         "console-platform-db",
         "console-platform-group",
         "console-platform-jobs",
@@ -13565,6 +13622,10 @@
         {
           "layer": "frameworks & drivers/platform",
           "user": "console-platform-authz-rest"
+        },
+        {
+          "layer": "frameworks & drivers/platform",
+          "user": "console-platform-crypto"
         },
         {
           "layer": "frameworks & drivers/platform",
@@ -14058,6 +14119,7 @@
         "console-platform-auth-rest",
         "console-platform-authz",
         "console-platform-authz-rest",
+        "console-platform-crypto",
         "console-platform-db",
         "console-platform-group",
         "console-platform-jobs",
@@ -16117,6 +16179,19 @@
           "target": null,
           "features": [],
           "defaultFeatures": true
+        },
+        {
+          "file": "backend/crates/platform/crypto/Cargo.toml",
+          "user": "console-platform-crypto",
+          "requirement": "^1",
+          "alias": "serde_json",
+          "layer": "frameworks & drivers/platform",
+          "kind": "normal",
+          "target": null,
+          "features": [
+            "float_roundtrip"
+          ],
+          "defaultFeatures": true
         }
       ],
       "callsites": [
@@ -17773,6 +17848,7 @@
         "console-platform-auth-rest",
         "console-platform-authz",
         "console-platform-authz-rest",
+        "console-platform-crypto",
         "console-platform-db",
         "console-platform-egress-fence",
         "console-platform-jobs",
@@ -17947,6 +18023,10 @@
         {
           "layer": "frameworks & drivers/platform",
           "user": "console-platform-authz-rest"
+        },
+        {
+          "layer": "frameworks & drivers/platform",
+          "user": "console-platform-crypto"
         },
         {
           "layer": "frameworks & drivers/platform",
@@ -18415,6 +18495,7 @@
         "console-platform-auth-rest",
         "console-platform-authz",
         "console-platform-authz-rest",
+        "console-platform-crypto",
         "console-platform-db",
         "console-platform-egress-fence",
         "console-platform-jobs",
@@ -25003,6 +25084,17 @@
           "target": null,
           "features": [],
           "defaultFeatures": true
+        },
+        {
+          "file": "backend/crates/platform/crypto/Cargo.toml",
+          "user": "console-platform-crypto",
+          "requirement": "^2",
+          "alias": "thiserror",
+          "layer": "frameworks & drivers/platform",
+          "kind": "normal",
+          "target": null,
+          "features": [],
+          "defaultFeatures": true
         }
       ],
       "callsites": [
@@ -25287,6 +25379,7 @@
         "console-platform-auth-rest",
         "console-platform-authz",
         "console-platform-authz-rest",
+        "console-platform-crypto",
         "console-platform-db",
         "console-platform-egress-fence",
         "console-platform-email",
@@ -29212,8 +29305,6 @@
         "backend/crates/identity/rest/openapi/schemas/ReplacePolicyRoleAssignmentsRequest.yaml:6",
         "backend/crates/identity/rest/openapi/schemas/RouteAdoptionMetric.yaml:28",
         "backend/crates/identity/rest/openapi/schemas/SignInIdRecord.yaml:45",
-        "backend/crates/identity/rest/openapi/schemas/SignupRequest.yaml:8",
-        "backend/crates/identity/rest/openapi/schemas/SignupResponse.yaml:7",
         "backend/crates/identity/rest/openapi/schemas/SupportAccessRecord.yaml:13",
         "backend/crates/identity/rest/openapi/schemas/SupportSession.yaml:41",
         "backend/crates/identity/rest/openapi/schemas/SupportSessionDecision.yaml:18",
@@ -31792,6 +31883,22 @@
             "rt-multi-thread"
           ],
           "defaultFeatures": false
+        },
+        {
+          "file": "backend/crates/platform/crypto/Cargo.toml",
+          "user": "console-platform-crypto",
+          "requirement": "^1.52.3",
+          "alias": "tokio",
+          "layer": "test",
+          "kind": "dev",
+          "target": null,
+          "features": [
+            "rt-multi-thread",
+            "macros",
+            "macros",
+            "rt"
+          ],
+          "defaultFeatures": false
         }
       ],
       "callsites": [
@@ -32237,6 +32344,7 @@
         "console-platform-auth",
         "console-platform-auth-rest",
         "console-platform-authz-rest",
+        "console-platform-crypto",
         "console-platform-db",
         "console-platform-egress-fence",
         "console-platform-email",
@@ -32547,6 +32655,10 @@
         },
         {
           "layer": "test",
+          "user": "console-platform-crypto"
+        },
+        {
+          "layer": "test",
           "user": "console-platform-db"
         },
         {
@@ -32694,6 +32806,7 @@
         "console-platform-auth",
         "console-platform-auth-rest",
         "console-platform-authz-rest",
+        "console-platform-crypto",
         "console-platform-db",
         "console-platform-egress-fence",
         "console-platform-email",
@@ -38268,6 +38381,21 @@
             "serde"
           ],
           "defaultFeatures": true
+        },
+        {
+          "file": "backend/crates/platform/crypto/Cargo.toml",
+          "user": "console-platform-crypto",
+          "requirement": "^1",
+          "alias": "uuid",
+          "layer": "frameworks & drivers/platform",
+          "kind": "normal",
+          "target": null,
+          "features": [
+            "v4",
+            "v7",
+            "serde"
+          ],
+          "defaultFeatures": true
         }
       ],
       "callsites": [
@@ -40722,6 +40850,7 @@
         "console-platform-auth-rest",
         "console-platform-authz",
         "console-platform-authz-rest",
+        "console-platform-crypto",
         "console-platform-db",
         "console-platform-erasure-ledger",
         "console-platform-group",
@@ -40907,6 +41036,10 @@
         {
           "layer": "frameworks & drivers/platform",
           "user": "console-platform-authz-rest"
+        },
+        {
+          "layer": "frameworks & drivers/platform",
+          "user": "console-platform-crypto"
         },
         {
           "layer": "frameworks & drivers/platform",
@@ -41478,6 +41611,7 @@
         "console-platform-auth-rest",
         "console-platform-authz",
         "console-platform-authz-rest",
+        "console-platform-crypto",
         "console-platform-db",
         "console-platform-erasure-ledger",
         "console-platform-group",
@@ -42227,6 +42361,17 @@
           "target": null,
           "features": [],
           "defaultFeatures": true
+        },
+        {
+          "file": "backend/crates/platform/crypto/Cargo.toml",
+          "user": "console-platform-crypto",
+          "requirement": "^1.9.0",
+          "alias": "zeroize",
+          "layer": "frameworks & drivers/platform",
+          "kind": "normal",
+          "target": null,
+          "features": [],
+          "defaultFeatures": true
         }
       ],
       "callsites": [
@@ -42285,7 +42430,8 @@
         "downloads": 221590862
       },
       "allowedUsers": [
-        "console-comms-credential-cipher"
+        "console-comms-credential-cipher",
+        "console-platform-crypto"
       ],
       "resolvedFootprint": [
         {
@@ -42325,10 +42471,15 @@
         {
           "layer": "frameworks & drivers/platform",
           "user": "console-comms-credential-cipher"
+        },
+        {
+          "layer": "frameworks & drivers/platform",
+          "user": "console-platform-crypto"
         }
       ],
       "approvedUsers": [
-        "console-comms-credential-cipher"
+        "console-comms-credential-cipher",
+        "console-platform-crypto"
       ],
       "architectureRecord": "docs/architecture/backend-module-map.md",
       "rulingEvidence": {
@@ -49979,6 +50130,11 @@
       "direct": true,
       "uses": [
         {
+          "file": "apps/ops/package.json",
+          "user": "@console/ops",
+          "layer": "web: UI"
+        },
+        {
           "file": "apps/web/package.json",
           "user": "@console/web",
           "layer": "web: UI"
@@ -50482,6 +50638,7 @@
         }
       },
       "allowedUsers": [
+        "@console/ops",
         "@console/web"
       ],
       "observedLayers": [
@@ -50515,6 +50672,11 @@
       "name": "@tanstack/react-router",
       "direct": true,
       "uses": [
+        {
+          "file": "apps/ops/package.json",
+          "user": "@console/ops",
+          "layer": "web: UI"
+        },
         {
           "file": "apps/web/package.json",
           "user": "@console/web",
@@ -50960,6 +51122,7 @@
         }
       },
       "allowedUsers": [
+        "@console/ops",
         "@console/web"
       ],
       "observedLayers": [
@@ -51386,6 +51549,11 @@
       "direct": true,
       "uses": [
         {
+          "file": "apps/ops/package.json",
+          "user": "@console/ops",
+          "layer": "test"
+        },
+        {
           "file": "apps/web/package.json",
           "user": "@console/web",
           "layer": "test"
@@ -51434,6 +51602,7 @@
         }
       },
       "allowedUsers": [
+        "@console/ops",
         "@console/web"
       ],
       "observedLayers": [
@@ -51653,6 +51822,11 @@
       "name": "lucide-react",
       "direct": true,
       "uses": [
+        {
+          "file": "apps/ops/package.json",
+          "user": "@console/ops",
+          "layer": "web: UI"
+        },
         {
           "file": "apps/web/package.json",
           "user": "@console/web",
@@ -51938,6 +52112,7 @@
         }
       },
       "allowedUsers": [
+        "@console/ops",
         "@console/web"
       ],
       "observedLayers": [
@@ -52527,6 +52702,11 @@
       "name": "react",
       "direct": true,
       "uses": [
+        {
+          "file": "apps/ops/package.json",
+          "user": "@console/ops",
+          "layer": "web: UI"
+        },
         {
           "file": "apps/web/package.json",
           "user": "@console/web",
@@ -53699,6 +53879,7 @@
         }
       },
       "allowedUsers": [
+        "@console/ops",
         "@console/web"
       ],
       "observedLayers": [
@@ -53727,6 +53908,7 @@
       "securityProcess": "https://github.com/facebook/react/security/policy",
       "ruleMapping": "Preserve listed call-site contracts, error handling, wire formats and target/features.",
       "approvedUsers": [
+        "@console/ops",
         "@console/web"
       ],
       "architectureRecord": "docs/architecture/frontend-module-map.md",
@@ -53760,6 +53942,10 @@
       "approvedUses": [
         {
           "layer": "web: UI",
+          "user": "@console/ops"
+        },
+        {
+          "layer": "web: UI",
           "user": "@console/web"
         }
       ],
@@ -53778,6 +53964,11 @@
       "name": "react-aria-components",
       "direct": true,
       "uses": [
+        {
+          "file": "apps/ops/package.json",
+          "user": "@console/ops",
+          "layer": "web: UI"
+        },
         {
           "file": "apps/web/package.json",
           "user": "@console/web",
@@ -53870,6 +54061,7 @@
         }
       },
       "allowedUsers": [
+        "@console/ops",
         "@console/web"
       ],
       "observedLayers": [
@@ -53903,6 +54095,11 @@
       "name": "react-dom",
       "direct": true,
       "uses": [
+        {
+          "file": "apps/ops/package.json",
+          "user": "@console/ops",
+          "layer": "web: UI"
+        },
         {
           "file": "apps/web/package.json",
           "user": "@console/web",
@@ -54253,6 +54450,7 @@
         }
       },
       "allowedUsers": [
+        "@console/ops",
         "@console/web"
       ],
       "observedLayers": [
@@ -54283,10 +54481,15 @@
       "approvedUses": [
         {
           "layer": "web: UI",
+          "user": "@console/ops"
+        },
+        {
+          "layer": "web: UI",
           "user": "@console/web"
         }
       ],
       "approvedUsers": [
+        "@console/ops",
         "@console/web"
       ],
       "architectureRecord": "docs/architecture/frontend-module-map.md",
@@ -55122,6 +55325,11 @@
       "direct": true,
       "uses": [
         {
+          "file": "apps/ops/package.json",
+          "user": "@console/ops",
+          "layer": "test"
+        },
+        {
           "file": "apps/web/package.json",
           "user": "@console/web",
           "layer": "test"
@@ -55850,6 +56058,7 @@
         }
       },
       "allowedUsers": [
+        "@console/ops",
         "@console/web"
       ],
       "observedLayers": [

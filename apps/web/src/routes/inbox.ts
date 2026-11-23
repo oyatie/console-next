@@ -6,7 +6,7 @@ import { inboxView, type InboxView } from "../features/home/domain/inbox-filter"
 export const inboxRoute = createRoute({
   getParentRoute: () => app,
   path: "/inbox",
-  staticData: { access: "signed-in", floorplan: "P-03" },
+  staticData: { access: "signed-in", floorplan: "P-03", pattern: "worklist" },
   validateSearch: (search: Record<string, unknown>): { tab?: InboxView; sel?: string } => ({ sel: typeof search.sel === "string" ? search.sel : undefined, tab: inboxView(search.tab) === "turn" ? undefined : inboxView(search.tab) }),
   component: lazyRouteComponent(screen(() => import("./inbox-screen")), "InboxScreen"),
 });

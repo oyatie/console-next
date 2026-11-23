@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+description: Persisted inline cell repairs merged onto a staged employee import run.
+additionalProperties: false
+required: [cells, repaired_rows, run_id]
+properties:
+  cells:
+    type: object
+    description: Effective per-row map of canonical field repairs persisted in dry_run_decisions.cells.
+    maxProperties: 5000
+    additionalProperties:
+      type: object
+      description: Map of canonical field names to repaired values for one row.
+      maxProperties: 64
+      additionalProperties:
+        type: string
+        maxLength: 500
+  repaired_rows:
+    type: integer
+    description: Count of candidate rows with persisted cell repairs.
+    minimum: 0
+  run_id:
+    $ref: '#/components/schemas/Uuid'

@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "capability"}
+tags:
+  - hr
+operationId: getEmployeeExitCaseCounts
+summary: Single-scan status counts of employee exit cases in scope
+security:
+- bearerAuth: []
+parameters:
+- name: search
+  in: query
+  required: false
+  description: Part of the employee's name or employee number (case-insensitive).
+  schema:
+    type: string
+responses:
+  '200':
+    description: Exit-case status counts in the caller's branch scope.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ExitCaseCountsResponse'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '422':
+    $ref: '#/components/responses/ValidationError'

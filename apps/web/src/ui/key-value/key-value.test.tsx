@@ -2,7 +2,7 @@
 import { beforeAll, expect, test } from "vitest";
 import { renderToStaticMarkup as html } from "react-dom/server";
 import { loadCatalog } from "@console/i18n";
-import { KeyValue, StatRow } from "./key-value";
+import { KeyValue, StatRow, type StatRowItem } from "./key-value";
 
 beforeAll(() => loadCatalog("ko"));
 
@@ -44,17 +44,18 @@ test("KeyValue renders error state with role alert and data-state error", () => 
 });
 
 test("StatRow renders KPI numbers and labels", () => {
+  const items: readonly StatRowItem[] = [
+    { key: "total", label: "Total Headcount", value: "128", meta: "Active" },
+    { key: "active", label: "Active", value: "120", tone: "warn", active: true },
+  ];
   const out = html(
-    <StatRow
-      items={[
-        { key: "total", label: "Total Headcount", value: "128" },
-        { key: "active", label: "Active", value: "120" },
-      ]}
-      label="Summary"
-    />
+    <StatRow items={items} label="Summary" />
   );
   expect(out).toContain("Total Headcount");
   expect(out).toContain("128");
+  expect(out).toContain("Active");
+  expect(out).toContain('data-tone="warn"');
+  expect(out).toContain('data-active="true"');
 });
 
 

@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { addDays, addMonths, daysBetween, inBounds, isDate, nextMonday as nm, nextMonthFirst as nmf, nextWeekday, parseTyped as pt } from "./days";
+import { addDays, addMonths, daysBetween, inBounds, isDate, nextMonday as nm, nextMonthFirst as nmf, nextWeekday, parseTyped as pt, shiftMonth } from "./days";
 
 test("calendar-date arithmetic", () => {
   expect(isDate("2026-02-29")).toBe(false);
@@ -22,6 +22,14 @@ test("a weekend date suggests the next Monday; a weekday suggests nothing", () =
 test("months clamp to the month's last day", () => {
   expect(addMonths("2026-01-31", 1)).toBe("2026-02-28");
   expect(addMonths("2026-11-15", 3)).toBe("2027-02-15");
+});
+
+test("shiftMonth steps YYYY-MM across year boundaries", () => {
+  expect(shiftMonth("2026-10", 1)).toBe("2026-11");
+  expect(shiftMonth("2026-12", 1)).toBe("2027-01");
+  expect(shiftMonth("2026-01", -1)).toBe("2025-12");
+  expect(shiftMonth("2026-10", -14)).toBe("2025-08");
+  expect(shiftMonth("2026-10", 0)).toBe("2026-10");
 });
 
 test("typed dates: separators, compact form, and the month or day the calendar has not got", () => {

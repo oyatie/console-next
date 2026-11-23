@@ -185,7 +185,7 @@ A column, `RowColumn<R>`, has:
 There are no row headers: every body cell is a `<td>`. With no rows the component still renders the table, with an
 empty body. Callers leave it out when a list is empty.
 
-With `mobileLayout="cards"` each cell also carries `data-card`, set to the column's `card`, and `data-label`, set
+With `mobileLayout="cards"` (every experience) or `mobileLayout="console-cards"` (non-`baseline` experiences) each cell also carries `data-card`, set to the column's `card`, and `data-label`, set
 to the column's `header` when that is a string. A column with no `card` gets no `data-card`. `Table` works a part
 out for such a column and writes a `role` on every cell; `RecordRows` does neither.
 
@@ -209,7 +209,9 @@ The shared `Button` with `variant="ghost"`: a `<button type="button">` holding a
 The links are direct children of the `<nav>`; there is no list element. A click calls `onJump` with the item's
 `id` and cancels the link's own navigation, so the address does not change.
 
-The key cap shows the link's position in `items`, counted from 1. It is not taken from the `id`.
+The key cap shows the item's `no`: the number of the section, which is the digit the screen binds to it. It is not
+taken from the `id` or from the link's position in `items`, so a link keeps its number when an item before it is
+left out.
 
 `current` is whatever the caller passes. `SecNav` does not watch the scroll position.
 
@@ -371,7 +373,7 @@ measured in a browser.
   the padding, the border, the radius, the minimum height and the weight, and the `btn--ghost` class sets the
   border colour. The kit's values apply: the item is a column with 8 px of padding and no minimum height, not a
   centred row with 12 px side padding and a 36 px minimum height.
-- `RowInput`: its class sets a height of 28 px, and `field__input` sets 40 px (`--row-h`). The input is 28 px
+- `RowInput`: its class sets a height of 28 px, and `field__input` sets 40 px (`--field-h`). The input is 28 px
   high.
 - `RecordRows` with `mobileLayout`: the kit's rule and the global `.table th` and `.table td` rules both set the
   cell padding. It is the kit's: 6 px top and bottom with 8 px on the right and none on the left, not 12 px at
@@ -417,9 +419,16 @@ The lock line, `Tag`, `Kbd`, `Masked`, `Saving`, `FieldRow`, `RecordRows` and `S
 Controls a caller puts inside them keep their own keys.
 
 `Kbd` shows a key and binds nothing. The digit beside a `SecNav` link is not handled by `SecNav`: the screen binds
-it. The people card binds 1 to 8, J, K and H through `useKeys` (`lib/react/use-keys.ts`). That hook ignores a key
-the input method is composing, leaves a key typed in a field to the field, and matches letters and digits by the
-physical key, so a Korean input mode does not change which key matches.
+it, and passes the same digit as the item's `no`. The people card binds 1 to 8, J, K and H through `useKeys`
+(`lib/react/use-keys.ts`). That hook ignores a key the input method is composing, leaves a key typed in a field to
+the field, and matches letters and digits by the physical key, so a Korean input mode does not change which key
+matches. The card binds none of these keys while its print view is open: that view replaces the card and is not a
+dialog, so the hook's own wait for an open dialog does not cover it.
+
+The people card numbers its sections 1 to 8 and gives each the id `s` and its number. One function,
+`cardSections` (`features/people/domain/keys.ts`), lists the numbers of the sections shown; the links and the digit
+keys both read it. A section that is not shown has no link, the links after it keep their numbers, and its digit
+does nothing. On a record that shows the employment section alone, 2 is the one digit that acts.
 
 A button takes no text, so no input method composes on a `FieldMark` button or a `StripItem`. React Aria's press
 handling, in the installed version (`react-aria-components` 1.22.1), has no composition check of its own.
@@ -461,9 +470,6 @@ Known gaps:
   people card does with a `Tag`.
 - `Spine` renders an empty `<ol>` when it has no items.
 - `Saving` is called a spinner in the code and does not move. Its appearance and its end are not announced.
-- `SecNav` numbers its links by position. The people card gives its sections the ids `s1` to `s8`, drops the ones
-  that are hidden, and jumps to `s` and the digit pressed. With an earlier section hidden, a later link shows a
-  number one lower than the digit that opens it. This is read from the code, not run in a browser.
 - In a `two` body, the rule that removes the top line of the second row is not limited to the two-column layout.
   Below 1024 px, where the body is one column, there is no line between the first row and the second.
 - With `mobileLayout`, in the card layout, the `end` cell keeps `width: 1%` and its right alignment from the kit's
@@ -525,7 +531,7 @@ shared breakpoints of `ui/breakpoints.ts`. Both are queries on the screen, not o
 | `SecNav` | No rule. The links wrap onto more rows. |
 | `Spine` | No rule. It is still `position: sticky`; what that does in a one-column page depends on the caller's layout. |
 | `RecordRows` | No rule. The table keeps its columns, and head cells and the `end` cell do not wrap. The worker register and the filing table of the statutory views put the table in a scroller of their own (`overflow-x: auto`). The leave section and the records section of the people card do not: the table is a direct child of the section body. |
-| `RecordRows` with `mobileLayout="cards"` | Card layout, when the container is 480 px wide or less. See below. |
+| `RecordRows` with `mobileLayout="cards"` or `"console-cards"` | Card layout, when the container is 480 px wide or less (`"console-cards"` applies outside `baseline`). See below. |
 | `RowInput` | As wide as its cell, up to 330 px. |
 
 The card layout comes from `ui/long-table/table-cards.module.css`, which the kit composes. It is a container query,
@@ -667,7 +673,7 @@ catalog defines every id.
 | `rowId` | yes | `(r: R) => string` |  |  |
 | `rows` | yes | `R[]` |  |  |
 | `isVoid` | no | `(r: R) => boolean` |  |  |
-| `mobileLayout` | no | `"cards"` |  |  |
+| `mobileLayout` | no | `"cards" \| "console-cards"` |  |  |
 
 <!-- /ds:props -->
 
@@ -698,7 +704,7 @@ catalog defines every id.
 | Prop | Required | Type | Default | Description |
 | --- | --- | --- | --- | --- |
 | `current` | yes | `string` |  |  |
-| `items` | yes | `{ id: string; title: string; count?: number \| undefined; }[]` |  |  |
+| `items` | yes | `{ id: string; no: number; title: string; count?: number \| undefined; }[]` |  |  |
 | `onJump` | yes | `(id: string) => void` |  |  |
 
 <!-- /ds:props -->
@@ -767,10 +773,11 @@ Also accepts the attributes of `InputHTMLAttributes` (`@types/react`), except `c
 
 | Token | Read by |
 | --- | --- |
-| `--border` | `background`, `border`, `border-bottom` |
+| `--border` | `background`, `border`, `border-block-end`, `border-bottom`, `border-color` |
 | `--border-soft` | `background`, `border-left`, `border-top` |
 | `--canvas` | `background` |
 | `--control-border` | `border` |
+| `--faint` | `color` |
 | `--font-mono` | `font-family` |
 | `--fw-body` | `font-weight` |
 | `--fw-medium` | `font-weight` |
@@ -794,13 +801,15 @@ Also accepts the attributes of `InputHTMLAttributes` (`@types/react`), except `c
 | `--selected-bar` | `box-shadow` |
 | `--shadow` | `box-shadow` |
 | `--space-1` | `column-gap`, `gap`, `height`, `margin-left`, `margin-top`, `min-height`, `padding`, `padding-top` |
-| `--space-2` | `gap`, `margin`, `margin-top`, `padding`, `padding-top` |
-| `--space-3` | `gap`, `grid-template-columns`, `height`, `margin`, `margin-top`, `padding`, `padding-bottom`, `width` |
+| `--space-2` | `gap`, `margin`, `margin-top`, `padding`, `padding-inline`, `padding-top` |
+| `--space-3` | `gap`, `grid-template-columns`, `height`, `margin`, `margin-top`, `padding`, `padding-bottom`, `padding-left`, `padding-right`, `width` |
 | `--space-4` | `height`, `margin`, `min-width`, `padding`, `padding-left`, `padding-right`, `scroll-margin-top`, `top` |
 | `--space-5` | `height`, `min-height`, `min-width` |
 | `--space-6` | `column-gap`, `grid-template-columns`, `height`, `min-height` |
 | `--steel` | `background`, `border-color`, `color` |
 | `--surface` | `background` |
+| `--surface-hover` | `background` |
+| `--target-touch` | `min-height` |
 | `--text-body` | `font-size` |
 | `--text-sm` | `font-size` |
 | `--text-xs` | `font-size` |

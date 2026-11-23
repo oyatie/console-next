@@ -31,8 +31,11 @@ export const enRosterFields = {
   "rosterFields.choices.missing": "Enter at least one option",
   "rosterFields.choices.more": "More options (one per line)",
   "rosterFields.edit": "Edit {label}",
+  "rosterFields.action.edit": "Edit",
   "rosterFields.edit.title": "Edit field {label}",
   "rosterFields.edit.commit": "Save field",
   "rosterFields.retire": "Retire {label}",
+  "rosterFields.action.retire": "Retire",
   "rosterFields.restore": "Use {label} again",
+  "rosterFields.action.restore": "Use again",
 } as const;

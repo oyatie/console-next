@@ -18,6 +18,8 @@ pub enum AppRole {
     /// then exit (0 compatible, 1 not). The rollback rehearsal runs it with
     /// the previous release on the migrated copy. Never serves HTTP.
     SchemaCheck,
+    /// Isolated database-free operator cockpit (`ops.cosskorea.com`).
+    Ops,
 }
 
 impl Display for AppRole {
@@ -27,6 +29,7 @@ impl Display for AppRole {
             Self::Worker => f.write_str("worker"),
             Self::Migrate => f.write_str("migrate"),
             Self::SchemaCheck => f.write_str("schema-check"),
+            Self::Ops => f.write_str("ops"),
         }
     }
 }
@@ -40,8 +43,9 @@ impl std::str::FromStr for AppRole {
             "worker" => Ok(Self::Worker),
             "migrate" => Ok(Self::Migrate),
             "schema-check" => Ok(Self::SchemaCheck),
+            "ops" => Ok(Self::Ops),
             other => Err(AppError::Config(format!(
-                "CONSOLE_APP_ROLE must be api, worker, migrate or schema-check, got {other:?}"
+                "CONSOLE_APP_ROLE must be api, worker, migrate, schema-check or ops, got {other:?}"
             ))),
         }
     }
@@ -56,5 +60,7 @@ mod tests {
         let role = "schema-check".parse::<AppRole>().unwrap();
         assert_eq!(role.to_string(), "schema-check");
         assert!("schema_check".parse::<AppRole>().is_err());
+        let ops = "ops".parse::<AppRole>().unwrap();
+        assert_eq!(ops.to_string(), "ops");
     }
 }

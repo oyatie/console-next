@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["digest", "bake"]
+additionalProperties: false
+properties:
+  digest: {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+  bake: {"type": "string", "enum": ["normal", "long"]}

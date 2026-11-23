@@ -123,6 +123,14 @@ pub(crate) async fn prepare_lifecycle_event_with_context(
         transition.to_status = normalize_enum_text(live.employment_status.clone());
     }
     validate_lifecycle_transition(&live, &transition)?;
+    super::store::require_issued_id_for_onboard(
+        tx,
+        org_uuid,
+        employee_id,
+        &live.employment_status,
+        &transition.to_status,
+    )
+    .await?;
     let target = resolve_lifecycle_target(tx, org_uuid, employee_id, &live, &transition).await?;
     let mut after = live.clone();
     after.employment_status = transition.to_status.clone();

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Same-holder recovery. Request locks serialize decisions and credential issuance.
 use crate::{OpsRecoveryState, ProvisioningError};
+use aws_lc_rs::digest::{SHA256, digest};
 use console_kernel_core::{OrgId, UserId};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -48,17 +48,30 @@ impl OpsRecoveryCommand {
             Self::Cancel { reason } => ("", "", "", "", reason.as_str()),
             _ => ("", "", "", "", ""),
         };
-        let digest = Sha256::digest(serde_json::to_vec(&(
-            org,
-            id,
-            self.action(),
-            role,
-            name,
-            method,
-            evidence,
-            reason,
-        ))?);
-        Ok(digest.iter().map(|byte| format!("{byte:02x}")).collect())
+        let encoded =
+            serde_json::to_vec(&(org, id, self.action(), role, name, method, evidence, reason))?;
+        let hash = digest(&SHA256, &encoded);
+        Ok(hash
+            .as_ref()
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn payload_hash_matches_sha256_vector() {
+        let got = OpsRecoveryCommand::Approve
+            .payload_hash(OrgId::from_uuid(Uuid::nil()), Uuid::nil())
+            .expect("hash");
+        assert_eq!(
+            got,
+            "c34133a1c1824129f0832406f15f4ba4866b5324bb9aff32258330a96ba85980"
+        );
     }
 }
 #[derive(Debug, Clone, Copy)]

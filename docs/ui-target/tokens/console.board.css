@@ -1,0 +1,118 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+/* Console: token set. Quiet when normal, colour only for what needs a person. */
+:root{
+/* type */
+--font:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+--fs-xs:12px;   /* labels: column heads, section heads, tags, status bar. Same size as rows; set apart by weight and colour */
+--fs-sm:12px;   /* grid rows, controls: the working size and the smallest type on a desk screen */
+--fs-md:13px;   /* document body, emphasised values */
+--fs-lg:15px;   /* pane and record titles */
+--fs-xl:20px;   /* figures in summary strips */
+--fs-2xl:30px;  /* the one big figure on a phone screen */
+--fs-m-sm:13px; /* phone: labels, tags, menu: the smallest type on a phone */
+--fs-m-md:14px; /* phone: secondary values, segment labels */
+--fs-m:15px;    /* phone: body */
+--fs-m-lg:16px; /* phone: primary button, month title */
+--fs-m-title:17px; /* phone: top bar title */
+--fs-m-name:22px;  /* phone: the name on a record */
+--lh-xs:14px;
+--lh:18px;
+--lh-md:20px;
+--lh-lg:22px;
+--lh-xl:26px;
+--lh-m-name:28px;
+--lh-2xl:36px;
+--fw-regular:400;
+--fw-medium:500;
+--fw-semibold:600;
+--fw-bold:700;
+
+/* colour: frame (top bar, status bar) */
+--chrome:#15202b;
+--chrome-2:#202d3a;
+--chrome-line:#33414f;
+--chrome-edge:#7f8c99;  /* control borders on the frame, 3:1 */
+--chrome-ink:#eef2f6;
+--chrome-muted:#a7b3c0;
+--chrome-signal:#6fd3df;
+--chrome-amber:#f5bd4f;
+
+/* colour: work surfaces */
+--ground:#e9edf1;
+--surface:#ffffff;
+--surface-2:#f3f5f8;   /* column heads, toolbars, pane title bars */
+--rest:#e4e8ed;        /* non-working days, disabled */
+--line:#d3d9e0;        /* grid hairlines */
+--line-strong:#aeb8c3; /* pane dividers */
+--control:#77838f;     /* control borders, 3:1 on every surface */
+
+/* colour: text */
+--ink:#141d26;
+--ink-2:#36424e;
+--muted:#55616d;
+
+/* colour: the one accent (selection, primary action, links) */
+--accent:#0b6672;
+--accent-ink:#085660;
+--accent-bg:#dff0f2;
+--select:#d8ecef;
+
+/* colour: signals (always with an icon or a word) */
+--danger:#b3261e;
+--danger-bg:#fbe9e7;
+--warn:#8a4f00;
+--warn-bg:#fdf0d5;
+--warn-mark:#c47a00;
+--ok:#1c6b3f;
+--ok-bg:#e2f2e8;
+
+/* spacing: 4 px base, 2 px half step */
+--s-1:2px;
+--s-2:4px;
+--s-3:6px;
+--s-4:8px;
+--s-5:12px;
+--s-6:16px;
+--s-7:24px;
+--cell:0 8px;          /* grid cell padding */
+
+/* radius: square instruments */
+--r-0:0px;
+--r-1:2px;
+--r-2:3px;
+
+/* elevation: panes are flat and divided by lines; one shadow for things that float */
+--e-0:none;
+--e-1:0 1px 0 rgba(20,29,38,.08);
+--e-2:0 8px 24px rgba(20,29,38,.22);
+
+/* lines */
+--hair:1px solid var(--line);
+--rule:1px solid var(--line-strong);
+--edge:1px solid var(--control);
+
+/* heights */
+--row:28px;            /* desktop grid rows, column heads, pane title bars */
+--row-sm:24px;         /* record fields, filter lists, slip lines */
+--row-head-2:36px;     /* two-line column head (weekday over day) */
+--bar-top:40px;
+--bar-tabs:32px;
+--bar-tool:40px;
+--bar-status:24px;
+--ctl:24px;            /* desktop buttons and inputs */
+--ctl-sm:24px;         /* in-row buttons, icon buttons, checkbox targets: nothing clickable on a desk screen is smaller */
+--ctl-lg:28px;         /* decision inputs and buttons in a side pane */
+--ctl-xl:32px;         /* the decision on a document */
+--ctl-top:26px;        /* search in the top bar */
+--seg:24px;            /* segmented filters, steppers, progress steps */
+--tag:20px;            /* status tags */
+--tag-sm:18px;         /* in-row tags, band labels */
+--touch:44px;          /* phone: minimum target */
+--row-m:48px;          /* phone: list row */
+--row-m-sm:40px;       /* phone: read-only ledger line */
+--row-m-lg:62px;       /* phone: two-line editable row */
+--ctl-m:48px;          /* phone: primary button, date field */
+--head-m:32px;         /* phone: section head */
+--bar-m:52px;          /* phone: top bar */
+--bar-m-nav:56px;      /* phone: bottom menu */
+}

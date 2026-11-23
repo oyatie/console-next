@@ -2,6 +2,7 @@
 //! Sensitive access actions covered by the monthly access log inspection.
 mod complete;
 pub mod feed;
+mod finding;
 pub mod list;
 mod projection;
 pub mod record;

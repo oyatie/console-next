@@ -72,7 +72,7 @@ There is one look and one size. No prop changes either.
 | Value | Takes the free width. One line; text that does not fit ends in an ellipsis. |
 | Icon and chevron | `--steel`. Neither shrinks. The chevron is pushed to the end. |
 | Error | 13 px (`--text-sm`), `--danger-tx`. |
-| Popover | The width of the trigger (`--trigger-width`), and at least 366.67 px (`calc(var(--panel-w) / 1.2)`), or the width of the viewport less 24 px (`--space-3` twice) where that is the smaller of the two. `--surface` fill, a 1 px `--border` border, a 10 px radius (`--radius-lg`), `--shadow-pop`, and `overflow: auto`. |
+| Popover | The width of the trigger (`--trigger-width`), and at least 366.67 px (`calc(var(--panel-w) / 1.2)`), or the width of the viewport less 16 px (`--space-4`) where that is the smaller of the two. At most the width of the viewport less 16 px. `--surface` fill, a 1 px `--border` border, a 10 px radius (`--radius-lg`), `--shadow-pop`, `overflow: auto`, and `overscroll-behavior: contain`, so a scroll that reaches the end of the list does not move the page under it. |
 | List | 4 px of padding (`--space-1`). |
 | Option | A column. 8 px top and bottom padding (`--space-2`) and 12 px at the sides (`--space-3`), a 6 px radius (`--radius`). `overflow-wrap: anywhere`, which the label and the description inherit. No minimum height: one line comes to 37 px at the body's line height of 1.5, and a label with a description to 55 px. |
 | Option label | Weight 600 (`--fw-medium`). |
@@ -80,7 +80,7 @@ There is one look and one size. No prop changes either.
 
 Four things about these rules are worth knowing:
 
-- The trigger is 32 px high. A control of the Field family is 40 px (`--row-h`), so a `SelectField` beside a
+- The trigger is 32 px high. A control of the Field family is 40 px (`--field-h`), so a `SelectField` beside a
   `Field` is lower than it.
 - `--trigger-width` is not a token from `packages/tokens`. React Aria sets it on the popover to the width of the
   trigger.
@@ -288,16 +288,16 @@ since the gallery does not show it. The scan is described in [the guide](../READ
 ## Phone behaviour at 390 px
 
 `select-field.module.css` has no media query and no container query. One of its rules reads the width of the
-viewport: the minimum width of the list.
+viewport: the minimum and maximum width of the list.
 
 - The trigger is as wide as its root and at least 32 px high at every width. It does not grow to the 44 px touch
   size; the module does not read `--target-touch`.
-- The minimum width of the list is the smaller of 366.67 px and the viewport less 24 px, whatever the width of
-  the trigger. Under a trigger narrower than that, the list is 366 px wide at 390 px, 336 px at 360 px and 296 px
-  at 320 px. From a viewport of 390.67 px up, the minimum is 366.67 px, as at 1440 px.
-- The 24 px is twice the 12 px that React Aria keeps between a popover and the edge of the screen by default in
-  the installed version, so such a list sits 12 px from each side.
-- The width itself has no cap: under a trigger wider than the minimum, the list is as wide as the trigger.
+- The minimum width of the list is the smaller of 366.67 px and the viewport less 16 px, whatever the width of
+  the trigger. Under a trigger narrower than that, the list is 366.67 px wide at 390 px, 344 px at 360 px and
+  304 px at 320 px. From a viewport of 382.67 px up, the minimum is 366.67 px, as at 1440 px.
+- The maximum width is the viewport less 16 px: under a trigger wider than that, the list stops 16 px short of
+  the viewport's width instead of running off the screen. Under a trigger between the two, the list is as wide
+  as the trigger.
 - Options are the same size as at 1440 px, except that a label too long for the narrower list wraps onto more
   lines. No rule sets an option's text on one line, and a run with no space breaks inside itself: see Looks and
   sizes.
@@ -363,7 +363,8 @@ How wide the trigger is at 390 px is decided by the layout around it.
 | `--shadow-pop` | `box-shadow` |
 | `--space-1` | `gap`, `padding` |
 | `--space-2` | `gap`, `padding` |
-| `--space-3` | `min-width`, `padding` |
+| `--space-3` | `padding` |
+| `--space-4` | `max-width`, `min-width` |
 | `--steel` | `color` |
 | `--surface` | `background` |
 | `--target` | `min-height` |

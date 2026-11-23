@@ -1,8 +1,15 @@
 type: object
 required:
 - companies
+- truncated
+- total
 properties:
   companies:
     type: array
     items:
       $ref: '#/components/schemas/HrOrgChartCompany'
+  truncated:
+    type: boolean
+  total:
+    type: integer
+    format: int64

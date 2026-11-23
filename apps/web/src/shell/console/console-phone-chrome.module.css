@@ -1,0 +1,35 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.phoneActions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.phoneIconBtn {
+  display: inline-grid;
+  place-items: center;
+  width: var(--target-touch);
+  height: var(--target-touch);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.phoneIconBtn:hover,
+.accountFallback:hover {
+  background: var(--muted);
+  text-decoration: none;
+}
+
+.accountFallback {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-h);
+  padding: 0 var(--space-1-5);
+  border-radius: var(--radius);
+  color: var(--ink);
+  text-decoration: none;
+}

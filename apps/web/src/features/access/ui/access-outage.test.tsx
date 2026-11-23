@@ -39,7 +39,7 @@ vi.mock("@tanstack/react-query", async original => ({
       data: state.versionsError ? undefined : [],
       refetch: () => {},
     };
-    if (key.includes("/roles/r-1")) return {
+    if (key.includes("{roleId}") || key.includes("/roles/r-1")) return {
       isPending: false, isSuccess: true, error: null,
       data: { id: "r-1", name_ko: "인사 조회", description: null, version: 1, holder_count: 2, lines: [{ domain: "hr_basic", levels: ["view"] }] },
       refetch: () => {},
@@ -88,10 +88,10 @@ test.each(["pending", "error"] as const)("ReadinessPage omits the go-live link a
   if (mode === "error") expect(html).not.toContain(">1<");
 });
 
-test("RoleEditorPage renders a single load-failed card when both holder grants and role versions fail", () => {
+test("RoleEditorPage renders a single load-failed card when holder grants fail on the holders tab", () => {
   state.grantsError = true;
   state.versionsError = true;
-  const html = renderToStaticMarkup(<RoleEditorPage roleId="r-1" />);
+  const html = renderToStaticMarkup(<RoleEditorPage roleId="r-1" tab="holders" />);
   expect(html.match(/role="alert"/g)).toHaveLength(1);
 });
 

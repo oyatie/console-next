@@ -1,14 +1,17 @@
-import { useState, type ReactNode } from "react";
+import { lazy, Suspense, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
+import { chunk } from "../../../lib/chunk-guard";
 import { QueryState } from "../../../lib/react/query-state";
 import { Banner } from "../../../ui/banner/banner";
 import { Button } from "../../../ui/button/button";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { Tabs } from "../../../ui/tabs/tabs";
+import { ExperienceSwitch } from "../../../ui/patterns/pattern-shell";
 import { patternsQuery, treeQuery, type Layer, type ScopeKind } from "../api";
 import { AttendanceHead } from "./attendance-head";
+import { ScheduleConsoleView } from "./schedule-console-view";
 import { AssignSheet, type AssignTarget } from "./assign-sheet";
 import { CalendarView } from "./calendar-view";
 import { CancelLayerSheet } from "./cancel-layer-sheet";
@@ -26,8 +29,10 @@ import { CloseTab } from "./close-tab";
 import { OvertimeTab } from "./overtime-tab";
 import styles from "./records.module.css";
 
+const ImportConsoleView = lazy(() => chunk(import("./import-console-view")).then((m) => ({ default: m.ImportConsoleView })));
+
 export type View = "calendar" | "types" | "crews" | "holidays" | "public";
-export type Tab = "month" | "day" | "week" | "schedule" | "overtime" | "issues" | "close";
+export type Tab = "month" | "day" | "week" | "schedule" | "overtime" | "issues" | "close" | "import";
 export type AttendanceSearch = { view?: View; kind?: ScopeKind; id?: string; month?: string; tab?: Tab; date?: string; wp?: string; unit?: string; person?: string; detail?: boolean; issues?: boolean; mark?: string; unscheduled?: boolean };
 
 const route = getRouteApi("/app/attendance");
@@ -40,7 +45,11 @@ export function AttendancePage() {
 }
 
 export function MonthPage() {
-  return <AttendanceLayout>{head => <MonthTab head={head} />}</AttendanceLayout>;
+  return (
+    <div className={`page ${styles.boardPage}`}>
+      <MonthTab head={<AttendanceHead tab="month" />} />
+    </div>
+  );
 }
 
 export function DayPage() {
@@ -59,6 +68,14 @@ export function OvertimePage() {
   return <AttendanceLayout>{() => <OvertimeTab />}</AttendanceLayout>;
 }
 
+export function ImportPage() {
+  return (
+    <Suspense fallback={null}>
+      <ImportConsoleView baseline={() => <AttendanceLayout>{() => <CloseTab />}</AttendanceLayout>} />
+    </Suspense>
+  );
+}
+
 export function PersonPage() {
   const search = route.useSearch();
   return <AttendanceLayout>{head => <PersonCard id={search.person!} month={search.month} head={head} />}</AttendanceLayout>;
@@ -67,14 +84,29 @@ export function PersonPage() {
 function AttendanceLayout({ children }: { children: (head: ReactNode) => ReactNode }) {
   const search = route.useSearch();
   const board = !search.person && ((search.tab ?? "month") === "month" || search.tab === "day");
-  return <div className={board ? `page ${styles.boardPage}` : "page"}><AttendanceHead tab={search.tab ?? "month"} />{children(null)}</div>;
+  return (
+    <ExperienceSwitch
+      baseline={() => (
+        <div className={board ? `page ${styles.boardPage}` : "page"}>
+          <AttendanceHead tab={search.tab ?? "month"} />
+          {children(null)}
+        </div>
+      )}
+    >
+      {() => (
+        <div className={board ? `page ${styles.boardPage}` : undefined}>
+          {children(null)}
+        </div>
+      )}
+    </ExperienceSwitch>
+  );
 }
 
 /**
  * attendance › work schedule (frames A2-*, A12-first-run). The scope and month are in the URL. Every write lands with a receipt
  * that names the way back: a layer can be cancelled until its start date, after that a new layer replaces it.
  */
-function ScheduleTab({ head }: { head: ReactNode }) {
+function ScheduleBaselineTab({ head }: { head: ReactNode }) {
   const search = route.useSearch();
   const navigate = route.useNavigate();
   const view = search.view ?? "calendar";
@@ -146,5 +178,13 @@ function ScheduleTab({ head }: { head: ReactNode }) {
     </>}</QueryState>}
     </Tabs>
     </>
+  );
+}
+
+function ScheduleTab({ head }: { head: ReactNode }) {
+  return (
+    <ExperienceSwitch baseline={() => <ScheduleBaselineTab head={head} />}>
+      {() => <ScheduleConsoleView baseline={() => <ScheduleBaselineTab head={head} />} />}
+    </ExperienceSwitch>
   );
 }

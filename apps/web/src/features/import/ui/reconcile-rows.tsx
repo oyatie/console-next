@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
@@ -41,9 +41,10 @@ export function ReconcileRows({ runId, frozen }: { runId: string; frozen: boolea
   // Someone marked the row first: the command re-read the rows (409); the row shows what it is now.
   const stale = staleRow(mark.error);
   // J/K move and Enter picks a row (the table's own keys); Y/N mark the picked one, while focus is in this block.
+  const ready = Boolean(q.data);
   const box = useRef<HTMLDivElement>(null);
   const yn = useRef<(state: "CONFIRMED" | "NEEDS_CHECK") => void>(() => undefined);
-  useEffect(() => void (yn.current = (state) => !frozen && current && mark.mutate({ state })));
+  useLayoutEffect(() => { yn.current = (state) => !frozen && current && mark.mutate({ state }); });
   useEffect(() => {
     const el = box.current;
     const keys = (e: KeyboardEvent) => {
@@ -52,7 +53,7 @@ export function ReconcileRows({ runId, frozen }: { runId: string; frozen: boolea
     };
     el?.addEventListener("keydown", keys);
     return () => el?.removeEventListener("keydown", keys);
-  }, [box]);
+  }, [ready]);
   if (!q.data) return <QueryState q={q}>{() => null}</QueryState>;
   const title = t("importReconcile.rows.title", { n: rows.length });
   return (

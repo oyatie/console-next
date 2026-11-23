@@ -10,7 +10,6 @@ import { Banner } from "../../../ui/banner/banner";
 import { Button, ToggleButton } from "../../../ui/button/button";
 import { buttonClass } from "../../../ui/button/button-class";
 import { Card } from "../../../ui/card/card";
-import { Chip } from "../../../ui/chip";
 import { EmptyState } from "../../../ui/empty-state";
 import { SearchField } from "../../../ui/search/search-field";
 import { SelectField } from "../../../ui/select/select-field";
@@ -24,20 +23,14 @@ import { AccessHead } from "./access-head";
 import { AccessRequests } from "./access-requests";
 import { AccountPick } from "./account-pick";
 import { GrantChange, type ChangeMode } from "./grant-change";
-import { EnforcementChip } from "./holder";
+import { GrantState } from "./grant-state";
 import { GrantSheet } from "./grant-sheet";
 import { GrantUndo } from "./grant-undo";
 import { useAccessContext } from "./use-access-context";
 import { useOrgRoots } from "./use-org-roots";
 import s from "./access.module.css";
 
-/** The grant's state; a grant on a deactivated account reads paused with its fix (people-self-46), never in effect. */
-export const GrantState = ({ g, fresh }: { g: AccessGrant; fresh: boolean }) =>
-  !g.account_active ? (
-    <div className={s.stack}><Chip tone="warn">{t("accessGrants.paused")}</Chip><span className={s.src}>{t("accessGrants.paused.fix")}</span></div>
-  ) : (
-    <div className={s.chips}>{fresh && <Chip tone="ok">{t("accessGrants.fresh")}</Chip>}<EnforcementChip e={g.enforcement} /></div>
-  );
+export { GrantState };
 
 /**
  * the grants list (mockup M7, governance-23): every live grant with a find box over name · employee number · role, a role filter and
@@ -78,7 +71,7 @@ export function GrantsPage({ role }: { role?: string }) {
     : t("access.grants.count", { count: grants.data?.items.length ?? 0 });
   const pageRead = readGroup([ctx.q, grants]);
   return (
-    <div className={`page ${s.grants}`}>
+    <div className={`page ${s.grants}`} data-access-page="">
       <AccessHead failed={Boolean(pageRead.error)} actions={pageRead.error ? undefined : <>
         <Button ref={grantAction} variant="primary" onClick={() => setPicking(true)}>{t("access.grant.title")}</Button>
         <Link to="/access/grants/bulk" className={buttonClass()}><Users size={16} aria-hidden />{t("access.bulk.open")}</Link>
@@ -95,7 +88,7 @@ export function GrantsPage({ role }: { role?: string }) {
         {grants.data!.items.length > 0 && <div className={s.filters}>
           <SearchField label={t("accessGrants.find")} value={q} onChange={setQ} />
           {!role && <SelectField label={t("accessGrants.role")} hideLabel required={false} options={roleOptions} value={roleFilter ?? ""} onChange={(id) => setRoleFilter(id || null)} placeholder={t("accessGrants.role.all")} />}
-          <ToggleButton size="sm" pressed={ending} onClick={() => setEnding(!ending)}>{t("accessGrants.ending", { days: ENDING_DAYS })}</ToggleButton>
+          <ToggleButton look="chip" size="sm" pressed={ending} onClick={() => setEnding(!ending)}>{t("accessGrants.ending", { days: ENDING_DAYS })}</ToggleButton>
         </div>}
         {!grants.data!.items.length ? <EmptyState title={t(selectedRole ? "accessGrants.none.filtered" : "access.grants.none")} reason={t(selectedRole ? "accessGrants.none.filtered.reason" : "access.grants.none.reason")} />
           : !rows.length ? <EmptyState title={t("accessGrants.none.filtered")} reason={t("accessGrants.none.filtered.reason")} /> : (
@@ -105,13 +98,14 @@ export function GrantsPage({ role }: { role?: string }) {
                 rowId={(g) => g.id}
                 hasMore={false}
                 onLoadMore={() => {}}
+                mobileLayout="compact"
                 empty={null}
                 findSlot={null}
                 columns={[
-                  { id: "person", card: "title", rowHeader: true, width: "2fr", header: t("access.col.person"), cell: (g) => <><Link className={s.grantText} to="/access/people/$accountId" params={{ accountId: g.account_id }}><PersonLabel person={grantPerson(g, ctx.accounts)} peers={ctx.accounts} linked={false} /></Link> <PersonRecordLink person={grantPerson(g, ctx.accounts)} peers={ctx.accounts} /></> },
-                  { id: "role", card: "fact", width: "2fr", header: t("access.col.role"), cell: (g) => <div className={s.grantText} title={g.role_name_ko}>{g.role_name_ko}</div> },
-                  { id: "scope", card: "fact", header: t("access.col.scope"), cell: (g) => <div className={s.grantText} title={scopeText(roots, g.scope)}>{scopeText(roots, g.scope)}</div> },
-                  { id: "until", card: "fact", width: 240, header: t("access.col.until"), cell: (g) => periodText(g) },
+                  { id: "person", card: "title", rowHeader: true, width: "2fr", header: t("access.col.person"), cell: (g) => <bdi className={s.personCell}><Link className={`${s.grantText} ${s.plainLink}`} to="/access/people/$accountId" params={{ accountId: g.account_id }}><PersonLabel person={grantPerson(g, ctx.accounts)} peers={ctx.accounts} linked={false} /></Link> <PersonRecordLink person={grantPerson(g, ctx.accounts)} peers={ctx.accounts} /></bdi> },
+                  { id: "role", card: "fact", width: "2fr", header: t("access.col.role"), cell: (g) => <bdi className={s.grantText} title={g.role_name_ko}>{g.role_name_ko}</bdi> },
+                  { id: "scope", card: "fact", header: t("access.col.scope"), cell: (g) => <bdi className={s.grantText} title={scopeText(roots, g.scope)}>{scopeText(roots, g.scope)}</bdi> },
+                  { id: "until", card: "fact", width: 240, header: t("access.col.until"), cell: (g) => <bdi className={`num ${s.nowrap}`}>{periodText(g)}</bdi> },
                   { id: "passkey", card: "omit", width: 96, header: t("access.col.passkey"), cell: (g) => t(g.account_has_passkey ? "accessGrants.passkey.yes" : "accessGrants.passkey.no") },
                   { id: "state", card: "status", header: t("access.col.state"), cell: (g) => <GrantState g={g} fresh={fresh.has(g.id)} /> },
                   {
@@ -119,8 +113,8 @@ export function GrantsPage({ role }: { role?: string }) {
                     header: <span className="sr-only">{t("access.roles.col.actions")}</span>,
                     cell: (g) => (
                       <div className={s.actions}>
-                        <Button variant="ghost" aria-label={t("access.change.end.label", { name: accountLabel(grantPerson(g, ctx.accounts), g.account_id, ctx.accounts), role: g.role_name_ko })} onClick={() => setChanging({ g, mode: "end" })}>{t("access.change.mode.end")}</Button>
-                        <Button variant="ghost-danger" aria-label={t("access.change.revoke.label", { name: accountLabel(grantPerson(g, ctx.accounts), g.account_id, ctx.accounts), role: g.role_name_ko })} onClick={() => setChanging({ g, mode: "revoke" })}>{t("access.change.mode.revoke")}</Button>
+                        <Button size="sm" variant="ghost" aria-label={t("access.change.end.label", { name: accountLabel(grantPerson(g, ctx.accounts), g.account_id, ctx.accounts), role: g.role_name_ko })} onClick={() => setChanging({ g, mode: "end" })}>{t("access.change.mode.end")}</Button>
+                        <Button size="sm" variant="ghost-danger" aria-label={t("access.change.revoke.label", { name: accountLabel(grantPerson(g, ctx.accounts), g.account_id, ctx.accounts), role: g.role_name_ko })} onClick={() => setChanging({ g, mode: "revoke" })}>{t("access.change.mode.revoke")}</Button>
                       </div>
                     ),
                   },

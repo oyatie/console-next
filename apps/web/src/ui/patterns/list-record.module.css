@@ -3,6 +3,46 @@
 .standalone { padding: var(--space-5); }
 .head { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2) var(--space-5) 0; }
 .controls { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); padding: var(--space-2) var(--space-5); }
+:where([data-experience]:not([data-experience="baseline"])) .frame { background: var(--surface); }
+:where([data-experience]:not([data-experience="baseline"])) .standalone { padding: var(--page-pad); }
+:where([data-experience]:not([data-experience="baseline"])) .head { padding: 0; border-block-end: 1px solid var(--border); background: var(--surface); }
+.inlineFilters { display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); min-width: 0; max-width: 100%; }
+.inlineFilters > * { min-width: 0; max-width: 100%; }
+.statsBand { min-width: 0; border-block-end: 1px solid var(--border); background: var(--surface); }
 @media (max-width: 639px) {
   .frame[data-detail] > .head, .frame[data-detail] > .controls { display: none; }
+}
+@media (--phone) {
+  :where([data-experience]:not([data-experience="baseline"])) .controls { padding: var(--space-1-5) var(--space-3); gap: var(--space-1-5); }
+  :where([data-experience]:not([data-experience="baseline"])) .frame[data-detail]:has([data-pane="record"]) > .head,
+  :where([data-experience]:not([data-experience="baseline"])) .frame[data-detail]:has([data-pane="record"]) .statsBand { display: none; }
+}
+@media (min-width: 1024px) {
+  :where([data-experience]:not([data-experience="baseline"])) .frame {
+    height: calc(100dvh - var(--frame-top) - var(--frame-bottom));
+    min-height: 0;
+    overflow: hidden;
+  }
+  :where([data-experience]:not([data-experience="baseline"])) .frame :global([data-pane-grid]) {
+    flex: 1 1 0%;
+    min-height: 0;
+    overflow: hidden;
+  }
+  :where([data-experience]:not([data-experience="baseline"])) .frame :global([data-pane-grid]) > div:not([role="separator"]) {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+  :where([data-experience]:not([data-experience="baseline"])) .frame :global([data-pane-grid]) > div:not([role="separator"]) > div:first-child {
+    flex: 1 1 0%;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+  :where([data-experience]:not([data-experience="baseline"])) .frame :is([data-pane="record"], [data-pane="related"]) {
+    --pane-footer-max-h: max(0px, min(65%, calc(100% - var(--row-h) - 120px)));
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
 }

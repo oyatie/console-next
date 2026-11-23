@@ -48,6 +48,14 @@ spec:
               value: /run/console/CONSOLE_JWT_PUBLIC_KEY_PEM
             - name: CONSOLE_COLDSTART_OTP_FILE
               value: /run/console/CONSOLE_COLDSTART_OTP
+            - name: CONSOLE_OTP_HMAC_KEY_FILE
+              value: /run/console/CONSOLE_OTP_HMAC_KEY
+            - name: CONSOLE_RRN_KEYRING_FILE
+              value: /run/console/CONSOLE_RRN_KEYRING
+            - name: CONSOLE_RRN_HMAC_KEYRING_FILE
+              value: /run/console/CONSOLE_RRN_HMAC_KEYRING
+            - name: CONSOLE_MAIL_KEYRING_FILE
+              value: /run/console/CONSOLE_MAIL_KEYRING
           ports:
             - name: http
               containerPort: 8080

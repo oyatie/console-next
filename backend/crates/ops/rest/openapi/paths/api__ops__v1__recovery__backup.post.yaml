@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+operationId: "opsRecoveryBackup"
+summary: "Draft Backup Cmd"
+x-cedar-action: "change.request.backup-now"
+security: [{"accessJwt": []}]
+description: "Records signed backup-now Cmd hand-off in actions spool."
+requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/BackupRequest"}}}}
+responses: {"201": {"description": "Cmd hand-off recorded.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CmdResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}

@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags:
+  - leave
+operationId: getMyLeaveTeamOverlapV2
+summary: List teammates in the caller's own org unit on overlapping leave
+description: >-
+  Returns minimal overlap info (org_unit, active_count, out_count, and
+  { employee_id, name } of overlapping teammates) strictly within the caller's
+  own org unit for the requested date range. Requires Cedar employee_self_read
+  on the caller's linked employee. Never exposes leave reasons, types, or
+  exact leave dates.
+security:
+  - bearerAuth: []
+parameters:
+  - name: start_date
+    in: query
+    required: true
+    schema:
+      type: string
+      format: date
+  - name: end_date
+    in: query
+    required: true
+    schema:
+      type: string
+      format: date
+responses:
+  '200':
+    description: Same-unit overlap summary.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/SelfLeaveTeamOverlap'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '422':
+    description: Invalid or inverted date range.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

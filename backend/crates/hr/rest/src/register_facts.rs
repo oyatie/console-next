@@ -10,6 +10,9 @@ use console_hr_adapter_postgres::HrService;
 use console_hr_adapter_postgres::register_facts::bulk::{
     BulkRegisterFactsOutcome, BulkRegisterFactsRequest,
 };
+use console_hr_adapter_postgres::register_facts::query::{
+    RegisterFactsQueryRequest, RegisterFactsQueryResponse,
+};
 use console_hr_adapter_postgres::register_facts::read::RegisterFactsResponse;
 use console_platform_authz::Principal;
 use uuid::Uuid;
@@ -18,12 +21,18 @@ use crate::HrApiError;
 
 pub const REGISTER_FACTS_PATH: &str = "/api/v1/employees/{id}/register-facts";
 pub const REGISTER_FACTS_BULK_PATH: &str = "/api/v1/employees/register-facts/bulk";
-pub const REGISTER_FACTS_ROUTE_PATHS: &[&str] = &[REGISTER_FACTS_PATH, REGISTER_FACTS_BULK_PATH];
+pub const REGISTER_FACTS_QUERY_PATH: &str = "/api/v1/employees/register-facts/query";
+pub const REGISTER_FACTS_ROUTE_PATHS: &[&str] = &[
+    REGISTER_FACTS_PATH,
+    REGISTER_FACTS_BULK_PATH,
+    REGISTER_FACTS_QUERY_PATH,
+];
 
 pub fn router(hr: HrService) -> Router {
     Router::new()
         .route(REGISTER_FACTS_PATH, get(read))
         .route(REGISTER_FACTS_BULK_PATH, post(bulk))
+        .route(REGISTER_FACTS_QUERY_PATH, post(query))
         .with_state(hr)
 }
 
@@ -41,4 +50,12 @@ async fn bulk(
     Json(body): Json<BulkRegisterFactsRequest>,
 ) -> Result<Json<BulkRegisterFactsOutcome>, HrApiError> {
     Ok(Json(hr.bulk_correct_register_facts(principal, body).await?))
+}
+
+async fn query(
+    State(hr): State<HrService>,
+    Extension(principal): Extension<Principal>,
+    Json(body): Json<RegisterFactsQueryRequest>,
+) -> Result<Json<RegisterFactsQueryResponse>, HrApiError> {
+    Ok(Json(hr.query_register_facts(principal, body).await?))
 }

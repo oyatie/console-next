@@ -14,7 +14,7 @@ export function ActionBar({ consequence, notice, actions, sticky }: { consequenc
   return (
     <div ref={ref} className={s.bar} data-sticky={sticky || undefined}>
       {notice}
-      {shown(consequence) && <div className={s.consequence}>{consequence}</div>}
+      {shown(consequence) && <div className={s.consequence} data-consequence="">{consequence}</div>}
       <div className={s.actions}>{actions}</div>
     </div>
   );

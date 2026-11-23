@@ -75,3 +75,21 @@
   .bottom, .top { display: none; }
   .canvas { border: 0; background: none; }
 }
+
+:where([data-experience]:not([data-experience="baseline"])) .canvas {
+  border: 0;
+  border-radius: 0;
+}
+
+@container (max-width: 720px) {
+  :where([data-experience]:not([data-experience="baseline"])) .top {
+    padding: var(--space-2) var(--space-3);
+    border-radius: 0;
+  }
+
+  :where([data-experience]:not([data-experience="baseline"])) .bottom {
+    left: var(--space-3);
+    right: var(--space-3);
+    bottom: var(--space-3);
+  }
+}

@@ -21,6 +21,7 @@
 .row[data-href], .row[data-action] { cursor: pointer; }
 .row[data-hovered] { background: var(--muted); }
 .row[data-selected] { background: var(--primary-soft); }
+:where([data-experience]:not([data-experience="baseline"])) .row[data-active-row] { background: var(--surface-selected); box-shadow: var(--selected-bar); }
 .row[data-focus-visible], .th[data-focus-visible] { outline: 2px solid var(--primary); outline-offset: -2px; }
 .td { display: flex; align-items: center; height: 100%; padding: 0 var(--space-3); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-sizing: border-box; outline: none; }
 .table[data-layout="rows"] .td { height: var(--row-h); }
@@ -29,18 +30,20 @@
 .table[data-editable] .td { height: auto; min-height: calc(var(--row-h) * 2); white-space: normal; align-items: start; }
 [data-density="compact"] .table[data-editable] .td { height: auto; min-height: calc(var(--row-h-compact) * 2); }
 .table[data-layout="cards"] .td { align-items: start; white-space: normal; }
+.table[data-mobile-layout="compact"][data-layout="cards"] .td { align-items: center; padding: 0 var(--space-2); }
 .td :is(button, a[href], input, select, textarea, [role="button"]) { min-width: var(--space-5); min-height: var(--space-5); }
 .td[data-focus-visible] { outline: 2px solid var(--primary); outline-offset: -2px; }
 .selectHead { width: 100cqi !important; }
 .check { min-width: var(--space-5); min-height: var(--space-5); display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); color: var(--ink); white-space: nowrap; cursor: pointer; }
-.box { flex: none; width: var(--space-4); height: var(--space-4); border: 1px solid var(--control-border); border-radius: var(--radius-sm); background: var(--surface); }
-.check[data-selected] .box, .check[data-indeterminate] .box { background: var(--primary); border-color: var(--primary); }
+.box { flex: none; display: inline-grid; place-items: center; width: var(--space-4); height: var(--space-4); border: 1px solid var(--control-border); border-radius: var(--radius-sm); background: var(--surface); color: var(--on-primary); }
+.check[data-selected] .box, .check[data-indeterminate] .box { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
 .check[data-focus-visible] .box { outline: 2px solid var(--primary); outline-offset: 2px; }
 .empty { padding: var(--space-5); color: var(--steel); }
 .more { display: flex; align-items: center; justify-content: center; color: var(--steel); font-size: var(--text-sm); }
 .hints { font-size: var(--text-xs); color: var(--steel); white-space: nowrap; }
 [data-density="compact"] .table { max-height: min(70dvh, calc(var(--space-6) * 20)); scroll-padding-top: var(--space-6); }
 [data-density="compact"] .td { font-size: var(--text-sm); }
+:where([data-experience]:not([data-experience="baseline"])) [data-density="compact"] :is(.th, .td) { padding-inline: var(--space-2); }
 .skeleton { display: flex; flex-direction: column; }
 /* display.skeleton_delay (data-display §9): bars appear only after 200 ms. */
 @keyframes skeleton-show { to { visibility: visible; } }

@@ -302,10 +302,19 @@ for (const screen of ["support", "certificates", "rollback-reasons", "passkey-po
         await fits(page, `${screen}/${status}`);
         const before = attempts;
         failing = false;
+        const retried = page.waitForResponse(response =>
+          new URL(response.url()).pathname === read &&
+          response.status() === 200 &&
+          (screen !== "rollback-reasons" || new URL(response.url()).searchParams.get("domain") === "import_rollback"),
+        );
         await region.getByRole("button", { name: t("common.retry"), exact: true }).click();
+        await retried;
         await expect(notice).toHaveCount(0);
-        expect(attempts).toBeGreaterThan(before);
+        await expect.poll(() => attempts).toBeGreaterThan(before);
+        if (screen === "support") await expect(region).toHaveCount(0);
         if (screen === "certificates") await expect(region.getByRole("gridcell", { name: "TEST-11", exact: true })).toBeVisible();
+        if (screen === "rollback-reasons") await expect(region.getByRole("radiogroup", { name: t("importRollback.reason"), exact: false })).toBeVisible();
+        if (screen === "passkey-policy") await expect(region.getByRole("textbox", { name: t("account.passkey.label"), exact: false })).toBeVisible();
         if (screen === "notice-candidates") await expect(region.getByText(t("notice.pick.empty"), { exact: true })).toBeVisible();
       }
       await expect(page.getByRole("navigation", { name: "주 메뉴", includeHidden: true })).toBeAttached();

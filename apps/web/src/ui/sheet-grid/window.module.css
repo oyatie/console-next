@@ -14,7 +14,14 @@
   min-height: 0;
 }
 
-[data-density="compact"] .grid { --row-h: var(--row-h-compact); }
+/* A compact grid has a row height of its own, and every height that is worked out from a row follows it for what sits
+   inside: a control, a decision button as tall as the row, a toolbar's least height, and a field as tall as the row
+   (the cell editor is one), in a toolbar too. */
+[data-density="compact"] .grid {
+  --row-h: var(--row-h-compact); --control-h: var(--control-h-compact); --control-h-lg: var(--row-h-compact);
+  --toolbar-h: calc(var(--control-h-compact) + var(--toolbar-py) * 2);
+  --field-h: var(--row-h-compact); --field-h-toolbar: var(--row-h-compact);
+}
 .grid [role="columnheader"] { height: var(--row-h); }
 
 /* Keep the active cell's explanation in the viewport, including virtual rows. */

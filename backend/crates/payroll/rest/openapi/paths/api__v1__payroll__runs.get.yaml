@@ -22,6 +22,18 @@ parameters:
     type: integer
     format: int64
     minimum: 0
+- name: pay_group_id
+  in: query
+  required: false
+  schema:
+    type: string
+    format: uuid
+- name: legal_entity_id
+  in: query
+  required: false
+  schema:
+    type: string
+    format: uuid
 responses:
   '200':
     description: Page of payroll draft runs, newest period first.

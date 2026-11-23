@@ -37,7 +37,7 @@ this page covers them too.
 | `ToggleButton` | `<button aria-pressed>` | `children`: the label. `count`: an optional `<span class="btn__count">` after the label. |
 | `Segmented` | `<span role="group">` | One `ToggleButton` per entry of `items`. |
 | `Form` | `<form novalidate>` | An error summary, shown first after a failed submit, then `children`. |
-| `Check` | `<label class="check">` | An `<input type="checkbox">`, then a `<span>` with the statement when `children` is given. |
+| `Check` | `<label class="check">` | An `<input type="checkbox">` (with `role="switch"` when `switch` is true), a `<span>` with the statement when `children` is given, and an optional `<data class="btn__count">` when `count` is passed. |
 
 `Button` passes every other attribute to the `<button>`. `type` defaults to `"button"` (the generated Props
 section says so too), so a button inside a form submits only when it says `type="submit"`.
@@ -62,15 +62,17 @@ submitted, or `null`, so two submit buttons can mean two things.
 
 | `size` | Minimum height | Side padding | Text | Width with `icon` |
 |---|---|---|---|---|
-| `md` (default) | 36 px, `calc(var(--row-h) - var(--space-1))` | 12 px | Inherited: 14 px body text. | 36 px |
+| `md` (default) | 36 px, `--control-h` | 12 px | Inherited: 14 px body text. | 36 px |
 | `sm` | 32 px, `--target` | 8 px | 13 px, `--text-sm` | 32 px |
+| `lg` | 40 px, `--control-h-lg` | 12 px | Inherited: 14 px body text. | 40 px |
 
 The `link` variant does not carry the `btn` class, so the base box, the hover fill and the disabled look do not
 apply to it. Its minimum height is 24 px (`--space-5`) and it has no padding.
 
 `size` and `icon` still add their classes to a `link`, and those rules come later in `app.css`. `sm` makes a
-link 32 px high with 8 px side padding and 13 px text. `icon` makes it 36 px wide, or 32 px with `sm`. No caller
-combines them, the gallery does not show the combination, and nothing tests it: it is not a supported look.
+link 32 px high with 8 px side padding and 13 px text, and `lg` makes it 40 px high. `icon` makes it 36 px wide
+(32 px with `sm`, 40 px with `lg`). No caller combines them, the gallery does not show the combination, and nothing
+tests it: it is not a supported look.
 
 `IconButton` defaults to `ghost` and cannot be `danger` or `ghost-danger`: its type leaves them out.
 
@@ -84,28 +86,33 @@ combines them, the gallery does not show the combination, and nothing tests it: 
 `Segmented` draws one group with a 1 px `--control-border` border. Its segments are at least 32 px high with
 13 px text, 12 px side padding and a hairline between them.
 
-`size` on a `Segmented` is passed to each segment's button and changes nothing visible today. The segment's own
-rule sets the same three properties `sm` sets (height, side padding, text size), and in the built stylesheets it
-comes after the `sm` rule, so it wins at either size. No caller passes it.
+`size` on a `Segmented` is forwarded to each segment's button: `size="sm"` sets `--target` minimum height with
+`--space-2` side padding, and `size="lg"` sets `--control-h-lg` minimum height (in non-baseline styles, default
+segments take `--control-h` height and `--space-2` side padding).
 
-No prop picks a visual style: there is one look per variant. Two props change what is rendered: `count` adds an
-element after the label of a `ToggleButton`, and `icon` makes the box square.
+No prop picks a visual style: there is one look per variant. Additional layout and content props change what is
+rendered: `block` stretches a `Button` (`btn--block`) or `Segmented` (`data-block="true"`) across its container;
+`pending` puts a `Button` into its busy state; `count` adds a `<span class="btn__count">` after a `ToggleButton`
+label or a `<data class="btn__count">` after a `Check` label; `switch` gives `Check` `role="switch"`; `icon` makes a
+`Button` square; and `Segmented` items accept optional `icon`, `count`, and `tone` (`"warn"` or `"danger"`).
 
 ## States
 
 | State | What changes |
 |---|---|
-| Hover | `secondary` and `ghost`: `--muted` fill. `primary`: `--primary-hover` fill. `danger`: `--danger-tx` fill and border. `ghost-danger`: `--danger-bg` fill. `link`: the underline takes the text colour. |
+| Hover | `secondary` and `ghost`: `--surface-hover` fill. `primary`: `--primary-hover` fill. `danger`: `--danger-tx` fill and border. `ghost-danger`: `--danger-bg` fill. `link`: the underline takes the text colour. |
 | Keyboard focus | The global rule for every focusable element: a 2 px `--primary` outline, 2 px away. The family adds one focus rule of its own: on keyboard focus, as on hover, the underline of the `link` variant takes the text colour. |
 | Pressed down | No look. There is no `:active` rule. |
-| On (`aria-pressed="true"`) | `--primary` border and text on a `--primary-soft` fill. The count turns `--primary`. A segment also gets a 1 px inset `--primary` ring. A button placed directly in a `.tabs` row shows the tab underline instead. |
-| Disabled (`disabled` or `aria-disabled="true"`) | Half opacity and a not-allowed cursor. |
-| Disabled `primary` with `aria-disabled="true"` | Stays at full opacity so it can be read: a dashed `--primary` border, `--primary-soft` fill, `--primary` text. |
+| On (`aria-pressed="true"`) | `ToggleButton`: `--primary` border and text on a `--primary-soft` fill, with the count turning `--primary`. `Segmented`: `--control-selected` fill, `--on-control-selected` text and count, `--control-border` border, and a 1 px inset `--control-selected-border` ring. A button placed directly in a `.tabs` row shows the tab underline instead. |
+| Disabled (`disabled` or `aria-disabled="true"`) | Half opacity and a not-allowed cursor (in non-baseline experiences, native `:disabled` buttons keep their resting fill on hover). |
+| Disabled `primary` with `aria-disabled="true"` (not pending) | Stays at full opacity so it can be read (`:not([data-pending="true"])`): in `baseline`, a dashed `--primary` border, `--primary-soft` fill and `--primary` text; in non-baseline experiences, a solid `--border` border, `--muted` fill and `--steel` text (at rest and on hover). |
 | Disabled `link` | No look. The disabled rule is on `btn`, which the link variant does not carry. |
-| Busy or loading | Does not exist. |
-| Count tone | `countTone="warn"` turns the count `--warn-tx` while the button is off. The count of an on button is always `--primary`: the warn tone does not show. The count keeps a minimum width of three characters, so the label does not move when the number arrives. |
+| Busy or loading (`pending` on `Button`) | Sets `aria-disabled="true"` and `data-pending="true"`, shows a `progress` cursor, and suppresses `onClick` while keeping keyboard focus on the button. Half opacity applies to all variants including `primary`. |
+| Count tone | `countTone="warn"` turns the count `--warn-tx` and `countTone="danger"` turns it `--danger-tx` while the button is off. When pressed, a `ToggleButton` count turns `--primary` and a `Segmented` count turns `--on-control-selected`: the tone does not show while on. The count keeps a minimum width of three characters, so the label does not move when the number arrives. |
 
-`Check` has no styled states: the box is the browser's own checkbox, 32 px square.
+In `baseline`, `Check` uses the browser's own checkbox, 32 px square (`--space-6`). In non-baseline experiences
+(`:where([data-experience]:not([data-experience="baseline"])) .check input`), the input uses `appearance: none` inside a
+`--target` hit box and draws a custom `--control-border`/`--surface` box and `--primary`/`--on-primary` checkmark.
 
 `Form` has one state of its own. After a submit that fails validation it shows an error summary and moves focus
 to it. From then on it validates again on every change, until a submit passes. A form given `noValidate` skips
@@ -132,11 +139,11 @@ takes text. The one such key in a form is Enter in a text input, and `TextInput`
 
 | Component | Role | Accessible name | State exposed |
 |---|---|---|---|
-| `Button` | `button` | Its text. | `disabled`, when set. |
+| `Button` | `button` | Its text. | `disabled`, or `aria-disabled="true"` when `pending` (or set by caller). |
 | `IconButton` | `button` | `label`, through `aria-label`. `title` repeats it as a tooltip. Neither can be overridden. | `disabled`, when set. |
 | `ToggleButton` | `button` | Its text. The count is inside the button, so it is part of the name. | `aria-pressed`, always `true` or `false`. It cannot be overridden. |
 | `Segmented` | `group` | `label`, through `aria-label`. Each segment is named by its item's label. | `aria-pressed` on each segment: `true` on the one whose `id` equals `value`. |
-| `Check` | `checkbox` | The statement, because the `<label>` wraps the box. With no statement, `aria-label`. | Checked or not. |
+| `Check` | `checkbox`, or `switch` when `switch` is true | The statement, because the `<label>` wraps the box. With no statement, `aria-label`. | Checked or not; optional `aria-describedby`. |
 
 What is announced:
 
@@ -165,7 +172,7 @@ What the gallery shows of this family:
 
 | Shown | Where |
 |---|---|
-| `Button` in the five boxed variants, a natively disabled button, one plain `ToggleButton` | `apps/web/src/ui/button/button.gallery.tsx` |
+| `Button` in the five boxed variants, a natively disabled button, an `aria-disabled` primary button, a natively disabled primary button, one plain `ToggleButton` | `apps/web/src/ui/button/button.gallery.tsx` |
 | `sm` buttons, and `IconButton` at both sizes | `apps/web/src/ui/button/button-sizes.gallery.tsx` |
 | `Form` with a `Check` and two submit-row buttons | `apps/web/src/gallery/sections/forms.gallery.tsx` |
 
@@ -221,7 +228,9 @@ to the component that writes them and are not listed here.
 
 | Prop | Required | Type | Default | Description |
 | --- | --- | --- | --- | --- |
+| `block` | no | `boolean` |  | Stretch across the container width with centered content. |
 | `icon` | no | `boolean` |  |  |
+| `pending` | no | `boolean` |  | Busy command state: marks `aria-disabled="true"` and suppresses clicks while keeping keyboard focus on the button. |
 | `ref` | no | `Ref<HTMLButtonElement>` |  |  |
 | `size` | no | `ButtonSize` |  |  |
 | `variant` | no | `ButtonVariant` | `"secondary"` |  |
@@ -237,6 +246,7 @@ Also accepts the attributes of `ButtonHTMLAttributes` (`@types/react`). Defaults
 | `aria-describedby` | no | `string` |  |  |
 | `aria-label` | no | `string` |  |  |
 | `children` | no | `ReactNode` |  |  |
+| `count` | no | `ReactNode` |  | Optional facet or item count shown beside the checkbox statement. |
 | `switch` | no | `boolean` |  |  |
 
 ### Form
@@ -264,7 +274,7 @@ Also accepts the attributes of `ButtonHTMLAttributes` (`@types/react`), except `
 | --- | --- | --- | --- | --- |
 | `pressed` | yes | `boolean` |  |  |
 | `count` | no | `ReactNode` |  | The server's count after the label: it keeps its width while it loads, so nothing beside it moves. |
-| `countTone` | no | `"warn"` |  | `warn`: a to-do count (something waits on someone). |
+| `countTone` | no | `"danger" \| "warn"` |  | `warn` or `danger`: a to-do or overdue count waiting on someone. |
 | `look` | no | `"chip"` |  | `chip`: a filter drawn as a pill, bordered when off. |
 | `size` | no | `ButtonSize` |  |  |
 
@@ -278,10 +288,11 @@ Also accepts the attributes of `ButtonHTMLAttributes` (`@types/react`), except `
 
 | Prop | Required | Type | Default | Description |
 | --- | --- | --- | --- | --- |
-| `items` | yes | `readonly { id: T; label: ReactNode; }[]` |  |  |
+| `items` | yes | `readonly { id: T; label: ReactNode; icon?: ReactNode; count?: ReactNode; tone?: "danger" \| "warn" \| undefined; }[]` |  |  |
 | `label` | yes | `string` |  |  |
 | `onChange` | yes | `(id: T) => void` |  |  |
 | `value` | yes | `T` |  |  |
+| `block` | no | `boolean` |  | Stretch equally across the container width (phone filter bars). |
 | `size` | no | `ButtonSize` |  |  |
 
 <!-- /ds:props -->
@@ -295,8 +306,11 @@ row's rules for a button inside them. The focus outline is a global rule and is 
 
 | Token | Read by |
 | --- | --- |
-| `--border` | `border` |
+| `--border` | `border`, `border-color` |
 | `--control-border` | `border-color` |
+| `--control-h` | `min-height`, `width` |
+| `--control-h-lg` | `min-height`, `width` |
+| `--control-text` | `font-size` |
 | `--danger-bg` | `background` |
 | `--danger-solid` | `background`, `border-color` |
 | `--danger-tx` | `background`, `border-color`, `color` |
@@ -311,13 +325,13 @@ row's rules for a button inside them. The focus outline is a global rule and is 
 | `--primary-soft` | `background` |
 | `--radius` | `border-radius` |
 | `--radius-lg` | `border-radius` |
-| `--row-h` | `min-height`, `width` |
-| `--space-1` | `min-height`, `width` |
+| `--space-1` | `border-radius`, `gap`, `min-height` |
 | `--space-2` | `gap`, `padding`, `padding-inline` |
 | `--space-3` | `padding` |
 | `--space-6` | `min-height` |
 | `--steel` | `color` |
 | `--surface` | `background` |
+| `--surface-hover` | `background` |
 | `--tab-selected` | `box-shadow` |
 | `--target` | `min-height`, `width` |
 | `--text-sm` | `font-size` |
@@ -344,9 +358,18 @@ The `link` variant:
 
 | Token | Read by |
 | --- | --- |
-| `--space-2` | `gap` |
+| `--control-border` | `border` |
+| `--on-primary` | `border-bottom`, `border-left` |
+| `--primary` | `background`, `border-color` |
+| `--radius-sm` | `border-radius` |
+| `--space-1` | `height` |
+| `--space-1-5` | `gap` |
+| `--space-2` | `gap`, `width` |
+| `--space-3` | `height`, `width` |
 | `--space-6` | `height`, `width` |
-| `--target` | `min-height` |
+| `--space-half` | `height`, `transform`, `width` |
+| `--surface` | `background` |
+| `--target` | `height`, `min-height`, `width` |
 | `--text-sm` | `font-size` |
 
 <!-- /ds:tokens -->
@@ -357,15 +380,22 @@ The `link` variant:
 
 | Token | Read by |
 | --- | --- |
-| `--control-border` | `border`, `border-left` |
+| `--control-border` | `border`, `border-color`, `border-left` |
+| `--control-h` | `min-height` |
+| `--control-h-lg` | `min-height` |
+| `--control-selected` | `background` |
+| `--control-selected-border` | `--ring-in` |
+| `--danger-tx` | `color` |
 | `--fw-body` | `font-weight` |
 | `--fw-medium` | `font-weight` |
-| `--primary` | `--ring-in`, `color` |
-| `--primary-soft` | `background` |
+| `--on-control-selected` | `color` |
 | `--radius` | `border-radius` |
 | `--ring-in` | `box-shadow` |
+| `--space-1` | `gap` |
+| `--space-2` | `padding` |
 | `--space-3` | `padding` |
 | `--target` | `min-height` |
 | `--text-sm` | `font-size` |
+| `--warn-tx` | `color` |
 
 <!-- /ds:tokens -->

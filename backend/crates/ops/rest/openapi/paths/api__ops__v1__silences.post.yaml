@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+operationId: "opsSilenceCreate"
+summary: "Create Silence"
+x-cedar-action: "alert.silence"
+security: [{"accessJwt": []}]
+description: "Writes silences spool first then calls Alertmanager. Refuses Watchdog, non-exact matchers, short comments, and exceeded TTLs."
+requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SilenceCreateRequest"}}}}
+responses: {"201": {"description": "Silence recorded and created.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SilenceCreateResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
