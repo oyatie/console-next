@@ -15,13 +15,15 @@ people, edit, check, apply.
 The step line only displays. The caller works out the state of every step and passes the steps in order. A step
 cannot be pressed.
 
-Five feature views use it:
+Five baseline views and nine Console views use it:
 
 | View | Where it puts the line |
 |---|---|
 | `features/people/ui/grid-page.tsx`, `features/people/ui/renew-page.tsx`, `features/import/ui/import-page.tsx` | In the `tools` of the page head (`ui/page-head`). |
-| `features/people/ui/bulk-page.tsx` | In the `subtitle` of the composer (`ui/composer`), after the phase line. In its page layout the composer passes that to the page head as `sub`. |
+| `features/people/ui/bulk-baseline.tsx` | In the `subtitle` of the composer (`ui/composer`), after the phase line. In its page layout the composer passes that to the page head as `sub`. |
 | `features/payroll/ui/run-page.tsx` | In the page's content, under the facts of the run. |
+| `features/import/ui/import-console.tsx`, `features/org-bulk/ui/import-console.tsx`, `features/payroll/ui/run-create-console.tsx`, `features/payroll/ui/payroll-setup-console.tsx`, `features/people/ui/bulk-console.tsx`, `features/people/ui/grid-console.tsx`, `features/people/ui/renew-console.tsx`, `features/entity/ui/entity-wizard-console.tsx` | In the `steps` of `WizardPattern` (`ui/patterns/wizard.tsx`), a bar under the page head. |
+| `features/payroll/ui/run-console.tsx` | In the `stageRail` of `RegisterTotalsStrip` (`ui/patterns/register-totals-parts.tsx`). |
 
 | Do not use it for | Use instead |
 |---|---|
@@ -82,11 +84,15 @@ The step line has no states of its own beyond the three step states above.
 | Loading | Does not exist. There is no pending prop and no placeholder. |
 | Empty | With no steps the line renders an empty `<ol>` that still has its name. Nothing checks for it. |
 
-Nothing requires one step to be `current`. Two callers pass a line with none:
+Nothing requires one step to be `current`. Four callers pass a line with none:
 
-- `features/import/ui/import-page.tsx` passes every step as `done` once the import has finished.
+- `features/import/ui/import-page.tsx` and `features/import/ui/import-console.tsx` pass every step as `done` once
+  the import has finished.
 - `features/payroll/ui/run-page.tsx` passes every step as `done` for a complete run, and every step as `waiting`
   for a void run. A browser test asserts both: see the tests below.
+- `features/payroll/ui/run-console.tsx` passes three stages from `buildCompactRunStages`
+  (`features/payroll/domain/run-register.ts`): every stage `done` for a paid run, and every stage `waiting` for a
+  void run or a status that function does not know.
 
 Nothing limits `current` to one step either. Every step passed as `current` gets `aria-current="step"` and the
 current look.
@@ -162,17 +168,20 @@ skips itself on the served build, which is the one the workflows use. The comman
 
 ## Phone behaviour at 390 px
 
-Nothing in `step-line.module.css` changes with the width of the screen. It has no media query and no container
-query.
+`step-line.module.css` has one media query, `(max-width: 767px)`, and its rules apply only under a Console
+experience: an element with a `data-experience` other than `baseline` above the line. There the gap is 6 px
+(`--space-1-5`) between rows and 12 px (`--space-3`) between steps, and no rule is drawn between steps. It has no
+container query.
 
 - The row wraps: a step that does not fit drops to the next row.
-- The rule belongs to the step that follows it, so it wraps with that step. A wrapped row starts with a rule.
+- In the baseline, the rule belongs to the step that follows it, so it wraps with that step. A wrapped row starts
+  with a rule.
 - Nothing in the line is a touch target.
 
 A search of the stylesheets under `apps/web/src` for the component's name finds no view that restyles it. Where
 the line sits at phone width is up to what holds it. The `tools` slot of the page head, which three of the five
-callers use, is itself a row that wraps (`.tools` in `ui/page-head/page-head.module.css`), inside the head's
-title row, which wraps too. So there the line shares a wrapping row with any other tool the caller passes.
+baseline callers use, is itself a row that wraps (`.tools` in `ui/page-head/page-head.module.css`), inside the
+head's title row, which wraps too. So there the line shares a wrapping row with any other tool the caller passes.
 
 ## Copy rules
 
