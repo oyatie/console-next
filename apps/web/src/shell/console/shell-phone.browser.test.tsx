@@ -105,9 +105,9 @@ async function openPhoneShell(link: "LINKED" | "UNLINKED" = "LINKED") {
   });
 
   await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}console-phone-nav-test`, page.locator('[data-phone-screen="Account"]'));
-  // The nav draws after the screen, once the account's reads settle; a test that scrolls or measures before then misses it.
+  // Both bars draw after the screen, once the account's reads settle; a test that scrolls or measures before then misses them.
   const nav = page.getByRole("navigation", { name: t("shell.nav"), exact: true });
-  await nav.waitFor();
+  await Promise.all([page.locator('header[data-surface="chrome"]').waitFor(), nav.waitFor()]);
   return nav;
 }
 
