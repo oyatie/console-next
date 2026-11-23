@@ -7,7 +7,7 @@ import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { chunk } from "../../../lib/chunk-guard";
 import { phoneE164 } from "../../../lib/pure/formats";
-import { modChord } from "../../../lib/pure/keys";
+import { modHint } from "../../../lib/mod-hint";
 import { todayKst } from "../../../lib/pure/today";
 import { CommandError } from "../../../lib/react/command-error";
 import { useKeys } from "../../../lib/react/use-keys";
@@ -152,7 +152,7 @@ function RegisterSheetInner({ preset, onClose, onOpen, onRehire, consoleMode }: 
         <>
           <Link to="/people/import" className={buttonClass("ghost", { className: s.many })}><ClipboardPaste size={16} aria-hidden />{t("register.many")}</Link>
           <Link to="/people/run" className={buttonClass("ghost")}><ListPlus size={16} aria-hidden />{t("register.run.open")}</Link>
-          <Button disabled={reg.isPending} onClick={() => submit(false)}>{commitLabel({ kind: "ONBOARD", mode: "apply", count: 1 })}<Kbd keys={modChord("⇧↵")} /></Button>
+          <Button disabled={reg.isPending} onClick={() => submit(false)}>{commitLabel({ kind: "ONBOARD", mode: "apply", count: 1 })}<Kbd keys={modHint("⇧↵")} /></Button>
         </>
       )}
     >

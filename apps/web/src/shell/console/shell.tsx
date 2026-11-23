@@ -5,7 +5,7 @@ import { session } from "@console/api";
 import { i18n, t } from "@console/i18n";
 import { healthStatus, pickLocalized, STATUS_PAGE_URL } from "../../features/health/api/active-status";
 import { chunk } from "../../lib/chunk-guard";
-import { modChord } from "../../lib/pure/keys";
+import { modHint } from "../../lib/mod-hint";
 import { useKeys } from "../../lib/react/use-keys";
 import { personName } from "../../reference/person/present";
 import { Kbd } from "../../ui/kbd/kbd";
@@ -307,7 +307,7 @@ export function ConsoleStatusBar({ platform, tenantName, currentTitle, inboxCoun
         !platform ? (
           <>
             <bdi>{t("shell.jumpLabel")}</bdi>
-            <Kbd keys={modChord("K")} />
+            <Kbd keys={modHint("K")} />
           </>
         ) : undefined
       }

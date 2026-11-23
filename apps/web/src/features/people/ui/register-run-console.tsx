@@ -2,7 +2,7 @@
 import type { ReactNode, RefObject } from "react";
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
-import { modChord } from "../../../lib/pure/keys";
+import { modHint } from "../../../lib/mod-hint";
 import { CommandError } from "../../../lib/react/command-error";
 import type { ReadState } from "../../../lib/react/query-view";
 import { Button } from "../../../ui/button/button";
@@ -100,12 +100,12 @@ export function RegisterRunConsole({
       {liveCount > 0 && (
         <Button onClick={() => onSave(true)}>
           {t("register.run.finish")}
-          <Kbd keys={modChord("⇧↵")} />
+          <Kbd keys={modHint("⇧↵")} />
         </Button>
       )}
       <Button variant="primary" onClick={() => onSave(false)}>
         {t("register.run.submit")}
-        <Kbd keys={modChord("↵")} />
+        <Kbd keys={modHint("↵")} />
       </Button>
     </>
   );
@@ -127,7 +127,7 @@ export function RegisterRunConsole({
         actions: liveCount > 0 ? (
           <Button size="sm" onClick={() => onSave(true)}>
             {t("register.run.finish")}
-            <Kbd keys={modChord("⇧↵")} />
+            <Kbd keys={modHint("⇧↵")} />
           </Button>
         ) : undefined,
       }}

@@ -91,11 +91,8 @@ export function pick(e: KeyEventLike, ids: readonly KeyId[], at: KeyContext, map
 
 type NavigatorLike = { platform?: string; userAgent?: string; userAgentData?: { platform?: string } };
 
-/**
- * Formats a `Mod` key hint for the current platform (`"⌘↵"` on Apple, `"Ctrl+↵"` elsewhere). Without `source` it reads
- * the page's navigator; outside a page (a server render) there is none, and the hint reads Ctrl.
- */
-export function modChord(key: string, source: boolean | NavigatorLike | undefined = typeof document === "undefined" ? undefined : navigator): string {
+/** Formats a `Mod` key hint for the current platform (`"⌘↵"` on Apple, `"Ctrl+↵"` elsewhere). */
+export function modChord(key: string, source?: boolean | NavigatorLike): string {
   const apple = typeof source === "boolean"
     ? source
     : /mac|iphone|ipad|ipod|\bios\b/i.test(source?.userAgentData?.platform || source?.platform || source?.userAgent || "");
