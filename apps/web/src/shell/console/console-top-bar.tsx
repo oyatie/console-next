@@ -5,8 +5,8 @@ import { Search } from "lucide-react";
 import { i18n, t } from "@console/i18n";
 import { SupportAccessIndicator } from "../../features/support-access/ui/support-access-status";
 import { chunk } from "../../lib/chunk-guard";
-import { singleKeysOn } from "../../lib/prefs";
 import { todayKst } from "../../lib/pure/today";
+import { useSingleKeys } from "../../lib/react/use-single-keys";
 import { Avatar } from "../../ui/avatar/avatar";
 import { Kbd } from "../../ui/kbd/kbd";
 import { ModuleNavBar, type ModuleNavItem } from "../../ui/module-nav/module-nav";
@@ -90,6 +90,7 @@ export function ConsoleTopBar({
   onNavigate: (href: string) => void;
   onSearch: () => void;
 }) {
+  const singleKeys = useSingleKeys();
   return (
     <header className={s.top} data-surface="chrome" aria-busy={restoring || undefined}>
       {!restoring ? (
@@ -146,11 +147,11 @@ export function ConsoleTopBar({
               className={s.searchField}
               onClick={onSearch}
               aria-label={t("shell.jump")}
-              aria-keyshortcuts={singleKeysOn() ? "Meta+K Control+K /" : "Meta+K Control+K"}
+              aria-keyshortcuts={singleKeys ? "Meta+K Control+K /" : "Meta+K Control+K"}
             >
               <Search size={14} aria-hidden="true" />
               <bdi className={s.searchText}>{t("shell.searchHint")}</bdi>
-              <Kbd keys="/" />
+              {singleKeys && <Kbd keys="/" />}
             </button>
           ) : null}
 
