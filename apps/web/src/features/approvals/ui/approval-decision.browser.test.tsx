@@ -94,8 +94,11 @@ async function open({ stillOffered = false, hold = false, refuse = false, host =
 const approve = () => page.getByRole("button", { name: commitLabel({ kind: "entityRecord", mode: "approve" }), exact: true });
 /** The find box beside the list: a text field in the baseline fixture, a search field in the Console inbox. */
 const find = () => page.getByLabel(t("approvals.filters.search"), { exact: true });
+const column = () => page.getByRole("complementary", { name: t("approvals.document.title"), exact: true });
 /** The title of the recorded card: the Console hosts dock it under a pane heading of their own. */
 const recordedTitle = (host: Host) => t(host.startsWith("console") ? "approvals.console.myDecision" : "approvals.viewer.decision");
+/** The line that says a decision is no longer offered. */
+const withdrawn = () => page.getByRole("status").filter({ hasText: t("approvals.viewer.unavailable") });
 /**
  * Sets the page's title to that line once it has been drawn, however briefly. It would be drawn where the card was,
  * so a locator that waits for the receipt cannot tell whether it was there first.
@@ -103,6 +106,8 @@ const recordedTitle = (host: Host) => t(host.startsWith("console") ? "approvals.
 const watchForWithdrawn = () => page.evaluate(line => {
   new MutationObserver(() => { if (document.body.textContent.includes(line)) document.title = line; }).observe(document.body, { childList: true, subtree: true, characterData: true });
 }, t("approvals.viewer.unavailable"));
+/** Coming back to the tab reads the document again. */
+const readAgain = () => page.evaluate(() => window.dispatchEvent(new Event("visibilitychange")));
 const receiptOf = (decision: Decision) => page.getByRole("status").filter({ hasText: t(RECORDED[decision].receipt) });
 /** What holds focus: a heading or a status line by its words, anything else by its tag (BODY once focus has dropped to the page). */
 const focused = () => page.evaluate(() => {
@@ -185,4 +190,73 @@ test("a refusal that arrives while the person types in another control leaves fo
   await page.keyboard.type("sales");
   await element(find()).toHaveValue("sales");
   expect(await focused()).toBe("INPUT");
+});
+
+test.each(["page", "console", "console-page"] as const)("on %s, a decision that someone else made meanwhile leaves a line that says so, and it takes the focus the card held", async host => {
+  const { withdraw } = await open({ host });
+  const opinion = page.getByRole("textbox", { name: t("approvals.viewer.opinion") });
+  await opinion.focus();
+  await page.keyboard.type("Looks right");
+  await watchForWithdrawn();
+  withdraw();
+  await readAgain();
+  await element(page.getByRole("article")).toHaveCount(0);
+  await element(withdrawn()).toBeVisible();
+  // The watcher does see the line when it is drawn: its silence after a recorded decision means something.
+  await expect.poll(() => page.title()).toBe(t("approvals.viewer.unavailable"));
+  await element(approve()).toHaveCount(0);
+  await expect.poll(focused).toBe(t("approvals.viewer.unavailable"));
+});
+
+test("a decision that is offered again after such a line can be made, and its recorded heading takes focus", async () => {
+  const { withdraw, offer } = await open();
+  // The person is in another control, so the line does not take focus.
+  await find().click();
+  withdraw();
+  await readAgain();
+  await element(withdrawn()).toBeVisible();
+  expect(await focused()).toBe("INPUT");
+  offer();
+  await readAgain();
+  await approve().waitFor();
+  await element(withdrawn()).toHaveCount(0);
+  await decideByKeyboard("APPROVE");
+  await element(receiptOf("APPROVE")).toBeVisible();
+  await expect.poll(focused).toBe(recordedTitle("page"));
+});
+
+test("a decision still on its way shows no such line when the document stops offering it, and its recorded heading takes focus", async () => {
+  const { release, withdraw } = await open({ hold: true });
+  await decideByKeyboard("APPROVE");
+  await element(page.getByRole("article")).toHaveAttribute("aria-busy", "true");
+  // The same state a recorded decision passes through just before its receipt: no decision offered, none recorded yet.
+  withdraw();
+  await readAgain();
+  await element(page.getByRole("article")).toHaveAttribute("aria-busy", "true");
+  await element(page.getByRole("status")).toHaveCount(0);
+  release();
+  await element(receiptOf("APPROVE")).toBeVisible();
+  await element(withdrawn()).toHaveCount(0);
+  await expect.poll(focused).toBe(recordedTitle("page"));
+});
+
+test.each([["pending", { host: "pending" }], ["console", { host: "console", others: true }], ["console-auto", { host: "console-auto", others: true }]] as const)("on %s, Escape after a decision closes the column, and focus goes to the first row left once the decided one is gone", async (_, options) => {
+  await open(options);
+  await decideByKeyboard("APPROVE");
+  // The decided document stays open with its receipt, also when the inbox had opened it by itself.
+  await element(receiptOf("APPROVE")).toBeVisible();
+  await expect.poll(focused).toBe(recordedTitle(options.host));
+  await element(page.getByRole("row", { name: new RegExp(served.title) })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await element(column()).toHaveCount(0);
+  await element(page.getByRole("row", { name: new RegExp(other.title) })).toBeFocused();
+});
+
+test.each([["last", { host: "last" }], ["console", { host: "console" }]] as const)("on %s, Escape after deciding the last pending document closes the column, and focus goes to the find box", async (_, options) => {
+  await open(options);
+  await decideByKeyboard("APPROVE");
+  await expect.poll(focused).toBe(recordedTitle(options.host));
+  await page.keyboard.press("Escape");
+  await element(column()).toHaveCount(0);
+  await element(find()).toBeFocused();
 });

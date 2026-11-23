@@ -33,6 +33,12 @@ const consequenceText = (key: string) => {
   return isMessageId(id) ? t(id) : key;
 };
 
+/**
+ * A line that replaces the card takes the focus the card held, which the browser has left on the page by then; focus
+ * the person put elsewhere stays. Defined once, so React calls it when the line is drawn and not on every render.
+ */
+const takeDroppedFocus = (line: HTMLElement | null) => { if (line && document.activeElement === document.body) line.focus(); };
+
 /** The reasons of one decision, from the catalog domain the server names. */
 function useDecisionReasons(domain: string | undefined) {
   const known = domain as ReasonDomain | undefined;
@@ -65,6 +71,7 @@ export function ApprovalDecisionPanel({
 }) {
   const [opinion, setOpinion] = useState("");
   const [reasons, setReasons] = useState<Record<DecisionForm, Reason>>({ reject: emptyReason(), return: emptyReason() });
+  const [offered, setOffered] = useState(false);
   const internal = useApprovalDecisionCommand(d.id, onReceipt);
   const { command, localReceipt } = controller ?? internal;
   const receipt = controlledReceipt ?? localReceipt;
@@ -89,20 +96,15 @@ export function ApprovalDecisionPanel({
         : undefined;
   // Only the action the server offers is drawn; nothing is inferred from the document's status.
   const reject = actions.kind === "approve" ? actions.reject : undefined;
+  if (reject && !offered) setOffered(true);
   const receiptMessage = receipt && <p role="status">{receipt}</p>;
   if (!reject && !receipt && !command.isPending) {
-    if (command.error) {
-      return docked ? (
-        <DocDecisionPad>
-          <CommandError error={command.error} own={ownError} />
-        </DocDecisionPad>
-      ) : (
-        <Card title={t("approvals.viewer.decision")}>
-          <CommandError error={command.error} own={ownError} />
-        </Card>
-      );
-    }
-    return null;
+    // A card drawn here that a later read no longer offers means someone else has decided: a line says so, in place
+    // of the card. A decision of this person's on its way is still pending here, and shows nothing of the kind.
+    const content = command.error ? <CommandError error={command.error} own={ownError} />
+      : offered ? <p role="status" tabIndex={-1} ref={takeDroppedFocus}>{t("approvals.viewer.unavailable")}</p> : null;
+    if (!content) return null;
+    return docked ? <DocDecisionPad>{content}</DocDecisionPad> : <Card title={t("approvals.viewer.decision")}>{content}</Card>;
   }
   const stale = readsAreStale(command.error) && command.variables?.seen_fingerprint === d.fingerprint;
   const currentStepIdx = d.route.findIndex(step => step.state === "current");

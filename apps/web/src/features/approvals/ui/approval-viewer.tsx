@@ -79,9 +79,12 @@ export function ApprovalViewerPage() {
   const queueCtx = useApprovalQueueContext(approvalId);
   const d = q.data;
   const receipt = d && receiptState?.id === d.id ? receiptState.text : undefined;
-  const showDecision = Boolean(
-    d && ((d.my_actions.kind === "approve" && d.my_actions.reject) || receipt || decision.command.isPending || decision.command.error),
-  );
+  // Once a decision has been drawn, the panel stays: through the command and its receipt, and to say so when a later
+  // read withdraws the decision. The page is drawn anew for each document.
+  const offers = Boolean(d && d.my_actions.kind === "approve" && d.my_actions.reject);
+  const [offered, setOffered] = useState(false);
+  if (offers && !offered) setOffered(true);
+  const showDecision = offers || offered;
   const diffs = d ? proposalDiffs(d) : [];
   const nonProposalBody = d ? d.body.filter(item => !item.key.startsWith("proposal-")) : [];
   const hasSummary = Boolean(d?.summary && d.summary !== d.title);
