@@ -51,11 +51,11 @@ const columnTest = columnsFixture(`
             React.createElement('h2', null, sel === 'b' ? '상세 B' : '상세 A'),
             React.createElement(Button, { ref: unitBtn, onClick: () => setSel2('unit-1') }, '인사팀 열기'),
             React.createElement(Button, { onClick: () => setDialog(true) }, '모달 열기'),
-            React.createElement(Button, { 'aria-expanded': 'true', 'aria-haspopup': 'listbox' }, '열린 선택'),
+            React.createElement(Button, { 'aria-expanded': 'true', 'aria-haspopup': 'listbox' }, 'Open select'),
             React.createElement('input', { 'aria-label': '내부 입력' }),
-            React.createElement('div', { role: 'tree', 'aria-label': '하위 부서' },
-              React.createElement('div', { role: 'treeitem', 'aria-expanded': 'true', 'aria-label': '본사' },
-                React.createElement('div', { role: 'group' }, React.createElement('div', { role: 'treeitem', tabIndex: 0 }, '영업팀')),
+            React.createElement('div', { role: 'tree', 'aria-label': 'Departments' },
+              React.createElement('div', { role: 'treeitem', 'aria-expanded': 'true', 'aria-label': 'Head office' },
+                React.createElement('div', { role: 'group' }, React.createElement('div', { role: 'treeitem', tabIndex: 0 }, 'Sales team')),
               ),
             ),
           ),
@@ -188,7 +188,7 @@ columnTest("Escape closes only the rightmost column, respects nested overlays/in
   await element(page.getByRole("dialog")).toHaveCount(0);
   await element(related).toBeVisible();
 
-  await record.getByRole("button", { name: "열린 선택", exact: true }).press("Escape");
+  await record.getByRole("button", { name: "Open select", exact: true }).press("Escape");
   await element(related).toBeVisible();
   await record.getByRole("textbox", { name: "내부 입력", exact: true }).press("Escape");
   await element(related).toBeVisible();
@@ -211,9 +211,9 @@ columnTest("Escape closes only the rightmost column, respects nested overlays/in
 columnTest("Escape from a row inside an unfolded tree item closes the column, and an open select keeps it", 1440, async page => {
   await page.getByRole("button", { name: "직원 A", exact: true }).click();
   const record = recordColumn(page);
-  await record.getByRole("button", { name: "열린 선택", exact: true }).press("Escape");
+  await record.getByRole("button", { name: "Open select", exact: true }).press("Escape");
   await element(record).toBeVisible();
-  await record.getByRole("treeitem", { name: "영업팀", exact: true }).press("Escape");
+  await record.getByRole("treeitem", { name: "Sales team", exact: true }).press("Escape");
   await element(record).toHaveCount(0);
 });
 
