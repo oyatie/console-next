@@ -54,7 +54,7 @@ There is one look and one size. No prop changes either.
 
 | Part | Look |
 |---|---|
-| Input | The control box of [`Field`](field.md): 40 px high (`--row-h`), 12 px side padding, a 1 px `--control-border` border, a 6 px radius, `--surface` fill. Its text is the `code` look: the monospace family (`--font-mono`) at 13 px (`--text-sm`). It fills the row and can shrink. |
+| Input | The control box of [`Field`](field.md): 40 px high (`--field-h`), 12 px side padding, a 1 px `--control-border` border, a 6 px radius, `--surface` fill. Its text is the `code` look: the monospace family (`--font-mono`) at 13 px (`--text-sm`). It fills the row and can shrink. |
 | Status | 8 px after the input (`--space-2`), centred on the row's height. The row does not wrap, so the status stays on the input's line. |
 | Label, marker, hint, example, error, warning | As [Field](field.md#looks-and-sizes) draws them. |
 
@@ -213,9 +213,12 @@ The control box, `field__input` in `app.css`:
 | Token | Read by |
 | --- | --- |
 | `--control-border` | `border` |
+| `--field-h` | `height` |
+| `--field-h-toolbar` | `height` |
 | `--radius` | `border-radius` |
-| `--row-h` | `height` |
+| `--space-2` | `background-position` |
 | `--space-3` | `padding` |
+| `--space-6` | `padding-inline-end` |
 | `--surface` | `background` |
 
 <!-- /ds:tokens -->

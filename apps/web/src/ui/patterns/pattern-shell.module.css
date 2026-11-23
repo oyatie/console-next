@@ -1,0 +1,56 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.frame {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 100%;
+  background: var(--surface);
+}
+
+.standalone {
+  padding: var(--page-pad);
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.inlineFilters {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.inlineFilters > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .frame {
+  flex: 1 0 auto;
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .head {
+  padding: 0;
+  background: var(--surface);
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .frame:is([data-pattern="form"], [data-pattern="phone-statement"]) {
+  background: var(--canvas);
+}
+
+@media (--phone) {
+  :where([data-experience]:not([data-experience="baseline"])) .frame:is([data-pattern="form"], [data-pattern="phone-statement"]) {
+    background: var(--surface);
+  }
+
+  .frame[data-detail]:has([data-pane="record"]) > .head {
+    display: none;
+  }
+}

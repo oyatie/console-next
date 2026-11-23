@@ -32,6 +32,7 @@ pub struct PersonalRow {
     pub emergency_contacts: Option<String>,
     pub photo: Option<String>,
     pub group_service_start_date: Option<String>,
+    pub bank_account_registered: Option<String>,
 }
 
 impl PersonalRow {
@@ -46,6 +47,7 @@ impl PersonalRow {
             "emergency_contacts" => self.emergency_contacts.as_deref(),
             "photo" => self.photo.as_deref(),
             "group_service_start_date" => self.group_service_start_date.as_deref(),
+            "bank_account_registered" => self.bank_account_registered.as_deref(),
             _ => None,
         }
     }
@@ -53,6 +55,7 @@ impl PersonalRow {
 
 const LOAD: &str = "SELECT f.name_hanja, f.name_en, f.nationality, f.personal_email, \
      f.photo_upload_id::text AS photo, to_char(f.group_service_start_date, 'YYYY-MM-DD') AS group_start, \
+     f.bank_account_registered::text AS bank_account_registered, \
      (SELECT jsonb_agg(jsonb_build_object( \
         'name', c.name, 'relation', c.relation, 'phone', c.phone_e164, \
         'contact_notified', c.contact_notified) \
@@ -83,6 +86,7 @@ pub async fn load_in_tx(
         emergency_contacts: row.try_get("contacts")?,
         photo: row.try_get("photo")?,
         group_service_start_date: row.try_get("group_start")?,
+        bank_account_registered: row.try_get("bank_account_registered")?,
     })
 }
 
@@ -172,6 +176,7 @@ pub(crate) async fn write_in_tx(
             "personal_email" => set!("personal_email = $3"),
             "photo" => set!("photo_upload_id = $3::uuid"),
             "group_service_start_date" => set!("group_service_start_date = $3::date"),
+            "bank_account_registered" => set!("bank_account_registered = ($3 = 'true')"),
             other => {
                 return Err(HrError::validation(format!(
                     "{other} is not a personal item"

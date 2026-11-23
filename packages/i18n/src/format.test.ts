@@ -1,6 +1,6 @@
 import { afterEach, beforeAll, expect, test } from "vitest";
 import { i18n, loadCatalog } from "./index";
-import { fmtDate, fmtDateInput, fmtDateTime, fmtDateTimeShort, fmtKrw, fmtMonth, fmtWeekday, parseTimestamp } from "./format";
+import { fmtDate, fmtDateInput, fmtDateShortWeekday, fmtDateTime, fmtDateTimeShort, fmtKrw, fmtMonth, fmtWeekday, parseTimestamp } from "./format";
 
 beforeAll(() => loadCatalog("ko"));
 afterEach(() => i18n.set("ko"));
@@ -17,6 +17,8 @@ test("Korean dates and input use the app format with optional weekday", () => {
   expect(fmtDate("2026-10-20", { weekday: "short" })).toBe("2026. 10. 20. (화)");
   expect(fmtDate("2026-02-30")).toBe("—");
   expect(fmtDateInput("2026-10-20")).toBe("2026. 10. 20.");
+  expect(fmtDateShortWeekday("2026-11-20")).toBe(`11-20 (${fmtWeekday("2026-11-20")})`);
+  expect(fmtDateShortWeekday("")).toBe("");
   expect(fmtWeekday("2026-10-20")).toBe("화");
   expect(fmtMonth("2026-10")).toBe("2026년 10월");
 });
@@ -26,6 +28,7 @@ test("English dates and input follow the app language, not the browser language"
   expect(fmtDate("2026-10-20")).toBe("10/20/2026");
   expect(fmtDate("2026-10-20", { weekday: "short" })).toBe("Tue, 10/20/2026");
   expect(fmtDateInput("2026-10-20")).toBe("10/20/2026");
+  expect(fmtDateShortWeekday("2026-11-20")).toBe("Fri, 11/20");
   expect(fmtWeekday("2026-10-20")).toBe("Tue");
   expect(fmtMonth("2026-10")).toBe("October 2026");
 });

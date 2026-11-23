@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { expect, test, type Browser, type BrowserContext, type BrowserContextOptions, type Locator, type Page } from "@playwright/test";
+import { expect, test, type Browser, type BrowserContext, type BrowserContextOptions, type Locator, type Page, type Request } from "@playwright/test";
 import type { clickCounter } from "./clicks";
 import { expectAccessible } from "./a11y";
 import { authenticatorOf, virtualAuthenticator } from "./auth";
@@ -10,7 +10,12 @@ import { recordShifts } from "./stability";
 import { guardConsole } from "./console-guard";
 import { guardRawIds } from "./raw-id-guard";
 import { fillRegister, openRegistered, pressRegister, receiptOf, registerSheet } from "./helpers/register";
+import { expectSuccess } from "./helpers/setup-response";
+import { bootKo } from "../packages/i18n/src/catalogs/boot";
 import { redirectTargets } from "./helpers/route-list";
+
+const loginFinish = (request: Request) => request.method() === "POST" && new URL(request.url()).pathname === "/api/v1/auth/passkey/login/finish";
+const verifying = new WeakMap<Page, Request>();
 
 let ipSeq = 0;
 const contextOwners = new Map<BrowserContext, string>();
@@ -28,6 +33,16 @@ export async function newContext(browser: Browser, contextOptions: Pick<BrowserC
   const context = await browser.newContext({
     ...contextOptions,
     extraHTTPHeaders: { "x-forwarded-for": `10.${test.info().parallelIndex}.${process.pid % 256}.${(ipSeq = (ipSeq % 254) + 1)}` },
+  });
+  // Autofill can submit before the caller returns from goto. Keep only this visit's assertion.
+  context.on("page", page => {
+    page.on("framenavigated", frame => {
+      if (frame === page.mainFrame() && new URL(frame.url()).pathname === "/login") verifying.delete(page);
+    });
+    page.on("request", request => {
+      if (loginFinish(request) && new URL(page.url()).pathname === "/login") verifying.set(page, request);
+      else if (request.method() === "POST" && new URL(request.url()).pathname === "/api/v1/auth/logout") verifying.delete(page);
+    });
   });
   contextOwners.set(context, owner);
   context.on("close", () => contextOwners.delete(context));
@@ -78,9 +93,11 @@ export async function firstSignIn(browser: Browser, code: string, keep?: string,
   const enroll = page.getByRole("button", { name: /동의하고 패스키 등록|패스키 등록/, disabled: false });
   await expect(enroll).toBeVisible();
   if (audit) await expectAccessible(page, "setup passkey");
-  await enroll.click();
-  // Enrollment ends the code session and signs in with the new passkey.
-  await expect(page.getByRole("button", { name: "로그아웃" })).toBeVisible({ timeout: 20_000 });
+  await Promise.all([
+    expectSuccess(page.waitForResponse(response => loginFinish(response.request())), "post-enrollment sign-in"),
+    enroll.click(),
+  ]);
+  await signedInScreen(page, "/setup-passkey");
   if (keep) writeFileSync(keep, JSON.stringify(await authn.export()));
   return page;
 }
@@ -93,6 +110,12 @@ export async function routeReady(page: Page, path?: string) {
       && ready?.dataset.routeReady === location.pathname + location.search + location.hash
       && ready.dataset.routeKey === history.state?.__TSR_key;
   }, { path });
+}
+
+/** A reload finishes loading the document before the app restores the session and its grant scope. */
+export async function reloadAndWait(page: Page) {
+  await page.reload();
+  await routeReady(page);
 }
 
 /** Expected committed destination, including registered route redirects. */
@@ -119,23 +142,39 @@ export async function go(page: Page, path: string, mayRedirect = false) {
   await routeReady(page, mayRedirect ? undefined : routeTarget(page, path));
 }
 
-/**
- * Passkey sign-in from the login screen. The sign-in field's autofill (decisions #33) may sign in by itself on a fresh
- * page (Chromium's virtual authenticator answers a conditional request at once; after a sign-out in the tab it stays
- * paused). So: wait until the sign-in screen is up (or the autofill already left it), give the autofill a moment, else
- * press the button. Never trust a 로그아웃 still on screen from before the sign-out took effect.
- */
+async function signedInScreen(page: Page, from: string) {
+  await page.waitForURL(url => url.pathname !== from && url.pathname !== "/login");
+  await routeReady(page);
+  await expect(page.getByRole("button", { name: bootKo["shell.logout"], exact: true }).first()).toBeVisible();
+}
+
+/** Either autofill or the explicit button submits one assertion. Only a verified assertion completes setup. */
 export async function passkeyLogin(page: Page) {
-  const out = page.getByRole("button", { name: "로그아웃" }).first();
-  const button = page.getByRole("button", { name: "패스키로 로그인" });
-  const signedIn = async () => !new URL(page.url()).pathname.startsWith("/login") && (await out.isVisible());
-  // The sign-in screen first: right after a sign-out click the old screen (and its 로그아웃) is still up. A fresh page's
-  // autofill can only leave the screen after it rendered, so a missing button after this wait means it already did.
-  await button.waitFor({ timeout: 10_000 }).catch(() => undefined);
-  for (let i = 0; i < 15 && !(await signedIn()); i++) await page.waitForTimeout(200);
-  if (!(await signedIn())) await button.click();
-  await expect(out).toBeVisible();
-  await expect(page).not.toHaveURL(/\/login/);
+  const button = page.getByRole("button", { name: bootKo["auth.login.passkey"], exact: true });
+  const shell = page.getByRole("banner").getByRole("button", { name: bootKo["shell.logout"], exact: true });
+  if (!verifying.has(page)) {
+    await expect(button.or(shell).first(), "Expected the passkey sign-in button or signed-in shell").toBeVisible();
+  }
+  const signedIn = await shell.isVisible();
+  // Autofill can submit while the screen is appearing. Always verify that request if present.
+  let request = verifying.get(page);
+  if (!request) {
+    if (signedIn) return;
+    const controller = new AbortController();
+    const options = { signal: controller.signal };
+    const submitted = page.waitForRequest(loginFinish, options);
+    try {
+      await Promise.race([submitted, button.click(options)]);
+      request = await submitted;
+    } finally {
+      controller.abort();
+    }
+  }
+  verifying.delete(page);
+  const response = await request.response();
+  if (!response) throw new Error("Passkey verification did not receive a response");
+  await expectSuccess(Promise.resolve(response), "passkey sign-in");
+  await signedInScreen(page, "/login");
 }
 
 /** Reads the code a dialog shows exactly once, then closes it (an account code is "delivered", a tenant code is closed). */
@@ -188,9 +227,12 @@ export async function vendorPage(browser: Browser) {
     const page = await (await newContext(browser)).newPage();
     await (await virtualAuthenticator(page)).import(readVendorPasskey());
     await page.goto("/login");
-    await passkeyLogin(page);
-    await keepVendorPasskey(page);
-    return page;
+    try {
+      await passkeyLogin(page);
+      return page;
+    } finally {
+      await keepVendorPasskey(page);
+    }
   });
   // A previous terms-publication journey also interrupts the shared vendor account.
   if (new URL(vendor.url()).pathname === "/setup-passkey") {

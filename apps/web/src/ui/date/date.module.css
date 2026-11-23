@@ -11,11 +11,19 @@
 /* Outside the bounds: still visible, so the user learns the date exists, but inert and neutral (the bounds line says why). */
 .preset[aria-disabled="true"], .preset[aria-disabled="true"]:hover { background: var(--muted); color: var(--steel); cursor: not-allowed; }
 .input { width: auto; min-width: 10.5rem; }
+:where([data-experience]:not([data-experience="baseline"])) .date,
+:where([data-experience]:not([data-experience="baseline"])) .row { min-width: 0; max-width: 100%; }
+:where([data-experience]:not([data-experience="baseline"])) .inputRow { display: flex; align-items: center; flex: 1 1 0%; gap: var(--space-1) 0; max-width: 100%; min-width: 0; }
+:where([data-experience]:not([data-experience="baseline"])) .input { flex: 1 1 0%; min-width: 0; width: 100%; border-inline-end: 0; border-start-end-radius: 0; border-end-end-radius: 0; font-weight: var(--fw-semibold); white-space: nowrap; }
+:where([data-experience]:not([data-experience="baseline"])) .input:disabled { color: var(--steel); opacity: 1; }
+@media (--phone) { :where([data-experience]:not([data-experience="baseline"])) .input { padding-inline: var(--space-3) var(--space-1); } }
 .calendarButton { display: inline-grid; place-items: center; min-width: var(--target-touch); min-height: var(--target-touch); border: 1px solid var(--control-border); border-radius: var(--radius-lg); background: var(--surface); color: var(--ink); cursor: pointer; }
+:where([data-experience]:not([data-experience="baseline"])) .calendarButton { flex: none; min-width: var(--field-h); min-height: var(--field-h); height: var(--field-h); border-inline-start: 0; border-start-start-radius: 0; border-end-start-radius: 0; color: var(--steel); }
+:where([data-experience]:not([data-experience="baseline"])) .inputRow:has(> [aria-invalid="true"]) > :is(.input, .calendarButton) { border-color: var(--danger-solid); }
 .calendarButton:hover { background: var(--muted); }
 .calendarButton:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .calendarButton[aria-disabled="true"] { color: var(--steel); cursor: not-allowed; }
-.popover { z-index: 18; width: calc(var(--target-touch) * 7 + var(--space-3) * 2); max-width: calc(100vw - var(--space-3) * 2); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-pop); }
+.popover { z-index: 18; width: calc(var(--target-touch) * 7 + var(--space-3) * 2); max-width: calc(100vw - var(--space-3) * 2); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-pop); overscroll-behavior: contain; }
 .dialog { outline: none; }
 .inputError { flex-basis: 100%; color: var(--danger-tx); font-size: var(--text-sm); }
 .remedy { margin-left: var(--space-2); }

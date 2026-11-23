@@ -130,7 +130,7 @@ async fn sign_in(app: &axum::Router, pool: &PgPool) -> (String, String) {
     .execute(pool)
     .await
     .unwrap();
-    let otp = BootstrapCredentialStore
+    let otp = BootstrapCredentialStore::default()
         .issue_for_zero_credential_user(
             pool,
             None,

@@ -7,5 +7,9 @@ properties:
     type: string
     writeOnly: true
     description: Resident registration number, validated by the server; never retained in a draft.
+  id_type:
+    type: string
+    enum: [RRN, ARC, DOMESTIC_RESIDENCE]
+    description: Optional explicit identity document type paired with the registration number.
   step_up:
     $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'

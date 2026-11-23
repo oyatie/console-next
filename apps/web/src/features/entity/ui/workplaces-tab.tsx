@@ -17,7 +17,7 @@ import { WorkplacePanel } from "./workplace-panel";
  * The entity's workplaces, each with the certificate it is registered under (its own, or the unit-taxation
  * one with a serial), the NTS status and its people. Selecting one opens its detail beside the list.
  */
-export function WorkplacesTab({ e, selected }: { e: LegalEntity; selected?: string }) {
+export function WorkplacesTab({ e, selected, flat }: { e: LegalEntity; selected?: string; flat?: boolean }) {
   const [sel, setSel] = useState(selected);
   const [linked, setLinked] = useState(selected);
   if (linked !== selected) { setLinked(selected); setSel(selected); }
@@ -30,10 +30,10 @@ export function WorkplacesTab({ e, selected }: { e: LegalEntity; selected?: stri
     </Link>
   );
   if (e.workplaces.length === 0)
-    return <section className="card"><EmptyState title={t("workplace.empty.title", { entity: entityName(e) })} reason={t("workplace.empty.reason")} actions={add} /></section>;
+    return <section className={flat ? undefined : "card"}><EmptyState title={t("workplace.empty.title", { entity: entityName(e) })} reason={t("workplace.empty.reason")} actions={add} /></section>;
   return (
     <div className="split" data-open={Boolean(current)}>
-      <section className="card">
+      <section className={flat ? undefined : "card"}>
         <div className="toolbar">
           <h2 className="toolbar__title">{t("workplace.list.title")}</h2>
           {add}
@@ -43,22 +43,24 @@ export function WorkplacesTab({ e, selected }: { e: LegalEntity; selected?: stri
           rows={e.workplaces}
           rowId={(w) => w.id}
           selected={current?.id}
+          mobileLayout={flat ? "compact" : undefined}
           onSelect={setSel}
           columns={[
             { header: t("workplace.col.name"), card: "title", cell: (w) => <span className="row">{workplaceName(w)}{w.is_primary && <Chip tone="info">{t("workplace.primary")}</Chip>}{w.is_head_office && <Chip>{t("workplace.headOffice")}</Chip>}{w.needs_confirmation && <Chip tone="warn">{t("workplace.incomplete")}</Chip>}</span> },
             {
               header: t("workplace.col.brn"),
               fit: true,
+              card: flat ? "fact" : undefined,
               cell: (w) => {
                 const r = reg(w.registration_id);
                 return r ? <span className="code">{r.brn?.display ?? t("workplace.brnPending")}{w.sub_serial && ` · ${w.sub_serial}`}</span> : registrationTodo(w) ? <Muted>{t("workplace.filing.entityBasis")}{reg(w.filing_registration_id)?.brn?.display && ` · ${reg(w.filing_registration_id)?.brn?.display}`}</Muted> : <Chip tone="neutral">{w.not_registered_reason?.label ?? t("entityOps.info.none")}</Chip>;
               },
             },
             { header: t("workplace.col.taxType"), cell: (w) => { const tax = reg(w.registration_id)?.current?.tax_type; return tax ? label(TAX_TYPE, tax) : t("entityOps.info.none"); }, fit: true, wide: true },
-            { header: t("workplace.col.verified"), cell: (w) => { const r = reg(w.registration_id); if (!r) return t("entityOps.info.none"); const v = labeled(VERIFICATION, r.verification_tier); return <Chip tone={v.tone}>{v.label}</Chip>; }, fit: true },
+            { header: t("workplace.col.verified"), cell: (w) => { const r = reg(w.registration_id); if (!r) return t("entityOps.info.none"); const v = labeled(VERIFICATION, r.verification_tier); return <Chip tone={v.tone}>{v.label}</Chip>; }, fit: true, wide: flat ? true : undefined },
             { header: t("workplace.col.issued"), cell: (w) => { const on = reg(w.registration_id)?.current?.cert_issued_on; return <span className="num">{on ? fmtDate(on) : t("entityOps.info.none")}</span>; }, fit: true, wide: true },
             { header: t("workplace.col.status"), card: "status", cell: (w) => { const st = labeled(RECORD_STATUS, w.current?.status ?? "CONTINUING"); return <Chip tone={st.tone}>{st.label}</Chip>; }, fit: true },
-            { header: t("workplace.col.people"), cell: (w) => <span className="num">{t("entity.count.people", { count: w.headcount })}</span>, fit: true },
+            { header: t("workplace.col.people"), cell: (w) => <span className="num">{t("entity.count.people", { count: w.headcount })}</span>, fit: true, wide: flat ? true : undefined },
           ]}
         />
       </section>

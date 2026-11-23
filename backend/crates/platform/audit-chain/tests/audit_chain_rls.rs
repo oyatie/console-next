@@ -1295,7 +1295,7 @@ async fn external_signer_detects_resign_attack(owner_pool: PgPool) {
 // ---------------------------------------------------------------------------
 // §6.16b (mbl-critic F3): pinned key_ref + forged signature → BadSignature.
 // The resign-attack test covers anchors.get -> None; this covers Some(pk) where
-// ring::verify fails (attacker reuses the PINNED key_ref with a foreign sig).
+// aws-lc-rs verify fails (attacker reuses the PINNED key_ref with a foreign sig).
 // ---------------------------------------------------------------------------
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn external_signer_detects_forged_signature_under_pinned_key_ref(owner_pool: PgPool) {

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { LEAVE_TYPE } from "../../../lib/labels";
 import { EnumCode } from "../../../ui/enum-value";
 import { t } from "@console/i18n";
@@ -10,12 +11,13 @@ import s from "./import.module.css";
  * One row's plan in full: why it is refused, what an update changes field by field, what an import never changes for
  * a person on file and which flow does it instead, the leave a new person comes in on, and names that placed nobody.
  */
-export function RowDetail({ r }: { r: ImportRow }) {
+export function RowDetail({ r, extra }: { r: ImportRow; extra?: ReactNode }) {
   const value = (field: string, v?: string | null) => (field === "employment_type" && v ? employmentTypeLabel(v) : shown(v));
   const leave = r.new_person?.leave;
   return (
     <section className={s.detail} aria-label={t("import.rows.detail", { sheet: r.sheet, row: r.row, name: r.name })}>
       <h3 className="toolbar__title">{t("import.rows.detail", { sheet: r.sheet, row: r.row, name: r.name })} · {outcomeLabel(r.outcome)}</h3>
+      {extra}
       {r.outcome === "refused" && r.refusal_code && (
         <p className={s.issue}>{r.refusal_field ? t("import.rows.refused", { field: fieldLabel(r.refusal_field), why: refusalLabel(r.refusal_code) }) : refusalLabel(r.refusal_code)}</p>
       )}

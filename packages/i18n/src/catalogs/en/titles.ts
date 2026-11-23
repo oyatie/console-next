@@ -21,8 +21,11 @@ export const enTitles = {
   "titles.rank.bad": "Enter a whole number from {min, number} to {max, number}",
   "titles.rank.integer": "Enter a whole number for the rank",
   "titles.deactivate": "Stop using {label}",
+  "titles.action.deactivate": "Stop using",
   "titles.activate": "Use {label} again",
+  "titles.action.activate": "Use again",
   "titles.edit": "Edit {label}",
+  "titles.action.edit": "Edit",
   "titles.edit.title": "Edit catalog entry: {label}",
   "titles.edit.commit": "Save catalog entry",
 } as const;

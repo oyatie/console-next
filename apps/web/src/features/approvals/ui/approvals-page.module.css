@@ -32,3 +32,21 @@
   .list table { grid-template-columns: minmax(calc(var(--approval-title-min) + 2 * var(--space-3)), 1fr) max-content; }
   .list :is(th, td):is(:nth-child(1), :nth-child(4)) { display: none; }
 }
+.consoleFilters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-width: 0; }
+.consoleTable { min-width: 0; }
+.consoleTitle { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.consoleRoute { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.consolePhoneMeta { display: none; }
+.consoleDesktopSource { display: inline; }
+.consoleBody { display: flex; flex-direction: column; min-width: 0; }
+.consoleKicker { display: inline-flex; align-items: center; gap: var(--space-1-5); flex-wrap: wrap; }
+@container list-table (max-width: 480px) {
+  .consolePhoneMeta { display: inline; }
+  .consoleDesktopSource { display: none; }
+}
+@container list-table (481px <= width < 920px) {
+  .consoleTable :is(th, td):is(:nth-child(6), :nth-child(7)) { display: none; }
+}
+@container list-table (481px <= width < 720px) {
+  .consoleTable :is(th, td):is(:nth-child(2), :nth-child(5)) { display: none; }
+}

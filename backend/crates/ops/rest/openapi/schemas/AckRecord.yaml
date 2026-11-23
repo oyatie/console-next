@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["seq", "hash", "support_ref", "at", "operator", "group_key", "alertname", "component"]
+properties:
+  seq: {"type": "integer", "minimum": 1}
+  hash: {"$ref": "#/components/schemas/Text"}
+  support_ref: {"$ref": "#/components/schemas/Text"}
+  at: {"$ref": "#/components/schemas/Timestamp"}
+  operator: {"$ref": "#/components/schemas/Text"}
+  group_key: {"$ref": "#/components/schemas/Text"}
+  alertname: {"$ref": "#/components/schemas/Text"}
+  component: {"type": "string"}
+  note: {"anyOf": [{"type": "string"}, {"type": "null"}]}

@@ -192,7 +192,7 @@ async fn enrollment_can_read_documents_but_cannot_accept_tenant_terms(pool: PgPo
         )
         .unwrap(),
     );
-    let issue = console_platform_provisioning::BootstrapCredentialStore
+    let issue = console_platform_provisioning::BootstrapCredentialStore::default()
         .issue_for_zero_credential_user(
             &pool,
             None,

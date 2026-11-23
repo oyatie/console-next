@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+operationId: "opsPromote"
+summary: "Read Promote"
+x-cedar-action: "read.running"
+security: [{"accessJwt": []}]
+description: "Returns staging promotion candidate, signoffs, feedback queue, and request handoff state."
+responses: {"200": {"description": "Promote view.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/PromoteView"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}

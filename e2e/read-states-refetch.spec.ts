@@ -2,7 +2,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import type { components } from "@console/api/schema";
-import { passkeyAssertion } from "./auth";
+import { apiOf, bearerOf, stepUpAssertion } from "./helpers/api";
 import { go, kstDate, registerEmployee, routeReady } from "./flows";
 import { EXEC_NAME, SETUP_DEPARTMENT, setupCompany, tenantBeforeSetup } from "./setup-flows";
 import { openAsOf } from "./dates";
@@ -39,11 +39,12 @@ test.describe("read boundaries keep chrome, previous content and keyboard focus"
   let role: { id: string; name_ko: string };
   let employee: string;
   let exit: string;
-  let headers: { authorization: string };
+  let api: ReturnType<typeof apiOf>;
   test.beforeAll(async ({ browser }) => {
     test.setTimeout(300_000);
     const tenant = await tenantBeforeSetup(browser, `refetch-${test.info().workerIndex}`, "읽기 유지", false, "none");
     admin = tenant.admin;
+    api = apiOf(admin, bearerOf(admin));
     await tenant.exec.context().close();
     await setupCompany(admin, "읽기 유지 법인");
     entity = new URL(admin.url()).pathname;
@@ -56,30 +57,26 @@ test.describe("read boundaries keep chrome, previous content and keyboard focus"
     site = sites[0].id;
     const roles = admin.waitForResponse(r => new URL(r.url()).pathname === "/api/v1/access/roles" && r.ok());
     await go(admin, "/access/grants");
-    headers = { authorization: (await roles).request().headers()["authorization"]! };
-    const created = await admin.request.post("/api/v1/access/roles", { headers, data: { name_ko: "읽기 유지 역할", status: "ACTIVE", lines: [{ domain: "org", levels: ["view"] }] } });
+    await roles;
+    const created = await api("/access/roles", "POST", { name_ko: "읽기 유지 역할", status: "ACTIVE", lines: [{ domain: "org", levels: ["view"] }] });
     expect(created.status()).toBe(201);
     role = await created.json();
-    const listed = await admin.request.get("/api/v1/access/roles?status=ACTIVE", { headers });
+    const listed = await api("/access/roles?status=ACTIVE");
     expect(listed.status()).toBe(200);
     expect(await listed.json()).toEqual(expect.arrayContaining([expect.objectContaining({ id: role.id, name_ko: role.name_ko })]));
     // 6aaa2db324 shows the role filter only when the grant list is non-empty.
-    const accounts = await admin.request.get("/api/v1/users", { headers });
+    const accounts = await api("/users");
     expect(accounts.status()).toBe(200);
     const account = ((await accounts.json()).items as components["schemas"]["UserSummary"][]).find(user => user.display_name === EXEC_NAME);
     expect(account).toBeTruthy();
-    const previewResponse = await admin.request.post("/api/v1/access/grants/preview", { headers, data: {
+    const previewResponse = await api("/access/grants/preview", "POST", {
       operations: [{ op: "grant", account_id: account!.id, role_id: role.id, scope: { kind: "TENANT", include_descendants: true }, effective_in_setup: true }],
       reason_code: "PROMOTION_OR_REASSIGNMENT",
-    } satisfies components["schemas"]["AccessGrantBatchRequest"] });
+    } satisfies components["schemas"]["AccessGrantBatchRequest"]);
     expect(previewResponse.status(), await previewResponse.text()).toBe(200);
     const preview = await previewResponse.json() as components["schemas"]["AccessGrantPreview"];
     expect(preview.refused).toBe(0);
-    const started = await admin.request.post("/api/v1/auth/passkey/login/start", { headers, data: {} });
-    expect(started.status(), await started.text()).toBe(200);
-    const ceremony = await started.json() as components["schemas"]["PasskeyLoginStartResponse"];
-    const step_up = await passkeyAssertion(admin, { ...ceremony, challenge: { publicKey: ceremony.challenge.publicKey as PublicKeyCredentialRequestOptionsJSON } });
-    const applied = await admin.request.post("/api/v1/access/grants/apply", { headers: { ...headers, "Idempotency-Key": randomUUID() }, data: { receipt_id: preview.receipt_id, step_up } });
+    const applied = await api("/access/grants/apply", "POST", { receipt_id: preview.receipt_id, step_up: await stepUpAssertion(admin, api) }, { "Idempotency-Key": randomUUID() });
     expect(applied.status(), await applied.text()).toBe(200);
     expect((await applied.json()).items).toEqual([expect.objectContaining({ account_id: account!.id, role_id: role.id, enforcement: "ENFORCED" })]);
   });
@@ -182,9 +179,10 @@ test.describe("read boundaries keep chrome, previous content and keyboard focus"
         expect(intact).toBe(true);
         await expect(control).toBeFocused();
         if (reserve) {
-          const refreshed = page.waitForResponse(r => r.request().method() === "GET" && new URL(r.url()).pathname === read && r.ok());
+          const refreshed = page.waitForResponse(r => r.request().method() === "GET" && new URL(r.url()).pathname === read);
           held = false; release();
-          await (await refreshed).finished();
+          const response = await refreshed;
+          expect(response.status(), await response.text()).toBe(200);
           await expect(main.locator('[aria-busy="true"]')).toHaveCount(0);
           await expect(main.locator("[data-read-layout]")).toHaveCount(0);
           await expect(main.locator("[data-read-region]")).toHaveCount(regions.length);
@@ -235,7 +233,7 @@ test.describe("read boundaries keep chrome, previous content and keyboard focus"
     { path: "/people/exits/$exit", read: "/api/v1/hr/exit-cases/$exit", record: true },
   ]) for (const status of "record" in row ? [403, 404] : [403]) test(`${row.path}: refetch into ${status} removes refused controls and record facts`, async () => {
     if (row.path.includes("$exit") && !exit) {
-      const reported = await admin.request.post("/api/v1/hr/exit-cases", { headers: { ...headers, "Idempotency-Key": randomUUID() }, data: { employee_id: employee, effective_exit_date: kstDate(30), site_manager_note: "읽기 유지 확인" } });
+      const reported = await api("/hr/exit-cases", "POST", { employee_id: employee, effective_exit_date: kstDate(30), site_manager_note: "읽기 유지 확인" }, { "Idempotency-Key": randomUUID() });
       expect(reported.status()).toBe(201);
       exit = (await reported.json()).id;
     }

@@ -13,7 +13,23 @@ export default function SettingsHubGallery() {
   const [client] = useState(() => {
     const query = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, retry: false, retryOnMount: false } } });
     query.setQueryData(get("/api/v1/users/me").queryKey, { sign_in_id: "operator@current.test" });
-    query.setQueryData(settingsQuery.queryKey, { can_change: false, items: [] });
+    query.setQueryData(settingsQuery.queryKey, {
+      can_change: false,
+      items: [{
+        key: "display.experience",
+        kind: { type: "code", allowed: ["baseline", "console", "warm-clear"] },
+        default: "baseline",
+        looser_when: "neutral",
+        governance: "tenant",
+        legal_basis: null,
+        value: "baseline",
+        version: "code_default",
+        effective_from: null,
+        source: { layer: "code_default", scope_entity_id: null },
+        chain: [],
+        scheduled: [],
+      }],
+    });
     const values = [{ pending_domain: "example.test" }, [{ scope_kind: "TENANT", next_number: "E-0012" }], { items: [
       { id: "grade", kind: "GRADE", label: t("enum.jobTitleKind.GRADE"), grade_rank: 1, active: true },
       { id: "title", kind: "TITLE", label: t("enum.jobTitleKind.TITLE"), grade_rank: null, active: true },

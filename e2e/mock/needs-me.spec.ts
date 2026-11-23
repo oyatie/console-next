@@ -224,6 +224,38 @@ for (const width of [641, 700, 767, 768, 769, 1024, 1279]) for (const theme of [
   });
 }
 
+for (const width of [768, 769]) {
+  test(`tablet header fits prompt with fallback font at ${width}px dark`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(value => localStorage.setItem("console.theme", value), "dark");
+    const mock = await mockScreen(page, screens[0], "populated");
+    await page.route("**/*.woff2", route => route.abort());
+    await page.goto("/people");
+    await expect(page.locator("html")).toHaveAttribute("data-font-fallback", "");
+    const header = shell(page).banner;
+    await expect(header.locator("#top-needs-me [data-count]")).toHaveText("3", { timeout: 20_000 });
+    const prompt = shell(page).searchText;
+    await expect(prompt).toBeVisible();
+    const metrics = await prompt.evaluate(el => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      return {
+        clientWidth: el.clientWidth,
+        scrollWidth: el.scrollWidth,
+        textWidth: range.getBoundingClientRect().width,
+      };
+    });
+    expect(metrics.clientWidth / metrics.scrollWidth).toBeGreaterThanOrEqual(1);
+    expect(metrics.clientWidth - metrics.textWidth).toBeGreaterThanOrEqual(15);
+    const logout = header.getByRole("button", { name: t("shell.logout"), exact: true });
+    await expect(logout).toBeVisible();
+    expect(await logout.evaluate(el => Number.parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThan(0);
+    await fits(page, "tablet fallback font header");
+    expect(await header.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+    expect(mock.unexpected).toEqual([]);
+  });
+}
+
 for (const width of [1440, 1024, 390]) for (const theme of ["light", "dark"]) {
   test(`task count is loading until answered at ${width}px ${theme}`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 });

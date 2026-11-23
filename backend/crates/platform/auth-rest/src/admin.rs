@@ -195,7 +195,7 @@ pub(crate) async fn issue_admin_otp(
     let org = principal.org_id;
     let actor = principal.user_id;
     let target = body.user_id;
-    let bootstrap_credentials = services.bootstrap_credentials;
+    let bootstrap_credentials = services.bootstrap_credentials.clone();
     let issue = console_platform_db::with_audits::<_, _, RestError>(&state.pool, org, move |tx| {
         Box::pin(async move {
             let now = require_credential_authority_tx(tx, org, actor, target).await?;
@@ -338,7 +338,7 @@ pub(crate) async fn admin_credential_reset(
     let org = principal.org_id;
     let actor = principal.user_id;
     let target = body.user_id;
-    let bootstrap_credentials = services.bootstrap_credentials;
+    let bootstrap_credentials = services.bootstrap_credentials.clone();
     let issue = console_platform_db::with_audits::<_, _, RestError>(&state.pool, org, move |tx| {
         Box::pin(async move {
             let now = require_credential_authority_tx(tx, org, actor, target).await?;

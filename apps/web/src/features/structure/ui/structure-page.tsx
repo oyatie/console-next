@@ -3,22 +3,24 @@ import { useStructureEdit } from "./use-structure-gestures";
 import { RegistryExportContext } from "./export-scope";
 import type { ChartNode } from "../domain/model";
 import type { OrgStructure } from "@console/api/pending";
-import { useRef, useState, type ReactNode } from "react";
+import { lazy, Suspense, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { todayKst } from "../../../lib/pure/today";
 import { t } from "@console/i18n";
+import { chunk } from "../../../lib/chunk-guard";
 import { focusSoon } from "../../../lib/react/announce";
 import { QueryState } from "../../../lib/react/query-state";
 import { freshOnOpen, get } from "../../../lib/query";
 import { useNarrow } from "../../../ui/dock-sheet/use-narrow";
 import { EmptyState } from "../../../ui/empty-state";
 import { FlexibleColumns } from "../../../ui/flexible-columns/flexible-columns";
+import { ExperienceSwitch } from "../../../ui/patterns/pattern-shell";
 import { ChartView } from "./chart-view";
+import { CompareResults } from "./compare-control";
 import { FirstRun } from "./first-run";
 import { OutlineView } from "./outline-view";
 import { PageHead, type ViewCommands } from "./page-head";
-import { CompareResults } from "./compare-control";
 import { RegistryView } from "./registry-view";
 import { ChartSkeleton } from "./chart-skeleton";
 import { useStructure } from "./use-structure";
@@ -26,6 +28,7 @@ import { useStructureCommands } from "./use-structure-commands";
 import css from "./chart.module.css";
 
 const route = getRouteApi("/app/org");
+const StructureConsole = lazy(() => chunk(import("./structure-console")).then(m => ({ default: m.StructureConsole })));
 /** The acts that open a proposal card (the governed path a link may name); the structure sheets take the rest. */
 const PROPOSAL_ACTS: readonly string[] = ["create", "rename", "move", "dissolve", "reassign"];
 
@@ -49,7 +52,8 @@ export function StructurePage({ proposal, panel, sheets }: {
   const [find, setFind] = useState("");
   const commands = useRef<ViewCommands>(null);
   const narrow = useNarrow();
-  const { view = "chart", focus, act, sel: picked } = search;
+  const { view, focus, act, sel: picked } = search;
+  const baselineView = view ?? "chart";
   const navigate = route.useNavigate();
   const { s, tree, ready, diff } = useStructure(search);
   const dates = freshOnOpen(useQuery({ ...get("/api/v1/org-structure/change-dates", { params: { query: { from: "0001-01-01", to: "9999-12-31", known_at: search.known_at } } }), refetchOnMount: "always" }));
@@ -97,7 +101,7 @@ export function StructurePage({ proposal, panel, sheets }: {
   // Reserve the selected panel in the click's render, before its URL write arrives and moves the chart controls.
   const one = url.last && sel.size === 1 ? s?.byId.get(url.last) : undefined;
   const paneled = one && (one.kind === "site" || one.kind === "dept") && tree.data ? one : undefined;
-  const stacked = view === "chart" && narrow;
+  const stacked = baselineView === "chart" && narrow;
   const side = proposing ? { id: "proposal", label: t("structure.side"), onClose: () => void navigate({ search: (q) => ({ ...q, act: undefined }), replace: true }), children: proposal }
     : paneled && {
         id: paneled.id,
@@ -113,33 +117,64 @@ export function StructurePage({ proposal, panel, sheets }: {
   const empty = s && s.root.children.length === 0;
   return (
     <UnitEdit.Provider value={canEdit}>
-    <RegistryExportContext.Provider value={view === "list" ? exportRows : null}>
-    <div className={css.page}>
-      <PageHead s={s} view={view} cmd={cmd} changeDates={dates.isSuccess ? dates.data?.items : undefined} loadingDates={dates.isFetching} readFailed={!!ready.error && !s} find={find} onFind={setFind} commands={commands} inline={canEdit} />
-      {!ready.error && dates.isError && <QueryState q={dates} inline own={() => t("asof.error")}>{() => null}</QueryState>}
-      <QueryState q={pageRead} loading={<ChartSkeleton />}>{() => <>
-      <div className={css.body}>
-        {/* No list-follow here: the tree moves its own cursor, and the list's checkboxes are a multi-selection that focus must not replace. */}
-        <FlexibleColumns
-          onFind={() => focusSoon("structure-find")}
-          record={!stacked && side}
-          list={<div className={css.view}>
-            {
-              !s ? null
-              : empty ? (s.readOnly ? <EmptyState title={t("asof.noRecords")} reason={null} /> : <FirstRun />)
-              : view === "list" ? <RegistryView ref={commands} find={find} s={s} cmd={cmd} sel={sel} onSelect={select} onVisibleRows={setExportRows} />
-              : view === "outline" ? <OutlineView ref={commands} find={find} follow={!act} pick={jump} s={s} cmd={cmd} sel={sel} onSelect={select} />
-              : <ChartView ref={commands} find={find} key={focus ?? "tenant"} pick={jump} covered={Boolean(act)} dimmed={!!ready.error} s={s} cmd={cmd} focusId={focus} onFocus={onFocus} sel={sel} onSelect={select} />
-            }
-            {stacked && side && (proposing ? <aside className={css.side} aria-label={side.label}>{side.children}</aside> : <div className={css.side}>{side.children}</div>)}
-          </div>}
-        />
-      </div>
-      {!cmd.readOnly && sheets}
-    {/* Late comparison records follow the full-height chart so they cannot shrink its canvas. */}
-    {diff && <CompareResults result={diff} />}
-    </>}</QueryState>
-    </div>
+    <RegistryExportContext.Provider value={baselineView === "list" ? exportRows : null}>
+    <ExperienceSwitch
+      baseline={() => (
+        <div className={css.page}>
+          <PageHead s={s} view={baselineView} cmd={cmd} changeDates={dates.isSuccess ? dates.data?.items : undefined} loadingDates={dates.isFetching} readFailed={!!ready.error && !s} find={find} onFind={setFind} commands={commands} inline={canEdit} />
+          {!ready.error && dates.isError && <QueryState q={dates} inline own={() => t("asof.error")}>{() => null}</QueryState>}
+          <QueryState q={pageRead} loading={<ChartSkeleton />}>{() => <>
+          <div className={css.body}>
+            {/* No list-follow here: the tree moves its own cursor, and the list's checkboxes are a multi-selection that focus must not replace. */}
+            <FlexibleColumns
+              onFind={() => focusSoon("structure-find")}
+              record={!stacked && side}
+              list={<div className={css.view}>
+                {
+                  !s ? null
+                  : empty ? (s.readOnly ? <EmptyState title={t("asof.noRecords")} reason={null} /> : <FirstRun />)
+                  : baselineView === "list" ? <RegistryView ref={commands} find={find} s={s} cmd={cmd} sel={sel} onSelect={select} onVisibleRows={setExportRows} />
+                  : baselineView === "outline" ? <OutlineView ref={commands} find={find} follow={!act} pick={jump} s={s} cmd={cmd} sel={sel} onSelect={select} />
+                  : <ChartView ref={commands} find={find} key={focus ?? "tenant"} pick={jump} covered={Boolean(act)} dimmed={!!ready.error} s={s} cmd={cmd} focusId={focus} onFocus={onFocus} sel={sel} onSelect={select} />
+                }
+                {stacked && side && (proposing ? <aside className={css.side} aria-label={side.label}>{side.children}</aside> : <div className={css.side}>{side.children}</div>)}
+              </div>}
+            />
+          </div>
+          {!cmd.readOnly && sheets}
+        {/* Late comparison records follow the full-height chart so they cannot shrink its canvas. */}
+        {diff && <CompareResults result={diff} />}
+        </>}</QueryState>
+        </div>
+      )}
+    >
+      {() => (
+        <Suspense fallback={<ChartSkeleton />}>
+          <StructureConsole
+            s={s}
+            view={view}
+            cmd={cmd}
+            pageRead={pageRead}
+            dates={dates}
+            diff={diff}
+            find={find}
+            onFind={setFind}
+            commands={commands}
+            inline={canEdit}
+            focus={focus}
+            act={act}
+            jump={jump}
+            sel={sel}
+            onSelect={select}
+            onFocus={onFocus}
+            proposing={proposing}
+            proposal={proposal}
+            side={side}
+            sheets={sheets}
+          />
+        </Suspense>
+      )}
+    </ExperienceSwitch>
     </RegistryExportContext.Provider>
     </UnitEdit.Provider>
   );

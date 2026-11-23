@@ -13,7 +13,7 @@ import { routeList } from "../../../../e2e/helpers/route-list";
 
 const router = createRouter({ routeTree });
 const appRoutes = Object.values(router.routesById).filter((route: AnyRoute) => route.id.startsWith("/app/"));
-const signedIn = (path: string) => ["/", "/inbox", "/approvals", "/account", "/account/privacy", "/requests", "/people/requests"].includes(path) || path.includes("$");
+const signedIn = (path: string) => ["/", "/inbox", "/leave", "/payslips", "/me/attendance", "/me/desk", "/approvals", "/account", "/account/privacy", "/requests", "/people/requests"].includes(path) || path.includes("$");
 
 function assertAccess(route: { fullPath: string; options: { staticData?: StaticDataRouteOption } }, exceptions: Record<string, { lane: string; reason: string }>) {
   const access = route.options.staticData?.access;
@@ -57,8 +57,9 @@ test("route access exceptions can only shrink", () => assertExceptions(allow));
 
 test("the E2E route walk equals the router's static paths", () => {
   expect(routeList.map(route => route.path).sort()).toEqual(appRoutes.map(route => route.fullPath).sort());
-  expect(router.routesByPath).not.toHaveProperty("/access/review");
-  expect(router.routesByPath).not.toHaveProperty("/audit/access-log");
+  expect(router.routesByPath).toHaveProperty("/access/review");
+  expect(router.routesByPath).toHaveProperty("/audit");
+  expect(router.routesByPath).toHaveProperty("/audit/access-log");
 });
 
 test("exception growth is refused against dev's upstream when local dev has no registry", () => {

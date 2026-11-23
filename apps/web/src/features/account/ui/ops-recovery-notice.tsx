@@ -12,8 +12,9 @@ import { TextArea } from "../../../ui/field/text-area";
 import { Card } from "../../../ui/card/card";
 import { Dialog } from "../../../ui/dialog";
 import { claims, tenantRecoveryQuery, cancelTenantRecovery } from "../api";
+import s from "./account.module.css";
 
-export function OpsRecoveryNotice() {
+export function OpsRecoveryBody() {
   const q = useQuery(tenantRecoveryQuery);
   const [cancelling, setCancelling] = useState(false);
   const [reason, setReason] = useState("");
@@ -26,9 +27,9 @@ export function OpsRecoveryNotice() {
   const r = q.data?.request;
   if (!r) return <QueryState q={q}>{() => null}</QueryState>;
   const active = q.data?.state === "WAITING_APPROVAL" || q.data?.state === "HOLD";
-  return <QueryState q={q}>{() => <Card title={t("opsRecovery.title")} titleId="account-ops-recovery">
+  return <QueryState q={q}>{() => <>
     <p>{t("opsRecovery.tenantOpenedBy", { actor: r.requested_by_name ?? t("opsRecovery.operator") })} {r.hold_until && t("opsRecovery.holdUntil", { at: fmtDateTime(r.hold_until) })} {active ? t("opsRecovery.tenantNotice") : q.data?.state === "CANCELLED" ? t("opsRecovery.cancelled", { actor: r.cancelled_by_name ?? t("opsRecovery.operator"), reason: r.cancel_reason ?? "—" }) : q.data?.state === "ISSUED" ? t("opsRecovery.issued", { minutes: q.data.code_ttl_minutes }) : t("opsRecovery.ready")}</p>
-    {active && <Button onClick={() => setCancelling(true)}>{t("opsRecovery.cancel")}</Button>}
+    {active && <Button className={s.actionBtn} onClick={() => setCancelling(true)}>{t("opsRecovery.cancel")}</Button>}
     {cancelling && <Dialog open title={t("opsRecovery.cancel")} onClose={() => setCancelling(false)} dismissable={!reason && !cancel.isPending}>
       <Form className="form" onSubmit={() => { setTried(true); if (reason.trim()) cancel.mutate(undefined); }} noValidate>
         <Field label={t("opsRecovery.cancelReason")} required error={tried && !reason.trim() ? t("opsRecovery.required") : undefined}>
@@ -38,5 +39,12 @@ export function OpsRecoveryNotice() {
         <div className="form__actions"><Button onClick={() => setCancelling(false)} disabled={cancel.isPending}>{t("common.back")}</Button><Button type="submit" variant="primary" disabled={cancel.isPending}>{t("opsRecovery.cancel")}</Button></div>
       </Form>
     </Dialog>}
-  </Card>}</QueryState>;
+  </>}</QueryState>;
+}
+
+export function OpsRecoveryNotice() {
+  const q = useQuery(tenantRecoveryQuery);
+  const r = q.data?.request;
+  if (!r) return <QueryState q={q}>{() => null}</QueryState>;
+  return <Card title={t("opsRecovery.title")} titleId="account-ops-recovery"><OpsRecoveryBody /></Card>;
 }

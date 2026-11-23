@@ -925,6 +925,10 @@ dependencies = [
  "console-ontology-canonical-adapter-postgres",
  "console-ontology-canonical-domain",
  "console-ontology-rest",
+ "console-ops-adapter-http",
+ "console-ops-application",
+ "console-ops-domain",
+ "console-ops-rest",
  "console-orgchange-adapter-postgres",
  "console-orgchange-domain",
  "console-orgchange-rest",
@@ -938,6 +942,7 @@ dependencies = [
  "console-platform-auth-rest",
  "console-platform-authz",
  "console-platform-authz-rest",
+ "console-platform-crypto",
  "console-platform-db",
  "console-platform-email",
  "console-platform-jobs",
@@ -989,6 +994,7 @@ dependencies = [
  "opentelemetry_sdk",
  "p256",
  "reqwest",
+ "rustls",
  "serde",
  "serde_json",
  "sha2 0.11.1",
@@ -996,6 +1002,7 @@ dependencies = [
  "thiserror 2.0.21",
  "time",
  "tokio",
+ "tokio-rustls",
  "tower",
  "tower-http 0.7.1",
  "tracing",
@@ -1236,6 +1243,7 @@ dependencies = [
  "chacha20poly1305",
  "console-comms-application",
  "console-kernel-core",
+ "console-platform-crypto",
  "secrecy",
  "zeroize",
 ]
@@ -1260,6 +1268,7 @@ dependencies = [
 name = "console-comms-rest"
 version = "0.1.0"
 dependencies = [
+ "aws-lc-rs",
  "axum",
  "base64 0.23.1",
  "console-comms-adapter-imap",
@@ -1273,6 +1282,7 @@ dependencies = [
  "console-kernel-core",
  "console-platform-auth",
  "console-platform-authz",
+ "console-platform-crypto",
  "console-platform-db",
  "console-platform-request-context",
  "console-platform-storage",
@@ -1282,7 +1292,6 @@ dependencies = [
  "serde",
  "serde_json",
  "sqlx 0.9.0",
- "subtle",
  "time",
  "tower",
  "tracing",
@@ -2967,6 +2976,7 @@ dependencies = [
  "serde_json",
  "time",
  "tokio",
+ "url",
 ]
 
 [[package]]
@@ -2975,6 +2985,7 @@ version = "0.1.0"
 dependencies = [
  "console-ops-domain",
  "serde",
+ "serde_json",
  "thiserror 2.0.21",
  "time",
 ]
@@ -2993,13 +3004,29 @@ dependencies = [
 name = "console-ops-rest"
 version = "0.1.0"
 dependencies = [
+ "aws-lc-rs",
+ "axum",
  "console-kernel-core",
+ "console-ops-adapter-fs",
+ "console-ops-adapter-http",
+ "console-ops-application",
+ "console-ops-domain",
  "console-platform-authz",
+ "futures",
  "hex",
+ "http",
+ "jsonwebtoken",
+ "metrics",
+ "p256",
+ "reqwest",
  "serde",
  "serde_json",
- "sha2 0.11.1",
  "time",
+ "tokio",
+ "tower",
+ "tower-http 0.7.1",
+ "tracing",
+ "url",
  "uuid",
 ]
 
@@ -3168,13 +3195,13 @@ dependencies = [
 name = "console-platform-audit-chain"
 version = "0.1.0"
 dependencies = [
+ "aws-lc-rs",
  "console-kernel-core",
  "console-platform-db",
  "console-platform-request-context",
  "console-platform-test-support",
  "futures",
  "hex",
- "ring",
  "serde",
  "serde_json",
  "sha2 0.11.1",
@@ -3190,6 +3217,7 @@ dependencies = [
 name = "console-platform-auth"
 version = "0.1.0"
 dependencies = [
+ "aws-lc-rs",
  "base64 0.23.1",
  "console-kernel-core",
  "console-platform-db",
@@ -3198,9 +3226,9 @@ dependencies = [
  "metrics",
  "openssl",
  "p256",
+ "secrecy",
  "serde",
  "serde_json",
- "sha2 0.11.1",
  "sqlx 0.9.0",
  "thiserror 2.0.21",
  "time",
@@ -3211,18 +3239,20 @@ dependencies = [
  "webauthn-authenticator-rs",
  "webauthn-rs",
  "webauthn-rs-proto",
+ "zeroize",
 ]
 
 [[package]]
 name = "console-platform-auth-rest"
 version = "0.1.0"
 dependencies = [
+ "aws-lc-rs",
  "axum",
+ "base64 0.23.1",
  "console-kernel-core",
  "console-platform-auth",
  "console-platform-authz",
  "console-platform-db",
- "console-platform-email",
  "console-platform-group",
  "console-platform-provisioning",
  "console-platform-request-context",
@@ -3231,7 +3261,6 @@ dependencies = [
  "p256",
  "serde",
  "serde_json",
- "sha2 0.11.1",
  "sqlx 0.9.0",
  "thiserror 2.0.21",
  "time",
@@ -3241,6 +3270,7 @@ dependencies = [
  "url",
  "uuid",
  "webauthn-authenticator-rs",
+ "zeroize",
 ]
 
 [[package]]
@@ -3289,14 +3319,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "console-platform-crypto"
+version = "0.1.0"
+dependencies = [
+ "aws-lc-rs",
+ "base64 0.23.1",
+ "reqwest",
+ "secrecy",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "uuid",
+ "zeroize",
+]
+
+[[package]]
 name = "console-platform-db"
 version = "0.1.0"
 dependencies = [
+ "aws-lc-rs",
  "console-compliance-domain",
  "console-kernel-core",
  "console-platform-authz",
+ "console-platform-crypto",
  "console-settings-domain",
  "hex",
+ "secrecy",
  "serde",
  "serde_json",
  "sha2 0.11.1",
@@ -3306,6 +3355,7 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid",
+ "zeroize",
 ]
 
 [[package]]
@@ -3406,22 +3456,27 @@ dependencies = [
 name = "console-platform-provisioning"
 version = "0.1.0"
 dependencies = [
+ "aws-lc-rs",
+ "base64 0.23.1",
  "console-kernel-core",
  "console-platform-auth",
  "console-platform-authz",
  "console-platform-db",
+ "console-platform-storage",
  "console-platform-test-support",
  "console-settings-domain",
+ "secrecy",
  "serde",
  "serde_json",
- "sha2 0.11.1",
  "sqlx 0.9.0",
  "thiserror 2.0.21",
  "time",
  "tokio",
+ "tracing",
  "url",
  "uuid",
  "webauthn-authenticator-rs",
+ "zeroize",
 ]
 
 [[package]]
@@ -4925,9 +4980,9 @@ checksum = "00b0228411908ca8685dba7fc2cdd70ec9990a6e753e89b6ac91a84c40fbaf4b"
 
 [[package]]
 name = "form_urlencoded"
-version = "1.2.2"
+version = "1.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb4cb245038516f5f85277875cdaa4f7d2c9a0fa0468de06ed190163b1581fcf"
+checksum = "afa489199eaffb1211795df1c6236ce1ad0d41a6fa45250add73e3b02420f06e"
 dependencies = [
  "percent-encoding",
 ]
@@ -9149,9 +9204,9 @@ checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
 
 [[package]]
 name = "url"
-version = "2.5.8"
+version = "2.5.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff67a8a4397373c3ef660812acab3268222035010ab8680ec4215f38ba3d0eed"
+checksum = "f00cd2407bb42c0ef17be88d4cf020f5cceffd121665bac9b8b9493a369b3b1a"
 dependencies = [
  "form_urlencoded",
  "idna",

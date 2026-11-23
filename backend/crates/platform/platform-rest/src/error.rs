@@ -78,6 +78,24 @@ impl PlatformError {
                 code,
                 code,
             ),
+            ProvisioningError::PlatformOperator(code) => {
+                let err = Self::new(
+                    if matches!(code, "forbidden" | "cannot_revoke_self") {
+                        StatusCode::FORBIDDEN
+                    } else if code == "unauthorized" {
+                        StatusCode::UNAUTHORIZED
+                    } else {
+                        StatusCode::CONFLICT
+                    },
+                    code,
+                    code,
+                );
+                if code == "login_taken" {
+                    err.on("login")
+                } else {
+                    err
+                }
+            }
             // Caller-facing input problems map to 422; everything else is logged
             // and collapsed to a generic 500 so no DB/constraint detail leaks.
             ProvisioningError::InvalidRoster(message) => Self::validation(message),

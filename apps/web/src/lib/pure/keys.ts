@@ -41,6 +41,7 @@ export const KEYMAP = {
   "registerRun.next": { keys: ["Mod+Enter"], scope: "page", inField: true, inDialog: true },
   "registerRun.finish": { keys: ["Mod+Shift+Enter"], scope: "page", inField: true, inDialog: true },
   "registerSheet.save": { keys: ["Mod+Shift+Enter"], scope: "region", inField: true },
+  "shell.search": { keys: ["/"], scope: "page" },
 } as const satisfies Record<string, Binding>;
 
 export type KeyId = keyof typeof KEYMAP;
@@ -86,6 +87,16 @@ export function pick(e: KeyEventLike, ids: readonly KeyId[], at: KeyContext, map
     if (chord && !(b.scope === "page" && !at.singleKeys && /^(Shift\+)?.$/u.test(chord))) return { id, chord };
   }
   return null;
+}
+
+type NavigatorLike = { platform?: string; userAgent?: string; userAgentData?: { platform?: string } };
+
+/** Formats a `Mod` key hint for the current platform (`"⌘↵"` on Apple, `"Ctrl+↵"` elsewhere). */
+export function modChord(key: string, source?: boolean | NavigatorLike): string {
+  const apple = typeof source === "boolean"
+    ? source
+    : /mac|iphone|ipad|ipod|\bios\b/i.test(source?.userAgentData?.platform || source?.platform || source?.userAgent || "");
+  return apple ? `⌘${key}` : `Ctrl+${key}`;
 }
 
 /** Pairs of ids on one screen that share a chord. */

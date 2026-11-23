@@ -16,3 +16,8 @@
 .termsText { white-space: pre-wrap; overflow-wrap: anywhere; }
 /* Keep long terms readable without moving the page actions out of view. */
 .termsRead { height: min(45dvh, calc(var(--row-h) * 7)); overflow: auto; }
+.statsWrap { min-width: 0; }
+:where([data-experience]:not([data-experience="baseline"])) .statsWrap dl dt { white-space: normal; overflow: visible; text-overflow: clip; line-height: var(--lh-tight); }
+@media (--phone) {
+  :where([data-experience]:not([data-experience="baseline"])) .statsWrap dl > div:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}

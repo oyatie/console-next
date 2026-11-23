@@ -7,6 +7,7 @@ import { Button, Form } from "../../../ui/button/button";
 import { Dialog } from "../../../ui/dialog";
 import { Field, TextInput } from "../../../ui/field/field";
 import { updateName } from "../api";
+import s from "./account.module.css";
 
 /** Display names are user-chosen in both realms; the server validates and audits the same self-profile command. */
 export function ProfileName({ current }: { current: string }) {
@@ -15,7 +16,7 @@ export function ProfileName({ current }: { current: string }) {
   const save = useCommand({ run: updateName, invalidates: ["/api/v1/users/me", "/api/platform/users/me"],
     onSuccess: () => setOpen(false), announce: () => t("account.name.saved") });
   return <>
-    <Button variant="ghost" onClick={() => { setName(current); setOpen(true); }}>{t("account.name.edit")}</Button>
+    <Button variant="ghost" className={s.actionBtn} onClick={() => { setName(current); setOpen(true); }}>{t("account.name.edit")}</Button>
     <Dialog open={open} title={t("account.name.edit")} onClose={() => setOpen(false)}>
       <Form aria-busy={save.isSending} onSubmit={() => {
         if (save.isPending) return;

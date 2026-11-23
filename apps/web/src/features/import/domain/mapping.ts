@@ -1,6 +1,7 @@
 // How the operator tells the server where a sheet's header is and what each column is (IMPORT-2 `mapping`), sent with
 // the file again. Only sheets the operator edited are sent; the server detects the rest on its own.
 import type { ImportSheet } from "./contract";
+import { isAllowedTargetForHeader } from "./restricted";
 
 export type SheetMapping = { header_row?: number; columns?: Record<string, string | null>; skip?: boolean };
 export type Mapping = Record<string, SheetMapping>;
@@ -14,7 +15,13 @@ export const mappingJson = (m: Mapping) => (Object.keys(m).length ? JSON.stringi
 /** A header row's label cells: the served columns at the detected row, else the candidate row's cells (nothing mapped yet). */
 export function columnsAt(s: ImportSheet, row: number | null): DraftColumn[] {
   if (row == null) return [];
-  if (row === s.header_row && s.columns?.length) return s.columns.map((c) => ({ column: c.column, label: c.label, target: c.target ?? null }));
+  if (row === s.header_row && s.columns?.length) {
+    return s.columns.map((c) => ({
+      column: c.column,
+      label: c.label,
+      target: c.target && isAllowedTargetForHeader(c.label, c.target) ? c.target : null,
+    }));
+  }
   const cand = s.header_candidates?.find((c) => c.row === row);
   return (cand?.cells ?? []).map((c) => ({ column: c.column, label: c.label, target: null }));
 }
@@ -32,11 +39,12 @@ export const withTarget = (d: Draft, column: string, target: string | null): Dra
   columns: d.columns.map((c) => (c.column === column ? { ...c, target } : c)),
 });
 
-export type DraftProblem = "header" | "name" | "duplicate";
-/** Why a draft cannot be sent yet (the server refuses the same: mapping_header_row_required, _name_required, _duplicate_target). */
+export type DraftProblem = "header" | "name" | "duplicate" | "restricted";
+/** Why a draft cannot be sent yet (the server refuses the same: mapping_header_row_required, _name_required, _duplicate_target, mapping_restricted_column). */
 export function draftProblem(d: Draft): DraftProblem | null {
   if (d.skip) return null;
   if (d.header_row == null) return "header";
+  if (d.columns.some((c) => !isAllowedTargetForHeader(c.label, c.target))) return "restricted";
   const targets = d.columns.map((c) => c.target).filter((x): x is string => x != null);
   if (!targets.includes("name")) return "name";
   if (new Set(targets).size !== targets.length) return "duplicate";

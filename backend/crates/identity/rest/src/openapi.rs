@@ -19,9 +19,13 @@ pub const OPENAPI_FRAGMENT: Fragment = Fragment {
 const EXTERNAL_SCHEMAS: &[&str] = &[
     "ActorKind",
     "AuditLastChange",
+    "Certificate",
+    "CertificatePage",
+    "ChangeRequest",
     "Date",
     "ErrorBody",
     "FieldError",
+    "KrAddress",
     "MobilePasskeyStepUpBinding",
     "MobilePasskeyStepUpEnvelope",
     "MobileStepUpActionKind",
@@ -149,6 +153,33 @@ const PATHS: &[PathItem] = &[
                 ),
             },
         ],
+    },
+    PathItem {
+        path: "/api/platform/operators",
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!("../openapi/paths/api__platform__operators.get.yaml"),
+            },
+            Operation {
+                method: "post",
+                body: include_str!("../openapi/paths/api__platform__operators.post.yaml"),
+            },
+        ],
+    },
+    PathItem {
+        path: "/api/platform/operators/{id}/reissue",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!("../openapi/paths/api__platform__operators__id__reissue.post.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/platform/operators/{id}/revoke",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!("../openapi/paths/api__platform__operators__id__revoke.post.yaml"),
+        }],
     },
     PathItem {
         path: "/api/platform/ops",
@@ -332,6 +363,42 @@ const PATHS: &[PathItem] = &[
         operations: &[Operation {
             method: "get",
             body: include_str!("../openapi/paths/api__v1__access__access-log.get.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/access/access-log/reviews/{period}",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../openapi/paths/api__v1__access__access-log__reviews__period.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/access/access-log/reviews/{period}/complete",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__access__access-log__reviews__period__complete.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/access/access-log/reviews/{period}/findings",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__access__access-log__reviews__period__findings.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/access/access-log/reviews/{period}/start",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__access__access-log__reviews__period__start.post.yaml"
+            ),
         }],
     },
     PathItem {
@@ -629,13 +696,6 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
-        path: "/api/v1/auth/signup",
-        operations: &[Operation {
-            method: "post",
-            body: include_str!("../openapi/paths/api__v1__auth__signup.post.yaml"),
-        }],
-    },
-    PathItem {
         path: "/api/v1/auth/token/refresh",
         operations: &[Operation {
             method: "post",
@@ -745,6 +805,13 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/me/access-log",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__me__access-log.get.yaml"),
+        }],
+    },
+    PathItem {
         path: "/api/v1/me/action-inbox",
         operations: &[Operation {
             method: "get",
@@ -808,6 +875,26 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/me/certificates",
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!("../openapi/paths/api__v1__me__certificates.get.yaml"),
+            },
+            Operation {
+                method: "post",
+                body: include_str!("../openapi/paths/api__v1__me__certificates.post.yaml"),
+            },
+        ],
+    },
+    PathItem {
+        path: "/api/v1/me/certificates/{id}",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__me__certificates__id.get.yaml"),
+        }],
+    },
+    PathItem {
         path: "/api/v1/me/employee-views",
         operations: &[
             Operation {
@@ -819,6 +906,33 @@ const PATHS: &[PathItem] = &[
                 body: include_str!("../openapi/paths/api__v1__me__employee-views.post.yaml"),
             },
         ],
+    },
+    PathItem {
+        path: "/api/v1/me/profile",
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!("../openapi/paths/api__v1__me__profile.get.yaml"),
+            },
+            Operation {
+                method: "patch",
+                body: include_str!("../openapi/paths/api__v1__me__profile.patch.yaml"),
+            },
+        ],
+    },
+    PathItem {
+        path: "/api/v1/me/profile/change-requests",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!("../openapi/paths/api__v1__me__profile__change-requests.post.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/me/profile/reveal",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!("../openapi/paths/api__v1__me__profile__reveal.post.yaml"),
+        }],
     },
     PathItem {
         path: "/api/v1/me/workbench",
@@ -1334,6 +1448,10 @@ const SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../openapi/schemas/AccessLogPage.yaml"),
     },
     NamedYaml {
+        name: "AccessLogReview",
+        body: include_str!("../openapi/schemas/AccessLogReview.yaml"),
+    },
+    NamedYaml {
         name: "AccessPerson",
         body: include_str!("../openapi/schemas/AccessPerson.yaml"),
     },
@@ -1566,6 +1684,10 @@ const SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../openapi/schemas/EnrollHandoffResponse.yaml"),
     },
     NamedYaml {
+        name: "InvitePlatformOperatorRequest",
+        body: include_str!("../openapi/schemas/InvitePlatformOperatorRequest.yaml"),
+    },
+    NamedYaml {
         name: "LogoutRequest",
         body: include_str!("../openapi/schemas/LogoutRequest.yaml"),
     },
@@ -1578,12 +1700,24 @@ const SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../openapi/schemas/MeAuthzResponse.yaml"),
     },
     NamedYaml {
+        name: "MeProfileResponse",
+        body: include_str!("../openapi/schemas/MeProfileResponse.yaml"),
+    },
+    NamedYaml {
         name: "MobilePasskeyStepUpStartRequest",
         body: include_str!("../openapi/schemas/MobilePasskeyStepUpStartRequest.yaml"),
     },
     NamedYaml {
         name: "MobilePasskeyStepUpStartResponse",
         body: include_str!("../openapi/schemas/MobilePasskeyStepUpStartResponse.yaml"),
+    },
+    NamedYaml {
+        name: "MyAccessLogEvent",
+        body: include_str!("../openapi/schemas/MyAccessLogEvent.yaml"),
+    },
+    NamedYaml {
+        name: "MyAccessLogPage",
+        body: include_str!("../openapi/schemas/MyAccessLogPage.yaml"),
     },
     NamedYaml {
         name: "MyWorkbenchResponse",
@@ -1680,6 +1814,18 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "PlatformGroupRole",
         body: include_str!("../openapi/schemas/PlatformGroupRole.yaml"),
+    },
+    NamedYaml {
+        name: "PlatformOperatorInviteResponse",
+        body: include_str!("../openapi/schemas/PlatformOperatorInviteResponse.yaml"),
+    },
+    NamedYaml {
+        name: "PlatformOperatorStatus",
+        body: include_str!("../openapi/schemas/PlatformOperatorStatus.yaml"),
+    },
+    NamedYaml {
+        name: "PlatformOperatorSummary",
+        body: include_str!("../openapi/schemas/PlatformOperatorSummary.yaml"),
     },
     NamedYaml {
         name: "PlatformOpsResponse",
@@ -1834,8 +1980,16 @@ const SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../openapi/schemas/RegionSummary.yaml"),
     },
     NamedYaml {
+        name: "ReissuePlatformOperatorInviteRequest",
+        body: include_str!("../openapi/schemas/ReissuePlatformOperatorInviteRequest.yaml"),
+    },
+    NamedYaml {
         name: "ReplacePolicyRoleAssignmentsRequest",
         body: include_str!("../openapi/schemas/ReplacePolicyRoleAssignmentsRequest.yaml"),
+    },
+    NamedYaml {
+        name: "RevokePlatformOperatorRequest",
+        body: include_str!("../openapi/schemas/RevokePlatformOperatorRequest.yaml"),
     },
     NamedYaml {
         name: "RouteAdoptionMetric",
@@ -1862,6 +2016,38 @@ const SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../openapi/schemas/SelfBindingWithdrawRequest.yaml"),
     },
     NamedYaml {
+        name: "CreateSelfChangeRequest",
+        body: include_str!("../openapi/schemas/CreateSelfChangeRequest.yaml"),
+    },
+    NamedYaml {
+        name: "SelfChangeRequestSummary",
+        body: include_str!("../openapi/schemas/SelfChangeRequestSummary.yaml"),
+    },
+    NamedYaml {
+        name: "SelfEmergencyContactInput",
+        body: include_str!("../openapi/schemas/SelfEmergencyContactInput.yaml"),
+    },
+    NamedYaml {
+        name: "SelfEmergencyContactSummary",
+        body: include_str!("../openapi/schemas/SelfEmergencyContactSummary.yaml"),
+    },
+    NamedYaml {
+        name: "SelfFieldRevealed",
+        body: include_str!("../openapi/schemas/SelfFieldRevealed.yaml"),
+    },
+    NamedYaml {
+        name: "SelfIssueCertificateRequest",
+        body: include_str!("../openapi/schemas/SelfIssueCertificateRequest.yaml"),
+    },
+    NamedYaml {
+        name: "SelfRevealRequest",
+        body: include_str!("../openapi/schemas/SelfRevealRequest.yaml"),
+    },
+    NamedYaml {
+        name: "UpdateMeProfileRequest",
+        body: include_str!("../openapi/schemas/UpdateMeProfileRequest.yaml"),
+    },
+    NamedYaml {
         name: "SetAccessRoleStatusRequest",
         body: include_str!("../openapi/schemas/SetAccessRoleStatusRequest.yaml"),
     },
@@ -1872,14 +2058,6 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "SignInIdRecord",
         body: include_str!("../openapi/schemas/SignInIdRecord.yaml"),
-    },
-    NamedYaml {
-        name: "SignupRequest",
-        body: include_str!("../openapi/schemas/SignupRequest.yaml"),
-    },
-    NamedYaml {
-        name: "SignupResponse",
-        body: include_str!("../openapi/schemas/SignupResponse.yaml"),
     },
     NamedYaml {
         name: "SimulationOutcome",

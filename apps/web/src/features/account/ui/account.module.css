@@ -1,10 +1,30 @@
-/* features/account: one readable column; dates and buttons in table cells never wrap (a reason under a button may). */
+/* features/account: one readable column; action controls never wrap vertically. */
 .column { max-width: calc(var(--panel-w) * 2); }
 .nowrap { white-space: nowrap; }
-/* A padded block inside the flush passkeys card, above and below its table. */
-.pad { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) var(--space-4); }
-/* Phone widths: wrapping beats a sideways scroll. Tripled class: outranks DisabledReason's doubled `.off.off` nowrap. */
+.actionBtn { white-space: nowrap; flex-shrink: 0; }
+.plainLink { text-decoration: none; }
+.plainLink:hover, .plainLink:focus-visible { text-decoration: underline; }
+.privacyLink { display: flex; align-items: center; gap: var(--space-3); width: 100%; min-width: 0; }
+.privacyLink > svg { flex: none; }
+.privacyLabel { min-width: 0; flex: 1; }
+/* A padded block inside flush Hub sections and passkeys list. */
+.pad { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) var(--space-4); min-width: 0; }
+.identityHead { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; min-width: 0; }
+.editRow { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-width: 0; }
+.editRowBody { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; flex: 1; }
+.editRowActions { display: flex; align-items: center; gap: var(--space-1-5); flex: none; }
+.fieldChips { display: flex; align-items: center; gap: var(--space-1-5); flex-wrap: wrap; min-width: 0; }
+.logRow { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.logIcon { flex: none; }
+.logBody { display: flex; flex-direction: column; gap: var(--space-half); min-width: 0; }
+/* Phone widths: date cells may wrap while action controls stay single-line. */
 @media (max-width: 767px) { .nowrap.nowrap.nowrap { white-space: normal; } }
 
 .notice { white-space: pre-wrap; overflow-wrap: anywhere; }
-.form { display: flex; flex-direction: column; gap: var(--space-4); }
+.form { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+:where([data-experience]:not([data-experience="baseline"])) .form { max-width: var(--card-w); }
+.contactGroup { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.contactRowHead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); min-width: 0; }
+.checkList { display: flex; flex-direction: column; gap: var(--space-1-5); }
+.viewsNav { align-items: stretch; gap: var(--space-1); }
+.consoleSections { display: flex; flex-direction: column; min-width: 0; }

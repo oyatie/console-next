@@ -95,3 +95,8 @@ test("an unrouted answer removes stale approval content", () => {
   expect(html).not.toContain("stale route");
   expect(html).toContain("승인 없이");
 });
+
+test("SSR commit button renders the non-Apple Ctrl+Enter shortcut hint", () => {
+  const html = renderToStaticMarkup(<Composer layout="inline" title="Transfer" action={{ kind: "TRANSFER", mode: "apply", count: 1 }} onSubmit={() => {}}>{null}</Composer>);
+  expect(html).toMatch(/<kbd[^>]*>Ctrl\+↵<\/kbd>/);
+});

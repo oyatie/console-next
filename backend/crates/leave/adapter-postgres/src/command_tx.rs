@@ -149,6 +149,8 @@ pub(super) fn map_leave_command_sqlx(error: sqlx::Error) -> PgLeaveError {
                 .with_code("home_branch_not_workplace"),
         ),
         "leave_create.home_branch_required" => PgLeaveError::MissingHomeBranch,
+        "leave_create.overlapping_request" => PgLeaveError::OverlappingRequest,
+        "leave_create.period_closed" => PgLeaveError::PeriodClosed,
         "leave_resolve.concurrent_modification"
         | "leave_decide.concurrent_modification"
         | "leave_home_branch.concurrent_modification"
@@ -162,10 +164,12 @@ pub(super) fn map_leave_command_sqlx(error: sqlx::Error) -> PgLeaveError {
         | "employee_create.active_branch_required" => {
             PgLeaveError::Domain(KernelError::not_found(message.to_owned()))
         }
+        "leave_create.idempotency_conflict" => PgLeaveError::Domain(
+            KernelError::conflict(message.to_owned()).with_code("leave_create.idempotency_conflict"),
+        ),
         "leave_resolve.not_pending"
         | "leave_decide.not_pending"
         | "employee_import_batch.run_not_dry_run"
-        | "leave_create.idempotency_conflict"
         | "employee_create.idempotency_conflict"
         | "employee_create.employee_number_conflict"
         | "leave_balance_import.idempotency_conflict"

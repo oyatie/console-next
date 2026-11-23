@@ -18,6 +18,9 @@ use std::sync::Arc;
 mod admission;
 mod command_tx;
 mod queue_visibility;
+mod self_service;
+#[path = "self_service_errors.rs"]
+mod self_service_errors;
 use command_tx::map_leave_command_sqlx;
 
 use console_inbox_application::{EmitInboxDocCommand, InboxDocSink};
@@ -30,10 +33,10 @@ use console_leave_application::{
     ImportEmployeeLeaveBalanceCommand, ImportEmployeeLeaveBalanceResult, LeaveBalancePage,
     LeaveBalanceTone, LeaveBalanceView, LeaveChargeResolutionView, LeaveRequestPage,
     LeaveRequestView, ListLeaveRequestsQuery, ListSelfLeaveRequestsQuery,
-    ProposeAlternateDatesCommand, ResolveLeaveChargeCommand, ResolveLeaveChargeQuery,
-    SelfLeaveBalanceView, SelfLeaveFilingState, StatutoryPushCommand, StatutoryPushView,
-    WorkCalendarPort, leave_promotion_audit_event,
+    ProposeAlternateDatesCommand, ResolveLeaveChargeCommand, SelfLeaveBalanceView,
+    SelfLeaveFilingState, StatutoryPushCommand, StatutoryPushView, leave_promotion_audit_event,
 };
+pub use console_leave_application::{LeaveChargeFuture, ResolveLeaveChargeQuery, WorkCalendarPort};
 use console_leave_domain::{
     LeaveBalanceAmount, LeaveChargeAssessment, LeaveChargeResolutionOrigin,
     LeaveChargeReviewReason, LeaveChargeState, LeaveDateCharge, LeaveStatus, LeaveType, LeaveUnits,
@@ -96,6 +99,12 @@ pub enum PgLeaveError {
     #[error("active employee has no explicit home branch")]
     MissingHomeBranch,
 
+    #[error("leave request overlaps an existing pending or approved leave request")]
+    OverlappingRequest,
+
+    #[error("leave request covers a closed attendance or payroll period")]
+    PeriodClosed,
+
     #[error("leave charge requires review before approval: {0:?}")]
     ChargeReviewRequired(Vec<LeaveChargeReviewReason>),
 
@@ -109,13 +118,7 @@ pub enum PgLeaveError {
 impl PgLeaveError {
     #[must_use]
     pub fn kind(&self) -> ErrorKind {
-        match self {
-            Self::Domain(err) => err.kind,
-            Self::MissingHomeBranch | Self::ChargeReviewRequired(_) => ErrorKind::Conflict,
-            Self::ConcurrentModification => ErrorKind::Conflict,
-            Self::CommandUnavailable => ErrorKind::Internal,
-            Self::Db(error) => error.kind(),
-        }
+        self_service_errors::error_kind(self)
     }
 }
 
@@ -127,22 +130,7 @@ impl From<sqlx::Error> for PgLeaveError {
 
 impl From<PgLeaveError> for KernelError {
     fn from(value: PgLeaveError) -> Self {
-        match value {
-            PgLeaveError::Domain(err) => err,
-            PgLeaveError::Db(err) => KernelError::internal(format!("{err:?}")),
-            PgLeaveError::MissingHomeBranch => {
-                KernelError::conflict("active employee has no explicit home branch")
-            }
-            PgLeaveError::ChargeReviewRequired(_) => {
-                KernelError::conflict("leave charge requires review before approval")
-            }
-            PgLeaveError::ConcurrentModification => {
-                KernelError::conflict("leave request version changed concurrently")
-            }
-            PgLeaveError::CommandUnavailable => {
-                KernelError::internal("leave command database capability is unavailable")
-            }
-        }
+        self_service_errors::into_kernel(value)
     }
 }
 
@@ -711,9 +699,11 @@ impl PgLeaveStore {
             })
         })
         .await?;
+        let org_unit = self.resolve_self_org_unit(org, employee_id).await?;
         Ok(SelfLeaveBalanceView {
             employee_id: row.try_get("id")?,
             name: row.try_get("name")?,
+            org_unit,
             accrued_units: optional_units(&row, "accrued_micros")?,
             used_units: optional_units(&row, "used_micros")?,
             remaining_units: optional_units(&row, "remaining_micros")?,

@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required:
+- name
+- relation
+- phone_masked
+properties:
+  name:
+    type: string
+  relation:
+    type: string
+    enum: [SPOUSE, PARENT, CHILD, SIBLING, RELATIVE, OTHER]
+  phone_masked:
+    type: string

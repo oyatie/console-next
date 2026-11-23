@@ -2,8 +2,10 @@
 
 use axum::Json;
 use axum::extract::{Extension, Path, Query, State};
-use axum::http::StatusCode;
-use console_platform_access::{GrantOut, RoleOut, effective, grants, notice, requests, roles};
+use axum::http::{HeaderMap, StatusCode};
+use console_platform_access::{
+    GrantOut, RoleOut, effective, grants, log_review::record, notice, requests, roles,
+};
 use console_platform_authz::Principal;
 use serde_json::Value;
 use uuid::Uuid;
@@ -14,6 +16,14 @@ use crate::error::ApiResult;
 type P = Extension<Principal>;
 type S = State<AccessRestState>;
 
+fn idempotency_key(headers: &HeaderMap) -> String {
+    headers
+        .get("idempotency-key")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or_default()
+        .to_owned()
+}
+
 pub(crate) async fn access_log(
     State(s): S,
     Extension(p): P,
@@ -21,6 +31,50 @@ pub(crate) async fn access_log(
 ) -> ApiResult<Json<Value>> {
     Ok(Json(
         console_platform_access::log_review::feed::get(&s.service, p, q).await?,
+    ))
+}
+
+pub(crate) async fn get_access_log_review(
+    State(s): S,
+    Extension(p): P,
+    Path(period): Path<String>,
+) -> ApiResult<Json<Value>> {
+    Ok(Json(record::get(&s.service, p, period).await?))
+}
+
+pub(crate) async fn start_access_log_review(
+    State(s): S,
+    Extension(p): P,
+    Path(period): Path<String>,
+    headers: HeaderMap,
+) -> ApiResult<Json<Value>> {
+    Ok(Json(
+        record::start(&s.service, p, period, idempotency_key(&headers)).await?,
+    ))
+}
+
+pub(crate) async fn record_access_log_finding(
+    State(s): S,
+    Extension(p): P,
+    Path(period): Path<String>,
+    headers: HeaderMap,
+    Json(body): Json<record::FindingInput>,
+) -> ApiResult<Json<Value>> {
+    Ok(Json(
+        record::finding(&s.service, p, period, idempotency_key(&headers), body).await?,
+    ))
+}
+
+pub(crate) async fn complete_access_log_review(
+    State(s): S,
+    Extension(p): P,
+    Path(period): Path<String>,
+    headers: HeaderMap,
+    body: Option<Json<record::CompleteInput>>,
+) -> ApiResult<Json<Value>> {
+    let step_up = body.and_then(|b| b.0.step_up);
+    Ok(Json(
+        record::complete(&s.service, p, period, idempotency_key(&headers), step_up).await?,
     ))
 }
 

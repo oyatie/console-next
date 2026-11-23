@@ -7,11 +7,8 @@ use console_platform_auth::JwtVerifier;
 use console_platform_auth::PasskeyService;
 use console_platform_auth::RefreshTokenStore;
 use console_platform_auth::WebauthnSettings;
-use console_platform_email::DisabledEmailSender;
-use console_platform_email::EmailSender;
 use console_platform_provisioning::BootstrapCredentialStore;
 use sqlx::PgPool;
-use std::sync::Arc;
 use time::Duration;
 use url::Url;
 
@@ -44,10 +41,6 @@ pub(crate) struct AuthServices {
     pub(crate) rp_origin: Url,
     pub(crate) refresh_token_ttl: Duration,
     pub(crate) refresh_family_absolute_ttl: Duration,
-    /// Outbound OTP email sender for open self-service signup (#38). Always
-    /// present: live SMTP, an explicitly configured non-prod stub, or a disabled
-    /// fail-closed sender that never logs OTPs.
-    pub(crate) email_sender: Arc<dyn EmailSender>,
 }
 
 impl AuthRestState {
@@ -83,6 +76,10 @@ impl AuthRestState {
         )?;
         let jwt_verifier =
             JwtVerifier::from_es256_public_pem(jwt_settings, config.jwt_public_key_pem.as_bytes())?;
+        #[cfg(debug_assertions)]
+        let bootstrap_credentials = BootstrapCredentialStore::default();
+        #[cfg(not(debug_assertions))]
+        let bootstrap_credentials = BootstrapCredentialStore::unconfigured();
 
         Ok(Self {
             pool,
@@ -91,24 +88,22 @@ impl AuthRestState {
                 jwt_issuer,
                 jwt_verifier,
                 refresh_tokens: RefreshTokenStore,
-                bootstrap_credentials: BootstrapCredentialStore,
+                bootstrap_credentials,
                 rp_origin: handoff_origin,
                 refresh_token_ttl: config.refresh_token_ttl,
                 refresh_family_absolute_ttl: config.refresh_family_absolute_ttl,
-                // Fail closed by default; the composition root installs live SMTP
-                // or an explicit non-prod logging stub via `with_email_sender`.
-                email_sender: Arc::new(DisabledEmailSender),
             }),
         })
     }
 
-    /// Install the outbound OTP email sender used by the open-signup endpoint.
-    /// The composition root calls this with the app's `Arc<dyn EmailSender>`
-    /// (live SMTP or the logging stub). A no-op when auth services are disabled.
+    /// Install the bootstrap credential store carrying the deployment OTP HMAC key.
     #[must_use]
-    pub fn with_email_sender(mut self, email_sender: Arc<dyn EmailSender>) -> Self {
+    pub fn with_bootstrap_credentials(
+        mut self,
+        bootstrap_credentials: BootstrapCredentialStore,
+    ) -> Self {
         if let Some(services) = self.services.as_mut() {
-            services.email_sender = email_sender;
+            services.bootstrap_credentials = bootstrap_credentials;
         }
         self
     }

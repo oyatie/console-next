@@ -1,7 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use std::future::Future;
-use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
 use axum::body::{Body, to_bytes};
@@ -11,7 +9,7 @@ use console_platform_db::{DbError, with_audit};
 use console_platform_jobs::{BoxFuture, JobId, JobQueue, JobQueueError, JobRequest};
 use console_platform_storage::{
     CopyObjectRequest, EvidenceService, ObjectHead, PresignGetRequest, PresignPutRequest,
-    PresignedUpload, RetentionInfo, S3ObjectStore, StorageError, StorageFuture,
+    PresignedUpload, RetentionInfo, S3ObjectStore, StorageFuture,
 };
 use console_platform_test_support::runtime_role_pool;
 use console_workorder_adapter_postgres::PgWorkOrderStore;
@@ -38,8 +36,8 @@ use mobile_evidence_fixtures::{
 const TEST_ISSUER: &str = "console-platform-auth";
 const TEST_AUDIENCE: &str = "console-api";
 
-#[derive(Debug, Clone)]
-struct StaticObjectStore;
+#[derive(Debug, Clone, Default)]
+struct StaticObjectStore(Arc<Mutex<Option<OffsetDateTime>>>);
 
 impl S3ObjectStore for StaticObjectStore {
     fn presign_put(&self, request: PresignPutRequest) -> StorageFuture<'_, PresignedUpload> {
@@ -65,8 +63,11 @@ impl S3ObjectStore for StaticObjectStore {
         })
     }
 
-    fn copy_object(&self, _request: CopyObjectRequest) -> StorageFuture<'_, ()> {
-        Box::pin(async { Ok(()) })
+    fn copy_object(&self, request: CopyObjectRequest) -> StorageFuture<'_, ()> {
+        Box::pin(async move {
+            *self.0.lock().unwrap() = request.retain_until;
+            Ok(())
+        })
     }
 
     fn head_object(&self, _bucket: String, _key: String) -> StorageFuture<'_, ObjectHead> {
@@ -76,7 +77,7 @@ impl S3ObjectStore for StaticObjectStore {
                 e_tag: Some("\"etag\"".to_owned()),
                 checksum_sha256: None,
                 object_lock_mode: Some("COMPLIANCE".to_owned()),
-                retain_until: Some("2026-06-13T00:00:00Z".to_owned()),
+                retain_until: None,
             })
         })
     }
@@ -85,20 +86,20 @@ impl S3ObjectStore for StaticObjectStore {
         &self,
         _bucket: String,
         _key: String,
-    ) -> Pin<Box<dyn Future<Output = Result<RetentionInfo, StorageError>> + Send + '_>> {
+    ) -> StorageFuture<'_, RetentionInfo> {
         Box::pin(async {
             Ok(RetentionInfo {
                 mode: Some("COMPLIANCE".to_owned()),
-                retain_until: Some("2026-06-13T00:00:00Z".to_owned()),
+                retain_until: self
+                    .0
+                    .lock()
+                    .unwrap()
+                    .map(|date| date.format(&Rfc3339).unwrap()),
             })
         })
     }
 
-    fn get_object(
-        &self,
-        _bucket: String,
-        _key: String,
-    ) -> Pin<Box<dyn Future<Output = Result<Vec<u8>, StorageError>> + Send + '_>> {
+    fn get_object(&self, _bucket: String, _key: String) -> StorageFuture<'_, Vec<u8>> {
         Box::pin(async { Ok(b"original".to_vec()) })
     }
 
@@ -108,15 +109,11 @@ impl S3ObjectStore for StaticObjectStore {
         _key: String,
         _content_type: String,
         _body: Vec<u8>,
-    ) -> Pin<Box<dyn Future<Output = Result<(), StorageError>> + Send + '_>> {
+    ) -> StorageFuture<'_, ()> {
         Box::pin(async { Ok(()) })
     }
 
-    fn delete_object(
-        &self,
-        _bucket: String,
-        _key: String,
-    ) -> Pin<Box<dyn Future<Output = Result<(), StorageError>> + Send + '_>> {
+    fn delete_object(&self, _bucket: String, _key: String) -> StorageFuture<'_, ()> {
         Box::pin(async { Ok(()) })
     }
 }
@@ -159,7 +156,7 @@ async fn evidence_presign_confirm_flow_is_authorized_and_audited(pool: PgPool) {
         let rt_pool = runtime_role_pool(&pool).await;
         let evidence = EvidenceService::new(
             rt_pool.clone(),
-            StaticObjectStore,
+            StaticObjectStore::default(),
             "primary".to_owned(),
             "replica".to_owned(),
         );
@@ -287,7 +284,7 @@ async fn evidence_confirm_fails_when_post_replication_media_reload_fails(pool: P
         .unwrap();
         let evidence = EvidenceService::new(
             pool.clone(),
-            StaticObjectStore,
+            StaticObjectStore::default(),
             "primary".to_owned(),
             "replica".to_owned(),
         );
@@ -385,7 +382,7 @@ async fn presign_after_evidence_rejected_on_final_completed_work_order(pool: PgP
         let rt_pool = runtime_role_pool(&pool).await;
         let evidence = EvidenceService::new(
             rt_pool.clone(),
-            StaticObjectStore,
+            StaticObjectStore::default(),
             "primary".to_owned(),
             "replica".to_owned(),
         );
@@ -649,7 +646,7 @@ async fn evidence_staging_presign_creates_processing_row_and_enqueues_transcode(
         let rt_pool = runtime_role_pool(&pool).await;
         let evidence = EvidenceService::new(
             rt_pool.clone(),
-            StaticObjectStore,
+            StaticObjectStore::default(),
             "primary".to_owned(),
             "replica".to_owned(),
         );

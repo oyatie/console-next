@@ -100,6 +100,7 @@ export const koExit: Record<keyof typeof enExit, string> = {
   "exit.now": "지금 · {step}",
   "exit.next": "다음: {step}",
   "exit.next.mine": "내 차례",
+  "exit.next.current": "현재 단계",
   "exit.next.others": "권한이 있는 다른 사람",
   "exit.next.otherHq": "인사 확인자와 다른 사람",
   "exit.event.reported": "{actor}님이 {date}자 퇴직을 보고했습니다",

@@ -20,7 +20,7 @@ Detector fixtures retain historical defects after the product fixes them.
 | BranchScope | backend/app/src/action_inbox/response.rs | reference | 2 |
 | BranchScope | backend/app/src/action_inbox/sources/entity_corrections.rs | reference | 3 |
 | BranchScope | backend/app/src/action_inbox/sources/hr_followups.rs | reference | 1 |
-| BranchScope | backend/app/src/audit_api.rs | reference | 10 |
+| BranchScope | backend/app/src/audit_api.rs | reference | 9 |
 | BranchScope | backend/app/src/collaboration.rs | reference | 4 |
 | BranchScope | backend/app/src/entity_wiring/correction_register.rs | reference | 3 |
 | BranchScope | backend/app/src/entity_wiring/exceptions.rs | reference | 2 |
@@ -78,7 +78,6 @@ Detector fixtures retain historical defects after the product fixes them.
 | BranchScope | backend/crates/identity/rest/src/context.rs | reference | 1 |
 | BranchScope | backend/crates/identity/rest/src/me/authz.rs | reference | 17 |
 | BranchScope | backend/crates/identity/rest/src/me/platform.rs | reference | 2 |
-| BranchScope | backend/crates/identity/rest/src/me/routes.rs | reference | 2 |
 | BranchScope | backend/crates/identity/rest/src/metrics.rs | reference | 6 |
 | BranchScope | backend/crates/identity/rest/src/policy/assignments.rs | reference | 4 |
 | BranchScope | backend/crates/identity/rest/src/policy/delegation.rs | reference | 16 |
@@ -174,7 +173,7 @@ Detector fixtures retain historical defects after the product fixes them.
 | matrix | backend/app/src/action_inbox/sources/entity_corrections.rs | reference | 4 |
 | matrix | backend/app/src/action_inbox/sources/hr_lifecycle.rs | reference | 2 |
 | matrix | backend/app/src/action_inbox/sources/org_change.rs | reference | 2 |
-| matrix | backend/app/src/audit_api.rs | reference | 4 |
+| matrix | backend/app/src/audit_api.rs | reference | 2 |
 | matrix | backend/app/src/cedar_parity.rs | reference | 1 |
 | matrix | backend/app/src/entity_wiring/correction_register.rs | reference | 2 |
 | matrix | backend/app/src/entity_wiring/exceptions.rs | reference | 2 |
@@ -224,7 +223,7 @@ Detector fixtures retain historical defects after the product fixes them.
 | matrix | backend/crates/platform/authz/src/cedar_pbac/enforce.rs | reference | 1 |
 | matrix | backend/crates/platform/authz/src/cedar_pbac/mode_contract.rs | reference | 1 |
 | matrix | backend/crates/platform/authz/src/cedar_pbac/mode_contract/fail_closed.rs | reference | 3 |
-| matrix | backend/crates/platform/platform-rest/src/groups.rs | reference | 4 |
+| matrix | backend/crates/platform/platform-rest/src/groups.rs | reference | 1 |
 | matrix | backend/crates/platform/platform-rest/src/lib.rs | reference | 2 |
 | matrix | backend/crates/platform/platform-rest/src/onboard.rs | reference | 2 |
 | matrix | backend/crates/platform/platform-rest/src/ops_recovery.rs | reference | 1 |

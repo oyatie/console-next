@@ -56,6 +56,7 @@ pub fn batch_rows(
                     "hire_date": person.hire_date,
                     "exit_date": person.exit_date,
                     "birth_date": person.birth_date,
+                    "id_type": person.id_type,
                     "org_unit": person.org_unit,
                     "org_unit_id": person.org_unit_id,
                     "job": source.canonical.job,

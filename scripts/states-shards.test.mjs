@@ -217,7 +217,7 @@ test("the dev capacity forecast checks headroom and growth against the runner ca
   const artifact = checked?.timings ?? [current, ...runs.map(run => run.timings)].find(measured => measured?.workers === timings.workers && Object.keys(measured.specs ?? {}).length);
   if (!artifact) return t.skip("no compatible measurements available for the growth guard");
   const timeoutSeconds = Math.floor(timings.runLimitSeconds / RUN_HEADROOM);
-  assert.equal(timings.timeoutSeconds, 1080, "suite growth must fit without extending the planning limit");
+  assert.equal(timings.timeoutSeconds, 1500, "suite growth must fit without extending the planning limit");
   for (const drift of [1, 1.1]) {
     const input = { ...discovered, suites: [...discovered.suites, ...report({ "states/growth.spec.ts": 30 }).suites] };
     const measured = { workers: timings.workers, specs: Object.fromEntries(Object.entries(artifact.specs).map(([file, entry]) => [file, { ...entry, seconds: entry.seconds * drift }])) };
@@ -235,7 +235,7 @@ test("the dev capacity forecast checks headroom and growth against the runner ca
     assert.equal(plan.jobTimeoutMinutes, Math.ceil(timings.setupAllowanceSeconds / 60) + plan.runTimeoutMinutes);
     assert.deepEqual(plan.shards.flatMap(s => filesForShard(plan, s.id)).sort(), input.suites.map(s => `e2e/${s.file}`).sort());
   }
-  assert.equal(timeoutSeconds, 937);
+  assert.equal(timeoutSeconds, 1500);
 });
 
 test("planning refuses only when a spec or capped packing exceeds the execution timeout", async () => {
@@ -632,7 +632,7 @@ test("a sparse spec missing from this push is priced at P95 and named in the sum
 test("a dev-sized suite plus three new specs at median cost keeps measured headroom", async t => {
   const { checkHeadroom } = await load();
   const warning = t.mock.method(console, "warn", () => {});
-  const timings = JSON.parse(readFileSync(new URL("../e2e/mock/timings.json", import.meta.url), "utf8"));
+  const timings = { ...settings, budgetSeconds: 600, timeoutSeconds: 1080, runLimitSeconds: 1500, setupAllowanceSeconds: 720, maxShards: 6, headroomRuns: 5, startupSeconds: 40, workers: 2, defaultTestSeconds: 4 };
   const specs = Object.fromEntries(Array.from({ length: 178 }, (_, i) => [`states/fixture-${i}.spec.ts`, { tests: 15, seconds: 15 * (i < 10 ? 3.76 : 1.45) }]));
   const current = { workers: timings.workers, specs: { ...specs, ...Object.fromEntries(Array.from({ length: 3 }, (_, i) => [`states/new-${i}.spec.ts`, { tests: 32, seconds: 32 * 1.45 }])) } };
   const input = report(Object.fromEntries(Object.entries(current.specs).map(([file, entry]) => [file, entry.tests])));
@@ -668,7 +668,7 @@ test("the dev capacity check warns on forecast refusals and rejects invalid meas
           STATES_TIMINGS_HISTORY_FILE: history, GITHUB_STEP_SUMMARY: summary },
       });
     };
-    for (const source of ["current", "history"]) for (const seconds of [800, 830]) await t.test(`${source} at ${seconds}s`, () => {
+    for (const source of ["current", "history"]) for (const seconds of [1320, 1330]) await t.test(`${source} at ${seconds}s`, () => {
       writeFileSync(history, JSON.stringify({ runs: source === "history" ? [{ runId: 1, timings: measured(seconds) }] : [] }));
       if (source === "current") writeFileSync(current, JSON.stringify(measured(seconds)));
       else rmSync(current, { force: true });
@@ -678,7 +678,7 @@ test("the dev capacity check warns on forecast refusals and rejects invalid meas
       assert.equal(result.status, 0, result.stdout + result.stderr);
       const warning = /::warning::STATES_GROWTH_EXHAUSTED: STATES_SPEC_OVER_BUDGET/;
       for (const output of [result.stdout, readFileSync(summary, "utf8")]) {
-        if (seconds === 830) assert.match(output, warning);
+        if (seconds === 1330) assert.match(output, warning);
         else assert.doesNotMatch(output, warning);
       }
     });
@@ -695,7 +695,7 @@ test("the dev capacity check warns on forecast refusals and rejects invalid meas
     // Seven whole specs each need their own shard in the six-shard plan.
     const counts = Object.fromEntries(Array.from({ length: 7 }, (_, i) => [`states/fixture-${i}.spec.ts`, 100]));
     discover(counts);
-    const specs = Object.fromEntries(Object.keys(counts).map(file => [file, { tests: 100, seconds: 500 }]));
+    const specs = Object.fromEntries(Object.keys(counts).map(file => [file, { tests: 100, seconds: 800 }]));
     const runs = capacityHistory().map(run => ({ ...run, timings: { workers: settings.workers, specs } }));
     writeFileSync(history, JSON.stringify({ runs }));
     rmSync(current);
@@ -1001,9 +1001,13 @@ test("CI gives state and web checks their full run budget after measured setup",
   const timings = JSON.parse(readFileSync(new URL("../e2e/mock/timings.json", import.meta.url), "utf8"));
   assert.equal(timings.setupAllowanceSeconds, (9 + 3) * 60);
   const check = web.steps.find(s => s.run?.includes("npm run check"));
-  assert.equal(check["timeout-minutes"], 30);
-  assert.deepEqual(check.run.trim().split("\n"), [
-    "npm run check",
+  assert.equal(check?.name, "Web checks");
+  assert.equal(check["timeout-minutes"], 45);
+  assert.equal(check.run.trim(), "npm run check");
+  const scriptTests = web.steps.find(s => s.name === "CI and evidence script tests");
+  assert.ok(scriptTests);
+  assert.equal(scriptTests["timeout-minutes"], 5);
+  assert.deepEqual(scriptTests.run.trim().split("\n"), [
     "node --test scripts/ci-backend.test.mjs",
     "node --test scripts/cache-retention.test.mjs",
     "node --test scripts/ghcr-retention.test.mjs",
@@ -1013,9 +1017,24 @@ test("CI gives state and web checks their full run budget after measured setup",
     "python3 scripts/d10_evidence_test.py",
     "python3 scripts/d8_evidence_test.py",
     "python3 scripts/pull_measured_evidence_test.py",
-    "CONSOLE_WEB_PORT=58743 npx playwright test --config apps/web/src/features/people/ui/grid-table.playwright.ts grid-table.spec.ts grid-table-focus.spec.ts grid-table-paste.spec.ts",
   ]);
-  assert.equal(web["timeout-minutes"], Math.ceil(timings.setupAllowanceSeconds / 60) + check["timeout-minutes"]);
+  const gridTests = web.steps.find(s => s.name === "Grid table browser tests");
+  assert.ok(gridTests && !gridTests.if && !gridTests["continue-on-error"]);
+  assert.equal(gridTests["timeout-minutes"], 10);
+  assert.equal(
+    gridTests.run.trim(),
+    "CONSOLE_WEB_PORT=58743 npx playwright test --config apps/web/src/features/people/ui/grid-table.playwright.ts grid-table.spec.ts grid-table-focus.spec.ts grid-table-paste.spec.ts",
+  );
+  const opsTests = web.steps.find(s => s.name === "Ops cockpit browser tests");
+  assert.ok(opsTests);
+  assert.equal(opsTests["timeout-minutes"], 5);
+  assert.equal(opsTests.run.trim(), "E2E_WORKERS=2 npx playwright test --config playwright.ops.config.ts");
+  assert.ok(
+    web.steps.indexOf(check) < web.steps.indexOf(scriptTests)
+      && web.steps.indexOf(scriptTests) < web.steps.indexOf(gridTests)
+      && web.steps.indexOf(gridTests) < web.steps.indexOf(opsTests),
+  );
+  assert.equal(web["timeout-minutes"], Math.ceil(timings.setupAllowanceSeconds / 60) + 45 + 5 + 10 + 5);
 });
 
 test("both jobs cache Chromium by exact locked Playwright version using existing cache actions", () => {

@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["id", "title", "sev", "status", "lead", "affected_components", "personal_data_impact", "intrusion", "opened_at", "discovered_at", "next_public_update_at", "public_incident_id", "postmortem_ref", "mitigations", "timeline", "head_seq", "head_hash"]
+properties:
+  id: {"$ref": "#/components/schemas/Text"}
+  title: {"$ref": "#/components/schemas/Text"}
+  sev: {"$ref": "#/components/schemas/IncidentSeverity"}
+  status: {"$ref": "#/components/schemas/Incident"}
+  lead: {"anyOf": [{"$ref": "#/components/schemas/Text"}, {"type": "null"}]}
+  affected_components: {"type": "array", "items": {"$ref": "#/components/schemas/Text"}}
+  personal_data_impact: {"$ref": "#/components/schemas/PersonalDataImpact"}
+  intrusion: {"type": "boolean"}
+  opened_at: {"$ref": "#/components/schemas/Timestamp"}
+  discovered_at: {"$ref": "#/components/schemas/Timestamp"}
+  next_public_update_at: {"anyOf": [{"$ref": "#/components/schemas/Timestamp"}, {"type": "null"}]}
+  public_incident_id: {"anyOf": [{"$ref": "#/components/schemas/Text"}, {"type": "null"}]}
+  postmortem_ref: {"anyOf": [{"$ref": "#/components/schemas/Text"}, {"type": "null"}]}
+  mitigations: {"type": "array", "items": {"$ref": "#/components/schemas/Text"}}
+  timeline: {"type": "array", "items": {"$ref": "#/components/schemas/IncidentTimelineEntry"}}
+  head_seq: {"type": "integer", "minimum": 1}
+  head_hash: {"$ref": "#/components/schemas/Text"}

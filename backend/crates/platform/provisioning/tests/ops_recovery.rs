@@ -103,7 +103,7 @@ async fn ops_recovery_solo_lifecycle_replaces_credentials_sessions_and_redeems_o
         login(&h.runtime, proof).await.is_err(),
         "lost key cannot sign in"
     );
-    let redeemed = BootstrapCredentialStore
+    let redeemed = BootstrapCredentialStore::default()
         .redeem_otp(&h.runtime, &token, OffsetDateTime::now_utc())
         .await
         .unwrap();
@@ -122,7 +122,7 @@ async fn ops_recovery_solo_lifecycle_replaces_credentials_sessions_and_redeems_o
     .unwrap();
     assert!(single_use && redeemed_at.is_some() && consumed_at.is_none());
     assert!(matches!(
-        BootstrapCredentialStore
+        BootstrapCredentialStore::default()
             .redeem_otp(&h.runtime, &token, OffsetDateTime::now_utc())
             .await,
         Err(ProvisioningError::InvalidBootstrapCredential)

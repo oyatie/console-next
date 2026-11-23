@@ -29,8 +29,10 @@
   --font-sans: var(--font-catalog), Pretendard, var(--font-system);
   --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
   --text-xs: 12px; --text-sm: 13px; --text-body: 14px; --text-lg: 16px; --text-xl: 20px; --text-2xl: 24px;
-  --fw-body: 400; --fw-medium: 600; --fw-strong: 700;
-  --lh-base: 1.5; --tracking-label: 0.4px;
+  --control-text: var(--text-body);
+  --fw-body: 400; --fw-medium: 600; --fw-semibold: 600; --fw-strong: 700;
+  --lh-base: 1.5; --lh-tight: 1.3; --tracking-label: 0.4px;
+  --link-decoration: none;
 
   /* H1+ state colour grammar (design/h1plus/system.css). Role names, not hues; aliases follow the theme.
    *   due = LEGAL clock D-n ≤ 14 only, never plain dates · over = overdue legal item
@@ -39,22 +41,42 @@
   --over-bg: var(--danger-bg); --over-bd: var(--danger-bd); --over-tx: var(--danger-tx);
   --exception-bg: var(--purple-bg); --exception-bd: var(--purple-bd); --exception-tx: var(--purple-tx);
   --derived-bg: var(--muted); --derived-tx: var(--steel); --kbd-bg: var(--muted);
+  --surface-2: var(--muted); --surface-rest: var(--canvas);
+  --surface-hover: var(--muted); --surface-pressed: var(--muted); --surface-selected: var(--primary-soft);
+  --border-strong: var(--border);
+  --control-selected: var(--primary-soft); --on-control-selected: var(--primary); --control-selected-border: var(--primary);
+  --chrome: var(--surface); --chrome-raised: var(--muted); --chrome-hover: var(--muted);
+  --chrome-border: var(--border); --chrome-control-border: var(--control-border);
+  --on-chrome: var(--ink); --on-chrome-muted: var(--steel);
+  --chrome-accent: var(--primary); --chrome-attention: var(--warn-tx); --chrome-danger: var(--danger-tx);
+  --chrome-danger-bg: var(--danger-bg); --chrome-danger-bd: var(--danger-bd); --chrome-danger-solid: var(--danger-solid); --chrome-on-danger: var(--on-danger);
+  --chrome-warn-bg: var(--warn-bg); --chrome-warn-bd: var(--warn-bd);
+  --chrome-scheme: light;
   --scrim: rgba(20, 26, 33, 0.32);
 
-  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px; --space-6: 32px;
-  --radius-sm: 4px; --radius: 6px; --radius-lg: 10px;
-  --row-h: 40px; --rail-w: 220px; --topbar-h: 48px; --panel-w: 440px;
+  --space-half: 2px; --space-1: 4px; --space-1-5: 6px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px; --space-6: 32px;
+  --page-pad: var(--space-5); --cell-px: var(--space-3);
+  --radius-sm: 4px; --radius: 6px; --radius-lg: 10px; --radius-full: 999px; --radius-avatar: 50%;
+  --row-h: 40px; --rail-w: 220px; --topbar-h: 48px; --tabbar-h: 0px; --statusbar-h: 0px; --navbar-h: 0px; --panel-w: 440px;
   /* The frame's insets: what fixed overlays and full-height regions clear. Each shell sets them; only the shell reads
-     its own sizes (--rail-w, --topbar-h). */
-  --frame-top: var(--topbar-h); --frame-start: var(--rail-w); --frame-bottom: 0px;
+     its own sizes (--rail-w, --topbar-h, --tabbar-h, --statusbar-h, --navbar-h). */
+  --frame-top: calc(var(--topbar-h) + var(--tabbar-h)); --frame-start: var(--rail-w); --frame-bottom: calc(var(--statusbar-h) + var(--navbar-h));
   --qrow-h: 64px; --queue-w: 400px; --card-w: 640px; --sheet-w: 560px;
   --dialog-w-sm: 400px; --dialog-w-md: 480px;
   --sheet-w-lg: calc(var(--sheet-w) * 1.3);
   --z-rail: 10; --z-panel: 15; --z-sheet: 20;
-  --target: 32px; --target-touch: 44px; --chip-h: 22px;
+  --target: 32px; --target-touch: 44px; --chip-h: 22px; --kbd-h: 20px; --kbd-min-w: 24px;
   /* Compact table rows (roster) and toolbar / page-head controls (tabs, 기준일, find box): design-language §2. */
   --row-h-compact: 32px; --control-h-sm: 36px;
+  /* Heights of their own, so a style can size its rows without moving what stands in or beside them.
+     --control-h: a button, and any control in a toolbar. --control-h-lg: the approval card's decision buttons.
+     --control-h-compact: a button inside a compact grid. --toolbar-h, --toolbar-py: a toolbar's least height and its
+     block padding. --field-h: a text input, a select and the static line of a field; a text area is at least twice
+     it. --field-h-toolbar: a text input or a select that sits in a toolbar. */
+  --control-h: 36px; --control-h-lg: 40px; --control-h-compact: 28px; --toolbar-h: 60px; --toolbar-py: 12px;
+  --field-h: 40px; --field-h-toolbar: 40px;
   --focus: 0 0 0 2px var(--surface), 0 0 0 4px var(--primary);
+  --qr-bg: #ffffff; --qr-fg: #141a21;
   color-scheme: light;
 }
 
@@ -77,5 +99,7 @@
   --info-solid: #60a5fa;
   --chart-cat-1: #29c1f6; --chart-cat-2: #ee9cad; --chart-cat-3: #b463fa; --chart-cat-4: #b1bb27; --chart-cat-5: #915f96;
   --chart-seq-1: #15304a; --chart-seq-2: #1d5585; --chart-seq-3: #2a7fc0; --chart-seq-4: #5aaee8; --chart-seq-5: #a6d6f7;
+  --chrome-scheme: dark;
+  --qr-bg: #ffffff; --qr-fg: #141a21;
   color-scheme: dark;
 }

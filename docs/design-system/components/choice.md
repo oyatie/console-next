@@ -98,7 +98,7 @@ Every radio group and the checkbox group share three things: the group label is 
 | Radio cards | A grid with an 8 px gap. Each card has 12 px padding, a 1 px `--border` border, a 6 px radius and a `--surface` fill. The dot is 16 px with a 2 px `--control-border` border. The label is medium; the description is 12 px `--steel`; the reason is 12 px `--warn-tx`. `columns={2}` or `columns={3}` makes the grid that many equal columns; without it the cards stack. |
 | Pills | A wrapping row with an 8 px gap. Each pill is at least 32 px high, with 12 px side padding, a 1 px `--control-border` border, a 16 px radius (`calc(var(--target) / 2)`), and 13 px text on one line with a medium label. |
 | `ChoiceAdd` | A pill with a dashed border and `--steel` text. |
-| Select | The control box of [`Field`](field.md): 40 px high (`--row-h`). |
+| Select | The control box of [`Field`](field.md): 40 px high (`--field-h`). |
 | `note` | 12 px regular `--steel`, beside the label. |
 | Hint | 12 px `--steel`. |
 | Error | 13 px `--danger-tx`. |

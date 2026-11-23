@@ -48,6 +48,21 @@ pub fn normalize(field: &str, value: &Value) -> Result<Option<String>, HrError> 
     if field == "emergency_contacts" {
         return emergency_contacts(value);
     }
+    if field == "bank_account_registered" {
+        return match value {
+            Value::Bool(flag) => Ok(Some(if *flag { "true" } else { "false" }.to_owned())),
+            Value::String(text) => match text.trim().to_ascii_lowercase().as_str() {
+                "true" => Ok(Some("true".to_owned())),
+                "false" => Ok(Some("false".to_owned())),
+                _ => Err(HrError::validation(
+                    "changes.bank_account_registered must be a boolean",
+                )),
+            },
+            _ => Err(HrError::validation(
+                "changes.bank_account_registered must be a boolean",
+            )),
+        };
+    }
     let text = match value {
         Value::Null => return Ok(None),
         Value::String(text) => text.as_str(),
@@ -134,6 +149,8 @@ pub fn ledger_value(field: &str, stored: Option<&str>) -> Value {
     match (field, stored) {
         (_, None) => Value::Null,
         ("emergency_contacts", Some(json)) => serde_json::from_str(json).unwrap_or(Value::Null),
+        ("bank_account_registered", Some("true")) => serde_json::json!(true),
+        ("bank_account_registered", Some("false")) => serde_json::json!(false),
         (_, Some(text)) => Value::String(text.to_owned()),
     }
 }

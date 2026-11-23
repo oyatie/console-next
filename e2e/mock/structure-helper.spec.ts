@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { fits } from "../a11y";
 import { routeReady } from "../flows";
 import { openUnit } from "../helpers/structure";
@@ -7,6 +8,8 @@ import { orgPanelReads } from "./org-work";
 import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
 import { screens } from "../states/registry";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 for (const path of ["/org/entities", "/org/changes", "/org?view=list", "/org?view=outline", "/org"]) {
   for (const width of [1440, 390]) for (const theme of ["light", "dark"] as const) {
@@ -22,7 +25,7 @@ for (const path of ["/org/entities", "/org/changes", "/org?view=list", "/org?vie
         await expect(page).toHaveURL(/\/org(?:\?|$)/);
         const panel = await openUnit(page, dept.name);
         await expect(panel).toBeVisible();
-        await expect(page.getByRole("searchbox", { name: "조직 찾기" })).toBeVisible();
+        await expect(page.getByRole("searchbox", { name: t("structure.find.label") })).toBeVisible();
         const selected = page.url();
         await openUnit(page, dept.name);
         expect(page.url()).toBe(selected);

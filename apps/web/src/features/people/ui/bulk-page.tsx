@@ -1,13 +1,12 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { AccessGate } from "../../../reference/authz/ui/access-gate";
 import { operationAccess } from "../../../reference/authz/domain/operation-access";
-import { ReceiptReference } from "../../../ui/composer/receipt-reference";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
+import { chunk } from "../../../lib/chunk-guard";
 import { LIFECYCLE_EVENT, label } from "../../../lib/labels";
-import { CommandError } from "../../../lib/react/command-error";
 import { QueryState } from "../../../lib/react/query-state";
 import { readGroup } from "../../../lib/react/query-view";
 import { todayKst } from "../../../lib/pure/today";
@@ -15,22 +14,16 @@ import { reasonCodesQuery, useReasonCodesReady } from "../../../lib/reason-codes
 import { unitsQuery } from "../../../reference/org/api";
 import { checklistRef, entitiesRef, orgStructureRef } from "../../../reference/entity/api";
 import { withinEntity } from "../../../reference/entity/domain/placement";
-import { Button, ToggleButton } from "../../../ui/button/button";
+import { ToggleButton } from "../../../ui/button/button";
 import { buttonClass } from "../../../ui/button/button-class";
 import { EmptyState } from "../../../ui/empty-state";
-import { Composer } from "../../../ui/composer/composer";
-import { commitLabel } from "../../../ui/composer/actions";
-import { Receipt } from "../../../ui/receipt/receipt";
-import { StepLine } from "../../../ui/step-line/step-line";
-import { Banner } from "../../../ui/banner/banner";
-import { Crumbs } from "../../../ui/page-head/crumbs";
-import { PhaseLine } from "../../../ui/page-head/phase-line";
+import { ExperienceSwitch } from "../../../ui/patterns/pattern-shell";
+import { ReadSkeleton } from "../../../ui/skeleton/skeleton";
 import { groupRows, whenOf, type Kind } from "../domain/bulk";
 import { activeTitles, DEMOTION_REASON } from "../domain/titles";
 import { bulkDemotion, bulkPromotion } from "../domain/bulk-promotion";
 import { jobTitlesQuery } from "../api";
 import { BulkPeople } from "./bulk-people";
-import { BulkRescind } from "./bulk-rescind";
 import { BulkWhen, type HeadRow } from "./bulk-when";
 import { BulkWhere } from "./bulk-where";
 import { useBulkCommand } from "./use-bulk-command";
@@ -39,16 +32,20 @@ import { bulkSelection, useBulkSelection } from "./use-bulk-selection";
 import s from "./bulk-page.module.css";
 import { entityName } from "../../../reference/entity/domain/names";
 
+const BulkBaseline = lazy(() => chunk(import("./bulk-baseline")).then((m) => ({ default: m.BulkBaseline })));
+const BulkConsole = lazy(() => chunk(import("./bulk-console")).then((m) => ({ default: m.BulkConsole })));
+const BulkRescind = lazy(() => chunk(import("./bulk-rescind")).then((m) => ({ default: m.BulkRescind })));
+
 /**
  * The bulk act workspace (spec E6-move): the people picked in the roster, where they go (a tree of places that can take all of
  * them) or the new title, when and why, what each unit's headcount becomes, and one commit for everyone (BW-38 change
  * set: all or nothing, one batch to cancel). Steps across the head say how far it is.
  */
-export function BulkPage() {
-  return <AccessGate {...operationAccess["POST /api/v1/employees/lifecycle-events/bulk/preview"]}><BulkWorkspace /></AccessGate>;
+export function BulkPage({ embedded = false }: { embedded?: boolean } = {}) {
+  return <AccessGate {...operationAccess["POST /api/v1/employees/lifecycle-events/bulk/preview"]}><BulkWorkspace embedded={embedded} /></AccessGate>;
 }
 
-function BulkWorkspace() {
+function BulkWorkspace({ embedded }: { embedded: boolean }) {
   const nav = useNavigate();
   const picked = useBulkSelection();
   const today = todayKst();
@@ -96,9 +93,11 @@ function BulkWorkspace() {
   const when = whenOf(date, today);
   const codes = useReasonCodesReady(kind === "TRANSFER" ? "lifecycle_transfer" : kind === "PROMOTE" ? "lifecycle_promote" : null);
   const state = readGroup([unitsQ, entitiesQ, structure, ...lists, resolvedRows.q]);
-  if (state.data === undefined) return <div className="page"><QueryState q={state} layout="form">{() => null}</QueryState></div>;
+  const emptyAction = embedded ? undefined : <Link className={buttonClass("primary")} to="/people" search={{}}>{t("bulk.page.empty.action")}</Link>;
+  const emptyNode = <EmptyState title={t("bulk.page.empty.title")} reason={t("bulk.page.empty.reason")} actions={emptyAction} />;
+  if (state.data === undefined) return embedded ? <QueryState q={state} layout="form">{() => null}</QueryState> : <div className="page"><QueryState q={state} layout="form">{() => null}</QueryState></div>;
   if (picked.size === 0 && !done)
-    return <QueryState q={state} layout="form">{() => <div className="page"><EmptyState title={t("bulk.page.empty.title")} reason={t("bulk.page.empty.reason")} actions={<Link className={buttonClass("primary")} to="/people" search={{}}>{t("bulk.page.empty.action")}</Link>} /></div>}</QueryState>;
+    return <QueryState q={state} layout="form">{() => embedded ? emptyNode : <div className="page">{emptyNode}</div>}</QueryState>;
 
   const from = new Map<string, number>();
   for (const r of ok) if (r.employee?.org_unit_id) from.set(r.employee.org_unit_id, (from.get(r.employee.org_unit_id) ?? 0) + 1);
@@ -153,37 +152,79 @@ function BulkWorkspace() {
   ];
   const close = () => void nav({ to: "/people", search: {} });
   const action = { kind: kind === "PROMOTE" && demotion ? "demotion" as const : kind ?? "appointment" as const, mode: when === "future" || when === "none" ? "schedule" as const : "apply" as const, count: ok.length };
+  const titleText = kind ? t("bulk.page.title", { kind: kindWord, n: ok.length }) : t("bulk.page.titleNone", { n: ok.length });
+  const kindsBar = (
+    <div role="group" aria-label={t("bulk.page.kind")} className={s.kinds} data-invalid={shown(missing.kind) ? true : undefined}>
+      {(["TRANSFER", "PROMOTE"] as const).map((k) => <ToggleButton key={k} pressed={kind === k} disabled={!kindsReady} aria-busy={!kindsReady || undefined} onClick={() => (setKind(k), setCode(null))}>{label(LIFECYCLE_EVENT, k)}</ToggleButton>)}
+      {shown(missing.kind) && <span className={s.err}>{missing.kind}</span>}
+    </div>
+  );
+  const whereNode = <BulkWhere kind={kind} titles={titles} units={targets} from={from.size === 1 ? new Set(from.keys()) : new Set()} site={site} entity={entity} hidden={Math.max(0, entities.length - 1)} unitId={unitId} onUnit={setUnit} position={position} onPosition={setPosition} count={ok.length} unitError={shown(missing.unit)} positionError={perPerson ? undefined : shown(missing.catalog ?? missing.position)} positionOptional={perPerson} />;
+  const peopleNode = <BulkPeople kind={kind} rows={rows} pending={resolved.ready ? 0 : picked.size} units={units} unitId={unitId} position={position} titles={titles} perRow={perRow} onPerRow={(k, v) => setPerRow((x) => ({ ...x, [k]: v }))} sub={site ? t(toSite && toSite !== site ? "bulk.page.peopleSub.move" : "bulk.page.peopleSub.same", { site, from: site, to: toSite ?? "" }) : ""} onDrop={(k) => bulkSelection.drop(k)} foot={t("bulk.page.recheck", { total: ok.length })} refused={cmd.refused} error={perPerson ? shown(missing.catalog ?? missing.position) : undefined} />;
+  const whenNode = <BulkWhen demotion={demotion} kind={kind} today={today} date={date} onDate={setDate} code={code} onCode={setCode} memo={memo} onMemo={setMemo} shown={{ date: shown(missing.date), code: shown(missing.code), memo: shown(missing.memo) }} tried={tried} heads={heads} echo={when === "future" ? t("lifecycle.when.future") : when === "none" ? undefined : t("lifecycle.when.today")} />;
+  const consequenceNode = whereDone ? <b>{t("bulk.page.foot", { n: ok.length, from: kind === "PROMOTE" ? "" : fromName, to: toName, date, state: t(when === "future" ? "bulk.page.footState.future" : "bulk.page.footState.now") })}</b> : t("bulk.page.footNone", { n: ok.length });
+  const rescindModal = rescinding && batch ? <Suspense fallback={null}><BulkRescind batchId={batch.id} count={batch.count} onClose={() => setRescinding(false)} onDone={(n) => (setRescinding(false), setBatch(null), setDone(t("bulk.rescind.done", { count: n })))} /></Suspense> : null;
+
   return (
-    <QueryState q={state} layout="form">{() => <div className={s.page}>
-    <Composer layout="page"
-      commitId="bulk-commit"
-      kicker={<Crumbs items={[<Link key="people" to="/people" search={{}}>{t("people.title")}</Link>]} current={t("bulk.page.crumb")} />}
-      title={kind ? t("bulk.page.title", { kind: kindWord, n: ok.length }) : t("bulk.page.titleNone", { n: ok.length })}
-      subtitle={<><PhaseLine phase={setup ? "setup" : "operating"}>{t(setup ? "bulk.page.phaseSetup" : "bulk.page.phaseOp")}</PhaseLine><StepLine steps={steps} label={t("bulk.page.steps")} /></>}
-      action={action}
-      onClose={close}
-      pending={cmd.busy}
-      locked={cmd.lost || Boolean(done)}
-      onSubmit={submit}
-      recovery={done ? <Button onClick={close}>{t("composer.dismiss")}</Button> : cmd.lost ? <><Button onClick={close}>{t("composer.dismiss")}</Button><Button variant="primary" onClick={() => void cmd.send(batches(ok))}>{t("bulk.lost.check")}</Button></> : undefined}
-      consequence={whereDone ? <b>{t("bulk.page.foot", { n: ok.length, from: kind === "PROMOTE" ? "" : fromName, to: toName, date, state: t(when === "future" ? "bulk.page.footState.future" : "bulk.page.footState.now") })}</b> : t("bulk.page.footNone", { n: ok.length })}
-      notice={<>
-        {refusedIds.length > 0 && <Banner tone="danger" live="assertive" title={t("bulk.refused.title", { count: refusedIds.length })} actions={<Button onClick={retryWithout} disabled={cmd.busy}>{commitLabel({ ...action, count: ok.length - refusedIds.length })}</Button>} />}
-        {done && <Receipt state="recorded" message={done} meta={batch && <ReceiptReference value={batch.id} />} actions={batch && <><Link className={buttonClass()} to="/people/notices/new" search={{ batch: batch.id, count: batch.count }}>{t("bulk.notice.open")}</Link><Button variant="ghost" onClick={() => setRescinding(true)}>{t("bulk.rescind.open", { count: batch.count })}</Button></>} />}
-        <CommandError error={cmd.error} />
-      </>}
+    <ExperienceSwitch
+      baseline={() => (
+        <Suspense fallback={<ReadSkeleton layout="form" />}>
+          <BulkBaseline
+            state={state}
+            titleText={titleText}
+            setup={setup}
+            steps={steps}
+            action={action}
+            busy={cmd.busy}
+            lost={cmd.lost}
+            done={done}
+            batch={batch}
+            refusedCount={refusedIds.length}
+            retryCount={ok.length - refusedIds.length}
+            cmdError={cmd.error}
+            consequenceNode={consequenceNode}
+            kindsBar={kindsBar}
+            whereNode={whereNode}
+            peopleNode={peopleNode}
+            whenNode={whenNode}
+            rescindModal={rescindModal}
+            onClose={close}
+            onSubmit={submit}
+            onRetryWithout={retryWithout}
+            onLostCheck={() => void cmd.send(batches(ok))}
+            onRescind={() => setRescinding(true)}
+          />
+        </Suspense>
+      )}
     >
-      <div role="group" aria-label={t("bulk.page.kind")} className={s.kinds} data-invalid={shown(missing.kind) ? true : undefined}>
-        {(["TRANSFER", "PROMOTE"] as const).map((k) => <ToggleButton key={k} pressed={kind === k} disabled={!kindsReady} aria-busy={!kindsReady || undefined} onClick={() => (setKind(k), setCode(null))}>{label(LIFECYCLE_EVENT, k)}</ToggleButton>)}
-        {shown(missing.kind) && <span className={s.err}>{missing.kind}</span>}
-      </div>
-      <div className={s.cols}>
-        <BulkWhere kind={kind} titles={titles} units={targets} from={from.size === 1 ? new Set(from.keys()) : new Set()} site={site} entity={entity} hidden={Math.max(0, entities.length - 1)} unitId={unitId} onUnit={setUnit} position={position} onPosition={setPosition} count={ok.length} unitError={shown(missing.unit)} positionError={perPerson ? undefined : shown(missing.catalog ?? missing.position)} positionOptional={perPerson} />
-        <BulkPeople kind={kind} rows={rows} pending={resolved.ready ? 0 : picked.size} units={units} unitId={unitId} position={position} titles={titles} perRow={perRow} onPerRow={(k, v) => setPerRow((x) => ({ ...x, [k]: v }))} sub={site ? t(toSite && toSite !== site ? "bulk.page.peopleSub.move" : "bulk.page.peopleSub.same", { site, from: site, to: toSite ?? "" }) : ""} onDrop={(k) => bulkSelection.drop(k)} foot={t("bulk.page.recheck", { total: ok.length })} refused={cmd.refused} error={perPerson ? shown(missing.catalog ?? missing.position) : undefined} />
-        <BulkWhen demotion={demotion} kind={kind} today={today} date={date} onDate={setDate} code={code} onCode={setCode} memo={memo} onMemo={setMemo} shown={{ date: shown(missing.date), code: shown(missing.code), memo: shown(missing.memo) }} tried={tried} heads={heads} echo={when === "future" ? t("lifecycle.when.future") : when === "none" ? undefined : t("lifecycle.when.today")} />
-      </div>
-    </Composer>
-      {rescinding && batch && <BulkRescind batchId={batch.id} count={batch.count} onClose={() => setRescinding(false)} onDone={(n) => (setRescinding(false), setBatch(null), setDone(t("bulk.rescind.done", { count: n })))} />}
-    </div>}</QueryState>
+      {() => (
+        <Suspense fallback={<ReadSkeleton layout="form" />}>
+          <BulkConsole
+            q={state}
+            title={titleText}
+            setup={setup}
+            steps={steps}
+            kindsBar={kindsBar}
+            body={<div className={s.consoleCols}>{whereNode}{peopleNode}</div>}
+            aside={whenNode}
+            consequence={consequenceNode}
+            done={done}
+            batch={batch}
+            lost={cmd.lost}
+            busy={cmd.busy}
+            cmdError={cmd.error}
+            refusedCount={refusedIds.length}
+            action={action}
+            retryCount={ok.length - refusedIds.length}
+            onRetryWithout={retryWithout}
+            onLostCheck={() => void cmd.send(batches(ok))}
+            onRescind={() => setRescinding(true)}
+            onClose={close}
+            onSubmit={submit}
+            overlays={rescindModal}
+          />
+        </Suspense>
+      )}
+    </ExperienceSwitch>
   );
 }

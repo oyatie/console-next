@@ -133,14 +133,20 @@ properties:
         type: string
         format: date
         description: 'r3:hire-16: the employment profile''s probation end date.'
+      id_type:
+        type: string
+        enum: [RRN, ARC, DOMESTIC_RESIDENCE, NOT_ISSUED]
+        description: Resolved legal identity document type for the created employee.
   refusal_code:
     type: string
-    enum: [duplicate_in_file, invalid_date, identity_mismatch, hire_date_required, former_load_closed,
+    x-extensible-enum: [duplicate_in_file, invalid_date, two_digit_year, identity_mismatch, hire_date_required, former_load_closed,
       workplace_conflict, identity_conflict, employee_number_taken, status_unmapped, status_conflict,
-      exit_date_required, leave_start_required, leave_type_unmapped, leave_return_required]
+      exit_date_required, leave_start_required, leave_type_unmapped, leave_return_required,
+      not_issued_requires_pre_hire, not_issued_with_rrn, not_issued_secondary_key_required,
+      id_type_invalid, id_type_rrn_mismatch, rrn_mod11_invalid]
   refusal_field:
     type: string
-    x-extensible-enum: [employee_number, name, hire_date, exit_date, birth_date, worksite_name, rrn, employment_status,
+    x-extensible-enum: [employee_number, name, hire_date, exit_date, birth_date, worksite_name, rrn, id_type, employment_status,
       leave_start_date, leave_type, leave_return_date, contract_end_date, probation_end_date]
   matched_by:
     type: string

@@ -14,7 +14,7 @@ import { Muted } from "../../../ui/muted/muted";
  * named with their basis so a reviewer sees they were left out on purpose. For a business without a registry it
  * holds only representation mode and main phone.
  */
-export function RegistryCard({ e, act }: { e: LegalEntity; act: Act }) {
+export function RegistryCard({ e, act, flat }: { e: LegalEntity; act: Act; flat?: boolean }) {
   const c = e.current;
   const f = entityFields(e);
   const people = officers(e);
@@ -22,14 +22,14 @@ export function RegistryCard({ e, act }: { e: LegalEntity; act: Act }) {
   const none = t("entityOps.info.none");
   const fix = { verb: "edit" as const };
   return (
-    <section className="card" aria-labelledby="registry-title">
+    <section className={flat ? undefined : "card"} aria-labelledby="registry-title">
       <div className={s.cardHead}>
         <h2 id="registry-title" className={s.cardTitle}>{t(corp ? "entityRecord.registry.title" : "entityRecord.registry.titleOther")}</h2>
         {corp && <Muted>{t("entityRecord.registry.basis")}</Muted>}
       </div>
       <div className={s.facts}>
         {/* The optional short and English names, each its own row and its own edit. */}
-        {(e.biz_kind === "INDIVIDUAL" || e.registrations.length === 0) && <FactRow label={f.name.label} wide action={{ ...fix, onPress: () => act.field(f.name) }}>{c?.name || none}</FactRow>}
+        {(e.biz_kind === "INDIVIDUAL" || e.registrations.length === 0) && <FactRow label={f.name.label} wide={!flat} action={{ ...fix, onPress: () => act.field(f.name) }}>{c?.name || none}</FactRow>}
         <FactRow label={f.displayName.label} action={{ ...fix, onPress: () => act.field(f.displayName) }}>{c?.display_name || none}</FactRow>
         <FactRow label={f.englishName.label} action={{ ...fix, onPress: () => act.field(f.englishName) }}>{c?.english_name || none}</FactRow>
         {corp && (

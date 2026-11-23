@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags:
+  - platform
+operationId: revokePlatformOperator
+summary: Revoke a platform operator (platform vendor tier)
+description: Deactivates a platform operator, revokes open invites and refresh families, and bumps session generation. Refuses self-revocation and revoking the last active enrolled operator. Requires OPERATOR_RECOVERY step-up.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/RevokePlatformOperatorRequest'
+responses:
+  '200':
+    description: Revoked platform operator summary.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/PlatformOperatorSummary'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '503':
+    $ref: '#/components/responses/ServiceUnavailable'

@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [me]
+operationId: updateMyProfile
+summary: Update immediate self-service profile fields (phone, emergency_contacts)
+description: >
+  Updates the caller's immediate-apply self-service fields (phone and/or
+  emergency_contacts) on their own linked employee record. Address and bank
+  account status require approval via POST /api/v1/me/profile/change-requests.
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/UpdateMeProfileRequest'
+responses:
+  '200':
+    description: Updated masked self-service profile.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/MeProfileResponse'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Forbidden for unlinked users or read-only support sessions.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: Validation error or non-immediate field rejected.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

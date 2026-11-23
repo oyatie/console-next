@@ -1,5 +1,5 @@
 /* Keep the selected date in the middle slot as earlier change dates arrive. */
-.ribbon { display: grid; grid-template-columns: repeat(9, calc(var(--target-touch) * 3)); min-height: calc(var(--row-h) - var(--space-1)); overflow-x: auto; }
+.ribbon { display: grid; grid-template-columns: repeat(9, calc(var(--target-touch) * 3)); min-height: var(--control-h); overflow-x: auto; }
 .ribbon > :not([data-change-date]) { grid-column: 1 / -1; }
 .ribbon > [data-slot="1"] { grid-column: 1; }
 .ribbon > [data-slot="2"] { grid-column: 2; }
@@ -16,4 +16,4 @@
 .navigation > *, .navigation::after { grid-area: 1 / 1; }
 .navigation::after { content: attr(data-reason); visibility: hidden; font-size: var(--text-sm); padding-top: var(--row-h); }
 .control { min-width: 0; }
-.control > button { min-height: calc(var(--row-h) - var(--space-1)); }
+.control > button { min-height: var(--control-h); }

@@ -1,0 +1,136 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.shell {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  background: var(--surface);
+}
+
+.stepsBar {
+  display: flex;
+  align-items: center;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: var(--space-2) var(--space-4);
+  border-block-end: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-width: 0;
+  background: var(--surface);
+}
+
+.workspace[data-has-aside] {
+  grid-template-columns: minmax(0, 1fr) var(--panel-w);
+}
+
+.mainCol {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: min(100%, calc(var(--card-w) * 1.25));
+  margin-inline: auto;
+  min-width: 0;
+}
+
+.asideCol {
+  position: sticky;
+  top: 0;
+  max-height: calc(100dvh - var(--frame-top) - var(--frame-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-width: 0;
+  border-inline-start: 1px solid var(--border-strong);
+  background: var(--surface);
+}
+
+.actionWrap {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .body {
+  max-width: none;
+  margin-inline: 0;
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .body :is(select, input, textarea) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .body > section,
+:where([data-experience]:not([data-experience="baseline"])) .body > * > section,
+:where([data-experience]:not([data-experience="baseline"])) .asideCol > section {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  border-block-end: 1px solid var(--border);
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .asideCol > section:last-child {
+  border-block-end: 0;
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .body > section > * {
+  max-width: min(100%, calc(var(--card-w) * 1.25));
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .actionWrap [data-sticky] {
+  padding: 0;
+  gap: 0;
+  border-top: 1px solid var(--border-strong);
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .actionWrap [data-sticky] > :first-child:not(:last-child) {
+  flex-basis: 100%;
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+:where([data-experience]:not([data-experience="baseline"])) .actionWrap [data-sticky] > :last-child {
+  flex-basis: 100%;
+  padding: var(--space-3) var(--space-4);
+}
+
+@media (--below-wide) {
+  .workspace[data-has-aside] {
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+  }
+
+  .asideCol {
+    position: static;
+    max-height: none;
+    border-inline-start: 0;
+    border-block-start: 1px solid var(--border-strong);
+  }
+}
+
+@media (--phone) {
+  .stepsBar {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  :where([data-experience]:not([data-experience="baseline"])) .actionWrap [data-sticky] {
+    position: static;
+  }
+
+  .actionWrap [data-sticky] > :last-child > :is(button, a) {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}

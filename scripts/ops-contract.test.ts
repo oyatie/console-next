@@ -12,7 +12,7 @@ const fixtures = JSON.parse(read("backend/crates/ops/rest/tests/fixtures/snapsho
 
 // Test-only interpreter for the contract's JSON Schema vocabulary. Unknown keywords fail closed.
 function accepts(schema: any, value: any): boolean {
-  const supported = new Set(["$ref", "$schema", "$comment", "title", "description", "type", "required", "properties", "additionalProperties", "patternProperties", "minProperties", "uniqueItems", "allOf", "oneOf", "anyOf", "not", "enum", "const", "minimum", "minLength", "pattern", "format", "items", "discriminator"]);
+  const supported = new Set(["$ref", "$schema", "$comment", "title", "description", "type", "required", "properties", "additionalProperties", "patternProperties", "minProperties", "uniqueItems", "allOf", "oneOf", "anyOf", "not", "enum", "const", "minimum", "maximum", "minLength", "pattern", "format", "items", "discriminator"]);
   for (const key of Object.keys(schema)) if (!supported.has(key)) throw new Error(`untested schema keyword ${key}`);
   if (schema.$ref) return accepts(schemas[schema.$ref.split("/").at(-1)], value);
   if (schema.allOf && !schema.allOf.every((s: any) => accepts(s, value))) return false;
@@ -22,8 +22,10 @@ function accepts(schema: any, value: any): boolean {
   if (schema.enum && !schema.enum.includes(value)) return false;
   if ("const" in schema && value !== schema.const) return false;
   const type = value === null ? "null" : Array.isArray(value) ? "array" : typeof value;
-  if (schema.type && schema.type !== type && !(schema.type === "integer" && Number.isInteger(value))) return false;
+  const matchesType = (t: string) => t === type || (t === "integer" && Number.isInteger(value));
+  if (schema.type && (Array.isArray(schema.type) ? !schema.type.some(matchesType) : !matchesType(schema.type))) return false;
   if (type === "number" && schema.minimum !== undefined && value < schema.minimum) return false;
+  if (type === "number" && schema.maximum !== undefined && value > schema.maximum) return false;
   if (type === "string") {
     if (value.length < (schema.minLength ?? 0) || (schema.pattern && !new RegExp(schema.pattern, "u").test(value))) return false;
     if (schema.format === "date-time" && (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(value) || !Number.isFinite(Date.parse(value)))) return false;
@@ -83,21 +85,60 @@ test("Canary is a closed state and its percentage is a numeric observation", () 
   expect(accepts(schemas.Changing.properties.weight_percent, { ...weight, value: "25%" })).toBe(false);
 });
 
-test("all nine routes have JWT security, Cedar actions and no-store including refusals", () => {
-  expect(Object.keys(document.paths)).toHaveLength(9);
+const VALID_ACTIONS = [
+  "read.me", "read.home", "read.alerts", "read.running", "read.sources",
+  "obligation.read", "obligation.write", "alert.ack", "alert.silence",
+  "incident.write", "incident.publish", "promotion.signoff", "review.signoff",
+  "feedback.triage", "jobs.rerun", "breakglass.request", "breakglass.approve",
+  "support.read", "support.writable", "recovery.read", "recovery.request",
+  "recovery.backup", "recovery.drill", "tenant.read", "tenant.create",
+  "tenant.code", "tenant.suspend", "tenant.reactivate", "tenant.export",
+  "tenant.close", "tenant.destroy", "tenant.takeover",
+  "change.request.backup-now", "change.request.canary-abort",
+  "change.request.canary-hold", "change.request.canary-promote",
+  "change.request.drill", "change.request.drill-at", "change.request.freeze",
+  "change.request.infra-apply", "change.request.preview-off",
+  "change.request.preview-release", "change.request.preview-reset",
+  "change.request.promote", "change.request.prune", "change.request.reboot",
+  "change.request.rehearse", "change.request.rerender-restart",
+  "change.request.retry", "change.request.rollback", "change.request.rotate",
+  "change.request.status-publish", "change.request.trace-store-reset",
+  "change.request.unfreeze",
+];
+
+test("all 36 routes (39 operations) have JWT security, Cedar actions and no-store including refusals", () => {
+  expect(VALID_ACTIONS).toHaveLength(54);
+  expect(Object.keys(document.paths)).toHaveLength(36);
   const refs = [...read("backend/openapi/ops.yaml").matchAll(/#\/components\/(\w+)\/([A-Za-z0-9._-]+)/g)];
   expect(refs.length).toBeGreaterThan(100);
   for (const [, section, name] of refs) expect(Object.hasOwn(document.components[section], name), name).toBe(true);
+  let opCount = 0;
   for (const route of Object.values(document.paths) as any[]) {
-    expect(Object.keys(route)).toEqual(["get"]);
-    expect(route.get["x-cedar-action"]).toMatch(/^read\.(?:me|home|alerts|running|sources)$/);
-    expect(route.get.security).toEqual([{ accessJwt: [] }]);
-    expect(route.get.responses["200"].headers["Cache-Control"].schema.const).toBe("no-store");
-    for (const code of ["401", "403"]) expect(route.get.responses[code].$ref).toMatch(/^#\/components\/responses\//);
+    for (const [method, op] of Object.entries(route) as [string, any][]) {
+      opCount += 1;
+      expect(["get", "post", "delete"]).toContain(method);
+      expect(VALID_ACTIONS).toContain(op["x-cedar-action"]);
+      for (const extra of op["x-cedar-actions"] ?? []) expect(VALID_ACTIONS).toContain(extra);
+      expect(op.security).toEqual([{ accessJwt: [] }]);
+      const ok = op.responses["200"] ?? op.responses["201"];
+      expect(ok.headers["Cache-Control"].schema.const).toBe("no-store");
+      for (const code of ["401", "403"]) expect(op.responses[code].$ref).toMatch(/^#\/components\/responses\//);
+    }
   }
+  expect(opCount).toBe(39);
 });
 
-test.each(["OPS_ACCESS_JWT_MISSING", "OPS_ACCESS_JWT_INVALID", "OPS_ACCESS_AUD_MISMATCH", "OPS_NOT_OPERATOR", "OPS_GRANT_NOT_LIVE", "OPS_ACTION_DENIED", "OPS_CONFIG_INVALID", "origin_refused"])("refusal contract includes %s and requires a support reference", (code) => {
+test.each([
+  "OPS_ACCESS_JWT_MISSING", "OPS_ACCESS_JWT_INVALID", "OPS_ACCESS_AUD_MISMATCH",
+  "OPS_NOT_OPERATOR", "OPS_GRANT_NOT_LIVE", "OPS_ACTION_DENIED", "OPS_CONFIG_INVALID",
+  "OPS_NOT_FOUND", "OPS_TIMEOUT", "OPS_RECORD_CHAIN_BROKEN", "OPS_RECORD_WRITE_FAILED",
+  "OPS_ALERT_ACK_INVALID", "OPS_SILENCE_INVALID", "OPS_SILENCE_TTL_EXCEEDED",
+  "OPS_WATCHDOG_UNSILENCEABLE", "OPS_UPSTREAM_FAILED", "OPS_INCIDENT_INVALID",
+  "OPS_INCIDENT_NOT_FOUND", "OPS_INCIDENT_CONFLICT", "OPS_POSTMORTEM_REQUIRED",
+  "OPS_INCIDENT_FINAL", "OPS_OBLIGATION_INVALID", "OPS_OBLIGATION_INCOMPLETE",
+  "OPS_OBLIGATION_FINAL", "OPS_OBLIGATION_NOT_FOUND", "OPS_RUNBOOK_NOT_FOUND",
+  "bad_request", "not_found", "method_not_allowed", "internal", "origin_refused",
+])("refusal contract includes %s and requires a support reference", (code) => {
   const error = { evaluated_at: "2026-01-01T00:00:00Z", support_ref: "fixture-ref", code, message: "Refused" };
   expect(accepts(schemas.Error, error)).toBe(true);
   const missing = { ...error } as any;
@@ -129,17 +170,29 @@ test("bundle schemas refuse missing intervals, plaintext emails, malformed dates
   expect(accepts(bundle("operators"), [{ ...operator, email: "operator@example.invalid" }])).toBe(false);
   expect(accepts(bundle("operators"), [{ ...operator, grants: [{ ...operator.grants[0], until: "tomorrow" }] }])).toBe(false);
   const source = { url: "http://example.invalid", producer: "fixture", interval_s: 60, read_limits: { request_timeout_ms: 500, max_response_bytes: 4096 } };
-  const settings = { sources: { alertmanager: source, vmalert: source, victoriametrics: source }, access: { team: "fixture", aud: "fixture-aud", issuer: "https://example.invalid", jwks: "/fixture/jwks.json", interval_s: 60 }, origin: "https://example.invalid", thresholds: {}, budgets: {} };
+  const settings = { sources: { alertmanager: source, vmalert: source, victoriametrics: source }, access: { team: "fixture", aud: "fixture-aud", issuer: "https://example.invalid", jwks: "/fixture/jwks.json", interval_s: 60 }, origin: "https://example.invalid", thresholds: {}, budgets: {}, records: { dir: "/srv/console/ops-records" }, obligations: { due_soon_days: 7 } };
   expect(accepts(bundle("ops-settings"), settings)).toBe(true);
   expect(accepts(bundle("ops-settings"), { ...settings, sources: { ...settings.sources, invented: source } })).toBe(false);
   expect(accepts(bundle("ops-settings"), { ...settings, origin: "https://example.invalid/path" })).toBe(false);
+  const oncall = { version: 1, mode: "single-operator", display_status: "Single operator on call", timezone: "Asia/Seoul", rotation: { primary_person: "00000000-0000-4000-8000-000000000001", backup_person: null, handoff_weekday: "Mon", handoff_hour_local: 9 }, escalation: { ack_timeout_s: 300, repeat_interval_s: 900, out_of_hours_policy: "sev1-symptoms-only", daily_page_budget: 2 }, synthetic_page_test: { enabled: true, schedule: "weekly", weekday: "Wed", hour_utc: 2, max_delivery_lag_s: 120 } };
+  expect(accepts(bundle("oncall"), oncall)).toBe(true);
+  expect(accepts(bundle("oncall"), { ...oncall, rotation: { ...oncall.rotation, handoff_hour_local: 25 } })).toBe(false);
 });
 
 test("SSE payloads retain typed data and evaluated_at, with resync and heartbeat", () => {
+  expect(schemas.Event.oneOf).toHaveLength(13);
   for (const event of schemas.Event.oneOf) {
     const type = event.properties.type.const;
     const frame: any = { type, id: 1, evaluated_at: fixtures.healthy.home.evaluated_at };
-    const data = { home: fixtures.healthy.home, group: fixtures.healthy.alert.group, component: fixtures.healthy.running.components[0], job: fixtures.healthy.jobs.jobs[0], source: fixtures.healthy.sources.sources[0] } as any;
+    const data = {
+      home: fixtures.healthy.home, group: fixtures.healthy.alert.group,
+      component: fixtures.healthy.running.components[0], job: fixtures.healthy.jobs.jobs[0],
+      source: fixtures.healthy.sources.sources[0],
+      item: { id: "obl-1", kind: "drill", reviewer_role: "owner", title: "Synthetic drill", due: null, state: "open", evidence_ref: null, signer: null, signed_on: null, deadline: "No due date" },
+      incident: { id: "INC-1", title: "Synthetic incident", sev: "SEV2", status: "Investigating", lead: null, head_seq: 1, next_public_update_at: null, legal_clocks: [] },
+      action: { action_id: "act-1", kind: "backup", command: "tb backup now", target: "all", consequence: "Creates backup", expected_result: "Backup completes", verify_step: "Check /recovery", operator: "operator", at: "2026-01-01T00:00:00Z" },
+      silence_id: "sil-1", active: true, digest: "a".repeat(64),
+    } as any;
     for (const key of Object.keys(event.properties)) if (key in data) frame[key] = data[key];
     expect(accepts(schemas.Event, frame), type).toBe(true);
     expect(accepts(schemas.Event, { ...frame, id: 0 })).toBe(false);

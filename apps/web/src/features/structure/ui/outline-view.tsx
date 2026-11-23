@@ -1,4 +1,4 @@
-import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
+import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type Ref } from "react";
 import { t } from "@console/i18n";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { CommandError } from "../../../lib/react/command-error";
@@ -45,7 +45,7 @@ export function OutlineView({ s, cmd, sel, onSelect, pick, find = "", follow = t
   // Only a cursor move asks for the panel to follow, and only from one row of this tree to another: arriving with a
   // selection (a link, a reload) or one made elsewhere is never taken back.
   const live = useRef({ sel, onSelect, follow });
-  useEffect(() => void (live.current = { sel, onSelect, follow }));
+  useLayoutEffect(() => { live.current = { sel, onSelect, follow }; });
   const rested = useRef(cursor);
   useEffect(() => {
     if (rested.current === cursor) return;

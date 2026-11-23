@@ -7,7 +7,7 @@ use super::*;
 async fn issued_otp_is_ten_crockford_symbols_grouped_five_five(pool: PgPool) {
     let user_id = seed_user(&pool).await;
     let now = OffsetDateTime::now_utc();
-    let issue = BootstrapCredentialStore
+    let issue = BootstrapCredentialStore::default()
         .issue_for_zero_credential_user(
             &pool,
             None,
@@ -47,7 +47,7 @@ async fn issued_otp_is_ten_crockford_symbols_grouped_five_five(pool: PgPool) {
 async fn legacy_codes_and_new_codes_accept_their_formats_once(pool: PgPool) {
     let user_id = seed_user(&pool).await;
     let now = OffsetDateTime::now_utc();
-    let store = BootstrapCredentialStore;
+    let store = BootstrapCredentialStore::default();
     let issue = store
         .issue_for_zero_credential_user(&pool, None, user_id, OrgId::one(), now, Duration::hours(1))
         .await
@@ -64,7 +64,7 @@ async fn legacy_codes_and_new_codes_accept_their_formats_once(pool: PgPool) {
             sqlx::query(
                 "UPDATE auth_bootstrap_credentials SET token_hash=$1,redeemed_at=NULL WHERE id=$2",
             )
-            .bind(Sha256::digest(stored.as_bytes()).to_vec())
+            .bind(digest(&SHA256, stored.as_bytes()).as_ref().to_vec())
             .bind(issue.credential_id)
             .execute(&pool)
             .await
@@ -103,7 +103,7 @@ async fn first_sign_in_code_refuses_registered_passkey_and_recovery_remains_sing
 ) {
     let user_id = seed_user(&pool).await;
     let now = OffsetDateTime::now_utc();
-    let store = BootstrapCredentialStore;
+    let store = BootstrapCredentialStore::default();
     let issue = store
         .issue_for_zero_credential_user(&pool, None, user_id, OrgId::one(), now, Duration::hours(1))
         .await

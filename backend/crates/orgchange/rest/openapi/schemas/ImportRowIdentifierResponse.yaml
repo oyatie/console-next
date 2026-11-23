@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required: [run_id, source_key, id_type, recorded]
+properties:
+  run_id:
+    $ref: '#/components/schemas/Uuid'
+  source_key:
+    type: string
+  id_type:
+    type: string
+    enum: [RRN, ARC, DOMESTIC_RESIDENCE]
+  recorded:
+    type: boolean
+  sex_derived:
+    type: string
+    enum: [MALE, FEMALE]

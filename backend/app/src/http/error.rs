@@ -100,7 +100,9 @@ impl ApiError {
     pub(crate) fn from_app(error: AppError) -> Self {
         tracing::error!(error = %error, "audit api failed");
         match error {
-            AppError::Config(message) => Self::service_unavailable(message),
+            AppError::Config(message) | AppError::OpsConfig(message) => {
+                Self::service_unavailable(message)
+            }
             AppError::DatabaseUnavailable(message) => {
                 Self::new(StatusCode::SERVICE_UNAVAILABLE, "unavailable", message)
             }

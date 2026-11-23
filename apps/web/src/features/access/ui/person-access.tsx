@@ -24,6 +24,7 @@ import { AccessHead } from "./access-head";
 import { GrantChange, type ChangeMode } from "./grant-change";
 import { GrantSheet } from "./grant-sheet";
 import { EnforcementChip, PersonHead } from "./holder";
+import { OpsUsageCard } from "./ops-usage";
 import { useAccessContext } from "./use-access-context";
 import { useReasons } from "./use-reasons";
 import s from "./access.module.css";
@@ -103,42 +104,43 @@ export function PersonAccess({ accountId, grant: granting = false, onGrant }: {
   const one = eff.data && new Set(eff.data.entries.map((e) => e.enforcement)).size === 1 ? eff.data.entries[0]?.enforcement : undefined;
   const pageRead = readGroup([eff, grants]);
   return (
-    <div className="page">
+    <div className="page" data-access-page="">
       <AccessHead failed={Boolean(pageRead.error)} />
 <QueryState q={pageRead} back={{ to: "/access/grants", label: t("access.nav.grants") }} layout="record">{() => {
       const e = eff.data!;
       return <>      <>
-      <div className={s.titleRow}>
+      <div className={s.titleRow} data-access-subhead="">
         <Link to="/access/grants" className={buttonClass("ghost")}><ChevronLeft size={16} aria-hidden />{t("access.nav.grants")}</Link>
         {account ? <PersonHead a={account} ops={account.id === ctx.ops} details={!account.employee_id} title={<h2 className={s.personTitle}>{name}</h2>} /> : <h2 className="page__title">{t("access.person.title")}</h2>}
         {account && <PersonRef account={account} wrap />}
-        <span className="grow" />
+        <div className="grow" />
         {account && !e.is_ops && <Button variant="primary" onClick={() => onGrant(true)}><Plus size={16} aria-hidden />{t("access.grant.title")}</Button>}
       </div>
       {done && <Banner live="polite">{done}{operationId && <p><Link to="/requests/$id" params={{ id: operationId }}>{t("requestOutcome.open")}</Link></p>}</Banner>}
-        <div className={s.editor}>
+        <div className={s.editor} data-access-split="">
           <Card
             title={name ? t("access.person.can", { name }) : t("access.person.title")}
             meta={one === "PREPARED" ? <Chip tone="info">{t("access.person.fromGoLive")}</Chip> : one && one !== "ENFORCED" && <EnforcementChip e={one} />}
             flush
           >
-            {e.is_ops ? <div className={s.pad}><Banner>{t("access.person.ops")}</Banner></div>
+            {e.is_ops ? <Banner placement="page">{t("access.person.ops")}</Banner>
               : e.entries.length ? <CanDo entries={e.entries} order={order} grants={held} roots={roots} />
               : <EmptyState title={t("access.person.none", { name: name ?? t("people.label.unnamed") })} reason={t(e.phase === "SETUP" ? "access.person.none.setup" : "access.person.none.reason")} />}
           </Card>
+          {e.is_ops ? <OpsUsageCard /> : (
           <Card title={t("access.grants.count", { count: held.length })} flush>
             {held.length ? (
               <ul className={s.held}>
                 {held.map((g) => (
                   <li key={g.id}>
-                    <span className={s.stack}>
+                    <div className={s.stack}>
                       <strong>{g.role_name_ko}</strong>
-                      <span className={s.src}>{scopeText(roots, g.scope)} · {periodText(g)}</span>
-                    </span>
-                    <span className={s.actions}>
+                      <div className={s.src}>{scopeText(roots, g.scope)} · {periodText(g)}</div>
+                    </div>
+                    <div className={s.actions}>
                       <Button variant="ghost" aria-label={t("access.change.end.label", { name: personName(g.account_display_name), role: g.role_name_ko })} onClick={() => setChanging({ g, mode: "end" })}>{t("access.change.mode.end")}</Button>
                       <Button variant="ghost-danger" aria-label={t("access.change.revoke.label", { name: personName(g.account_display_name), role: g.role_name_ko })} onClick={() => setChanging({ g, mode: "revoke" })}>{t("access.change.mode.revoke")}</Button>
-                    </span>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -146,6 +148,7 @@ export function PersonAccess({ accountId, grant: granting = false, onGrant }: {
               <EmptyState title={t("access.grants.none")} reason={t("access.person.grants.none")} />
             )}
           </Card>
+          )}
         </div>
       {granting && account && !eff.data!.is_ops && ctx.cat.data && ctx.rolesLoaded && (
         <GrantSheet account={account} me={ctx.me} ops={ctx.ops} cat={ctx.cat.data} roles={ctx.roles} setup={ctx.setup} onClose={() => onGrant(false)} onGranted={(m, _made, id) => (onGrant(false), setDone(m), setOperationId(id))} />

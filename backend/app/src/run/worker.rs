@@ -106,6 +106,21 @@ pub(crate) async fn run_dispatch_worker(
     let workflow_schedule_handle = workflow_schedules::spawn(pool.clone());
     #[cfg(feature = "facilities")]
     let facilities_schedule_handle = facilities_schedule::spawn(pool.clone());
+    let s3_purge_targets = state
+        .sales_media_storage
+        .as_ref()
+        .map(|(store, primary_bucket)| {
+            let replica_bucket = config
+                .storage
+                .as_ref()
+                .map(|cfg| cfg.replica_bucket.clone())
+                .filter(|b| !b.trim().is_empty());
+            lifecycle_schedule::S3PurgeTargets {
+                store: std::sync::Arc::new(store.clone()),
+                primary_bucket: primary_bucket.clone(),
+                replica_bucket,
+            }
+        });
     let lifecycle_schedule_handle = lifecycle_schedule::spawn(
         pool.clone(),
         true,
@@ -113,7 +128,16 @@ pub(crate) async fn run_dispatch_worker(
             DatabaseDependency::Postgres(pool) => Some(pool.clone()),
             DatabaseDependency::NotConfigured => None,
         },
+        s3_purge_targets,
         state.nts.clone(),
+        crate::rrn_vault_tenant::from_env_logged_for_pool(pool.clone()),
+        #[cfg(feature = "mail")]
+        state.mail_cipher.clone().map(|cipher| {
+            std::sync::Arc::new(crate::mail_cipher::TenantEnvMailCipher::new(
+                cipher,
+                pool.clone(),
+            )) as std::sync::Arc<dyn console_comms_application::CredentialCipher>
+        }),
     );
     #[cfg(feature = "dispatch")]
     let dispatch_worker = DispatchWorker::new(

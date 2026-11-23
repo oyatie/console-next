@@ -10,24 +10,33 @@ import { PageHeadingLevel, PagePhase } from "../page/page-scope";
  * without it the head sits in the page's padding (lists, settings).
  */
 export type PageHeadProps = {
+  /** Primary heading text of the page or section. */
   title: ReactNode;
   /** The h1's id: a screen that moves focus to its title after a load or a commit names it (the h1 takes focus, never a tab stop). */
   titleId?: string;
+  /** Breadcrumb trail rendered above the heading row. */
   crumbs?: ReactNode;
+  /** Status chip, phase line, or code facts placed immediately beside the title. */
   meta?: ReactNode;
+  /** Filter controls (segmented views, quick checks, find box) placed beside the title before the spacer. */
+  filters?: ReactNode;
+  /** Secondary toolbar controls aligned to the trailing side before `primary`. */
   tools?: ReactNode;
   /** One primary action stays visible on phones; secondary commands move into the named menu. */
   primary?: ReactNode;
+  /** Named secondary command strip (`PageHeadActions`) that folds into an overflow menu on phones. */
   actions?: ReactNode;
   /** The existing AsOfControl (or an AsOf fact); owned by the head, above its view tabs. */
   asOf?: ReactNode;
+  /** View or route tabs seated on the bottom rule of the page head. */
   tabs?: ReactNode;
   /** Under the title: what this page is for (a line, or a block such as a chain strip: a <div>, never a <p>). */
   sub?: ReactNode;
+  /** Draws the head as a full-width surface band (`40px` command strip under Console). */
   band?: boolean;
 };
 
-export function PageHead({ title, titleId, crumbs, meta, tools, primary, actions, asOf, tabs, band, sub }: PageHeadProps) {
+export function PageHead({ title, titleId, crumbs, meta, filters, tools, primary, actions, asOf, tabs, band, sub }: PageHeadProps) {
   const level = useContext(PageHeadingLevel);
   const phase = useContext(PagePhase);
   const Title = level === 1 ? "h1" : "h2";
@@ -37,6 +46,7 @@ export function PageHead({ title, titleId, crumbs, meta, tools, primary, actions
       <div className={s.row}>
         <Title id={titleId} className={s.title} tabIndex={-1}>{title}</Title>
         {shown(meta) && <div className={s.meta}>{meta}</div>}
+        {shown(filters) && <div className={s.filters}>{filters}</div>}
         <span className={s.grow} />
         {actions}
         {shown(tools) && <div className={s.tools}>{tools}</div>}

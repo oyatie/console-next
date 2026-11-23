@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+description: >-
+  Structured period and total summary for an issued payslip row in the inbox
+  list, avoiding N+1 detail fetches when stepping across periods.
+required:
+- period_start
+- period_end
+properties:
+  attribution_month:
+    type:
+    - string
+    - 'null'
+    description: Attribution month in YYYY-MM format.
+  period_start:
+    type: string
+    format: date
+  period_end:
+    type: string
+    format: date
+  pay_date:
+    type:
+    - string
+    - 'null'
+    format: date
+  gross_won:
+    type:
+    - integer
+    - 'null'
+    format: int64
+  net_won:
+    type:
+    - integer
+    - 'null'
+    format: int64

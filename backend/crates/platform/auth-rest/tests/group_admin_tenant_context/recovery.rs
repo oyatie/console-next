@@ -51,7 +51,7 @@ async fn refuses_recovery(owner: PgPool, path: &str) {
             )
             .await
             .unwrap();
-        console_platform_provisioning::BootstrapCredentialStore
+        console_platform_provisioning::BootstrapCredentialStore::default()
             .issue_for_zero_credential_user(
                 &rt,
                 None,

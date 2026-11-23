@@ -23,7 +23,7 @@ const since = (items: readonly LifecycleEvent[], type: LifecycleEvent["event_typ
  * 2 employment and placement (E2): employment status (a result of acts, locked), company, workplace, department (changed only by a personnel action), grade, position, duty title ·
  * job, job family, employment type (edit: change or correction), hire date and group start date (correction only, two people; first value free), probation, concurrent post.
  */
-export function SecJob({ c, onFix, onAct, onTab, onContract }: { c: Card; onFix: (field: string) => void; onAct: (act: string) => void; onTab: () => void; onContract?: () => void }) {
+export function SecJob({ c, calm = false, onFix, onAct, onTab, onContract }: { c: Card; calm?: boolean; onFix: (field: string) => void; onAct: (act: string) => void; onTab: () => void; onContract?: () => void }) {
   const { e, d } = c;
   const items = c.events.data?.items ?? [];
   const { title, planned: p } = c;
@@ -93,7 +93,7 @@ export function SecJob({ c, onFix, onAct, onTab, onContract }: { c: Card; onFix:
         {probation?.probation_end_date ? <>{t("empCard.probation.until", { date: fmtDate(probation.probation_end_date) })} · {label(PROBATION_STATE, probation.probation_state)}</> : none}
       </FieldRow>
       <div className={s.rail}>
-        {c.readable && <EmploymentRecord e={e} editable={c.editable} onContract={onContract} />}
+        {c.readable && <EmploymentRecord e={e} editable={c.editable} calm={calm} onContract={onContract} />}
       </div>
     </RecordSection>
   );

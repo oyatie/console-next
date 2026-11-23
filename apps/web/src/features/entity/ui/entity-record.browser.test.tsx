@@ -2,7 +2,12 @@
 import { expect as dom, type Browser, type Page } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 import { afterAll, beforeAll, expect, test } from "vitest";
+import { loadCatalog, t } from "@console/i18n";
 import { browserEngine, browserTestOptimizeDeps, openBrowserTestPage } from "../../../lib/browser-test";
+
+beforeAll(async () => {
+  await loadCatalog("ko");
+});
 
 let server: ViteDevServer;
 let browser: Browser;
@@ -23,25 +28,32 @@ beforeAll(async () => {
         import { createRootRoute, createRoute, createRouter, RouterProvider } from '@tanstack/react-router';
         import { loadCatalog } from '@console/i18n';
         import { EntityRecord } from '/apps/web/src/features/entity/ui/entity-record.tsx';
-        import { entityQuery } from '/apps/web/src/features/entity/api.ts';
+        import { ApiError, entityQuery } from '/apps/web/src/features/entity/api.ts';
         import { checklistRef } from '/apps/web/src/reference/entity/api.ts';
         import { myAccessQuery } from '/apps/web/src/reference/authz/api.ts';
         import { settingsQuery } from '/apps/web/src/reference/settings/api.ts';
         await loadCatalog('ko');
         const client = new QueryClient({ defaultOptions: { queries: { enabled: false, retry: false } } });
-        await client.fetchQuery({ ...entityQuery('entity'), queryFn: async () => ({
-          id: 'entity', biz_kind: 'CORPORATION', can_manage: false,
+        const entityData = {
+          id: 'entity', biz_kind: 'CORPORATION', can_manage: true,
           current: { name: '주식회사 누리', representatives: [], directors: [] },
-          registrations: [], workplaces: [], scheduled: [], identity_problems: [], name_reviews: [],
+          registrations: [{ id: 'reg-1', closed_on: null, current: { business_types: [] }, verification: { status: 'UNVERIFIED' } }],
+          workplaces: [], scheduled: [], identity_problems: [], name_reviews: [],
           regular_workers: { value: null, status: 'HOLD', live_headcount: 0, missing: [], basis: 'LSA_DECREE_7_2' },
-        }) });
+        };
+        await client.fetchQuery({ ...entityQuery('entity'), queryFn: async () => entityData });
         await client.fetchQuery({ ...checklistRef, queryFn: async () => ({ phase: 'OPERATING' }) });
-        await client.fetchQuery({ ...myAccessQuery, queryFn: async () => ({ phase: 'OPERATING' }) });
+        await client.fetchQuery({ ...myAccessQuery, queryFn: async () => ({ phase: 'OPERATING', is_ops: false, entries: [] }) });
         await client.fetchQuery({ ...settingsQuery, queryFn: async () => { throw new Error('unavailable'); } }).catch(() => {});
         const root = createRootRoute();
         const app = createRoute({ getParentRoute: () => root, id: 'app' });
         const detail = createRoute({ getParentRoute: () => app, path: '/org/entities/$id', component: () => React.createElement(React.Fragment, null,
           React.createElement('button', { onClick: () => { void client.fetchQuery({ ...settingsQuery, queryFn: () => new Promise(() => {}) }); } }, 'Refresh settings'),
+          React.createElement('button', { onClick: () => {
+            document.documentElement.dataset.experience = 'console';
+            void router.navigate({ to: '/org/entities/$id', params: { id: 'entity' }, search: { reissue: 'reg-1' } });
+          } }, 'Open console reissue'),
+          (window.__refuseEntity = () => client.fetchQuery({ ...entityQuery('entity'), queryFn: async () => { throw new ApiError(403, 'forbidden', 'denied'); } }).catch(() => {}), null),
           React.createElement(EntityRecord, { id: 'entity' }),
         ) });
         const router = createRouter({ routeTree: root.addChildren([app.addChildren([detail])]) });
@@ -67,5 +79,15 @@ test("a failed side read stays released when another refresh starts", async () =
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await dom(heading).toBeVisible();
   await dom(page.locator('[data-read-layout="record"][aria-busy="true"]')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test("Console mode does not render overlays when activeQ has stale data alongside ApiError(403)", async () => {
+  await page.getByRole("button", { name: "Open console reissue", exact: true }).click();
+  await dom(page.locator('[data-pattern="record"]')).toHaveAttribute("data-floorplan", "P-02");
+  await dom(page.getByRole("heading", { name: t("entityReissue.title") })).toBeVisible();
+  await page.evaluate(() => (window as unknown as { __refuseEntity: () => Promise<unknown> }).__refuseEntity());
+  await dom(page.getByRole("region", { name: t("common.denied.title.plain") })).toBeVisible();
+  await dom(page.getByRole("dialog")).toHaveCount(0);
   expect(errors).toEqual([]);
 });

@@ -19,6 +19,10 @@ path = "src/main.rs"
 name = "console-cedar-parity-report"
 path = "src/bin/console_cedar_parity_report.rs"
 
+[[bin]]
+name = "console_ops_config_check"
+path = "src/bin/console_ops_config_check.rs"
+
 [lib]
 name = "console_app"
 path = "src/lib.rs"
@@ -43,9 +47,9 @@ dev-auth = ["console-platform-auth-rest/dev-auth"]
 # into `mvp` is a reviewed change that passes the promotion checklist in
 # docs/ops/mvp-build.md. Migrations are never gated: one schema for every build.
 default = ["mvp"]
-# The modules in the MVP besides the always-on Org + HR core. 근태 is in the MVP
-# (decision #22; HR logs it in the pilot) although the web does not call it yet.
-mvp = ["attendance", "payroll"]
+# The modules in the MVP besides the always-on Org + HR core. Attendance, leave,
+# payroll, and inbox are enabled in the default MVP profile.
+mvp = ["attendance", "payroll", "leave", "inbox"]
 full = [
   # People
   "attendance", "leave", "recruiting", "evaluation", "benefit", "payroll",
@@ -109,7 +113,7 @@ http = { workspace = true }
 hex = { workspace = true }
 ipnet = { workspace = true }
 jsonwebtoken = { workspace = true }
-reqwest = { workspace = true }
+reqwest = { workspace = true, features = ["rustls"] }
 console-comms-adapter-imap = { workspace = true, optional = true }
 console-comms-adapter-postgres = { workspace = true, optional = true }
 console-comms-application = { workspace = true, optional = true }
@@ -142,6 +146,10 @@ console-settings-adapter-postgres = { path = "../crates/settings/adapter-postgre
 console-settings-rest = { path = "../crates/settings/rest" }
 console-settings-domain = { path = "../crates/settings/domain" }
 console-kernel-core = { workspace = true }
+console-ops-adapter-http = { workspace = true }
+console-ops-application = { workspace = true }
+console-ops-domain = { workspace = true }
+console-ops-rest = { workspace = true }
 console-messenger-adapter-postgres = { workspace = true }
 console-messenger-rest = { workspace = true, optional = true }
 console-notifications-adapter-postgres = { workspace = true }
@@ -184,6 +192,7 @@ console-platform-access = { workspace = true }
 console-platform-access-rest = { workspace = true }
 console-platform-authz = { path = "../crates/platform/authz" }
 console-platform-authz-rest = { workspace = true }
+console-platform-crypto = { workspace = true }
 console-ontology-adapter-postgres = { workspace = true }
 # The four canonical ports this crate is the composition root for. No
 # [workspace.dependencies] entry exists for it (same as its two sibling owners),
@@ -266,7 +275,9 @@ console-governance-application = { workspace = true }
 console-notifications-domain = { workspace = true }
 console-settings-domain = { path = "../crates/settings/domain" }
 p256 = { workspace = true, features = ["ecdsa", "pkcs8", "pem"] }
+rustls = { workspace = true }
 tokio = { workspace = true, features = ["io-util", "net", "macros", "rt-multi-thread", "test-util"] }
+tokio-rustls = { workspace = true }
 tower = { workspace = true, features = ["util"] }
 # Builds the .xlsx fixtures for the import privacy tests (hr.rs).
 umya-spreadsheet = "3.0.0"
@@ -476,3 +487,15 @@ required-features = ["workorder"]
 
 [[test]]
 name = "inbox_source_timing"
+
+[[test]]
+name = "credential_reseal"
+required-features = ["test-postgres", "full"]
+
+[[test]]
+name = "tenant_crypto_shred_pitr"
+required-features = ["test-postgres", "full"]
+
+[[test]]
+name = "tenant_dek_rotation_cli"
+required-features = ["test-postgres", "full"]

@@ -1,0 +1,12 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+/* Console-mode layout helpers for /people/data-health. Tokens only. */
+.stack { display: flex; flex-direction: column; gap: 0; min-width: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.gapSummary { display: inline-flex; align-items: center; gap: var(--space-1); min-width: 0; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.nowrap { white-space: nowrap; flex-shrink: 0; }
+.sub { composes: t-sm muted from global; }
+.nameCell { display: inline-flex; align-items: baseline; gap: var(--space-2); min-width: 0; white-space: nowrap; }
+.subNum { composes: t-sm muted num from global; }
+.moreBar { display: flex; justify-content: flex-start; gap: var(--space-2); }
+.rateHead { display: block; text-align: start; white-space: nowrap; }

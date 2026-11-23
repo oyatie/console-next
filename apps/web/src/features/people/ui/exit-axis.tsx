@@ -47,7 +47,7 @@ const holder = (next: ForwardKey, sameActor: boolean) =>
  * marked and its form sits right under the steps, with the back decisions (reject, cancel) at equal height
  * on its left. A closed case shows the steps it reached and its close step.
  */
-export function CaseAxis({ c: live, onBack, onDone }: { c: Case; onBack: (k: BackKey) => void; onDone: (message: string, reference?: string) => void }) {
+export function CaseAxis({ c: live, onBack, onDone, consoleMode }: { c: Case; onBack: (k: BackKey) => void; onDone: (message: string, reference?: string) => void; consoleMode?: boolean }) {
   // The case the open form was built for (C11): a refresh that keeps the step follows along; one that moves the
   // case (someone else took the step) keeps the form, read-only, with who did it, until the user moves on. My
   // own commit follows the next read.
@@ -86,7 +86,7 @@ export function CaseAxis({ c: live, onBack, onDone }: { c: Case; onBack: (k: Bac
       key: step,
       who: titled(t(`exit.step.${step}`), text),
       state,
-      meta: state === "current" && next ? (forward ? t("exit.next.mine") : holder(next, sameActor)) : when && fmtDateTime(when),
+      meta: state === "current" && next ? (forward ? t(consoleMode ? "exit.next.current" : "exit.next.mine") : holder(next, sameActor)) : when && fmtDateTime(when),
     };
   });
   if (isClosed(c))
@@ -106,10 +106,10 @@ export function CaseAxis({ c: live, onBack, onDone }: { c: Case; onBack: (k: Bac
     </span>
   );
   return (
-    <div className={s.column}>
+    <div className={consoleMode ? s.stack : s.column}>
       <ChainStepper steps={steps} />
       {next && current && (
-        <section className={s.now} aria-labelledby="exit-now">
+        <section className={s.now} data-exit-now={consoleMode ? "" : undefined} aria-labelledby="exit-now">
           <h2 id="exit-now" className={s.nowTitle} tabIndex={-1}>{t("exit.now", { step: t(`exit.step.${current}`) })}</h2>
           {forward ? (
             <StepForm

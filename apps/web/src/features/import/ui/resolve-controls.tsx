@@ -3,7 +3,8 @@ import { entityNameText } from "../../../reference/entity/present";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
-import { EMPLOYEE_STATUS, label } from "../../../lib/labels";
+import { EMPLOYEE_STATUS, ID_TYPE, label } from "../../../lib/labels";
+import { CommandError } from "../../../lib/react/command-error";
 import { entitiesRef } from "../../../reference/entity/api";
 import { PickOne } from "../../../reference/entity/ui/pick-one";
 import { EntityName } from "../../../reference/entity/ui/entity-name";
@@ -12,13 +13,18 @@ import { unitPath } from "../../../reference/org/present";
 import { Button } from "../../../ui/button/button";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { Field, TextInput } from "../../../ui/field/field";
+import { SelectInput } from "../../../ui/field/select-input";
 import { ReasonField } from "../../../ui/reason/reason-field";
 import { reasonProblem, type Reason } from "../../../ui/reason/reason";
 import { excludeReasonsQuery, EXCLUDE_REASONS, NOTE_MAX, NUMBER_MAX, OTHER } from "../api";
-import { EMPLOYMENT_TYPES, type ImportRow, type ReviewItem } from "../domain/contract";
+import { EMPLOYMENT_TYPES, IMPORT_STATUSES, type ImportDryRun, type ImportRow, type ReviewItem } from "../domain/contract";
 import { answerOf, NEW_PERSON, NONE, withChoice, withNumber, withRowAnswer, type Picks } from "../domain/steps";
-import { candidateBasisLabel, employmentTypeLabel, reasonLabel, refusalLabel } from "../present";
+import { candidateBasisLabel, employeeStatusLabel, employmentTypeLabel, fieldLabel, idTypeLabel, importError, reasonLabel, refusalLabel } from "../present";
+import { useCellRepairCommand } from "./use-resolve-commands";
+import { useExpiry } from "./use-expiry";
 import s from "./import.module.css";
+
+export { RowIdentifierControl } from "./resolve-identifier-control";
 
 type Common = { picks: Picks; busy: boolean; onResolve: (c: Picks) => void };
 
@@ -151,6 +157,81 @@ export function NumberAnswer({ sourceKey, name, picks, busy, onResolve }: Common
         ) : (
           <DisabledReason control={(p) => <Button {...p} variant="primary">{go}</Button>} reason={t("importReview.number.needOne")} />
         )}
+      </div>
+    </div>
+  );
+}
+
+/** Inline cell repair for date cells (`two_digit_year` / `invalid_date`) and non-restricted identity/status cells (`id_type`, `birth_date`, `employment_status`). */
+export function CellRepairControl({
+  item,
+  row,
+  field,
+  runId,
+  picks,
+  busy,
+  onDryRun,
+  onExpired,
+  onBack,
+}: {
+  item: ReviewItem;
+  row: ImportRow;
+  field: string;
+  runId: string;
+  picks: Picks;
+  busy: boolean;
+  onDryRun: (d: ImportDryRun) => void;
+  onExpired: () => void;
+  onBack?: () => void;
+}) {
+  const [value, setValue] = useState(() => {
+    if (field === "id_type") return row.new_person?.id_type ?? "";
+    if (field === "employment_status") return row.new_person?.status ?? "";
+    return item.value ?? "";
+  });
+  const cmd = useCellRepairCommand(onDryRun);
+  useExpiry(cmd.error, onExpired);
+  const idOptions = ID_TYPE.values.filter((code) => code !== "NOT_ISSUED" || row.new_person?.status === "PRE_HIRE");
+  const placeholder = item.expected_format ?? (field.endsWith("_date") ? "YYYY-MM-DD" : undefined);
+
+  return (
+    <div className="form">
+      <Field label={fieldLabel(field)} required>
+        {(p) =>
+          field === "id_type" ? (
+            <SelectInput {...p} value={value} onChange={(e) => (setValue(e.target.value), cmd.reset())}>
+              <option value="">{t("importReview.cells.pickOption")}</option>
+              {idOptions.map((code) => (
+                <option key={code} value={code}>{idTypeLabel(code)}</option>
+              ))}
+            </SelectInput>
+          ) : field === "employment_status" ? (
+            <SelectInput {...p} value={value} onChange={(e) => (setValue(e.target.value), cmd.reset())}>
+              <option value="">{t("importReview.cells.pickOption")}</option>
+              {IMPORT_STATUSES.map((code) => (
+                <option key={code} value={code}>{employeeStatusLabel(code)}</option>
+              ))}
+            </SelectInput>
+          ) : (
+            <TextInput
+              {...p}
+              placeholder={placeholder}
+              value={value}
+              onChange={(e) => (setValue(e.target.value), cmd.reset())}
+            />
+          )
+        }
+      </Field>
+      <CommandError error={cmd.error} recover={false} own={importError} />
+      <div className="form__actions">
+        {onBack && <Button onClick={onBack}>{t("importReview.exclude.back")}</Button>}
+        <Button
+          variant="primary"
+          disabled={busy || cmd.isPending || !value.trim()}
+          onClick={() => cmd.run({ runId, sourceKey: row.source_key, field, value: value.trim(), picks })}
+        >
+          {t("importReview.cells.save")}
+        </Button>
       </div>
     </div>
   );

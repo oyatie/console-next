@@ -16,8 +16,11 @@ async fn a_failed_access_log_returns_no_value_and_does_not_open_the_vault(pool: 
         fn seal(&self, o: Uuid, r: &Rrn) -> Result<SealedRrn, VaultError> {
             MirrorVault.seal(o, r)
         }
-        fn blind_index(&self, r: &Rrn) -> Vec<u8> {
-            MirrorVault.blind_index(r)
+        fn blind_index(&self, o: Uuid, r: &Rrn) -> Vec<u8> {
+            MirrorVault.blind_index(o, r)
+        }
+        fn blind_index_v1(&self, r: &Rrn) -> Vec<u8> {
+            MirrorVault.blind_index_v1(r)
         }
         fn open(&self, o: Uuid, s: &SealedRrn) -> Result<Rrn, VaultError> {
             self.0.fetch_add(1, Ordering::SeqCst);

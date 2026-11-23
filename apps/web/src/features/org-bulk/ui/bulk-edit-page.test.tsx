@@ -6,6 +6,7 @@ import { afterAll, beforeAll, expect, test } from "vitest";
 import { chromium, type Browser, type Page } from "../../../lib/browser-test";
 import type { LegalEntity } from "@console/api/pending";
 import { loadCatalog, t } from "@console/i18n";
+import { myAccessQuery } from "../../../reference/authz/api";
 import { entitiesRef, kindsRef } from "../../../reference/entity/api";
 import { BulkEditPage } from "./bulk-edit-page";
 import { BulkHead } from "./bulk-head";
@@ -27,6 +28,7 @@ const entity: LegalEntity = {
 
 async function render(items: typeof entity[], head?: { crumb?: string }) {
   const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } });
+  await client.fetchQuery({ ...myAccessQuery, queryFn: async () => ({ account_id: "me", is_ops: true, phase: "SETUP", as_of: "2026-10-27T00:00:00Z", entries: [] }) });
   await client.fetchQuery({ ...entitiesRef, queryFn: async () => ({ items }) });
   await client.fetchQuery({ ...kindsRef, queryFn: async () => ({ items: [] }) });
   const root = createRootRoute({ component: () => head ? <BulkHead title="제목" crumb={head.crumb} under="대상"><span>{t("orgBulk.import.step.file")}</span></BulkHead> : <BulkEditPage /> });

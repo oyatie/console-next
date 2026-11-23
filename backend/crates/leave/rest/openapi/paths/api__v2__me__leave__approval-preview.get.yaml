@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags:
+  - leave
+operationId: getMyLeaveApprovalPreviewV2
+summary: Preview the approval chain for a self-service leave request
+description: >-
+  Returns the caller's leave filing readiness, active home branch, org unit,
+  and SoD-filtered approval steps (optional unambiguous unit lead plus branch
+  HR/approver step). Requires Cedar employee_self_read on the caller's linked
+  employee.
+security:
+  - bearerAuth: []
+responses:
+  '200':
+    description: Leave approval preview.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/SelfLeaveApprovalPreview'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'

@@ -17,6 +17,9 @@ mod coldstart_guard;
 mod collaboration;
 #[cfg(feature = "full")]
 mod console_telemetry;
+pub mod crypto_reseal;
+mod crypto_reseal_cli;
+pub mod crypto_reseal_rotation;
 mod entity_wiring;
 mod error_i18n;
 #[cfg(feature = "facilities")]
@@ -26,12 +29,17 @@ pub mod lifecycle;
 mod lifecycle_schedule;
 /// Scheduled org changes, `pub` for the clock-injected tests (org-02).
 pub mod org_change_schedule;
+#[path = "hr/rrn_vault_tenant.rs"]
+pub(crate) mod rrn_vault_tenant;
 /// Scheduled lifecycle events runner, `pub` for the clock-injected tests.
 pub use hr::apply_due_lifecycle_events;
+pub use hr::rrn_vault::EnvRrnVault;
 mod audit_api;
 mod config;
 mod error;
 mod http;
+#[cfg(feature = "mail")]
+pub mod mail_cipher;
 #[cfg(feature = "mail")]
 mod mail_sync;
 #[cfg(feature = "workspace")]
@@ -70,13 +78,19 @@ pub use crate::audit_api::AUDIT_ROUTE_PATHS;
 pub use crate::config::AppConfig;
 pub use crate::config::AppLinksConfig;
 pub use crate::config::auth::JwtVerifierConfig;
+pub use crate::config::ops_cockpit::{
+    OpsCockpitConfig, validate_bundle_dir as validate_ops_bundle_dir,
+};
 pub use crate::config::role::AppRole;
+pub use crate::crypto_reseal_cli::run_crypto_cli;
 pub use crate::error::AppError;
 pub use crate::http::metrics::install_metrics_recorder;
 pub use crate::routes::build_router;
 pub use crate::run::healthcheck::healthcheck;
 use crate::run::migrate::MIGRATOR;
 pub use crate::run::migrate::run_migrations;
+pub use crate::run::ops_cockpit::run as run_ops_cockpit;
+pub use crate::run::ops_cockpit_http::build_ops_router;
 pub use crate::run::schema_check::run_schema_check;
 pub use crate::run::serve::assert_no_dev_auth_personas;
 pub use crate::run::serve::serve;

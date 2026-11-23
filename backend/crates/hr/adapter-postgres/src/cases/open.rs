@@ -71,6 +71,17 @@ pub(crate) async fn exit(
     org: Uuid,
     exit: Uuid,
 ) -> Result<(), HrError> {
+    exit_many(tx, org, std::slice::from_ref(&exit)).await
+}
+
+pub(crate) async fn exit_many(
+    tx: &mut Transaction<'_, Postgres>,
+    org: Uuid,
+    exits: &[Uuid],
+) -> Result<(), HrError> {
+    if exits.is_empty() {
+        return Ok(());
+    }
     sqlx::query("INSERT INTO lifecycle_cases (org_id,id,kind,variant,subject_kind,employee_id,employment_id,branch_id,org_unit_id,legal_entity_id,workplace_id,\
       trigger_kind,trigger_id,effective_date,template_key,template_version,opened_by) \
       SELECT x.org_id,x.id,'EXIT',lifecycle_exit_variant(x.exit_reason_code),'EMPLOYMENT',x.employee_id,x.employment_id,x.branch_id,e.org_unit_id,a.legal_entity_id,a.workplace_id,\
@@ -80,10 +91,10 @@ pub(crate) async fn exit(
         AND a.superseded_at IS NULL AND a.valid_from<=x.effective_exit_date ORDER BY a.valid_from DESC LIMIT 1) a ON true \
       JOIN LATERAL (SELECT * FROM case_templates WHERE kind='EXIT' AND effective_from<=x.effective_exit_date \
         AND (effective_to_exclusive IS NULL OR x.effective_exit_date<effective_to_exclusive) ORDER BY effective_from DESC LIMIT 1) t ON true \
-      WHERE x.org_id=$1 AND x.id=$2 ON CONFLICT DO NOTHING")
-        .bind(org).bind(exit).execute(tx.as_mut()).await?;
-    items(tx, org, exit).await?;
-    initialise(tx, org, exit).await
+      WHERE x.org_id=$1 AND x.id=ANY($2) ON CONFLICT DO NOTHING")
+        .bind(org).bind(exits).execute(tx.as_mut()).await?;
+    items_many(tx, org, exits).await?;
+    initialise_many(tx, org, exits).await
 }
 
 pub(crate) async fn items(

@@ -134,3 +134,114 @@ test("refused outlines and group borders draw resolved 2px solid cues with >=3:1
     }
   }
 });
+
+test("name-first lead column clamps at 96px, 3rd lead column is static, and non-final tail columns are static without --border-strong", async () => {
+  const css = readFileSync(new URL("./person-day-grid.module.css", import.meta.url), "utf8");
+  expect(css).not.toContain("--border-strong");
+  const tokens = readFileSync(new URL("../../../../../packages/tokens/tokens.css", import.meta.url), "utf8");
+  const consoleTokens = readFileSync(new URL("../../../../../packages/tokens/experiences/console.css", import.meta.url), "utf8");
+  const scoped = css.replace(/\.([a-zA-Z][\w-]*)/g, (selector, name: string) => classes[name] ? `.${classes[name]}` : selector);
+  const longRow = { id: "long", name: "Very Long Employee Name Clamped Inside Sticky Column", v: ["8", "8", "8"] };
+  const markup = renderToStaticMarkup(
+    <PersonDayGrid<R>
+      label="Oct"
+      total={1}
+      rows={[longRow]}
+      rowKey={(r) => r.id}
+      lead={[
+        { key: "name", header: "Name", width: "name", cell: (r) => <a href="#p">{r.name}</a> },
+        { key: "code", header: "No.", width: "code", cell: () => "10587" },
+        { key: "unit", header: "Unit", width: "name", cell: () => "Team 1" },
+      ]}
+      days={[1, 2, 3].map((d) => ({ key: String(d), label: d, sub: "" }))}
+      tail={[
+        { key: "rec", header: "Recognised", width: "total", cell: () => "8:00" },
+        { key: "open", header: "Open", width: "total", cell: () => "–" },
+      ]}
+      cell={(r, d) => r.v[d]}
+      look={() => undefined}
+      describe={(r, d) => `${r.name} day ${d + 1}`}
+      range={null}
+      onRange={() => undefined}
+      editing={null}
+      onEdit={() => undefined}
+      onCommit={() => undefined}
+      onKey={() => false}
+    />,
+  );
+  await page.setContent(`<html data-experience="console"><style>${tokens}\n${consoleTokens}\n${scoped}</style><body>${markup}</body></html>`);
+  const measured = await page.evaluate(() => {
+    const leads = [...document.querySelectorAll<HTMLElement>("tbody tr th")];
+    const tails = [...document.querySelectorAll<HTMLElement>("tbody tr td")].slice(-2);
+    return {
+      nameW: Math.round(leads[0]!.getBoundingClientRect().width),
+      codeLeft: Math.round(leads[1]!.getBoundingClientRect().left - leads[0]!.getBoundingClientRect().left),
+      thirdPos: getComputedStyle(leads[2]!).position,
+      firstTailPos: getComputedStyle(tails[0]!).position,
+      lastTailPos: getComputedStyle(tails[1]!).position,
+    };
+  });
+  expect(measured.nameW).toBeLessThanOrEqual(96);
+  expect(measured.codeLeft).toBeGreaterThanOrEqual(95);
+  expect(measured.thirdPos).toBe("static");
+  expect(measured.firstTailPos).toBe("static");
+  expect(measured.lastTailPos).toBe("sticky");
+});
+
+test("console name-first link with >96px Korean name truncates with ellipsis rather than inline-flex clipping", async () => {
+  const css = readFileSync(new URL("./person-day-grid.module.css", import.meta.url), "utf8");
+  const tokens = readFileSync(new URL("../../../../../packages/tokens/tokens.css", import.meta.url), "utf8");
+  const consoleTokens = readFileSync(new URL("../../../../../packages/tokens/experiences/console.css", import.meta.url), "utf8");
+  const scoped = css.replace(/\.([a-zA-Z][\w-]*)/g, (selector, name: string) => classes[name] ? `.${classes[name]}` : selector);
+  const longKoreanRow = {
+    id: "long-ko",
+    name: yoon.name.repeat(6),
+    v: ["8", "8", "8"],
+  };
+  const markup = renderToStaticMarkup(
+    <PersonDayGrid<R>
+      label="Oct"
+      total={1}
+      rows={[longKoreanRow]}
+      rowKey={(r) => r.id}
+      lead={[
+        { key: "name", header: "Name", width: "name", cell: (r) => <a href="#p">{r.name}</a> },
+        { key: "code", header: "No.", width: "code", cell: () => "10587" },
+      ]}
+      days={[1, 2, 3].map((d) => ({ key: String(d), label: d, sub: "" }))}
+      tail={[{ key: "rec", header: "Recognised", width: "total", cell: () => "8:00" }]}
+      cell={(r, d) => r.v[d]}
+      look={() => undefined}
+      describe={(r, d) => `${r.name} ${d + 1}`}
+      range={null}
+      onRange={() => undefined}
+      editing={null}
+      onEdit={() => undefined}
+      onCommit={() => undefined}
+      onKey={() => false}
+    />,
+  );
+  await page.setContent(`<html data-experience="console"><style>${tokens}\n${consoleTokens}\n${scoped}</style><body>${markup}</body></html>`);
+  const measured = await page.evaluate(() => {
+    const link = document.querySelector<HTMLAnchorElement>("tbody tr th a")!;
+    const style = getComputedStyle(link);
+    const rect = link.getBoundingClientRect();
+    return {
+      display: style.display,
+      overflow: style.overflow,
+      textOverflow: style.textOverflow,
+      whiteSpace: style.whiteSpace,
+      scrollWidth: link.scrollWidth,
+      clientWidth: link.clientWidth,
+      width: rect.width,
+      height: rect.height,
+    };
+  });
+  expect(measured.display).not.toBe("inline-flex");
+  expect(measured.overflow).toBe("hidden");
+  expect(measured.textOverflow).toBe("ellipsis");
+  expect(measured.whiteSpace).toBe("nowrap");
+  expect(measured.scrollWidth).toBeGreaterThan(measured.clientWidth);
+  expect(measured.width).toBeLessThanOrEqual(80);
+  expect(measured.height).toBeGreaterThanOrEqual(24);
+});

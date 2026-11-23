@@ -5,8 +5,25 @@ import s from "./person-day-grid.module.css";
 
 export type { Cell, Range };
 export type DayColumn = { key: string; label: ReactNode; sub: ReactNode; tone?: "holiday" | "rest" };
-type SideColumn<R> = { key: string; header: ReactNode; cell: (r: R) => ReactNode; width: "code" | "name" | "total" };
+type SideColumn<R> = { key: string; header: ReactNode; cell: (r: R) => ReactNode; width: "code" | "name" | "total"; hideOnPhone?: boolean };
 type CellLook = "draft" | "refused" | "saved" | "locked" | undefined;
+export type GridFooterRow = {
+  key: string;
+  label: ReactNode;
+  day: (dayIndex: number) => ReactNode;
+  tail: readonly ReactNode[];
+};
+type CellBadgeTone = "dot" | "annual" | "half" | "holiday" | "overtime" | "unapproved" | "late" | "absent" | "blocking";
+
+/** Compact 1-2 character badge or dot inside a Console month grid cell. */
+export function GridCellBadge({ tone, children }: {
+  /** Semantic visual tone for the cell badge. */
+  tone: CellBadgeTone;
+  /** Short 1-2 character badge text or glyph. */
+  children: ReactNode;
+}) {
+  return <bdi className={tone === "dot" ? s.cellDot : s.cellBadge} data-badge={tone}>{children}</bdi>;
+}
 
 type Props<R> = {
   label: string;
@@ -17,6 +34,12 @@ type Props<R> = {
   lead: readonly SideColumn<R>[];
   days: readonly DayColumn[];
   tail: readonly SideColumn<R>[];
+  /** Optional group header spanning all tail columns (2-row thead). */
+  tailGroupHeader?: ReactNode;
+  /** Active/selected employee row key highlighted with the selected row bar. */
+  activeRowId?: string;
+  /** Optional summary rows rendered inside tfoot beneath the grid body. */
+  footerRows?: readonly GridFooterRow[];
   cell: (r: R, day: number) => ReactNode;
   look: (r: R, day: number) => CellLook;
   /** The cell's text for screen readers (value, marks, draft state). */
@@ -166,6 +189,9 @@ export function PersonDayGrid<R>(p: Props<R>) {
   const pick = (row: string, col: string, extend: boolean) => select(extend && rect ? { anchor: p.range!.anchor, focus: { row, col } } : at(row, col));
   const firstCol = axes.cols[0]!;
   const lastCol = axes.cols.at(-1)!;
+  const headerRows = p.tailGroupHeader ? 2 : 1;
+  const footerCount = p.footerRows?.length ?? 0;
+  const colCount = p.lead.length + p.days.length + p.tail.length;
 
   return (
     <div ref={box} className={s.box} onScroll={(e) => setScroll({ top: e.currentTarget.scrollTop, height: e.currentTarget.clientHeight })}>
@@ -175,8 +201,8 @@ export function PersonDayGrid<R>(p: Props<R>) {
         {...{
           role: "grid",
           "aria-label": p.label,
-          "aria-rowcount": p.total + 1,
-          "aria-colcount": p.lead.length + p.days.length + p.tail.length,
+          "aria-rowcount": p.total + headerRows + footerCount,
+          "aria-colcount": colCount,
           "aria-multiselectable": true,
           "aria-activedescendant": f ? cellId(f.r, f.c) : undefined,
           tabIndex: 0,
@@ -187,30 +213,47 @@ export function PersonDayGrid<R>(p: Props<R>) {
       >
         <thead>
           <tr aria-rowindex={1}>
-            {p.lead.map((c) => <th key={c.key} className={s.lead} data-w={c.width}>{c.header}</th>)}
+            {p.lead.map((c) => <th key={c.key} rowSpan={p.tailGroupHeader ? 2 : undefined} className={s.lead} data-w={c.width} data-hide-phone={c.hideOnPhone || undefined}>{c.header}</th>)}
             {p.days.map((d, c) => (
-              <th key={d.key} className={s.day} data-tone={d.tone} aria-selected={!!rect && c >= rect.left && c <= rect.right} onPointerDown={() => p.rows.length && select({ anchor: { row: axes.rows[0]!, col: d.key }, focus: { row: axes.rows.at(-1)!, col: d.key } })}>
+              <th key={d.key} rowSpan={p.tailGroupHeader ? 2 : undefined} className={s.day} data-tone={d.tone} aria-selected={!!rect && c >= rect.left && c <= rect.right} onPointerDown={() => p.rows.length && select({ anchor: { row: axes.rows[0]!, col: d.key }, focus: { row: axes.rows.at(-1)!, col: d.key } })}>
                 <span>{d.label}</span>
                 <span className={s.sub}>{d.sub}</span>
               </th>
             ))}
-            {p.tail.map((c) => <th key={c.key} className={s.tail} data-w={c.width}>{c.header}</th>)}
+            {p.tailGroupHeader ? (
+              p.tail.length > 1 ? (
+                <>
+                  <th colSpan={p.tail.length - 1} className={s.tailGroup}>{p.tailGroupHeader}</th>
+                  <th className={s.tailGroupEnd} aria-hidden="true" />
+                </>
+              ) : (
+                <th colSpan={p.tail.length} className={s.tailGroupEnd}>{p.tailGroupHeader}</th>
+              )
+            ) : (
+              p.tail.map((c) => <th key={c.key} className={s.tail} data-w={c.width}>{c.header}</th>)
+            )}
           </tr>
+          {p.tailGroupHeader && (
+            <tr aria-rowindex={2}>
+              {p.tail.map((c, ti) => <th key={c.key} className={s.tail} data-w={c.width} data-tail-first={ti === 0 || undefined}>{c.header}</th>)}
+            </tr>
+          )}
         </thead>
         <tbody>
-          {first > 0 && <tr aria-hidden><td aria-hidden colSpan={p.lead.length + p.days.length + p.tail.length} height={first * rowHeight} /></tr>}
+          {first > 0 && <tr aria-hidden><td aria-hidden colSpan={colCount} height={first * rowHeight} /></tr>}
           {p.rows.slice(first, last).map((row, i) => {
             const r = first + i;
             const key = axes.rows[r]!;
             const group = p.groupOf?.(row);
             const newGroup = group !== undefined && (r === 0 || p.groupOf!(p.rows[r - 1]!) !== group);
             return (
-              <tr key={key} aria-rowindex={r + 2} className={s.row} data-group={newGroup ? group : undefined}>
+              <tr key={key} aria-rowindex={r + headerRows + 1} className={s.row} data-group={newGroup ? group : undefined} data-active={key === p.activeRowId || undefined}>
                 {p.lead.map((c, k) => (
-                  <th key={c.key} className={s.lead} data-w={c.width} data-first={k === 0 || undefined} onPointerDown={() => (rowPress.current = true, select({ anchor: { row: key, col: firstCol }, focus: { row: key, col: lastCol } }))}>{c.cell(row)}</th>
+                  <th key={c.key} className={s.lead} data-w={c.width} data-first={k === 0 || undefined} data-hide-phone={c.hideOnPhone || undefined} onPointerDown={() => (rowPress.current = true, select({ anchor: { row: key, col: firstCol }, focus: { row: key, col: lastCol } }))}>{c.cell(row)}</th>
                 ))}
                 {p.days.map((d, c) => {
                   const focused = !!f && r === f.r && c === f.c;
+                  const described = p.describe(row, c);
                   // A press or a double-click in the cell that holds the open editor is the editor's own (the caret,
                   // a word): the cell neither selects, which would commit and close it, nor opens it again, nor takes
                   // the focus from the input when the press lands on the cell beside it.
@@ -221,9 +264,9 @@ export function PersonDayGrid<R>(p: Props<R>) {
                     <td
                       key={d.key}
                       id={cellId(r, c)}
-                     
                       aria-selected={inRect(rect, r, c)}
-                      aria-label={p.describe(row, c)}
+                      aria-label={described}
+                      title={described}
                       className={s.cell}
                       data-tone={d.tone}
                       data-look={p.look(row, c)}
@@ -233,16 +276,34 @@ export function PersonDayGrid<R>(p: Props<R>) {
                       onPointerEnter={() => drag && pick(key, d.key, true)}
                       onDoubleClick={() => open || p.onEdit("")}
                     >
-                      {open ? <Editor value={p.editing!.value} label={p.describe(row, c)} onChange={p.onEdit} onCommit={p.onCommit} held={held} /> : p.cell(row, c)}
+                      {open ? <Editor value={p.editing!.value} label={described} onChange={p.onEdit} onCommit={p.onCommit} held={held} /> : p.cell(row, c)}
                     </td>
                   );
                 })}
-                {p.tail.map((c) => <td key={c.key} className={s.tail} data-w={c.width}>{c.cell(row)}</td>)}
+                {p.tail.map((c, ti) => <td key={c.key} className={s.tail} data-w={c.width} data-tail-first={ti === 0 || undefined}>{c.cell(row)}</td>)}
               </tr>
             );
           })}
-          {last < p.rows.length && <tr aria-hidden><td aria-hidden colSpan={p.lead.length + p.days.length + p.tail.length} height={(p.rows.length - last) * rowHeight} /></tr>}
+          {last < p.rows.length && <tr aria-hidden><td aria-hidden colSpan={colCount} height={(p.rows.length - last) * rowHeight} /></tr>}
         </tbody>
+        {p.footerRows && p.footerRows.length > 0 && (
+          <tfoot>
+            {p.footerRows.map((fr, fi) => (
+              <tr key={fr.key} aria-rowindex={p.total + headerRows + 1 + fi} className={s.footRow}>
+                <th scope="row" colSpan={Math.min(2, p.lead.length)} className={s.footLead}>{fr.label}</th>
+                {p.lead.slice(2).map((c) => (
+                  <td key={c.key} className={s.footLeadFiller} data-hide-phone={c.hideOnPhone || undefined} aria-hidden="true" />
+                ))}
+                {p.days.map((d, c) => (
+                  <td key={d.key} className={s.footDay} data-tone={d.tone}>{fr.day(c)}</td>
+                ))}
+                {p.tail.map((c, ti) => (
+                  <td key={c.key} className={s.footTail} data-tail-first={ti === 0 || undefined} data-sticky={ti === p.tail.length - 1 || undefined}>{fr.tail[ti] ?? null}</td>
+                ))}
+              </tr>
+            ))}
+          </tfoot>
+        )}
       </table>
     </div>
   );

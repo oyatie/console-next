@@ -1,6 +1,6 @@
 use crate::context::request::enrollment_user_context;
 use crate::device_login::token::generate_device_login_token;
-use crate::device_login::token::hash_device_login_token;
+use crate::device_login::token::hash_device_login_token_v2;
 use crate::device_login::tx::lock_handoff_account_tx;
 use crate::dto::device::EnrollHandoffRequest;
 use crate::dto::device::EnrollHandoffResponse;
@@ -81,8 +81,8 @@ pub(crate) async fn enroll_handoff(
         .await
         .map_err(RestError::from_provisioning)?;
     let handoff_id = Uuid::new_v4();
-    let poll_token = generate_device_login_token("console_dlp_");
-    let approve_token = generate_device_login_token("console_dla_");
+    let poll_token = generate_device_login_token("console_dlp_")?;
+    let approve_token = generate_device_login_token("console_dla_")?;
 
     let mut tx = state.pool.begin().await.map_err(DbError::Sqlx)?;
     lock_handoff_account_tx(&mut tx, org_id, user_id).await?;
@@ -100,8 +100,8 @@ pub(crate) async fn enroll_handoff(
         "#,
     )
     .bind(handoff_id)
-    .bind(hash_device_login_token(&poll_token))
-    .bind(hash_device_login_token(&approve_token))
+    .bind(hash_device_login_token_v2(&poll_token))
+    .bind(hash_device_login_token_v2(&approve_token))
     .bind(now)
     .bind(issue.expires_at.min(now + DEVICE_LOGIN_HANDOFF_TTL))
     .bind(user_id)
