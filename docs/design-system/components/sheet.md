@@ -142,14 +142,14 @@ A sheet is **dirty** when it holds an edit that closing would lose. There are tw
   the sheet clean again.
 
   The sheet knows a control again by the first of these it has: for an element with `data-form-value`, its
-  `aria-label` or the text of the first `<label>` inside it; its `id`; its `name`; its `aria-label` or the text of
-  the first `<label>` inside it. A control with none of them is known as that element. Controls known the same
-  way are told apart by their order in the sheet. A control that is no
-  longer in the sheet is not compared, so a value held only by a control that goes away, such as a tree that
-  closes on a pick, stops counting with it. A caller with such a control keeps the value on an element that
-  stays. The dissolve sheet does: its members block keeps where everyone goes and each person sent elsewhere as
-  `data-form-value` on its summary line, which has an `id` and no label. A person sent to where everyone goes is
-  left out of it. See [Tree](tree.md).
+  label; its `id`; its `name`, with its tag, an input's type, and a checkbox's or a radio's value; its label,
+  with its tag. Its label is its `aria-label`, or else the text of the first `<label>` inside it less a trailing
+  `*`. A control with none of them is known as that element. Controls known the same way are told apart by their
+  order in the sheet. A control that is no longer in the sheet is not compared, so a value held only by a
+  control that goes away, such as a tree that closes on a pick, stops counting with it. The dissolve sheet,
+  whose destination trees close on a pick, keeps its plan on an element that stays: its members block writes
+  where everyone goes and each person sent elsewhere as `data-form-value` on its summary line, which has an `id`
+  and no label. A person sent to where everyone goes is left out of it. See [Tree](tree.md).
 
 Four gestures can close a sheet. Each calls `onClose`; none removes the sheet by itself.
 
