@@ -4,7 +4,7 @@ import { dirname } from "node:path";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { expect as element } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
-import { loadCatalog, t } from "@console/i18n";
+import { i18n, loadCatalog, t } from "@console/i18n";
 import { browserTestOptimizeDeps, chromium, type Browser, type Page } from "../../../lib/browser-test";
 import { commitLabel } from "../../../ui/composer/actions";
 
@@ -57,6 +57,14 @@ test.each(SYSTEMS)("on $platform the run's entry row keeps the ⌘↵ cap and is
   // Speech input presses a control by the word on it, so the name holds the word the button shows.
   await element(save).toContainText(t("register.run.submit"));
   expect(t("register.run.save")).toContain(t("register.run.submit"));
+});
+
+test("in both catalogs the row save's name holds the word it shows", async () => {
+  for (const lang of ["en", "ko"] as const) {
+    await loadCatalog(lang);
+    i18n.set(lang);
+    expect(t("register.run.save"), lang).toContain(t("register.run.submit"));
+  }
 });
 
 // The finish button shows once a person is in the run.
