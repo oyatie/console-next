@@ -120,11 +120,14 @@ test("Enter pressed before the people answer waits for them, and does not open t
   await page.keyboard.type("kim");
   await asked;
   await element(row(t("structure.import.label"))).toBeVisible();
+  // The palette says the search is out, which is why the Enter that follows opens nothing yet.
+  await element(palette().getByRole("status")).toHaveText(t("uiCommandPalette.searching"));
   await page.keyboard.press("Enter");
   land();
   // Still open, at the same place, with the person the search found now taking Enter.
   await element(row(/^Kim kim/)).toBeVisible();
   await lit(/^Kim kim/);
+  await element(palette().getByRole("status")).toHaveText("");
   await element(at()).toHaveText("/");
   await page.keyboard.press("Enter");
   await element(at()).toHaveText(`/people/${id(100)}`);

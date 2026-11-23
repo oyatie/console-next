@@ -2,4 +2,5 @@
 import type { enUiCommandPalette } from "../en/ui-command-palette";
 export const koUiCommandPalette: Record<keyof typeof enUiCommandPalette, string> = {
   "uiCommandPalette.esc": "Esc",
+  "uiCommandPalette.searching": "찾는 중…",
 };

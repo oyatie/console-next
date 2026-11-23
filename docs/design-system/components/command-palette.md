@@ -37,6 +37,7 @@ The palette filters nothing. The caller reads `query`, builds the sections that 
 | Field | `<div>` | An 18 px search icon, the input, then the Esc hint. |
 | Input | `<input type="search">` | `query`, with `placeholder` while it is empty. |
 | Esc hint | `<kbd>` | Message `uiCommandPalette.esc`. It shows a key; it is not a button. |
+| Search status | `<p role="status">` | Message `uiCommandPalette.searching` while `pending` holds and the field has text other than spaces; empty otherwise. It is always in the page, so a screen reader hears the change. |
 | List | `<div role="menu">` | The sections. It is the part that scrolls. |
 | Section | `<section role="group">` | A header, then its items. |
 | Header | `<header>` | The section's `title`. |
@@ -81,6 +82,7 @@ There is one look and one size.
 | Detail | `--steel`. One line, cut with an ellipsis. |
 | Meta | `--steel`, 13 px, pushed to the end of the row. No border and no fill. It keeps the 4 px side padding (`--space-1`) of the rule it shares with the Esc hint. |
 | Empty box | 16 px of padding, `--steel`, 13 px. |
+| Search status | `--steel`, 13 px (`--text-sm`), no margin. Empty, it has no padding and takes no height. With text, 8 px above (`--space-2`) and 16 px at the sides (`--space-4`). |
 | Foot | A `--muted` fill, a 1 px `--border` line above it, 8 px top and bottom padding and 16 px at the sides, 12 px `--steel` text. A row with a 12 px gap. |
 
 No prop picks a visual style. There is no open or close animation: the stylesheet has no transition and reads
@@ -104,7 +106,7 @@ Every colour, padding, gap and font size in the stylesheet is a token. The liter
 | Selected | Does not exist. The menu has no selection. |
 | Disabled | Does not exist. Neither the palette nor an item can be disabled. |
 | Read-only, invalid | Do not exist. |
-| Loading | No look. `pending` tells the palette that a search is still out. It changes what Enter does (see Keyboard) and draws nothing: no spinner and no text. The palette draws the sections it has. |
+| Loading | `pending` tells the palette that a search is still out. With text in the field, the search status under it reads `uiCommandPalette.searching`, and Enter waits (see Keyboard). No spinner. The palette draws the sections it has. |
 | Empty | When no section has an item, the empty box is drawn with `empty`. When `empty` is not passed, the box is still drawn, with its padding and no text. |
 
 Two rules take the focus outline away, and they do not weigh the same.
@@ -223,7 +225,9 @@ is first only until the answer lands.
   does that: its first Enter opens nothing, and its second opens the person the search found.
 - A result can show the focused look while Enter does nothing. The palette sends no Home key during the wait,
   but React Aria's own move for typing forward still runs. A browser test sees the request lookup take the
-  list's focus while the people search is out. Nothing on screen says that a search is out.
+  list's focus while the people search is out. The search status under the field says the search is out, so the
+  Enter that opens nothing has a reason on screen. A browser test reads the status before its first Enter and
+  sees it empty once the answer lands.
 - Once the person has moved through the list with the keys, Enter is not stopped: it picks the result they are
   on. This is read from the code. The browser test that moves with End presses Enter after the answer has
   landed.
@@ -274,6 +278,7 @@ protocol, and its two Enter events are dispatched, not pressed.
 |---|---|---|---|
 | Dialog | `dialog` | `label`, through `aria-label`. | No `aria-modal` and no description. |
 | Input | `searchbox` | `label`, through `aria-label`. | `aria-autocomplete="list"`, `aria-controls` pointing at the list, and `aria-activedescendant` pointing at the focused item. |
+| Search status | `status` | None. | A polite live region: its text, `uiCommandPalette.searching`, is announced when a search goes out, and nothing when it empties. |
 | List | `menu` | `label`, through `aria-label`. | |
 | Section | `group` | Its `title`, through `aria-labelledby`, which points at the header. | The header itself has `role="presentation"`. |
 | Item | `menuitem` | Its `label`, through `aria-labelledby`. | `detail` is its description, through `aria-describedby`. `meta` is neither. |
@@ -379,7 +384,8 @@ width rule.
 
 ## Copy rules
 
-- The palette has one message id of its own: `uiCommandPalette.esc`, the text of the Esc hint.
+- The palette has two message ids of its own: `uiCommandPalette.esc`, the text of the Esc hint, and
+  `uiCommandPalette.searching`, the search status while a search is out.
 - `label`, `placeholder`, each section's `title`, each item's `label`, `detail` and `meta`, `empty` and `footer`
   are the caller's, from the message catalog in `packages/i18n` or from data. The `en` catalog is the source and
   the `ko` catalog must define every id.

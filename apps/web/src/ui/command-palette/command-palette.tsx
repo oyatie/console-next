@@ -86,6 +86,8 @@ export function CommandPalette({ open, onClose, label, placeholder, query, onQue
               <Input ref={box} className={s.input} placeholder={placeholder} onKeyDownCapture={keys} />
               <Keyboard className={s.kbd}>{t("uiCommandPalette.esc")}</Keyboard>
             </SearchField>
+            {/* Always mounted, so a screen reader hears the search start; it says why an Enter pressed now opens nothing. */}
+            <p role="status" className={s.status}>{pending && query.trim() ? t("uiCommandPalette.searching") : ""}</p>
             <Menu
               className={s.menu}
               aria-label={label}
