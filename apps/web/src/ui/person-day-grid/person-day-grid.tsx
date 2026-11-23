@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent, type ReactNode, type RefObject } from "react";
 import { isImeKey, leaveImeKey } from "../../lib/pure/ime";
 import { at, indexOf, inRect, moveRange, rectIn, spanIn, type Cell, type Range } from "../sheet-grid/range";
 import s from "./person-day-grid.module.css";
@@ -56,8 +56,11 @@ type Props<R> = {
   onEdit: (value: string | null) => void;
   /** Commit the open editor; the grid then moves `then`. */
   onCommit: (then: "down" | "right" | "stay") => void;
-  /** The feature's keys first (⌘D, ⌘↵, =, Delete, P …); true when handled. */
+  /** The feature's keys first (⌘D, ⌘↵, =, Delete, P …); true when handled. It also sees a key pressed on a link or a
+   * button in a cell (`e.target` is not the grid), which is that control's unless the feature takes it (⌘S). */
   onKey: (e: KeyboardEvent) => boolean;
+  /** A paste with the focus anywhere in the grid: on the grid itself, its editor, or a link or a button in a cell. */
+  onPaste?: (e: ClipboardEvent<HTMLTableElement>) => void;
   /** A row group's head is drawn above the first row of each group. */
   groupOf?: (r: R) => string;
 };
@@ -93,20 +96,6 @@ export function PersonDayGrid<R>(p: Props<R>) {
     window.addEventListener("resize", read);
     return () => window.removeEventListener("resize", read);
   }, []);
-  const leads = p.lead.length, tails = p.tail.length;
-  const heads = [...p.lead, ...p.days, ...p.tail].map((c) => c.key).join(" ");
-  // After every render, since the rows drawn decide how wide the columns are, and whenever a column changes width
-  // without one (a font arriving, a window or a docked sheet resizing). A table that fits its box keeps the box's
-  // width as its columns change, so the head cells are watched, not only the box and the table.
-  useLayoutEffect(() => placeSides(box.current!, leads, tails));
-  useLayoutEffect(() => {
-    const el = box.current!, watch = new ResizeObserver(() => placeSides(el, leads, tails));
-    watch.observe(el);
-    for (const cell of el.querySelector("thead tr")!.children) watch.observe(cell);
-    return () => watch.disconnect();
-    // A new set of columns is new head cells to watch.
-    // oxlint-disable-next-line react/exhaustive-effect-dependencies
-  }, [leads, tails, heads]);
   const [drag, setDrag] = useState(false);
   const table = useRef<HTMLTableElement>(null);
   // The editor left while it held the focus (Enter, Tab, Escape): the grid takes the focus back, so the next key lands
@@ -141,20 +130,23 @@ export function PersonDayGrid<R>(p: Props<R>) {
     if (top < el.scrollTop) el.scrollTop = top;
     else if (bottom > el.scrollTop + el.clientHeight) el.scrollTop = bottom - el.clientHeight;
   }, [focusRow, rowHeight]);
-  // Sideways the sticky lead columns cover the left of the box and the held totals the right: a column is in view
-  // between them. It is read from the head row, which is always drawn. It follows every range that is set, not only
-  // a new column: the box may have been scrolled away by hand since. A press on a lead cell selects its row with the
-  // focus on the last day, and the box stays where the person has it.
-  const focusCol = f?.c, editing = !!p.editing, rowPress = useRef(false);
+  // Every new range is followed, not only a new column: the box may have been scrolled away by hand since.
+  const focusCol = f?.c, editing = !!p.editing, rowPress = useRef(false), leads = p.lead.length, tails = p.tail.length;
   useEffect(() => {
     const el = box.current;
+    // A press on a lead selects its row with the focus on the last day: the box stays where the person has it.
     if (!el || focusCol === undefined || rowPress.current) return void (rowPress.current = false);
-    const head = [...el.querySelector("thead tr")!.children].map((c) => c.getBoundingClientRect()), frame = el.getBoundingClientRect();
-    const day = head[leads + focusCol]!, from = head[leads - 1]?.right ?? frame.left;
-    const until = Math.min(frame.left + el.clientWidth, ...head.slice(head.length - tails).map((c) => c.left));
-    if (day.left < from) el.scrollLeft -= from - day.left;
+    // Any drawn body row has one cell per column (a head row may span the totals); the focused one may not be drawn yet.
+    const cells = [...el.querySelector("tbody tr:not([aria-hidden])")!.children].map((c) => ({ c, b: c.getBoundingClientRect() }));
+    const frame = el.getBoundingClientRect(), day = cells[leads + focusCol]!.b;
+    // A lead that scrolls with the days, or is not drawn at this width, covers nothing.
+    const sticky = cells.slice(0, leads).filter(({ c, b }) => b.width && getComputedStyle(c).position === "sticky");
+    const from = Math.max(frame.left, ...sticky.map(({ b }) => b.right));
+    const until = Math.min(frame.left + el.clientWidth, tails ? cells.at(-1)!.b.left : Infinity);
+    // Whole pixels: columns can lie on fractions, and the box drops a fraction of a scroll.
+    if (day.left < from) el.scrollLeft -= Math.ceil(from - day.left);
     // Never so far that the column's start goes under the lead columns.
-    else if (day.right > until) el.scrollLeft += Math.min(day.right - until, day.left - from);
+    else if (day.right > until) el.scrollLeft += Math.min(Math.ceil(day.right - until), Math.floor(day.left - from));
     // An editor opening is not read above, but it widens its column, which is.
     // oxlint-disable-next-line react/exhaustive-effect-dependencies
   }, [p.range, focusCol, editing, leads, tails]);
@@ -167,9 +159,8 @@ export function PersonDayGrid<R>(p: Props<R>) {
   // A person moves the selection: what they were typing is committed first, where it was typed.
   const select = (next: Range) => (p.editing && (pressed.current = true, p.onCommit("stay")), p.onRange(next));
   const keyDown = (e: KeyboardEvent<HTMLTableElement>) => {
-    // The grid's keys are the ones pressed on the grid itself. A key on a link or a button inside a cell is that
-    // control's: Enter follows the link.
-    if (e.target !== e.currentTarget || p.editing || p.onKey(e)) return;
+    // A key on a link or a button in a cell is that control's (Enter follows the link), unless the feature takes it.
+    if (p.editing || p.onKey(e) || e.target !== e.currentTarget) return;
     const moved = moveRange(p.range, e.key, e.shiftKey, axes);
     if (moved) {
       e.preventDefault();
@@ -207,6 +198,7 @@ export function PersonDayGrid<R>(p: Props<R>) {
           "aria-activedescendant": f ? cellId(f.r, f.c) : undefined,
           tabIndex: 0,
           onKeyDown: keyDown,
+          onPaste: p.onPaste,
           // Nothing selected (yet, or its row has left): focus starts on the first cell, by its keys from then on.
           onFocus: () => !f && p.rows.length && p.days.length && p.onRange(at(axes.rows[0]!, axes.cols[0]!)),
         }}
@@ -307,34 +299,6 @@ export function PersonDayGrid<R>(p: Props<R>) {
       </table>
     </div>
   );
-}
-
-/**
- * Sticky side columns stand side by side: each is held past the ones outside it, at an offset measured from the head
- * row (a column is as wide as what it holds) and set on the box for the styles. The lead columns are always held, and
- * so is a total with no other beside it. Of several totals the outermost is held while a day shows beside it, and the
- * ones inside it, from the outside in, while a week of days stays in view between the two sides; in a narrower box
- * the inner ones, then all of them, scroll with the days.
- */
-function placeSides(box: HTMLElement, leads: number, tails: number) {
-  const widths = [...box.querySelector("thead tr")!.children].map((c) => c.getBoundingClientRect().width);
-  const set = (name: string, value: string) => box.style.getPropertyValue(name) === value || box.style.setProperty(name, value);
-  let left = 0, right = 0;
-  widths.slice(0, leads).forEach((w, k) => {
-    if (k) set(`--lead-${k}`, `${left}px`);
-    left += w;
-  });
-  // A day is as wide as the narrowest one: an open editor or a long draft widens its own column only.
-  const day = Math.min(...widths.slice(leads, widths.length - tails));
-  // The outermost total needs one day in view beside it, the ones inside it a week.
-  let room = box.clientWidth - left - day;
-  widths.slice(widths.length - tails).reverse().forEach((w, k) => {
-    if (k === 1) room -= 6 * day;
-    // Once one does not fit, none inside it is held.
-    room = room >= w ? room - w : -Infinity;
-    set(`--tail-${k}`, room >= 0 || tails === 1 ? `${right}px` : "auto");
-    right += w;
-  });
 }
 
 /** The in-cell input: Enter commits and moves down, Tab right, Esc cancels; an IME composition is never cut. */

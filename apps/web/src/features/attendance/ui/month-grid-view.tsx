@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { PersonDayGrid, type DayColumn, type GridFooterRow } from "../../../ui/person-day-grid/person-day-grid";
@@ -172,6 +172,8 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act, c
     if (mod && e.key.toLowerCase() === "s") return run(() => act({ kind: "save" }));
     if (mod && e.key.toLowerCase() === "z") return run(e.shiftKey ? store.redo : store.undo);
     if (mod && e.key.toLowerCase() === "y") return run(store.redo);
+    // The chords above are the page's wherever the focus is in the grid; the rest act on the selection, from the grid itself.
+    if (e.target !== e.currentTarget) return false;
     if ((e.key === "[" || e.key === "]") && !mod) return run(() => act({ kind: "month", step: e.key === "[" ? -1 : 1 }));
     if (!f || !rect) return false;
     if (mod && e.key.toLowerCase() === "d") return run(() => {
@@ -201,33 +203,22 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act, c
     return false;
   };
 
-  // ⌘V while the grid itself has focus (not its editor, nor a link or a button in a cell): rows by employee number, one
-  // row across from the focused cell.
-  const box = useRef({ rows, focus: f });
-  useEffect(() => {
-    box.current = { rows, focus: f };
-  });
-  useEffect(() => {
-    const paste = (e: ClipboardEvent) => {
-      const active = document.activeElement;
-      if (!active?.matches('[role="grid"]')) return;
-      const text = e.clipboardData?.getData("text/plain");
-      if (!text) return;
-      e.preventDefault();
-      const { rows: rs, focus } = box.current;
-      if (!focus) return;
-      const plan = readPaste(text, rs.map((r) => r.employee_number ?? null), days, focus);
-      const people = rs.map((row) => ({ employee_id: row.employee_id, employee_number: row.employee_number ?? null, name: row.name, own: row.own, closed: closed(row.month_state) }));
-      const bases = plan.cells.map((cell) => {
-        const row = rs[cell.r]!;
-        const key = cellKey(row.employee_id, cell.date);
-        return baseOf(store.drafts, key, row.cells[days.indexOf(cell.date)]?.entry_id ?? null);
-      });
-      setPasting({ scope: store.scope, month: days[0]!.slice(0, 7), people, plan, bases });
-    };
-    window.addEventListener("paste", paste);
-    return () => window.removeEventListener("paste", paste);
-  }, [days, store]);
+  // ⌘V on this grid itself, not its editor, a link or a button in a cell, nor another grid on the screen: rows by
+  // employee number, one row across from the focused cell.
+  const paste = (e: ClipboardEvent<HTMLTableElement>) => {
+    const text = e.target === e.currentTarget && e.clipboardData.getData("text/plain");
+    if (!text) return;
+    e.preventDefault();
+    if (!f) return;
+    const plan = readPaste(text, rows.map((r) => r.employee_number ?? null), days, f);
+    const people = rows.map((row) => ({ employee_id: row.employee_id, employee_number: row.employee_number ?? null, name: row.name, own: row.own, closed: closed(row.month_state) }));
+    const bases = plan.cells.map((cell) => {
+      const row = rows[cell.r]!;
+      const key = cellKey(row.employee_id, cell.date);
+      return baseOf(drafts, key, row.cells[days.indexOf(cell.date)]?.entry_id ?? null);
+    });
+    setPasting({ scope: store.scope, month: days[0]!.slice(0, 7), people, plan, bases });
+  };
 
   const codeLead = { key: "no", header: t("attendanceRecords.grid.number"), cell: (r: GridRow) => r.employee_number ?? "", width: "code" as const };
   const nameLead = { key: "name", header: t("attendanceRecords.grid.name"), width: "name" as const, cell: (r: GridRow) => (
@@ -307,6 +298,7 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act, c
       onEdit={(v) => setEditing(v === null ? null : editing ? { ...editing, value: v } : start(v))}
       onCommit={commit}
       onKey={onKey}
+      onPaste={paste}
       groupOf={(r) => r.unit_name ?? ""}
     />
       {pasting && <PastePreviewSheet plan={pasting.plan} people={pasting.people} month={pasting.month} onClose={() => setPasting(null)} onAccept={acceptPaste} />}
