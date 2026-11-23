@@ -56,6 +56,7 @@ export function TargetPicker({ entity, closing, title, label, value, onPick }: {
               </span>
             )}
             selected={at?.node.id}
+            required
             onSelect={(id) => id && !disabled.has(id) && pick(id)}
             expanded={expanded}
             onExpandedChange={setExpanded}

@@ -21,19 +21,26 @@ export async function expectAxe(page: Page, context: string, options: { include?
   const html = page.locator("html");
   const original = await html.getAttribute("data-theme");
   const found: string[] = [];
-  for (const theme of ["light", "dark"]) {
-    await html.evaluate((el, t) => (el.dataset.theme = t), theme);
-    const singleFrame = page.frames().length === 1;
-    // Only violation nodes need full selectors; summarizing passes avoids work on large rosters.
-    const scan = new AxeBuilder({ page }).options({ resultTypes: ["violations"] }).withTags(TAGS).setLegacyMode(singleFrame);
-    if (options.include) scan.include(options.include);
-    let { violations } = await scan.analyze();
-    // The single-frame runner avoids an aggregation page; frames still need cross-origin analysis.
-    if (singleFrame && page.frames().length > 1) ({ violations } = await scan.setLegacyMode(false).analyze());
-    for (const v of violations.filter((v) => v.impact === "serious" || v.impact === "critical"))
-      found.push(`[${theme}] ${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).join(" | ")}`);
+  // axe counts a target that a pinned bar covers at the scanned scroll position as undersized; the shell's tests prove nothing stays under one.
+  const pinned = page.locator("[data-pinned-bar]");
+  await pinned.evaluateAll((bars: HTMLElement[]) => bars.forEach((bar) => bar.style.setProperty("position", "static", "important")));
+  try {
+    for (const theme of ["light", "dark"]) {
+      await html.evaluate((el, t) => (el.dataset.theme = t), theme);
+      const singleFrame = page.frames().length === 1;
+      // Only violation nodes need full selectors; summarizing passes avoids work on large rosters.
+      const scan = new AxeBuilder({ page }).options({ resultTypes: ["violations"] }).withTags(TAGS).setLegacyMode(singleFrame);
+      if (options.include) scan.include(options.include);
+      let { violations } = await scan.analyze();
+      // The single-frame runner avoids an aggregation page; frames still need cross-origin analysis.
+      if (singleFrame && page.frames().length > 1) ({ violations } = await scan.setLegacyMode(false).analyze());
+      for (const v of violations.filter((v) => v.impact === "serious" || v.impact === "critical"))
+        found.push(`[${theme}] ${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).join(" | ")}`);
+    }
+  } finally {
+    await pinned.evaluateAll((bars: HTMLElement[]) => bars.forEach((bar) => bar.style.removeProperty("position")));
+    await html.evaluate((el, t) => (t === null ? delete el.dataset.theme : (el.dataset.theme = t)), original);
   }
-  await html.evaluate((el, t) => (t === null ? delete el.dataset.theme : (el.dataset.theme = t)), original);
   expect.soft(found, `axe violations on ${context}:\n${found.join("\n")}`).toEqual([]);
 }
 

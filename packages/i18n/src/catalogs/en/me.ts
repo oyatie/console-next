@@ -66,7 +66,7 @@ export const enMe = {
   "me.desk.links.requests": "My change requests",
   "me.desk.links.privacy": "Privacy rights",
   "me.desk.profile.title": "Employment profile",
-  "me.desk.profile.unlinked": "Your account is not linked to an employee record yet.",
+  "me.desk.profile.unlinked": "Your account is not linked to an employee record yet. Ask someone who manages accounts to link it to your record.",
   "me.desk.leave.title": "Recent leave requests",
   "me.desk.leave.empty": "No leave requests submitted yet.",
   "me.desk.requests.title": "Open profile change requests",

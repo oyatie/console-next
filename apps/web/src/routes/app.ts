@@ -63,7 +63,7 @@ const tenants = createRoute({
 const home = createRoute({ getParentRoute: () => app, path: "/", validateSearch: (s: Record<string, unknown>): { sel?: string } => ({ sel: str(s.sel) }), staticData: { access: "signed-in", floorplan: "P-03", pattern: "worklist" }, component: lazyRouteComponent(screen(() => import("./home-screen")), "HomeScreen") });
 const loadAccount = () => import("../features/account/Account");
 const loadPrivacy = () => import("../features/account/ui/privacy-page");
-const account = createRoute({ getParentRoute: () => app, path: "/account", staticData: { access: "signed-in", floorplan: "P-05", pattern: "phone-hub" }, component: lazyRouteComponent(screen(loadAccount), "Account") });
+const account = createRoute({ getParentRoute: () => app, path: "/account", staticData: { access: "signed-in", floorplan: "P-05", pattern: "phone-hub" }, validateSearch: (s: Record<string, unknown>): { sheet?: "certificates" } => ({ sheet: s.sheet === "certificates" ? "certificates" : undefined }), component: lazyRouteComponent(screen(loadAccount), "Account") });
 const privacyIntake = createRoute({ getParentRoute: () => app, path: "/account/privacy/intake/$id", staticData: { access: "signed-in", floorplan: "P-01", pattern: "record" }, component: lazyRouteComponent(screen(loadPrivacy), "PrivacyIntake") });
 const privacy = createRoute({
   getParentRoute: () => app,

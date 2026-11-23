@@ -93,9 +93,12 @@ The WCAG 2.2 criteria that apply:
 
 Known gaps:
 
-- The key is not exposed to assistive technology in any way. The component cannot set `aria-keyshortcuts`, because
-  it is a child of the control, and no caller does it for it: a search of `apps/web/src` for `aria-keyshortcuts`
-  finds two controls, and neither holds a `Kbd` from this module.
+- The component does not expose the key to assistive technology. It cannot set `aria-keyshortcuts`, because it is
+  a child of the control; the control has to. One caller does: the Console top bar's search button sets
+  `aria-keyshortcuts` and holds a `Kbd` for `/`. Both follow the device's single-key setting through
+  `useSingleKeys`, so with single keys off the button neither announces nor shows `/`, and the change applies at
+  once, from the switch in this tab or from another tab. The other controls that set `aria-keyshortcuts` (the
+  Classic search button and the structure chart's help button) hold no `Kbd` from this module.
 - `keys` is not adapted to the platform. A caller that passes the Command glyph shows it on every system.
 - There are two components with this name. `ui/record/record-section.tsx` exports another `Kbd`, which takes `k`
   instead of `keys` and has its own, smaller look in `record.module.css`. Outside tests and gallery files,
