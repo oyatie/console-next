@@ -186,20 +186,21 @@ draft in a browser. It has no test of `pending`.
 The sheet's own Escape handler stands aside, and so does not show the unsaved line, in these cases:
 
 - another handler has already prevented the event's default;
-- it is pressed in a list box, or on an element with `aria-expanded="true"` whose role is not `row`, such as an
-  open picker;
+- it is pressed in a list box, or on a control whose popup is open, such as an open picker: `aria-expanded="true"`
+  with an `aria-haspopup` other than `false`, or an expanded `combobox` (`popupOpen` in `lib/pure/popup.ts`);
 - it is pressed inside another dialog nested in the sheet;
 - the event's `isComposing` flag is set.
 
 On a dirty sheet that has not yet shown the unsaved line, such an Escape does nothing to the sheet. On a clean
 sheet, React Aria's overlay still closes the sheet if the Escape reaches it.
 
-A row is left out of the second case because `aria-expanded` on a row says that the row is open, as on an open
-branch of a tree, and not that a popup is. Escape from such a row is handled like any other Escape in the
-sheet: on a dirty sheet the first press shows the unsaved line and the second closes.
-`apps/web/src/features/org/ui/target-tree.browser.test.tsx` drives this in Chromium, from an open row of a tree
-in a sheet that is told it is dirty. The tree there has `required`, so it leaves Escape to the sheet: see
-[Tree](tree.md).
+A control that is expanded without declaring a popup, such as a disclosure button or an open branch of a tree,
+opens nothing that Escape closes. Escape from it is handled like any other Escape in the sheet: on a dirty sheet
+the first press shows the unsaved line and the second closes.
+`apps/web/src/features/org/ui/target-tree.browser.test.tsx` drives this in Chromium from both, in a sheet that is
+told it is dirty. The tree there has `required`, so it leaves Escape to the sheet: see [Tree](tree.md).
+Four other Escape guards (the side panel, the pane grid, flexible columns and the dirty-escape hook) still treat
+every expanded control as a popup.
 
 The last case is the sheet's rule for the Korean input method. `sheet-dismiss.ts` checks `isComposing` and
 nothing else: it does not check key code 229 and listens for no composition event. An Escape flagged as composing

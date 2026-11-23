@@ -32,17 +32,39 @@ const row = (name: string) => page.getByRole("row", { name: new RegExp(`^${name}
 const cancel = () => page.getByRole("button", { name: "Cancel", exact: true });
 const state = (id: string) => page.locator(`#${id}`);
 
-test("Escape closes the merge sheet from a chosen row, as it does from the Cancel button", async () => {
+test("Escape closes a merge sheet with nothing chosen, from a row and from the Cancel button", async () => {
+  for (const from of [() => row("Support").focus(), () => cancel().focus()]) {
+    await open("in=sheet");
+    await from();
+    await page.keyboard.press("Escape");
+    await element(state("open")).toHaveText("closed");
+    await element(state("to")).toHaveText("none");
+  }
+});
+
+test("a pick alone is unsaved input: Escape from the chosen row warns first, then closes the merge sheet", async () => {
   for (const choose of [() => row("Support").click(), async () => { await row("Support").focus(); await page.keyboard.press("Enter"); }]) {
     await open("in=sheet");
     await choose();
     await element(state("to")).toHaveText("support");
     await element(row("Support")).toBeFocused();
     await page.keyboard.press("Escape");
+    await element(page.getByRole("status").filter({ hasText: t("composer.unsaved") })).toBeVisible();
+    await element(state("open")).toHaveText("open");
+    await page.keyboard.press("Escape");
     await element(state("open")).toHaveText("closed");
   }
-  await open("in=sheet");
-  await cancel().focus();
+});
+
+test("an expanded disclosure button opens no popup, so Escape from it warns of unsaved input, then closes the sheet", async () => {
+  await open("in=sheet&dirty=1");
+  const details = page.getByRole("button", { name: "Details", exact: true });
+  await details.focus();
+  await page.keyboard.press("Enter");
+  await element(details).toHaveAttribute("aria-expanded", "true");
+  await page.keyboard.press("Escape");
+  await element(page.getByRole("status").filter({ hasText: t("composer.unsaved") })).toBeVisible();
+  await element(state("open")).toHaveText("open");
   await page.keyboard.press("Escape");
   await element(state("open")).toHaveText("closed");
 });

@@ -188,7 +188,9 @@ dialog or a sheet around the tree. `required` is for such a caller. With it:
 
 - **Escape** is never the tree's. From a chosen row it closes a dismissable dialog around the tree, and the row
   stays chosen. In a sheet it does what Escape does anywhere else in that sheet: a clean sheet closes, and a
-  sheet that holds unsaved input shows its unsaved line on the first press and closes on the second.
+  sheet that holds unsaved input shows its unsaved line on the first press and closes on the second. A pick is
+  unsaved input: the tree carries the chosen row's id as `data-form-value` (empty when none is chosen), so a sheet
+  that works out its own dirty state warns before Escape throws a pick away.
 - **Enter or a press** on the chosen row leaves it chosen. By the source the same holds for Space; the tests
   use Enter and the pointer only.
 

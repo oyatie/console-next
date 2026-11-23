@@ -22,13 +22,14 @@ const people = (n: Node) => (n.kind === "DEPARTMENT" ? t("orgStructure.peopleCou
 
 /**
  * The target tree in its two homes. `?in=sheet` is the merge sheet: the pick is kept and shown as chosen (`dirty=1`
- * marks the sheet as holding unsaved input). `?in=dialog` is the add-departments dialog of a bulk move: nothing is
+ * marks the sheet as holding unsaved input before any pick), beside a disclosure button that opens no popup. `?in=dialog` is the add-departments dialog of a bulk move: nothing is
  * ever shown as chosen, and a pick closes it. Workplaces cannot be chosen in either.
  */
 export function Fixture() {
   const query = new URLSearchParams(location.search);
   const [open, setOpen] = useState(true);
   const [to, setTo] = useState<string | null>(null);
+  const [more, setMore] = useState(false);
   const close = () => setOpen(false);
   const cancel = <Button variant="ghost" onClick={close}>Cancel</Button>;
   return (
@@ -37,6 +38,8 @@ export function Fixture() {
       {query.get("in") === "sheet" ? (
         <Sheet open={open} size="lg" title="Merge Packing" onClose={close} consequence="Nothing is sent." actions={cancel} {...(query.has("dirty") ? { dirty: true } : {})}>
           <TargetTree label="Merge into" entity={ENTITY} show={() => true} why={(n) => (n.id === "packing" ? "This department" : undefined)} right={people} workplaces={false} value={to} onChange={setTo} />
+          <Button variant="ghost" aria-expanded={more} onClick={() => setMore((x) => !x)}>Details</Button>
+          {more && <p>Packing has three people.</p>}
         </Sheet>
       ) : (
         <Dialog open={open} title="Add departments" onClose={close}>

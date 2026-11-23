@@ -96,6 +96,8 @@ export function TreeView<T extends { id: string }>({
         />
       )}
       data-density={density}
+      // A pick is a form value, as in every other picker: a sheet holding one warns before Escape throws it away.
+      data-form-value={selected ?? ""}
       aria-busy={loading || undefined}
       data-state={error ? "error" : undefined}
       renderEmptyState={() => error ? <div className={s.error} role="alert">{error}</div> : loading ? <div className={s.loading} role="status" aria-busy="true"><div className={s.skeleton} /></div> : empty != null && <div className={s.empty}>{empty}</div>}
