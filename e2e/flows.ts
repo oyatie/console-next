@@ -188,7 +188,7 @@ export async function takeCode(page: Page, audit = false): Promise<string> {
 
 // The cold-start code works once per database, so the vendor's passkey is kept for the other workers (and
 // runs) on that database. scripts/backend-dev.mjs deletes it when it resets the database.
-const CACHE = CACHE_DIR;
+const CACHE = process.env.E2E_CACHE_DIR ?? CACHE_DIR;
 const VENDOR_PASSKEY = `${CACHE}/vendor-passkey.json`;
 const VENDOR_LOCK = `${CACHE}/vendor-passkey.lock`;
 

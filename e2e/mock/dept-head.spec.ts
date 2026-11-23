@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import { go } from "../flows";
 import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
-import { AT, employees, id, structure } from "./fixtures";
+import { AT, employees, id, structure, user } from "./fixtures";
 import { screens } from "../states/registry";
 import { expectAccessible, fits } from "../a11y";
 import { forgetResize, recordShifts } from "../stability";
@@ -161,8 +161,26 @@ test("operating list and panel appoint directly, keep the code, and refresh the 
 
 test("a historical department offers no appointment, including a direct action URL", async ({ page }) => {
   await mockScreen(page, screens[2], "populated");
-  await mockRoute(page, "get", "/api/v1/org-structure", { status: 200, json: { ...structure(2), read_only: true, as_of: "2026-01-01" } });
-  await go(page, `/org?view=list&sel=${id(100)}&act=dept-head&as_of=2026-01-01`);
+  const asOf = "2026-01-01";
+  const tree = structure(2);
+  const parent = tree.entities[0]!.children[0]!;
+  const dept = parent.children[0]!;
+  const employee = employees(1)[0]!;
+  const members = { headcount: 1, items: [{ employeeId: employee.id, name: employee.name, since: asOf }] };
+  const revision = { version: 1, name: dept.name, parentId: parent.id, status: "ACTIVE" as const, effectiveFrom: asOf,
+    actorId: user.id, actorName: user.display_name, createdAt: `${asOf}T00:00:00Z` };
+  await mockRoute(page, "get", "/api/v1/org-structure", { status: 200, json: { ...tree, read_only: true, as_of: asOf } });
+  await mockRoute(page, "get", "/api/v1/org-units/{id}", { status: 200, json: {
+    id: dept.id, kind: "DEPARTMENT", name: dept.name, parentId: parent.id, status: "ACTIVE", effectiveFrom: asOf,
+    headcount: members.headcount, updatedAt: revision.createdAt, revisions: [revision], members,
+  } });
+  await mockRoute(page, "get", "/api/v1/org-structure/units/{orgUnitId}/members", { status: 200, json: members });
+  const [response] = await Promise.all([
+    page.waitForResponse(response => new URL(response.url()).pathname === `/api/v1/org-structure/units/${dept.id}/members`),
+    go(page, `/org?view=list&sel=${dept.id}&act=dept-head&as_of=${asOf}`),
+  ]);
+  expect(new URL(response.url()).searchParams.get("as_of")).toBe(asOf);
+  await expect(page.locator("#dept-members")).toContainText(employee.name);
   await expect(page.getByRole("button", { name: "부서장 없음 2", exact: true })).toBeVisible();
   await expect(page.getByRole("dialog", { name: "부서장 지정", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "부서장 지정", exact: true })).toHaveCount(0);

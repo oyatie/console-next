@@ -18,17 +18,18 @@ installBackendCleanup();
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const CONSOLE = path.resolve(process.env.CONSOLE_REPO ?? ROOT);
 const BIN = path.resolve(process.env.CONSOLE_APP_BIN ?? path.join(CONSOLE, "backend/target/debug/console-app"));
+const releaseImage = process.argv.includes("--release-image");
+if (releaseImage && !process.env.CONSOLE_RELEASE_IMAGE) throw new Error("--release-image requires CONSOLE_RELEASE_IMAGE");
 const WEB_ORIGIN = process.env.CONSOLE_WEB_ORIGIN ?? "http://localhost:5173";
 // The ports come from e2e/slot.ts, their one source: the E2E slot's (E2E_SLOT, slot 0 when unset), each overridden by
 // its environment variable, so a second stack (e.g. `npm run demo`) sets every port and the compose project and never
 // shares a database with test runs.
 const PORT = PORTS;
 const PROJECT = COMPOSE_PROJECT;
-const postgresContainer = process.env.CONSOLE_DEV_POSTGRES_CONTAINER;
+const postgresContainer = releaseImage ? undefined : process.env.CONSOLE_DEV_POSTGRES_CONTAINER;
 // The E2E slot's cache (e2e/slot.ts sets it); the default is slot 0's.
 const CACHE = process.env.E2E_CACHE_DIR ?? CACHE_DIR;
 const RECORD = path.join(CACHE, "backend.json");
-await reapOrphanListener(PORT.backend, RECORD);
 const DB = "console_dev";
 const secrets = ensureDevSecrets();
 const PW = {
@@ -79,6 +80,10 @@ const compose = (args, opts = {}) =>
     { cwd: ROOT, env: composeEnv, stdio: "inherit", ...opts },
   );
 const docker = (args, opts = {}) => spawnSync("docker", args, { cwd: ROOT, stdio: "inherit", ...opts });
+const releaseContainer = `${PROJECT}-api`;
+// A killed release launcher can leave its container listening without a backend.json record.
+if (releaseImage) docker(["rm", "--force", releaseContainer], { env: composeEnv });
+await reapOrphanListener(PORT.backend, RECORD);
 const must = (r, what) => {
   if (r.status !== 0) throw new Error(`${what} failed (exit ${r.status})`);
   console.log(`[boot] ${what} done at ${(performance.now() / 1000).toFixed(1)}s`);
@@ -183,7 +188,7 @@ function appEnv(role) {
   };
 }
 
-if (!existsSync(BIN)) throw new Error(`no backend binary at ${BIN}; build with \`cargo build -p console-app\` (add --features full,e2e-test-support for the complete E2E suite) or set CONSOLE_APP_BIN`);
+if (!releaseImage && !existsSync(BIN)) throw new Error(`no backend binary at ${BIN}; build with \`cargo build -p console-app\` (add --features full,e2e-test-support for the complete E2E suite) or set CONSOLE_APP_BIN`);
 
 // --reset: start from an empty database (E2E runs the whole onboarding path, and the
 // cold-start code is single-use).
@@ -192,7 +197,7 @@ const reset = process.argv.includes("--reset");
 must(compose(["down", "--remove-orphans", ...(reset ? ["-v"] : [])]), reset ? "reset" : "previous stack cleanup");
 // Register before up: even a partially started stack must be removed on failure or a signal.
 process.once("exit", () => {
-  const result = compose(["down", "--remove-orphans"]);
+  const result = compose(["down", "--remove-orphans", ...(releaseImage ? ["-v"] : [])]);
   if (result.status !== 0) {
     console.error(`compose teardown failed (exit ${result.status}): ${result.error?.message ?? "see Docker diagnostics"}`);
     process.exitCode ||= 1;
@@ -206,6 +211,35 @@ if (reset) {
 must(compose(["up", "-d", "--wait", ...(postgresContainer ? ["seaweedfs"] : [])]), "compose up");
 must(compose(["exec", "-T", "seaweedfs", "sh", "-ec",
   "printf 's3.bucket.create -name mnt-evidence\\ns3.bucket.create -name mnt-evidence-replica\\n' | weed shell -master=localhost:9333 -filer=localhost:8888"]), "evidence buckets");
+if (releaseImage) {
+  // The native Linux runner shares its loopback database ports with the image.
+  // Keep the image's bundled web root and pass only this stack's runtime settings.
+  const runImage = (role, args, names) => docker([
+    "run", "--pull=never", "--network", "host", "--read-only", "--tmpfs", "/tmp:rw,noexec,nosuid,size=64m",
+    "--cap-drop", "ALL", "--security-opt", "no-new-privileges", ...args,
+    ...["CONSOLE_APP_ROLE", "DATABASE_URL", ...names].flatMap(name => ["--env", name]),
+    process.env.CONSOLE_RELEASE_IMAGE,
+  ], { env: { ...appEnv(role), ...(dockerContext ? { DOCKER_CONTEXT: dockerContext } : {}) } });
+  must(runImage("migrate", ["--rm"], []), "image migrations");
+  process.prependOnceListener("exit", () => {
+    docker(["logs", "--tail", "300", releaseContainer], { env: composeEnv, stdio: ["ignore", 2, 2] });
+    const removed = docker(["rm", "--force", releaseContainer], { env: composeEnv });
+    if (removed.status !== 0) process.exitCode ||= 1;
+  });
+  must(runImage("api", ["--detach", "--name", releaseContainer], [
+    "LEAVE_COMMAND_DATABASE_URL", "ONTOLOGY_COMMAND_DATABASE_URL", "PLATFORM_FORCE_COMMAND_DATABASE_URL",
+    "CONSOLE_HTTP_ADDR", "CONSOLE_JWT_PRIVATE_KEY_PEM", "CONSOLE_JWT_PUBLIC_KEY_PEM", "CONSOLE_JWT_ISSUER", "CONSOLE_JWT_AUDIENCE",
+    "CONSOLE_WEBAUTHN_RP_ID", "CONSOLE_WEBAUTHN_RP_ORIGIN", "CONSOLE_WEBAUTHN_RP_NAME", "CONSOLE_COOKIE_SECURE",
+    "CONSOLE_COLDSTART_OTP", "CONSOLE_OTP_HMAC_KEY", "CONSOLE_RRN_MASTER_KEY", "CONSOLE_RRN_HMAC_KEY",
+    "CONSOLE_S3_ENDPOINT_URL", "CONSOLE_S3_REGION", "CONSOLE_S3_ACCESS_KEY_ID", "CONSOLE_S3_SECRET_ACCESS_KEY",
+    "CONSOLE_S3_PRIMARY_BUCKET", "CONSOLE_S3_REPLICA_BUCKET", "CONSOLE_S3_FORCE_PATH_STYLE", "OTEL_SDK_DISABLED",
+  ]), "release API");
+  process.stdin.on("end", () => process.exit(1));
+  process.stdin.resume();
+  void backendReady(PORT.backend).then(() => console.log("[backend] ready"));
+  const stopped = await promisify(execFile)("docker", ["wait", releaseContainer], { env: composeEnv });
+  throw new Error(`release API stopped (exit ${stopped.stdout.trim()})`);
+}
 must(spawnSync(BIN, [], { cwd: CONSOLE, env: appEnv("migrate"), stdio: "inherit" }), "migrations");
 // E2E's database is dropped every run: its commits need not wait for the WAL to reach disk. In the shared Docker VM
 // that fsync stalled every commit for 5–17 s at once (rs3), failing whichever tests were writing. Set before the

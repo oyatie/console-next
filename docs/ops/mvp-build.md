@@ -10,6 +10,12 @@ other compliance routes remain gated by the `compliance` feature.
 Console route telemetry ingestion is available only in `full`; the default
 release build exposes no telemetry ingestion route.
 
+All profiles enable the approvals list, document and decision endpoints by default.
+To disable them, include `no-approvals` in `CONSOLE_RELEASE_TOGGLES` and restart the
+service. This takes precedence over `approvals`. The module then reports that it
+is unavailable, and its endpoints return 404 to authenticated callers. The service
+rejects any other `no-` opt-out at startup.
+
 Before promoting a module into `mvp`, review its feature dependencies, route mounts,
 worker loops and state initialization; test its routes and isolation, and confirm
 the default build still excludes unrelated modules. `dev-auth` remains opt-in and
@@ -48,3 +54,12 @@ and neither module introduces any periodic loop in `run/worker.rs` or `run/serve
 `console-gate-dev-auth-absence`), and `mvp_build_surface` verifies `leave` and
 `inbox` route availability in `mvp` alongside unrelated-module 404s and
 `--no-default-features` compiled-out isolation.
+
+The native image job runs the release journey after loading the built image.
+To repeat it on a Linux Docker host with the image loaded and Chromium installed, run
+`CONSOLE_RELEASE_IMAGE=console-platform:amd64 npx playwright test --config=playwright.release.config.ts`.
+Use the locally built architecture tag. The release stack uses the normal E2E slot's
+backend, Postgres and S3 ports. Stop the normal stack first or set `E2E_SLOT` to
+an unused slot. The release run has its own Compose project, volumes and passkey cache.
+The test migrates a disposable database,
+signs in with a passkey and reads Home, the inbox, an employee record and approvals.

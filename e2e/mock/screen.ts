@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { REALTIME } from "../../apps/web/src/lib/freshness";
 import { installFaultClock } from "../states/fault-clock";
-import type { Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { attendanceBoardReads } from "./attendance-board";
 import { attendanceBoardScreens } from "../states/attendance";
 import { mockRoute } from "./route";
@@ -37,9 +37,16 @@ export async function mockScreen(page: Page, screen: Screen, state: State | OrgC
   if (state === "failed") await installFaultClock(page);
   await throttleCPU(page);
   const unexpected: string[] = [];
+  const owner = test.info();
   await page.route(url => url.pathname.startsWith("/api/"), async route => {
-    unexpected.push(`${route.request().method()} ${new URL(route.request().url()).pathname}`);
+    const call = `${route.request().method()} ${new URL(route.request().url()).pathname}`;
+    unexpected.push(call);
     await route.fulfill({ status: 501, json: failure("unmocked_request") });
+    // Fulfillment can finish during teardown. Only the owning test can record the soft failure.
+    try {
+      if (test.info() !== owner) return;
+    } catch { return; } // Playwright throws when there is no current test.
+    expect.soft(call, "Unmocked API request").toBeUndefined();
   });
   await mockRoute(page, "post", "/api/v1/auth/token/refresh", { status: 200, json: token() });
   await page.route("**/api/v1/client-errors", route => route.fulfill({ status: 204 }));

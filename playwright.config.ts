@@ -40,7 +40,6 @@ const backendEnv = {
   // The run's throwaway database commits without waiting on the VM's disk (scripts/backend-dev.mjs).
   CONSOLE_DEV_ASYNC_COMMIT: "1",
   CONSOLE_EMAIL_STUB_MODE: "e2e",
-  CONSOLE_RELEASE_TOGGLES: "approvals",
   // Paired release proofs may serve the shipped FE build while using this branch's test harness.
   ...(served
     ? { CONSOLE_WEB_DIST: path.resolve(process.env.CONSOLE_WEB_DIST ?? "apps/web/dist") }
@@ -58,7 +57,7 @@ export default defineConfig({
   fullyParallel: true,
   grepInvert: process.env.E2E_PERF === "1" ? undefined : perfTag,
   // Separate profiles own short-TTL sessions and backend-free screen state proofs.
-  testIgnore: [/live-renew\.server-expiry\.spec\.ts$/, /\/(coldstart|mock|ops|states)\//, /\/layout\/layout\.spec\.ts$/, /\/perf\/.*\.test\.ts$/, ...(xbrowser ? [/visual\.spec\.ts/] : [])],
+  testIgnore: [/live-renew\.server-expiry\.spec\.ts$/, /\/(coldstart|mock|ops|release|states)\//, /\/layout\/layout\.spec\.ts$/, /\/perf\/.*\.test\.ts$/, ...(xbrowser ? [/visual\.spec\.ts/] : [])],
   workers: Number(process.env.E2E_WORKERS ?? (process.env.CI ? 2 : 4)),
   // Every run records its passing tests' durations, which scripts/e2e-slot.mjs plans shards from. A sharded
   // e2e:agent run passes the caller's --reporter as E2E_REPORTER and collects one blob per job to merge.

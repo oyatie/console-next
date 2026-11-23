@@ -13,6 +13,9 @@ for (const asset of ["js", "css"] as const) {
   test(`a missing calendar ${asset} keeps the registration draft and typed date entry`, async ({ page }) => {
     const fixture = await mockScreen(page, screens[1], "empty");
     await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { account_id: user.id, is_ops: true, phase: "OPERATING", as_of: AT, entries: [] } });
+    await mockRoute(page, "get", "/api/v1/lifecycle-case-templates/{key}", { status: 200, json: [
+      { item_key: "HD1", label: t("enum.checklistItem.CONTRACT_DELIVERED"), kind: "DOC", owner_line: "hr_basic.edit", blocks_close: false },
+    ] });
     const documents: string[] = [], errors: string[] = [];
     page.on("request", request => { if (request.isNavigationRequest() && request.frame() === page.mainFrame()) documents.push(request.url()); });
     page.on("pageerror", error => errors.push(error.message));

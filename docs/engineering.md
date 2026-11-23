@@ -158,9 +158,8 @@ A screen is proved in five steps, each cheaper than the next.
    [e2e/mock/README.md](../e2e/mock/README.md).
 4. **Drive the behaviour with mock specs.** A spec under `e2e/mock` that loads a screen calls `mockScreen`,
    which answers the shell and the screen's supporting reads; the spec adds its own replies with
-   `mockRoute`. Any other request under `/api` gets a 501 and is recorded in the `unexpected` list that
-   `mockScreen` returns. End each test by asserting that list is empty: that assertion is what stops a
-   screen quietly depending on an endpoint the spec does not know about. A new supporting read goes into
+   `mockRoute`. The fixture records each unmatched API request in `unexpected`, replies with 501, and
+   reports the call as a soft failure so the test can continue. Add new supporting reads to
    `e2e/mock/screen.ts` or the area's `e2e/mock/<area>.ts`.
 5. **Then the journey.** A change that finishes a user task extends the journey specs under `e2e/`, which
    run against the real server; the table above gives the local command.

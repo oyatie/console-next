@@ -37,8 +37,9 @@ test('PRs build and smoke-test one native image; release events retain both arch
   const pr = workflow.jobs.validate.steps.find(step => step.name === 'Build PR image without publishing');
   assert.equal(pr.run, script);
   assert.deepEqual(pr.env, { ARCH: 'amd64', CACHE_WRITE: 'false' });
-  assert.equal(workflow.jobs.validate.steps.find(step => step.name === 'Test PR image').run,
-    build.steps.find(step => step.name === 'Test native image').run);
+  const smoke = build.steps.find(step => step.name === 'Test native image').run;
+  assert.equal(workflow.jobs.validate.steps.find(step => step.name === 'Test PR image').run, smoke);
+  assert.match(smoke, /CONSOLE_RELEASE_IMAGE="console-platform:\$\{ARCH\}" npx playwright test --config=playwright\.release\.config\.ts/);
   assert.match(script, /--file deploy\/images\/console\.Dockerfile/);
   assert.match(script, /--build-arg "SOURCE_REVISION=\$\{GITHUB_SHA\}"/);
   assert.doesNotMatch(script, /--push|docker (?:push|login)/);

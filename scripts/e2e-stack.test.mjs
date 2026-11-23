@@ -21,16 +21,28 @@ function stackFixture(t) {
   const network = `${project}_default`;
   writeFileSync(state, JSON.stringify({ networks: [`${other}_default`], calls: [], volume: "saved data" }));
   mkdirSync(path.join(dir, "bin"));
-  writeFileSync(path.join(dir, "bin/lsof"), "#!/bin/sh\nexit 1\n", { mode: 0o700 });
+  writeFileSync(path.join(dir, "bin/lsof"), `#!${process.execPath}
+if (process.env.STACK_MODE === "image") {
+  const { calls } = JSON.parse(require("node:fs").readFileSync(process.env.STACK_STATE, "utf8"));
+  if (!calls.some(call => call.args.join(" ") === "rm --force fixture-stack-api")) {
+    console.log("p42"); // A stale release container still holds the port.
+    process.exit(0);
+  }
+}
+process.exit(1);
+`, { mode: 0o700 });
   writeFileSync(path.join(dir, "bin/docker"), `#!${process.execPath}
 const fs = require("node:fs");
 const args = process.argv.slice(2);
 if (args[0] === "version") { console.log("28.0.4"); process.exit(0); }
 if (args[0] === "compose" && args[1] === "version") { console.log("2.38.2"); process.exit(0); }
 const state = JSON.parse(fs.readFileSync(process.env.STACK_STATE, "utf8"));
-state.calls.push({ args, context: process.env.DOCKER_CONTEXT });
+state.calls.push({ args, context: process.env.DOCKER_CONTEXT, role: process.env.CONSOLE_APP_ROLE });
 let status = 0;
-if (args[0] !== "compose" || args[args.indexOf("-p") + 1] !== process.env.CONSOLE_DEV_PROJECT) status = 99;
+if (process.env.STACK_MODE === "image" && args[0] === "wait") console.log(27);
+else if (process.env.STACK_MODE === "image" && args[0] === "logs") console.log("fixture API log");
+else if (process.env.STACK_MODE === "image" && ["run", "rm"].includes(args[0])) status = 0;
+else if (args[0] !== "compose" || args[args.indexOf("-p") + 1] !== process.env.CONSOLE_DEV_PROJECT) status = 99;
 else if (args.includes("down")) {
   if (process.env.STACK_MODE === "down-failure" || process.env.STACK_MODE === "teardown-failure" && state.calls.filter(call => call.args.includes("down")).length > 1) status = 19;
   else {
@@ -170,6 +182,36 @@ test("an explicit reset still deletes the project's volumes", { timeout: 15_000 
   assert.equal((await child.closed).code, 0, child.output);
   assert.equal(fixture.snapshot().volume, null);
   assert.deepEqual(fixture.snapshot().networks, [`${fixture.other}_default`]);
+});
+
+test("image smoke migrates and serves the selected image and reports an early API exit", async t => {
+  const fixture = stackFixture(t);
+  const image = "console-platform:fixture";
+  const child = fixture.start("image", ["--reset", "--release-image"], {
+    CONSOLE_RELEASE_IMAGE: image, CONSOLE_APP_BIN: "absent-binary", CONSOLE_DEV_BACKEND_PORT: "0",
+  });
+  assert.equal((await child.closed).code, 1);
+  assert.match(child.output, /release API stopped \(exit 27\)/);
+  const { calls, networks, volume } = fixture.snapshot();
+  const runs = calls.filter(call => call.args[0] === "run");
+  assert.deepEqual(runs.map(call => call.role), ["migrate", "api"]);
+  for (const { args } of runs) {
+    assert.equal(args.at(-1), image);
+    assert.ok(args.includes("--pull=never") && args.includes("DATABASE_URL"));
+    assert.ok(!args.includes("CONSOLE_WEB_DIST") && !args.includes("CONSOLE_EMAIL_STUB_MODE"));
+  }
+  assert.ok(runs[0].args.includes("--rm"));
+  const api = runs[1].args;
+  assert.ok(api.includes("--detach") && !api.includes("--rm"));
+  assert.equal(api[api.indexOf("--name") + 1], "fixture-stack-api");
+  assert.deepEqual(calls.filter(call => ["rm", "run", "wait", "logs"].includes(call.args[0]))
+    .map(call => call.args[0] === "run" ? call.role : call.args.join(" ")), [
+    "rm --force fixture-stack-api", "migrate", "api", "wait fixture-stack-api",
+    "logs --tail 300 fixture-stack-api", "rm --force fixture-stack-api",
+  ]);
+  assert.match(child.output, /fixture API log/);
+  assert.deepEqual(networks, [`${fixture.other}_default`]);
+  assert.equal(volume, null);
 });
 
 for (const [engine, compose, fast] of [["29.5.2", "5.6.1", true], ["28.0.4", "2.38.2", true], ["24.0.9", "2.38.2", false], ["25.0.0", "2.20.1", false]])

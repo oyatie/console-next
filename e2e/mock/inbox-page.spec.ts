@@ -4,6 +4,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { loadCatalog, t } from "@console/i18n";
 import { mockScreen } from "./screen";
 import { mockRoute } from "./route";
+import { previewData } from "./onboarding";
 import { checklist, failure, inbox, screenAccess, user } from "./fixtures";
 import { expectAxe, fits } from "../a11y";
 import { expectStable, recordShifts } from "../stability";
@@ -320,6 +321,11 @@ for (const width of [1440, 390]) test(`Home paints the receipt with a refused in
   await page.setViewportSize({ width, height: 900 });
   await mockScreen(page, screens[0], "refused");
   await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { ...screenAccess("/setup/go-live"), is_ops: true } });
+  const goLiveAt = new Date().toISOString();
+  await mockRoute(page, "get", "/api/v1/onboarding/go-live/receipt", { status: 200, json: {
+    go_live_at: goLiveAt, go_live_by: user.id, preview_digest: "a".repeat(64),
+    facts_snapshot_version: 1, facts_snapshot: previewData("ready").facts,
+  } });
   let requested = false;
   let release!: () => void;
   const held = new Promise<void>(resolve => { release = resolve; });
@@ -330,7 +336,7 @@ for (const width of [1440, 390]) test(`Home paints the receipt with a refused in
   await mockRoute(page, "get", "/api/v1/onboarding/checklist", async () => {
     requested = true;
     await held;
-    return { status: 200, json: { ...checklist, go_live_at: new Date().toISOString() } };
+    return { status: 200, json: { ...checklist, go_live_at: goLiveAt } };
   });
   try {
     await page.goto("/");
@@ -346,6 +352,7 @@ for (const width of [1440, 390]) test(`Home paints the receipt with a refused in
     await expect(queue.getByRole("region", { name: t("common.denied.title.plain"), exact: true })).toBeVisible();
     const before = (await queue.boundingBox())!.y;
     await expect(page.locator("[data-setup-receipt]")).toBeVisible();
+    await expect(page.locator("[data-setup-receipt]")).toContainText(t("setup.receipt.recorded"));
     await expect(page.getByRole("link", { name: t("setup.receipt.open"), exact: true })).toBeVisible();
     await expect(page.getByText(t("setup.receipt.started.title"), { exact: true })).toBeVisible();
     expect((await queue.boundingBox())!.y).toBe(before);

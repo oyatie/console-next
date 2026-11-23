@@ -34,7 +34,6 @@ pub async fn ctx(
         ("CONSOLE_JWT_PUBLIC_KEY_PEM", keys.1.clone()),
         ("CONSOLE_JWT_ISSUER", "console-platform-auth".into()),
         ("CONSOLE_JWT_AUDIENCE", "console-api".into()),
-        ("CONSOLE_RELEASE_TOGGLES", "approvals".into()),
     ])
     .unwrap();
     ctx.token = http::token(pool, &keys, org, user, roles).await;

@@ -14,7 +14,7 @@ use console_app::{
 use sqlx::PgPool;
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn approvals_readiness_and_endpoints_require_the_deployment_release_toggle(pool: PgPool) {
+async fn approvals_readiness_and_endpoints_are_enabled_unless_explicitly_disabled(pool: PgPool) {
     let (org, user, _) = fixtures::setup(&pool).await;
     let id = fixtures::document(&pool, org, user, "OC-2026-0001").await;
     sqlx::query("UPDATE tenant_phase SET phase='OPERATING' WHERE org_id=$1")
@@ -26,9 +26,10 @@ async fn approvals_readiness_and_endpoints_require_the_deployment_release_toggle
     let keys = http::keys();
     ctx.token = http::token(&pool, &keys, org, user, &["SUPER_ADMIN"]).await;
     for (toggles, expected) in [
-        (None, false),
-        (Some("other-feature"), false),
+        (None, true),
+        (Some("other-feature"), true),
         (Some("approvals"), true),
+        (Some("no-approvals"), false),
     ] {
         let mut pairs = vec![
             ("CONSOLE_JWT_PUBLIC_KEY_PEM", keys.1.clone()),
