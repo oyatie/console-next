@@ -1,17 +1,27 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use std::num::NonZeroU64;
 
-use serde::Serialize;
-use time::{OffsetDateTime, UtcOffset};
+use serde::{Deserialize, Serialize};
+use time::{OffsetDateTime, UtcOffset, format_description::well_known::Rfc3339};
 
+pub mod alert_actions;
 pub mod bundle;
+mod bundle_oncall;
+mod bundle_settings;
+pub mod changes;
+pub mod incident;
+mod incident_types;
 pub mod ladders;
 pub mod obligation;
+pub mod recovery;
+pub mod runbook;
+pub mod status;
 pub use ladders::{EvidenceState, Health, WorkKind};
 
 pub const COMPONENTS_SCHEMA: &str = include_str!("../schemas/components.schema.json");
 pub const OPERATORS_SCHEMA: &str = include_str!("../schemas/operators.schema.json");
 pub const SETTINGS_SCHEMA: &str = include_str!("../schemas/ops-settings.schema.json");
+pub const ONCALL_SCHEMA: &str = include_str!("../schemas/oncall.schema.json");
 pub const OBLIGATION_RECORD_SCHEMA: &str = include_str!("../schemas/obligation-record.schema.json");
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -51,6 +61,17 @@ impl Serialize for UtcTimestamp {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let utc = self.0.to_offset(UtcOffset::UTC);
         time::serde::rfc3339::serialize(&utc, serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for UtcTimestamp {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let raw = String::deserialize(deserializer)?;
+        if !raw.ends_with('Z') {
+            return Err(serde::de::Error::custom("timestamp must end with UTC 'Z'"));
+        }
+        let parsed = OffsetDateTime::parse(&raw, &Rfc3339).map_err(serde::de::Error::custom)?;
+        Ok(Self::new(parsed))
     }
 }
 
@@ -211,6 +232,7 @@ pub fn verdict(
         (WorkKind::Overdue, "overdue"),
         (WorkKind::Due, "due"),
         (WorkKind::Ticket, "ticket"),
+        (WorkKind::Obligation, "obligation"),
     ] {
         let count = work.iter().filter(|value| **value == kind).count();
         if count > 0 || kind == WorkKind::Page {

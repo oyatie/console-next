@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+operationId: "opsPromoteSignoff"
+summary: "Record Promotion Signoff"
+x-cedar-action: "promotion.signoff"
+security: [{"accessJwt": []}]
+description: "Records signed staging promotion signoff in promote spool."
+requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SignoffRequest"}}}}
+responses: {"201": {"description": "Signoff recorded.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SignoffResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}

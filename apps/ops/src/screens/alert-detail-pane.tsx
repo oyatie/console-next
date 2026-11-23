@@ -9,6 +9,7 @@ import { fmtCountLabel, fmtJoin, formatUtcShort, formatUtcTimestamp } from "../l
 import { ExternalUrl } from "../ui/external-url";
 import { O0State } from "../ui/o0-state";
 import { ObservedValue } from "../ui/observed-value";
+import { AlertDetailActions } from "./alert-detail-actions";
 import s from "./alerts-screen.module.css";
 
 export function AlertDetailPane({
@@ -17,12 +18,14 @@ export function AlertDetailPane({
   disconnectedAgeS,
   closeHref,
   isMobileFull,
+  initialAction,
 }: {
   groupKey: string;
   liveStatus: OpsLive;
   disconnectedAgeS: number;
   closeHref: string;
   isMobileFull?: boolean;
+  initialAction?: "ack";
 }) {
   const query = useQuery({
     queryKey: opsQueryKeys.alertDetail(groupKey),
@@ -52,6 +55,8 @@ export function AlertDetailPane({
           </Link>
         </div>
       ) : null}
+
+      <AlertDetailActions group={g} initialAction={initialAction} />
 
       <div className={s.detailSection}>
         <h3 className={s.detailLabel}>{COPY.alerts.detail.summary}</h3>

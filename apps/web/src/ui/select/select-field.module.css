@@ -7,11 +7,12 @@
 .trigger svg { flex: none; color: var(--steel); }
 .select[data-invalid] .trigger { border-color: var(--danger-solid); }
 .trigger:has(.value[data-placeholder]) { border-style: dashed; }
+:where([data-experience]:not([data-experience="baseline"])) .trigger:has(.value[data-placeholder]) { border-style: solid; }
 .value { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .value[data-placeholder] { color: var(--steel); font-weight: var(--fw-body); }
 .chev { margin-left: auto; }
 .error { font-size: var(--text-sm); color: var(--danger-tx); }
-.pop { width: var(--trigger-width); min-width: calc(var(--panel-w) / 1.2); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-pop); overflow: auto; overscroll-behavior: contain; }
+.pop { width: var(--trigger-width); min-width: min(calc(var(--panel-w) / 1.2), calc(100vw - var(--space-4))); max-width: calc(100vw - var(--space-4)); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-pop); overflow: auto; overscroll-behavior: contain; }
 .list { padding: var(--space-1); outline: none; }
 .opt { display: flex; flex-direction: column; gap: 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius); cursor: pointer; outline: none; }
 .opt[data-focused] { background: var(--muted); }

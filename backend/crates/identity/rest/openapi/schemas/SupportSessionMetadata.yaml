@@ -20,6 +20,22 @@ properties:
       - string
       - 'null'
     format: date-time
+  request_expires_at:
+    type: string
+    format: date-time
+  requested_duration_seconds:
+    type: integer
+  scope:
+    type: array
+    items:
+      type: string
+  operator_approver_ref:
+    type:
+      - string
+      - 'null'
+    format: uuid
+  tenant_approved:
+    type: boolean
 required:
   - id
   - org_id

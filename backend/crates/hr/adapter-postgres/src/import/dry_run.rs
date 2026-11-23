@@ -56,7 +56,8 @@ pub async fn plan_run(
     ),
     HrError,
 > {
-    let stored = load_candidate_import_rows(tx, org_uuid, run_id).await?;
+    let mut stored = load_candidate_import_rows(tx, org_uuid, run_id).await?;
+    crate::import::cells_repair::apply_cell_repairs_to_stored(&mut stored, &decisions.cells);
     let hashes = identities::run_hash_candidates(tx, org_uuid, run_id, vault).await?;
     let phones = crate::import::phones::run_keys(tx, org_uuid, run_id).await?;
     let rows: Vec<_> = stored
@@ -160,6 +161,7 @@ async fn check_decisions(
     for kind in decisions.employment_type_map.values().flatten() {
         EmploymentType::parse(kind)?;
     }
+    crate::import::cells_repair::validate_cell_repairs(stored, &decisions.cells)?;
     check_import2_decisions(stored, decisions)
 }
 fn summarize(
@@ -251,7 +253,12 @@ impl HrService {
                 refuse_while_running(tx, org_uuid, run_id).await?;
                 require_row_limit(tx, org_uuid, run_id).await?;
                 crate::import::header::validate_run_mapping_profile(tx, org_uuid, run_id).await?;
-                let operator = request.decisions;
+                let mut operator = request.decisions;
+                if operator.cells.is_empty() {
+                    operator.cells =
+                        crate::import::cells_repair::load_stored_cell_repairs(tx, org_uuid, run_id)
+                            .await?;
+                }
                 let stored = load_candidate_import_rows(tx, org_uuid, run_id).await?;
                 check_decisions(tx, org, &stored, &operator).await?;
                 let (decisions, remembered) =

@@ -81,6 +81,7 @@ async fn t3_pre_backfill_dual_read_matches_and_catches_v1_v2_conflicts(pool: PgP
                 &[StagedIdentity {
                     source_key: "r-dup".into(),
                     sealed: s,
+                    id_type: None,
                 }],
             )
             .await?;
@@ -136,6 +137,7 @@ async fn t4_t5_t6_t7_batched_backfill_rollback_audit_and_zero_leakage(pool: PgPo
                 &[StagedIdentity {
                     source_key: "k".into(),
                     sealed: sealed_a_v2,
+                    id_type: None,
                 }],
             )
             .await?;

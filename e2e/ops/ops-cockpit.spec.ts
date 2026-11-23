@@ -131,6 +131,7 @@ test.describe("Stage-0 Ops Cockpit", () => {
 
     // Verify 11-item §3.2 fixed order and Unknown: not instrumented on impact
     const detail = page.locator("aside");
+    await expect(detail.getByRole("heading", { name: "Summary" })).toBeVisible();
     const headings = await detail.locator("h3").allInnerTexts();
     expect(headings).toEqual([
       "Summary",
@@ -355,12 +356,17 @@ test.describe("Stage-0 Ops Cockpit", () => {
 
     // Disconnect marks values stale, and reconnect sends Last-Event-ID = "6"
     await page.evaluate(() => {
-      (window as unknown as { __dropSse: () => void }).__dropSse();
+      const w = window as unknown as { __setSseStatus: (s: number) => void; __dropSse: () => void };
+      w.__setSseStatus(503);
+      w.__dropSse();
     });
     await expect(page.getByText("Reconnecting").first()).toBeVisible();
     await expect(page.locator("s").first()).toBeVisible();
     await expect(page.getByText(/Unknown: stale/).first()).toBeVisible();
 
+    await page.evaluate(() => {
+      (window as unknown as { __setSseStatus: (s: number) => void }).__setSseStatus(200);
+    });
     await page.getByRole("button", { name: "Reconnect" }).click();
     await expect(page.getByText("Live").first()).toBeVisible();
     await expect.poll(() => mock.getLastEventIds()).toContain("6");

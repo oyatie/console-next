@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["evaluated_at", "silence_id", "deleted"]
+properties:
+  evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+  silence_id: {"$ref": "#/components/schemas/Text"}
+  deleted: {"type": "boolean"}

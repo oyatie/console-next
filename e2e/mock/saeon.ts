@@ -89,6 +89,9 @@ export const saeonUniverse = {
   roles: raw.roles,
   employmentTypes: raw.employmentTypes,
   missingLabels: raw.missingLabels,
+  exitNotes: raw.exitNotes,
+  requestNotes: raw.requestNotes,
+  settings: raw.settings,
   entities,
   hero: {
     ...raw.hero,
@@ -131,6 +134,7 @@ export const saeonUniverse = {
   heroDetails: raw.heroDetails,
   statusSamples: raw.statusSamples,
   reasonCodes: raw.reasonCodes,
+  statutory: raw.statutory,
 } as const;
 
 let cachedRoster: readonly SaeonRosterRow[] | null = null;
@@ -1143,8 +1147,8 @@ export function saeonPayrollRates(): S["PayrollRates"] {
     floor_won: null,
     cap_won: null,
     instrument_ko: t("payroll.reference.title"),
-    article_ko: "Art. 1",
-    promulgation_ko: "No. 1",
+    article_ko: raw.statutory.articles.baseArticle,
+    promulgation_ko: raw.statutory.articles.basePromulgation,
     enforced_on: "2026-01-01",
     retrieved_on: "2026-10-29",
     provenance_ko: t("payroll.reference.ACTIVE"),
@@ -1375,6 +1379,8 @@ export function saeonOrgUnits() {
 }
 
 export function saeonFilterEmployees(params: URLSearchParams): S["EmployeePage"] {
+  const ids = params.getAll("ids").flatMap(v => v.split(",")).filter(Boolean);
+  const numbers = params.getAll("employee_number").flatMap(v => v.split(",")).filter(Boolean);
   const statuses = params.getAll("status").filter(Boolean);
   const search = (params.get("search") ?? "").trim().toLowerCase();
   const legalEntityId = params.get("legal_entity_id");
@@ -1386,6 +1392,22 @@ export function saeonFilterEmployees(params: URLSearchParams): S["EmployeePage"]
   const limit = Math.min(1000, Math.max(1, Number(params.get("limit") ?? 100) || 100));
 
   const samples = saeonStatusSampleEmployees();
+  if (ids.length > 0) {
+    const idSet = new Set(ids);
+    const sampleList = [samples.onLeave, samples.preHire, samples.exited];
+    const fromRoster = generateSaeonRoster().filter(r => idSet.has(r.id)).map(r => rowToEmployee(r));
+    const fromSamples = sampleList.filter(e => idSet.has(e.id));
+    const items = [...fromRoster, ...fromSamples].sort((a, b) => a.id.localeCompare(b.id));
+    return { items, total: items.length, limit: Math.max(limit, items.length), offset: 0, next_cursor: null };
+  }
+  if (numbers.length > 0) {
+    const numSet = new Set(numbers);
+    const sampleList = [samples.onLeave, samples.preHire, samples.exited];
+    const fromRoster = generateSaeonRoster().filter(r => numSet.has(r.employeeNumber)).map(r => rowToEmployee(r));
+    const fromSamples = sampleList.filter(e => e.employee_number && numSet.has(e.employee_number));
+    const items = [...fromRoster, ...fromSamples];
+    return { items, total: items.length, limit: Math.max(limit, items.length), offset: 0, next_cursor: null };
+  }
   if (statuses.length === 1 && statuses[0] === "ON_LEAVE") {
     const items = search ? [samples.onLeave].filter(e => e.name.toLowerCase().includes(search)) : [samples.onLeave];
     return { items, total: items.length, limit, offset: 0, next_cursor: null };
@@ -1628,7 +1650,7 @@ export function saeonEmploymentFacts(id: string) {
     hire_date: employee.hire_date ?? null,
     birth_date: "••••-••-••",
     work_email: null,
-    id_type: "RRN" as const,
+    id_type: (employee.status === "PRE_HIRE" ? "NOT_ISSUED" : "RRN") as "RRN" | "ARC" | "DOMESTIC_RESIDENCE" | "NOT_ISSUED",
     employment: {
       employment_type: empType,
       worker_classification: "EMPLOYEE" as const,
@@ -1745,6 +1767,9 @@ export function saeonEndOptions(id: string): S["EmployeeEndOptions"] {
 
 export function saeonRrnStatus(id: string) {
   const { employee, rrnMasked } = findRosterOrSampleEmployee(id);
+  if (employee.status === "PRE_HIRE") {
+    return { employee_id: employee.id, recorded: false, can_record: true, masked: null };
+  }
   return { employee_id: employee.id, recorded: true, can_record: false, masked: rrnMasked };
 }
 
@@ -1848,12 +1873,17 @@ export function saeonPayslipDraft(employeeId: string): S["PayrollPayslipDraft"] 
 }
 
 export function saeonReasonCodes(domain: string): S["TenantReasonCode"][] {
-  if (domain !== "rrn_reveal") return [];
-  return saeonUniverse.reasonCodes.rrn_reveal.map((item, idx) => ({
+  const items: readonly { code: string; labelKo: string; labelEn?: string; requiresNote: boolean }[] =
+    domain === "rrn_reveal"
+      ? saeonUniverse.reasonCodes.rrn_reveal
+      : domain === "import_exclude"
+        ? saeonUniverse.reasonCodes.import_exclude
+        : [];
+  return items.map((item, idx) => ({
     domain,
     code: item.code,
     label_ko: item.labelKo,
-    label_en: item.code,
+    label_en: item.labelEn ?? item.code,
     requires_note: item.requiresNote,
     involuntary: false,
     notice_required: false,
@@ -2041,6 +2071,262 @@ export function saeonApprovalsPage(
   };
 }
 
+export const SAEON_NOTICE_ID = "00000000-0000-4000-8970-000000000001";
+export const SAEON_EXIT_CASE_ID = "00000000-0000-4000-8980-000000000001";
+export const SAEON_CERT_ID = "00000000-0000-4000-8950-000000000001";
+
+export function saeonRegisterFactsBatch(body?: S["RegisterFactsQueryRequest"] | null): S["RegisterFactsQueryResponse"] {
+  const roster = generateSaeonRoster();
+  const limit = Math.min(500, Math.max(1, body?.limit ?? 500));
+  const ids = body?.ids?.length
+    ? [...body.ids].sort()
+    : (body?.register_review_required ? roster.filter(r => Boolean(r.missingCode)) : roster).slice(0, limit).map(r => r.id).sort();
+  const items: S["RegisterFactsQueryItem"][] = ids.map(empId => {
+    const facts = saeonRegisterFacts(empId);
+    const { birthDate } = findRosterOrSampleEmployee(empId);
+    return {
+      employee_id: empId,
+      updated_at: facts.updated_at,
+      sex: facts.sex ?? null,
+      address: facts.address ?? null,
+      careers: facts.careers ?? [],
+      exit_reason_code: facts.exit_reason_code ?? null,
+      exit_reason_label: facts.exit_reason_label ?? null,
+      register_note: facts.register_note ?? null,
+      birth_date: birthDate,
+    };
+  });
+  return { items, next_cursor: null };
+}
+
+export function saeonNotices(): S["AppointmentNoticePage"] {
+  const admin = saeonAdminUser();
+  return {
+    items: [
+      {
+        id: SAEON_NOTICE_ID,
+        notice_no: "2026-0041",
+        title: `${saeonUniverse.hero.gradeLabel} · 2026-11`,
+        notice_date: "2026-11-15",
+        issued_by: admin.id,
+        issued_by_name: admin.display_name,
+        issued_at: SAEON_AT,
+        line_count: 1,
+      },
+      {
+        id: "00000000-0000-4000-8970-000000000002",
+        notice_no: "2026-0040",
+        title: `${saeonUniverse.entities[0]!.name} · 2026-10`,
+        notice_date: "2026-10-20",
+        issued_by: admin.id,
+        issued_by_name: admin.display_name,
+        issued_at: "2026-10-20T09:00:00+09:00",
+        line_count: 1,
+      },
+    ],
+    next_cursor: null,
+  };
+}
+
+export function saeonNoticeDetail(id: string): S["AppointmentNotice"] {
+  const list = saeonNotices().items;
+  const summary = list.find(n => n.id === id) ?? list[0]!;
+  const { employee } = findRosterOrSampleEmployee(SAEON_HERO_ID);
+  const events = saeonLifecycleEvents(SAEON_HERO_ID).items;
+  return {
+    ...summary,
+    note: saeonUniverse.heroDetails.scheduledEvent.reason,
+    lines: [
+      {
+        line_no: 1,
+        employee_id: employee.id,
+        employee_number: employee.employee_number ?? null,
+        name: employee.name,
+        event: events[0]!,
+      },
+    ],
+  };
+}
+
+export function saeonNoticeCandidates(): S["AppointmentNoticeCandidatePage"] {
+  const { employee } = findRosterOrSampleEmployee(SAEON_HERO_ID);
+  const events = saeonLifecycleEvents(SAEON_HERO_ID).items;
+  return {
+    items: events[0]
+      ? [
+          {
+            employee_id: employee.id,
+            employee_number: employee.employee_number ?? null,
+            name: employee.name,
+            event: events[0],
+          },
+        ]
+      : [],
+    next_cursor: null,
+  };
+}
+
+function buildSaeonExitCases(): S["EmployeeExitCase"][] {
+  const admin = saeonAdminUser();
+  const exited = saeonStatusSampleEmployees().exited;
+  const onLeave = saeonStatusSampleEmployees().onLeave;
+  const site0 = entities[0]!.workplaces[0]!.name;
+  const site1 = entities[0]!.workplaces[1]?.name ?? site0;
+  return [
+    {
+      id: SAEON_EXIT_CASE_ID,
+      employee_id: exited.id,
+      employee_name: exited.name,
+      employee_number: exited.employee_number ?? undefined,
+      company: exited.company,
+      org_unit: exited.org_unit ?? undefined,
+      worksite_name: site0,
+      status: "REPORTED",
+      effective_exit_date: "2026-11-30",
+      site_manager_note: saeonUniverse.exitNotes.resignation,
+      exit_reason_code: "RESIGNATION",
+      involuntary: false,
+      notice_required: false,
+      dismissal_notice: null,
+      protected_periods: [],
+      reported_by: admin.id,
+      reported_by_name: admin.display_name,
+      reported_at: SAEON_AT,
+      hr_confirmed_by_name: null,
+      hq_confirmed_by_name: null,
+      approval_submitted_by_name: null,
+      closed_by_name: null,
+      exit_lifecycle_event_id: null,
+      exit_event_state: null,
+      next_actions: [{ key: "confirm_exit" }, { key: "cancel_exit" }, { key: "reject_exit" }],
+      settlement_deadlines: [],
+    },
+    {
+      id: "00000000-0000-4000-8980-000000000002",
+      employee_id: onLeave.id,
+      employee_name: onLeave.name,
+      employee_number: onLeave.employee_number ?? undefined,
+      company: onLeave.company,
+      org_unit: onLeave.org_unit ?? undefined,
+      worksite_name: site1,
+      status: "HR_CONFIRMED",
+      effective_exit_date: "2026-11-28",
+      site_manager_note: saeonUniverse.exitNotes.contractEnd,
+      exit_reason_code: "CONTRACT_END",
+      involuntary: false,
+      notice_required: false,
+      dismissal_notice: null,
+      protected_periods: [],
+      reported_by: admin.id,
+      reported_by_name: admin.display_name,
+      reported_at: "2026-11-01T09:00:00+09:00",
+      hr_confirmed_by: admin.id,
+      hr_confirmed_by_name: admin.display_name,
+      hr_confirmed_at: "2026-11-02T10:00:00+09:00",
+      hq_confirmed_by_name: null,
+      approval_submitted_by_name: null,
+      closed_by_name: null,
+      exit_lifecycle_event_id: null,
+      exit_event_state: "SCHEDULED",
+      next_actions: [{ key: "confirm_exit_hq" }, { key: "reject_exit" }],
+      settlement_deadlines: [],
+    },
+  ];
+}
+
+export function saeonExitCases(filter?: { status?: string; search?: string }): S["EmployeeExitCasePage"] {
+  const all = buildSaeonExitCases();
+  const search = (filter?.search ?? "").trim().toLowerCase();
+  const status = filter?.status;
+  const openSet = new Set(["REPORTED", "HR_CONFIRMED", "HQ_CONFIRMED", "SETTLEMENT_READY", "APPROVAL_DRAFTED"]);
+  const closedSet = new Set(["SUBMITTED", "REJECTED", "CANCELLED"]);
+  const items = all.filter(c => {
+    if (status === "open" && !openSet.has(c.status)) return false;
+    if (status === "closed" && !closedSet.has(c.status)) return false;
+    if (status && status !== "open" && status !== "closed" && !status.split(",").includes(c.status)) return false;
+    if (search) {
+      const hay = `${c.employee_name} ${c.employee_number ?? ""} ${c.company}`.toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+  return { items, total: items.length, limit: 100, offset: 0 };
+}
+
+export function saeonExitCaseCounts(search?: string): S["ExitCaseCountsResponse"] {
+  const items = saeonExitCases({ search }).items;
+  const count = (st: S["EmployeeExitCaseStatus"]) => items.filter(c => c.status === st).length;
+  const reported = count("REPORTED");
+  const hrConfirmed = count("HR_CONFIRMED");
+  const hqConfirmed = count("HQ_CONFIRMED");
+  const settlementReady = count("SETTLEMENT_READY");
+  const approvalDrafted = count("APPROVAL_DRAFTED");
+  const submitted = count("SUBMITTED");
+  const rejected = count("REJECTED");
+  const cancelled = count("CANCELLED");
+  return {
+    all: items.length,
+    open: reported + hrConfirmed + hqConfirmed + settlementReady + approvalDrafted,
+    closed: submitted + rejected + cancelled,
+    reported,
+    hr_confirmed: hrConfirmed,
+    hq_confirmed: hqConfirmed,
+    settlement_ready: settlementReady,
+    approval_drafted: approvalDrafted,
+    submitted,
+    rejected,
+    cancelled,
+  };
+}
+
+export function saeonExitCaseDetail(id: string): S["EmployeeExitCase"] {
+  const all = buildSaeonExitCases();
+  return all.find(c => c.id === id) ?? all[0]!;
+}
+
+export function saeonCertificateDetail(id: string): S["Certificate"] {
+  const admin = saeonAdminUser();
+  const { employee } = findRosterOrSampleEmployee(SAEON_HERO_ID);
+  const certs = saeonCertificates(SAEON_HERO_ID).items;
+  const hit = certs.find(c => c.id === id) ?? certs[0]!;
+  return {
+    id: hit.id,
+    employee_id: employee.id,
+    certificate_no: hit.certificate_no,
+    kind: hit.kind,
+    items: ["period", "duty", "position"],
+    purpose: hit.purpose,
+    snapshot: {
+      name: employee.name,
+      issuer: employee.company,
+      seal_text: employee.company,
+      period: { from: employee.hire_date ?? "2019-03-14", to: "2026-11-15" },
+      duty: employee.org_unit ?? entities[0]!.name,
+      position: employee.position ?? saeonUniverse.hero.gradeLabel,
+    },
+    replaces_id: null,
+    issued_by: admin.id,
+    issued_at: hit.issued_at,
+    voided_at: null,
+    void_reason: null,
+  };
+}
+
+export function saeonCertificateSettings(): S["CertificateSettingsView"] {
+  return {
+    settings: entities.map(e => ({
+      legal_entity_id: e.id,
+      prefix: "SAEON",
+      width: 4,
+      seal_text: e.name,
+      version: 1,
+      seal_png: null,
+    })),
+    seal_max_bytes: 524288,
+    can_manage: true,
+  };
+}
+
 const HERO_PAYSLIP_SPECS = [
   {
     id: "00000000-0000-4000-8950-000000002010",
@@ -2141,7 +2427,7 @@ function buildHeroPayslipEntry(spec: (typeof HERO_PAYSLIP_SPECS)[number]) {
       taxable_won: row.taxablePay,
       gross_won: row.grossPay,
       deductions: [
-        { code: "NATIONAL_PENSION", label_ko: t("payslip.deduction.NATIONAL_PENSION"), amount_won: row.nationalPension, source_url: "https://www.nps.or.kr/" },
+        { code: "NATIONAL_PENSION", label_ko: t("payslip.deduction.NATIONAL_PENSION"), amount_won: row.nationalPension, source_url: "https://www.nps.go.kr/" },
         { code: "HEALTH_INSURANCE", label_ko: t("payslip.deduction.HEALTH_INSURANCE"), amount_won: row.healthInsurance, source_url: "https://www.nhis.or.kr/" },
         { code: "LONG_TERM_CARE", label_ko: t("payslip.deduction.LONG_TERM_CARE"), amount_won: row.longTermCare, source_url: "https://www.nhis.or.kr/" },
         { code: "EMPLOYMENT_INSURANCE", label_ko: t("payslip.deduction.EMPLOYMENT_INSURANCE"), amount_won: row.employmentInsurance, source_url: "https://www.ei.go.kr/" },
@@ -2169,4 +2455,481 @@ export function saeonHeroPayslipDocs(): S["InboxDocPage"] {
 export function saeonHeroPayslipDetail(docId?: string): S["InboxDocDetail"] | null {
   const spec = docId ? HERO_PAYSLIP_SPECS.find(item => item.id === docId) : HERO_PAYSLIP_SPECS[0];
   return spec ? buildHeroPayslipEntry(spec).detail : null;
+}
+
+const SAEON_IMPORT_RUN_ID = "00000000-0000-4000-8990-000000000001";
+
+/** OpenAPI-typed `EmployeeImportRunPage` for Saeon `/people/import` & `/people/data-health`. */
+export function saeonImportRuns(): S["EmployeeImportRunPage"] {
+  const admin = saeonAdminUser();
+  return {
+    items: [
+      {
+        id: SAEON_IMPORT_RUN_ID,
+        source_filename: "saeon-2026-q4-roster.xlsx",
+        status: "APPLIED",
+        apply_job_state: "done",
+        created_at: SAEON_AT,
+        applied_at: SAEON_AT,
+        applied_by: { id: admin.id, name: admin.display_name },
+        apply_summary: { input_rows: 18, inserted: 3, updated: 15, skipped: 0, companies: [] },
+        rolled_back_at: null,
+        rolled_back_by: null,
+        rollback_reason_code: null,
+        rollback_note: null,
+        rollback: { job: null, refusal_code: null, mode: "GOVERNED", window_until: null, window_days: 14, pending_request: null },
+        allowed: [],
+      },
+    ],
+    next_cursor: null,
+  };
+}
+
+/** OpenAPI-typed unplaced queue for Saeon `/people/unplaced` (includes canonical 10433 + dept-unplaced rows). */
+export function saeonUnplacedQueue(): S["EmployeeImportUnplacedPage"] {
+  const roster = generateSaeonRoster();
+  const yoonHarin = roster.find(r => r.employeeNumber === "10433") ?? roster[0]!;
+  const leeGaram = roster.find(r => r.employeeNumber === "20241") ?? roster[1]!;
+  const leeNaYeon = roster.find(r => r.employeeNumber === "10506") ?? roster[2]!;
+  const entity0 = saeonUniverse.entities[0]!;
+  const entity1 = saeonUniverse.entities[1]!;
+  const unitName0 = entity0.workplaces[1]?.departments[0] ?? entity0.workplaces[0]!.departments[0]!;
+  const unitName1 = entity1.workplaces[0]!.departments[0]!;
+
+  const toItem = (row: SaeonRosterRow, reason: "unit_unknown" | "workplace_unknown", sourceUnit: string): S["EmployeeImportUnplacedPage"]["items"][number] => {
+    const emp = rowToEmployee(row);
+    return {
+      employee_id: emp.id,
+      name: emp.name,
+      employee_number: emp.employee_number ?? null,
+      company: emp.company,
+      legal_entity_id: emp.legal_entity_id,
+      workplace_id: reason === "workplace_unknown" ? null : emp.workplace_id,
+      org_unit_id: null,
+      position: emp.position ?? null,
+      employment_type: emp.employment_type ?? null,
+      hire_date: emp.hire_date ?? null,
+      worksite_name: null,
+      source_workplace: null,
+      source_org_unit: sourceUnit,
+      reason,
+    };
+  };
+
+  return {
+    count: 3,
+    next_cursor: null,
+    items: [
+      toItem(yoonHarin, "workplace_unknown", unitName0),
+      toItem(leeNaYeon, "unit_unknown", unitName0),
+      toItem(leeGaram, "unit_unknown", unitName1),
+    ],
+  };
+}
+
+export function saeonUnmappedCompanies(): S["UnmappedCompanyList"] {
+  const entity0 = saeonUniverse.entities[0]!;
+  return {
+    items: [{ company_text: `${entity0.name} (2025)`, employees: 2 }],
+  };
+}
+
+/** OpenAPI-typed `EmployeeImportPreviewResponse` for Saeon `/people/import`. */
+export function saeonImportPreview(): S["EmployeeImportPreviewResponse"] {
+  const entity0 = saeonUniverse.entities[0]!;
+  const preHire = saeonUniverse.statusSamples.preHire;
+  const hero = saeonUniverse.hero;
+  const unitLabel = entity0.workplaces[0]!.departments[0]!;
+  const sheetName = entity0.name;
+  const targets = ["employee_number", "name", "rrn", "id_type", "birth_date", "sex", "hire_date", "employment_status", "employment_type", "org_unit", "company_brn", "position", "job", "phone"];
+
+  return {
+    run_id: SAEON_IMPORT_RUN_ID,
+    entity_type: "employee_hr",
+    source_filename: "saeon-2026-hire-batch.xlsx",
+    source_sha256: "b".repeat(64),
+    input_rows: 5,
+    candidate_rows: 5,
+    preserved_rows: 1,
+    sealed_identities: 3,
+    available_targets: targets,
+    mapping_profile: {},
+    sheets_needing_mapping: 0,
+    columns: [
+      { source_header: t("import.target.employee_number"), normalized_header: "employee_number", target: "employee_number", classification: "canonical", preview_allowed: true },
+      { source_header: t("import.target.name"), normalized_header: "name", target: "name", classification: "canonical", preview_allowed: true },
+      { source_header: t("import.target.rrn"), normalized_header: "rrn", target: "rrn", classification: "restricted", preview_allowed: false },
+      { source_header: t("import.target.hire_date"), normalized_header: "hire_date", target: "hire_date", classification: "canonical", preview_allowed: true },
+      { source_header: t("import.target.org_unit"), normalized_header: "org_unit", target: "org_unit", classification: "location", preview_allowed: true },
+      { source_header: t("import.target.employment_status"), normalized_header: "employment_status", target: "employment_status", classification: "canonical", preview_allowed: true },
+      { source_header: "BaseSalary", normalized_header: "basesalary", target: null, classification: "restricted", preview_allowed: false },
+      { source_header: t("import.target.id_type"), normalized_header: "id_type", target: "id_type", classification: "canonical", preview_allowed: true },
+    ],
+    sample_rows: [
+      {
+        source_sheet: sheetName,
+        source_row: 2,
+        row_status: "CANDIDATE",
+        values: {
+          [t("import.target.employee_number")]: preHire.employeeNumber,
+          [t("import.target.name")]: preHire.name,
+          [t("import.target.hire_date")]: preHire.hireDate,
+          [t("import.target.org_unit")]: unitLabel,
+          [t("import.target.employment_status")]: saeonUniverse.employmentTypes.REGULAR,
+          [t("import.target.id_type")]: "NOT_ISSUED",
+        },
+      },
+      {
+        source_sheet: sheetName,
+        source_row: 3,
+        row_status: "CANDIDATE",
+        values: {
+          [t("import.target.employee_number")]: hero.employeeNumber,
+          [t("import.target.name")]: hero.name,
+          [t("import.target.hire_date")]: hero.hireDate,
+          [t("import.target.org_unit")]: hero.shortPlace,
+          [t("import.target.employment_status")]: saeonUniverse.employmentTypes.REGULAR,
+          [t("import.target.id_type")]: "RRN",
+        },
+      },
+    ],
+    sheets: [
+      {
+        name: sheetName,
+        status: "mapped",
+        needs_confirmation: false,
+        rows: 5,
+        header_row: 1,
+        header_candidates: [
+          {
+            row: 1,
+            cells: [
+              { column: "A", label: t("import.target.employee_number") },
+              { column: "B", label: t("import.target.name") },
+              { column: "C", label: t("import.target.rrn") },
+              { column: "D", label: t("import.target.hire_date") },
+              { column: "E", label: t("import.target.org_unit") },
+              { column: "F", label: t("import.target.employment_status") },
+              { column: "G", label: "BaseSalary" },
+              { column: "H", label: t("import.target.id_type") },
+            ],
+          },
+        ],
+        columns: [
+          { column: "A", label: t("import.target.employee_number"), target: "employee_number", source: "catalog" },
+          { column: "B", label: t("import.target.name"), target: "name", source: "catalog" },
+          { column: "C", label: t("import.target.rrn"), target: "rrn", source: "catalog" },
+          { column: "D", label: t("import.target.hire_date"), target: "hire_date", source: "catalog" },
+          { column: "E", label: t("import.target.org_unit"), target: "org_unit", source: "catalog" },
+          { column: "F", label: t("import.target.employment_status"), target: "employment_status", source: "catalog" },
+          { column: "G", label: "BaseSalary", target: null, source: "catalog" },
+          { column: "H", label: t("import.target.id_type"), target: "id_type", source: "catalog" },
+        ],
+      },
+    ],
+  };
+}
+
+export type MockImportDryRunState = {
+  repairedCells?: Record<string, Record<string, string>>;
+  recordedIdentifiers?: Record<string, { id_type: "RRN" | "ARC" | "DOMESTIC_RESIDENCE"; sex_derived?: "MALE" | "FEMALE" }>;
+};
+
+/** OpenAPI-typed `EmployeeImportDryRunSummary` covering valid, warn, and hard-blocker triage states. */
+export function saeonImportDryRun(state: MockImportDryRunState = {}): S["EmployeeImportDryRunSummary"] {
+  const entity0 = saeonUniverse.entities[0]!;
+  const site0 = entity0.workplaces[0]!;
+  const sheetName = entity0.name;
+  const preHire = saeonUniverse.statusSamples.preHire;
+  const hero = saeonUniverse.hero;
+  const roster = generateSaeonRoster();
+  const harin = roster.find(r => r.employeeNumber === "10433") ?? roster[0]!;
+  const gunwoo = roster.find(r => r.employeeNumber === "50123") ?? roster[1]!;
+  const domestic = roster[2] ?? roster[0]!;
+  const unknownUnit = `${site0.departments[0]}-2`;
+
+  const row2Key = `${sheetName}:2`;
+  const row5Key = `${sheetName}:5`;
+  const row2Recorded = state.recordedIdentifiers?.[row2Key];
+  const row5RepairedHire = state.repairedCells?.[row5Key]?.hire_date;
+  const row5Fixed = Boolean(row5RepairedHire && /^\d{4}-\d{2}-\d{2}$/.test(row5RepairedHire) && Number(row5RepairedHire.slice(0, 4)) >= 1900);
+
+  const items: S["EmployeeImportReviewItem"][] = [];
+  if (!row5Fixed) {
+    items.push({
+      id: "rev-two-digit-year",
+      blocking: true,
+      reason: "two_digit_year",
+      sheet: sheetName,
+      row: 5,
+      field: "hire_date",
+      source_column: t("import.target.hire_date"),
+      value: "26-11-01",
+      expected_format: "YYYY-MM-DD",
+      rows: 1,
+      resolution: { decision: "cells", key: row5Key, choices: [] },
+    });
+  }
+  items.push({
+    id: "rev-unit-map",
+    blocking: false,
+    reason: "unit_unmapped",
+    sheet: sheetName,
+    row: 4,
+    field: "org_unit",
+    source_column: t("import.target.org_unit"),
+    value: unknownUnit,
+    rows: 1,
+    resolution: { decision: "unit_map", key: unknownUnit, choices: [] },
+  });
+
+  const rows: S["EmployeeImportPlannedRow"][] = [
+    {
+      source_key: row2Key,
+      sheet: sheetName,
+      row: 2,
+      name: preHire.name,
+      employee_number: preHire.employeeNumber,
+      outcome: "insert",
+      new_person: {
+        employee_number: preHire.employeeNumber,
+        employee_number_source: "file",
+        status: "PRE_HIRE",
+        id_type: row2Recorded?.id_type ?? "NOT_ISSUED",
+        sex: row2Recorded?.sex_derived ?? "MALE",
+        hire_date: preHire.hireDate,
+        migrated_former: false,
+        workplace_id: `00000000-0000-4000-8200-${padDigits(101, 12)}`,
+        org_unit_id: null,
+        employment_type: "REGULAR",
+      },
+    },
+    {
+      source_key: `${sheetName}:3`,
+      sheet: sheetName,
+      row: 3,
+      name: hero.name,
+      employee_number: hero.employeeNumber,
+      outcome: "update",
+      matched_by: "employee_number",
+      diff: [{ field: "job", from: hero.roleLabel, to: saeonUniverse.settings.jobTitles.precisionLabel }],
+    },
+    {
+      source_key: `${sheetName}:4`,
+      sheet: sheetName,
+      row: 4,
+      name: harin.name,
+      outcome: "insert",
+      unit_name: unknownUnit,
+      new_person: {
+        employee_number: null,
+        status: "ACTIVE",
+        id_type: "RRN",
+        sex: "FEMALE",
+        hire_date: harin.hireDate,
+        migrated_former: false,
+        workplace_id: null,
+        org_unit_id: null,
+        employment_type: null,
+      },
+    },
+    row5Fixed
+      ? {
+          source_key: row5Key,
+          sheet: sheetName,
+          row: 5,
+          name: gunwoo.name,
+          employee_number: gunwoo.employeeNumber,
+          outcome: "update",
+          matched_by: "employee_number",
+          diff: [],
+        }
+      : {
+          source_key: row5Key,
+          sheet: sheetName,
+          row: 5,
+          name: gunwoo.name,
+          employee_number: gunwoo.employeeNumber,
+          outcome: "refused",
+          refusal_code: "two_digit_year",
+          refusal_field: "hire_date",
+        },
+    {
+      source_key: `${sheetName}:6`,
+      sheet: sheetName,
+      row: 6,
+      name: domestic.name,
+      employee_number: domestic.employeeNumber,
+      outcome: "insert",
+      new_person: {
+        employee_number: domestic.employeeNumber,
+        employee_number_source: "file",
+        status: "ACTIVE",
+        id_type: "DOMESTIC_RESIDENCE",
+        sex: "FEMALE",
+        hire_date: domestic.hireDate,
+        migrated_former: false,
+        workplace_id: `00000000-0000-4000-8200-${padDigits(101, 12)}`,
+        org_unit_id: null,
+        employment_type: "REGULAR",
+      },
+    },
+  ];
+
+  const blocking = items.filter((i) => i.blocking).length;
+  const repairedCells = state.repairedCells && Object.keys(state.repairedCells).length > 0 ? state.repairedCells : undefined;
+  return {
+    run_id: SAEON_IMPORT_RUN_ID,
+    input_rows: 5,
+    candidate_rows: 5,
+    preserved_rows: 1,
+    insert_candidates: rows.filter((r) => r.outcome === "insert").length,
+    update_candidates: rows.filter((r) => r.outcome === "update").length,
+    unchanged_rows: 0,
+    excluded_rows: 0,
+    unsettled_rows: blocking,
+    companies: [{ company: entity0.name, input_rows: 5, inserted: 3, updated: row5Fixed ? 2 : 1, skipped: row5Fixed ? 0 : 1 }],
+    org_unit_bound_rows: 3,
+    org_unit_unbound_rows: 1,
+    unresolved_org_units: [unknownUnit],
+    dry_run_digest: "c".repeat(64),
+    decisions: {
+      unit_map: {},
+      workplace_map: {},
+      status_map: {},
+      leave_type_map: {},
+      employment_type_map: {},
+      identity: {},
+      employee_numbers: {},
+      ...(repairedCells ? { cells: repairedCells } : {}),
+    },
+    remembered: [],
+    auto_mapped: [],
+    employment_type_empty_rows: 1,
+    unplaced: { rows: 1, by_reason: { unit_unknown: 1, unit_ambiguous: 0, unit_left_unplaced: 0, workplace_unknown: 0, no_place: 0 } },
+    phone_unstored_rows: 1,
+    review: {
+      count: items.length,
+      blocking,
+      groups: [],
+      items,
+    },
+    rows,
+  };
+}
+
+/** OpenAPI-typed `PeopleDataHealthResponse` (zero raw PII) for Saeon `/people/data-health`. */
+export function saeonPeopleDataHealth(options: { category?: string | null; limit?: number; canManage?: boolean } = {}): S["PeopleDataHealthResponse"] {
+  const { category = null, limit = 20, canManage = true } = options;
+  const roster = generateSaeonRoster();
+  const samples = saeonStatusSampleEmployees();
+  const cappedLimit = Math.min(50, Math.max(1, limit));
+
+  const allDrilldown: S["PeopleDataHealthResponse"]["drilldown_items"] = [
+    {
+      employee_id: samples.preHire.id,
+      employee_number: samples.preHire.employee_number ?? undefined,
+      employment_status: "PRE_HIRE",
+      missing_categories: ["address", "career"],
+    },
+    {
+      employee_id: roster[0]!.id,
+      employee_number: roster[0]!.employeeNumber,
+      employment_status: "ACTIVE",
+      missing_categories: ["address", "rrn_missing"],
+    },
+    {
+      employee_id: roster[1]!.id,
+      employee_number: roster[1]!.employeeNumber,
+      employment_status: "ACTIVE",
+      missing_categories: ["bank_account_missing", "department_missing"],
+    },
+    {
+      employee_id: roster[2]!.id,
+      employee_number: roster[2]!.employeeNumber,
+      employment_status: "ACTIVE",
+      missing_categories: ["unplaced", "job", "birth"],
+    },
+    {
+      employee_id: roster[3]!.id,
+      employee_number: roster[3]!.employeeNumber,
+      employment_status: "ACTIVE",
+      missing_categories: ["identity_review", "sex"],
+    },
+    {
+      employee_id: roster[4]!.id,
+      employee_number: roster[4]!.employeeNumber,
+      employment_status: "ACTIVE",
+      missing_categories: ["failed_action", "hire", "contractEnd"],
+    },
+  ];
+
+  const filtered = category
+    ? allDrilldown.filter((item) =>
+        category === "register_incomplete"
+          ? item.missing_categories.some((c) => ["birth", "job", "hire", "contractEnd", "sex", "address", "career"].includes(c))
+          : item.missing_categories.includes(category),
+      )
+    : allDrilldown;
+
+  return {
+    cohort: {
+      total: roster.length + 2,
+      active: roster.length,
+      on_leave: 1,
+      pre_hire: 1,
+    },
+    statutory_register: {
+      complete_count: roster.length - 4,
+      incomplete_count: 6,
+      missing_by_category: {
+        birth: 1,
+        job: 1,
+        hire: 1,
+        contract_end: 1,
+        sex: 1,
+        address: 2,
+        career: 1,
+      },
+    },
+    id_summary: {
+      rrn_recorded: roster.length,
+      not_issued: 1,
+      missing: 1,
+      by_type: {
+        rrn: roster.length - 4,
+        arc: 2,
+        domestic_residence: 2,
+        not_issued: 1,
+        unset: 1,
+      },
+    },
+    placement_summary: {
+      placed: roster.length,
+      unplaced: 1,
+      department_missing: 1,
+    },
+    bank_account: {
+      registered: roster.length + 1,
+      missing: 1,
+    },
+    identity_review: {
+      needs_review: 1,
+    },
+    failed_actions: {
+      count: 1,
+    },
+    drilldown_items: filtered.slice(0, cappedLimit),
+    ...(canManage
+      ? {
+          latest_import: {
+            run_id: SAEON_IMPORT_RUN_ID,
+            status: "APPLIED",
+            candidate_rows: 18,
+            created_at: SAEON_AT,
+            applied_at: SAEON_AT,
+          },
+        }
+      : {}),
+  };
 }

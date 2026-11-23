@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["kind", "deadline", "remaining_s", "overdue"]
+properties:
+  kind: {"$ref": "#/components/schemas/Text"}
+  deadline: {"$ref": "#/components/schemas/Timestamp"}
+  remaining_s: {"type": "integer"}
+  overdue: {"type": "boolean"}

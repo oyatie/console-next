@@ -19,7 +19,7 @@ import type { CreateState } from "./use-create";
 import { Card } from "../../../ui/card/card";
 
 /** Optional authority check before saving; an answer is adopted only with the values that produced it. */
-export function NtsPreview({ c }: { c: CreateState }) {
+export function NtsPreview({ c, flat }: { c: CreateState; flat?: boolean }) {
   const q = useQuery(registrationCheckAvailabilityQuery);
   const [reviewing, setReviewing] = useState(false);
   const values = { brn: c.draft.brn, opened_on: c.draft.openedOn, representative: (c.draft.representatives[0] ?? "").trim() };
@@ -41,8 +41,7 @@ export function NtsPreview({ c }: { c: CreateState }) {
     c.setPreview(null);
     send.mutate(kind);
   };
-  return <Card title={t("nts.preview.title")} level={3}>
-      <QueryState q={q}>
+  const body = <QueryState q={q}>
         {(availability) => {
           const available = availability.available && error?.code !== "registration_check_unavailable";
           const reported = error?.details.reason;
@@ -90,6 +89,8 @@ export function NtsPreview({ c }: { c: CreateState }) {
             </Sheet>}
           </>;
         }}
-      </QueryState>
-  </Card>;
+      </QueryState>;
+  return flat
+    ? <section aria-labelledby="nts-preview-title"><h3 id="nts-preview-title">{t("nts.preview.title")}</h3>{body}</section>
+    : <Card title={t("nts.preview.title")} level={3}>{body}</Card>;
 }

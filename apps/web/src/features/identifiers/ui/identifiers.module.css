@@ -1,0 +1,3 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.crumbLink { text-decoration: none; }
+.crumbLink:hover, .crumbLink:focus-visible { text-decoration: underline; }

@@ -4,6 +4,7 @@
 //! line below; INTEG merges them. The `action_schema` tests gate every entry.
 
 pub(crate) mod access_request_write;
+pub mod audit_log_read;
 pub mod certificates;
 pub mod change_request_decide;
 pub mod exception_decide;
@@ -42,6 +43,7 @@ pub const ACTION_SCHEMAS: &[ActionSchema] = &[
     reason_code_manage::SCHEMA,
     work_order_start::SCHEMA,
     purchase_request_read::SCHEMA,
+    audit_log_read::SCHEMA,
 ];
 
 // Self-contained single-action bundles (`ActionBundle`) for actions whose

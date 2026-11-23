@@ -83,7 +83,7 @@ class in `app.css` still supply those two.
 | Control | Inert look |
 |---|---|
 | `Button` in `secondary`, `ghost` or `danger` | `--muted` fill, `--border` border, `--steel` text, at half opacity. The danger fill never shows. |
-| `Button` in `primary` | Full opacity and a dashed border, from `app.css`. The colours are a tie: see below. |
+| `Button` in `primary` | Full opacity (`app.css`). In `baseline`, a dashed `--primary` border (`app.css`), with colours tied at rest against `.off.off`. In non-baseline experiences, both `app.css` and `.off.off` draw a solid `--border` border, `--muted` fill and `--steel` text. |
 | `Button` in `ghost-danger` | Half opacity. The colours are a tie at rest, and the fill is still a tie on hover: see below. |
 | `Button` in `link` | Full opacity: the half opacity is a `.btn` rule, and this variant carries the class `link`, not `btn`. A `--muted` fill behind the text and `--steel` text. No border is drawn, because `.link` sets `border: 0`. The underline of `.link` stays: the inert class sets no text decoration. A search of `apps/web/src` found no file that uses both `variant="link"` and `DisabledReason`. |
 | `ToggleButton` that is on | Half opacity. The colours are a tie: see below. A toggle that is off looks as the first row says. |
@@ -91,7 +91,7 @@ class in `app.css` still supply those two.
 The inert class is written twice in its selector so that it outranks a variant's one-class rule. Three rules in
 `app.css` carry two classes, or a class and an attribute, and so rank the same as it does:
 
-- `.btn--primary[aria-disabled="true"]` sets a `--primary` border, a `--primary-soft` fill and `--primary` text.
+- `.btn--primary[aria-disabled="true"]` sets a `--primary` border, a `--primary-soft` fill and `--primary` text in `baseline`, and `--border` / `--muted` / `--steel` with a solid border in non-baseline experiences.
 - `.btn--ghost.btn--danger` sets no fill, no visible border and `--danger-tx` text.
 - `.btn[aria-pressed="true"]`, the on look of a `ToggleButton`, sets a `--primary` border, a `--primary-soft` fill
   and `--primary` text. One call site spreads the inert attributes on toggles, one of which is on:
@@ -264,8 +264,8 @@ Nothing in `disabled-reason.module.css` changes with the width of the screen. Th
 
 ## Tokens it reads
 
-The half opacity and the dashed border of an inert `Button` come from `app.css`, and the focus outline is a global
-rule that reads `--primary`. None of the three is listed here.
+The half opacity and the `baseline` dashed border of an inert `Button` come from `app.css`, and the focus outline is a global
+rule that reads `--primary`. None of the three is listed here. `.off.off` explicitly declares `border-style: solid` alongside `--border`, `--muted` and `--steel`.
 
 <!-- ds:tokens apps/web/src/ui/disabled-reason/disabled-reason.module.css -->
 

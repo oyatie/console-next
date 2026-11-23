@@ -2,6 +2,7 @@
 .page { display: flex; flex-direction: column; min-height: 100%; }
 .kinds { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-5) 0; }
 .cols { display: grid; grid-template-columns: minmax(0, 4.5fr) minmax(0, 10fr) minmax(0, 5fr); gap: var(--space-4); align-items: start; padding: var(--space-3) var(--space-5) var(--space-5); }
+.consoleCols { display: grid; grid-template-columns: minmax(0, 4.5fr) minmax(0, 10fr); gap: var(--space-4); align-items: start; }
 .pane { display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); overflow: hidden; }
 .paneHead { display: flex; flex-wrap: wrap; align-items: center; min-height: calc(var(--target) + 2 * var(--space-3)); box-sizing: border-box; gap: var(--space-1) var(--space-2); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border); }
 .paneHead small { font-size: var(--text-xs); color: var(--steel); }
@@ -23,11 +24,21 @@
 .renewCols { display: grid; grid-template-columns: minmax(0, 1fr) 20rem; gap: var(--space-4); align-items: start; padding: var(--space-3) var(--space-5) var(--space-5); }
 @media (max-width: 1279px) { .renewCols { grid-template-columns: minmax(0, 1fr); } }
 .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0; }
-.stats div { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2); border-left: 1px solid var(--border-soft); }
-.stats div:first-child { border-left: 0; }
+.stats div { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2); }
+@media (min-width: 640px) {
+  .stats div { border-left: 1px solid var(--border-soft); }
+  .stats div:first-child { border-left: 0; }
+}
 .stats dt { font-size: var(--text-xs); color: var(--steel); }
 .stats dd { margin: 0; font-size: var(--text-xl); font-weight: var(--fw-strong); font-variant-numeric: tabular-nums; }
 .promote { display: inline-flex; min-width: 9rem; }
 /* Below 1440 px the people table keeps its full width (every column and the drop button in view): where and who side by
    side, when and why under them. */
 @media (max-width: 1439px) { .cols { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); } .cols > :last-child { grid-column: 1 / -1; } }
+@media (max-width: 639px) { .cols, .consoleCols { grid-template-columns: minmax(0, 1fr); } }
+@media (--phone) {
+  .kinds { flex-wrap: wrap; }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+}
+.crumbLink { text-decoration: none; }
+.crumbLink:hover, .crumbLink:focus-visible { text-decoration: underline; }

@@ -1,28 +1,30 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import type { ReactNode } from "react";
-import { t } from "@console/i18n";
+import { lazy, Suspense, type ReactNode } from "react";
+import { t, type MessageId } from "@console/i18n";
 import { fmtMonth, fmtNumber } from "@console/i18n/format";
-import { AlertTriangle, ChevronDown, ChevronUp, Download, FileText } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { chunk } from "../../../lib/chunk-guard";
 import { Button } from "../../../ui/button/button";
 import { EmptyState } from "../../../ui/empty-state";
 import { StatRow } from "../../../ui/key-value/key-value";
-import { PeriodStepper } from "../../../ui/period-stepper/period-stepper";
 import { ExperienceSwitch } from "../../../ui/patterns/pattern-shell";
 import { RegisterTotals } from "../../../ui/patterns/register-totals";
 import {
   RegisterFootBar,
   RegisterNowrap,
-  RegisterToolbarSearch,
-  RegisterToolbarSelect,
   RegisterTotalsStrip,
 } from "../../../ui/patterns/register-totals-parts";
-import { WorklistSearchField, WorklistSegmentBar } from "../../../ui/patterns/worklist-parts";
 import { StepLine } from "../../../ui/step-line/step-line";
+import { resolveRunStageAction } from "../domain/run-lifecycle";
 import { buildRunStageSteps, buildRunStatusSegments } from "../present";
 import { RunRegisterTable } from "./run-console-columns";
 import { RunPayslipPreview } from "./run-console-preview";
 import { RunActionSheets, RunPrecheckBlockers } from "./run-console-sheets";
+import { RunConsoleFilters, RunConsoleTools } from "./run-console-toolbar";
 import { RUN_PAGE_LIMIT, useRunConsole } from "./use-run-console";
+
+const RunLifecycleSheet = lazy(() => chunk(import("./run-lifecycle-sheets")).then(m => ({ default: m.RunLifecycleSheet })));
+const RunLifecyclePane = lazy(() => chunk(import("./run-lifecycle-pane")).then(m => ({ default: m.RunLifecyclePane })));
 
 const formatWonOrDash = (value: number | null | undefined) =>
   typeof value === "number" && Number.isFinite(value) ? t("payroll.employee.won", { amount: fmtNumber(value) }) : "—";
@@ -55,8 +57,10 @@ function RunConsoleContent({ id, baseline }: { id: string; baseline: () => React
     setShowPreview,
     exportOpen,
     setExportOpen,
-    submitOpen,
-    setSubmitOpen,
+    lifecycleSheet,
+    setLifecycleSheet,
+    sideTab,
+    setSideTab,
     setOffset,
     setSelectedId,
     checkedIds,
@@ -84,6 +88,9 @@ function RunConsoleContent({ id, baseline }: { id: string; baseline: () => React
     resetFilters,
   } = useRunConsole(id);
 
+  const stageAction = run ? resolveRunStageAction(run.status) : null;
+  const showStatutoryLink = Boolean(run && ["APPROVED", "DISBURSEMENT_SCHEDULED", "PAID", "ISSUED"].includes(run.status));
+
   return (
     <RegisterTotals
       q={q}
@@ -92,58 +99,42 @@ function RunConsoleContent({ id, baseline }: { id: string; baseline: () => React
         title: t("payroll.title"),
         titleId: "payroll-run-title",
         filters: detailData ? (
-          <>
-            <PeriodStepper unit="month" variant="boxed" showCurrent={false} value={activePeriod} onChange={setPeriodOverride} />
-            {entities.length > 0 && (
-              <RegisterToolbarSelect
-                label={t("payroll.entity")}
-                value={activeEntityId}
-                onChange={setEntityOverride}
-                options={entities.map(entity => ({ value: entity.id, label: entity.name ?? t("payroll.entityUnnamed") }))}
-              />
-            )}
-            <WorklistSegmentBar
-              label={t("payroll.run.filterLabel")}
-              value={filter}
-              onChange={handleFilterChange}
-              items={[
-                { id: "all", label: t("home.inbox.filter.all"), count: fmtNumber(runHeadcount) },
-                {
-                  id: "attention",
-                  label: hasBankIssues ? t("payroll.run.missingBankFilter") : t("payroll.run.attentionFilter"),
-                  count: fmtNumber(attentionCount),
-                  tone: attentionCount > 0 ? "danger" : undefined,
-                  icon: attentionCount > 0 ? <AlertTriangle size={12} aria-hidden="true" /> : undefined,
-                },
-              ]}
-            />
-            <RegisterToolbarSearch>
-              <WorklistSearchField
-                label={t("payroll.run.findPlaceholder")}
-                value={findQuery}
-                onChange={handleFindChange}
-                onCompositionStart={() => setComposing(true)}
-                onCompositionEnd={e => {
-                  setComposing(false);
-                  handleFindChange(e.currentTarget.value);
-                }}
-              />
-            </RegisterToolbarSearch>
-          </>
+          <RunConsoleFilters
+            activePeriod={activePeriod}
+            setPeriodOverride={setPeriodOverride}
+            entities={entities}
+            activeEntityId={activeEntityId}
+            setEntityOverride={setEntityOverride}
+            filter={filter}
+            handleFilterChange={handleFilterChange}
+            runHeadcount={runHeadcount}
+            hasBankIssues={hasBankIssues}
+            attentionCount={attentionCount}
+            findQuery={findQuery}
+            handleFindChange={handleFindChange}
+            setComposing={setComposing}
+          />
         ) : undefined,
         tools: detailData ? (
-          <>
-            <Button size="sm" onClick={() => setExportOpen(true)}>
-              <Download size={13} aria-hidden="true" />
-              <RegisterNowrap>{t("payroll.run.export")}</RegisterNowrap>
-            </Button>
-            <Button size="sm" aria-pressed={showPreview} onClick={() => setShowPreview(prev => !prev)}>
-              <FileText size={13} aria-hidden="true" />
-              <RegisterNowrap>{t("payroll.run.previewToggle")}</RegisterNowrap>
-            </Button>
-          </>
+          <RunConsoleTools
+            sideTab={sideTab}
+            onToggleSideTab={tab => setSideTab(prev => (prev === tab ? null : tab))}
+            showStatutoryLink={showStatutoryLink}
+            onOpenExport={() => setExportOpen(true)}
+            showPreview={showPreview}
+            onTogglePreview={() => setShowPreview(prev => !prev)}
+          />
         ) : undefined,
-        primary: detailData ? { id: "submit", label: t("payroll.run.requestApproval"), onAction: () => setSubmitOpen(true) } : undefined,
+        primary: detailData && stageAction
+          ? {
+              id: "lifecycle",
+              label: t(stageAction.labelKey as MessageId),
+              onAction: () => {
+                if (stageAction.kind === "sheet") setLifecycleSheet(stageAction.sheet);
+                else setSideTab(stageAction.pane);
+              },
+            }
+          : undefined,
       }}
       totals={
         detailData && run ? (
@@ -167,14 +158,16 @@ function RunConsoleContent({ id, baseline }: { id: string; baseline: () => React
         ) : null
       }
       blockers={
-        !scopeMismatch && detailData && (attentionCount > 0 || unreviewed) ? (
+        !scopeMismatch && detailData && (attentionCount > 0 || detailData.exceptions_open > 0 || unreviewed) ? (
           <RunPrecheckBlockers
             attentionCount={attentionCount}
             hasBankIssues={hasBankIssues}
             readyCount={readyCount}
+            exceptionsOpen={detailData.exceptions_open}
             unreviewed={unreviewed}
             filter={filter}
             onToggleFilter={() => handleFilterChange(filter === "attention" ? "all" : "attention")}
+            onInspectExceptions={() => setSideTab("exceptions")}
           />
         ) : null
       }
@@ -242,6 +235,21 @@ function RunConsoleContent({ id, baseline }: { id: string; baseline: () => React
           <RunPayslipPreview detail={detailData} line={activeLine} rates={ratesData} />
         ) : null
       }
+      record={
+        sideTab && detailData
+          ? {
+              id: `run-${sideTab}`,
+              label: t(`payrollRun.tool.${sideTab}`),
+              title: t(`payrollRun.tool.${sideTab}`),
+              onClose: () => setSideTab(null),
+              children: (
+                <Suspense fallback={null}>
+                  <RunLifecyclePane tab={sideTab} detail={detailData} onSelectLine={setSelectedId} />
+                </Suspense>
+              ),
+            }
+          : null
+      }
       statusSegments={
         dataReady && detailData
           ? buildRunStatusSegments({
@@ -258,17 +266,26 @@ function RunConsoleContent({ id, baseline }: { id: string; baseline: () => React
           : null
       }
       overlays={
-        <RunActionSheets
-          detail={detailData}
-          runHeadcount={runHeadcount}
-          entityLabel={entityLabel}
-          visibleLines={visibleLines}
-          bankHoldCount={hasBankIssues ? attentionCount : 0}
-          exportOpen={exportOpen}
-          submitOpen={submitOpen}
-          onCloseExport={() => setExportOpen(false)}
-          onCloseSubmit={() => setSubmitOpen(false)}
-        />
+        <>
+          <RunActionSheets
+            detail={detailData}
+            entityLabel={entityLabel}
+            visibleLines={visibleLines}
+            exportOpen={exportOpen}
+            onCloseExport={() => setExportOpen(false)}
+          />
+          {lifecycleSheet && detailData && (
+            <Suspense fallback={null}>
+              <RunLifecycleSheet
+                kind={lifecycleSheet}
+                detail={detailData}
+                runHeadcount={runHeadcount}
+                bankHoldCount={hasBankIssues ? attentionCount : 0}
+                onClose={() => setLifecycleSheet(null)}
+              />
+            </Suspense>
+          )}
+        </>
       }
     />
   );

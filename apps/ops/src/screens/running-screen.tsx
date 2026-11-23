@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { COPY } from "../copy";
 import { fetchOpsRunning, OpsApiError, opsQueryKeys, readObservedValue, type OpsComponent, type OpsHealth, type OpsRunning } from "../lib/api";
 import { classifyOpsError, hasOpsAction } from "../lib/auth";
 import { fmtJoin, formatCount, formatDuration, formatUtcShort, formatUtcTimestamp } from "../lib/format";
 import { useOpsContext } from "../lib/ops-context";
+import { useIsPhone } from "../lib/use-is-phone";
 import { Badge } from "../ui/badge";
 import { CompactTable, type TableColumn } from "../ui/compact-table";
 import { ExternalUrl } from "../ui/external-url";
@@ -14,23 +15,10 @@ import { ObservedValue } from "../ui/observed-value";
 import { PageHead } from "../ui/page-head";
 import { SelectField } from "../ui/select-field";
 import { StatRow } from "../ui/stat-row";
+import { buildRunningTabs } from "./hub-tabs";
 import s from "./running-screen.module.css";
 
 type RollupRow = OpsRunning["hosts"][number];
-
-const PHONE_QUERY = "(max-width: 767px)";
-
-function subscribePhoneQuery(listener: () => void): () => void {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => {};
-  const mql = window.matchMedia(PHONE_QUERY);
-  mql.addEventListener("change", listener);
-  return () => mql.removeEventListener("change", listener);
-}
-
-function getPhoneSnapshot(): boolean {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
-  return window.matchMedia(PHONE_QUERY).matches;
-}
 
 const HEALTH_OPTIONS = [
   { value: "", label: COPY.running.allStates },
@@ -50,7 +38,7 @@ export function RunningScreen({
   onFiltersChange: (next: { group?: string; state?: OpsHealth }) => void;
 }) {
   const { me, live, reportEvaluatedAt } = useOpsContext();
-  const isPhone = useSyncExternalStore(subscribePhoneQuery, getPhoneSnapshot, () => false);
+  const isPhone = useIsPhone();
   const allowed = hasOpsAction(me, "read.running");
 
   const query = useQuery({
@@ -83,7 +71,7 @@ export function RunningScreen({
   if (query.isPending) {
     return (
       <div className={s.page}>
-        <PageHead title={COPY.running.title} meta={COPY.loading.runningTitle} />
+        <PageHead title={COPY.running.title} meta={COPY.loading.runningTitle} tabs={buildRunningTabs("components")} />
       </div>
     );
   }
@@ -171,13 +159,7 @@ export function RunningScreen({
 
   return (
     <div className={s.page}>
-      <PageHead
-        title={COPY.running.title}
-        tabs={[
-          { id: "components", to: "/running", label: COPY.running.componentsTab, active: true },
-          { id: "jobs", to: "/running/jobs", label: COPY.running.jobsTab, active: false },
-        ]}
-      />
+      <PageHead title={COPY.running.title} tabs={buildRunningTabs("components")} />
       <StatRow
         items={[
           {

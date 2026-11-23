@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+operationId: "opsRunbooks"
+summary: "List Runbooks"
+x-cedar-action: "read.running"
+security: [{"accessJwt": []}]
+description: "Lists markdown runbooks available in the mounted runbooks directory."
+responses: {"200": {"description": "Runbook catalog.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RunbookListView"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}

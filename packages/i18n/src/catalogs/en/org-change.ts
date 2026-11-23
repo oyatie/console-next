@@ -116,6 +116,7 @@ export const enOrgChange = {
   "orgChange.chain.APPROVED": "Approved {at}",
   "orgChange.chain.REJECTED": "Rejected {at}",
   "orgChange.chain.current": "Their turn",
+  "orgChange.openApproval": "Open approval document",
   "orgChange.chain.skipped": "Not reached",
   "orgChange.settle.title": "Settlement {n}/{total}",
   "orgChange.settle.memo": "{label} note",

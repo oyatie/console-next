@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { COPY } from "../copy";
 import { fetchOpsHome, OpsApiError, opsQueryKeys, readObservedReason, readObservedValue, type OpsHealth } from "../lib/api";
 import { classifyOpsError, hasOpsAction } from "../lib/auth";
@@ -11,6 +12,7 @@ import { CompactTable } from "../ui/compact-table";
 import { O0State } from "../ui/o0-state";
 import { PageHead } from "../ui/page-head";
 import { getStaleClientTag, isLiveDisconnected } from "../ui/stale-tag";
+import { buildNowTabs } from "./hub-tabs";
 import { buildChangingColumns, buildWorkColumns } from "./now-columns";
 import { NowLowerSections } from "./now-sections";
 import s from "./now-screen.module.css";
@@ -26,6 +28,7 @@ function healthTone(health: OpsHealth): BadgeTone {
 export function NowScreen() {
   const { me, live, reportEvaluatedAt } = useOpsContext();
   const allowed = hasOpsAction(me, "read.home");
+  const canObligations = hasOpsAction(me, "obligation.read");
 
   const query = useQuery({
     queryKey: opsQueryKeys.home,
@@ -57,7 +60,7 @@ export function NowScreen() {
   if (query.isPending) {
     return (
       <div className={s.page}>
-        <PageHead title={COPY.now.title} meta={COPY.loading.nowTitle} />
+        <PageHead title={COPY.now.title} meta={COPY.loading.nowTitle} tabs={buildNowTabs("now")} />
       </div>
     );
   }
@@ -79,6 +82,7 @@ export function NowScreen() {
       <PageHead
         title={COPY.now.title}
         meta={<span className={s.verdictMeta}>{fmtColon(COPY.status.evaluatedAt, evaluatedAt)}</span>}
+        tabs={buildNowTabs("now")}
       />
 
       <section className={s.verdictBand} aria-label={COPY.now.verdictLabel}>
@@ -96,6 +100,17 @@ export function NowScreen() {
             <p className={s.verdictText}>{verdictText}</p>
           </>
         )}
+        {home.launch_readiness ? (
+          <div className={s.launchChip}>
+            <span className={s.verdictMeta}>{COPY.now.launchReadinessLabel}</span>
+            <Badge tone={healthTone(home.launch_readiness.worst)}>{home.launch_readiness.text}</Badge>
+            {canObligations ? (
+              <Link to="/obligations" className={s.bandLink}>
+                {COPY.now.launchReadinessLink}
+              </Link>
+            ) : null}
+          </div>
+        ) : null}
       </section>
 
       <section className={s.band} aria-labelledby="now-worklist">

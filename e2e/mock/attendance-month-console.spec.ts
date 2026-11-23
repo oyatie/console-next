@@ -185,7 +185,7 @@ for (const width of [1440, 390]) {
             ({ periodLabel, filterLabel, scopeLabel, closeLabel, openColHeader }) => {
               const header = document.querySelector<HTMLElement>('[data-pattern="month-grid"] header');
               const stepper = header?.querySelector<HTMLElement>(`[aria-label="${periodLabel}"]`);
-              const select = header?.querySelector<HTMLElement>(`select[aria-label="${scopeLabel}"]`);
+              const select = header?.querySelector<HTMLElement>(`select[aria-label="${scopeLabel}"], [data-form-value]`);
               const seg = header?.querySelector<HTMLElement>(`[aria-label="${filterLabel}"]`);
               const closeBtn = [...(header?.querySelectorAll<HTMLElement>("button") ?? [])].find(b => b.textContent?.trim() === closeLabel);
               const grid = document.querySelector<HTMLElement>('[data-pattern="month-grid"] [role="grid"]');

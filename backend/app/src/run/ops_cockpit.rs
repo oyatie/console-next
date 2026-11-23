@@ -1,19 +1,23 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use std::future::IntoFuture;
 use std::net::SocketAddr;
+use std::num::NonZeroU64;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use console_ops_adapter_http::{
-    HttpAlertmanager, HttpReadLimits, HttpVictoriaMetrics, HttpVmalert,
+    HttpAlertmanager, HttpReadLimits, HttpStatusFeed, HttpVictoriaMetrics, HttpVmalert,
 };
 use console_ops_application::home::{CockpitEvaluator, SourcePorts};
 use console_ops_domain::bundle::SourceEndpointSettings;
 use console_ops_rest::access_jwt::AccessJwtVerifier;
 use console_ops_rest::operators::OperatorRegistry;
 use console_ops_rest::state::OpsRestState;
-use console_ops_rest::{init_ops_metrics, spawn_evaluator_loop};
+use console_ops_rest::{
+    FsBackendPaths, attach_fs_backends, init_ops_metrics, spawn_evaluator_loop,
+};
 use tokio::sync::{Mutex, watch};
 
 use crate::config::AppConfig;
@@ -49,48 +53,87 @@ pub async fn run(config: AppConfig) -> Result<(), AppError> {
     let am = &ops_cfg.settings.sources.alertmanager;
     let vm = &ops_cfg.settings.sources.vmalert;
     let vmetrics = &ops_cfg.settings.sources.victoriametrics;
+    let am_client = Arc::new(
+        HttpAlertmanager::new(&am.url, am.interval_s, to_http_limits(am)?)
+            .map_err(|e| AppError::OpsConfig(format!("OPS_CONFIG_INVALID: alertmanager: {e}")))?,
+    );
+    let vmetrics_client = Arc::new(
+        HttpVictoriaMetrics::new(
+            &vmetrics.url,
+            vmetrics.interval_s,
+            to_http_limits(vmetrics)?,
+        )
+        .map_err(|e| AppError::OpsConfig(format!("OPS_CONFIG_INVALID: victoriametrics: {e}")))?,
+    );
     let ports = SourcePorts {
-        alertmanager: Arc::new(
-            HttpAlertmanager::new(&am.url, am.interval_s, to_http_limits(am)?).map_err(|e| {
-                AppError::OpsConfig(format!("OPS_CONFIG_INVALID: alertmanager: {e}"))
-            })?,
-        ),
+        alertmanager: am_client.clone(),
         vmalert: Arc::new(
             HttpVmalert::new(&vm.url, vm.interval_s, to_http_limits(vm)?)
                 .map_err(|e| AppError::OpsConfig(format!("OPS_CONFIG_INVALID: vmalert: {e}")))?,
         ),
-        victoriametrics: Arc::new(
-            HttpVictoriaMetrics::new(
-                &vmetrics.url,
-                vmetrics.interval_s,
-                to_http_limits(vmetrics)?,
-            )
-            .map_err(|e| {
-                AppError::OpsConfig(format!("OPS_CONFIG_INVALID: victoriametrics: {e}"))
-            })?,
-        ),
+        victoriametrics: vmetrics_client.clone(),
     };
 
     let now = time::OffsetDateTime::now_utc();
     let _ = jwt.refresh(now).await;
     metrics::gauge!("ops_cockpit_access_jwks_age_seconds").set(jwt.jwks_age_seconds(now) as f64);
 
-    let evaluator = Arc::new(Mutex::new(CockpitEvaluator::new(
+    let mut eval_inner = CockpitEvaluator::new(
         ports,
         ops_cfg.components.clone(),
         ops_cfg.settings.clone(),
         now,
-    )));
-    let initial = evaluator.lock().await.evaluate(now);
+    );
+    let initial = eval_inner.evaluate(now);
     let (shutdown_tx, shutdown_rx) = watch::channel(false);
-    let ops_state = OpsRestState::new(
+    let records_dir = ops_cfg.records_dir.clone().or_else(|| {
+        ops_cfg
+            .settings
+            .records
+            .as_ref()
+            .map(|r| PathBuf::from(&r.dir))
+    });
+    let mut ops_state = OpsRestState::new(
         registry,
         jwt,
         initial,
         ops_cfg.settings.origin.clone(),
         shutdown_rx.clone(),
     )
-    .with_support_ref(Arc::new(|| current_trace_context().trace_id().to_owned()));
+    .with_support_ref(Arc::new(|| current_trace_context().trace_id().to_owned()))
+    .with_settings(ops_cfg.settings.clone())
+    .with_am_writer(am_client)
+    .with_victoriametrics(
+        vmetrics_client,
+        vmetrics.producer.clone(),
+        vmetrics.interval_s,
+    );
+    ops_state = attach_fs_backends(
+        ops_state,
+        FsBackendPaths {
+            config_dir: &ops_cfg.config_dir,
+            records_dir: records_dir.as_deref(),
+            releases_dir: ops_cfg.releases_dir.as_deref(),
+            state_dir: ops_cfg.state_dir.as_deref(),
+        },
+        ops_cfg.settings.due_soon_days(),
+    );
+    if let Some(oncall) = ops_cfg.oncall.clone() {
+        ops_state = ops_state.with_oncall(oncall);
+    }
+    if let Some(status_url) = ops_cfg.status_url.as_deref() {
+        let feed_interval = NonZeroU64::new(60).unwrap_or(NonZeroU64::MIN);
+        let feed = HttpStatusFeed::new(status_url, feed_interval, to_http_limits(vmetrics)?)
+            .map_err(|e| AppError::OpsConfig(format!("OPS_CONFIG_INVALID: status_url: {e}")))?;
+        ops_state = ops_state.with_status_feed(Arc::new(feed));
+    }
+    if let Some(ack_store) = &ops_state.ack_store {
+        eval_inner = eval_inner.with_ack_store(Arc::clone(ack_store));
+    }
+    if let Some(host_state) = &ops_state.host_state {
+        eval_inner = eval_inner.with_host_state(Arc::clone(host_state));
+    }
+    let evaluator = Arc::new(Mutex::new(eval_inner));
 
     ops_state.apply_evaluation(&evaluator).await;
     let eval_interval_s = ops_cfg

@@ -773,10 +773,11 @@ Also accepts the attributes of `InputHTMLAttributes` (`@types/react`), except `c
 
 | Token | Read by |
 | --- | --- |
-| `--border` | `background`, `border`, `border-block-end`, `border-bottom` |
+| `--border` | `background`, `border`, `border-block-end`, `border-bottom`, `border-color` |
 | `--border-soft` | `background`, `border-left`, `border-top` |
 | `--canvas` | `background` |
 | `--control-border` | `border` |
+| `--faint` | `color` |
 | `--font-mono` | `font-family` |
 | `--fw-body` | `font-weight` |
 | `--fw-medium` | `font-weight` |
@@ -800,13 +801,15 @@ Also accepts the attributes of `InputHTMLAttributes` (`@types/react`), except `c
 | `--selected-bar` | `box-shadow` |
 | `--shadow` | `box-shadow` |
 | `--space-1` | `column-gap`, `gap`, `height`, `margin-left`, `margin-top`, `min-height`, `padding`, `padding-top` |
-| `--space-2` | `gap`, `margin`, `margin-top`, `padding`, `padding-top` |
+| `--space-2` | `gap`, `margin`, `margin-top`, `padding`, `padding-inline`, `padding-top` |
 | `--space-3` | `gap`, `grid-template-columns`, `height`, `margin`, `margin-top`, `padding`, `padding-bottom`, `padding-left`, `padding-right`, `width` |
 | `--space-4` | `height`, `margin`, `min-width`, `padding`, `padding-left`, `padding-right`, `scroll-margin-top`, `top` |
 | `--space-5` | `height`, `min-height`, `min-width` |
 | `--space-6` | `column-gap`, `grid-template-columns`, `height`, `min-height` |
 | `--steel` | `background`, `border-color`, `color` |
 | `--surface` | `background` |
+| `--surface-hover` | `background` |
+| `--target-touch` | `min-height` |
 | `--text-body` | `font-size` |
 | `--text-sm` | `font-size` |
 | `--text-xs` | `font-size` |

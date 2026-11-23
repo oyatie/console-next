@@ -1,6 +1,4 @@
-/* The personnel card (E2): head band, section bar, record + spine. Mirrors employee-ux/final .ph2 / .bar2 / .rec.
-   Layout only (design-language §12): surfaces are ui/ components (Band, Card, Banner, Paper, Avatar, Tabs), type and
-   tone are composed from the §3 classes. */
+/* The personnel card (E2): head band, section bar, record + spine. */
 .page { display: flex; flex-direction: column; min-height: 100%; }
 .head { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-5) 0; }
 .top { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; min-height: var(--target); }
@@ -15,13 +13,16 @@
 .name { composes: t-2xl t-strong from global; margin: 0; white-space: nowrap; }
 .hanja { composes: t-sm muted from global; }
 .empno { composes: t-mono t-sm from global; }
-/* One line each, whatever loads late (titles, a reservation): the head never grows under the pointer; the rest ellipsizes. */
-.path { composes: t-sm from global; display: flex; align-items: center; gap: calc(var(--space-1) / 2); white-space: nowrap; flex-wrap: nowrap; min-width: 0; overflow: hidden; }
+/* One line each; ellipsize overflow. */
+.path { composes: t-sm from global; display: flex; align-items: center; gap: calc(var(--space-1) / 2); white-space: nowrap; min-width: 0; overflow: hidden; }
 .pathIcon { composes: t-faint from global; flex: none; }
 .pathLast { composes: t-medium from global; }
 .facts { composes: muted from global; margin-left: var(--space-2); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.next { composes: t-xs muted from global; display: flex; gap: var(--space-1); align-items: center; flex-wrap: nowrap; white-space: nowrap; min-width: 0; overflow: hidden; }
-.next > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.next { composes: t-xs muted from global; display: flex; gap: var(--space-1); align-items: center; white-space: nowrap; min-width: 0; overflow: hidden; }
+.next > :is(span, bdi) { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+@media (--phone) {
+  :where([data-experience]:not([data-experience="baseline"])) .next { flex-wrap: wrap; white-space: normal; }
+}
 .nextWhat { composes: t-info from global; }
 .verbs { display: flex; gap: var(--space-2); align-self: start; flex-wrap: wrap; justify-content: flex-end; }
 .verbs :is(button, a) { white-space: nowrap; flex-shrink: 0; }
@@ -58,7 +59,7 @@
 .keys { display: inline-flex; align-items: center; gap: var(--space-1); }
 /* Reserve the timer and action in both states so revealing cannot move neighbouring content. */
 .reveal { display: inline-flex; flex-wrap: wrap; max-width: 100%; align-items: center; gap: var(--space-1); }
-.revealValue { composes: masked from "../../../ui/record/record.module.css"; }
+.revealValue { composes: masked from "../../../ui/record/masked.module.css"; }
 .reveal > code, .reveal > span { max-width: 100%; overflow-wrap: anywhere; white-space: normal; }
 .reveal > span { flex-shrink: 0; overflow-wrap: normal; white-space: nowrap; }
 .reveal[data-wrap-mask] > span { white-space: normal; }

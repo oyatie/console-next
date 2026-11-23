@@ -13,10 +13,11 @@ import { SelectField } from "../../../ui/select/select-field";
 import { DateField } from "../../../ui/date/date-field";
 import { EmptyState } from "../../../ui/empty-state";
 import { FilingList } from "./filing-list";
+import { StatutoryConsole } from "./statutory-console";
 import { WorkerRegister } from "./worker-register";
 import s from "./statutory.module.css";
 
-export function StatutoryPage() {
+function BaselineStatutoryPage() {
   const search = useSearch({ from: "/app/statutory" });
   const navigate = useNavigate({ from: "/statutory" });
   const tab = search.tab ?? "insurance";
@@ -45,4 +46,8 @@ export function StatutoryPage() {
     </Tabs>
     </PageReadGate>
   </div>;
+}
+
+export function StatutoryPage() {
+  return <StatutoryConsole baseline={() => <BaselineStatutoryPage />} />;
 }

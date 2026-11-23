@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+operationId: "opsPromoteFeedback"
+summary: "Triage Beta Feedback"
+x-cedar-action: "feedback.triage"
+security: [{"accessJwt": []}]
+description: "Records beta feedback triage disposition in feedback spool."
+requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/FeedbackRequest"}}}}
+responses: {"201": {"description": "Feedback triage recorded.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/FeedbackResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}

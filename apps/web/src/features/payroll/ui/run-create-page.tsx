@@ -19,6 +19,7 @@ import {
   payrollRunPreviewQuery,
   type CreatePayrollRun,
 } from "../api";
+import { PayrollRunCreateConsole } from "./run-create-console";
 
 const kinds = payGroupSchemas.PayrollRunKind.enum.filter(kind => kind === "REGULAR");
 const refusal = (code: string) => ({
@@ -29,6 +30,10 @@ const refusal = (code: string) => ({
 }[code]);
 
 export function PayrollRunCreatePage() {
+  return <PayrollRunCreateConsole baseline={() => <BaselinePayrollRunCreatePage />} />;
+}
+
+function BaselinePayrollRunCreatePage() {
   const groups = useQuery(payGroupsQuery);
   const [payGroupId, setPayGroupId] = useState<string | null>(null);
   const [kind, setKind] = useState<CreatePayrollRun["kind"] | null>(null);

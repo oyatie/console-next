@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["seq", "hash", "support_ref", "at", "operator", "obligation_id", "event", "fields"]
+properties:
+  seq: {"type": "integer", "minimum": 1}
+  hash: {"$ref": "#/components/schemas/Text"}
+  support_ref: {"$ref": "#/components/schemas/Text"}
+  at: {"$ref": "#/components/schemas/Timestamp"}
+  operator: {"$ref": "#/components/schemas/ObligationOperator"}
+  obligation_id: {"$ref": "#/components/schemas/Text"}
+  event: {"type": "string", "enum": ["opened", "in_review", "redated", "done", "waived"]}
+  fields: {"type": "object"}

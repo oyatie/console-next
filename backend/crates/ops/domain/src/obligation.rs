@@ -27,7 +27,7 @@ pub enum ReviewerRole {
     Owner,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum State {
     Open,
@@ -169,17 +169,65 @@ impl Obligation {
         self.kind
     }
 
+    pub fn reviewer_role(&self) -> ReviewerRole {
+        self.reviewer_role
+    }
+
+    pub fn title(&self) -> &str {
+        &self.title
+    }
+
+    pub fn due(&self) -> Option<Date> {
+        self.due
+    }
+
     pub fn state(&self) -> State {
         self.state
+    }
+
+    pub fn evidence_ref(&self) -> Option<&str> {
+        self.evidence_ref.as_deref()
+    }
+
+    pub fn signer(&self) -> Option<&str> {
+        self.signer.as_deref()
+    }
+
+    pub fn signed_on(&self) -> Option<Date> {
+        self.signed_on
     }
 
     pub fn is_open(&self) -> bool {
         matches!(self.state, State::Open | State::InReview)
     }
 
-    fn days_remaining(&self, now: OffsetDateTime) -> Option<i64> {
+    pub fn days_remaining(&self, now: OffsetDateTime) -> Option<i64> {
         self.due
             .map(|due| (due - now.to_offset(UtcOffset::UTC).date()).whole_days())
+    }
+
+    pub fn worklist_key(
+        &self,
+        now: OffsetDateTime,
+        due_soon_days: u32,
+    ) -> Option<(u8, Option<Date>)> {
+        if !self.is_open() {
+            return None;
+        }
+        let days = self.days_remaining(now);
+        let include =
+            self.kind == Kind::LaunchGate || days.is_none_or(|d| d <= i64::from(due_soon_days));
+        if !include {
+            return None;
+        }
+        let priority = match days {
+            Some(d) if d < 0 && self.kind == Kind::OwnerDecision => 0,
+            Some(d) if d < 0 => 1,
+            Some(d) if d <= i64::from(due_soon_days) => 2,
+            Some(_) => 3,
+            None => 4,
+        };
+        Some((priority, self.due))
     }
 
     pub fn deadline(&self, now: OffsetDateTime) -> String {
@@ -231,25 +279,10 @@ pub fn launch_readiness(source: Result<&[Obligation], &str>) -> Verdict {
 
 /// Input must be chain-verified and Cedar-authorized before computing any worklist or count.
 pub fn worklist(items: &[Obligation], now: OffsetDateTime, due_soon_days: u32) -> Vec<&Obligation> {
-    let mut work: Vec<_> = items
+    let mut keyed: Vec<_> = items
         .iter()
-        .filter(|item| {
-            item.is_open()
-                && (item.kind == Kind::LaunchGate
-                    || item
-                        .days_remaining(now)
-                        .is_none_or(|days| days <= i64::from(due_soon_days)))
-        })
+        .filter_map(|item| item.worklist_key(now, due_soon_days).map(|key| (key, item)))
         .collect();
-    work.sort_by_key(|item| {
-        let priority = match item.days_remaining(now) {
-            Some(days) if days < 0 && item.kind == Kind::OwnerDecision => 0,
-            Some(days) if days < 0 => 1,
-            Some(days) if days <= i64::from(due_soon_days) => 2,
-            Some(_) => 3,
-            None => 4,
-        };
-        (priority, item.due)
-    });
-    work
+    keyed.sort_by_key(|(key, _)| *key);
+    keyed.into_iter().map(|(_, item)| item).collect()
 }

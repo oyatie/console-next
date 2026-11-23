@@ -137,6 +137,11 @@ async fn checklist_derives_from_facts_and_profile_less_rows_refuse_employment_ed
         (409, "conflict")
     );
 
+    sqlx::query("UPDATE employees SET employment_status = 'PRE_HIRE' WHERE id = $1")
+        .bind(f.employee)
+        .execute(&f.owner)
+        .await
+        .unwrap();
     let id = ops(json!([
         { "op": "test", "path": "/id_type", "value": null },
         { "op": "replace", "path": "/id_type", "value": "NOT_ISSUED" }

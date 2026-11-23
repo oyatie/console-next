@@ -141,7 +141,7 @@ export const SETTLEMENT_STATUS = toned<S["EmployeeExitSettlementPackage"]["statu
 export const LIFECYCLE_EVENT = values<NonNullable<S["Employee"]["next_event"]>["event_type"]>("lifecycleEvent", ["TRANSFER", "PROMOTE", "LEAVE_OF_ABSENCE", "RETURN_FROM_LEAVE", "CONTRACT_RENEWAL", "TERMINATE"]);
 export const LIFECYCLE_STATE = toned<S["EmployeeLifecycleEvent"]["state"]>("lifecycleState", { SCHEDULED: "info", APPLIED: "ok", APPLY_FAILED: "danger", CANCELLED: "neutral" });
 export const LEAVE_TYPE = { ...values<NonNullable<S["CreateEmployeeLifecycleEventRequest"]["leave_type"]>>("leaveType", ["CHILDCARE", "MATERNITY", "WORK_INJURY", "ILLNESS", "PERSONAL", "OTHER"]), extensible: true };
-export const STEP_UP_ACTION = { ...values<S["MobileStepUpActionKind"]>("stepUpAction", ["APPROVAL_DECISION", "POLL_VOTE", "EXIT_CONFIRM", "EXIT_RESCIND", "ELEVATED_GRANT", "PERIOD_UNLOCK", "IDENTITY_MERGE", "EXCEPTION_DECIDE", "SETTINGS_CHANGE", "CREDENTIAL_RESET", "TENANT_OFFBOARD", "OPERATOR_RECOVERY"]), extensible: true };
+export const STEP_UP_ACTION = { ...values<S["MobileStepUpActionKind"]>("stepUpAction", ["APPROVAL_DECISION", "POLL_VOTE", "EXIT_CONFIRM", "EXIT_RESCIND", "ELEVATED_GRANT", "PERIOD_UNLOCK", "IDENTITY_MERGE", "EXCEPTION_DECIDE", "SETTINGS_CHANGE", "CREDENTIAL_RESET", "TENANT_OFFBOARD", "OPERATOR_RECOVERY", "PRIVACY_REQUEST", "PRIVACY_REQUEST_DECIDE"]), extensible: true };
 export const PERIOD_LOCK_DOMAIN = values<S["PeriodLock"]["domain"]>("periodLockDomain", ["payroll", "accounting"]);
 export const IMPORT_ROW_STATUS = toned("importRowStatus", { CANDIDATE: "ok", PRESERVED: "warn", ERROR: "danger" });
 // Employment facts, contracts and onboarding (EMP-MODEL).

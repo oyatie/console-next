@@ -10,28 +10,29 @@ import { parsePeopleTab, parseExitFilter } from "../features/people/domain/peopl
 import { app, screen, str } from "./app";
 
 const unplaced = createRoute({ getParentRoute: () => app, path: "/people/unplaced", staticData: { access: readRequirement("/people/unplaced"), floorplan: "P-03" }, component: lazyRouteComponent(screen(() => import("../features/people/ui/unplaced-page")), "UnplacedPage") });
-const bulk = createRoute({ getParentRoute: () => app, path: "/people/bulk", staticData: { access: readRequirement("/people/bulk"), floorplan: "P-04" }, component: lazyRouteComponent(screen(() => import("../features/people/ui/bulk-page")), "BulkPage") });
-const run = createRoute({ getParentRoute: () => app, path: "/people/run", staticData: { access: readRequirement("/people/run"), floorplan: "P-04" }, component: lazyRouteComponent(screen(() => import("../features/people/ui/register-run-page")), "RegisterRunPage") });
+const bulk = createRoute({ getParentRoute: () => app, path: "/people/bulk", staticData: { access: readRequirement("/people/bulk"), floorplan: "P-04", pattern: "wizard" }, component: lazyRouteComponent(screen(() => import("../features/people/ui/bulk-page")), "BulkPage") });
+const run = createRoute({ getParentRoute: () => app, path: "/people/run", staticData: { access: readRequirement("/people/run"), floorplan: "P-04", pattern: "wizard" }, component: lazyRouteComponent(screen(() => import("../features/people/ui/register-run-page")), "RegisterRunPage") });
 // Appointment notices (spec E5-notice): made from a bulk batch (or named events), then read and printed as a document.
-const notices = createRoute({ getParentRoute: () => app, path: "/people/notices", staticData: { access: readRequirement("/people/notices"), floorplan: "P-01" }, component: lazyRouteComponent(screen(() => import("../features/people/ui/notice-list-page")), "NoticeListPage") });
+const notices = createRoute({ getParentRoute: () => app, path: "/people/notices", staticData: { access: readRequirement("/people/notices"), floorplan: "P-01", pattern: "list-record" }, component: lazyRouteComponent(screen(() => import("../features/people/ui/notice-list-page")), "NoticeListPage") });
 const noticeNew = createRoute({
   getParentRoute: () => app,
-  path: "/people/notices/new", staticData: { access: readRequirement("/people/notices/new"), floorplan: "P-04" },
+  path: "/people/notices/new", staticData: { access: readRequirement("/people/notices/new"), floorplan: "P-04", pattern: "wizard" },
   validateSearch: (s: Record<string, unknown>): { batch?: string; events?: string; count?: number } => ({ batch: str(s.batch), events: str(s.events), count: typeof s.count === "number" ? s.count : undefined }),
   component: lazyRouteComponent(screen(() => import("../features/people/ui/notice-new-page")), "NoticeNewPage"),
 });
-const notice = createRoute({ getParentRoute: () => app, path: "/people/notices/$noticeId", staticData: { access: "signed-in", floorplan: "P-02" }, component: lazyRouteComponent(screen(() => import("../features/people/ui/notice-page")), "NoticePage") });
-const certificates = createRoute({ getParentRoute: () => app, path: "/people/certificates", staticData: { access: readRequirement("/people/certificates"), floorplan: "P-01" }, validateSearch: (s: Record<string, unknown>): { employee?: string } => ({ employee: str(s.employee) }), component: lazyRouteComponent(screen(() => import("../features/people/ui/certificates-page")), "CertificatesPage") });
-const certificate = createRoute({ getParentRoute: () => app, path: "/people/certificates/$certificateId", staticData: { access: "signed-in", floorplan: "P-02" }, remountDeps: ({ params }) => params.certificateId, component: lazyRouteComponent(screen(() => import("../features/people/ui/certificate-page")), "CertificatePage") });
-const renew = createRoute({ getParentRoute: () => app, path: "/people/renew", staticData: { access: readRequirement("/people/renew"), floorplan: "P-04" }, component: lazyRouteComponent(screen(() => import("../features/people/ui/renew-page")), "RenewPage") });
-const grid = createRoute({ getParentRoute: () => app, path: "/people/grid", staticData: { access: readRequirement("/people/grid"), floorplan: "P-04" }, component: lazyRouteComponent(screen(() => import("../features/people/ui/grid-page")), "GridPage") });
+const notice = createRoute({ getParentRoute: () => app, path: "/people/notices/$noticeId", staticData: { access: "signed-in", floorplan: "P-02", pattern: "record" }, component: lazyRouteComponent(screen(() => import("../features/people/ui/notice-page")), "NoticePage") });
+const certificates = createRoute({ getParentRoute: () => app, path: "/people/certificates", staticData: { access: readRequirement("/people/certificates"), floorplan: "P-01", pattern: "list-record" }, validateSearch: (s: Record<string, unknown>): { employee?: string } => ({ employee: str(s.employee) }), component: lazyRouteComponent(screen(() => import("../features/people/ui/certificates-page")), "CertificatesPage") });
+const certificate = createRoute({ getParentRoute: () => app, path: "/people/certificates/$certificateId", staticData: { access: "signed-in", floorplan: "P-02", pattern: "record" }, remountDeps: ({ params }) => params.certificateId, component: lazyRouteComponent(screen(() => import("../features/people/ui/certificate-page")), "CertificatePage") });
+const renew = createRoute({ getParentRoute: () => app, path: "/people/renew", staticData: { access: readRequirement("/people/renew"), floorplan: "P-04", pattern: "wizard" }, component: lazyRouteComponent(screen(() => import("../features/people/ui/renew-page")), "RenewPage") });
+const grid = createRoute({ getParentRoute: () => app, path: "/people/grid", staticData: { access: readRequirement("/people/grid"), floorplan: "P-04", pattern: "wizard" }, component: lazyRouteComponent(screen(() => import("../features/people/ui/grid-page")), "GridPage") });
 const CARD_TABS = ["events", "docs", "ledger", "access"] as const;
 type CardTab = (typeof CARD_TABS)[number];
 
 // BW-15: the unlock request under review lives in the URL (Home's unlock queue opens it); `unlock` opens one lock's
 // unlock (a closed attendance month links to the lock behind its close).
 const periodLocks = createRoute({ getParentRoute: () => app, path: "/people/period-locks", staticData: { access: readRequirement("/people/period-locks"), floorplan: "P-05" }, validateSearch: (s: Record<string, unknown>): { review?: string; unlock?: string } => ({ review: str(s.review), unlock: str(s.unlock) }), component: lazyRouteComponent(screen(() => import("../features/periods/ui/period-lock-page")), "PeriodLockPage") });
-const peopleImport = createRoute({ getParentRoute: () => app, path: "/people/import", staticData: { access: readRequirement("/people/import"), floorplan: "P-04" }, errorComponent: lazyRouteComponent(() => chunk(import("../lib/react/route-error")), "RouteError"), validateSearch: (s: Record<string, unknown>): { mode?: "paste"; run?: string } => ({ mode: s.mode === "paste" ? "paste" : undefined, run: str(s.run) }), component: lazyRouteComponent(screen(() => import("../features/import/ui/import-page")), "ImportPage") });
+const peopleImport = createRoute({ getParentRoute: () => app, path: "/people/import", staticData: { access: readRequirement("/people/import"), floorplan: "P-04", pattern: "wizard" }, errorComponent: lazyRouteComponent(() => chunk(import("../lib/react/route-error")), "RouteError"), validateSearch: (s: Record<string, unknown>): { mode?: "paste"; run?: string } => ({ mode: s.mode === "paste" ? "paste" : undefined, run: str(s.run) }), component: lazyRouteComponent(screen(() => import("../features/import/ui/import-page")), "ImportPage") });
+const dataHealth = createRoute({ getParentRoute: () => app, path: "/people/data-health", staticData: { access: readRequirement("/people/data-health"), floorplan: "P-01", pattern: "list-record" }, component: lazyRouteComponent(screen(() => import("../features/people/ui/data-health-page")), "DataHealthPage") });
 // The registration sheet opens over the roster (spec E3): a child of /people, drawn in its outlet.
 const registerEmployee = createRoute({
   getParentRoute: () => people,
@@ -58,7 +59,7 @@ const REQUEST_STATUSES = ["OPEN", "APPLIED", "DECLINED", "WITHDRAWN", "ALL"] as 
 const changeRequests = createRoute({
   getParentRoute: () => app,
   // Named handlers can read their own requests without a directory grant.
-  path: "/people/requests", staticData: { access: "signed-in", floorplan: "P-03" },
+  path: "/people/requests", staticData: { access: "signed-in", floorplan: "P-01", pattern: "list-record" },
   // BW-17: HR's lane, the status view, the open request and the page live in the URL (Home links to a lane).
   validateSearch: (s: Record<string, unknown>): { lane?: (typeof REQUEST_LANES)[number]; status?: (typeof REQUEST_STATUSES)[number]; sel?: string; page?: number } => ({
     lane: REQUEST_LANES.find((l) => l === s.lane),
@@ -68,18 +69,18 @@ const changeRequests = createRoute({
   }),
   component: lazyRouteComponent(screen(() => import("../features/people/ui/requests-page")), "RequestsPage"),
 });
-const rosterFields = createRoute({ getParentRoute: () => app, path: "/people/roster-fields", staticData: { access: readRequirement("/people/roster-fields"), floorplan: "P-05" }, component: lazyRouteComponent(screen(() => import("../features/people/ui/roster-fields-page")), "RosterFieldsPage") });
-const jobTitles = createRoute({ getParentRoute: () => app, path: "/people/job-titles", staticData: { access: readRequirement("/people/job-titles"), floorplan: "P-05" }, component: lazyRouteComponent(screen(() => import("../features/people/ui/job-titles-page")), "JobTitlesPage") });
+const rosterFields = createRoute({ getParentRoute: () => app, path: "/people/roster-fields", staticData: { access: readRequirement("/people/roster-fields"), floorplan: "P-05", pattern: "settings" }, component: lazyRouteComponent(screen(() => import("../features/people/ui/roster-fields-page")), "RosterFieldsPage") });
+const jobTitles = createRoute({ getParentRoute: () => app, path: "/people/job-titles", staticData: { access: readRequirement("/people/job-titles"), floorplan: "P-05", pattern: "settings" }, component: lazyRouteComponent(screen(() => import("../features/people/ui/job-titles-page")), "JobTitlesPage") });
 const exitCases = createRoute({
   getParentRoute: () => app,
-  path: "/people/exits", staticData: { access: readRequirement("/people/exits"), floorplan: "P-01" },
+  path: "/people/exits", staticData: { access: readRequirement("/people/exits"), floorplan: "P-01", pattern: "list-record" },
   // The status filter lives in the URL so Home can link to the open cases.
   validateSearch: (s: Record<string, unknown>): { status?: ExitFilter } => ({ status: parseExitFilter(s.status) }),
   component: lazyRouteComponent(screen(() => import("../features/people/ui/exit-list")), "ExitCaseList"),
 });
 const exitCase = createRoute({
   getParentRoute: () => app,
-  path: "/people/exits/$id", staticData: { access: "signed-in", floorplan: "P-02" },
+  path: "/people/exits/$id", staticData: { access: "signed-in", floorplan: "P-02", pattern: "document-decision" },
   validateSearch: (s: Record<string, unknown>): { act?: string } => ({ act: str(s.act) }),
   component: lazyRouteComponent(screen(() => import("../features/people/ui/exit-page")), "ExitCasePage"),
 });
@@ -102,6 +103,7 @@ const people = createRoute({
     full: str(s.sel) && (s.full === 1 || s.full === "1") ? 1 : undefined,
     view: s.view === "accounts" ? "accounts" : undefined,
     unit: str(s.unit),
+    ids: str(s.ids),
     status: str(s.status),
     // The list's order (domain/roster.ts parseSort drops what it does not know).
     sort: str(s.sort),
@@ -115,4 +117,4 @@ const people = createRoute({
   component: lazyRouteComponent(screen(() => import("../features/people/ui/people-route")), "PeopleRoute"),
 });
 
-export const peopleRoutes = [people.addChildren([registerEmployee]), peopleImport, unplaced, bulk, run, renew, notices, noticeNew, notice, certificates, certificate, grid, periodLocks, exitCases, exitCase, changeRequests, jobTitles, rosterFields, employee];
+export const peopleRoutes = [people.addChildren([registerEmployee]), peopleImport, unplaced, dataHealth, bulk, run, renew, notices, noticeNew, notice, certificates, certificate, grid, periodLocks, exitCases, exitCase, changeRequests, jobTitles, rosterFields, employee];

@@ -1,0 +1,146 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.doc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--text-body);
+  line-height: var(--lh-base);
+  color: var(--ink);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.h1,
+.h2,
+.h3,
+.h4,
+.h5,
+.h6 {
+  margin: var(--space-2) 0 0;
+  font-weight: var(--fw-strong);
+  color: var(--ink);
+  scroll-margin-top: var(--space-4);
+}
+
+.h1 {
+  font-size: var(--text-lg);
+  padding-block-end: var(--space-1);
+  border-block-end: 1px solid var(--border);
+}
+
+.h2 {
+  font-size: var(--text-body);
+}
+
+.h3,
+.h4,
+.h5,
+.h6 {
+  font-size: var(--text-sm);
+}
+
+.para {
+  margin: 0;
+}
+
+.list {
+  margin: 0;
+  padding-inline-start: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.quote {
+  margin: 0;
+  padding: var(--space-1) var(--space-3);
+  border-inline-start: 3px solid var(--primary);
+  background: var(--surface-2);
+  color: var(--steel);
+}
+
+.pre {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  overflow-x: auto;
+}
+
+.inlineCode {
+  padding: 0 var(--space-1);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.hr {
+  width: 100%;
+  border: 0;
+  border-block-start: 1px solid var(--border);
+  margin: var(--space-1) 0;
+}
+
+.tableWrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-xs);
+}
+
+.table th,
+.table td {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border);
+  text-align: start;
+}
+
+.table th {
+  background: var(--surface-2);
+  font-weight: var(--fw-semibold);
+}
+
+.anchorTarget {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  scroll-margin-top: var(--space-4);
+}
+
+.anchorLink {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+.docLinkBtn {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--primary);
+  font: inherit;
+  font-weight: var(--fw-medium);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.externalTail {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  min-width: 0;
+  max-width: 100%;
+  vertical-align: middle;
+}
+
+.externalPunct {
+  flex-shrink: 0;
+}

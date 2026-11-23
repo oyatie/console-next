@@ -44,7 +44,7 @@ beforeAll(async () => {
   browser = await chromium.launch();
   page = await browser.newPage();
 }, 60_000);
-afterAll(async () => { await browser?.close(); await server?.close(); });
+afterAll(async () => { await browser?.close(); await server?.close(); }, 60_000);
 
 test.each([1440, 390].flatMap(width => ["SETUP", "OPERATING"].map(phase => ({ width, phase }))))(
   "an empty company-mapping response keeps the queue controls fixed at $width px in $phase",
@@ -73,6 +73,44 @@ test.each([1440, 390].flatMap(width => ["SETUP", "OPERATING"].map(phase => ({ wi
       const before = await Promise.all([tabs, pick].map(control => control.boundingBox()));
       release();
       await loading.waitFor({ state: "detached" });
+      const after = await Promise.all([tabs, pick].map(control => control.boundingBox()));
+      expect(after).toEqual(before);
+    } finally {
+      release();
+      await page.unrouteAll({ behavior: "wait" });
+    }
+  },
+);
+
+test.each([1440, 390])(
+  "a populated company-mapping response below the panes keeps the queue controls fixed at $width px",
+  async (width) => {
+    await page.setViewportSize({ width, height: 900 });
+    let release!: () => void;
+    const pending = new Promise<void>(done => { release = done; });
+    await page.route("**/api/v1/**", async route => {
+      const path = new URL(route.request().url()).pathname;
+      if (path.endsWith("/unmapped-companies")) await pending;
+      const data = path.endsWith("/unplaced") ? { count: 1, items: [{ employee_id: "person", name: "Kim", company: "Hanbit", legal_entity_id: "entity", workplace_id: "workplace", reason: "unit_unknown", source_org_unit: "HR" }] }
+        : path.endsWith("/unmapped-companies") ? { items: [{ company_text: "OldSaeon", employees: 2 }] }
+        : path.endsWith("/legal-entities") ? { items: [{ id: "entity", name: "Hanbit", workplaces: [{ id: "workplace", current: { name: "HQ" }, is_primary: true }] }] }
+        : path.endsWith("/org-structure") ? { entities: [] }
+        : path.endsWith("/checklist") ? { phase: "OPERATING" }
+        : { items: [] };
+      await route.fulfill({ json: data });
+    });
+    try {
+      await page.goto(`${server.resolvedUrls!.local[0]}unplaced-test`);
+      const tabs = page.getByRole("group").first();
+      const pick = page.getByRole("button", { name: /HR/ });
+      await pick.waitFor();
+      const loading = page.getByRole("status").first();
+      expect(await loading.count()).toBe(1);
+      await page.evaluate(() => document.fonts.ready.then(() => undefined));
+      const before = await Promise.all([tabs, pick].map(control => control.boundingBox()));
+      release();
+      await loading.waitFor({ state: "detached" });
+      await page.getByText(/OldSaeon/).waitFor();
       const after = await Promise.all([tabs, pick].map(control => control.boundingBox()));
       expect(after).toEqual(before);
     } finally {

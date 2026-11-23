@@ -10,7 +10,26 @@ use std::{
 use serde_json::{Map, Value};
 use sha2::{Digest, Sha256};
 
+mod host_state;
+mod incidents;
 mod obligations;
+mod prefix;
+mod releases;
+mod runbooks;
+mod spool_set;
+mod stores;
+mod stores_actions;
+mod stores_promote;
+
+pub use host_state::FsHostStateStore;
+pub use incidents::FsIncidentStore;
+pub use prefix::SpoolPrefix;
+pub use releases::FsReleasesStore;
+pub use runbooks::FsRunbookStore;
+pub use spool_set::SpoolSet;
+pub use stores::{FsAlertAckStore, FsSilenceSpool};
+pub use stores_actions::FsActionStore;
+pub use stores_promote::{FsFeedbackStore, FsPromotionStore};
 
 #[cfg(test)]
 mod tests;
@@ -36,13 +55,19 @@ pub enum AppendError<E> {
 
 pub struct RecordSpool {
     directory: PathBuf,
+    pending_path: PathBuf,
+    prefix: SpoolPrefix,
     // An uncertain rollback refuses subsequent reads until the operator repairs the spool.
     uncertain: Mutex<bool>,
 }
 
 impl RecordSpool {
     pub fn open(records_dir: &Path) -> Result<Self, SpoolError> {
-        let directory = records_dir.join("obligations");
+        Self::open_prefix(records_dir, SpoolPrefix::Obligations)
+    }
+
+    pub fn open_prefix(records_dir: &Path, prefix: SpoolPrefix) -> Result<Self, SpoolError> {
+        let directory = records_dir.join(prefix.as_str());
         match fs::create_dir(&directory) {
             Ok(()) => File::open(records_dir)
                 .and_then(|parent| parent.sync_all())
@@ -50,17 +75,63 @@ impl RecordSpool {
             Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
             Err(_) => return Err(SpoolError::Unreadable),
         }
-        let spool = Self {
-            directory,
-            uncertain: Mutex::new(false),
-        };
+        let spool = Self::new_unverified(records_dir, prefix);
+        spool.read()?;
+        Ok(spool)
+    }
+
+    pub fn open_resilient(records_dir: &Path) -> Self {
+        Self::open_resilient_prefix(records_dir, SpoolPrefix::Obligations)
+    }
+
+    pub fn open_resilient_prefix(records_dir: &Path, prefix: SpoolPrefix) -> Self {
+        let directory = records_dir.join(prefix.as_str());
+        match fs::create_dir(&directory) {
+            Ok(()) => {
+                if let Err(error) = File::open(records_dir).and_then(|parent| parent.sync_all()) {
+                    tracing::error!(
+                        ?error,
+                        prefix = prefix.as_str(),
+                        "ops record parent sync failed"
+                    );
+                }
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+            Err(error) => {
+                tracing::error!(
+                    ?error,
+                    prefix = prefix.as_str(),
+                    "ops record spool directory unavailable"
+                );
+            }
+        }
+        let spool = Self::new_unverified(records_dir, prefix);
+        if let Err(error) = spool.read() {
+            tracing::error!(
+                ?error,
+                prefix = prefix.as_str(),
+                "ops record spool verification failed at startup"
+            );
+        }
+        spool
+    }
+
+    fn new_unverified(records_dir: &Path, prefix: SpoolPrefix) -> Self {
         for outcome in ["ok", "error"] {
             metrics::counter!("ops_cockpit_record_writes_total", "outcome" => outcome).increment(0);
             metrics::counter!("ops_cockpit_record_verifications_total", "outcome" => outcome)
                 .increment(0);
         }
-        spool.read()?;
-        Ok(spool)
+        Self {
+            directory: records_dir.join(prefix.as_str()),
+            pending_path: records_dir.join(format!(".{}-pending", prefix.as_str())),
+            prefix,
+            uncertain: Mutex::new(false),
+        }
+    }
+
+    pub fn prefix(&self) -> SpoolPrefix {
+        self.prefix
     }
 
     pub fn directory(&self) -> &Path {
@@ -135,8 +206,8 @@ impl RecordSpool {
     fn persist(&self, seq: u64, bytes: &[u8], uncertain: &mut bool) -> Result<(), SpoolError> {
         let directory = File::open(&self.directory).map_err(|_| SpoolError::WriteFailed)?;
         let path = self.directory.join(format!("{seq:08}.json"));
-        let pending = self.directory.with_file_name(".obligations-pending");
-        match fs::remove_file(&pending) {
+        let pending = &self.pending_path;
+        match fs::remove_file(pending) {
             Ok(()) => {}
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
             Err(_) => return Err(SpoolError::WriteFailed),
@@ -144,7 +215,7 @@ impl RecordSpool {
         let mut file = OpenOptions::new()
             .write(true)
             .create_new(true)
-            .open(&pending)
+            .open(pending)
             .map_err(|_| SpoolError::WriteFailed)?;
         #[cfg(test)]
         tests::interrupt_write(&mut file);
@@ -152,7 +223,7 @@ impl RecordSpool {
         let result = (|| {
             file.write_all(bytes)?;
             file.sync_all()?;
-            fs::hard_link(&pending, &path)?;
+            fs::hard_link(pending, &path)?;
             published = true;
             #[cfg(test)]
             tests::fail(tests::Failure::CommitSync)?;
@@ -173,7 +244,7 @@ impl RecordSpool {
             }
             tracing::error!(%error, rollback_uncertain = *uncertain, "ops record write failed");
         }
-        if let Err(error) = fs::remove_file(&pending) {
+        if let Err(error) = fs::remove_file(pending) {
             tracing::warn!(%error, "ops record temporary file cleanup failed");
         }
         result.map_err(|_| SpoolError::WriteFailed)

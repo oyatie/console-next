@@ -1,0 +1,2 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+allOf: [{"$ref": "#/components/schemas/IncidentState"}, {"type": "object", "required": ["legal_clocks"], "properties": {"legal_clocks": {"type": "array", "items": {"$ref": "#/components/schemas/LegalClock"}}, "public_card": {"type": "object"}}}]

@@ -108,6 +108,8 @@ impl From<GroupSummary> for GroupResponse {
 
 #[derive(Debug, Serialize)]
 pub(crate) struct GroupAccountResponse {
+    person_id: Option<Uuid>,
+    principal_kind: String,
     user_id: Uuid,
     display_name: String,
     phone: Option<String>,
@@ -126,6 +128,8 @@ pub(crate) struct GroupAccountResponse {
 impl From<GroupAccountSummary> for GroupAccountResponse {
     fn from(account: GroupAccountSummary) -> Self {
         Self {
+            person_id: account.person_id,
+            principal_kind: account.principal_kind,
             user_id: account.user_id,
             display_name: account.display_name,
             phone: account.phone,

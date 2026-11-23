@@ -9,6 +9,7 @@ pub mod apply;
 pub(crate) mod catalog;
 mod fields;
 mod head;
+mod id_type;
 pub mod identity;
 pub mod merge;
 pub mod patch;

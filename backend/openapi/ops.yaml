@@ -5,6 +5,15 @@ info:
   version: 0.1.0
   description: Database-free operator reads. Separate host and Access audience from the tenant API. All times UTC Z; links to runbooks and GitHub are plain text.
 paths:
+  /api/ops/v1/actions:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "opsActions"
+      summary: "Read Actions"
+      x-cedar-action: "read.running"
+      security: [{"accessJwt": []}]
+      description: "Returns Cmd hand-off history and pending actions from actions spool."
+      responses: {"200": {"description": "Actions list.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ActionsList"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
   /api/ops/v1/alerts:
     get:
       # SPDX-License-Identifier: LicenseRef-Proprietary
@@ -25,6 +34,58 @@ paths:
       description: "Access JWT identity only; cookies ignored. Cedar decides before reading any source or count. No CORS headers or Set-Cookie. Non-GET/HEAD requires configured Origin plus Sec-Fetch-Site: same-origin, otherwise 403 origin_refused; allowed non-GET falls through to 405."
       parameters: [{"in": "path", "name": "key", "required": true, "schema": {"$ref": "#/components/schemas/Text"}}]
       responses: {"200": {"description": "Evaluated evidence; empty collections name what was checked through their envelope.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AlertDetail"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
+  /api/ops/v1/alerts/{key}/ack:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "opsAlertAck"
+      summary: "Acknowledge AlertGroup"
+      x-cedar-action: "alert.ack"
+      security: [{"accessJwt": []}]
+      description: "Access JWT identity only; Cedar decides before reading or writing. Non-GET/HEAD requires configured Origin plus Sec-Fetch-Site: same-origin."
+      parameters: [{"in": "path", "name": "key", "required": true, "schema": {"$ref": "#/components/schemas/Text"}}]
+      requestBody: {"required": false, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AckRequest"}}}}
+      responses: {"200": {"description": "Alert group acknowledged and recorded.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AckResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
+  /api/ops/v1/changes:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "opsChanges"
+      summary: "Read Changes"
+      x-cedar-action: "read.running"
+      security: [{"accessJwt": []}]
+      description: "Returns release gates, timeline, and DORA-5 metrics."
+      responses: {"200": {"description": "Changes view.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ChangesView"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
+  /api/ops/v1/changes/canary:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "opsChangesCanary"
+      summary: "Draft Canary Cmd"
+      x-cedar-action: "change.request.canary-hold"
+      x-cedar-actions: ["change.request.canary-hold", "change.request.canary-promote", "change.request.canary-abort"]
+      security: [{"accessJwt": []}]
+      description: "Records signed canary hold/promote/abort Cmd hand-off in actions spool."
+      requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CanaryRequest"}}}}
+      responses: {"201": {"description": "Cmd hand-off recorded.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CmdResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
+  /api/ops/v1/changes/freeze:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "opsChangesFreeze"
+      summary: "Draft Freeze Cmd"
+      x-cedar-action: "change.request.freeze"
+      x-cedar-actions: ["change.request.freeze", "change.request.unfreeze"]
+      security: [{"accessJwt": []}]
+      description: "Records signed freeze/unfreeze Cmd hand-off in actions spool."
+      requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/FreezeRequest"}}}}
+      responses: {"201": {"description": "Cmd hand-off recorded.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CmdResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
+  /api/ops/v1/changes/rollback:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "opsChangesRollback"
+      summary: "Draft Rollback Cmd"
+      x-cedar-action: "change.request.rollback"
+      security: [{"accessJwt": []}]
+      description: "Records signed rollback Cmd hand-off in actions spool."
+      requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RollbackRequest"}}}}
+      responses: {"201": {"description": "Cmd hand-off recorded.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CmdResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
   /api/ops/v1/events:
     get:
       # SPDX-License-Identifier: LicenseRef-Proprietary
@@ -35,6 +96,15 @@ paths:
       description: "Access JWT identity only; cookies ignored. Cedar decides before reading any source or count. No CORS headers or Set-Cookie. Non-GET/HEAD requires configured Origin plus Sec-Fetch-Site: same-origin, otherwise 403 origin_refused; allowed non-GET falls through to 405."
       parameters: [{"in": "header", "name": "Last-Event-ID", "required": false, "schema": {"type": "string", "pattern": "^[0-9]+$"}}]
       responses: {"200": {"description": "Evaluated evidence; empty collections name what was checked through their envelope.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"text/event-stream": {"schema": {"$ref": "#/components/schemas/Event"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
+  /api/ops/v1/health:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "opsHealth"
+      summary: "Read ServiceHealth"
+      x-cedar-action: "read.home"
+      security: [{"accessJwt": []}]
+      description: "Returns internal SLOs, evidence truth, and external public status feed without blending."
+      responses: {"200": {"description": "Service health.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ServiceHealthView"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
   /api/ops/v1/home:
     get:
       # SPDX-License-Identifier: LicenseRef-Proprietary
@@ -44,6 +114,56 @@ paths:
       security: [{"accessJwt": []}]
       description: "Access JWT identity only; cookies ignored. Cedar decides before reading any source or count. No CORS headers or Set-Cookie. Non-GET/HEAD requires configured Origin plus Sec-Fetch-Site: same-origin, otherwise 403 origin_refused; allowed non-GET falls through to 405."
       responses: {"200": {"description": "Evaluated evidence; empty collections name what was checked through their envelope.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/HomeSnapshot"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
+  /api/ops/v1/incidents:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "opsIncidentsList"
+      summary: "List Incidents"
+      x-cedar-action: "read.home"
+      security: [{"accessJwt": []}]
+      description: "Lists incidents replayed from the incidents spool."
+      responses: {"200": {"description": "Incidents list.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/IncidentsList"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "opsIncidentDeclare"
+      summary: "Declare Incident"
+      x-cedar-action: "incident.write"
+      security: [{"accessJwt": []}]
+      description: "Declares a new incident in the incidents spool."
+      requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/DeclareIncidentRequest"}}}}
+      responses: {"201": {"description": "Incident declared.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/IncidentResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
+  /api/ops/v1/incidents/{id}:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "opsIncidentDetail"
+      summary: "Read Incident"
+      x-cedar-action: "read.home"
+      security: [{"accessJwt": []}]
+      description: "Returns incident detail, timeline, legal clocks, and attached public card."
+      parameters: [{"in": "path", "name": "id", "required": true, "schema": {"$ref": "#/components/schemas/Text"}}]
+      responses: {"200": {"description": "Incident detail.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/IncidentResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
+  /api/ops/v1/incidents/{id}/events:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "opsIncidentEvent"
+      summary: "Record Incident Event"
+      x-cedar-action: "incident.write"
+      security: [{"accessJwt": []}]
+      description: "Appends an incident mutation with prev/expected_seq optimistic lock and SEV1/2 postmortem gate."
+      parameters: [{"in": "path", "name": "id", "required": true, "schema": {"$ref": "#/components/schemas/Text"}}]
+      requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/IncidentEventRequest"}}}}
+      responses: {"200": {"description": "Incident updated.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/IncidentResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
+  /api/ops/v1/incidents/{id}/public-draft:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "opsIncidentPublicDraft"
+      summary: "Draft Public Status Update"
+      x-cedar-action: "incident.publish"
+      security: [{"accessJwt": []}]
+      description: "Records public update draft and generates tb status publish Cmd hand-off."
+      parameters: [{"in": "path", "name": "id", "required": true, "schema": {"$ref": "#/components/schemas/Text"}}]
+      requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/PublicDraftRequest"}}}}
+      responses: {"201": {"description": "Public update draft and Cmd hand-off recorded.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/PublicDraftResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
   /api/ops/v1/me:
     get:
       # SPDX-License-Identifier: LicenseRef-Proprietary
@@ -53,6 +173,152 @@ paths:
       security: [{"accessJwt": []}]
       description: "Access JWT identity only; cookies ignored. Cedar decides before reading any source or count. No CORS headers or Set-Cookie. Non-GET/HEAD requires configured Origin plus Sec-Fetch-Site: same-origin, otherwise 403 origin_refused; allowed non-GET falls through to 405."
       responses: {"200": {"description": "Evaluated evidence; empty collections name what was checked through their envelope.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Me"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
+  /api/ops/v1/obligations:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "opsObligationsList"
+      summary: "List Obligations"
+      x-cedar-action: "obligation.read"
+      security: [{"accessJwt": []}]
+      description: "Lists operational obligations and launch readiness status; degrades to Unknown on broken record chain."
+      parameters: [{"in": "query", "name": "kind", "required": false, "schema": {"$ref": "#/components/schemas/ObligationKind"}}, {"in": "query", "name": "state", "required": false, "schema": {"$ref": "#/components/schemas/ObligationState"}}]
+      responses: {"200": {"description": "Obligations list.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ObligationsList"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "opsObligationOpen"
+      summary: "Open Obligation"
+      x-cedar-action: "obligation.write"
+      security: [{"accessJwt": []}]
+      description: "Opens a new operational obligation in obligations spool."
+      requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/OpenObligationRequest"}}}}
+      responses: {"201": {"description": "Obligation opened.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ObligationWriteResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
+  /api/ops/v1/obligations/{id}:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "opsObligationDetail"
+      summary: "Read Obligation Detail"
+      x-cedar-action: "obligation.read"
+      security: [{"accessJwt": []}]
+      description: "Returns a single operational obligation and its full spool event log."
+      parameters: [{"in": "path", "name": "id", "required": true, "schema": {"$ref": "#/components/schemas/Text"}}]
+      responses: {"200": {"description": "Obligation detail.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ObligationDetail"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
+  /api/ops/v1/obligations/{id}/events:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "opsObligationEvent"
+      summary: "Append Obligation Event"
+      x-cedar-action: "obligation.write"
+      security: [{"accessJwt": []}]
+      description: "Appends an obligation lifecycle transition to the obligations spool."
+      parameters: [{"in": "path", "name": "id", "required": true, "schema": {"$ref": "#/components/schemas/Text"}}]
+      requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ObligationEventRequest"}}}}
+      responses: {"200": {"description": "Obligation updated.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ObligationWriteResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
+  /api/ops/v1/oncall:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "opsOncall"
+      summary: "Read Oncall"
+      x-cedar-action: "read.alerts"
+      security: [{"accessJwt": []}]
+      description: "Returns on-call schedule configuration and synthetic page test status."
+      responses: {"200": {"description": "On-call status.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/OncallView"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
+  /api/ops/v1/oncall/page-test:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "opsOncallPageTest"
+      summary: "Draft Synthetic Page Test Cmd"
+      x-cedar-action: "jobs.rerun"
+      security: [{"accessJwt": []}]
+      description: "Records signed Cmd hand-off for synthetic on-call page test."
+      responses: {"201": {"description": "Cmd hand-off recorded.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CmdResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
+  /api/ops/v1/promote:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "opsPromote"
+      summary: "Read Promote"
+      x-cedar-action: "read.running"
+      security: [{"accessJwt": []}]
+      description: "Returns staging promotion candidate, signoffs, feedback queue, and request handoff state."
+      responses: {"200": {"description": "Promote view.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/PromoteView"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
+  /api/ops/v1/promote/feedback:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "opsPromoteFeedback"
+      summary: "Triage Beta Feedback"
+      x-cedar-action: "feedback.triage"
+      security: [{"accessJwt": []}]
+      description: "Records beta feedback triage disposition in feedback spool."
+      requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/FeedbackRequest"}}}}
+      responses: {"201": {"description": "Feedback triage recorded.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/FeedbackResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
+  /api/ops/v1/promote/request:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "opsPromoteRequest"
+      summary: "Draft Promote Cmd"
+      x-cedar-action: "change.request.promote"
+      security: [{"accessJwt": []}]
+      description: "Records signed promote Cmd hand-off in actions spool."
+      requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/PromoteRequest"}}}}
+      responses: {"201": {"description": "Cmd hand-off recorded.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CmdResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
+  /api/ops/v1/promote/signoff:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "opsPromoteSignoff"
+      summary: "Record Promotion Signoff"
+      x-cedar-action: "promotion.signoff"
+      security: [{"accessJwt": []}]
+      description: "Records signed staging promotion signoff in promote spool."
+      requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SignoffRequest"}}}}
+      responses: {"201": {"description": "Signoff recorded.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SignoffResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
+  /api/ops/v1/recovery:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "opsRecovery"
+      summary: "Read Recovery"
+      x-cedar-action: "recovery.read"
+      security: [{"accessJwt": []}]
+      description: "Returns backup RPO, base backups, drill records, and RTO Unknown status."
+      responses: {"200": {"description": "Recovery view.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RecoveryView"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
+  /api/ops/v1/recovery/backup:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "opsRecoveryBackup"
+      summary: "Draft Backup Cmd"
+      x-cedar-action: "change.request.backup-now"
+      security: [{"accessJwt": []}]
+      description: "Records signed backup-now Cmd hand-off in actions spool."
+      requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/BackupRequest"}}}}
+      responses: {"201": {"description": "Cmd hand-off recorded.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CmdResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
+  /api/ops/v1/recovery/drill:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "opsRecoveryDrill"
+      summary: "Draft Recovery Drill Cmd"
+      x-cedar-action: "change.request.drill"
+      x-cedar-actions: ["change.request.drill", "change.request.drill-at"]
+      security: [{"accessJwt": []}]
+      description: "Records signed recovery drill Cmd hand-off in actions spool; rejects tenant inputs."
+      requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/DrillRequest"}}}}
+      responses: {"201": {"description": "Cmd hand-off recorded.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CmdResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
+  /api/ops/v1/runbooks:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "opsRunbooks"
+      summary: "List Runbooks"
+      x-cedar-action: "read.running"
+      security: [{"accessJwt": []}]
+      description: "Lists markdown runbooks available in the mounted runbooks directory."
+      responses: {"200": {"description": "Runbook catalog.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RunbookListView"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
+  /api/ops/v1/runbooks/{path}:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "opsRunbookDoc"
+      summary: "Read Runbook Document"
+      x-cedar-action: "read.running"
+      security: [{"accessJwt": []}]
+      description: "Reads a single validated runbook markdown document and headings."
+      parameters: [{"in": "path", "name": "path", "required": true, "schema": {"$ref": "#/components/schemas/Text"}}]
+      responses: {"200": {"description": "Runbook document.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RunbookDocView"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
   /api/ops/v1/running:
     get:
       # SPDX-License-Identifier: LicenseRef-Proprietary
@@ -72,6 +338,16 @@ paths:
       security: [{"accessJwt": []}]
       description: "Access JWT identity only; cookies ignored. Cedar decides before reading any source or count. No CORS headers or Set-Cookie. Non-GET/HEAD requires configured Origin plus Sec-Fetch-Site: same-origin, otherwise 403 origin_refused; allowed non-GET falls through to 405."
       responses: {"200": {"description": "Evaluated evidence; empty collections name what was checked through their envelope.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Jobs"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
+  /api/ops/v1/running/jobs/{name}/rerun:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "opsJobRerun"
+      summary: "Draft Job Rerun Cmd"
+      x-cedar-action: "jobs.rerun"
+      security: [{"accessJwt": []}]
+      description: "Validates job in known_jobs and records signed Cmd hand-off."
+      parameters: [{"in": "path", "name": "name", "required": true, "schema": {"$ref": "#/components/schemas/Text"}}]
+      responses: {"201": {"description": "Cmd hand-off recorded.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CmdResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
   /api/ops/v1/silences:
     get:
       # SPDX-License-Identifier: LicenseRef-Proprietary
@@ -81,6 +357,25 @@ paths:
       security: [{"accessJwt": []}]
       description: "Access JWT identity only; cookies ignored. Cedar decides before reading any source or count. No CORS headers or Set-Cookie. Non-GET/HEAD requires configured Origin plus Sec-Fetch-Site: same-origin, otherwise 403 origin_refused; allowed non-GET falls through to 405."
       responses: {"200": {"description": "Evaluated evidence; empty collections name what was checked through their envelope.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Silences"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "opsSilenceCreate"
+      summary: "Create Silence"
+      x-cedar-action: "alert.silence"
+      security: [{"accessJwt": []}]
+      description: "Writes silences spool first then calls Alertmanager. Refuses Watchdog, non-exact matchers, short comments, and exceeded TTLs."
+      requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SilenceCreateRequest"}}}}
+      responses: {"201": {"description": "Silence recorded and created.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SilenceCreateResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
+  /api/ops/v1/silences/{id}:
+    delete:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      operationId: "opsSilenceDelete"
+      summary: "Expire Silence"
+      x-cedar-action: "alert.silence"
+      security: [{"accessJwt": []}]
+      description: "Writes silences spool first then expires silence in Alertmanager."
+      parameters: [{"in": "path", "name": "id", "required": true, "schema": {"$ref": "#/components/schemas/Text"}}]
+      responses: {"200": {"description": "Silence expired.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SilenceDeleteResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
   /api/ops/v1/sources:
     get:
       # SPDX-License-Identifier: LicenseRef-Proprietary
@@ -108,6 +403,45 @@ components:
       headers: {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}
       content: {"application/json": {"schema": {"allOf": [{"$ref": "#/components/schemas/Error"}, {"properties": {"code": {"enum": ["OPS_ACCESS_JWT_MISSING", "OPS_ACCESS_JWT_INVALID", "OPS_ACCESS_AUD_MISMATCH"]}}}]}}}
   schemas:
+    AckRecord:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["seq", "hash", "support_ref", "at", "operator", "group_key", "alertname", "component"]
+      properties:
+        seq: {"type": "integer", "minimum": 1}
+        hash: {"$ref": "#/components/schemas/Text"}
+        support_ref: {"$ref": "#/components/schemas/Text"}
+        at: {"$ref": "#/components/schemas/Timestamp"}
+        operator: {"$ref": "#/components/schemas/Text"}
+        group_key: {"$ref": "#/components/schemas/Text"}
+        alertname: {"$ref": "#/components/schemas/Text"}
+        component: {"type": "string"}
+        note: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+    AckRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      additionalProperties: false
+      properties:
+        note: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+    AckResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["evaluated_at", "record", "group"]
+      properties:
+        evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+        record: {"$ref": "#/components/schemas/AckRecord"}
+        group: {"$ref": "#/components/schemas/AlertGroupDetail"}
+    ActionRecord:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      allOf: [{"$ref": "#/components/schemas/CmdHandOff"}, {"type": "object", "required": ["seq", "hash", "support_ref", "status"], "properties": {"seq": {"type": "integer", "minimum": 1}, "hash": {"$ref": "#/components/schemas/Text"}, "support_ref": {"$ref": "#/components/schemas/Text"}, "status": {"type": "string", "enum": ["pending", "executed", "superseded"]}}}]
+    ActionsList:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["evaluated_at", "actions", "count"]
+      properties:
+        evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+        actions: {"type": "array", "items": {"$ref": "#/components/schemas/ActionRecord"}}
+        count: {"$ref": "#/components/schemas/ObservedCount"}
     AlertDetail:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "object"
@@ -130,7 +464,7 @@ components:
         summary: {"$ref": "#/components/schemas/ObservedText"}
         value_vs_threshold: {"$ref": "#/components/schemas/ValueVsThreshold"}
         lead: {"$ref": "#/components/schemas/ObservedText"}
-      description: "Group key is alertname × component; until AS-SCHEMA-LINT instruments component, fall back to alertname × job. Missing component, impact and first_action are Unknown: not instrumented, never fabricated. A missing or empty field on one member and a present value on another is Unknown: members disagree. An instrumented severity outside page/ticket is Unknown: severity <value> not on the ladder."
+      description: "Group key is lowercase 8-hex SHA-256 of alertname|component (16-hex on collision), using component or alertgroup label fallback. Missing component, impact and first_action are Unknown: not instrumented, never fabricated."
     AlertGroupDetail:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       allOf: [{"$ref": "#/components/schemas/AlertGroup"}, {"type": "object", "required": ["impact", "probable_cause", "first_action", "notices", "rule", "members", "changes", "links", "footer_key"], "properties": {"impact": {"$ref": "#/components/schemas/ObservedText"}, "probable_cause": {"$ref": "#/components/schemas/ObservedText"}, "first_action": {"$ref": "#/components/schemas/ObservedText"}, "notices": {"type": "array", "items": {"$ref": "#/components/schemas/ObservedText"}}, "rule": {"$ref": "#/components/schemas/Rule"}, "members": {"type": "array", "items": {"$ref": "#/components/schemas/AlertMember"}}, "changes": {"type": "array", "items": {"$ref": "#/components/schemas/Change"}}, "links": {"type": "array", "items": {"$ref": "#/components/schemas/ObservedText"}}, "footer_key": {"$ref": "#/components/schemas/Text"}}, "description": "Detail order: summary, impact, value and since, probable cause, first action, notices, rule/current value, members, changes in the preceding 2 h, plain-text links, footer key."}]
@@ -164,6 +498,14 @@ components:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "string"
       enum: ["Firing", "Acked", "Silenced", "Inhibited", "Resolved"]
+    BackupRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["backup_type", "window"]
+      additionalProperties: false
+      properties:
+        backup_type: {"type": "string", "enum": ["full", "diff", "incr"]}
+        window: {"type": "string", "enum": ["window", "now"]}
     Budget:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "object"
@@ -175,6 +517,14 @@ components:
         burn_6h: {"$ref": "#/components/schemas/ObservedNumber"}
         exhaustion_s: {"$ref": "#/components/schemas/ObservedNumber"}
         requests_30d: {"$ref": "#/components/schemas/ObservedCount"}
+    CanaryRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["decision", "reason"]
+      additionalProperties: false
+      properties:
+        decision: {"type": "string", "enum": ["hold", "promote", "abort"]}
+        reason: {"$ref": "#/components/schemas/Text"}
     Change:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "object"
@@ -182,6 +532,36 @@ components:
       properties:
         at: {"$ref": "#/components/schemas/ObservedTimestamp"}
         summary: {"$ref": "#/components/schemas/ObservedText"}
+    ChangesView:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["evaluated_at", "releases", "timeline", "dora5", "freeze", "canary_percent", "bundle_sha"]
+      properties:
+        evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+        releases:
+          type: "array"
+          items:
+            type: "object"
+            required: ["digest", "state"]
+            properties:
+              digest: {"$ref": "#/components/schemas/Text"}
+              state: {"$ref": "#/components/schemas/EvidenceState"}
+              gates: {"type": "object"}
+              reason: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+        timeline:
+          type: "array"
+          items:
+            type: "object"
+            required: ["at", "kind", "summary", "status"]
+            properties:
+              at: {"$ref": "#/components/schemas/Timestamp"}
+              kind: {"$ref": "#/components/schemas/Text"}
+              summary: {"$ref": "#/components/schemas/Text"}
+              status: {"$ref": "#/components/schemas/Text"}
+        dora5: {"$ref": "#/components/schemas/Dora5Metrics"}
+        freeze: {"$ref": "#/components/schemas/ObservedBoolean"}
+        canary_percent: {"$ref": "#/components/schemas/ObservedNumber"}
+        bundle_sha: {"$ref": "#/components/schemas/ObservedText"}
     Changing:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "object"
@@ -198,6 +578,27 @@ components:
         watch_until: {"$ref": "#/components/schemas/ObservedTimestamp"}
         freeze: {"$ref": "#/components/schemas/ObservedBoolean"}
         next: {"$ref": "#/components/schemas/Link"}
+    CmdHandOff:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["action_id", "kind", "command", "target", "consequence", "expected_result", "verify_step", "operator", "at"]
+      properties:
+        action_id: {"$ref": "#/components/schemas/Text"}
+        kind: {"$ref": "#/components/schemas/Text"}
+        command: {"$ref": "#/components/schemas/Text"}
+        target: {"$ref": "#/components/schemas/Text"}
+        consequence: {"$ref": "#/components/schemas/Text"}
+        expected_result: {"$ref": "#/components/schemas/Text"}
+        verify_step: {"$ref": "#/components/schemas/Text"}
+        operator: {"$ref": "#/components/schemas/Text"}
+        at: {"$ref": "#/components/schemas/Timestamp"}
+    CmdResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["evaluated_at", "action"]
+      properties:
+        evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+        action: {"$ref": "#/components/schemas/CmdHandOff"}
     Component:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "object"
@@ -242,10 +643,46 @@ components:
         limit_s: {"$ref": "#/components/schemas/ObservedNumber"}
         last_base_backup: {"$ref": "#/components/schemas/ObservedTimestamp"}
         last_proven_restore: {"$ref": "#/components/schemas/ObservedTimestamp"}
+    DeclareIncidentRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["title", "sev", "personal_data_impact", "discovered_at"]
+      additionalProperties: false
+      properties:
+        title: {"$ref": "#/components/schemas/Text"}
+        sev: {"$ref": "#/components/schemas/IncidentSeverity"}
+        lead: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+        affected_components: {"type": "array", "items": {"type": "string"}}
+        personal_data_impact: {"$ref": "#/components/schemas/PersonalDataImpact"}
+        intrusion: {"type": "boolean"}
+        discovered_at: {"$ref": "#/components/schemas/Timestamp"}
+        next_public_update_at: {"anyOf": [{"$ref": "#/components/schemas/Timestamp"}, {"type": "null"}]}
+        public_incident_id: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+    Dora5Metrics:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["deployment_frequency", "lead_time_s", "change_failure_rate", "mttr_s", "rework_rate", "n"]
+      properties:
+        deployment_frequency: {"$ref": "#/components/schemas/ObservedNumber"}
+        lead_time_s: {"$ref": "#/components/schemas/ObservedNumber"}
+        change_failure_rate: {"$ref": "#/components/schemas/ObservedNumber"}
+        mttr_s: {"$ref": "#/components/schemas/ObservedNumber"}
+        rework_rate: {"$ref": "#/components/schemas/ObservedNumber"}
+        n: {"type": "integer", "minimum": 0}
     Drift:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "string"
       enum: ["Synced", "OutOfSync", "Unknown"]
+    DrillRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["repo", "drill_type", "window"]
+      additionalProperties: false
+      properties:
+        repo: {"type": "string", "enum": ["1", "2", "auto"]}
+        drill_type: {"type": "string", "enum": ["name", "time"]}
+        target: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+        window: {"type": "string", "enum": ["window", "now"]}
     Error:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "object"
@@ -258,9 +695,22 @@ components:
       additionalProperties: false
     Event:
       # SPDX-License-Identifier: LicenseRef-Proprietary
-      oneOf: [{"type": "object", "required": ["type", "id", "evaluated_at", "home"], "properties": {"type": {"type": "string", "const": "home.changed"}, "id": {"type": "integer", "minimum": 1}, "evaluated_at": {"$ref": "#/components/schemas/Timestamp"}, "home": {"$ref": "#/components/schemas/HomeSnapshot"}}}, {"type": "object", "required": ["type", "id", "evaluated_at", "group"], "properties": {"type": {"type": "string", "const": "alert.group.changed"}, "id": {"type": "integer", "minimum": 1}, "evaluated_at": {"$ref": "#/components/schemas/Timestamp"}, "group": {"$ref": "#/components/schemas/AlertGroupDetail"}}}, {"type": "object", "required": ["type", "id", "evaluated_at", "group"], "properties": {"type": {"type": "string", "const": "alert.group.resolved"}, "id": {"type": "integer", "minimum": 1}, "evaluated_at": {"$ref": "#/components/schemas/Timestamp"}, "group": {"$ref": "#/components/schemas/AlertGroupDetail"}}}, {"type": "object", "required": ["type", "id", "evaluated_at", "component"], "properties": {"type": {"type": "string", "const": "component.changed"}, "id": {"type": "integer", "minimum": 1}, "evaluated_at": {"$ref": "#/components/schemas/Timestamp"}, "component": {"$ref": "#/components/schemas/Component"}}}, {"type": "object", "required": ["type", "id", "evaluated_at", "job"], "properties": {"type": {"type": "string", "const": "job.changed"}, "id": {"type": "integer", "minimum": 1}, "evaluated_at": {"$ref": "#/components/schemas/Timestamp"}, "job": {"$ref": "#/components/schemas/Job"}}}, {"type": "object", "required": ["type", "id", "evaluated_at", "source"], "properties": {"type": {"type": "string", "const": "source.changed"}, "id": {"type": "integer", "minimum": 1}, "evaluated_at": {"$ref": "#/components/schemas/Timestamp"}, "source": {"$ref": "#/components/schemas/Source"}}}, {"type": "object", "required": ["type", "id", "evaluated_at"], "properties": {"type": {"type": "string", "const": "heartbeat"}, "id": {"type": "integer", "minimum": 1}, "evaluated_at": {"$ref": "#/components/schemas/Timestamp"}}}, {"type": "object", "required": ["type", "id", "evaluated_at"], "properties": {"type": {"type": "string", "const": "resync"}, "id": {"type": "integer", "minimum": 1}, "evaluated_at": {"$ref": "#/components/schemas/Timestamp"}}}]
+      oneOf:
+        - {"type": "object", "required": ["type", "id", "evaluated_at", "home"], "properties": {"type": {"type": "string", "const": "home.changed"}, "id": {"type": "integer", "minimum": 1}, "evaluated_at": {"$ref": "#/components/schemas/Timestamp"}, "home": {"$ref": "#/components/schemas/HomeSnapshot"}}}
+        - {"type": "object", "required": ["type", "id", "evaluated_at", "group"], "properties": {"type": {"type": "string", "const": "alert.group.changed"}, "id": {"type": "integer", "minimum": 1}, "evaluated_at": {"$ref": "#/components/schemas/Timestamp"}, "group": {"$ref": "#/components/schemas/AlertGroupDetail"}}}
+        - {"type": "object", "required": ["type", "id", "evaluated_at", "group"], "properties": {"type": {"type": "string", "const": "alert.group.resolved"}, "id": {"type": "integer", "minimum": 1}, "evaluated_at": {"$ref": "#/components/schemas/Timestamp"}, "group": {"$ref": "#/components/schemas/AlertGroupDetail"}}}
+        - {"type": "object", "required": ["type", "id", "evaluated_at", "component"], "properties": {"type": {"type": "string", "const": "component.changed"}, "id": {"type": "integer", "minimum": 1}, "evaluated_at": {"$ref": "#/components/schemas/Timestamp"}, "component": {"$ref": "#/components/schemas/Component"}}}
+        - {"type": "object", "required": ["type", "id", "evaluated_at", "job"], "properties": {"type": {"type": "string", "const": "job.changed"}, "id": {"type": "integer", "minimum": 1}, "evaluated_at": {"$ref": "#/components/schemas/Timestamp"}, "job": {"$ref": "#/components/schemas/Job"}}}
+        - {"type": "object", "required": ["type", "id", "evaluated_at", "source"], "properties": {"type": {"type": "string", "const": "source.changed"}, "id": {"type": "integer", "minimum": 1}, "evaluated_at": {"$ref": "#/components/schemas/Timestamp"}, "source": {"$ref": "#/components/schemas/Source"}}}
+        - {"type": "object", "required": ["type", "id", "evaluated_at", "item"], "properties": {"type": {"type": "string", "const": "obligation.changed"}, "id": {"type": "integer", "minimum": 1}, "evaluated_at": {"$ref": "#/components/schemas/Timestamp"}, "item": {"$ref": "#/components/schemas/ObligationItem"}}}
+        - {"type": "object", "required": ["type", "id", "evaluated_at", "incident"], "properties": {"type": {"type": "string", "const": "incident.changed"}, "id": {"type": "integer", "minimum": 1}, "evaluated_at": {"$ref": "#/components/schemas/Timestamp"}, "incident": {"$ref": "#/components/schemas/IncidentSummary"}}}
+        - {"type": "object", "required": ["type", "id", "evaluated_at", "action"], "properties": {"type": {"type": "string", "const": "action.changed"}, "id": {"type": "integer", "minimum": 1}, "evaluated_at": {"$ref": "#/components/schemas/Timestamp"}, "action": {"$ref": "#/components/schemas/CmdHandOff"}}}
+        - {"type": "object", "required": ["type", "id", "evaluated_at", "silence_id", "active"], "properties": {"type": {"type": "string", "const": "silence.changed"}, "id": {"type": "integer", "minimum": 1}, "evaluated_at": {"$ref": "#/components/schemas/Timestamp"}, "silence_id": {"$ref": "#/components/schemas/Text"}, "active": {"type": "boolean"}}}
+        - {"type": "object", "required": ["type", "id", "evaluated_at", "digest"], "properties": {"type": {"type": "string", "const": "promotion.changed"}, "id": {"type": "integer", "minimum": 1}, "evaluated_at": {"$ref": "#/components/schemas/Timestamp"}, "digest": {"$ref": "#/components/schemas/Text"}}}
+        - {"type": "object", "required": ["type", "id", "evaluated_at"], "properties": {"type": {"type": "string", "const": "heartbeat"}, "id": {"type": "integer", "minimum": 1}, "evaluated_at": {"$ref": "#/components/schemas/Timestamp"}}}
+        - {"type": "object", "required": ["type", "id", "evaluated_at"], "properties": {"type": {"type": "string", "const": "resync"}, "id": {"type": "integer", "minimum": 1}, "evaluated_at": {"$ref": "#/components/schemas/Timestamp"}}}
       discriminator: {"propertyName": "type"}
-      description: "SSE event/data type and monotonic id agree. Filter home by read.home, alert groups by read.alerts, components/jobs by read.running, sources by read.sources. Heartbeat every 15 s. Resume from Last-Event-ID; an evicted sequence emits resync. No event data is delivered to a refused operator."
+      description: "SSE event/data type and monotonic id agree. Filter home/incidents by read.home, alert groups/silences by read.alerts, components/jobs/actions/promotions by read.running, sources by read.sources, obligations by obligation.read. Heartbeat every 15 s. Resume from Last-Event-ID; an evicted sequence emits resync. No event data is delivered to a refused operator."
     Evidence:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "object"
@@ -272,6 +722,39 @@ components:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "string"
       enum: ["Verified", "Monitoring", "Stale", "Unknown"]
+    FeedbackRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["feedback_id", "digest", "severity", "disposition", "note"]
+      additionalProperties: false
+      properties:
+        feedback_id: {"$ref": "#/components/schemas/Text"}
+        digest: {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+        severity: {"type": "string", "enum": ["P0", "P1", "P2"]}
+        disposition: {"type": "string", "enum": ["open", "triaged", "resolved", "wontfix"]}
+        note: {"$ref": "#/components/schemas/Text"}
+    FeedbackResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["evaluated_at", "feedback"]
+      properties:
+        evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+        feedback: {"$ref": "#/components/schemas/FeedbackTriage"}
+    FeedbackTriage:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["seq", "hash", "support_ref", "at", "operator", "feedback_id", "digest", "severity", "disposition", "note"]
+      properties:
+        seq: {"type": "integer", "minimum": 1}
+        hash: {"$ref": "#/components/schemas/Text"}
+        support_ref: {"$ref": "#/components/schemas/Text"}
+        at: {"$ref": "#/components/schemas/Timestamp"}
+        operator: {"$ref": "#/components/schemas/Text"}
+        feedback_id: {"$ref": "#/components/schemas/Text"}
+        digest: {"$ref": "#/components/schemas/Text"}
+        severity: {"type": "string", "enum": ["P0", "P1", "P2"]}
+        disposition: {"type": "string", "enum": ["open", "triaged", "resolved", "wontfix"]}
+        note: {"$ref": "#/components/schemas/Text"}
     FreeTierMeter:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "object"
@@ -281,6 +764,14 @@ components:
         used: {"$ref": "#/components/schemas/ObservedNumber"}
         limit: {"$ref": "#/components/schemas/ObservedNumber"}
         warning_ratio: {"$ref": "#/components/schemas/ObservedNumber"}
+    FreezeRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["freeze", "reason"]
+      additionalProperties: false
+      properties:
+        freeze: {"type": "boolean"}
+        reason: {"$ref": "#/components/schemas/Text"}
     Grant:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "object"
@@ -301,6 +792,7 @@ components:
       properties:
         evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
         verdict: {"$ref": "#/components/schemas/Verdict"}
+        launch_readiness: {"$ref": "#/components/schemas/Verdict"}
         worklist: {"type": "array", "items": {"$ref": "#/components/schemas/WorkItem"}}
         changing: {"type": "array", "items": {"$ref": "#/components/schemas/Changing"}}
         budgets: {"type": "array", "items": {"$ref": "#/components/schemas/Budget"}}
@@ -311,10 +803,82 @@ components:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "string"
       enum: ["Investigating", "Identified", "Monitoring", "Resolved"]
+    IncidentDetail:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      allOf: [{"$ref": "#/components/schemas/IncidentState"}, {"type": "object", "required": ["legal_clocks"], "properties": {"legal_clocks": {"type": "array", "items": {"$ref": "#/components/schemas/LegalClock"}}, "public_card": {"type": "object"}}}]
+    IncidentEventRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["event", "fields"]
+      properties:
+        expected_seq: {"type": "integer", "minimum": 1}
+        prev: {"type": "integer", "minimum": 1}
+        event: {"type": "string", "enum": ["lead_assigned", "note_added", "severity_changed", "status_changed", "postmortem_linked", "public_attached", "mitigation_added", "notice_sent", "resolved"]}
+        fields: {"type": "object"}
+    IncidentResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["evaluated_at", "incident"]
+      properties:
+        evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+        incident: {"$ref": "#/components/schemas/IncidentDetail"}
     IncidentSeverity:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "string"
       enum: ["SEV1", "SEV2", "SEV3", "SEV4"]
+    IncidentState:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["id", "title", "sev", "status", "lead", "affected_components", "personal_data_impact", "intrusion", "opened_at", "discovered_at", "next_public_update_at", "public_incident_id", "postmortem_ref", "mitigations", "timeline", "head_seq", "head_hash"]
+      properties:
+        id: {"$ref": "#/components/schemas/Text"}
+        title: {"$ref": "#/components/schemas/Text"}
+        sev: {"$ref": "#/components/schemas/IncidentSeverity"}
+        status: {"$ref": "#/components/schemas/Incident"}
+        lead: {"anyOf": [{"$ref": "#/components/schemas/Text"}, {"type": "null"}]}
+        affected_components: {"type": "array", "items": {"$ref": "#/components/schemas/Text"}}
+        personal_data_impact: {"$ref": "#/components/schemas/PersonalDataImpact"}
+        intrusion: {"type": "boolean"}
+        opened_at: {"$ref": "#/components/schemas/Timestamp"}
+        discovered_at: {"$ref": "#/components/schemas/Timestamp"}
+        next_public_update_at: {"anyOf": [{"$ref": "#/components/schemas/Timestamp"}, {"type": "null"}]}
+        public_incident_id: {"anyOf": [{"$ref": "#/components/schemas/Text"}, {"type": "null"}]}
+        postmortem_ref: {"anyOf": [{"$ref": "#/components/schemas/Text"}, {"type": "null"}]}
+        mitigations: {"type": "array", "items": {"$ref": "#/components/schemas/Text"}}
+        timeline: {"type": "array", "items": {"$ref": "#/components/schemas/IncidentTimelineEntry"}}
+        head_seq: {"type": "integer", "minimum": 1}
+        head_hash: {"$ref": "#/components/schemas/Text"}
+    IncidentSummary:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["id", "title", "sev", "status", "lead", "head_seq", "next_public_update_at", "legal_clocks"]
+      properties:
+        id: {"$ref": "#/components/schemas/Text"}
+        title: {"$ref": "#/components/schemas/Text"}
+        sev: {"$ref": "#/components/schemas/IncidentSeverity"}
+        status: {"$ref": "#/components/schemas/Incident"}
+        lead: {"anyOf": [{"$ref": "#/components/schemas/Text"}, {"type": "null"}]}
+        head_seq: {"type": "integer", "minimum": 1}
+        next_public_update_at: {"anyOf": [{"$ref": "#/components/schemas/Timestamp"}, {"type": "null"}]}
+        legal_clocks: {"type": "array", "items": {"$ref": "#/components/schemas/LegalClock"}}
+    IncidentTimelineEntry:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["seq", "at", "actor", "kind", "summary"]
+      properties:
+        seq: {"type": "integer", "minimum": 1}
+        at: {"$ref": "#/components/schemas/Timestamp"}
+        actor: {"$ref": "#/components/schemas/Text"}
+        kind: {"$ref": "#/components/schemas/Text"}
+        summary: {"$ref": "#/components/schemas/Text"}
+    IncidentsList:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["evaluated_at", "incidents", "count"]
+      properties:
+        evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+        incidents: {"type": "array", "items": {"$ref": "#/components/schemas/IncidentSummary"}}
+        count: {"$ref": "#/components/schemas/ObservedCount"}
     Job:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "object"
@@ -338,6 +902,15 @@ components:
         evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
         jobs: {"type": "array", "items": {"$ref": "#/components/schemas/Job"}}
         count: {$ref: '#/components/schemas/ObservedCount'}
+    LegalClock:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["kind", "deadline", "remaining_s", "overdue"]
+      properties:
+        kind: {"$ref": "#/components/schemas/Text"}
+        deadline: {"$ref": "#/components/schemas/Timestamp"}
+        remaining_s: {"type": "integer"}
+        overdue: {"type": "boolean"}
     Link:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "object"
@@ -369,6 +942,92 @@ components:
         operator: {"type": "object", "required": ["person", "display_email"], "properties": {"person": {"type": "string", "format": "uuid"}, "display_email": {"type": "string", "format": "email"}}}
         grants: {"type": "array", "items": {"$ref": "#/components/schemas/Grant"}}
         allowed_actions: {"type": "array", "items": {"$ref": "#/components/schemas/Text"}}
+    ObligationDetail:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["evaluated_at", "verdict", "item", "history", "sources"]
+      properties:
+        evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+        verdict: {"$ref": "#/components/schemas/Verdict"}
+        item: {"anyOf": [{"$ref": "#/components/schemas/ObligationItem"}, {"type": "null"}]}
+        history: {"type": "array", "items": {"$ref": "#/components/schemas/ObligationRecord"}}
+        sources: {"type": "array", "items": {"$ref": "#/components/schemas/Source"}}
+    ObligationEventRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["event", "fields"]
+      additionalProperties: false
+      properties:
+        event: {"type": "string", "enum": ["in_review", "redated", "done", "waived"]}
+        fields: {"type": "object"}
+    ObligationItem:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["id", "kind", "reviewer_role", "title", "due", "state", "evidence_ref", "signer", "signed_on", "deadline"]
+      properties:
+        id: {"$ref": "#/components/schemas/Text"}
+        kind: {"$ref": "#/components/schemas/ObligationKind"}
+        reviewer_role: {"$ref": "#/components/schemas/ObligationReviewerRole"}
+        title: {"$ref": "#/components/schemas/Text"}
+        due: {"anyOf": [{"type": "string", "format": "date", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"}, {"type": "null"}]}
+        state: {"$ref": "#/components/schemas/ObligationState"}
+        evidence_ref: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+        signer: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+        signed_on: {"anyOf": [{"type": "string", "format": "date", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"}, {"type": "null"}]}
+        deadline: {"$ref": "#/components/schemas/Text"}
+    ObligationKind:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "string"
+      enum: ["professional-review", "credential-rotation", "escrow", "drill", "launch-gate", "owner-decision", "regulatory-watch"]
+    ObligationOperator:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["person", "method"]
+      additionalProperties: false
+      properties:
+        person: {"$ref": "#/components/schemas/Text"}
+        method: {"$ref": "#/components/schemas/Text"}
+    ObligationRecord:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["seq", "hash", "support_ref", "at", "operator", "obligation_id", "event", "fields"]
+      properties:
+        seq: {"type": "integer", "minimum": 1}
+        hash: {"$ref": "#/components/schemas/Text"}
+        support_ref: {"$ref": "#/components/schemas/Text"}
+        at: {"$ref": "#/components/schemas/Timestamp"}
+        operator: {"$ref": "#/components/schemas/ObligationOperator"}
+        obligation_id: {"$ref": "#/components/schemas/Text"}
+        event: {"type": "string", "enum": ["opened", "in_review", "redated", "done", "waived"]}
+        fields: {"type": "object"}
+    ObligationReviewerRole:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "string"
+      enum: ["labor-attorney", "lawyer", "tax-accountant", "owner"]
+    ObligationState:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "string"
+      enum: ["open", "in-review", "done", "waived"]
+    ObligationWriteResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["evaluated_at", "id", "item", "record"]
+      properties:
+        evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+        id: {"$ref": "#/components/schemas/Text"}
+        item: {"$ref": "#/components/schemas/ObligationItem"}
+        record: {"$ref": "#/components/schemas/ObligationRecord"}
+    ObligationsList:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["evaluated_at", "verdict", "launch_readiness", "items", "count", "sources"]
+      properties:
+        evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+        verdict: {"$ref": "#/components/schemas/Verdict"}
+        launch_readiness: {"$ref": "#/components/schemas/Verdict"}
+        items: {"type": "array", "items": {"$ref": "#/components/schemas/ObligationItem"}}
+        count: {"$ref": "#/components/schemas/ObservedCount"}
+        sources: {"type": "array", "items": {"$ref": "#/components/schemas/Source"}}
     Observation:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "object"
@@ -417,28 +1076,136 @@ components:
     ObservedTimestamp:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       allOf: [{"$ref": "#/components/schemas/Observation"}, {"properties": {"value": {"anyOf": [{"$ref": "#/components/schemas/Timestamp"}, {"type": "null"}]}}}]
+    OncallView:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["evaluated_at", "display_status", "last_page_test_at", "last_page_test_ok"]
+      properties:
+        evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+        config: {"type": "object"}
+        display_status: {"$ref": "#/components/schemas/ObservedText"}
+        last_page_test_at: {"$ref": "#/components/schemas/ObservedTimestamp"}
+        last_page_test_ok: {"$ref": "#/components/schemas/ObservedBoolean"}
+    OpenObligationRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["kind", "reviewer_role", "title"]
+      additionalProperties: false
+      properties:
+        kind: {"$ref": "#/components/schemas/ObligationKind"}
+        reviewer_role: {"$ref": "#/components/schemas/ObligationReviewerRole"}
+        title: {"$ref": "#/components/schemas/Text"}
+        due: {"anyOf": [{"type": "string", "format": "date", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"}, {"type": "null"}]}
+        evidence_ref: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+    PersonalDataImpact:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "string"
+      enum: ["yes", "no", "unknown"]
+    PromoteRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["digest", "bake"]
+      additionalProperties: false
+      properties:
+        digest: {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+        bake: {"type": "string", "enum": ["normal", "long"]}
+    PromoteView:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["evaluated_at", "candidate_digest", "state", "signoffs", "feedback"]
+      properties:
+        evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+        candidate_digest: {"$ref": "#/components/schemas/ObservedText"}
+        state:
+          allOf: [{"$ref": "#/components/schemas/Observation"}, {"properties": {"value": {"anyOf": [{"$ref": "#/components/schemas/Promotion"}, {"type": "null"}]}}}]
+        signoffs: {"type": "array", "items": {"$ref": "#/components/schemas/PromotionSignoff"}}
+        feedback: {"type": "array", "items": {"$ref": "#/components/schemas/FeedbackTriage"}}
     Promotion:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "string"
       enum: ["Watching", "Blocked", "Ready", "Promoting", "Superseded", "Integration-only"]
+    PromotionSignoff:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["seq", "hash", "support_ref", "at", "operator", "digest", "verdict", "note"]
+      properties:
+        seq: {"type": "integer", "minimum": 1}
+        hash: {"$ref": "#/components/schemas/Text"}
+        support_ref: {"$ref": "#/components/schemas/Text"}
+        at: {"$ref": "#/components/schemas/Timestamp"}
+        operator: {"$ref": "#/components/schemas/Text"}
+        digest: {"$ref": "#/components/schemas/Text"}
+        verdict: {"type": "string", "enum": ["ready", "blocked"]}
+        note: {"$ref": "#/components/schemas/Text"}
     PublicComponent:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "string"
       enum: ["Operational", "Degraded performance", "Partial outage", "Major outage", "Maintenance", "Unknown"]
+    PublicDraftRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["stage", "components", "message_ko", "message_en", "rev"]
+      additionalProperties: false
+      properties:
+        expected_seq: {"type": "integer", "minimum": 1}
+        prev: {"type": "integer", "minimum": 1}
+        stage: {"anyOf": [{"$ref": "#/components/schemas/Incident"}, {"$ref": "#/components/schemas/PublicComponent"}]}
+        components: {"type": "array", "items": {"$ref": "#/components/schemas/Text"}}
+        message_ko: {"$ref": "#/components/schemas/Text"}
+        message_en: {"$ref": "#/components/schemas/Text"}
+        rev: {"type": "integer", "minimum": 1}
+    PublicDraftResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["evaluated_at", "incident", "action"]
+      properties:
+        evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+        incident: {"$ref": "#/components/schemas/IncidentDetail"}
+        action: {"$ref": "#/components/schemas/CmdHandOff"}
     Recovery:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "string"
       enum: ["Queued", "Deferred to window", "Running", "Done", "Failed"]
+    RecoveryRepoView:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["repository", "rpo_s", "limit_s", "last_base_backup", "push_failures"]
+      properties:
+        repository: {"$ref": "#/components/schemas/Text"}
+        rpo_s: {"$ref": "#/components/schemas/ObservedNumber"}
+        limit_s: {"$ref": "#/components/schemas/ObservedNumber"}
+        last_base_backup: {"$ref": "#/components/schemas/ObservedTimestamp"}
+        push_failures: {"$ref": "#/components/schemas/ObservedNumber"}
+    RecoveryView:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["evaluated_at", "repos", "rto", "deferred_since", "last_exit_code", "lvm_snapshot_at", "onprem_mount_expected"]
+      properties:
+        evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+        repos: {"type": "array", "items": {"$ref": "#/components/schemas/RecoveryRepoView"}}
+        rto: {"$ref": "#/components/schemas/ObservedNumber"}
+        deferred_since: {"$ref": "#/components/schemas/ObservedTimestamp"}
+        last_exit_code: {"$ref": "#/components/schemas/ObservedNumber"}
+        lvm_snapshot_at: {"$ref": "#/components/schemas/ObservedTimestamp"}
+        onprem_mount_expected: {"$ref": "#/components/schemas/ObservedBoolean"}
     RefusalCode:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "string"
-      enum: ["OPS_ACCESS_JWT_MISSING", "OPS_ACCESS_JWT_INVALID", "OPS_ACCESS_AUD_MISMATCH", "OPS_NOT_OPERATOR", "OPS_GRANT_NOT_LIVE", "OPS_ACTION_DENIED", "OPS_CONFIG_INVALID", "origin_refused"]
+      enum: ["OPS_ACCESS_JWT_MISSING", "OPS_ACCESS_JWT_INVALID", "OPS_ACCESS_AUD_MISMATCH", "OPS_NOT_OPERATOR", "OPS_GRANT_NOT_LIVE", "OPS_ACTION_DENIED", "OPS_CONFIG_INVALID", "origin_refused", "OPS_NOT_FOUND", "OPS_TIMEOUT", "OPS_RECORD_CHAIN_BROKEN", "OPS_RECORD_WRITE_FAILED", "OPS_ALERT_ACK_INVALID", "OPS_SILENCE_INVALID", "OPS_SILENCE_TTL_EXCEEDED", "OPS_WATCHDOG_UNSILENCEABLE", "OPS_UPSTREAM_FAILED", "OPS_INCIDENT_INVALID", "OPS_INCIDENT_NOT_FOUND", "OPS_INCIDENT_CONFLICT", "OPS_POSTMORTEM_REQUIRED", "OPS_INCIDENT_FINAL", "OPS_OBLIGATION_INVALID", "OPS_OBLIGATION_INCOMPLETE", "OPS_OBLIGATION_FINAL", "OPS_OBLIGATION_NOT_FOUND", "OPS_RUNBOOK_NOT_FOUND", "bad_request", "not_found", "method_not_allowed", "internal"]
       description: "OPS_CONFIG_INVALID is a startup refusal (exit 78, file and JSON pointer), never an HTTP response. origin_refused is the whole-router non-GET/HEAD origin guard."
     Release:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "string"
       enum: ["Building", "Signed", "On preview", "Canary", "Watching", "Active", "Rolled back", "Failed"]
       description: "Canary is a state; its numeric weight is carried separately as Changing.weight_percent."
+    RollbackRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["digest", "reason"]
+      additionalProperties: false
+      properties:
+        digest: {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+        reason: {"$ref": "#/components/schemas/Text"}
     Rollup:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "object"
@@ -454,6 +1221,49 @@ components:
       properties:
         expression: {"$ref": "#/components/schemas/ObservedText"}
         current_value: {"$ref": "#/components/schemas/ObservedNumber"}
+    RunbookAnchor:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["slug", "kind"]
+      properties:
+        slug: {"$ref": "#/components/schemas/Text"}
+        kind: {"type": "string", "enum": ["html_id", "heading"]}
+        title: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+    RunbookDoc:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["path", "content", "anchors"]
+      properties:
+        path: {"$ref": "#/components/schemas/Text"}
+        content: {"type": "string"}
+        anchors: {"type": "array", "items": {"$ref": "#/components/schemas/RunbookAnchor"}}
+    RunbookDocMeta:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["path", "anchors"]
+      properties:
+        path: {"$ref": "#/components/schemas/Text"}
+        anchors: {"type": "array", "items": {"$ref": "#/components/schemas/RunbookAnchor"}}
+    RunbookDocView:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["evaluated_at", "doc"]
+      properties:
+        evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+        bundle_sha: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+        deployed_sha: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+        stale_warning: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+        doc: {"$ref": "#/components/schemas/RunbookDoc"}
+    RunbookListView:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["evaluated_at", "docs"]
+      properties:
+        evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+        bundle_sha: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+        deployed_sha: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+        stale_warning: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+        docs: {"type": "array", "items": {"$ref": "#/components/schemas/RunbookDocMeta"}}
     Running:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "object"
@@ -464,10 +1274,82 @@ components:
         hosts: {"type": "array", "items": {"$ref": "#/components/schemas/Rollup"}}
         groups: {"type": "array", "items": {"$ref": "#/components/schemas/Rollup"}}
         count: {$ref: '#/components/schemas/ObservedCount'}
+    ServiceHealthView:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["evaluated_at", "internal_slos", "page_load_error_rate_5m", "page_loads_rate_5m", "evidence_truth", "textfiles", "public_status"]
+      properties:
+        evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+        internal_slos:
+          type: "array"
+          items:
+            type: "object"
+            required: ["key", "remaining_percent", "burn_30m", "burn_1h", "burn_6h", "burn_3d", "burn_30d", "exhaustion_s", "requests_30d", "low_sample"]
+            properties:
+              key: {"$ref": "#/components/schemas/Text"}
+              remaining_percent: {"$ref": "#/components/schemas/ObservedNumber"}
+              burn_30m: {"$ref": "#/components/schemas/ObservedNumber"}
+              burn_1h: {"$ref": "#/components/schemas/ObservedNumber"}
+              burn_6h: {"$ref": "#/components/schemas/ObservedNumber"}
+              burn_3d: {"$ref": "#/components/schemas/ObservedNumber"}
+              burn_30d: {"$ref": "#/components/schemas/ObservedNumber"}
+              exhaustion_s: {"$ref": "#/components/schemas/ObservedNumber"}
+              requests_30d: {"$ref": "#/components/schemas/ObservedNumber"}
+              low_sample: {"type": "boolean"}
+              low_sample_note: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+        page_load_error_rate_5m: {"$ref": "#/components/schemas/ObservedNumber"}
+        page_loads_rate_5m: {"$ref": "#/components/schemas/ObservedNumber"}
+        evidence_truth:
+          type: "array"
+          items:
+            type: "object"
+            required: ["source", "ok"]
+            properties:
+              source: {"$ref": "#/components/schemas/Text"}
+              ok: {"$ref": "#/components/schemas/ObservedBoolean"}
+        textfiles:
+          type: "array"
+          items:
+            type: "object"
+            required: ["file", "age_s", "max_age_s"]
+            properties:
+              file: {"$ref": "#/components/schemas/Text"}
+              age_s: {"$ref": "#/components/schemas/ObservedNumber"}
+              max_age_s: {"$ref": "#/components/schemas/ObservedNumber"}
+        public_status:
+          type: "object"
+          required: ["feed_ok", "revision", "published_at", "observed_at", "expires_at", "unknown_components", "components"]
+          properties:
+            feed_ok: {"$ref": "#/components/schemas/ObservedBoolean"}
+            revision: {"$ref": "#/components/schemas/ObservedCount"}
+            published_at: {"$ref": "#/components/schemas/ObservedTimestamp"}
+            observed_at: {"$ref": "#/components/schemas/ObservedTimestamp"}
+            expires_at: {"$ref": "#/components/schemas/ObservedTimestamp"}
+            unknown_components: {"$ref": "#/components/schemas/ObservedCount"}
+            components:
+              type: "object"
+              additionalProperties:
+                allOf: [{"$ref": "#/components/schemas/Observation"}, {"properties": {"value": {"anyOf": [{"$ref": "#/components/schemas/PublicComponent"}, {"type": "null"}]}}}]
     Severity:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "string"
       enum: ["Page", "Ticket"]
+    SignoffRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["digest", "verdict", "note"]
+      additionalProperties: false
+      properties:
+        digest: {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+        verdict: {"type": "string", "enum": ["ready", "blocked"]}
+        note: {"$ref": "#/components/schemas/Text"}
+    SignoffResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["evaluated_at", "signoff"]
+      properties:
+        evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+        signoff: {"$ref": "#/components/schemas/PromotionSignoff"}
     Silence:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "object"
@@ -479,6 +1361,41 @@ components:
         ends: {"$ref": "#/components/schemas/ObservedTimestamp"}
         author: {"$ref": "#/components/schemas/ObservedText"}
         comment: {"$ref": "#/components/schemas/ObservedText"}
+    SilenceCreateRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["matchers", "ends_at", "comment"]
+      additionalProperties: false
+      properties:
+        matchers: {"type": "array", "items": {"$ref": "#/components/schemas/SilenceMatcherInput"}}
+        ends_at: {"$ref": "#/components/schemas/Timestamp"}
+        comment: {"$ref": "#/components/schemas/Text", "minLength": 10}
+        group_key: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+    SilenceCreateResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["evaluated_at", "silence_id"]
+      properties:
+        evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+        silence_id: {"$ref": "#/components/schemas/Text"}
+    SilenceDeleteResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["evaluated_at", "silence_id", "deleted"]
+      properties:
+        evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+        silence_id: {"$ref": "#/components/schemas/Text"}
+        deleted: {"type": "boolean"}
+    SilenceMatcherInput:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: "object"
+      required: ["name", "value"]
+      additionalProperties: false
+      properties:
+        name: {"$ref": "#/components/schemas/Text"}
+        value: {"$ref": "#/components/schemas/Text"}
+        is_regex: {"type": "boolean"}
+        is_equal: {"type": "boolean"}
     Silences:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "object"
@@ -493,7 +1410,7 @@ components:
       required: ["name", "kind", "producer", "interval", "observed_at", "age", "state", "reason"]
       properties:
         name: {"$ref": "#/components/schemas/Text"}
-        kind: {"type": "string", "enum": ["alertmanager", "vmalert", "victoriametrics", "bundle", "textfile", "access_jwks", "evaluator"]}
+        kind: {"type": "string", "enum": ["alertmanager", "vmalert", "victoriametrics", "bundle", "textfile", "access_jwks", "evaluator", "obligations", "releases", "runbooks", "oncall", "status_feed"]}
         producer: {"$ref": "#/components/schemas/Text"}
         interval: {"type": "integer", "minimum": 1}
         observed_at: {"anyOf": [{"$ref": "#/components/schemas/Timestamp"}, {"type": "null"}]}
@@ -556,4 +1473,4 @@ components:
     WorkKind:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "string"
-      enum: ["page", "overdue", "due", "ticket"]
+      enum: ["page", "overdue", "due", "ticket", "obligation"]

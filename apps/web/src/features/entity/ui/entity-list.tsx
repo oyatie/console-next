@@ -9,6 +9,8 @@ import { PageReadGate } from "../../../reference/authz/ui/access-gate";
 import { Chip } from "../../../ui/chip";
 import { EmptyState } from "../../../ui/empty-state";
 import { LongTable } from "../../../ui/long-table/long-table";
+import { Muted } from "../../../ui/muted/muted";
+import { ListRecord } from "../../../ui/patterns/list-record";
 import { checklistRef, entitiesAt } from "../../../reference/entity/api";
 import { todayKst } from "../../../lib/pure/today";
 import { headcount, primaryRegistration } from "../domain/view";
@@ -32,62 +34,101 @@ export function EntityList() {
   const today = todayKst();
   const readOnly = Boolean(known_at) || Boolean(as_of && as_of !== today) || Boolean(list.data?.items.some((e) => e.read_only));
   const changeDate = (date: string, knownAt?: string) => void navigate({ search: (s) => ({ ...s, add: undefined, as_of: date === today ? undefined : date, known_at: knownAt }) });
+  const setupChip = phase === "SETUP" ? <Chip tone="info">{t("entity.phase.setup")}</Chip> : null;
+  const addLink = list.data && !readOnly ? (
+    <Link to="/org" search={{ tab: "entities", add: true, as_of, known_at }} className="btn btn--primary">
+      <Plus size={16} aria-hidden /> {t("entityQuick.title")}
+    </Link>
+  ) : null;
+  const asOfBand = <AsOfBand asOf={as_of} knownAt={known_at} onChange={changeDate} />;
+  const emptyNode = (
+    <EmptyState
+      title={t("entity.empty.title")}
+      reason={t("entity.empty.reason")}
+      actions={!readOnly && <Link to="/org/entities/new" className="btn btn--primary">{t("entity.empty.action")}</Link>}
+    />
+  );
+  const renderTable = (items: NonNullable<typeof list.data>["items"], compact: boolean) => (
+    <LongTable
+      label={t("entity.list.table")}
+      rows={items}
+      rowId={(e) => e.id}
+      total={items.length}
+      hasMore={false}
+      onLoadMore={() => undefined}
+      empty={null}
+      mobileLayout={compact ? "compact" : "cards"}
+      onRowAction={(id) => void nav({ to: "/org/entities/$id", params: { id }, search: { as_of, known_at } })}
+      columns={[
+        { id: "name", rowHeader: true, card: "title", width: "3fr", header: t("entity.col.name"), cell: (e) => <><EntityName entity={e} /><NameProblems e={e} /></> },
+        { id: "kind", card: compact ? "omit" : "title", wide: compact ? true : undefined, width: 140, header: t("entity.col.kind"), cell: (e) => (e.biz_kind ? label(BIZ_KIND, e.biz_kind) : t("entity.kindUnset")) },
+        { id: "brn", card: compact ? "omit" : "fact", width: 160, header: t("entity.col.brn"), cell: (e) => <code>{primaryRegistration(e)?.brn?.display ?? t("entityOps.info.none")}</code> },
+        { id: "workplaces", card: "fact", width: 120, header: t("entity.col.workplaces"), cell: (e) => <data className="num" value={e.workplaces.length}>{t("entity.count.workplaces", { count: e.workplaces.length })}</data> },
+        { id: "people", card: "fact", width: 120, header: t("entity.col.people"), cell: (e) => <data className="num" value={headcount(e)}>{t("entity.count.people", { count: headcount(e) })}</data> },
+        {
+          id: "status",
+          header: t("entity.col.status"),
+          card: "status",
+          width: "2fr",
+          minWidth: 180,
+          cell: (e) => {
+            const r = primaryRegistration(e);
+            const v = r ? verificationState(r) : null;
+            const attention = e.registrations.filter((x) => x.needs_confirmation).length + e.workplaces.filter((w) => w.needs_confirmation).length;
+            return (
+              <div className="row">
+                {v ? <Chip tone={v.tone}>{v.label}</Chip> : compact ? <Muted>{t("workplace.noRegistration")}</Muted> : <Chip tone="warn">{t("workplace.noRegistration")}</Chip>}
+                {e.needs_confirmation && <Chip tone="warn">{t("entity.needsConfirmation")}</Chip>}
+                {attention > 0 && <Chip tone="warn">{t("entity.attention", { count: attention })}</Chip>}
+              </div>
+            );
+          },
+        },
+      ]}
+    />
+  );
+  const trailingSections = (flat: boolean) => list.data ? (
+    <>
+      {!readOnly && <CorrectionRegister correctionId={correction} onSelect={(id) => void navigate({ search: (s) => ({ ...s, correction: id ?? undefined }), hash: "identifier-corrections", replace: true })} />}
+      <UnattachedWorkplaces entities={list.data.items} flat={flat} />
+    </>
+  ) : null;
+  const quickAdd = list.data && !readOnly ? <QuickAdd open={add === true} onClose={() => void navigate({ search: (s) => ({ ...s, add: undefined }) })} /> : null;
   return (
     <section id="entities-title" aria-label={t("entity.list.title")} tabIndex={-1}>
-      <PageReadGate q={list}>
-      <section className="card">
-        <div className="toolbar">
-          {phase === "SETUP" && <Chip tone="info">{t("entity.phase.setup")}</Chip>}
-          {list.data && !readOnly && <Link to="/org" search={{ tab: "entities", add: true, as_of, known_at }} className="btn btn--primary">
-            <Plus size={16} aria-hidden /> {t("entityQuick.title")}
-          </Link>}
-        </div>
-        <AsOfBand asOf={as_of} knownAt={known_at} onChange={changeDate} />
-        <QueryState q={list} layout="list">{d => d.items.length ? (
-
-            <LongTable
-              label={t("entity.list.table")}
-              rows={d.items}
-              rowId={(e) => e.id}
-              total={d.items.length}
-              hasMore={false}
-              onLoadMore={() => undefined}
-              empty={null}
-              onRowAction={(id) => void nav({ to: "/org/entities/$id", params: { id }, search: { as_of, known_at } })}
-              columns={[
-                { id: "name", rowHeader: true, card: "title", width: "3fr", header: t("entity.col.name"), cell: (e) => <><EntityName entity={e} /><NameProblems e={e} /></> },
-                { id: "kind", card: "title", width: 140, header: t("entity.col.kind"), cell: (e) => (e.biz_kind ? label(BIZ_KIND, e.biz_kind) : t("entity.kindUnset")) },
-                { id: "brn", card: "fact", width: 160, header: t("entity.col.brn"), cell: (e) => <code>{primaryRegistration(e)?.brn?.display ?? t("entityOps.info.none")}</code> },
-                { id: "workplaces", card: "fact", width: 120, header: t("entity.col.workplaces"), cell: (e) => <data className="num" value={e.workplaces.length}>{t("entity.count.workplaces", { count: e.workplaces.length })}</data> },
-                { id: "people", card: "fact", width: 120, header: t("entity.col.people"), cell: (e) => <data className="num" value={headcount(e)}>{t("entity.count.people", { count: headcount(e) })}</data> },
-                {
-                  id: "status",
-                  header: t("entity.col.status"),
-                  card: "status",
-                  width: "2fr",
-                  minWidth: 180,
-                  cell: (e) => {
-                    const r = primaryRegistration(e);
-                    const v = r ? verificationState(r) : null;
-                    const attention = e.registrations.filter((x) => x.needs_confirmation).length + e.workplaces.filter((w) => w.needs_confirmation).length;
-                    return (
-                      <div className="row">
-                        {v ? <Chip tone={v.tone}>{v.label}</Chip> : <Chip tone="warn">{t("workplace.noRegistration")}</Chip>}
-                        {e.needs_confirmation && <Chip tone="warn">{t("entity.needsConfirmation")}</Chip>}
-                        {attention > 0 && <Chip tone="warn">{t("entity.attention", { count: attention })}</Chip>}
-                      </div>
-                    );
-                  },
-                },
-              ]}
-            />
-          ) : <EmptyState title={t("entity.empty.title")} reason={t("entity.empty.reason")} actions={!readOnly && <Link to="/org/entities/new" className="btn btn--primary">{t("entity.empty.action")}</Link>} />}</QueryState>
-      </section>
-      {/* The list above must settle before these controls can be aimed at. */}
-      {list.data && !readOnly && <CorrectionRegister correctionId={correction} onSelect={(id) => void navigate({ search: (s) => ({ ...s, correction: id ?? undefined }), hash: "identifier-corrections", replace: true })} />}
-      {list.data && <UnattachedWorkplaces entities={list.data.items} />}
-      {list.data && !readOnly && <QuickAdd open={add === true} onClose={() => void navigate({ search: (s) => ({ ...s, add: undefined }) })} />}
-      </PageReadGate>
+      <ListRecord
+        q={list}
+        head={{
+          title: t("entity.list.title"),
+          asOf: asOfBand,
+          actions: addLink,
+        }}
+        tools={setupChip}
+        overlays={quickAdd}
+        list={
+          list.data ? (
+            <>
+              {list.data.items.length ? renderTable(list.data.items, true) : emptyNode}
+              {trailingSections(true)}
+            </>
+          ) : null
+        }
+        baseline={() => (
+          <PageReadGate q={list}>
+            <section className="card">
+              <div className="toolbar">
+                {setupChip}
+                {addLink}
+              </div>
+              {asOfBand}
+              <QueryState q={list} layout="list">{d => d.items.length ? renderTable(d.items, false) : emptyNode}</QueryState>
+            </section>
+            {/* The list above must settle before these controls can be aimed at. */}
+            {trailingSections(false)}
+            {quickAdd}
+          </PageReadGate>
+        )}
+      />
     </section>
   );
 }

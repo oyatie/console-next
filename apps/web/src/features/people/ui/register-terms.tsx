@@ -18,7 +18,7 @@ const TYPE = { type: "employmentType", values: EMPLOYMENT_TYPES };
  * When and how: start date chips (no default, weekday echo, what the date makes the person), the nine employment type chips (no
  * default), and the fields the server still needs today (phone, title, base pay).
  */
-export function RegisterTerms({ d, set, shown, today, tried, hireRefusal }: { d: Draft; set: Set; shown: ReadonlySet<Gap>; today: string; tried: boolean; hireRefusal?: string | null }) {
+export function RegisterTerms({ d, set, shown, today, tried, hireRefusal, consoleMode }: { d: Draft; set: Set; shown: ReadonlySet<Gap>; today: string; tried: boolean; hireRefusal?: string | null; consoleMode?: boolean }) {
   return (
     <>
       <div className={s.termsRow}>
@@ -36,7 +36,7 @@ export function RegisterTerms({ d, set, shown, today, tried, hireRefusal }: { d:
         />
         <ChoiceField
           label={t("register.type")} required={false}
-          look="chips"
+          look={consoleMode ? undefined : "chips"}
           options={EMPLOYMENT_TYPES.map((v) => ({ value: v, label: label(TYPE, v) }))}
           value={d.type}
           onChange={(v) => set("type", v as EmploymentType)}

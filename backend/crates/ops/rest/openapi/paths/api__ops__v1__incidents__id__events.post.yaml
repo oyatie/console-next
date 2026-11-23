@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+operationId: "opsIncidentEvent"
+summary: "Record Incident Event"
+x-cedar-action: "incident.write"
+security: [{"accessJwt": []}]
+description: "Appends an incident mutation with prev/expected_seq optimistic lock and SEV1/2 postmortem gate."
+parameters: [{"in": "path", "name": "id", "required": true, "schema": {"$ref": "#/components/schemas/Text"}}]
+requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/IncidentEventRequest"}}}}
+responses: {"200": {"description": "Incident updated.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/IncidentResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}

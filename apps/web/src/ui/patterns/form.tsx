@@ -28,6 +28,9 @@ export function FormPattern({
   facts: _facts,
   overlays,
   statusSegments,
+  keepOnLoss,
+  back,
+  own,
   baseline,
 }: FormPatternProps) {
   return (
@@ -41,6 +44,9 @@ export function FormPattern({
       queryLayout="form"
       phoneHeadAware
       statusSegments={statusSegments}
+      keepOnLoss={keepOnLoss}
+      back={back}
+      own={own}
       baseline={baseline}
     >
       {() => (

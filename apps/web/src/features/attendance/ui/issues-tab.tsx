@@ -6,12 +6,15 @@ import { todayKst } from "../../../lib/pure/today";
 import { QueryState } from "../../../lib/react/query-state";
 import { Chip } from "../../../ui/chip";
 import { LongTable } from "../../../ui/long-table/long-table";
+import { ExperienceSwitch } from "../../../ui/patterns/pattern-shell";
 import { exceptionsQuery } from "../api";
 import { dateText } from "../present";
+import { IssuesConsoleView } from "./issues-console-view";
 import { ReadPeriod } from "./read-period";
 
 const route = getRouteApi("/app/attendance");
-export function IssuesTab() {
+
+function IssuesBaselineTab() {
   const search = route.useSearch();
   const navigate = route.useNavigate();
   const query = useInfiniteQuery(exceptionsQuery(search.month ?? (search.date ?? todayKst()).slice(0, 7), search.wp));
@@ -29,4 +32,12 @@ export function IssuesTab() {
         { id: "state", header: t("attendance.col.state"), card: "status", cell: row => <Chip tone={row.status === "OPEN" ? "warn" : "ok"}>{t(`attendance.exception.${row.status}`)}</Chip> },
       ]} />;
   }}</QueryState></>;
+}
+
+export function IssuesTab() {
+  return (
+    <ExperienceSwitch baseline={() => <IssuesBaselineTab />}>
+      {() => <IssuesConsoleView baseline={() => <IssuesBaselineTab />} />}
+    </ExperienceSwitch>
+  );
 }

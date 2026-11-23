@@ -64,7 +64,7 @@ export function useRoster(f: OrderedRoster, soonDays: number | undefined, enable
   const probe = useFreshOnArrival(useQuery({ ...probeRead, enabled }), probeRead);
   const review = useFreshOnArrival(useQuery({ ...reviewRead, enabled }), reviewRead);
   /** A count read after the rows says this filter moved (someone else added or changed people); an older one never does. */
-  const changed = enabled && total !== undefined && probe.data !== undefined && probe.data.total !== total && !list.isFetching && probe.dataUpdatedAt > list.dataUpdatedAt;
+  const changed = !f.ids?.length && enabled && total !== undefined && probe.data !== undefined && probe.data.total !== total && !list.isFetching && probe.dataUpdatedAt > list.dataUpdatedAt;
   // An empty list that the counts say has people (an import from another tab) re-reads at once: no row is under the pointer.
   const { refetch } = list;
   useEffect(() => {

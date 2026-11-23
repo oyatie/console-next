@@ -7,11 +7,14 @@ import { fmtDate, fmtDateTime } from "@console/i18n/format";
 import { ORG_CHANGE_STATUS, actor, labeled } from "../../../lib/labels";
 import { todayKst } from "../../../lib/pure/today";
 import { Button, Check, ToggleButton } from "../../../ui/button/button";
+import { buttonClass } from "../../../ui/button/button-class";
 import { SectionHead } from "../../../ui/card/section-head";
 import { Chip } from "../../../ui/chip";
 import { DateInput } from "../../../ui/date/date-input";
 import { Field } from "../../../ui/field/field";
 import { SelectInput } from "../../../ui/field/select-input";
+import { ListRecord } from "../../../ui/patterns/list-record";
+import { ExperienceSwitch } from "../../../ui/patterns/pattern-shell";
 import { Table, type Column } from "../../../ui/table";
 import { QueryState } from "../../../lib/react/query-state";
 import { readGroup } from "../../../lib/react/query-view";
@@ -42,59 +45,86 @@ export function HistoryPage() {
   const all = readGroup([org, entity, changes, tree]);
   const names = useMemo(() => unitNames(tree.data?.entities ?? []), [tree.data]);
   const today = todayKst();
+  const buildView = () => {
+    const rows = feedRows({ org: org.data!.items, entity: entity.data!.items, changes: changes.data!.items, nameOf: (id) => names.get(id), me: me() });
+    const shown = filterRows(rows, { source, undoable, from, to, actorId });
+    const actors = [...new Map(rows.flatMap(r => r.actor?.id ? [[r.actor.id, actor(r.actor.name)] as const] : [])).entries()];
+    const filters = [source !== "all" && t(`orgHistory.filter.source.${source}`), undoable && t("orgHistory.filter.undoable"), from && fmtDate(from), to && fmtDate(to), actorId && actors.find(([id]) => id === actorId)?.[1]].filter(Boolean).join(" · ");
+    const next = scheduled(changes.data!.items, today);
+    const nextBanner = next.length > 0 ? (
+      <div className={s.banner} role="status">
+        <CalendarClock size={16} aria-hidden />
+        <span className={s.grow}>{t("orgHistory.scheduled", { count: next.length, date: fmtDate(next[0]!.effectiveDate), label: next[0]!.target.label, more: next.length - 1 })}</span>
+        <Link to="/org" search={{ tab: "changes", filter: "ready" }} className={buttonClass()}>{t("orgHistory.scheduledOpen")}</Link>
+      </div>
+    ) : null;
+    const filterControls = (
+      <div className={s.filters}>
+        <div role="group" aria-label={t("orgHistory.filter.source")} className="tabs">
+          {SOURCES.map((k) => <ToggleButton key={k} pressed={source === k} onClick={() => setSource(k)}>{t(`orgHistory.filter.source.${k}`)}</ToggleButton>)}
+        </div>
+        <Check checked={undoable} onChange={setUndoable}>{t("orgHistory.filter.undoable")}</Check>
+        <div className={s.who}>
+          <label htmlFor={`${dateId}-from`}>{t("orgHistory.filter.from")}</label>
+          <DateInput id={`${dateId}-from`} required={false} value={from} onChange={setFrom} today={today} max={to || today} />
+        </div>
+        <div className={s.who}>
+          <label htmlFor={`${dateId}-to`}>{t("orgHistory.filter.to")}</label>
+          <DateInput id={`${dateId}-to`} required={false} value={to} onChange={setTo} today={today} min={from || undefined} max={today} />
+        </div>
+        <Field label={t("orgHistory.filter.actor")} required={null}>
+          {p => <SelectInput {...p} value={actorId} onChange={e => setActorId(e.target.value)}>
+            <option value="">{t("orgHistory.filter.actorAll")}</option>
+            {actors.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+          </SelectInput>}
+        </Field>
+        {filtered && <Button variant="ghost" onClick={reset}>{t("orgHistory.filter.reset")}</Button>}
+      </div>
+    );
+    const listContent = shown.length ? (
+      // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Scrollable region needs keyboard access when table overflows horizontally.
+      <div className={bulk.scrollX} tabIndex={0} role="region" aria-label={t("orgHistory.title")}>
+        <Table label={t("orgHistory.title")} rows={shown} rowId={(r) => r.id} columns={columns()} mobileLayout="compact" />
+      </div>
+    ) : (
+      <p className="muted" role="status">{rows.length ? t("orgHistory.emptyFiltered", { filters }) : t("orgHistory.empty")}</p>
+    );
+    const footText = <p className="muted">{t("orgHistory.foot", { count: rows.length })}</p>;
+    return { nextBanner, filterControls, listContent, footText };
+  };
   return (
-    <>
-      <QueryState q={all}>
-        {() => {
-          const rows = feedRows({ org: org.data!.items, entity: entity.data!.items, changes: changes.data!.items, nameOf: (id) => names.get(id), me: me() });
-          const shown = filterRows(rows, { source, undoable, from, to, actorId });
-          const actors = [...new Map(rows.flatMap(r => r.actor?.id ? [[r.actor.id, actor(r.actor.name)] as const] : [])).entries()];
-          const filters = [source !== "all" && t(`orgHistory.filter.source.${source}`), undoable && t("orgHistory.filter.undoable"), from && fmtDate(from), to && fmtDate(to), actorId && actors.find(([id]) => id === actorId)?.[1]].filter(Boolean).join(" · ");
-          const next = scheduled(changes.data!.items, today);
-          return (
-            <>
-              {next.length > 0 && (
-                <div className={s.banner} role="status">
-                  <CalendarClock size={16} aria-hidden />
-                  <span className={s.grow}>{t("orgHistory.scheduled", { count: next.length, date: fmtDate(next[0]!.effectiveDate), label: next[0]!.target.label, more: next.length - 1 })}</span>
-                  <Link to="/org" search={{ tab: "changes", filter: "ready" }} className="btn">{t("orgHistory.scheduledOpen")}</Link>
-                </div>
-              )}
-              <SectionHead level={2}>{t("orgHistory.filter.scope")}</SectionHead>
-              <div className={s.filters}>
-                <div role="group" aria-label={t("orgHistory.filter.source")} className="tabs">
-                  {SOURCES.map((k) => <ToggleButton key={k} pressed={source === k} onClick={() => setSource(k)}>{t(`orgHistory.filter.source.${k}`)}</ToggleButton>)}
-                </div>
-                <Check checked={undoable} onChange={setUndoable}>{t("orgHistory.filter.undoable")}</Check>
-                <div className={s.who}>
-                  <label htmlFor={`${dateId}-from`}>{t("orgHistory.filter.from")}</label>
-                  <DateInput id={`${dateId}-from`} required={false} value={from} onChange={setFrom} today={today} max={to || today} />
-                </div>
-                <div className={s.who}>
-                  <label htmlFor={`${dateId}-to`}>{t("orgHistory.filter.to")}</label>
-                  <DateInput id={`${dateId}-to`} required={false} value={to} onChange={setTo} today={today} min={from || undefined} max={today} />
-                </div>
-                <Field label={t("orgHistory.filter.actor")} required={null}>
-                  {p => <SelectInput {...p} value={actorId} onChange={e => setActorId(e.target.value)}>
-                    <option value="">{t("orgHistory.filter.actorAll")}</option>
-                    {actors.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
-                  </SelectInput>}
-                </Field>
-                {filtered && <Button variant="ghost" onClick={reset}>{t("orgHistory.filter.reset")}</Button>}
-              </div>
-              {shown.length ? (
-                <div className={bulk.scrollX} role="region" aria-label={t("orgHistory.title")}>
-                  <Table label={t("orgHistory.title")} rows={shown} rowId={(r) => r.id} columns={columns()} />
-                </div>
-              ) : (
-                <p className="muted" role="status">{rows.length ? t("orgHistory.emptyFiltered", { filters }) : t("orgHistory.empty")}</p>
-              )}
-              <p className="muted">{t("orgHistory.foot", { count: rows.length })}</p>
-            </>
-          );
-        }}
-      </QueryState>
-    </>
+    <ExperienceSwitch
+      baseline={() => (
+        <QueryState q={all}>
+          {() => {
+            const v = buildView();
+            return (
+              <>
+                {v.nextBanner}
+                <SectionHead level={2}>{t("orgHistory.filter.scope")}</SectionHead>
+                {v.filterControls}
+                {v.listContent}
+                {v.footText}
+              </>
+            );
+          }}
+        </QueryState>
+      )}
+    >
+      {() => {
+        const v = org.data && entity.data && changes.data && tree.data ? buildView() : null;
+        return (
+          <ListRecord
+            q={all}
+            head={{ title: t("orgHistory.title") }}
+            filters={v?.filterControls}
+            notes={v?.nextBanner}
+            list={v?.listContent}
+            foot={v?.footText}
+          />
+        );
+      }}
+    </ExperienceSwitch>
   );
 }
 
@@ -106,11 +136,12 @@ function targetText(r: FeedRow) {
 }
 
 const columns = (): Column<FeedRow>[] => [
-  { header: t("orgHistory.col.at"), fit: true, cell: (r) => <time className="num" dateTime={r.at}>{fmtDateTime(r.at)}</time> },
-  { header: t("orgHistory.col.target"), cell: (r) => <strong>{targetText(r)}</strong> },
+  { header: t("orgHistory.col.at"), fit: true, card: "title", cell: (r) => <time className="num" dateTime={r.at}>{fmtDateTime(r.at)}</time> },
+  { header: t("orgHistory.col.target"), card: "fact", cell: (r) => <strong>{targetText(r)}</strong> },
   {
     header: t("orgHistory.col.kind"),
     fit: true,
+    card: "status",
     cell: (r) => {
       if (r.source !== "change") return <Chip tone={r.kind === "UNDO" ? "neutral" : "info"}>{historyKind(r)}</Chip>;
       const l = labeled(ORG_CHANGE_STATUS, r.kind);
@@ -119,6 +150,7 @@ const columns = (): Column<FeedRow>[] => [
   },
   {
     header: t("orgHistory.col.who"),
+    wide: true,
     cell: (r) => (
       <div className={s.who}>
         <b>{actor(r.actor?.name)}</b>
@@ -126,5 +158,5 @@ const columns = (): Column<FeedRow>[] => [
       </div>
     ),
   },
-  { header: t("orgHistory.col.undo"), cell: (r) => <UndoCell row={r} target={targetText(r)} /> },
+  { header: t("orgHistory.col.undo"), card: "action", cell: (r) => <UndoCell row={r} target={targetText(r)} /> },
 ];

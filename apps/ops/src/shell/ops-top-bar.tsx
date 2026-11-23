@@ -52,7 +52,7 @@ export function OpsTopBar({
       </Link>
       <span className={s.envChip}>{COPY.envChip}</span>
 
-      <nav aria-label={COPY.nav.label}>
+      <nav className={s.navWrap} aria-label={COPY.nav.label}>
         <ul className={s.navList}>
           {navItems.map((item) => {
             const Icon = item.icon;

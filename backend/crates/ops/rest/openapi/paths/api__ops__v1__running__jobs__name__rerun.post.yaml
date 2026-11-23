@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+operationId: "opsJobRerun"
+summary: "Draft Job Rerun Cmd"
+x-cedar-action: "jobs.rerun"
+security: [{"accessJwt": []}]
+description: "Validates job in known_jobs and records signed Cmd hand-off."
+parameters: [{"in": "path", "name": "name", "required": true, "schema": {"$ref": "#/components/schemas/Text"}}]
+responses: {"201": {"description": "Cmd hand-off recorded.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CmdResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}

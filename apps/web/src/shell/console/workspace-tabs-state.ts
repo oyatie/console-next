@@ -2,76 +2,24 @@
 import { useEffect, useState } from "react";
 import { OPEN_TAB_EVENT, resolveAppHref, type OpenTabPayload } from "../../ui/workspace-tabs/open-tab";
 import type { WorkspaceTab } from "../../ui/workspace-tabs/workspace-tabs";
+import {
+  canonicalHref,
+  hasHash,
+  hasQueryOrHash,
+  hrefPath,
+  isViewQueryRoute,
+  sameCanonicalHref,
+  sameTabTarget,
+} from "./tab-href";
+import {
+  MAX_WORKSPACE_TABS,
+  readStoredActiveWorkspaceTab,
+  readStoredWorkspaceTabs,
+  type StoredTab,
+  uniqueTabId,
+  writeStoredWorkspaceTabs,
+} from "./tab-storage";
 
-export const MAX_WORKSPACE_TABS = 8;
-
-type StoredTab = {
-  id: string;
-  href: string;
-  label: string;
-  pinned?: boolean;
-};
-
-const hrefPath = (href: string): string => {
-  const cut = href.search(/[?#]/);
-  return (cut === -1 ? href : href.slice(0, cut)) || "/";
-};
-
-const hasQueryOrHash = (href: string): boolean => href.includes("?") || href.includes("#");
-
-const sameTabTarget = (tabHref: string, pathname: string): boolean =>
-  tabHref === pathname || (!hasQueryOrHash(pathname) && hrefPath(tabHref) === pathname);
-
-export function readStoredWorkspaceTabs(storageKey: string | null): StoredTab[] | null {
-  if (!storageKey || typeof localStorage === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(storageKey);
-    if (!raw) return null;
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return null;
-    const valid = parsed.filter(
-      (item): item is StoredTab =>
-        Boolean(item) &&
-        typeof item === "object" &&
-        typeof (item as StoredTab).id === "string" &&
-        typeof (item as StoredTab).href === "string" &&
-        resolveAppHref((item as StoredTab).href) !== null &&
-        typeof (item as StoredTab).label === "string",
-    );
-    return valid.length > 0 ? valid.slice(0, MAX_WORKSPACE_TABS) : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeStoredWorkspaceTabs(storageKey: string | null, tabs: readonly StoredTab[]): boolean {
-  if (!storageKey || typeof localStorage === "undefined") return false;
-  try {
-    localStorage.setItem(
-      storageKey,
-      JSON.stringify(tabs.map(({ id, href, label, pinned }) => ({ id, href, label, ...(pinned ? { pinned: true } : {}) }))),
-    );
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function uniqueTabId(existing: readonly StoredTab[], pathname: string): string {
-  const baseId = `tab-${pathname}`;
-  if (!existing.some(tab => tab.id === baseId)) return baseId;
-  let suffix = 2;
-  while (existing.some(tab => tab.id === `${baseId}-${suffix}`)) suffix += 1;
-  return `${baseId}-${suffix}`;
-}
-
-/**
- * Reconcile open workspace tabs when the router `pathname` changes during normal navigation:
- * - Index `0` is always pinned to `defaultHref`.
- * - If `pathname` matches an already-open tab, that tab stays in place and becomes active.
- * - Otherwise, the active non-pinned tab updates in place (or a single working tab opens beside index `0`),
- *   preventing unbounded tab accumulation during ordinary navigation.
- */
 export function reconcileWorkspaceTabs(
   previous: readonly StoredTab[],
   activeId: string | undefined,
@@ -80,11 +28,13 @@ export function reconcileWorkspaceTabs(
     defaultLabel,
     pathname,
     pathLabel,
+    isFallbackLabel = false,
   }: {
     defaultHref: string;
     defaultLabel: string;
     pathname: string;
     pathLabel: string;
+    isFallbackLabel?: boolean;
   },
 ): { tabs: StoredTab[]; activeId: string } {
   const pinnedHome: StoredTab = {
@@ -93,61 +43,99 @@ export function reconcileWorkspaceTabs(
     label: defaultLabel,
     pinned: true,
   };
-  const rest = previous.filter((tab, idx) => idx > 0 && hrefPath(tab.href) !== defaultHref).slice(0, MAX_WORKSPACE_TABS - 1);
+  const preferredByHref = new Map<string, StoredTab>();
+  for (let idx = 1; idx < previous.length; idx++) {
+    const tab = previous[idx]!;
+    if (hrefPath(tab.href) === hrefPath(defaultHref) && !hasQueryOrHash(tab.href)) continue;
+    const key = canonicalHref(tab.href);
+    const existing = preferredByHref.get(key);
+    if (!existing || tab.id === activeId) {
+      preferredByHref.set(key, tab);
+    }
+  }
+  const rest: StoredTab[] = [];
+  const emitted = new Set<string>();
+  const usedIds = new Set<string>([pinnedHome.id]);
+  let normalizedActiveId = activeId;
+  for (let idx = 1; idx < previous.length; idx++) {
+    const key = canonicalHref(previous[idx]!.href);
+    if (emitted.has(key)) continue;
+    const chosen = preferredByHref.get(key);
+    if (!chosen) continue;
+    emitted.add(key);
+    const rawId = chosen.id.trim();
+    const id = rawId && !usedIds.has(rawId) ? rawId : uniqueTabId([pinnedHome, ...rest], key);
+    usedIds.add(id);
+    if (
+      activeId &&
+      chosen.id === activeId &&
+      id !== activeId &&
+      activeId !== pinnedHome.id &&
+      !rest.some(tab => tab.id === activeId)
+    ) {
+      normalizedActiveId = id;
+    }
+    rest.push({ id, href: key, label: chosen.label });
+    if (rest.length >= MAX_WORKSPACE_TABS - 1) break;
+  }
   const base = [pinnedHome, ...rest];
+  const resolveLabel = (currentLabel: string) =>
+    isFallbackLabel && currentLabel.trim() && currentLabel !== defaultLabel ? currentLabel : pathLabel;
 
   if (sameTabTarget(defaultHref, pathname)) {
     return { tabs: base, activeId: pinnedHome.id };
   }
 
-  const exact = base.find(tab => tab.href === pathname);
+  const exact = base.find(tab => sameCanonicalHref(tab.href, pathname));
   if (exact) {
     return {
-      tabs: base.map(tab => (tab.id === exact.id ? { ...tab, label: pathLabel } : tab)),
+      tabs: base.map(tab => (tab.id === exact.id ? { ...tab, label: resolveLabel(tab.label) } : tab)),
       activeId: exact.id,
     };
   }
 
-  const activeNonPinnedIdx = base.findIndex((tab, idx) => idx > 0 && tab.id === activeId && !tab.pinned);
+  const activeNonPinnedIdx = base.findIndex((tab, idx) => idx > 0 && tab.id === normalizedActiveId && !tab.pinned);
   const activeTab = activeNonPinnedIdx > 0 ? base[activeNonPinnedIdx] : undefined;
   if (activeTab && sameTabTarget(activeTab.href, pathname)) {
     return {
-      tabs: base.map((tab, idx) => (idx === activeNonPinnedIdx ? { ...tab, label: pathLabel } : tab)),
+      tabs: base.map((tab, idx) => (idx === activeNonPinnedIdx ? { ...tab, label: resolveLabel(tab.label) } : tab)),
       activeId: activeTab.id,
     };
   }
 
-  const existingByPath = !hasQueryOrHash(pathname) ? base.find((tab, idx) => idx > 0 && hrefPath(tab.href) === pathname) : undefined;
+  const existingByPath = !hasHash(pathname)
+    ? base.find((tab, idx) => idx > 0 && sameTabTarget(tab.href, pathname))
+    : undefined;
   if (existingByPath) {
     return {
-      tabs: base.map(tab => (tab.id === existingByPath.id ? { ...tab, label: pathLabel } : tab)),
+      tabs: base.map(tab => (tab.id === existingByPath.id ? { ...tab, label: resolveLabel(tab.label) } : tab)),
       activeId: existingByPath.id,
     };
   }
 
+  const targetHref = canonicalHref(pathname);
   if (activeNonPinnedIdx > 0) {
     const target = base[activeNonPinnedIdx]!;
     const updated = base.map((tab, idx) =>
-      idx === activeNonPinnedIdx ? { ...tab, href: pathname, label: pathLabel } : tab,
+      idx === activeNonPinnedIdx ? { ...tab, href: targetHref, label: pathLabel } : tab,
     );
     return { tabs: updated, activeId: target.id };
   }
 
   if (base.length < MAX_WORKSPACE_TABS) {
-    const workingId = base[1] && !base[1].pinned ? base[1].id : uniqueTabId(base, pathname);
+    const workingId = base[1] && !base[1].pinned ? base[1].id : uniqueTabId(base, targetHref);
     if (base.length === 1) {
-      const created: StoredTab = { id: workingId, href: pathname, label: pathLabel };
+      const created: StoredTab = { id: workingId, href: targetHref, label: pathLabel };
       return { tabs: [pinnedHome, created], activeId: created.id };
     }
-    const nextTab: StoredTab = { id: uniqueTabId(base, pathname), href: pathname, label: pathLabel };
+    const nextTab: StoredTab = { id: uniqueTabId(base, targetHref), href: targetHref, label: pathLabel };
     return { tabs: [...base, nextTab], activeId: nextTab.id };
   }
 
-  // At the 8-tab cap, reuse the last non-pinned tab.
   const replaceIdx = base.length - 1;
   const replaced = base[replaceIdx]!;
   return {
-    tabs: base.map((tab, idx) => (idx === replaceIdx ? { ...tab, href: pathname, label: pathLabel } : tab)),
+    tabs: base.map((tab, idx) => (idx === replaceIdx ? { ...tab, href: targetHref, label: pathLabel } : tab)),
     activeId: replaced.id,
   };
 }
@@ -157,19 +145,31 @@ export function appendExplicitWorkspaceTab(
   current: readonly StoredTab[],
   { href, label }: OpenTabPayload,
 ): { tabs: StoredTab[]; activeId: string } {
-  const existing = current.find(tab => tab.href === href);
+  const normalized = canonicalHref(href);
+  const existing =
+    current.find(tab => sameCanonicalHref(tab.href, normalized)) ??
+    current.find(tab => {
+      if (tab.pinned) return hrefPath(tab.href) === hrefPath(normalized) && !hasQueryOrHash(normalized);
+      if (hrefPath(tab.href) !== hrefPath(normalized)) return false;
+      if (isViewQueryRoute(tab.href) || isViewQueryRoute(normalized)) return false;
+      return true;
+    });
   if (existing) {
+    if (existing.pinned) {
+      return { tabs: [...current], activeId: existing.id };
+    }
+    const nextHref = hasQueryOrHash(normalized) ? normalized : existing.href;
+    const nextLabel = label.trim() ? label : existing.label;
     return {
-      tabs: existing.pinned ? [...current] : current.map(tab => (tab.id === existing.id ? { ...tab, label } : tab)),
+      tabs: current.map(tab => (tab.id === existing.id ? { ...tab, href: nextHref, label: nextLabel } : tab)),
       activeId: existing.id,
     };
   }
-  const id = uniqueTabId(current, href);
-  const created: StoredTab = { id, href, label };
+  const id = uniqueTabId(current, normalized);
+  const created: StoredTab = { id, href: normalized, label };
   if (current.length < MAX_WORKSPACE_TABS) {
     return { tabs: [...current, created], activeId: id };
   }
-  // Evict the oldest closable tab (index 1) when at cap.
   const next = [current[0]!, ...current.slice(2), created];
   return { tabs: next, activeId: id };
 }
@@ -194,45 +194,62 @@ export function useWorkspaceTabs({
   defaultHref,
   defaultLabel,
   pathname,
+  currentHref,
   pathLabel,
+  isFallbackLabel = false,
   onNavigate,
 }: {
   principal: string | null;
   defaultHref: string;
   defaultLabel: string;
   pathname: string;
+  currentHref?: string;
   pathLabel: string;
+  isFallbackLabel?: boolean;
   onNavigate: (href: string) => void;
 }) {
   const storageKey = principal ? `console.tabs.${principal}` : null;
+  const activeUrl = currentHref ?? pathname;
   const [state, setState] = useState<{ key: string | null; tabs: StoredTab[]; activeId: string }>(() => {
     const stored = readStoredWorkspaceTabs(storageKey) ?? [];
-    const reconciled = reconcileWorkspaceTabs(stored, undefined, {
+    const storedActive = readStoredActiveWorkspaceTab(storageKey);
+    const reconciled = reconcileWorkspaceTabs(stored, storedActive, {
       defaultHref,
       defaultLabel,
       pathname,
       pathLabel,
+      isFallbackLabel,
     });
     return { key: storageKey, ...reconciled };
   });
 
   if (state.key !== storageKey) {
     const stored = readStoredWorkspaceTabs(storageKey) ?? [];
-    const reconciled = reconcileWorkspaceTabs(stored, undefined, {
+    const storedActive = readStoredActiveWorkspaceTab(storageKey);
+    const reconciled = reconcileWorkspaceTabs(stored, storedActive, {
       defaultHref,
       defaultLabel,
       pathname,
       pathLabel,
+      isFallbackLabel,
     });
     setState({ key: storageKey, ...reconciled });
   } else {
     const activeTab = state.tabs.find(tab => tab.id === state.activeId);
-    if (!activeTab || !sameTabTarget(activeTab.href, pathname) || activeTab.label !== pathLabel || state.tabs[0]?.label !== defaultLabel) {
+    const shouldKeepExplicitLabel =
+      Boolean(activeTab) && isFallbackLabel && activeTab!.label.trim() !== "" && activeTab!.label !== defaultLabel;
+    if (
+      !activeTab ||
+      !sameTabTarget(activeTab.href, pathname) ||
+      (!shouldKeepExplicitLabel && activeTab.label !== pathLabel) ||
+      state.tabs[0]?.label !== defaultLabel
+    ) {
       const reconciled = reconcileWorkspaceTabs(state.tabs, state.activeId, {
         defaultHref,
         defaultLabel,
         pathname,
         pathLabel,
+        isFallbackLabel,
       });
       if (
         reconciled.activeId !== state.activeId ||
@@ -244,8 +261,8 @@ export function useWorkspaceTabs({
   }
 
   useEffect(() => {
-    writeStoredWorkspaceTabs(storageKey, state.tabs);
-  }, [storageKey, state.tabs]);
+    writeStoredWorkspaceTabs(storageKey, state.tabs, state.activeId);
+  }, [storageKey, state.tabs, state.activeId]);
 
   useEffect(() => {
     const onExplicitOpen = (event: Event) => {
@@ -253,7 +270,7 @@ export function useWorkspaceTabs({
       if (!detail?.href) return;
       const resolved = resolveAppHref(
         detail.href,
-        pathname || (typeof window !== "undefined" ? window.location.pathname : "/"),
+        hrefPath(activeUrl) || (typeof window !== "undefined" ? window.location.pathname : "/"),
       );
       if (!resolved) return;
       setState(prev => ({
@@ -264,7 +281,7 @@ export function useWorkspaceTabs({
     };
     window.addEventListener(OPEN_TAB_EVENT, onExplicitOpen);
     return () => window.removeEventListener(OPEN_TAB_EVENT, onExplicitOpen);
-  }, [onNavigate, pathname]);
+  }, [activeUrl, onNavigate]);
 
   const tabs: WorkspaceTab[] = state.tabs.map((tab, idx) => ({
     id: tab.id,
@@ -275,13 +292,13 @@ export function useWorkspaceTabs({
 
   const selectTab = (tab: WorkspaceTab) => {
     setState(prev => ({ ...prev, activeId: tab.id }));
-    if (tab.href !== pathname) onNavigate(tab.href);
+    if (!sameCanonicalHref(tab.href, activeUrl)) onNavigate(tab.href);
   };
 
   const closeTab = (tabId: string) => {
     const outcome = closeWorkspaceTab(state.tabs, tabId, state.activeId);
     setState({ key: storageKey, tabs: outcome.tabs, activeId: outcome.activeId });
-    if (outcome.navigateTo && outcome.navigateTo !== pathname) {
+    if (outcome.navigateTo && !sameCanonicalHref(outcome.navigateTo, activeUrl)) {
       onNavigate(outcome.navigateTo);
     }
   };

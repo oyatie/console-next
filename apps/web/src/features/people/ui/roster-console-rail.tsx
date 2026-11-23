@@ -16,6 +16,7 @@ export function RosterConsoleRail({
   entities,
   facets,
   unit,
+  idsActive = false,
   expandedEntities,
   toggleEntityExpand,
   empTypes,
@@ -38,6 +39,7 @@ export function RosterConsoleRail({
   entities: readonly LegalEntity[];
   facets: EmployeeFacets | undefined;
   unit: string | null | undefined;
+  idsActive?: boolean;
   expandedEntities: ReadonlySet<string>;
   toggleEntityExpand: (id: string) => void;
   empTypes: ReadonlySet<EmpType>;
@@ -175,7 +177,7 @@ export function RosterConsoleRail({
       ]}
       reset={{
         label: t("people.rail.clear"),
-        disabled: activeFilterCount === 0 && !q && status === "current",
+        disabled: activeFilterCount === 0 && !idsActive && !q && status === "current",
         onReset: resetAll,
       }}
     />

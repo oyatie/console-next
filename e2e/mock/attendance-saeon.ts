@@ -20,19 +20,67 @@ export function saeonOctoberDayKind(day: number): S["AttendanceDayKind"] {
 
 export function saeonAttendanceScheduleTree(): S["AttendanceScheduleTree"] {
   const precision = saeonUniverse.entities[0]!;
+  const seoul = precision.workplaces[0]!;
   const pyeongtaek = precision.workplaces[1]!;
+  const asan = precision.workplaces[2]!;
   const team1Name = pyeongtaek.departments[1]!.split(" › ").at(-1)!;
+  const total = saeonUniverse.attendanceMonth.members.length;
+  const baseLayer: S["AttendanceLayerSummary"] = {
+    layer_id: "00000000-0000-4000-8920-000000000001",
+    pattern_id: "00000000-0000-4000-8921-000000000001",
+    pattern_name: "09:00–18:00",
+    effective_from: "2026-01-01",
+    version: 1,
+  };
   return {
     date: "2026-10-15",
-    people_total: saeonUniverse.attendanceMonth.members.length,
+    people_total: total,
     people_unscheduled: 0,
     holidays_loaded: true,
     nodes: [
       {
-        id: pyeongtaek.id,
-        name: `${pyeongtaek.name} · ${team1Name}`,
+        id: precision.id,
+        name: precision.name,
+        kind: "LEGAL_ENTITY",
+        people: total,
+        layer: baseLayer,
+        unscheduled: 0,
+      },
+      {
+        id: seoul.id,
+        parent_id: precision.id,
+        name: seoul.name,
         kind: "WORKPLACE",
-        people: saeonUniverse.attendanceMonth.members.length,
+        people: 8,
+        effective: { ...baseLayer, from: "LEGAL_ENTITY" },
+        unscheduled: 0,
+      },
+      {
+        id: pyeongtaek.id,
+        parent_id: precision.id,
+        name: pyeongtaek.name,
+        kind: "WORKPLACE",
+        people: total,
+        effective: { ...baseLayer, from: "LEGAL_ENTITY" },
+        unscheduled: 0,
+      },
+      {
+        id: asan.id,
+        parent_id: precision.id,
+        name: asan.name,
+        kind: "WORKPLACE",
+        people: 6,
+        effective: { ...baseLayer, from: "LEGAL_ENTITY" },
+        unscheduled: 0,
+      },
+      {
+        id: "00000000-0000-4000-8210-000000000001",
+        parent_id: pyeongtaek.id,
+        workplace_id: pyeongtaek.id,
+        name: team1Name,
+        kind: "DEPARTMENT",
+        people: total,
+        effective: { ...baseLayer, from: "LEGAL_ENTITY" },
         unscheduled: 0,
       },
     ],

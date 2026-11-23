@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { QueryState } from "../../lib/react/query-state";
+import { queryView } from "../../lib/react/query-view";
 import { ToggleButton } from "../../ui/button/button";
 import { ExperienceSwitch } from "../../ui/patterns/pattern-shell";
 import { ApiError, authzQuery, granted, myAccessQuery } from "../../reference/authz/api";
@@ -10,6 +11,7 @@ import { Accounts } from "./Accounts";
 import { PeopleHead, type PeopleView } from "./ui/people-head";
 import { RosterPage } from "./ui/roster-page";
 import { UnplacedRoster } from "./ui/unplaced-roster";
+import s from "./ui/roster.module.css";
 import { PEOPLE_TABS, type PeopleTab } from "./domain/people-tabs";
 import type { ExitFilter } from "./api";
 import { useTabSearch } from "../../lib/react/use-tab-search";
@@ -17,7 +19,7 @@ import { Page } from "../../ui/page/page";
 import { PageTabs } from "../../ui/tabs/page-tabs";
 import { ReadSkeleton } from "../../ui/skeleton/skeleton";
 import { AccessGate } from "../../reference/authz/ui/access-gate";
-import { accessRefusal } from "../../reference/authz/domain/access";
+import { accessRefusal, type AccessRequirement } from "../../reference/authz/domain/access";
 
 const AppointmentsContent = lazy(() => import("./ui/appointments-content").then(module => ({ default: module.AppointmentsContent })));
 const ExitCaseListContent = lazy(() => import("./ui/exit-list").then(module => ({ default: module.ExitCaseListContent })));
@@ -27,7 +29,7 @@ const ExitCaseListContent = lazy(() => import("./ui/exit-list").then(module => (
  * nothing = current staff; `review`: comma-joined attention chips, see domain/roster.ts). The search term (a
  * person's name or number) stays out of the URL and so out of history. `bulk=paste` opens the bulk sheet from a paste.
  */
-export type PeopleSearch = { tab?: PeopleTab; exitStatus?: ExitFilter; placement?: "unplaced"; sel?: string; sel2?: string; view?: PeopleView; unit?: string; status?: string; sort?: string; review?: string; bulk?: "paste"; export?: "register" };
+export type PeopleSearch = { tab?: PeopleTab; exitStatus?: ExitFilter; placement?: "unplaced"; sel?: string; sel2?: string; view?: PeopleView; unit?: string; ids?: string; status?: string; sort?: string; review?: string; bulk?: "paste"; export?: "register" };
 
 const route = getRouteApi("/app/people");
 
@@ -49,23 +51,65 @@ export function People() {
       </PageTabs>
     </Page>
   );
+  const currentTab: PeopleTab = tabs.selected === "appointments" || tabs.selected === "exits" ? tabs.selected : "roster";
+  const pageTabs = (
+    <PageTabs
+      {...tabs}
+      label={t("roster.head.title")}
+      items={PEOPLE_TABS.map(({ id }) => ({ id, label: t(`roster.page.${id}`) }))}
+    />
+  );
+
   return (
     <ExperienceSwitch baseline={() => baselinePage}>
       {() =>
-        (!tabs.selected || tabs.selected === "roster") && view !== "accounts" ? (
-          <Suspense fallback={<ReadSkeleton layout="list" />}>
-            <AccessGate {...peopleAccess.roster} layout="list"><PeopleDirectory /></AccessGate>
-          </Suspense>
-        ) : (
+        currentTab === "roster" && view === "accounts" ? (
           baselinePage
+        ) : (
+          <div className={s.tabHost} data-page-view={currentTab}>
+            <Suspense fallback={<ReadSkeleton layout="list" />}>
+              {currentTab === "roster" && (
+                <ConsoleTabGate tabs={pageTabs} need={peopleAccess.roster}>
+                  <PeopleDirectory tabs={pageTabs} />
+                </ConsoleTabGate>
+              )}
+              {currentTab === "appointments" && <AppointmentsContent tabs={pageTabs} />}
+              {currentTab === "exits" && (
+                <ConsoleTabGate tabs={pageTabs} need={peopleAccess.exits}>
+                  <ExitCaseListContent
+                    tabs={pageTabs}
+                    status={exitStatus}
+                    onStatus={status => void navigate({ search: previous => ({ ...previous, exitStatus: status }), replace: true })}
+                  />
+                </ConsoleTabGate>
+              )}
+            </Suspense>
+          </div>
         )
       }
     </ExperienceSwitch>
   );
 }
 
+function ConsoleTabGate({ tabs, need, children }: { tabs: ReactNode; need: AccessRequirement; children: ReactNode }) {
+  const access = useQuery(myAccessQuery);
+  const view = queryView(access);
+  const code = access.data && view !== "denied" && view !== "not-found" ? accessRefusal(access.data, need) : null;
+  const reference = access.error instanceof ApiError ? access.error.operationId : undefined;
+  const q = code ? { ...access, error: new ApiError(403, code, "", [], reference, false) } : access;
+  if (q.data === undefined || q.error) {
+    return (
+      <>
+        {tabs}
+        <QueryState q={q} layout="list" need={need}>{() => null}</QueryState>
+      </>
+    );
+  }
+  return <>{children}</>;
+}
+
 /** Employees (the roster) or accounts, with their existing server capability decisions. */
-export function PeopleDirectory() {
+export function PeopleDirectory({ tabs }: { tabs?: ReactNode } = {}) {
   const { view: asked, sel } = route.useSearch();
   const navigate = route.useNavigate();
   const authz = useQuery(authzQuery);
@@ -81,23 +125,36 @@ export function PeopleDirectory() {
   // after its rows and push every column aside.
   const denied = authz.isSuccess && !directory && !can("user_manage");
   const state = denied ? { ...authz, error: new ApiError(403, "access_denied", "", [], undefined, false) } : authz;
-  return <QueryState q={state} layout="list">{() => {
-  const switcher = directory && (
-    <div role="group" aria-label={t("people.tabs")} className="row">
-      {(["employees", "accounts"] as const).map((v) => (
-        <ToggleButton key={v} pressed={view === v} onClick={() => onView(v)}>{t(v === "employees" ? "people.tab.employees" : "people.tab.accounts")}</ToggleButton>
-      ))}
-    </div>
+  return (
+    <>
+      {tabs && (state.isPending || state.error) ? tabs : null}
+      <QueryState q={state} layout="list">{() => {
+      const switcher = directory && (
+        <div role="group" aria-label={t("people.tabs")} className="row">
+          {(["employees", "accounts"] as const).map((v) => (
+            <ToggleButton key={v} pressed={view === v} onClick={() => onView(v)}>{t(v === "employees" ? "people.tab.employees" : "people.tab.accounts")}</ToggleButton>
+          ))}
+        </div>
+      );
+      if (view === "employees") return <Directory manage={can("employee_directory_manage", "all")} scoped={scoped} switcher={switcher} tabs={tabs} />;
+      return <div className="page"><Accounts head={(available, search) => head(search, available)} sel={sel} /></div>;
+      }}</QueryState>
+    </>
   );
-  if (view === "employees") return <Directory manage={can("employee_directory_manage", "all")} scoped={scoped} switcher={switcher} />;
-  return <div className="page"><Accounts head={(available, search) => head(search, available)} sel={sel} /></div>;
-  }}</QueryState>;
 }
 
-function Directory(props: Parameters<typeof RosterPage>[0]) {
+function Directory({ tabs, ...props }: Parameters<typeof RosterPage>[0]) {
   const { peopleAccess } = route.useRouteContext();
   const access = useQuery(myAccessQuery);
   const unplaced = route.useSearch().placement === "unplaced";
   const refused = access.data && accessRefusal(access.data, peopleAccess.unplaced) !== null;
-  return unplaced && !refused ? <UnplacedRoster {...props} /> : <RosterPage {...props} notice={unplaced ? t("roster.unplaced.unavailable") : undefined} />;
+  if (unplaced && !refused) {
+    return (
+      <>
+        {tabs}
+        <UnplacedRoster {...props} />
+      </>
+    );
+  }
+  return <RosterPage {...props} tabs={tabs} notice={unplaced ? t("roster.unplaced.unavailable") : undefined} />;
 }

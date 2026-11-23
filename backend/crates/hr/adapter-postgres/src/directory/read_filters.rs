@@ -94,6 +94,13 @@ pub struct EmployeeListFilters {
 
 impl EmployeeListFilters {
     pub fn from_query(query: &EmployeeListQuery, scope: &BranchScope) -> Result<Self, HrError> {
+        Self::from_query_for_reach(query, HrReach::from(scope))
+    }
+
+    pub fn from_query_for_reach(
+        query: &EmployeeListQuery,
+        reach: HrReach,
+    ) -> Result<Self, HrError> {
         let trimmed = |value: &Option<String>| {
             value
                 .as_deref()
@@ -171,7 +178,7 @@ impl EmployeeListFilters {
                 .map(|raw| parse_yyyy_mm_dd(&raw))
                 .transpose()?,
             lifecycle_apply_failed: query.lifecycle_apply_failed,
-            reach: HrReach::from(scope),
+            reach,
             visibility: None,
             edit: None,
         })

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Link, useRouter } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
@@ -13,18 +13,29 @@ import { KeyValue } from "../../../ui/key-value/key-value";
 import { SetupRail } from "../../../ui/setup-rail/setup-rail";
 import { myAccessQuery } from "../../../reference/authz/api";
 import { accessRefusal } from "../../../reference/authz/domain/access";
-import { payGroupsQuery, payrollRunsQuery, type PayGroup } from "../api";
+import { payGroupsQuery, payrollRunsPages, type PayGroup } from "../api";
 import { payDateRule, periodRule, runStatus, runName } from "../present";
+import { PayrollHomeConsole } from "./payroll-home-console";
 
 export function PayrollHome() {
+  const router = useRouter();
+  const setupAccess = router.routesByPath["/payroll/setup"].options.staticData?.access;
+  const createAccess = router.routesByPath["/payroll/runs/new"].options.staticData?.access;
+  return (
+    <PayrollHomeConsole
+      setupAccess={setupAccess}
+      createAccess={createAccess}
+      baseline={() => <BaselinePayrollHome setupAccess={setupAccess} createAccess={createAccess} />}
+    />
+  );
+}
+
+function BaselinePayrollHome({ setupAccess, createAccess }: { setupAccess: unknown; createAccess: unknown }) {
   const groups = useQuery(payGroupsQuery);
   const access = useQuery(myAccessQuery);
-  const router = useRouter();
-  const need = router.routesByPath["/payroll/setup"].options.staticData?.access;
-  const add = access.data && need && (need === "signed-in" || accessRefusal(access.data, need) === null)
+  const add = access.data && setupAccess && (setupAccess === "signed-in" || accessRefusal(access.data, setupAccess as never) === null)
     ? <Link to="/payroll/setup">{t("payroll.setup.add")}</Link> : undefined;
-  const createNeed = router.routesByPath["/payroll/runs/new"].options.staticData?.access;
-  const create = access.data && createNeed && (createNeed === "signed-in" || accessRefusal(access.data, createNeed) === null)
+  const create = access.data && createAccess && (createAccess === "signed-in" || accessRefusal(access.data, createAccess as never) === null)
     ? <Link to="/payroll/runs/new">{t("payroll.create.title")}</Link> : undefined;
   return <Page floorplan="P-01" head={{ title: t("payroll.title"), sub: t("payroll.alpha"), primary: create ?? add, tools: <Link to="/payroll/reference" search={{ entity: undefined }}>{t("payroll.reference.title")}</Link> }}>
     <QueryState q={groups} layout="list">{data => data.items.length ? <div className="form">
@@ -49,10 +60,11 @@ export function PayrollHome() {
   </Page>;
 }
 function GroupRuns({ group }: { group: PayGroup }) {
-  const runs = useQuery(payrollRunsQuery);
+  const runs = useInfiniteQuery(payrollRunsPages({ pay_group_id: group.id, legal_entity_id: group.legal_entity_id }));
   return <QueryState q={runs} layout="list">{data => {
-    const rows = data.items.filter(run => run.pay_group_id === group.id && run.legal_entity_id === group.legal_entity_id);
-    return rows.length ? <LongTable label={t("payroll.runs", { name: group.name })} empty={null} rows={rows} rowId={run => run.id} hasMore={false} onLoadMore={() => {}} columns={[
+    const rows = data.pages.flatMap(page => page.items).filter(run => run.pay_group_id === group.id && run.legal_entity_id === group.legal_entity_id);
+    const total = data.pages[0]?.total ?? rows.length;
+    return rows.length ? <LongTable label={t("payroll.runs", { name: group.name })} empty={null} rows={rows} total={total} rowId={run => run.id} hasMore={Boolean(runs.hasNextPage)} loadingMore={runs.isFetchingNextPage} onLoadMore={() => void runs.fetchNextPage()} columns={[
       { id: "period", header: t("payroll.period"), cell: run => `${fmtDate(run.period_start)} – ${fmtDate(run.period_end)}`, rowHeader: true },
       { id: "name", header: t("payroll.runName"), cell: run => <Link to="/payroll/runs/$id" params={{ id: run.id }}>{runName(run, group)}</Link> },
       { id: "status", header: t("payroll.status"), card: "status", cell: run => <Chip>{runStatus(run.status)}</Chip> },

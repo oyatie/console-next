@@ -5,7 +5,7 @@ import { RosterExport } from "./roster-export";
 import { RosterScreen } from "./roster-screen";
 import { useRosterScreen } from "./use-roster-screen";
 
-export function RosterPage(props: { manage: boolean; scoped?: boolean; switcher?: ReactNode; notice?: ReactNode }) {
+export function RosterPage(props: { manage: boolean; scoped?: boolean; switcher?: ReactNode; notice?: ReactNode; tabs?: ReactNode }) {
   const screen = useRosterScreen();
   const can = useCan();
   return <RosterScreen {...props} screen={screen} actions={can("excel_download") && <RosterExport query={screen.r.query} total={screen.r.total} />} />;

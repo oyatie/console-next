@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+additionalProperties: false
+properties:
+  note: {"anyOf": [{"type": "string"}, {"type": "null"}]}

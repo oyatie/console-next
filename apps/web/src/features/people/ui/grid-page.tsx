@@ -1,9 +1,10 @@
 import { AccessGate } from "../../../reference/authz/ui/access-gate";
-import { useCallback, useState } from "react";
+import { lazy, Suspense, useCallback, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Columns3, ClipboardPaste, X } from "lucide-react";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
+import { chunk } from "../../../lib/chunk-guard";
 import { label } from "../../../lib/labels";
 import { announce } from "../../../lib/react/announce";
 import { CommandError } from "../../../lib/react/command-error";
@@ -17,7 +18,9 @@ import { Kbd } from "../../../ui/kbd/kbd";
 import { StepLine } from "../../../ui/step-line/step-line";
 import { Crumbs } from "../../../ui/page-head/crumbs";
 import { PageHead } from "../../../ui/page-head/page-head";
+import { ExperienceSwitch } from "../../../ui/patterns/pattern-shell";
 import { SheetGrid, type SheetGridColumn } from "../../../ui/sheet-grid/sheet-grid";
+import { ReadSkeleton } from "../../../ui/skeleton/skeleton";
 import { commitBulkCorrection, previewBulkCorrection } from "../api";
 import { DEFAULT_COLUMNS, GRID_FIELDS, TYPES, keepsOnPaste, parseTsv, previewCounts, readCell, refusedCells, rowState, shownText, shownValue, type Cell, type GridKey } from "../domain/grid";
 import { pasteSkippedText, refusedText } from "../present";
@@ -27,6 +30,8 @@ import { GridPreview } from "./grid-preview";
 import { useBulkSelection } from "./use-bulk-selection";
 import { useGridData } from "./use-grid-data";
 import s from "./grid-page.module.css";
+
+const GridConsole = lazy(() => chunk(import("./grid-console")).then((m) => ({ default: m.GridConsole })));
 
 type Preview = components["schemas"]["BulkEmployeeCorrectionPreview"];
 type Result = components["schemas"]["BulkEmployeeCorrectionResult"];
@@ -165,15 +170,9 @@ function GridWorkspace() {
     { key: "check", label: t("bulkGrid.step.check"), state: step === "check" ? ("current" as const) : step === "done" ? ("done" as const) : ("waiting" as const) },
     { key: "apply", label: t("bulkGrid.step.apply"), state: step === "done" ? ("current" as const) : ("waiting" as const) },
   ];
-  return (
-    <div className={s.page}>
-      <PageHead
-        band
-        crumbs={<Crumbs items={[<Link key="people" to="/people" search={{}}>{t("people.title")}</Link>]} current={t("bulkGrid.crumb")} />}
-        title={t("bulkGrid.title", { scope })}
-        tools={<><StepLine steps={steps} label={t("bulk.page.steps")} /><IconButton label={t("bulk.page.close")} onClick={() => void nav({ to: "/people", search: {} })}><X size={16} aria-hidden /></IconButton></>}
-      />
-<QueryState q={data.q} layout="grid">{() => <>      {step === "edit" && (
+  const renderStepBody = (consoleMode: boolean) => (
+    <>
+      {step === "edit" && (
         <>
           <div className={s.toolbar}>
             {pick && <GridColumns value={cols} onChange={setCols} onClose={closePick} />}
@@ -181,18 +180,27 @@ function GridWorkspace() {
             <div role="group" aria-label={t("bulkGrid.filter")} className={s.filters}>
               {(["all", "changed", "error", "same"] as const).map((k) => <ToggleButton key={k} pressed={filter === k} onClick={() => setFilter(k)}>{t(`bulkGrid.filter.${k}`, { n: count(k) })}</ToggleButton>)}
             </div>
+            {consoleMode && (
+              <>
+                <bdi className={s.note} title={t("bulkGrid.verb.secondHint")}>{t("bulkGrid.verbs")}</bdi>
+                <bdi className={s.verbChip}>{t("bulkGrid.verb.correct")}</bdi>
+              </>
+            )}
             <span className={s.grow} />
             <Button aria-expanded={pick} onClick={() => setPick((x) => !x)}><Columns3 size={16} aria-hidden />{t("bulkGrid.columns", { n: cols.length })}</Button>
             <Button onClick={() => setActiveCell({ r: 0, c: 0 })}><ClipboardPaste size={16} aria-hidden />{t("bulkGrid.paste")}<Kbd keys="⌘V" /></Button>
             <Button onClick={() => document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", { key: "d", ctrlKey: true, bubbles: true }))}>{t("bulkGrid.fill")}<Kbd keys="Ctrl+D" /></Button>
           </div>
-          <div className={s.verbs}>
-            <b>{t("bulkGrid.verbs")}</b>
-            <span className={s.note} hidden={fields.every((f) => f.cls === "now")}>{t("bulkGrid.verb.secondHint")}</span>
-            <span className={s.verbChip}>{t("bulkGrid.verb.correct")}</span>
-          </div>
+          {!consoleMode && (
+            <div className={s.verbs}>
+              <b>{t("bulkGrid.verbs")}</b>
+              <span className={s.note} hidden={fields.every((f) => f.cls === "now")}>{t("bulkGrid.verb.secondHint")}</span>
+              <span className={s.verbChip}>{t("bulkGrid.verb.correct")}</span>
+            </div>
+          )}
           {pasteNotice && <Banner tone="warn" placement="page" title={pasteNotice} />}
-          <div className={s.gridWrap} tabIndex={-1}>
+          {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Scrollable SheetGrid host needs keyboard access. */}
+          <div className={consoleMode ? s.gridWrapFlush : s.gridWrap} tabIndex={0} role="region" aria-label={t("bulkGrid.title", { scope: t("bulkGrid.scopeAll") })}>
             <SheetGrid rows={shown} rowKey={(row) => row.id} columns={sheetColumns}
               leading={[{ key: "number", header: t("bulkGrid.col.number"), cell: (row) => row.number, className: "num" }, { key: "name", header: t("bulkGrid.col.name"), cell: (row) => row.name }]}
               tail={{ header: t("bulkGrid.col.status"), cell: (row) => {
@@ -207,18 +215,61 @@ function GridWorkspace() {
       )}
       {step === "done" && result && c && <GridDone result={result} cells={c.cells} now={c.now} reason={reason ? t(`bulkGrid.reason.${reason}` as never) : ""} left={errors} refusedCells={preview ? Object.values(refusedCells(preview)).reduce((n, m) => n + Object.keys(m).length, 0) : 0} onFix={fixLeft} />}
       {step === "check" && preview && <GridPreview preview={preview} columns={fields} label={fieldLabel} show={(key, raw) => { const f = GRID_FIELDS.find((x) => x.key === key); return f ? shownText(f, raw, words(f.key)) : (raw ?? ""); }} who={(id) => rows.find((r) => r.id === id)} reason={reason} onReason={setReason} memo={memo} onMemo={setMemo} tried={tried} />}
-      {step !== "done" && <footer className={s.bar}>
-        <div className={s.barText}>
-          {step === "check" && c ? <b>{t(c.refused ? "bulkGrid.preview.foot" : "bulkGrid.preview.footClean", { ...c, n: c.people })}</b>
-          : <><b>{t("bulkGrid.foot", { n: rows.filter((_, i) => states[i]!.changed > 0).length, now: cellsBy("now"), second: cellsBy("second"), errors })}</b></>}
-          <CommandError error={check.error ?? commit.error} own={(code) => (code === "rows_changed_since_preview" ? t("bulkGrid.changedMeanwhile") : undefined)} />
-        </div>
-        {step === "edit" && errors > 0 && <Button onClick={firstError}>{t("bulkGrid.firstError")}<Kbd keys="F8" /></Button>}
-        {step === "edit" && <Button variant="primary" aria-disabled={check.isPending || body().rows.length === 0 || undefined} onClick={() => body().rows.length > 0 && check.mutate()}>{errors ? t("bulkGrid.toCheck", { n: errors }) : t("bulkGrid.toCheckClean")}<Kbd keys="⌘↵" /></Button>}
-        {step === "check" && <Button variant="ghost" onClick={() => (preview && setMarks(refusedCells(preview)), setStep("edit"))}>{t("bulkGrid.back")}</Button>}
-        {step === "check" && c && <Button variant="primary" aria-disabled={commit.isPending || undefined} onClick={() => (setTried(true), reason && commit.mutate())}>{t("bulkGrid.commit", { n: c.people, cells: c.cells })}<Kbd keys="⌘↵" /></Button>}
-      </footer>}
-    </>}</QueryState>
+    </>
+  );
+
+  const renderBaseline = () => (
+    <div className={s.page}>
+      <PageHead
+        band
+        crumbs={<Crumbs items={[<Link key="people" to="/people" search={{}}>{t("people.title")}</Link>]} current={t("bulkGrid.crumb")} />}
+        title={t("bulkGrid.title", { scope })}
+        tools={<><StepLine steps={steps} label={t("bulk.page.steps")} /><IconButton label={t("bulk.page.close")} onClick={() => void nav({ to: "/people", search: {} })}><X size={16} aria-hidden /></IconButton></>}
+      />
+      <QueryState q={data.q} layout="grid">{() => <>
+        {renderStepBody(false)}
+        {step !== "done" && <footer className={s.bar}>
+          <div className={s.barText}>
+            {step === "check" && c ? <b>{t(c.refused ? "bulkGrid.preview.foot" : "bulkGrid.preview.footClean", { ...c, n: c.people })}</b>
+            : <><b>{t("bulkGrid.foot", { n: rows.filter((_, i) => states[i]!.changed > 0).length, now: cellsBy("now"), second: cellsBy("second"), errors })}</b></>}
+            <CommandError error={check.error ?? commit.error} own={(code) => (code === "rows_changed_since_preview" ? t("bulkGrid.changedMeanwhile") : undefined)} />
+          </div>
+          {step === "edit" && errors > 0 && <Button onClick={firstError}>{t("bulkGrid.firstError")}<Kbd keys="F8" /></Button>}
+          {step === "edit" && <Button variant="primary" aria-disabled={check.isPending || body().rows.length === 0 || undefined} onClick={() => body().rows.length > 0 && check.mutate()}>{errors ? t("bulkGrid.toCheck", { n: errors }) : t("bulkGrid.toCheckClean")}<Kbd keys="⌘↵" /></Button>}
+          {step === "check" && <Button variant="ghost" onClick={() => (preview && setMarks(refusedCells(preview)), setStep("edit"))}>{t("bulkGrid.back")}</Button>}
+          {step === "check" && c && <Button variant="primary" aria-disabled={commit.isPending || undefined} onClick={() => (setTried(true), reason && commit.mutate())}>{t("bulkGrid.commit", { n: c.people, cells: c.cells })}<Kbd keys="⌘↵" /></Button>}
+        </footer>}
+      </>}</QueryState>
     </div>
+  );
+
+  return (
+    <ExperienceSwitch baseline={renderBaseline}>
+      {() => (
+        <Suspense fallback={<ReadSkeleton layout="grid" />}>
+          <GridConsole
+            q={data.q}
+            scope={scope}
+            steps={steps}
+            step={step}
+            body={renderStepBody(true)}
+            errors={errors}
+            changedPeople={rows.filter((_, i) => states[i]!.changed > 0).length}
+            nowCells={cellsBy("now")}
+            secondCells={cellsBy("second")}
+            previewCounts={c}
+            checkPending={check.isPending}
+            commitPending={commit.isPending}
+            hasRowsToCheck={body().rows.length > 0}
+            error={check.error ?? commit.error}
+            onFirstError={firstError}
+            onCheck={() => check.mutate()}
+            onBack={() => (preview && setMarks(refusedCells(preview)), setStep("edit"))}
+            onCommit={() => (setTried(true), reason && commit.mutate())}
+            onClose={() => void nav({ to: "/people", search: {} })}
+          />
+        </Suspense>
+      )}
+    </ExperienceSwitch>
   );
 }

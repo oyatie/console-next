@@ -44,3 +44,11 @@ export function Button({
     />
   );
 }
+
+/**
+ * An icon-only button (a close, a row overflow, a zoom step): square, its name in `label` (the accessible name and the
+ * tooltip). Never for a destructive act, which always says what it does in words.
+ */
+export function IconButton({ label, variant = "ghost", ...rest }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "aria-label" | "title"> & { label: string; variant?: Exclude<ButtonVariant, "danger" | "ghost-danger">; size?: ButtonSize; ref?: Ref<HTMLButtonElement> }) {
+  return <Button {...rest} variant={variant} icon aria-label={label} title={label} />;
+}

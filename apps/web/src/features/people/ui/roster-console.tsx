@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
-import { SlidersHorizontal, Upload } from "lucide-react";
+import { HeartPulse, SlidersHorizontal, Upload } from "lucide-react";
 import { chunk } from "../../../lib/chunk-guard";
 import { EMPLOYMENT_TYPE, label } from "../../../lib/labels";
 import { read } from "../../../lib/query";
@@ -52,12 +52,12 @@ type Employee = components["schemas"]["Employee"];
 const EMPTY_EMPLOYEES: Employee[] = [];
 
 export function RosterConsole({
-  manage, scoped = false, notice, actions, screen,
+  manage, scoped = false, notice, actions, tabs, screen,
 }: {
-  manage: boolean; scoped?: boolean; notice?: ReactNode; actions?: ReactNode; screen: ReturnType<typeof useRosterScreen>;
+  manage: boolean; scoped?: boolean; notice?: ReactNode; actions?: ReactNode; tabs?: ReactNode; screen: ReturnType<typeof useRosterScreen>;
 }) {
   const {
-    contractWindow, soonDays, search, navigate, today, status, review, unit, open, openUnit, select, selectRelated,
+    contractWindow, soonDays, search, navigate, today, status, review, unit, ids, open, openUnit, select, selectRelated,
     full, expand, restore, unitTrigger, unitItems, selectedUnit, sort, q, exitView, setExitView, sel, setSel,
     recorded, batch, setBatch, rescinding, setRescinding, setRecorded, rescindReady, r, view, prefetch, setFilter,
     find, reset, closePaste, bulkDone, openRecord, scroller, scrollRef, onRowFocus, filtered, customFilters, sameName, onRowAction,
@@ -107,7 +107,7 @@ export function RosterConsole({
   const firstRun = !r.loading && !r.list.error && !filtered && (r.status.totals.all ?? total) === 0 && !r.changed;
   const resetAll = () => { setEmpTypes(new Set()); setAddressMissingOnly(false); setProbationOnly(false); setActiveChosung(null); reset(); };
   const toggleEntityExpand = (id: string) => setExpandedEntities(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
-  const activeFilterCount = (unit ? 1 : 0) + empTypes.size + review.length + (addressMissingOnly ? 1 : 0) + (probationOnly ? 1 : 0) + (activeChosung ? 1 : 0);
+  const activeFilterCount = (unit ? 1 : 0) + (ids.length > 0 ? 1 : 0) + empTypes.size + review.length + (addressMissingOnly ? 1 : 0) + (probationOnly ? 1 : 0) + (activeChosung ? 1 : 0);
   const registerMissingCount = r.review.totals.register ?? 0;
   const contractSoonCount = r.review.totals.contractSoon ?? 0;
   const effectiveOffset = hasClientFilter ? 0 : firstOffset;
@@ -119,6 +119,7 @@ export function RosterConsole({
   const openPerson = open ? (sourceRows.find(e => e.id === open) ?? r.rows.find(e => e.id === open)) : undefined;
   const listQ = needsFullRoster && fullRoster.isError ? { ...r.list, error: fullRoster.error, data: undefined } : r.list;
   const order = toOrderField(sort);
+  const dataHealthLabel = t("roster.head.dataHealth");
   const sortControl = (
     <SortControl
       fields={[{ id: "name", label: t("people.col.name") }, { id: "employee_number", label: t("people.col.number") }, { id: "hire_date", label: t("people.col.hired") }]}
@@ -130,6 +131,7 @@ export function RosterConsole({
 
   return (
     <ListRecord
+      tabs={tabs}
       q={listQ}
       head={{
         title: t("roster.head.title"),
@@ -138,6 +140,7 @@ export function RosterConsole({
           <div className={s.consoleTools}>
             <Button size="sm" variant="secondary" onClick={() => setColsOpen(true)}><SlidersHorizontal size={13} aria-hidden="true" />{t("people.tools.columns")}</Button>
             {manage ? <Link className={buttonClass("secondary", { size: "sm" })} to="/people/import"><Upload size={13} aria-hidden="true" />{t("roster.head.import")}</Link> : null}
+            <Link className={buttonClass("secondary", { size: "sm" })} to="/people/data-health" aria-label={dataHealthLabel} title={dataHealthLabel}><HeartPulse size={13} aria-hidden="true" /><bdi className={s.consoleToolLabel}>{dataHealthLabel}</bdi></Link>
             {actions}
           </div>
         ),
@@ -146,7 +149,7 @@ export function RosterConsole({
       find={<div ref={findInputRef} className={s.consoleFind} data-list-find=""><WorklistSearchField label={t("people.find.placeholder")} value={q} onChange={find} /></div>}
       tools={<div className={s.consoleDesktopSort}>{sortControl}</div>}
       stats={!firstRun ? <StatRow label={t("people.stat.label")} items={buildStatItems({ status, review, statusTotals: r.status.totals, registerMissingCount, setFilter })} /> : undefined}
-      rail={!firstRun ? <RosterConsoleRail entities={entities} facets={r.facets} unit={unit} expandedEntities={expandedEntities} toggleEntityExpand={toggleEntityExpand} empTypes={empTypes} setEmpTypes={setEmpTypes} review={review} registerMissingCount={registerMissingCount} addressMissingOnly={addressMissingOnly} setAddressMissingOnly={setAddressMissingOnly} probationOnly={probationOnly} setProbationOnly={setProbationOnly} soonDays={soonDays} contractSoonCount={contractSoonCount} activeFilterCount={activeFilterCount} q={q} status={status} setFilter={setFilter} resetAll={resetAll} phoneTools={sortControl} /> : undefined}
+      rail={!firstRun ? <RosterConsoleRail entities={entities} facets={r.facets} unit={unit} idsActive={ids.length > 0} expandedEntities={expandedEntities} toggleEntityExpand={toggleEntityExpand} empTypes={empTypes} setEmpTypes={setEmpTypes} review={review} registerMissingCount={registerMissingCount} addressMissingOnly={addressMissingOnly} setAddressMissingOnly={setAddressMissingOnly} probationOnly={probationOnly} setProbationOnly={setProbationOnly} soonDays={soonDays} contractSoonCount={contractSoonCount} activeFilterCount={activeFilterCount} q={q} status={status} setFilter={setFilter} resetAll={resetAll} phoneTools={sortControl} /> : undefined}
       indexBar={!voided && !firstRun ? <IndexBar label={t("people.index.label")} items={CHOSUNG.map(ch => ({ id: ch, label: ch }))} active={activeChosung} onSelect={setActiveChosung} range={displayedRows.length > 0 ? t("people.index.range", { start: rangeStart, end: rangeEnd, total: rangeTotal }) : undefined} prev={{ label: t("people.index.prev"), disabled: hasClientFilter || firstOffset <= 0, onPress: () => scroller.current?.scrollBy({ top: -400, behavior: "smooth" }) }} next={{ label: t("people.index.next"), disabled: hasClientFilter || !r.list.hasNextPage, onPress: () => { if (r.list.hasNextPage && !r.list.isFetchingNextPage) void r.list.fetchNextPage(); } }} /> : undefined}
       notes={
         <>

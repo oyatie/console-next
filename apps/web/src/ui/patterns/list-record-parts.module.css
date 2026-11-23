@@ -168,3 +168,33 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
+
+.splitBandsWrap {
+  container-type: inline-size;
+  min-width: 0;
+}
+
+.splitBands {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+}
+
+.splitBands > :first-child {
+  border-bottom: 1px solid var(--border);
+}
+
+@container (min-width: 960px) {
+  .splitBands {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+    align-items: start;
+  }
+
+  .splitBands > :first-child {
+    border-bottom: 0;
+  }
+
+  .splitBands > :nth-child(2) {
+    border-inline-start: 1px solid var(--border);
+  }
+}

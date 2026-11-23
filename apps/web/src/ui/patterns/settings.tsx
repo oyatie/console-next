@@ -33,6 +33,7 @@ export function SettingsPattern({
       tabs={tabs}
       overlays={overlays}
       queryLayout="record"
+      phoneHeadAware
       detailActive={Boolean(panes.record)}
       statusSegments={statusSegments}
       baseline={baseline}

@@ -6,8 +6,8 @@ import ExcelJS from "exceljs";
 
 const pad = (n: number, w: number) => String(n).padStart(w, "0");
 
-/** A synthetic 주민등록번호 for a birth date and gender digit, with a valid check digit (never a real person's). */
-export function rrn(birth: string, gender: 1 | 2 | 3 | 4, serial: number) {
+/** A synthetic 주민등록번호 for a birth date and gender digit (1..8), with a valid check digit (never a real person's). */
+export function rrn(birth: string, gender: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8, serial: number) {
   const body = `${birth.slice(2, 4)}${birth.slice(5, 7)}${birth.slice(8, 10)}${gender}${pad(serial % 100000, 5)}`;
   const weights = [2, 3, 4, 5, 6, 7, 8, 9, 2, 3, 4, 5];
   const sum = [...body].reduce((s, d, i) => s + Number(d) * weights[i]!, 0);

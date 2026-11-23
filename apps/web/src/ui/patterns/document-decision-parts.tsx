@@ -44,8 +44,8 @@ export function DocBodyText({ children }: { children: ReactNode }) {
 }
 
 /** Rule-separated vertical list container for pre-decision reference links. */
-export function DocLinkList({ children }: { children: ReactNode }) {
-  return <div className={s.linkList}>{children}</div>;
+export function DocLinkList({ columns, children }: { columns?: 1 | 2; children: ReactNode }) {
+  return <div className={s.linkList} data-cols={columns === 2 ? "2" : undefined}>{children}</div>;
 }
 
 /** Structured row content (`kind`, `label`, external-arrow icon) inside a `docLinkClass` link. */

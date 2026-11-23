@@ -19,9 +19,7 @@ use crate::config::links::app_links_config_from_vars;
 use crate::config::notify::fcm_config_from_vars;
 use crate::config::notify::solapi_config_from_vars;
 use crate::config::office;
-use crate::config::ops_cockpit::{
-    DEFAULT_OPS_CONFIG_DIR, DEFAULT_OPS_SERVICE_NAME, load_and_validate,
-};
+use crate::config::ops_cockpit::{DEFAULT_OPS_SERVICE_NAME, load_from_vars};
 use crate::config::parse::non_empty;
 use crate::config::parse::parse_base64_key_32;
 use crate::config::parse::parse_bool;
@@ -96,14 +94,7 @@ impl AppConfig {
             platform_force_command_database_url.as_deref(),
         )?;
         let ops_cockpit = if role == crate::config::role::AppRole::Ops {
-            let config_dir = non_empty(vars.get("CONSOLE_OPS_CONFIG_DIR"))
-                .unwrap_or_else(|| DEFAULT_OPS_CONFIG_DIR.to_owned());
-            let records_dir =
-                non_empty(vars.get("CONSOLE_OPS_RECORDS_DIR")).map(std::path::PathBuf::from);
-            Some(load_and_validate(
-                std::path::Path::new(&config_dir),
-                records_dir,
-            )?)
+            Some(load_from_vars(&vars)?)
         } else {
             None
         };

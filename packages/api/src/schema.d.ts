@@ -1005,6 +1005,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/access/access-log/reviews/{period}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the monthly tenant access-log review state without exposing frozen chunks
+         * @description Requires tenant-wide Cedar audit::view. Records access_log.review_read before returning.
+         */
+        get: operations["getAccessLogReview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/access-log/reviews/{period}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete a monthly tenant access-log review after all findings and follow-ups resolve
+         * @description Requires tenant-wide Cedar audit::approve and a fresh passkey step-up assertion once all frozen targets are resolved.
+         */
+        post: operations["completeAccessLogReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/access-log/reviews/{period}/findings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record or supersede a finding on a frozen flagged event or daily summary
+         * @description Requires tenant-wide Cedar audit::approve. Appends an immutable finding audit record for the started review period.
+         */
+        post: operations["recordAccessLogFinding"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/access-log/reviews/{period}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start and freeze a monthly tenant access-log review
+         * @description Requires tenant-wide Cedar audit::approve. Freezes flagged events and daily summaries once per closed period.
+         */
+        post: operations["startAccessLogReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/access/accounts/{accountId}/effective": {
         parameters: {
             query?: never;
@@ -4277,6 +4357,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/employees/import/{run_id}/cells": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Repair canonical cell values for staged candidate rows in an employee import run
+         * @description Requires EmployeeDirectoryManage. Validates and merges inline canonical cell repairs into dry_run_decisions.cells while rejecting restricted PII targets and two-digit dates.
+         */
+        put: operations["repairEmployeeImportCells"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/employees/import/{run_id}/dry-run": {
         parameters: {
             query?: never;
@@ -4352,6 +4452,26 @@ export interface paths {
          * @description Versioned (expected_version = the row's version as read, 0 when never set). Audited data_import.reconcile_check. 409 import_not_applied, import_signed_off (the run is frozen after its sign-off; error.refusals carries the sign-off), stale_revision (error.refusals [{source_key, current_version}]); 404 for a row the run did not plan; 422 for another state or a note over 1000.
          */
         put: operations["setEmployeeImportReconcileRow"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/employees/import/{run_id}/rows/{source_key}/identifier": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Stage a step-up sealed registration number onto a draft employee import row
+         * @description Requires EmployeeDirectoryManage and a fresh PII_RECORD passkey step-up assertion bound to (run_id, source_key). Validates and seals the registration number into data_import_row_identities without mutating raw import rows or echoing sensitive digits.
+         */
+        put: operations["recordImportRowIdentifier"];
         post?: never;
         delete?: never;
         options?: never;
@@ -7711,6 +7831,26 @@ export interface paths {
          * @description Executive/admin/super-admin read model grouped by company, org unit, and position. Source workbook rows remain preserved in the employee directory.
          */
         get: operations["getHrOrgChart"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hr/people/data-health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tenant- and branch-scoped people data-health overview
+         * @description Returns batched statutory register completeness, identity document coverage, workplace and department placement counts, boolean-only bank account readiness, identity review counts, failed lifecycle action counts, bounded zero-PII drilldown items, and EmployeeDirectoryManage-gated latest import status.
+         */
+        get: operations["getPeopleDataHealth"];
         put?: never;
         post?: never;
         delete?: never;
@@ -12076,7 +12216,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List tenant privacy rights intake requests under live Cedar placement */
+        get: operations["listPrivacyRightsIntake"];
         put?: never;
         /**
          * File a self-service request with register-backed per-kind deadlines
@@ -12123,6 +12264,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/privacy/rights-requests/received": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record an off-app privacy rights receipt on behalf of a tenant subject */
+        post: operations["receiveOffAppPrivacyRightsRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/privacy/rights-requests/{id}": {
         parameters: {
             query?: never;
@@ -12134,6 +12292,63 @@ export interface paths {
         get: operations["readPrivacyRightsIntake"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/rights-requests/{id}/decide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decide one requested privacy right with bound passkey step-up and SoD enforcement
+         * @description Requires a fresh PRIVACY_REQUEST_DECIDE passkey step-up bound to the request UUID and SHA-256 of the serialized decision payload (kind, outcome, reason, note, decided_on). Enforces Cedar permission, natural-person SoD against the subject, off-app filer, and prior decision maker on objections.
+         */
+        post: operations["decidePrivacyRightsRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/rights-requests/{id}/objection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** File an objection against a prior privacy rights request decision */
+        post: operations["objectPrivacyRightsRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/rights-requests/{id}/postpone": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Postpone one requested privacy right with bound passkey step-up and SoD enforcement
+         * @description Requires a fresh PRIVACY_REQUEST_DECIDE passkey step-up bound to the request UUID and SHA-256 of the serialized postponement payload (kind, reason, note, decided_on).
+         */
+        post: operations["postponePrivacyRightsRequest"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15609,6 +15824,39 @@ export interface components {
                     label_key: string;
                 }[];
             };
+        };
+        AccessLogReview: {
+            /** Format: uuid */
+            id?: string;
+            /** @description Review period metadata or YYYY-MM label before start. */
+            period: string | {
+                /** Format: date-time */
+                from?: string;
+                /** Format: date-time */
+                to?: string;
+                time_zone?: string;
+            };
+            scope: string;
+            /** Format: uuid */
+            reviewer: string | null;
+            /** Format: date-time */
+            started_at: string | null;
+            /** Format: date-time */
+            reviewed_at: string | null;
+            /** Format: date-time */
+            due: string;
+            flags_seen: {
+                [key: string]: unknown;
+            } | null;
+            findings: {
+                [key: string]: unknown;
+            }[];
+            follow_up: {
+                open: number;
+                total: number;
+            };
+            /** @enum {string} */
+            state: "not_started" | "open" | "overdue" | "complete";
         };
         /** @description Access-screen account labels and state. Contact details and unrelated HR facts are excluded. */
         AccessPerson: {
@@ -20780,9 +21028,13 @@ export interface components {
                  * @description r3:hire-16: the employment profile's probation end date.
                  */
                 probation_end_date?: string;
+                /**
+                 * @description Resolved legal identity document type for the created employee.
+                 * @enum {string}
+                 */
+                id_type?: "RRN" | "ARC" | "DOMESTIC_RESIDENCE" | "NOT_ISSUED";
             };
-            /** @enum {string} */
-            refusal_code?: "duplicate_in_file" | "invalid_date" | "identity_mismatch" | "hire_date_required" | "former_load_closed" | "workplace_conflict" | "identity_conflict" | "employee_number_taken" | "status_unmapped" | "status_conflict" | "exit_date_required" | "leave_start_required" | "leave_type_unmapped" | "leave_return_required";
+            refusal_code?: string;
             refusal_field?: string;
             /** @enum {string} */
             matched_by?: "employee_number" | "alias" | "rrn" | "pick";
@@ -20934,6 +21186,8 @@ export interface components {
                 basis: string;
                 alias?: string | null;
             }[];
+            /** @description Expected format hint for inline cell repair (for example YYYY-MM-DD). */
+            expected_format?: string;
         };
         /** @description IMPORT-2 (decisions #25): the "needs checking" queue, counted. Blocking items keep apply closed (422 import_unresolved); the rest are imported as the plan says (unplaced, no employee number assigned) and stay listed. */
         EmployeeImportReviewQueue: {
@@ -21429,6 +21683,11 @@ export interface components {
         EmployeeRrnRecordRequest: {
             /** @description Resident registration number, validated by the server; never retained in a draft. */
             rrn: string;
+            /**
+             * @description Optional explicit identity document type paired with the registration number.
+             * @enum {string}
+             */
+            id_type?: "RRN" | "ARC" | "DOMESTIC_RESIDENCE";
             step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"];
         };
         EmployeeRrnRevealRequest: {
@@ -23292,8 +23551,48 @@ export interface components {
         ImportApplyRequest: {
             checklist_all_acknowledged?: boolean | null;
         };
+        /** @description Map of candidate row source_key to canonical field repairs for a staged employee import run. */
+        ImportCellsRepairRequest: {
+            /** @description Per-row map of canonical target field names (excluding restricted columns) to repaired string values. */
+            cells: {
+                [key: string]: {
+                    [key: string]: string;
+                };
+            };
+        };
+        /** @description Persisted inline cell repairs merged onto a staged employee import run. */
+        ImportCellsRepairResponse: {
+            /** @description Effective per-row map of canonical field repairs persisted in dry_run_decisions.cells. */
+            cells: {
+                [key: string]: {
+                    [key: string]: string;
+                };
+            };
+            /** @description Count of candidate rows with persisted cell repairs. */
+            repaired_rows: number;
+            run_id: components["schemas"]["Uuid"];
+        };
         ImportDryRunRequest: {
             decisions?: components["schemas"]["EmployeeImportDecisions"];
+        };
+        ImportRowIdentifierRequest: {
+            /** @description Resident registration number validated by the server, sealed via RrnVault, and never logged or echoed. */
+            rrn: string;
+            /**
+             * @description Optional explicit identity document type paired with the registration number.
+             * @enum {string}
+             */
+            id_type?: "RRN" | "ARC" | "DOMESTIC_RESIDENCE";
+            step_up?: components["schemas"]["MobilePasskeyStepUpEnvelope"];
+        };
+        ImportRowIdentifierResponse: {
+            run_id: components["schemas"]["Uuid"];
+            source_key: string;
+            /** @enum {string} */
+            id_type: "RRN" | "ARC" | "DOMESTIC_RESIDENCE";
+            recorded: boolean;
+            /** @enum {string} */
+            sex_derived?: "MALE" | "FEMALE";
         };
         /** @description The fresh passkey assertion proving present possession of an authenticator. Its absence yields 428 (precondition required). */
         InboxDocConfirmReceiptRequest: {
@@ -27022,6 +27321,97 @@ export interface components {
             /** Format: date */
             retrieved_on: string;
         };
+        PeopleDataHealthResponse: {
+            cohort: {
+                /** Format: int64 */
+                total: number;
+                /** Format: int64 */
+                active: number;
+                /** Format: int64 */
+                on_leave: number;
+                /** Format: int64 */
+                pre_hire: number;
+            };
+            statutory_register: {
+                /** Format: int64 */
+                complete_count: number;
+                /** Format: int64 */
+                incomplete_count: number;
+                missing_by_category: {
+                    /** Format: int64 */
+                    birth: number;
+                    /** Format: int64 */
+                    job: number;
+                    /** Format: int64 */
+                    hire: number;
+                    /** Format: int64 */
+                    contract_end: number;
+                    /** Format: int64 */
+                    sex: number;
+                    /** Format: int64 */
+                    address: number;
+                    /** Format: int64 */
+                    career: number;
+                };
+            };
+            id_summary: {
+                /** Format: int64 */
+                rrn_recorded: number;
+                /** Format: int64 */
+                not_issued: number;
+                /** Format: int64 */
+                missing: number;
+                by_type: {
+                    /** Format: int64 */
+                    rrn: number;
+                    /** Format: int64 */
+                    arc: number;
+                    /** Format: int64 */
+                    domestic_residence: number;
+                    /** Format: int64 */
+                    not_issued: number;
+                    /** Format: int64 */
+                    unset: number;
+                };
+            };
+            placement_summary: {
+                /** Format: int64 */
+                placed: number;
+                /** Format: int64 */
+                unplaced: number;
+                /** Format: int64 */
+                department_missing: number;
+            };
+            bank_account: {
+                /** Format: int64 */
+                registered: number;
+                /** Format: int64 */
+                missing: number;
+            };
+            identity_review: {
+                /** Format: int64 */
+                needs_review: number;
+            };
+            failed_actions: {
+                /** Format: int64 */
+                count: number;
+            };
+            drilldown_items: {
+                employee_id: components["schemas"]["Uuid"];
+                employee_number?: string;
+                /** @enum {string} */
+                employment_status: "PRE_HIRE" | "ACTIVE" | "ON_LEAVE";
+                missing_categories: string[];
+            }[];
+            latest_import?: {
+                run_id: components["schemas"]["Uuid"];
+                status: string;
+                /** Format: int32 */
+                candidate_rows: number;
+                created_at: components["schemas"]["Timestamp"];
+                applied_at?: components["schemas"]["Timestamp"];
+            };
+        };
         Period: {
             start: components["schemas"]["Timestamp"];
             end: components["schemas"]["Timestamp"];
@@ -30231,6 +30621,13 @@ export interface components {
             requested_at: string;
             /** Format: date-time */
             expires_at: string | null;
+            /** Format: date-time */
+            request_expires_at?: string;
+            requested_duration_seconds?: number;
+            scope?: string[];
+            /** Format: uuid */
+            operator_approver_ref?: string | null;
+            tenant_approved?: boolean;
         };
         SupportSessions: {
             sessions: components["schemas"]["SupportSession"][];
@@ -32216,7 +32613,9 @@ export interface operations {
                 limit?: number;
                 offset?: number;
                 target_type?: string;
+                target_id?: string;
                 actor?: components["schemas"]["Uuid"];
+                trace_id?: string;
             };
             header?: never;
             path?: never;
@@ -32232,6 +32631,42 @@ export interface operations {
                 content: {
                     "application/json": {
                         items: ({
+                            /** Format: uuid */
+                            id?: string;
+                            /** Format: uuid */
+                            actor?: string | null;
+                            action?: string;
+                            target_type?: string;
+                            target_id?: string;
+                            /** Format: uuid */
+                            branch_id?: string | null;
+                            before_snap?: unknown;
+                            after_snap?: unknown;
+                            ip?: string | null;
+                            user_agent?: string | null;
+                            auth_method?: string | null;
+                            device?: string | null;
+                            classification_badges?: string[] | null;
+                            anomaly?: boolean | null;
+                            reason?: string | null;
+                            trace_id?: string;
+                            span_id?: string;
+                            source?: string | null;
+                            change_mode?: string | null;
+                            reason_code?: string | null;
+                            decision_snapshot?: unknown;
+                            /** Format: uuid */
+                            command_id?: string | null;
+                            scope_ids?: string[] | null;
+                            actor_kind?: string | null;
+                            principal_type?: string | null;
+                            /** Format: uuid */
+                            session_id?: string | null;
+                            outcome?: string | null;
+                            actor_display?: string | null;
+                            actor_employer?: string | null;
+                            /** Format: int32 */
+                            row_hash_version?: number;
                             occurred_at: components["schemas"]["Timestamp"];
                         } & {
                             [key: string]: unknown;
@@ -34378,6 +34813,191 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
+        };
+    };
+    getAccessLogReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                period: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current monthly review projection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessLogReview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description access_denied or scope_tenant_wide_only. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    completeAccessLogReview: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                period: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    step_up?: components["schemas"]["PasskeyLoginFinishRequest"];
+                };
+            };
+        };
+        responses: {
+            /** @description Completed monthly review projection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessLogReview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description access_denied or scope_tenant_wide_only. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            /** @description step_up_required — passkey step-up assertion required to sign off. */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    recordAccessLogFinding: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                period: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    event_id?: string | null;
+                    summary?: {
+                        /** Format: uuid */
+                        actor: string;
+                        /** Format: date */
+                        day: string;
+                        flag: string;
+                    } | null;
+                    /** @enum {string} */
+                    disposition: "confirmed" | "action_required";
+                    outcome?: string | null;
+                    note?: string | null;
+                    follow_up?: {
+                        kind: string;
+                        ref?: string | null;
+                        closed?: boolean | null;
+                    } | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Updated monthly review projection including the recorded finding. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessLogReview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description access_denied or scope_tenant_wide_only. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    startAccessLogReview: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                period: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Started or existing review projection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessLogReview"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description access_denied or scope_tenant_wide_only. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
         };
     };
     getAccountEffectiveAccess: {
@@ -40265,6 +40885,37 @@ export interface operations {
             };
         };
     };
+    repairEmployeeImportCells: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportCellsRepairRequest"];
+            };
+        };
+        responses: {
+            /** @description Validated cell repairs merged into the staged import run decisions. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportCellsRepairResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+        };
+    };
     dryRunEmployeeImport: {
         parameters: {
             query?: never;
@@ -40408,6 +41059,52 @@ export interface operations {
                 };
             };
             422: components["responses"]["ValidationError"];
+        };
+    };
+    recordImportRowIdentifier: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: components["schemas"]["Uuid"];
+                source_key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportRowIdentifierRequest"];
+            };
+        };
+        responses: {
+            /** @description Sealed draft identifier staged for dry run and apply. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportRowIdentifierResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            /** @description rrn_record_rate_limited. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description rrn_vault_unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     signOffEmployeeImport: {
@@ -47760,6 +48457,34 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+        };
+    };
+    getPeopleDataHealth: {
+        parameters: {
+            query?: {
+                /** @description Filter drilldown items to employees missing the specified category. */
+                category?: "birth" | "job" | "hire" | "contractEnd" | "sex" | "address" | "career" | "rrn_missing" | "unplaced" | "department_missing" | "bank_account_missing" | "identity_review" | "failed_action" | "register_incomplete";
+                /** @description Maximum number of drilldown items returned (1..=50). */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description People data-health metrics and bounded zero-PII drilldown items. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PeopleDataHealthResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationError"];
         };
     };
     getHrReadinessSummary: {
@@ -57626,6 +58351,41 @@ export interface operations {
             };
         };
     };
+    listPrivacyRightsIntake: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                status?: "RECEIVED" | "DECIDED";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tenant intake page filtered by live Cedar placement. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            request: components["schemas"]["PrivacyRightsReceipt"];
+                            subject_name: string;
+                        }[];
+                        next_cursor: string | null;
+                        /** Format: date */
+                        as_of: string;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
     filePrivacyRightsRequest: {
         parameters: {
             query?: never;
@@ -57744,6 +58504,56 @@ export interface operations {
             503: components["responses"]["ServiceUnavailable"];
         };
     };
+    receiveOffAppPrivacyRightsRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    subject_user_id: string;
+                    /** @enum {string} */
+                    controller: "TENANT";
+                    /** @enum {string} */
+                    channel: "PHONE" | "LETTER" | "EMAIL" | "IN_PERSON";
+                    /** @enum {string} */
+                    agent: "SUBJECT" | "LEGAL_REPRESENTATIVE" | "AUTHORIZED";
+                    /** @default false */
+                    mandate_received?: boolean;
+                    /** @enum {string} */
+                    identity_method: "SIGNED_IN" | "PASSKEY" | "ID_DOCUMENT_SEEN" | "KNOWN_CONTACT" | "AGENT_MANDATE";
+                    /** Format: date */
+                    received_on: string;
+                    kinds: ("ACCESS" | "CORRECTION" | "DELETION" | "SUSPENSION" | "WITHDRAWAL")[];
+                    /** @default  */
+                    detail?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Recorded off-app receipt or exact idempotent replay. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivacyRightsReceipt"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
     readPrivacyRightsIntake: {
         parameters: {
             query?: never;
@@ -57771,6 +58581,140 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    decidePrivacyRightsRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    kind: "ACCESS" | "CORRECTION" | "DELETION" | "SUSPENSION" | "WITHDRAWAL";
+                    /** @enum {string} */
+                    outcome: "GRANTED" | "PARTIAL" | "REFUSED";
+                    reason?: string | null;
+                    note?: string | null;
+                    /** Format: date */
+                    decided_on?: string | null;
+                    step_up: components["schemas"]["MobilePasskeyStepUpEnvelope"];
+                };
+            };
+        };
+        responses: {
+            /** @description Updated privacy rights receipt or exact idempotent replay. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivacyRightsReceipt"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    objectPrivacyRightsRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    kinds: ("ACCESS" | "CORRECTION" | "DELETION" | "SUSPENSION" | "WITHDRAWAL")[];
+                    /** @default  */
+                    detail?: string;
+                    /** @enum {string} */
+                    channel?: "IN_APP" | "PHONE" | "LETTER" | "EMAIL" | "IN_PERSON";
+                    /** @enum {string} */
+                    agent?: "SUBJECT" | "LEGAL_REPRESENTATIVE" | "AUTHORIZED";
+                    /** @default false */
+                    mandate_received?: boolean;
+                    /** @enum {string} */
+                    identity_method?: "SIGNED_IN" | "PASSKEY" | "ID_DOCUMENT_SEEN" | "KNOWN_CONTACT" | "AGENT_MANDATE";
+                    /** Format: date */
+                    received_on?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Objection receipt or exact idempotent replay. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivacyRightsReceipt"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    postponePrivacyRightsRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    kind: "ACCESS" | "CORRECTION" | "DELETION" | "SUSPENSION" | "WITHDRAWAL";
+                    reason: string;
+                    note: string;
+                    /** Format: date */
+                    decided_on?: string | null;
+                    step_up: components["schemas"]["MobilePasskeyStepUpEnvelope"];
+                };
+            };
+        };
+        responses: {
+            /** @description Updated privacy rights receipt or exact idempotent replay. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivacyRightsReceipt"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
             503: components["responses"]["ServiceUnavailable"];
         };
     };

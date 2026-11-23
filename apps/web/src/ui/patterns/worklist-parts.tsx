@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import type { InputHTMLAttributes, ReactNode } from "react";
+import { useSyncExternalStore, type InputHTMLAttributes, type ReactNode } from "react";
 import { Search } from "lucide-react";
 import { ToggleButton, type ButtonSize } from "../button/button";
 import segCss from "../button/segmented.module.css";
+import { SelectInput } from "../field/select-input";
 import { TextInput } from "../field/text-input";
 import searchCss from "../search/search.module.css";
 import s from "./worklist-parts.module.css";
@@ -36,6 +37,15 @@ export function WorklistSearchField({
 }
 
 /** Zero-standing-text segmented filter group for Console worklist command strips. */
+const PHONE_MQ = "(max-width: 719px)";
+const subscribePhone = (onChange: () => void) => {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => {};
+  const mql = window.matchMedia(PHONE_MQ);
+  mql.addEventListener("change", onChange);
+  return () => mql.removeEventListener("change", onChange);
+};
+const getPhone = () => (typeof window !== "undefined" && typeof window.matchMedia === "function" ? window.matchMedia(PHONE_MQ).matches : false);
+
 export function WorklistSegmentBar<T extends string>({
   label,
   items,
@@ -43,11 +53,13 @@ export function WorklistSegmentBar<T extends string>({
   onChange,
   size,
   block,
+  phoneSelect,
 }: {
   label: string;
   items: readonly {
     id: T;
     label: ReactNode;
+    optionLabel?: string;
     icon?: ReactNode;
     count?: ReactNode;
     tone?: "warn" | "danger";
@@ -56,7 +68,21 @@ export function WorklistSegmentBar<T extends string>({
   onChange: (id: T) => void;
   size?: ButtonSize;
   block?: boolean;
+  phoneSelect?: boolean;
 }) {
+  const isPhone = useSyncExternalStore(subscribePhone, getPhone, () => false);
+  if (phoneSelect && isPhone) {
+    return (
+      <SelectInput aria-label={label} value={value} onChange={e => onChange(e.target.value as T)}>
+        {items.map(item => (
+          <option key={item.id} value={item.id}>
+            {item.optionLabel ?? (typeof item.label === "string" ? item.label : item.id)}
+            {item.count !== undefined ? ` (${item.count})` : ""}
+          </option>
+        ))}
+      </SelectInput>
+    );
+  }
   return (
     <div className={segCss.seg} data-block={block || undefined} role="group" aria-label={label}>
       {items.map(item => (
@@ -163,7 +189,7 @@ export function WorklistMeter({
   label: string;
   valueLabel: ReactNode;
 }) {
-  const pct = max > 0 ? Math.min(100, Math.max(2, Math.round((value / max) * 100))) : 0;
+  const pct = max > 0 ? (value >= max ? 100 : value <= 0 ? 0 : Math.min(96, Math.max(2, Math.floor((value / max) * 100)))) : 0;
   return (
     <div className={s.barCell}>
       <div

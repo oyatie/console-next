@@ -10,7 +10,22 @@ type PayrollRunQueryParams = operations["getPayrollRun"]["parameters"]["query"];
 export const createPayGroup = (body: CreatePayGroup, key: string) => unwrap(api.POST("/api/v1/payroll/pay-groups", { body, headers: { "idempotency-key": key } }));
 export const createPayrollRun = (body: CreatePayrollRun, key: string) => unwrap(api.POST("/api/v1/payroll/runs", { body, headers: { "idempotency-key": key } }));
 export const payGroupsQuery = get("/api/v1/payroll/pay-groups");
-export const payrollRunsQuery = get("/api/v1/payroll/runs");
+type PayrollRunsQueryParams = operations["listPayrollRuns"]["parameters"]["query"];
+const payrollRunsQuery = (params?: PayrollRunsQueryParams) =>
+  get("/api/v1/payroll/runs", params ? { params: { query: params } } : undefined);
+export const payrollRunsPages = (
+  params?: Omit<NonNullable<PayrollRunsQueryParams>, "offset">,
+  pageSize = 50,
+) => ({
+  ...payrollRunsQuery({ ...params, limit: params?.limit ?? pageSize }),
+  queryFn: ({ pageParam }: { pageParam: number }) =>
+    payrollRunsQuery({ ...params, limit: params?.limit ?? pageSize, offset: pageParam }).queryFn(),
+  initialPageParam: 0,
+  getNextPageParam: (page: components["schemas"]["PayrollRunPage"]) =>
+    page.items.length > 0 && page.offset + page.items.length < page.total
+      ? page.offset + page.items.length
+      : undefined,
+});
 export const payrollRunPreviewQuery = (input: CreatePayrollRun) => get("/api/v1/payroll/runs/preview", { params: { query: input } });
 function compactPayrollRunQuery(query?: PayrollRunQueryParams): PayrollRunQueryParams {
   if (!query) return undefined;
@@ -31,3 +46,44 @@ export const payrollRatesQuery = (id: string) => get("/api/v1/payroll/reference/
 export type ContractWage = operations["createEmployeeContractWage"]["requestBody"]["content"]["application/json"];
 export const recordContractWage = ({ employeeId, body }: { employeeId: string; body: ContractWage }, key: string) => unwrap(api.POST("/api/v1/payroll/employees/{employeeId}/contract-wages", { params: { path: { employeeId } }, body, headers: { "idempotency-key": key } }));
 export const payslipDraftQuery = (employeeId: string, period: string, pay_date: string) => get("/api/v1/payroll/employees/{employeeId}/payslip-draft", { params: { path: { employeeId }, query: { period, pay_date } } });
+
+// --- M5 Phase 5 Payroll Run Lifecycle (12 endpoints) ---
+type _PayrollClosePreflight = components["schemas"]["PayrollClosePreflight"];
+export type PayrollException = components["schemas"]["PayrollException"];
+type _PayrollPayslipDeliverySummary = components["schemas"]["PayrollPayslipDeliverySummary"];
+
+export const payrollClosePreflightQuery = (id: string) =>
+  ({ ...get("/api/v1/payroll/runs/{id}/close-preflight", { params: { path: { id } } }), retry: false });
+
+export const closePayrollAttendance = (id: string) =>
+  unwrap(api.POST("/api/v1/payroll/runs/{id}/close-attendance", { params: { path: { id } }, body: { attest: true } }));
+
+export const calculatePayrollRun = (id: string) =>
+  unwrap(api.POST("/api/v1/payroll/runs/{id}/calculate", { params: { path: { id } } }));
+
+export const payrollExceptionsQuery = (id: string, query?: { limit?: number; offset?: number }) =>
+  ({ ...get("/api/v1/payroll/runs/{id}/exceptions", { params: { path: { id }, query } }), retry: false });
+
+export const resolvePayrollException = (id: string, exceptionId: string, body: components["schemas"]["ResolvePayrollExceptionRequest"]) =>
+  unwrap(api.POST("/api/v1/payroll/runs/{id}/exceptions/{exceptionId}/resolve", { params: { path: { id, exceptionId } }, body }));
+
+export const submitPayrollRun = (id: string) =>
+  unwrap(api.POST("/api/v1/payroll/runs/{id}/submit", { params: { path: { id } } }));
+
+export const decidePayrollRun = (id: string, body: components["schemas"]["DecidePayrollRunRequest"]) =>
+  unwrap(api.POST("/api/v1/payroll/runs/{id}/decision", { params: { path: { id } }, body }));
+
+export const withdrawPayrollRun = (id: string) =>
+  unwrap(api.POST("/api/v1/payroll/runs/{id}/withdraw", { params: { path: { id } } }));
+
+export const schedulePayrollDisbursement = (id: string, scheduled_at: string) =>
+  unwrap(api.POST("/api/v1/payroll/runs/{id}/schedule-disbursement", { params: { path: { id } }, body: { scheduled_at } }));
+
+export const attestPayrollDisbursement = (id: string, body: components["schemas"]["AttestPayrollDisbursementRequest"]) =>
+  unwrap(api.POST("/api/v1/payroll/runs/{id}/disbursement/attest", { params: { path: { id } }, body }));
+
+export const issuePayrollPayslips = (id: string) =>
+  unwrap(api.POST("/api/v1/payroll/runs/{id}/issue-payslips", { params: { path: { id } } }));
+
+export const payrollPayslipDeliveryQuery = (id: string, query?: { limit?: number; offset?: number }) =>
+  ({ ...get("/api/v1/payroll/runs/{id}/payslip-delivery", { params: { path: { id }, query } }), retry: false });

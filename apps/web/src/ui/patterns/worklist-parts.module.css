@@ -345,3 +345,8 @@
     border-block-start: 1px solid var(--border);
   }
 }
+
+.clampSubject a {
+  color: inherit;
+  text-decoration: none;
+}
