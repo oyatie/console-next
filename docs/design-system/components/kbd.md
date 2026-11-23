@@ -98,10 +98,15 @@ Known gaps:
   finds two controls, and neither holds a `Kbd` from this module.
 - `keys` is not adapted to the platform. A caller that passes the Command glyph shows it on every system.
   A caller can pick the text first with `modChord` (`lib/pure/keys`). It puts `⌘` before the rest of the chord on
-  an Apple system and `Ctrl+` on any other, so `⇧↵` reads `⌘⇧↵` or `Ctrl+⇧↵`. The commit of `Composer`, the
-  register sheet's second commit and the register run's finish button under `features/people/ui`, and the month
-  tab's save under `features/attendance/ui` do. The save button in the register run's entry row does not: its
-  column has no room for the wider text, so it shows `⌘↵` on every system.
+  an Apple system and `Ctrl+` on any other, so `⇧↵` reads `⌘⇧↵` or `Ctrl+⇧↵`. These callers do: the commit of
+  `Composer`; under `features/people/ui`, the register sheet's second commit and the register run's finish
+  button, and in the Console look the register sheet's register button (`register-console-footer.tsx`) and the
+  register run's finish and register buttons (`register-run-console.tsx`); under `features/attendance/ui`, the
+  month tab's save (`month-tab.tsx`, and `month-console-view.tsx` in the Console look); and the Console status
+  bar's search cap (`shell/console/shell.tsx`). `register-keys.browser.test.tsx` checks the register hints on
+  Windows and on a Mac in both looks, and that the wider caps stay inside their buttons at 390 px and 1440 px.
+  The save button in the register run's entry row does not pick its text: its column has no room for the wider
+  text, so it shows `⌘↵` on every system.
 - There are two components with this name. `ui/record/record-section.tsx` exports another `Kbd`, which takes `k`
   instead of `keys` and has its own, smaller look in `record.module.css`. Outside tests and gallery files,
   thirteen files import each of them. This page documents the one in `ui/kbd`.

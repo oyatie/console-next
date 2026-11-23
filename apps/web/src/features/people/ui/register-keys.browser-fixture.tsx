@@ -11,7 +11,10 @@ import "../../../app.css";
 
 await loadCatalog("ko");
 const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-const which = new URLSearchParams(location.search).get("case");
+const params = new URLSearchParams(location.search);
+const which = params.get("case");
+// The style is read from the page root, where the app's boot script puts the stored one.
+if (params.get("look") === "console") document.documentElement.dataset.experience = "console";
 const noop = () => {};
 // The run's entry row before anyone is registered, the whole run page, and the registration sheet as the roster opens it.
 export function Fixture() {

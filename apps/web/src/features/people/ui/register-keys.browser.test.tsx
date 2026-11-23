@@ -67,3 +67,46 @@ test.each(SYSTEMS)("on $platform the run page's finish button shows $close once 
   await page.keyboard.press("Control+Enter");
   await element(page.getByRole("button", { name: t("register.run.finish"), exact: true }).locator("kbd")).toHaveText(close);
 });
+
+// The Console look draws its own register buttons; each names the key this system's keyboard has.
+test.each(SYSTEMS)("Console look: on $platform the registration sheet's register button shows $next", async ({ platform, next }) => {
+  await page.goto(`${server.resolvedUrls!.local[0]}register-keys-test?case=sheet&look=console&platform=${platform}`);
+  const sheet = page.getByRole("dialog", { name: t("register.title"), exact: true });
+  await element(sheet.getByRole("button", { name: t("register.run.submit"), exact: true }).locator("kbd")).toHaveText(next);
+});
+
+test.each(SYSTEMS)("Console look: on $platform the run page shows $next to register and $close to finish", async ({ platform, next, close }) => {
+  await page.goto(`${server.resolvedUrls!.local[0]}register-keys-test?case=run&look=console&platform=${platform}`);
+  await element(page.getByRole("button", { name: t("register.run.submit"), exact: true }).locator("kbd")).toHaveText(next);
+  await page.locator('[data-run="name"]').fill("홍길동");
+  await page.getByLabel(t("register.run.cell", { n: 1, field: t("register.run.col.hire") }), { exact: true }).fill("2026-11-19");
+  await page.keyboard.press("Control+Enter");
+  const finish = page.getByRole("button", { name: t("register.run.finish"), exact: true });
+  await element(finish).toHaveCount(2);
+  for (const button of await finish.all()) await element(button.locator("kbd")).toHaveText(close);
+});
+
+// The Control caps are wider than the Command ones; each stays inside its button and the page does not scroll sideways.
+test.each([390, 1440])("the wider caps fit their buttons at %ipx", async width => {
+  await page.setViewportSize({ width, height: 900 });
+  for (const at of ["case=sheet", "case=sheet&look=console", "case=run", "case=run&look=console"]) {
+    await page.goto(`${server.resolvedUrls!.local[0]}register-keys-test?${at}&platform=Win32`);
+    await page.locator('[data-run="name"], [role="dialog"] input').first().waitFor();
+    if (at.startsWith("case=run")) {
+      await page.locator('[data-run="name"]').fill("홍길동");
+      await page.getByLabel(t("register.run.cell", { n: 1, field: t("register.run.col.hire") }), { exact: true }).fill("2026-11-19");
+      await page.keyboard.press("Control+Enter");
+      await page.getByRole("button", { name: t("register.run.finish"), exact: true }).first().waitFor();
+    }
+    await page.locator("button kbd", { hasText: /^Ctrl/ }).first().waitFor();
+    await page.evaluate(() => document.fonts.ready);
+    const caps = await page.locator("button:not([aria-label]) kbd").evaluateAll(kbds => kbds.filter(k => k.textContent!.startsWith("Ctrl")).map(k => {
+      const cap = k.getBoundingClientRect();
+      const button = k.closest("button")!.getBoundingClientRect();
+      return cap.left >= button.left && cap.right <= button.right && cap.top >= button.top && cap.bottom <= button.bottom;
+    }));
+    expect(caps, at).not.toContain(false);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), at).toBe(true);
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
+});

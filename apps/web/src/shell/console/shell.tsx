@@ -5,6 +5,7 @@ import { session } from "@console/api";
 import { i18n, t } from "@console/i18n";
 import { healthStatus, pickLocalized, STATUS_PAGE_URL } from "../../features/health/api/active-status";
 import { chunk } from "../../lib/chunk-guard";
+import { modChord } from "../../lib/pure/keys";
 import { useKeys } from "../../lib/react/use-keys";
 import { personName } from "../../reference/person/present";
 import { Kbd } from "../../ui/kbd/kbd";
@@ -277,7 +278,7 @@ function ConsoleLayout({
   );
 }
 
-function ConsoleStatusBar({ platform, tenantName, currentTitle, inboxCount, inboxExact }: {
+export function ConsoleStatusBar({ platform, tenantName, currentTitle, inboxCount, inboxExact }: {
   platform?: boolean; tenantName?: string; currentTitle: string; inboxCount?: number; inboxExact: boolean;
 }) {
   const publishedSegments = usePublishedStatusBar();
@@ -306,7 +307,7 @@ function ConsoleStatusBar({ platform, tenantName, currentTitle, inboxCount, inbo
         !platform ? (
           <>
             <bdi>{t("shell.jumpLabel")}</bdi>
-            <Kbd keys={t("shell.jumpKey")} />
+            <Kbd keys={modChord("K")} />
           </>
         ) : undefined
       }

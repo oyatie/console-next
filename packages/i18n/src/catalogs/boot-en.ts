@@ -53,7 +53,6 @@ export const bootEn = {
   "shell.settings.titles": "Job titles and positions",
   "common.denied.alternatives": "Any of: {requirements}",
   "shell.link.org": "Org structure",
-  "shell.jumpKey": "⌘K",
   "shell.jumpLabel": "Search and go",
   "shell.searchHint": "Search name, ID, document no.",
   "shell.jump": "Search and go — entities, workplaces, departments, people, registration numbers, request numbers",
