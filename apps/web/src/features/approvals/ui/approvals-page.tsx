@@ -171,11 +171,12 @@ function ConsoleApprovalsPage() {
   const opened = useQuery({ ...approvalDocumentQuery(effectiveSel ?? ""), enabled: Boolean(effectiveSel), refetchOnMount: "always" });
   const openedDoc = opened.data?.id === effectiveSel ? opened.data : undefined;
   const selected = openedDoc ?? visibleItems.find(item => item.id === effectiveSel) ?? items.find(item => item.id === effectiveSel);
-  // Once a decision has been drawn for the open document, the footer stays: through the command, and to say so when a
-  // later read withdraws the decision.
+  // Once a decision has been drawn for the open document, the footer stays while that document is open: through the
+  // command, and to say so when a later read withdraws the decision. Opening another document ends that.
   const offers = Boolean(openedDoc && openedDoc.my_actions.kind === "approve" && openedDoc.my_actions.reject);
-  if (openedDoc && offers && offeredDocId !== openedDoc.id) setOfferedDocId(openedDoc.id);
-  const showFooterDecision = Boolean(openedDoc && (offers || offeredDocId === openedDoc.id || receiptState?.id === openedDoc.id));
+  const footerDocId = offers ? openedDoc?.id : offeredDocId === openedDoc?.id ? offeredDocId : undefined;
+  if (footerDocId !== offeredDocId) setOfferedDocId(footerDocId);
+  const showFooterDecision = Boolean(openedDoc && (footerDocId === openedDoc.id || receiptState?.id === openedDoc.id));
   const filtered = Boolean(urlQuery || source || blockedOnly);
   const reset = () => { setBlockedKey(null); setDismissedKey(null); setQuery(""); set({ q: undefined, source: undefined, ...CLOSED }); };
   const handleSelect = (id: string) => { setDismissedKey(null); select(id); };

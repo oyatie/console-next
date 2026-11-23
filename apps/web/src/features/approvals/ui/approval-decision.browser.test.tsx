@@ -54,9 +54,10 @@ type Host = "page" | "all" | "pending" | "last" | "console" | "console-auto" | "
  * else deciding, and `offer` hands the decision back. With `hold` the decision is not answered until `release` is
  * called. With `refuse` the first decision is refused because the document changed, and the document is then served
  * under a new fingerprint. `sent` counts the decisions sent. The pending box lists a document while it offers a
- * decision, and `others` adds a second document that does.
+ * decision, and `others` adds a second document that does. With `browse` the list keeps both documents whatever
+ * they offer, as a box of every document does, and the second offers no decision.
  */
-async function open({ stillOffered = false, hold = false, refuse = false, host = "page" as Host, others = false } = {}) {
+async function open({ stillOffered = false, hold = false, refuse = false, host = "page" as Host, others = false, browse = false } = {}) {
   let decided = false;
   let posts = 0;
   let revision = 1;
@@ -70,9 +71,9 @@ async function open({ stillOffered = false, hold = false, refuse = false, host =
   page = await (await browser.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
   await page.route("**/approval-decision-test*", route => route.fulfill({ contentType: "text/html", body: `<html lang="ko"><title>Approval decision</title><main id="root"></main><script type="module" src="${fixture}"></script></html>` }));
   await page.route(url => url.pathname === "/api/v1/approvals/approval-1", route => route.fulfill({ json: document() }));
-  await page.route(url => url.pathname === "/api/v1/approvals/approval-2", route => route.fulfill({ json: other }));
+  await page.route(url => url.pathname === "/api/v1/approvals/approval-2", route => route.fulfill({ json: browse ? { ...other, my_actions: { kind: "none" } } : other }));
   await page.route(url => url.pathname === "/api/v1/approvals", route => {
-    const items = [...(document().my_actions.kind === "none" ? [] : [document()]), ...(others ? [other] : [])];
+    const items = browse ? [document(), other] : [...(document().my_actions.kind === "none" ? [] : [document()]), ...(others ? [other] : [])];
     return route.fulfill({ json: { items, focused: null, counts: { pending: items.length, upcoming: 0, requested: 0, reference: 0, completed: 0 }, sources: [], next_cursor: null } });
   });
   await page.route(url => url.pathname === "/api/v1/reason-codes", route => route.fulfill({ json: { items: ["POLICY_VIOLATION", "OTHER"].map(code => (
@@ -206,6 +207,19 @@ test.each(["page", "console", "console-page"] as const)("on %s, a decision that 
   await expect.poll(() => page.title()).toBe(t("approvals.viewer.unavailable"));
   await element(approve()).toHaveCount(0);
   await expect.poll(focused).toBe(t("approvals.viewer.unavailable"));
+});
+
+test("in the Console inbox, a document whose decision was withdrawn and that is opened again after one that offers none has no empty footer", async () => {
+  const { withdraw } = await open({ host: "console", browse: true });
+  withdraw();
+  await readAgain();
+  await element(withdrawn()).toBeVisible();
+  await page.getByRole("row", { name: new RegExp(other.title) }).click();
+  await element(column()).toContainText(other.document_no);
+  await page.getByRole("row", { name: new RegExp(served.title) }).click();
+  await element(column()).toContainText(served.document_no);
+  // The pane's body and no footer below it: the document offers nothing now, as any decided document does.
+  await element(column().locator("> div")).toHaveCount(1);
 });
 
 test("a decision that is offered again after such a line can be made, and its recorded heading takes focus", async () => {
