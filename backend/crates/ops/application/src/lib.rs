@@ -4,9 +4,41 @@ use std::{collections::BTreeMap, future::Future, pin::Pin};
 use serde::Deserialize;
 use time::OffsetDateTime;
 
+pub use console_ops_domain as domain;
+pub use time;
+pub mod actions;
+pub mod alert_actions;
+pub mod alerts_eval;
+pub mod changes;
+mod changes_service;
 pub mod evaluation;
+pub mod events;
+mod events_diff;
+pub mod health;
+pub mod home;
+mod home_obligations;
+mod home_sections;
+pub mod home_worklist;
+mod home_worklist_extra;
+pub mod incidents;
+pub mod jobs_eval;
 pub mod obligations;
+pub mod oncall;
+pub mod promote;
+pub mod recovery;
+pub mod runbooks;
+pub mod running_eval;
+mod sha256;
+mod silences_eval;
+pub mod snapshot;
+mod snapshot_running;
+pub mod sources_status;
+pub mod victoriametrics;
 pub mod vmalert;
+pub use home::{CockpitEvaluator, SourcePorts, TickReport};
+pub use victoriametrics::{
+    InstantSample, ScrapeTarget, TargetHealth, VictoriaMetrics, VictoriaMetricsSnapshot,
+};
 pub use vmalert::{Vmalert, VmalertSnapshot};
 
 pub type SourceFuture<'a, T> = Pin<Box<dyn Future<Output = Result<T, SourceError>> + Send + 'a>>;

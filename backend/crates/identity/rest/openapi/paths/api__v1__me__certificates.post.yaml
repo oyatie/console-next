@@ -1,0 +1,45 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [me]
+operationId: issueMyCertificate
+summary: Issue a self-service certificate for the authenticated employee
+security:
+- bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/SelfIssueCertificateRequest'
+responses:
+  '201':
+    description: Issued certificate snapshot.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/Certificate'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Forbidden for unlinked users or support sessions.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '409':
+    description: Employee ineligible, facts missing, or settings unconfigured.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: Validation error.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

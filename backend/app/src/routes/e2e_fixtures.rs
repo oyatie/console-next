@@ -11,7 +11,16 @@ const TERMS_V1: &str =
 const TERMS_REVISED: &str =
     "Revised E2E service terms fixture. This is a test document, not a published contract.";
 
-pub(super) fn router(pool: PgPool) -> Router {
+#[derive(Clone)]
+struct E2eFixtureState {
+    pool: PgPool,
+    otp_hmac_key: Option<console_platform_provisioning::OtpHmacKey>,
+}
+
+pub(super) fn router(
+    pool: PgPool,
+    otp_hmac_key: Option<console_platform_provisioning::OtpHmacKey>,
+) -> Router {
     let router = Router::new().route("/__e2e/terms", post(publish_terms));
     // Mounted like every other E2E fixture: in a debug build or the explicit E2E support binary (the module itself is
     // compiled only there) and, at run time, only with the E2E stub mail mode (platform.rs).
@@ -23,7 +32,7 @@ pub(super) fn router(pool: PgPool) -> Router {
             "/__e2e/support-reference-failure",
             post(support_reference_failure),
         )
-        .with_state(pool)
+        .with_state(E2eFixtureState { pool, otp_hmac_key })
 }
 
 #[derive(Deserialize)]
@@ -32,9 +41,10 @@ struct PublishTermsRequest {
 }
 
 async fn publish_terms(
-    State(pool): State<PgPool>,
+    State(state): State<E2eFixtureState>,
     Json(request): Json<PublishTermsRequest>,
 ) -> Result<StatusCode, StatusCode> {
+    let pool = state.pool;
     let Some(body) = terms_body(&request.version) else {
         return Err(StatusCode::BAD_REQUEST);
     };
@@ -127,7 +137,7 @@ mod tests {
                 .header(http::header::CONTENT_TYPE, "application/json")
                 .body(axum::body::Body::from("{}"))
                 .unwrap();
-            let status = super::router(pool.clone())
+            let status = super::router(pool.clone(), None)
                 .oneshot(request)
                 .await
                 .unwrap()
@@ -147,7 +157,7 @@ mod route_tests {
 
     #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
     async fn global_setup_publishes_terms_without_a_tenant_and_audits_once(pool: PgPool) {
-        let response = router(pool.clone())
+        let response = router(pool.clone(), None)
             .oneshot(
                 Request::builder()
                     .method("POST")
@@ -176,16 +186,21 @@ struct RecoveryOperatorRequest {
     name: String,
 }
 async fn recovery_operator(
-    State(pool): State<PgPool>,
+    State(state): State<E2eFixtureState>,
     Json(body): Json<RecoveryOperatorRequest>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
+    let pool = state.pool;
     let id=with_audits(&pool,OrgId::platform(),move |tx| Box::pin(async move {
         let id:uuid::Uuid=sqlx::query_scalar("INSERT INTO users(org_id,display_name,roles) VALUES($1,$2,ARRAY['SUPER_ADMIN']) RETURNING id")
             .bind(OrgId::platform().as_uuid()).bind(body.name).fetch_one(tx.as_mut()).await?;
         let event=AuditEvent::new(None,AuditAction::new("e2e.ops_recovery.operator").map_err(|err|DbError::CodeIssuance(err.to_string()))?,"user",id.to_string(),TraceContext::generate(),OffsetDateTime::now_utc()).with_org(OrgId::platform());
         Ok::<_,DbError>((id,vec![event]))
     })).await.map_err(|_|StatusCode::INTERNAL_SERVER_ERROR)?;
-    let issue = console_platform_provisioning::BootstrapCredentialStore
+    let store = match state.otp_hmac_key {
+        Some(key) => console_platform_provisioning::BootstrapCredentialStore::new(key),
+        None => console_platform_provisioning::BootstrapCredentialStore::unconfigured(),
+    };
+    let issue = store
         .issue_for_zero_credential_user(
             &pool,
             None,
@@ -206,9 +221,10 @@ struct RecoveryElapseRequest {
     id: uuid::Uuid,
 }
 async fn recovery_elapse(
-    State(pool): State<PgPool>,
+    State(state): State<E2eFixtureState>,
     Json(body): Json<RecoveryElapseRequest>,
 ) -> Result<StatusCode, StatusCode> {
+    let pool = state.pool;
     let org = OrgId::from_uuid(body.org_id);
     with_audits(&pool,org,move |tx|Box::pin(async move {
         let changed=sqlx::query("UPDATE ops_recovery_requests SET hold_until=clock_timestamp()-interval '1 second' WHERE org_id=$1 AND id=$2 AND approved_by IS NOT NULL AND issued_at IS NULL AND cancelled_at IS NULL")

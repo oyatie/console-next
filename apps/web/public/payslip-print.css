@@ -1,0 +1,125 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+:root {
+  color-scheme: light;
+  --payslip-page-margin: 14mm;
+  --payslip-gap-sm: 6px;
+  --payslip-gap-md: 12px;
+  --payslip-gap-lg: 14px;
+  --payslip-pad-sm: 6px;
+  --payslip-pad-md: 10px;
+  --payslip-h1: 16pt;
+  --payslip-meta: 9.5pt;
+  --payslip-body: 10pt;
+  --payslip-fw-semi: 600;
+  --payslip-fw-strong: 700;
+  --payslip-font: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+}
+
+@page {
+  size: A4 portrait;
+  margin: var(--payslip-page-margin);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--payslip-font);
+  font-size: var(--payslip-body);
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+header {
+  border-bottom: 2px solid currentcolor;
+  padding-bottom: var(--payslip-pad-md);
+  margin-bottom: var(--payslip-gap-lg);
+}
+
+.print-title {
+  margin: 0;
+  font-size: var(--payslip-h1);
+  font-weight: var(--payslip-fw-strong);
+}
+
+.meta {
+  margin-top: var(--payslip-gap-sm);
+  font-size: var(--payslip-meta);
+}
+
+dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--payslip-gap-sm) var(--payslip-gap-md);
+  margin: 0;
+  margin-bottom: var(--payslip-gap-lg);
+  padding: var(--payslip-pad-md);
+  border: 1px solid currentcolor;
+}
+
+dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--payslip-gap-sm);
+}
+
+dd {
+  margin: 0;
+  font-weight: var(--payslip-fw-semi);
+}
+
+section[data-ledger] {
+  margin-bottom: var(--payslip-gap-lg);
+  break-inside: avoid;
+}
+
+section[data-ledger] > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid currentcolor;
+  border-bottom: 0;
+  padding: var(--payslip-pad-sm) var(--payslip-pad-md);
+  margin: 0;
+}
+
+section[data-ledger] h2,
+section[data-ledger] h3 {
+  margin: 0;
+  font-size: var(--payslip-body);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  border: 1px solid currentcolor;
+  padding: var(--payslip-pad-sm) var(--payslip-pad-md);
+  text-align: start;
+}
+
+td {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+tfoot th,
+tfoot td {
+  font-weight: var(--payslip-fw-strong);
+}

@@ -28,6 +28,16 @@
       "delete",
       "put"
     ],
+    "/api/platform/operators": [
+      "get",
+      "post"
+    ],
+    "/api/platform/operators/{id}/reissue": [
+      "post"
+    ],
+    "/api/platform/operators/{id}/revoke": [
+      "post"
+    ],
     "/api/platform/ops": [
       "get"
     ],
@@ -87,6 +97,18 @@
     ],
     "/api/v1/access/access-log": [
       "get"
+    ],
+    "/api/v1/access/access-log/reviews/{period}": [
+      "get"
+    ],
+    "/api/v1/access/access-log/reviews/{period}/complete": [
+      "post"
+    ],
+    "/api/v1/access/access-log/reviews/{period}/findings": [
+      "post"
+    ],
+    "/api/v1/access/access-log/reviews/{period}/start": [
+      "post"
     ],
     "/api/v1/access/accounts/{accountId}/effective": [
       "get"
@@ -201,9 +223,6 @@
     "/api/v1/auth/privacy-consent/status": [
       "post"
     ],
-    "/api/v1/auth/signup": [
-      "post"
-    ],
     "/api/v1/auth/token/refresh": [
       "post"
     ],
@@ -265,11 +284,31 @@
     "/api/v1/me/action-inbox/reference/{id}/read": [
       "post"
     ],
+    "/api/v1/me/access-log": [
+      "get"
+    ],
     "/api/v1/me/authz": [
+      "get"
+    ],
+    "/api/v1/me/certificates": [
+      "get",
+      "post"
+    ],
+    "/api/v1/me/certificates/{id}": [
       "get"
     ],
     "/api/v1/me/employee-views": [
       "get",
+      "post"
+    ],
+    "/api/v1/me/profile": [
+      "get",
+      "patch"
+    ],
+    "/api/v1/me/profile/change-requests": [
+      "post"
+    ],
+    "/api/v1/me/profile/reveal": [
       "post"
     ],
     "/api/v1/me/workbench": [
@@ -450,6 +489,7 @@
     "AccessLevel",
     "AccessLogEvent",
     "AccessLogPage",
+    "AccessLogReview",
     "AccessPerson",
     "AccessRequest",
     "AccessRequestReason",
@@ -494,6 +534,7 @@
     "CreatePlatformOrgRequest",
     "CreatePolicyRoleRequest",
     "CreateRegionRequest",
+    "CreateSelfChangeRequest",
     "CreateUserRequest",
     "CurrentUser",
     "DecisionLogRow",
@@ -508,11 +549,15 @@
     "EmployeeView",
     "EnrollHandoffRequest",
     "EnrollHandoffResponse",
+    "InvitePlatformOperatorRequest",
     "LogoutRequest",
     "MeAuthzCapability",
     "MeAuthzResponse",
+    "MeProfileResponse",
     "MobilePasskeyStepUpStartRequest",
     "MobilePasskeyStepUpStartResponse",
+    "MyAccessLogEvent",
+    "MyAccessLogPage",
     "MyWorkbenchResponse",
     "OpsAccount",
     "OpsRecoveryCancelRequest",
@@ -537,6 +582,9 @@
     "PlatformGroupAccount",
     "PlatformGroupMember",
     "PlatformGroupRole",
+    "PlatformOperatorInviteResponse",
+    "PlatformOperatorStatus",
+    "PlatformOperatorSummary",
     "PlatformOpsResponse",
     "PlatformOrg",
     "PlatformOrgAdminOtpReissueRequest",
@@ -575,18 +623,24 @@
     "PrivacyConsentStatusResponse",
     "RefreshTokenRequest",
     "RegionSummary",
+    "ReissuePlatformOperatorInviteRequest",
     "ReplacePolicyRoleAssignmentsRequest",
+    "RevokePlatformOperatorRequest",
     "RouteAdoptionMetric",
     "SelfBindingError",
     "SelfBindingPrepareRequest",
     "SelfBindingRequest",
     "SelfBindingReviewRequest",
     "SelfBindingWithdrawRequest",
+    "SelfChangeRequestSummary",
+    "SelfEmergencyContactInput",
+    "SelfEmergencyContactSummary",
+    "SelfFieldRevealed",
+    "SelfIssueCertificateRequest",
+    "SelfRevealRequest",
     "SetAccessRoleStatusRequest",
     "SignInIdHistory",
     "SignInIdRecord",
-    "SignupRequest",
-    "SignupResponse",
     "SimulationOutcome",
     "StepUpRequest",
     "SupportAccessRecord",
@@ -610,6 +664,7 @@
     "UpdatePolicyRoleRequest",
     "UpdatePolicyRoleStatusRequest",
     "UpdateRegionRequest",
+    "UpdateMeProfileRequest",
     "UpdateSelfProfileRequest",
     "UpdateUserRequest",
     "UserPage",
@@ -639,9 +694,13 @@
   "external_schemas": [
     "ActorKind",
     "AuditLastChange",
+    "Certificate",
+    "CertificatePage",
+    "ChangeRequest",
     "Date",
     "ErrorBody",
     "FieldError",
+    "KrAddress",
     "MobilePasskeyStepUpBinding",
     "MobilePasskeyStepUpEnvelope",
     "MobileStepUpActionKind",

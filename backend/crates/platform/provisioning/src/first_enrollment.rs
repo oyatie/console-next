@@ -1,4 +1,8 @@
-use crate::{BootstrapCredentialStore, ProvisioningError, hash_token, resolve_bootstrap_org};
+use crate::{
+    BootstrapCredentialStore, OtpHmacKey, PLATFORM_INVITE_TOKEN_PREFIX, ProvisioningError,
+    otp_lookup_candidates, resolve_otp_candidate_org,
+};
+use aws_lc_rs::constant_time::verify_slices_are_equal;
 use console_platform_auth::{RefreshTokenIssue, RefreshTokenStore, authentication_time_tx};
 use sqlx::{PgPool, Row};
 use time::{Duration, OffsetDateTime};
@@ -10,6 +14,7 @@ use uuid::Uuid;
 #[derive(Clone)]
 pub struct FirstEnrollmentCommandPool {
     pool: PgPool,
+    bootstrap: BootstrapCredentialStore,
 }
 
 #[derive(Debug)]
@@ -29,8 +34,20 @@ pub enum FirstEnrollmentOutcome {
 
 impl FirstEnrollmentCommandPool {
     #[must_use]
+    pub const fn with_otp_hmac_key(pool: PgPool, key: OtpHmacKey) -> Self {
+        Self {
+            pool,
+            bootstrap: BootstrapCredentialStore::new(key),
+        }
+    }
+
+    #[cfg(debug_assertions)]
+    #[must_use]
     pub fn new(pool: PgPool) -> Self {
-        Self { pool }
+        Self {
+            pool,
+            bootstrap: BootstrapCredentialStore::default(),
+        }
     }
 
     /// Consume exactly one v1 first-enrollment proof, issue only an enrollment
@@ -53,8 +70,11 @@ impl FirstEnrollmentCommandPool {
         if role != "console_auth_cmd" {
             return Err(ProvisioningError::InvalidBootstrapCredential);
         }
-        let token_hash = hash_token(otp);
-        let org_uuid = resolve_bootstrap_org(&mut tx, &token_hash)
+        if otp.starts_with(PLATFORM_INVITE_TOKEN_PREFIX) {
+            return Err(ProvisioningError::InvalidBootstrapCredential);
+        }
+        let candidates = otp_lookup_candidates(&self.bootstrap.resolve_hmac_key()?, otp);
+        let (org_uuid, token_hash) = resolve_otp_candidate_org(&mut tx, &candidates)
             .await?
             .ok_or(ProvisioningError::InvalidBootstrapCredential)?;
         sqlx::query("SELECT set_config('app.current_org',$1,true)")
@@ -107,7 +127,7 @@ impl FirstEnrollmentCommandPool {
             let generation: i64 = existing.try_get("auth_generation")?;
             let issuance: Option<Uuid> = existing.try_get("source_operation_id")?;
             let family: Option<Uuid> = existing.try_get("family_id")?;
-            if saved_hash.as_slice() == status_secret_hash.as_slice()
+            if verify_slices_are_equal(&saved_hash, &status_secret_hash).is_ok()
                 && existing.try_get::<&str, _>("status")? == "committed"
                 && saved_source == Some(source_id)
                 && saved_account == user_id
@@ -161,9 +181,7 @@ impl FirstEnrollmentCommandPool {
         .execute(tx.as_mut())
         .await?;
 
-        let proof = BootstrapCredentialStore
-            .redeem_otp_in_tx(&mut tx, otp, now)
-            .await?;
+        let proof = self.bootstrap.redeem_otp_in_tx(&mut tx, otp, now).await?;
         if proof.source.issuance_version != 1
             || proof.source.credential_id != source_id
             || proof.source.issued_generation != Some(generation)

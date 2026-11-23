@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "SPDX-License-Identifier: LicenseRef-Proprietary",
+  "type": "object",
+  "required": [
+    "version",
+    "mode",
+    "display_status",
+    "timezone",
+    "rotation",
+    "escalation",
+    "synthetic_page_test"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "single-operator",
+        "primary-backup"
+      ]
+    },
+    "display_status": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!(?:No data|N/A|—)$).+"
+    },
+    "timezone": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!(?:No data|N/A|—)$).+"
+    },
+    "rotation": {
+      "type": "object",
+      "required": [
+        "primary_person",
+        "backup_person",
+        "handoff_weekday",
+        "handoff_hour_local"
+      ],
+      "properties": {
+        "primary_person": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "backup_person": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "handoff_weekday": {
+          "type": "string",
+          "enum": [
+            "Mon",
+            "Tue",
+            "Wed",
+            "Thu",
+            "Fri",
+            "Sat",
+            "Sun"
+          ]
+        },
+        "handoff_hour_local": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 23
+        }
+      },
+      "additionalProperties": false
+    },
+    "escalation": {
+      "type": "object",
+      "required": [
+        "ack_timeout_s",
+        "repeat_interval_s",
+        "out_of_hours_policy",
+        "daily_page_budget"
+      ],
+      "properties": {
+        "ack_timeout_s": {
+          "type": "integer",
+          "minimum": 60
+        },
+        "repeat_interval_s": {
+          "type": "integer",
+          "minimum": 300
+        },
+        "out_of_hours_policy": {
+          "type": "string",
+          "const": "sev1-symptoms-only"
+        },
+        "daily_page_budget": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2
+        }
+      },
+      "additionalProperties": false
+    },
+    "synthetic_page_test": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "schedule",
+        "weekday",
+        "hour_utc",
+        "max_delivery_lag_s"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "schedule": {
+          "type": "string",
+          "const": "weekly"
+        },
+        "weekday": {
+          "type": "string",
+          "enum": [
+            "Mon",
+            "Tue",
+            "Wed",
+            "Thu",
+            "Fri",
+            "Sat",
+            "Sun"
+          ]
+        },
+        "hour_utc": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 23
+        },
+        "max_delivery_lag_s": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

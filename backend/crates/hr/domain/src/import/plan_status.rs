@@ -4,7 +4,7 @@
 //! dates; a text the catalog and the operator's map do not know is a question,
 //! never a guess.
 
-use super::cells::parse_import_date;
+use super::cells::{DateParseError, parse_import_date_checked};
 use super::normalize::{known_code, leave_type_code, status_code};
 use super::plan::{Decisions, ImportRow, PlanFacts, SetupLeave};
 
@@ -40,9 +40,11 @@ fn leave(row: &ImportRow, hire: time::Date, decisions: &Decisions) -> Result<Set
         .leave_start_date
         .as_deref()
         .ok_or(("leave_start_required", "leave_start_date"))?;
-    let start = parse_import_date(raw)
-        .filter(|start| *start >= hire)
-        .ok_or(("invalid_date", "leave_start_date"))?;
+    let start = match parse_import_date_checked(raw) {
+        Ok(start) if start >= hire => start,
+        Err(DateParseError::TwoDigitYear) => return Err(("two_digit_year", "leave_start_date")),
+        _ => return Err(("invalid_date", "leave_start_date")),
+    };
     let text = row.leave_type.as_deref().unwrap_or("");
     let leave_type = leave_type_code(text)
         .or_else(|| {
@@ -53,11 +55,13 @@ fn leave(row: &ImportRow, hire: time::Date, decisions: &Decisions) -> Result<Set
         })
         .ok_or(("leave_type_unmapped", "leave_type"))?;
     let back = match row.leave_return_date.as_deref() {
-        Some(raw) => Some(
-            parse_import_date(raw)
-                .filter(|back| *back > start)
-                .ok_or(("invalid_date", "leave_return_date"))?,
-        ),
+        Some(raw) => match parse_import_date_checked(raw) {
+            Ok(back) if back > start => Some(back),
+            Err(DateParseError::TwoDigitYear) => {
+                return Err(("two_digit_year", "leave_return_date"));
+            }
+            _ => return Err(("invalid_date", "leave_return_date")),
+        },
         // 0264: childcare leave and maternity leave name their return date.
         None if matches!(leave_type, "CHILDCARE" | "MATERNITY") => {
             return Err(("leave_return_required", "leave_return_date"));

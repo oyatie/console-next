@@ -10,8 +10,7 @@ import tempfile
 import unittest
 
 
-PRODUCERS = {"states-timings": "Reconcile UI state test results",
-             "release-evidence": "Collect release test evidence"}
+RELEASE_JOB = "Collect release test evidence"
 
 
 class PullMeasuredEvidenceTest(unittest.TestCase):
@@ -20,7 +19,7 @@ class PullMeasuredEvidenceTest(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         self.run = {"databaseId": 123, "headSha": "a" * 40, "headBranch": "dev", "event": "push"}
-        self.jobs = {name: "success" for name in PRODUCERS.values()}
+        self.jobs = {RELEASE_JOB: "success"}
         self.data = {"commit": self.run["headSha"], "run_at": datetime.now(timezone.utc).isoformat(),
                      "source_command": "proof", "rows": [{"status": "fail"}, {"status": "unknown"}]}
         (self.root / "evidence.py").write_text('''import json, os, sys
@@ -55,7 +54,6 @@ elif args[:2] == ['run', 'download']:
     assert artifact in json.loads(os.environ['ARTIFACTS'])
     Path(args[args.index('--dir') + 1]).mkdir()
     names = ('e2e', 'nextest') if artifact == 'd7-evidence' else (artifact.removesuffix('-evidence'),)
-    if artifact == 'd8-evidence': names = ('states',)
     for name in names:
         data = json.loads(os.environ['DATA'])
         if name == os.environ.get('INVALID_SOURCE'): data['invalid'] = True
@@ -65,7 +63,7 @@ else: sys.exit('unexpected gh invocation: ' + repr(args))
 ''')
         (self.root / "gh").chmod(0o755)
         self.env = {**os.environ, "PATH": str(self.root) + os.pathsep + os.environ["PATH"],
-                    "INGEST_LOG": str(self.root / "ingested"), "ARTIFACTS": json.dumps(["states-evidence", "d7-evidence"])}
+                    "INGEST_LOG": str(self.root / "ingested"), "ARTIFACTS": json.dumps(["d7-evidence"])}
 
     def invoke(self):
         self.env.update(RUN=json.dumps([self.run] if self.run else []), DATA=json.dumps(self.data), JOBS=json.dumps(self.jobs))
@@ -73,18 +71,14 @@ else: sys.exit('unexpected gh invocation: ' + repr(args))
                               env=self.env, capture_output=True, text=True)
 
     def test_latest_set_keeps_failed_and_unknown_rows(self):
-        for artifact in ("states-evidence", "d8-evidence"):
-            with self.subTest(artifact=artifact):
-                self.env['ARTIFACTS'] = json.dumps([artifact, "d7-evidence"])
-                result = self.invoke()
-                self.assertEqual(result.returncode, 0, result.stderr)
-                records = [json.loads(line) for line in (self.root / "ingested").read_text().splitlines()]
-                self.assertEqual([name for name, _ in records], ["states.json", "e2e.json", "nextest.json"])
-                self.assertTrue(all(data == self.data for _, data in records))
-                (self.root / "ingested").unlink()
+        result = self.invoke()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        records = [json.loads(line) for line in (self.root / "ingested").read_text().splitlines()]
+        self.assertEqual([name for name, _ in records], ["e2e.json", "nextest.json"])
+        self.assertTrue(all(data == self.data for _, data in records))
 
     def test_available_sources_ingest_independently_without_older_run_fallback(self):
-        for sources in (("states",), ("e2e",), ("nextest",), ("states", "e2e"), ("e2e", "nextest"), ("states", "e2e", "nextest")):
+        for sources in (("e2e",), ("nextest",), ("e2e", "nextest")):
             with self.subTest(sources=sources):
                 self.env['ARTIFACTS'] = json.dumps([name + "-evidence" for name in sources])
                 result = self.invoke()
@@ -95,69 +89,43 @@ else: sys.exit('unexpected gh invocation: ' + repr(args))
                 (self.root / "ingested").unlink()
 
     def test_available_invalid_source_never_partially_ingests(self):
-        self.env.update(ARTIFACTS=json.dumps(["states-evidence", "e2e-evidence"]), INVALID_SOURCE="e2e")
+        self.env.update(ARTIFACTS=json.dumps(["e2e-evidence", "nextest-evidence"]), INVALID_SOURCE="nextest")
         result = self.invoke()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("invalid row", result.stderr)
         self.assertFalse((self.root / "ingested").exists())
 
     def test_unsuccessful_or_missing_producer_never_ingests(self):
-        for job, artifact in (("release-evidence", "states-evidence"), ("states-timings", "e2e-evidence")):
-            for conclusion in ("failure", "cancelled", "timed_out", "action_required", "neutral", None, "missing"):
-                with self.subTest(job=job, conclusion=conclusion):
-                    self.jobs = {name: "success" for name in PRODUCERS.values()}
-                    if conclusion == "missing": del self.jobs[PRODUCERS[job]]
-                    else: self.jobs[PRODUCERS[job]] = conclusion
-                    self.env['ARTIFACTS'] = json.dumps([artifact])
-                    result = self.invoke()
-                    self.assertNotEqual(result.returncode, 0)
-                    self.assertIn(f"producer {job}", result.stderr)
-                    self.assertFalse((self.root / "ingested").exists())
-
-    def test_failed_producer_with_published_artifacts_never_ingests(self):
-        for artifact, job in (("states-evidence", "states-timings"), ("d8-evidence", "release-evidence"),
-                              ("e2e-evidence", "release-evidence"), ("nextest-evidence", "release-evidence"),
-                              ("d7-evidence", "release-evidence")):
-            with self.subTest(artifact=artifact):
-                self.jobs = {name: "success" for name in PRODUCERS.values()}
-                self.jobs[PRODUCERS[job]] = "failure"
-                self.env['ARTIFACTS'] = json.dumps([artifact])
+        for conclusion in ("failure", "cancelled", "timed_out", "action_required", "neutral", None, "missing"):
+            with self.subTest(conclusion=conclusion):
+                self.jobs = {} if conclusion == "missing" else {RELEASE_JOB: conclusion}
                 result = self.invoke()
                 self.assertNotEqual(result.returncode, 0)
-                self.assertIn(f"producer {job}", result.stderr)
+                self.assertIn("producer release-evidence", result.stderr)
                 self.assertFalse((self.root / "ingested").exists())
 
-    def test_skipped_release_allows_states_only(self):
-        self.jobs[PRODUCERS['release-evidence']] = "skipped"
-        self.env['ARTIFACTS'] = json.dumps(["states-evidence"])
+    def test_skipped_release_without_artifacts_never_ingests(self):
+        self.jobs[RELEASE_JOB] = "skipped"
+        self.env['ARTIFACTS'] = '[]'
         result = self.invoke()
-        self.assertEqual(result.returncode, 0, result.stderr)
-        records = [json.loads(line) for line in (self.root / "ingested").read_text().splitlines()]
-        self.assertEqual([name for name, _ in records], ["states.json"])
-        self.assertIn("Unavailable measured source in latest dev run: e2e", result.stdout)
-        self.assertIn("Unavailable measured source in latest dev run: nextest", result.stdout)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("no measured artifacts", result.stderr)
+        self.assertFalse((self.root / "ingested").exists())
 
     def test_successful_web_only_run_allows_missing_nextest(self):
-        self.env['ARTIFACTS'] = json.dumps(["states-evidence", "e2e-evidence"])
+        self.env['ARTIFACTS'] = json.dumps(["e2e-evidence"])
         result = self.invoke()
         self.assertEqual(result.returncode, 0, result.stderr)
         records = [json.loads(line) for line in (self.root / "ingested").read_text().splitlines()]
-        self.assertEqual([name for name, _ in records], ["states.json", "e2e.json"])
+        self.assertEqual([name for name, _ in records], ["e2e.json"])
         self.assertIn("Unavailable measured source in latest dev run: nextest", result.stdout)
 
-    def test_states_fallback_checks_release_job_instead_of_states_job(self):
-        self.jobs[PRODUCERS['states-timings']] = "failure"
-        self.env['ARTIFACTS'] = json.dumps(["d8-evidence", "d7-evidence"])
-        result = self.invoke()
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(len((self.root / "ingested").read_text().splitlines()), 3)
-
     def test_independent_artifacts_take_precedence_over_combined_fallbacks(self):
-        self.env.update(ARTIFACTS=json.dumps(["states-evidence", "e2e-evidence", "nextest-evidence", "d8-evidence", "d7-evidence"]),
-                        INVALID_ARTIFACTS=json.dumps(["d8-evidence", "d7-evidence"]))
+        self.env.update(ARTIFACTS=json.dumps(["e2e-evidence", "nextest-evidence", "d7-evidence"]),
+                        INVALID_ARTIFACTS=json.dumps(["d7-evidence"]))
         result = self.invoke()
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(len((self.root / "ingested").read_text().splitlines()), 3)
+        self.assertEqual(len((self.root / "ingested").read_text().splitlines()), 2)
 
     def test_untrusted_stale_or_incomplete_set_never_writes(self):
         original_run, original_data = self.run.copy(), self.data.copy()
@@ -166,7 +134,7 @@ else: sys.exit('unexpected gh invocation: ' + repr(args))
         for case, message in cases:
             with self.subTest(case=case):
                 self.run, self.data = original_run.copy(), original_data.copy()
-                self.env['ARTIFACTS'] = json.dumps(["states-evidence", "d7-evidence"])
+                self.env['ARTIFACTS'] = json.dumps(["d7-evidence"])
                 self.env.pop('INVALID_SOURCE', None)
                 if case == 'branch': self.run['headBranch'] = 'feature'
                 if case == 'event': self.run['event'] = 'pull_request'
@@ -179,14 +147,6 @@ else: sys.exit('unexpected gh invocation: ' + repr(args))
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn(message, result.stderr)
                 self.assertFalse((self.root / "ingested").exists())
-
-    def test_states_publish_is_independent_of_backend_changes(self):
-        source = Path('.github/workflows/ci.yml').read_text()
-        job = source.split('\n  states-timings:\n', 1)[1].split('\n  backend:\n', 1)[0]
-        self.assertNotIn("outputs.backend", job)
-        self.assertIn('python3 scripts/states-evidence.py', job)
-        self.assertIn('name: states-evidence', job)
-        self.assertIn('.cache/states-plan/modules.json', job)
 
 
 if __name__ == '__main__': unittest.main()

@@ -18,6 +18,7 @@ const RUNTIME_KEYS: &[&str] = &[
     "approval.policy.import_rollback",
     "hr.contract_soon_days",
     "display.deadline_due_soon_days",
+    "display.experience",
     "onboarding.receipt_days",
     "period_lock.unlock_max_days",
 ];

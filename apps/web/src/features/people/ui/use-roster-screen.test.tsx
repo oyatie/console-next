@@ -55,3 +55,13 @@ test("a settings failure keeps the roster read enabled without a stale contract 
   expect(screen.soonDays).toBeUndefined();
   expect(state.read).toHaveBeenCalledWith(expect.anything(), undefined, true);
 });
+
+test("URL ids filter exposes ids, marks filtered/customFilters, and clears ids on reset", () => {
+  const id = "00000000-0000-4000-8000-000000000001";
+  state.search = { ids: id };
+  const screen = render();
+  expect(screen).toMatchObject({ ids: [id], filtered: true, customFilters: true });
+  screen.reset();
+  const navigation = state.navigate.mock.calls.at(-1)![0];
+  expect(navigation.search(state.search)).toMatchObject({ ids: undefined, status: undefined, unit: undefined });
+});

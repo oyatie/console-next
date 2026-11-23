@@ -150,6 +150,9 @@ impl DbPoolConfig {
         Ok(match role {
             AppRole::Api => api,
             AppRole::Worker | AppRole::Migrate | AppRole::SchemaCheck => self.worker_connections,
+            AppRole::Ops => {
+                return Err(AppError::Config("ops role has no database pool".to_owned()));
+            }
         })
     }
 }

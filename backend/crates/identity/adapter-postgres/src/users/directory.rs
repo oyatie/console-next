@@ -1,8 +1,10 @@
-use crate::users::read::DEFAULT_USER_LIMIT;
-use crate::users::rows::fetch_directory_user;
+use crate::users::read::{DEFAULT_USER_LIMIT, escape_like};
+use crate::users::rows_batch::fetch_directory_users_by_ids_tx;
 use crate::{PgOrgError, PgOrgStore};
-use console_identity_application::{DirectoryListQuery, MAX_DIRECTORY_PAGE_LIMIT, UserPage};
-use console_kernel_core::{BranchScope, KernelError, UserId};
+use console_identity_application::{
+    DirectoryListQuery, MAX_DIRECTORY_PAGE_LIMIT, UserPage, UserSummary,
+};
+use console_kernel_core::{BranchScope, KernelError};
 use console_platform_db::with_org_conn;
 use console_platform_request_context::current_org;
 use sqlx::{Postgres, QueryBuilder};
@@ -31,7 +33,10 @@ impl PgOrgStore {
             |branch_id| scope.intersect(&BranchScope::single(branch_id)),
         );
         let result_scope = scope.clone();
-        let search = query.search;
+        let search = query
+            .search
+            .map(|s| s.trim().to_ascii_lowercase())
+            .filter(|s| !s.is_empty());
         let team = query.team;
         let roles = query.roles;
         let include_inactive = query.include_inactive;
@@ -57,26 +62,33 @@ impl PgOrgStore {
                 }
             }
             if let Some(search) = &search {
+                let escaped = escape_like(search);
+                let login_part = escape_like(search.split('@').next().unwrap_or(search));
                 // Display name, the employee number of the linked employee
                 // record (0076 explicit link; same tenant by FK and RLS), or
                 // any sign-in ID the account holds or held (#33: an old one stays
                 // a searchable alias for good).
                 builder
                     .push(" AND (LOWER(u.display_name) LIKE '%' || ")
-                    .push_bind(search.clone())
+                    .push_bind(escaped.clone())
                     .push(
-                        " || '%' OR EXISTS (SELECT 1 FROM employees e \
+                        " || '%' ESCAPE '\\' OR EXISTS (SELECT 1 FROM employees e \
                          WHERE e.id = u.employee_id AND e.org_id = u.org_id \
                            AND LOWER(e.employee_number) LIKE '%' || ",
                     )
-                    .push_bind(search.clone())
-                    .push(
-                        " || '%') OR EXISTS (SELECT 1 FROM user_sign_in_ids s \
-                         WHERE s.org_id = u.org_id AND s.user_id = u.id \
-                           AND s.login LIKE '%' || split_part(",
-                    )
-                    .push_bind(search.clone())
-                    .push(", '@', 1) || '%'))");
+                    .push_bind(escaped)
+                    .push(" || '%' ESCAPE '\\')");
+                if !login_part.is_empty() {
+                    builder
+                        .push(
+                            " OR EXISTS (SELECT 1 FROM user_sign_in_ids s \
+                             WHERE s.org_id = u.org_id AND s.user_id = u.id \
+                               AND s.login LIKE '%' || ",
+                        )
+                        .push_bind(login_part)
+                        .push(" || '%' ESCAPE '\\')");
+                }
+                builder.push(")");
             }
             if let Some(team) = team {
                 builder.push(" AND u.team = ").push_bind(team.as_db_str());
@@ -110,8 +122,8 @@ impl PgOrgStore {
             .push_bind(offset);
 
         let org = current_org().map_err(KernelError::from)?;
-        let (total, ids) =
-            with_org_conn::<_, (i64, Vec<uuid::Uuid>), PgOrgError>(&self.pool, org, move |tx| {
+        let (total, mut items) =
+            with_org_conn::<_, (i64, Vec<UserSummary>), PgOrgError>(&self.pool, org, move |tx| {
                 Box::pin(async move {
                     let total = count_builder
                         .build_query_scalar::<i64>()
@@ -121,18 +133,15 @@ impl PgOrgStore {
                         .build_query_scalar::<uuid::Uuid>()
                         .fetch_all(tx.as_mut())
                         .await?;
-                    Ok((total, ids))
+                    let items = fetch_directory_users_by_ids_tx(tx, &ids).await?;
+                    Ok((total, items))
                 })
             })
             .await?;
 
-        let mut items = Vec::with_capacity(ids.len());
-        for id in ids {
-            // fetch_user SELECTs users.phone; directory pages must not.
-            let mut user = fetch_directory_user(&self.pool, UserId::from_uuid(id)).await?;
+        for user in &mut items {
             user.branch_ids
                 .retain(|branch| result_scope.allows(*branch));
-            items.push(user);
         }
         Ok(UserPage {
             items,

@@ -12,6 +12,8 @@ pub(crate) mod org;
 mod patterns;
 pub(crate) mod preview;
 pub(crate) mod read;
+pub use console_attendance_domain::schedule::DayKind;
+pub use read::{EmployeeScheduleSpan, ScheduleDaySummary};
 mod tree;
 pub(crate) mod universe;
 

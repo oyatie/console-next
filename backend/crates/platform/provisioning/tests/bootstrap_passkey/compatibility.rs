@@ -104,13 +104,13 @@ async fn migration_preserves_existing_names_and_previous_binary_sign_in(pool: Pg
     tx.commit().await.unwrap();
     let now = OffsetDateTime::now_utc();
     assert!(
-        BootstrapCredentialStore
+        BootstrapCredentialStore::default()
             .seed_cold_start_credential(&pool, "n1-upgrade", Duration::hours(1), now)
             .await
             .unwrap()
     );
     assert_eq!(
-        BootstrapCredentialStore
+        BootstrapCredentialStore::default()
             .redeem_otp(&pool, "n1-upgrade", now)
             .await
             .unwrap()
@@ -155,13 +155,13 @@ async fn fresh_operator_has_a_real_identifier_label_and_keeps_not_null(pool: PgP
     );
     let now = OffsetDateTime::now_utc();
     assert!(
-        BootstrapCredentialStore
+        BootstrapCredentialStore::default()
             .seed_cold_start_credential(&pool, "n1-fresh", Duration::hours(1), now)
             .await
             .unwrap()
     );
     assert_eq!(
-        BootstrapCredentialStore
+        BootstrapCredentialStore::default()
             .redeem_otp(&pool, "n1-fresh", now)
             .await
             .unwrap()

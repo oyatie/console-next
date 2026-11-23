@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["slug", "kind"]
+properties:
+  slug: {"$ref": "#/components/schemas/Text"}
+  kind: {"type": "string", "enum": ["html_id", "heading"]}
+  title: {"anyOf": [{"type": "string"}, {"type": "null"}]}

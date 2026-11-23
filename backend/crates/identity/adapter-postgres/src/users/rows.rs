@@ -98,24 +98,6 @@ pub(crate) async fn fetch_user(pool: &PgPool, user_id: UserId) -> Result<UserSum
     user_from_row(&row, branch_ids)
 }
 
-pub(crate) async fn fetch_directory_user(
-    pool: &PgPool,
-    user_id: UserId,
-) -> Result<UserSummary, PgOrgError> {
-    let org = current_org().map_err(KernelError::from)?;
-    let row = with_org_conn::<_, _, PgOrgError>(pool, org, move |tx| {
-        Box::pin(async move {
-            Ok(sqlx::query(USER_SELECT_DIRECTORY)
-                .bind(*user_id.as_uuid())
-                .fetch_one(tx.as_mut())
-                .await?)
-        })
-    })
-    .await?;
-    let branch_ids = fetch_user_branch_ids(pool, user_id).await?;
-    user_from_directory_row(&row, branch_ids)
-}
-
 pub(crate) async fn fetch_user_tx(
     tx: &mut Transaction<'_, Postgres>,
     user_id: UserId,
@@ -166,14 +148,14 @@ async fn fetch_user_branch_ids(
     Ok(rows.into_iter().map(BranchId::from_uuid).collect())
 }
 
-fn user_from_row(
+pub(crate) fn user_from_row(
     row: &sqlx::postgres::PgRow,
     branch_ids: Vec<BranchId>,
 ) -> Result<UserSummary, PgOrgError> {
     user_from_row_with_phone(row, branch_ids, row.try_get("phone")?)
 }
 
-fn user_from_directory_row(
+pub(crate) fn user_from_directory_row(
     row: &sqlx::postgres::PgRow,
     branch_ids: Vec<BranchId>,
 ) -> Result<UserSummary, PgOrgError> {
@@ -206,6 +188,9 @@ fn user_from_row_with_phone(
         employee_company: row.try_get("employee_company")?,
         employee_org_unit: row.try_get("employee_org_unit")?,
         employee_position: row.try_get("employee_position")?,
+        employee_hire_date: None,
+        employee_employment_status: None,
+        employee_grade: None,
         employee_identity_review_required: row.try_get("employee_identity_review_required")?,
         employee_identity_resolution_confidence: row
             .try_get("employee_identity_resolution_confidence")?,

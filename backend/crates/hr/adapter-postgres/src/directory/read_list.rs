@@ -120,7 +120,7 @@ impl HrService {
             let (mut rows, keyset) = match &paging {
                 RosterPaging::Offset(offset) => {
                     let mut rows = filtered_employees(EMPLOYEE_ROW_SELECT, &filters);
-                    rows.push(" ORDER BY e.company ASC, COALESCE(console_employee_facts(e.org_id,e.id)->>'legal_name',e.name) ASC, e.source_sheet ASC, e.source_row ASC LIMIT ");
+                    rows.push(" ORDER BY e.company ASC, COALESCE(console_employee_facts(e.org_id,e.id)->>'legal_name',e.name) ASC, e.source_sheet ASC, e.source_row ASC, e.id ASC LIMIT ");
                     rows.push_bind(limit);
                     rows.push(" OFFSET ");
                     rows.push_bind(*offset);

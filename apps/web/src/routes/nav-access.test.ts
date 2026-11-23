@@ -15,7 +15,7 @@ const links = (held?: AccessEffective, support = false, pathname = "/") => tenan
 
 const admin = { is_ops: true, entries: [] } as unknown as AccessEffective;
 const roleFixtures = [admin, { is_ops: false, entries: [] } as unknown as AccessEffective,
-  ...["org", "hr_basic", "access", "exceptions", "attendance", "exit"].flatMap(domain =>
+  ...["org", "hr_basic", "access", "exceptions", "attendance", "exit", "audit"].flatMap(domain =>
     ["view", "edit", "approve", "export"].flatMap(level => ["TENANT", "LEGAL_ENTITY", "WORKPLACE", "DEPARTMENT"].map(kind => access(domain, level, kind)))),
 ];
 const context = (pathname = "/", phase = "OPERATING", setupTargets?: readonly string[]) => ({ pathname, phase, setupTargets });
@@ -43,13 +43,14 @@ test("SETUP follows non-blocked checklist targets, with safe destinations on a r
   expect(top(menu("/", "SETUP", []))).toEqual(["/"]);
 });
 
-test("OPERATING has at most nine entries, distinct icons and no standalone subviews", () => {
+test("OPERATING has at most ten entries, distinct icons and no standalone subviews", () => {
   const groups = menu();
-  expect(top(groups)).toEqual(["/", "/people/requests", "/org", "/people", "/attendance", "/statutory", "/access", "/settings"]);
+  expect(top(groups)).toEqual(["/", "/people/requests", "/org", "/team", "/people", "/attendance", "/statutory", "/access", "/audit", "/settings"]);
+  expect(top(groups).length).toBeLessThanOrEqual(10);
   expect(groups.length).toBeLessThanOrEqual(3);
   const icons = groups.flatMap(g => g.links.map(l => l.icon));
   expect(new Set(icons).size).toBe(icons.length);
-  expect(top(tenantNav(admin, routes, true, context()))).toHaveLength(9);
+  expect(top(tenantNav(admin, routes, true, context()))).toHaveLength(10);
 });
 
 test.each([{ targets: undefined }, { targets: [] }, { targets: ["/org", "/people", "/access"] }])("a no-grant SETUP account sees only home with targets $targets", ({ targets }) => {
@@ -81,10 +82,11 @@ test("a no-grant requester keeps their own requests until the inbox has a reques
 test("only served modules appear, including the support approval exception", () => {
   const tree = { ...routes };
   delete tree["/org"];
+  delete tree["/audit"];
   delete tree["/audit/support-access"];
   delete tree["/settings"];
   const entries = tenantNav(admin, tree, true, context()).flatMap(g => g.links);
-  expect(entries.map(l => l.to)).not.toEqual(expect.arrayContaining(["/org", "/audit/support-access", "/settings"]));
+  expect(entries.map(l => l.to)).not.toEqual(expect.arrayContaining(["/org", "/audit", "/audit/support-access", "/settings"]));
   expect(entries.every(l => !("children" in l))).toBe(true);
   expect(entries.map(l => l.to)).not.toContain("/org/entities");
 });
@@ -100,7 +102,7 @@ test("loading links stay a fixed prefix when access and support finish in either
 });
 
 test.each(["TENANT", "LEGAL_ENTITY", "WORKPLACE", "DEPARTMENT"])("HR readers at %s see only directory destinations their reads admit", kind => {
-  expect(links(access("hr_basic", "view", kind), false, "/people")).toEqual(["/", "/people/requests", "/people", ...(kind !== "DEPARTMENT" ? ["/attendance"] : []), "/settings"]);
+  expect(links(access("hr_basic", "view", kind), false, "/people")).toEqual(["/", "/people/requests", "/team", "/people", ...(kind !== "DEPARTMENT" ? ["/attendance"] : []), "/settings"]);
 });
 
 test("an account manager without a directory grant cannot reach people", () => {
@@ -111,7 +113,7 @@ test.each(["attendance", "exit"])("a %s writer does not get a directory read lin
   expect(links(access(domain, "edit"))).toEqual(links({ is_ops: false, entries: [] } as unknown as AccessEffective));
 });
 
-test.each(["org", "hr_basic", "access", "exceptions", "attendance", "exit"])("navigation agrees with every destination's requirement for %s", domain => {
+test.each(["org", "hr_basic", "access", "exceptions", "attendance", "exit", "audit"])("navigation agrees with every destination's requirement for %s", domain => {
   const all = [...new Set(["/org", "/people"].flatMap(path => links(admin, false, path)))];
   for (const level of ["view", "edit", "approve", "export"]) for (const kind of ["TENANT", "DEPARTMENT"]) {
     const held = access(domain, level, kind);

@@ -29,17 +29,19 @@ export function MonthGrid({ label, weeks, weekdays, inMonth, cell, tone, selecte
   const current = active && flat.includes(active) ? active : selected && flat.includes(selected) ? selected : flat.find(inMonth);
   const grid = useRef<HTMLTableElement>(null);
   const move = (to: number) => {
-    const d = flat[Math.max(0, Math.min(flat.length - 1, to))];
+    if (to < 0 || to >= flat.length) return;
+    const d = flat[to];
     if (!d) return;
     setActive(d);
     grid.current?.querySelector<HTMLElement>(`[data-date="${d}"]`)?.focus();
   };
   const key = (e: KeyboardEvent, d: string) => {
     const i = flat.indexOf(d);
+    if (i < 0) return;
     const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[e.key];
     if (step !== undefined) move(i + step);
     else if (e.key === "Home") move(i - (i % 7));
-    else if (e.key === "End") move(i - (i % 7) + 6);
+    else if (e.key === "End") move(Math.min(flat.length - 1, i - (i % 7) + 6));
     else if ((e.key === "Enter" || e.key === " ") && onSelect) onSelect(d);
     else return;
     e.preventDefault();

@@ -14,6 +14,7 @@ import { Field } from "../../../ui/field/field";
 import { SelectInput } from "../../../ui/field/select-input";
 import { Sheet } from "../../../ui/sheet/sheet";
 import { Table } from "../../../ui/table";
+import { ScheduleSection } from "./schedule-section";
 import { holidaysQuery, retireHoliday, type ContractualHoliday, type ScheduleTree } from "../api";
 import { refusalText, ruleText } from "../present";
 import { HolidaySheet } from "./holiday-sheet";
@@ -24,43 +25,48 @@ import { PeriodStepper } from "./period-stepper";
  * company holiday (A2-holidays, +add): the company's own rest days from the work rules or a collective agreement. Unlike public holiday they are this
  * tenant's records: added with a preview, stopped from a year on (retire), and every change stays in history.
  */
-export function HolidaysView({ tree, onDone }: { tree: ScheduleTree; onDone: (message: string) => void }) {
+export function HolidaysView({ tree, onDone, consoleMode = false }: { tree: ScheduleTree; onDone: (message: string) => void; consoleMode?: boolean }) {
   const [year, setYear] = useState(Number(todayKst().slice(0, 4)));
   const q = useQuery({ ...holidaysQuery(year), placeholderData: keepPreviousData });
   const [adding, setAdding] = useState(false);
   const [retiring, setRetiring] = useState<ContractualHoliday | null>(null);
+  const tools = !q.error ? (
+    <>
+      <PeriodStepper unit="year" variant={consoleMode ? "boxed" : "plain"} showCurrent={!consoleMode} value={String(year)} onChange={value => setYear(Number(value))} />
+      <Button size="sm" variant="primary" onClick={() => setAdding(true)}><Plus size={16} aria-hidden /> {t("attendanceHolidays.holidays.add")}</Button>
+    </>
+  ) : undefined;
+  const body = (
+    <QueryState q={q} layout="list" empty={(d) => (d.contractual.length ? null : <EmptyState title={t("attendanceHolidays.holidays.none", { year })} reason={t("attendanceHolidays.holidays.none.reason")} actions={<Button variant="primary" onClick={() => setAdding(true)}>{t("attendanceHolidays.holidays.add")}</Button>} />)}>
+      {(d) => (
+        <Table
+          label={t("attendanceHolidays.holidays.title")}
+          rows={d.contractual}
+          rowId={(h) => h.id}
+          columns={[
+            { header: t("attendanceHolidays.holidays.col.name"), cell: (h) => <strong>{h.name}</strong> },
+            { header: t("attendanceHolidays.holidays.col.rule"), cell: (h) => <span className="num">{ruleText(h)}</span> },
+            { header: t("attendanceHolidays.holidays.col.paid"), cell: (h) => t(h.paid ? "attendanceHolidays.holiday.paid" : "attendanceHolidays.holiday.unpaid"), fit: true },
+            { header: t("attendanceHolidays.holidays.col.scope"), cell: (h) => h.scope_name },
+            { header: t("attendanceHolidays.holidays.col.basis"), cell: (h) => <span className="muted">{t(`attendanceHolidays.basis.${h.basis_kind}`)} {h.basis_ref}</span> },
+            { header: t("attendanceHolidays.holidays.col.years"), cell: (h) => (h.end_year ? t("attendanceHolidays.holiday.years", { from: h.start_year, to: h.end_year }) : t("attendanceHolidays.holiday.since", { from: h.start_year })), fit: true },
+            { header: t("attendanceHolidays.holidays.col.actions"), fit: true, cell: (h) => (h.end_year ? null : <Button size="sm" variant="ghost" onClick={() => setRetiring(h)} aria-label={t("attendanceHolidays.holidays.retireOne", { name: h.name })}>{t("attendanceHolidays.holidays.retire")}</Button>) },
+          ]}
+        />
+      )}
+    </QueryState>
+  );
   return (
     <>
-      <Card
-        title={t("attendanceHolidays.holidays.title")}
-        meta={t("attendanceHolidays.holidays.meta")}
-        flush
-        tools={!q.error &&
-          <>
-            <PeriodStepper unit="year" value={String(year)} onChange={value => setYear(Number(value))} />
-            <Button size="sm" variant="primary" onClick={() => setAdding(true)}><Plus size={16} aria-hidden /> {t("attendanceHolidays.holidays.add")}</Button>
-          </>
-        }
-      >
-        <QueryState q={q} layout="list" empty={(d) => (d.contractual.length ? null : <EmptyState title={t("attendanceHolidays.holidays.none", { year })} reason={t("attendanceHolidays.holidays.none.reason")} actions={<Button variant="primary" onClick={() => setAdding(true)}>{t("attendanceHolidays.holidays.add")}</Button>} />)}>
-          {(d) => (
-            <Table
-              label={t("attendanceHolidays.holidays.title")}
-              rows={d.contractual}
-              rowId={(h) => h.id}
-              columns={[
-                { header: t("attendanceHolidays.holidays.col.name"), cell: (h) => <strong>{h.name}</strong> },
-                { header: t("attendanceHolidays.holidays.col.rule"), cell: (h) => <span className="num">{ruleText(h)}</span> },
-                { header: t("attendanceHolidays.holidays.col.paid"), cell: (h) => t(h.paid ? "attendanceHolidays.holiday.paid" : "attendanceHolidays.holiday.unpaid"), fit: true },
-                { header: t("attendanceHolidays.holidays.col.scope"), cell: (h) => h.scope_name },
-                { header: t("attendanceHolidays.holidays.col.basis"), cell: (h) => <span className="muted">{t(`attendanceHolidays.basis.${h.basis_kind}`)} {h.basis_ref}</span> },
-                { header: t("attendanceHolidays.holidays.col.years"), cell: (h) => (h.end_year ? t("attendanceHolidays.holiday.years", { from: h.start_year, to: h.end_year }) : t("attendanceHolidays.holiday.since", { from: h.start_year })), fit: true },
-                { header: t("attendanceHolidays.holidays.col.actions"), fit: true, cell: (h) => (h.end_year ? null : <Button size="sm" variant="ghost" onClick={() => setRetiring(h)} aria-label={t("attendanceHolidays.holidays.retireOne", { name: h.name })}>{t("attendanceHolidays.holidays.retire")}</Button>) },
-              ]}
-            />
-          )}
-        </QueryState>
-      </Card>
+      {consoleMode ? (
+        <ScheduleSection id="att-schedule-holidays" title={t("attendanceHolidays.holidays.title")} meta={t("attendanceHolidays.holidays.meta")} tools={tools}>
+          {body}
+        </ScheduleSection>
+      ) : (
+        <Card title={t("attendanceHolidays.holidays.title")} meta={t("attendanceHolidays.holidays.meta")} flush tools={tools}>
+          {body}
+        </Card>
+      )}
       <HolidaySheet open={adding} tree={tree} onClose={() => setAdding(false)} onAdded={(message) => (setAdding(false), onDone(message))} />
       <RetireSheet holiday={retiring} onClose={() => setRetiring(null)} onRetired={(message) => (setRetiring(null), onDone(message))} />
     </>

@@ -89,6 +89,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/audit:
     get:
+      x-console-authz: {"permission": "audit:view", "scope": "any"}
       tags:
         - audit
       operationId: listAuditLog
@@ -120,11 +121,21 @@ paths:
         required: false
         schema:
           type: string
+      - name: target_id
+        in: query
+        required: false
+        schema:
+          type: string
       - name: actor
         in: query
         required: false
         schema:
           $ref: '#/components/schemas/Uuid'
+      - name: trace_id
+        in: query
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           description: Paginated audit records.
@@ -143,6 +154,97 @@ paths:
                       type: object
                       required: [occurred_at]
                       properties:
+                        id:
+                          type: string
+                          format: uuid
+                        actor:
+                          type: string
+                          format: uuid
+                          nullable: true
+                        action:
+                          type: string
+                        target_type:
+                          type: string
+                        target_id:
+                          type: string
+                        branch_id:
+                          type: string
+                          format: uuid
+                          nullable: true
+                        before_snap:
+                          nullable: true
+                        after_snap:
+                          nullable: true
+                        ip:
+                          type: string
+                          nullable: true
+                        user_agent:
+                          type: string
+                          nullable: true
+                        auth_method:
+                          type: string
+                          nullable: true
+                        device:
+                          type: string
+                          nullable: true
+                        classification_badges:
+                          type: array
+                          items:
+                            type: string
+                          nullable: true
+                        anomaly:
+                          type: boolean
+                          nullable: true
+                        reason:
+                          type: string
+                          nullable: true
+                        trace_id:
+                          type: string
+                        span_id:
+                          type: string
+                        source:
+                          type: string
+                          nullable: true
+                        change_mode:
+                          type: string
+                          nullable: true
+                        reason_code:
+                          type: string
+                          nullable: true
+                        decision_snapshot:
+                          nullable: true
+                        command_id:
+                          type: string
+                          format: uuid
+                          nullable: true
+                        scope_ids:
+                          type: array
+                          items:
+                            type: string
+                            format: uuid
+                          nullable: true
+                        actor_kind:
+                          type: string
+                          nullable: true
+                        principal_type:
+                          type: string
+                          nullable: true
+                        session_id:
+                          type: string
+                          format: uuid
+                          nullable: true
+                        outcome:
+                          type: string
+                          nullable: true
+                        actor_display:
+                          type: string
+                          nullable: true
+                        actor_employer:
+                          type: string
+                          nullable: true
+                        row_hash_version:
+                          type: integer
+                          format: int32
                         occurred_at:
                           $ref: '#/components/schemas/Timestamp'
                       additionalProperties: true
@@ -1106,6 +1208,143 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PlatformOrg'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/platform/operators:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - platform
+      operationId: listPlatformOperators
+      summary: List platform operators (platform vendor tier)
+      description: Lists all platform-tier SUPER_ADMIN operators with passkey and invitation status. Audited as platform.operator.list.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Platform operators visible to the platform tier.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PlatformOperatorSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - platform
+      operationId: invitePlatformOperator
+      summary: Invite a second platform operator (platform vendor tier)
+      description: Provisions a new platform-tier SUPER_ADMIN account and mints a single-use enrolment token returned once. Requires OPERATOR_RECOVERY step-up bound to the request.
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvitePlatformOperatorRequest'
+      responses:
+        '201':
+          description: Invited platform operator summary and one-time enrolment token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformOperatorInviteResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/platform/operators/{id}/reissue:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - platform
+      operationId: reissuePlatformOperatorInvite
+      summary: Reissue a platform operator invite token (platform vendor tier)
+      description: Revokes any open invite for an unkeyed active platform operator and mints a fresh one-time enrolment token. Requires OPERATOR_RECOVERY step-up bound to the operator id.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReissuePlatformOperatorInviteRequest'
+      responses:
+        '200':
+          description: Updated operator summary and replacement one-time enrolment token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformOperatorInviteResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/platform/operators/{id}/revoke:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - platform
+      operationId: revokePlatformOperator
+      summary: Revoke a platform operator (platform vendor tier)
+      description: Deactivates a platform operator, revokes open invites and refresh families, and bumps session generation. Refuses self-revocation and revoking the last active enrolled operator. Requires OPERATOR_RECOVERY step-up.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RevokePlatformOperatorRequest'
+      responses:
+        '200':
+          description: Revoked platform operator summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformOperatorSummary'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -2453,6 +2692,7 @@ paths:
   /api/v1/access/access-log:
     get:
       # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "audit:view", "scope": "tenant"}
       tags: [access]
       operationId: listAccessLog
       summary: Tenant access records with monthly flag totals
@@ -2542,6 +2782,234 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/access/access-log/reviews/{period}:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "audit:view", "scope": "tenant"}
+      tags: [access]
+      operationId: getAccessLogReview
+      summary: Read the monthly tenant access-log review state without exposing frozen chunks
+      description: Requires tenant-wide Cedar audit::view. Records access_log.review_read before returning.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: period
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'
+      responses:
+        '200':
+          description: Current monthly review projection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessLogReview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: access_denied or scope_tenant_wide_only.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/access/access-log/reviews/{period}/complete:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [access]
+      operationId: completeAccessLogReview
+      summary: Complete a monthly tenant access-log review after all findings and follow-ups resolve
+      description: Requires tenant-wide Cedar audit::approve and a fresh passkey step-up assertion once all frozen targets are resolved.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 16
+          maxLength: 200
+      - name: period
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                step_up:
+                  $ref: '#/components/schemas/PasskeyLoginFinishRequest'
+      responses:
+        '200':
+          description: Completed monthly review projection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessLogReview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: access_denied or scope_tenant_wide_only.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '428':
+          description: step_up_required — passkey step-up assertion required to sign off.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/access/access-log/reviews/{period}/findings:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [access]
+      operationId: recordAccessLogFinding
+      summary: Record or supersede a finding on a frozen flagged event or daily summary
+      description: Requires tenant-wide Cedar audit::approve. Appends an immutable finding audit record for the started review period.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 16
+          maxLength: 200
+      - name: period
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [disposition]
+              properties:
+                event_id:
+                  type: string
+                  format: uuid
+                  nullable: true
+                summary:
+                  type: object
+                  nullable: true
+                  additionalProperties: false
+                  required: [actor, day, flag]
+                  properties:
+                    actor: { type: string, format: uuid }
+                    day: { type: string, format: date }
+                    flag: { type: string }
+                disposition:
+                  type: string
+                  enum: [confirmed, action_required]
+                outcome:
+                  type: string
+                  nullable: true
+                note:
+                  type: string
+                  nullable: true
+                follow_up:
+                  type: object
+                  nullable: true
+                  additionalProperties: false
+                  required: [kind]
+                  properties:
+                    kind: { type: string }
+                    ref: { type: string, nullable: true }
+                    closed: { type: boolean, nullable: true }
+      responses:
+        '200':
+          description: Updated monthly review projection including the recorded finding.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessLogReview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: access_denied or scope_tenant_wide_only.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/access/access-log/reviews/{period}/start:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [access]
+      operationId: startAccessLogReview
+      summary: Start and freeze a monthly tenant access-log review
+      description: Requires tenant-wide Cedar audit::approve. Freezes flagged events and daily summaries once per closed period.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 16
+          maxLength: 200
+      - name: period
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'
+      responses:
+        '200':
+          description: Started or existing review projection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessLogReview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: access_denied or scope_tenant_wide_only.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/access/accounts/{accountId}/effective:
     get:
       x-console-authz: {"permission": "access:view", "scope": "any"}
@@ -4929,35 +5397,6 @@ paths:
                 $ref: '#/components/schemas/PrivacyConsentStatusResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
-  /api/v1/auth/signup:
-    post:
-      tags:
-        - auth
-      summary: Open self-service signup
-      description: Public, unauthenticated open signup. Creates a new lowest-privilege MEMBER account in the default organization
-        and emails it a single-use one-time sign-in code; the caller then redeems that code via `POST /api/v1/auth/otp/redeem`
-        and enrolls a passkey. The response reveals nothing about whether the email was newly registered (no account-existence
-        oracle) and never mints a token. The new account sees the minimal role-gated surface until an admin elevates it. Rate-limited
-        per client (IP and optional device).
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SignupRequest'
-      responses:
-        '202':
-          description: The signup was accepted and a one-time code was sent.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SignupResponse'
-        '400':
-          $ref: '#/components/responses/ValidationError'
-        '429':
-          $ref: '#/components/responses/TooManyRequests'
-        '502':
-          $ref: '#/components/responses/BadGateway'
   /api/v1/auth/token/refresh:
     post:
       tags:
@@ -5949,6 +6388,29 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationError'
+  /api/v1/change-requests/counts:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - employees
+      operationId: getChangeRequestCounts
+      summary: Counts of open change requests visible to the caller
+      description: >-
+        Single-scan counts of OPEN change requests across all visible requests (`all`),
+        requests assigned directly to the caller (`me`), and unassigned HR role requests (`role`).
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Counts of OPEN change requests per lane.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangeRequestCountsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /api/v1/change-requests/{id}/decide:
     post:
       tags:
@@ -7787,6 +8249,17 @@ paths:
             type: string
         description: Exact employee numbers, comma-separated (`employee_number=A-1,A-2`), at most 500 (422 above). Resolves
           a pasted column in one read.
+      - name: ids
+        in: query
+        required: false
+        style: form
+        explode: false
+        schema:
+          type: array
+          maxItems: 500
+          items:
+            $ref: '#/components/schemas/Uuid'
+        description: Exact employee IDs, comma-separated (`ids=<uuid>,<uuid>`), at most 500 (422 above).
       - name: contract_ending_before
         in: query
         required: false
@@ -7873,7 +8346,7 @@ paths:
         response carries warnings [{code: same_name_in_unit, employee_ids}]; the
         employee is created regardless. BW-19: a person already on file (any
         status) with the same name (spaces ignored) and the same phone or date of birth
-        is 409 duplicate_candidate listing them in error.refusals [{employee_id,
+        is 409 duplicate_candidate listing them in error.refusals [{employee_id, name, org_unit, hire_date,
         status, employee_number, basis, remedy}] (remedy rehire for an EXITED
         one: POST /api/v1/employees/{id}/rehire); resend with duplicate_override
         naming every candidate to record the governed exception
@@ -8436,7 +8909,7 @@ paths:
                     Columns need header_row; the sheet needs
                     a name column. 422 mapping_invalid, mapping_unknown_sheet, mapping_unknown_target,
                     mapping_bad_column, mapping_header_row_required, mapping_header_row_out_of_range,
-                    mapping_name_required, mapping_duplicate_target.'
+                    mapping_name_required, mapping_duplicate_target, mapping_restricted_column.'
       responses:
         '200':
           description: Import run preview with masked sample rows and mapping profile.
@@ -8624,6 +9097,46 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/employees/import/{run_id}/cells:
+    put:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "EmployeeDirectoryManage", "scope": "hr"}
+      tags:
+      - employees
+      operationId: repairEmployeeImportCells
+      summary: Repair canonical cell values for staged candidate rows in an employee import run
+      description: Requires EmployeeDirectoryManage. Validates and merges inline canonical cell repairs into dry_run_decisions.cells while rejecting restricted PII targets and two-digit dates.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: run_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportCellsRepairRequest'
+      responses:
+        '200':
+          description: Validated cell repairs merged into the staged import run decisions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportCellsRepairResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /api/v1/employees/import/{run_id}/dry-run:
     post:
       tags:
@@ -8837,6 +9350,55 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
         '422':
           $ref: '#/components/responses/ValidationError'
+  /api/v1/employees/import/{run_id}/rows/{source_key}/identifier:
+    put:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "EmployeeDirectoryManage", "scope": "hr"}
+      tags:
+      - employees
+      operationId: recordImportRowIdentifier
+      summary: Stage a step-up sealed registration number onto a draft employee import row
+      description: Requires EmployeeDirectoryManage and a fresh PII_RECORD passkey step-up assertion bound to (run_id, source_key). Validates and seals the registration number into data_import_row_identities without mutating raw import rows or echoing sensitive digits.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: run_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      - name: source_key
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportRowIdentifierRequest'
+      responses:
+        '200':
+          description: Sealed draft identifier staged for dry run and apply.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportRowIdentifierResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          description: rrn_record_rate_limited.
+        '503':
+          description: rrn_vault_unavailable.
   /api/v1/employees/import/{run_id}/signoff:
     post:
       tags:
@@ -9226,6 +9788,40 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/employees/register-facts/query:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "EmployeeDirectoryManage", "scope": "tenant"}
+      tags:
+        - employees
+      operationId: queryEmployeeRegisterFacts
+      summary: Batch read worker register facts for up to 500 employees
+      description: >-
+        MR-23. Org-wide employee_directory_manage. Returns worker register facts plus
+        masked birth_date for either explicit employee `ids` (up to 500) or a
+        cursor-paged slice filtered by `register_review_required`. Records a single
+        audited DirectoryAccess::List event.
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterFactsQueryRequest'
+      responses:
+        '200':
+          description: Register facts items and optional next cursor.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterFactsQueryResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /api/v1/employees/renumber/apply:
     post:
       tags:
@@ -11630,6 +12226,39 @@ paths:
           description: reveal_rate_limited — wait for the rolling one-hour window.
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/employees/{id}/unit-position:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "hr"}
+      tags:
+        - employees
+      operationId: getEmployeeUnitPosition
+      summary: Server position of an employee within their org unit
+      description: >-
+        Returns the 1-based position, total unit member count, adjacent employee IDs
+        (`prev_id`, `next_id`), and `pre_hire_count` matching the employee list ordering
+        and caller reach, supporting keyboard navigation past 200 unit members.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      responses:
+        '200':
+          description: Employee position within the org unit.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeUnitPosition'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/v1/employees/{id}/void:
     post:
       tags:
@@ -15990,6 +16619,80 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationError'
+  /api/v1/hr/exit-cases/bulk:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - hr
+      operationId: bulkReportEmployeeExitCases
+      summary: Report exit cases in bulk (up to 500 items)
+      description: >-
+        Creates audited employee exit cases in a single idempotent transaction for up
+        to 500 employees using set-based preloading, per-item scope + own-record +
+        guard evaluation, and non-aborting per-item results.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        description: 16..200 characters. An exact replay returns 200 with the original body; the same key with a
+          different body is 409 conflict.
+        schema:
+          type: string
+          minLength: 16
+          maxLength: 200
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkReportExitCasesRequest'
+      responses:
+        '200':
+          description: Per-item exit-case reporting results (or exact Idempotency-Key replay).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkReportExitCasesResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/hr/exit-cases/counts:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "capability"}
+      tags:
+        - hr
+      operationId: getEmployeeExitCaseCounts
+      summary: Single-scan status counts of employee exit cases in scope
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: search
+        in: query
+        required: false
+        description: Part of the employee's name or employee number (case-insensitive).
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Exit-case status counts in the caller's branch scope.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExitCaseCountsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /api/v1/hr/exit-cases/{id}:
     get:
       tags:
@@ -16327,6 +17030,61 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/hr/people/data-health:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "EmployeeDirectoryRead", "scope": "hr"}
+      tags:
+      - employees
+      operationId: getPeopleDataHealth
+      summary: Tenant- and branch-scoped people data-health overview
+      description: Returns batched statutory register completeness, identity document coverage, workplace and department placement counts, boolean-only bank account readiness, identity review counts, failed lifecycle action counts, bounded zero-PII drilldown items, and EmployeeDirectoryManage-gated latest import status.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: category
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - birth
+          - job
+          - hire
+          - contractEnd
+          - sex
+          - address
+          - career
+          - rrn_missing
+          - unplaced
+          - department_missing
+          - bank_account_missing
+          - identity_review
+          - failed_action
+          - register_incomplete
+        description: Filter drilldown items to employees missing the specified category.
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+        description: Maximum number of drilldown items returned (1..=50).
+      responses:
+        '200':
+          description: People data-health metrics and bounded zero-PII drilldown items.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PeopleDataHealthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /api/v1/hr/readiness-summary:
     get:
       tags:
@@ -19359,6 +20117,46 @@ paths:
           $ref: '#/components/responses/NotFound'
         '503':
           $ref: '#/components/responses/MailUnavailable'
+  /api/v1/me/access-log:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [me]
+      operationId: listMyAccessLog
+      summary: Authenticated user's own personal-data access history
+      description: >
+        Strictly self-scoped to events where the authenticated principal's linked
+        employee or user record was the subject. Excludes self-reads and denied
+        attempts, requires no tenant-wide audit::view grant, and never exposes raw
+        personal data values or free-text notes.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: cursor
+        in: query
+        schema:
+          type: string
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      responses:
+        '200':
+          description: Keyset page of subject-scoped access events.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyAccessLogPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          description: limit_out_of_range or cursor_invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/v1/me/action-inbox:
     get:
       tags:
@@ -19785,6 +20583,119 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/me/certificates:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [me]
+      operationId: listMyCertificates
+      summary: List certificates issued for the authenticated employee
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int64
+          minimum: 1
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Keyset page of the employee's certificates.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CertificatePage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden for unlinked users.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [me]
+      operationId: issueMyCertificate
+      summary: Issue a self-service certificate for the authenticated employee
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SelfIssueCertificateRequest'
+      responses:
+        '201':
+          description: Issued certificate snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Certificate'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden for unlinked users or support sessions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '409':
+          description: Employee ineligible, facts missing, or settings unconfigured.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '422':
+          description: Validation error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/v1/me/certificates/{id}:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [me]
+      operationId: getMyCertificate
+      summary: Read one self-service certificate belonging to the authenticated employee
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      responses:
+        '200':
+          description: Issued certificate detail with seal image when configured.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Certificate'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden for unlinked users.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/v1/me/dispatch-offers:
     get:
       tags:
@@ -20322,6 +21233,165 @@ paths:
           $ref: '#/components/responses/NotFound'
         '503':
           description: JWT verification is not configured.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/v1/me/profile:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [me]
+      operationId: getMyProfile
+      summary: Authenticated employee's masked self-service profile
+      description: >
+        Returns the caller's own masked personal details, employment metadata,
+        address administrative summary, boolean bank-account registration flag,
+        and open profile-correction requests. Requires Cedar employee_self_read on
+        the caller's linked employee record.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Masked self-service profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeProfileResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Caller has no linked employee or employee_self_read is denied.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [me]
+      operationId: updateMyProfile
+      summary: Update immediate self-service profile fields (phone, emergency_contacts)
+      description: >
+        Updates the caller's immediate-apply self-service fields (phone and/or
+        emergency_contacts) on their own linked employee record. Address and bank
+        account status require approval via POST /api/v1/me/profile/change-requests.
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMeProfileRequest'
+      responses:
+        '200':
+          description: Updated masked self-service profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeProfileResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden for unlinked users or read-only support sessions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '422':
+          description: Validation error or non-immediate field rejected.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/v1/me/profile/change-requests:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [me]
+      operationId: createMyProfileChangeRequest
+      summary: File an approval-gated self-service change request (address or bank_account_registered)
+      description: >
+        Submits a PROFILE_CORRECTION change request for the caller's linked employee
+        for fields requiring HR approval (address or boolean bank_account_registered
+        attestation). Rejects raw bank account identifiers.
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSelfChangeRequest'
+      responses:
+        '201':
+          description: Change request created and routed to HR.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangeRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden for unlinked users or support sessions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '409':
+          description: An open change request already exists for this field.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '422':
+          description: Validation error or unknown/restricted field rejected.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/v1/me/profile/reveal:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [me]
+      operationId: revealMyProfileField
+      summary: Step-up passkey reveal of one self-service personal field
+      description: >
+        Verifies a fresh MobileStepUpActionKind::PiiReveal passkey assertion bound to
+        the caller's linked employee, commits an immutable audit event before reading,
+        and returns the plaintext phone, address, or emergency contacts with
+        Cache-Control: private, no-store.
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SelfRevealRequest'
+      responses:
+        '200':
+          description: Revealed personal field with display timer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelfFieldRevealed'
+        '401':
+          description: Missing, invalid, or stale passkey step-up assertion.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '403':
+          description: Forbidden for unlinked users or support sessions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          description: Hourly reveal rate limit exceeded.
           content:
             application/json:
               schema:
@@ -24520,6 +25590,18 @@ paths:
           type: integer
           format: int64
           minimum: 0
+      - name: pay_group_id
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: legal_entity_id
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
       responses:
         '200':
           description: Page of payroll draft runs, newest period first.
@@ -24614,6 +25696,16 @@ paths:
           type: integer
           format: int64
           minimum: 0
+      - name: missing_bank_only
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           description: The run, its legal/source-summary context, and a page of lines.
@@ -26190,6 +27282,38 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
   /api/v1/privacy/rights-requests:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [Compliance]
+      operationId: listPrivacyRightsIntake
+      summary: List tenant privacy rights intake requests under live Cedar placement
+      security: [{ bearerAuth: [] }]
+      parameters:
+      - { name: cursor, in: query, required: false, schema: { type: string, format: uuid } }
+      - { name: status, in: query, required: false, schema: { type: string, enum: [RECEIVED, DECIDED] } }
+      responses:
+        '200':
+          description: Tenant intake page filtered by live Cedar placement.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, next_cursor, as_of]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [request, subject_name]
+                      properties:
+                        request: { $ref: '#/components/schemas/PrivacyRightsReceipt' }
+                        subject_name: { type: string }
+                  next_cursor: { type: string, nullable: true }
+                  as_of: { type: string, format: date }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
     post:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       tags: [Compliance]
@@ -26293,6 +27417,41 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /api/v1/privacy/rights-requests/received:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [Compliance]
+      operationId: receiveOffAppPrivacyRightsRequest
+      summary: Record an off-app privacy rights receipt on behalf of a tenant subject
+      security: [{ bearerAuth: [] }]
+      parameters:
+      - { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 16, maxLength: 200 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [subject_user_id, controller, channel, agent, identity_method, received_on, kinds]
+              properties:
+                subject_user_id: { type: string, format: uuid }
+                controller: { type: string, enum: [TENANT] }
+                channel: { type: string, enum: [PHONE, LETTER, EMAIL, IN_PERSON] }
+                agent: { type: string, enum: [SUBJECT, LEGAL_REPRESENTATIVE, AUTHORIZED] }
+                mandate_received: { type: boolean, default: false }
+                identity_method: { type: string, enum: [SIGNED_IN, PASSKEY, ID_DOCUMENT_SEEN, KNOWN_CONTACT, AGENT_MANDATE] }
+                received_on: { type: string, format: date }
+                kinds: { type: array, minItems: 1, items: { type: string, enum: [ACCESS, CORRECTION, DELETION, SUSPENSION, WITHDRAWAL] } }
+                detail: { type: string, maxLength: 2000, default: '' }
+      responses:
+        '200': { description: Recorded off-app receipt or exact idempotent replay., content: { application/json: { schema: { $ref: '#/components/schemas/PrivacyRightsReceipt' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
   /api/v1/privacy/rights-requests/{id}:
     get:
       # SPDX-License-Identifier: LicenseRef-Proprietary
@@ -26316,6 +27475,113 @@ paths:
                   as_of: { type: string, format: date }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /api/v1/privacy/rights-requests/{id}/decide:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [Compliance]
+      operationId: decidePrivacyRightsRequest
+      summary: Decide one requested privacy right with bound passkey step-up and SoD enforcement
+      security: [{ bearerAuth: [] }]
+      description: >
+        Requires a fresh PRIVACY_REQUEST_DECIDE passkey step-up bound to the request UUID
+        and SHA-256 of the serialized decision payload (kind, outcome, reason, note, decided_on).
+        Enforces Cedar permission, natural-person SoD against the subject, off-app filer,
+        and prior decision maker on objections.
+      parameters:
+      - { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 16, maxLength: 200 } }
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [kind, outcome, step_up]
+              properties:
+                kind: { type: string, enum: [ACCESS, CORRECTION, DELETION, SUSPENSION, WITHDRAWAL] }
+                outcome: { type: string, enum: [GRANTED, PARTIAL, REFUSED] }
+                reason: { type: string, nullable: true }
+                note: { type: string, nullable: true }
+                decided_on: { type: string, format: date, nullable: true }
+                step_up: { $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope' }
+      responses:
+        '200': { description: Updated privacy rights receipt or exact idempotent replay., content: { application/json: { schema: { $ref: '#/components/schemas/PrivacyRightsReceipt' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /api/v1/privacy/rights-requests/{id}/objection:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [Compliance]
+      operationId: objectPrivacyRightsRequest
+      summary: File an objection against a prior privacy rights request decision
+      security: [{ bearerAuth: [] }]
+      parameters:
+      - { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 16, maxLength: 200 } }
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [kinds]
+              properties:
+                kinds: { type: array, minItems: 1, items: { type: string, enum: [ACCESS, CORRECTION, DELETION, SUSPENSION, WITHDRAWAL] } }
+                detail: { type: string, maxLength: 2000, default: '' }
+                channel: { type: string, enum: [IN_APP, PHONE, LETTER, EMAIL, IN_PERSON] }
+                agent: { type: string, enum: [SUBJECT, LEGAL_REPRESENTATIVE, AUTHORIZED] }
+                mandate_received: { type: boolean, default: false }
+                identity_method: { type: string, enum: [SIGNED_IN, PASSKEY, ID_DOCUMENT_SEEN, KNOWN_CONTACT, AGENT_MANDATE] }
+                received_on: { type: string, format: date, nullable: true }
+      responses:
+        '200': { description: Objection receipt or exact idempotent replay., content: { application/json: { schema: { $ref: '#/components/schemas/PrivacyRightsReceipt' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+  /api/v1/privacy/rights-requests/{id}/postpone:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [Compliance]
+      operationId: postponePrivacyRightsRequest
+      summary: Postpone one requested privacy right with bound passkey step-up and SoD enforcement
+      security: [{ bearerAuth: [] }]
+      description: >
+        Requires a fresh PRIVACY_REQUEST_DECIDE passkey step-up bound to the request UUID
+        and SHA-256 of the serialized postponement payload (kind, reason, note, decided_on).
+      parameters:
+      - { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 16, maxLength: 200 } }
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [kind, reason, note, step_up]
+              properties:
+                kind: { type: string, enum: [ACCESS, CORRECTION, DELETION, SUSPENSION, WITHDRAWAL] }
+                reason: { type: string }
+                note: { type: string }
+                decided_on: { type: string, format: date, nullable: true }
+                step_up: { $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope' }
+      responses:
+        '200': { description: Updated privacy rights receipt or exact idempotent replay., content: { application/json: { schema: { $ref: '#/components/schemas/PrivacyRightsReceipt' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
         '503': { $ref: '#/components/responses/ServiceUnavailable' }
   /api/v1/production/capacity-slots:
     get:
@@ -30137,6 +31403,12 @@ paths:
           format: int64
           minimum: 0
           default: 0
+      - name: search
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 200
       responses:
         '200':
           description: A page of users in the principal's branch scope.
@@ -33261,7 +34533,13 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
         '409':
-          description: The linked active employee has no explicit home branch (`leave_home_branch_review_required`), or the supplied `idempotency_key` is already bound to different client intent (`leave_create.idempotency_conflict`).
+          description: >-
+            The linked active employee has no explicit home branch
+            (`leave_home_branch_review_required`), the requested dates overlap an
+            existing pending or approved request (`leave_overlapping_request`), the
+            requested dates fall inside a closed attendance or payroll period
+            (`leave_period_closed`), or the supplied `idempotency_key` is already
+            bound to different client intent (`leave_create.idempotency_conflict`).
           content:
             application/json:
               schema:
@@ -33512,6 +34790,76 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+  /api/v2/me/leave/approval-preview:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - leave
+      operationId: getMyLeaveApprovalPreviewV2
+      summary: Preview the approval chain for a self-service leave request
+      description: >-
+        Returns the caller's leave filing readiness, active home branch, org unit,
+        and SoD-filtered approval steps (optional unambiguous unit lead plus branch
+        HR/approver step). Requires Cedar employee_self_read on the caller's linked
+        employee.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Leave approval preview.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelfLeaveApprovalPreview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v2/me/leave/team-overlap:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+        - leave
+      operationId: getMyLeaveTeamOverlapV2
+      summary: List teammates in the caller's own org unit on overlapping leave
+      description: >-
+        Returns minimal overlap info (org_unit, active_count, out_count, and
+        { employee_id, name } of overlapping teammates) strictly within the caller's
+        own org unit for the requested date range. Requires Cedar employee_self_read
+        on the caller's linked employee. Never exposes leave reasons, types, or
+        exact leave dates.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: start_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Same-unit overlap summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SelfLeaveTeamOverlap'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: Invalid or inverted date range.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/work-orders:
     post:
       tags:
@@ -34652,6 +36000,55 @@ components:
             target_types:
               type: array
               items: *access_log_code_choice
+    AccessLogReview:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [period, scope, reviewer, started_at, reviewed_at, due, flags_seen, findings, follow_up, state]
+      properties:
+        id:
+          type: string
+          format: uuid
+        period:
+          description: Review period metadata or YYYY-MM label before start.
+          oneOf:
+            - type: string
+            - type: object
+              properties:
+                from: { type: string, format: date-time }
+                to: { type: string, format: date-time }
+                time_zone: { type: string }
+        scope:
+          type: string
+        reviewer:
+          type: [string, 'null']
+          format: uuid
+        started_at:
+          type: [string, 'null']
+          format: date-time
+        reviewed_at:
+          type: [string, 'null']
+          format: date-time
+        due:
+          type: string
+          format: date-time
+        flags_seen:
+          type: object
+          nullable: true
+          additionalProperties: true
+        findings:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        follow_up:
+          type: object
+          required: [open, total]
+          properties:
+            open: { type: integer, minimum: 0 }
+            total: { type: integer, minimum: 0 }
+        state:
+          type: string
+          enum: [not_started, open, overdue, complete]
     AccessPerson:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
@@ -36690,7 +38087,7 @@ components:
     AttendanceGridRow:
       type: object
       required: [employee_id, name, own, cells, totals, month_state]
-      properties: { employee_id: { $ref: '#/components/schemas/Uuid' }, employee_number: { type: string, nullable: true }, name: { type: string }, unit_name: { type: string, nullable: true }, own: { type: boolean }, cells: { type: array, items: { $ref: '#/components/schemas/AttendanceGridCell' } }, totals: { $ref: '#/components/schemas/AttendanceGridTotals' }, month_state: { $ref: '#/components/schemas/AttendanceMonthState' } }
+      properties: { employee_id: { $ref: '#/components/schemas/Uuid' }, employee_number: { type: string, nullable: true }, name: { type: string }, unit_name: { type: string, nullable: true }, position: { type: string, nullable: true }, own: { type: boolean }, cells: { type: array, items: { $ref: '#/components/schemas/AttendanceGridCell' } }, totals: { $ref: '#/components/schemas/AttendanceGridTotals' }, month_state: { $ref: '#/components/schemas/AttendanceMonthState' } }
     AttendanceGridTotals:
       type: object
       description: Recognised total · work outside the schedule · unapproved excess (recognised included) · not worked · unresolved ▲ / ◆
@@ -37044,7 +38441,39 @@ components:
     AttendanceMonthGrid:
       type: object
       required: [month, rows, people_total]
-      properties: { month: { type: string }, rows: { type: array, items: { $ref: '#/components/schemas/AttendanceGridRow' } }, people_total: { type: integer }, next_cursor: { type: string, nullable: true } }
+      properties: { month: { type: string }, rows: { type: array, items: { $ref: '#/components/schemas/AttendanceGridRow' } }, people_total: { type: integer }, next_cursor: { type: string, nullable: true }, work_pattern_summary: { type: string, nullable: true }, summary: { $ref: '#/components/schemas/AttendanceMonthGridSummary', nullable: true } }
+    AttendanceMonthGridSummary:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [scheduled_days, weekday_holidays, recognised_minutes, outside_minutes, unapproved_minutes, blocking_count, decision_count, issue_people_count, overtime_people_count]
+      properties:
+        scheduled_days:
+          type: integer
+          format: int64
+        weekday_holidays:
+          type: integer
+          format: int64
+        recognised_minutes:
+          type: integer
+          format: int64
+        outside_minutes:
+          type: integer
+          format: int64
+        unapproved_minutes:
+          type: integer
+          format: int64
+        blocking_count:
+          type: integer
+          format: int64
+        decision_count:
+          type: integer
+          format: int64
+        issue_people_count:
+          type: integer
+          format: int64
+        overtime_people_count:
+          type: integer
+          format: int64
     AttendanceMonthState:
       type: object
       description: Whether a person's attendance month takes writes. CLOSED refuses them (lock_id is the payroll period lock to request an unlock of, null when none covers the month); REOPENED takes them while an approved period unlock is open, until relock_at (null only for an unlock without a time box).
@@ -38021,6 +39450,37 @@ components:
             order); each carries batch_id.
           items:
             $ref: '#/components/schemas/EmployeeLifecycleEvent'
+    BulkExitCaseItemInput:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required: [employee_id]
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/Uuid'
+        branch_id:
+          oneOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        absence_alert_id:
+          oneOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+    BulkExitCaseItemResult:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [employee_id, ok]
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/Uuid'
+        ok:
+          type: boolean
+        case_id:
+          $ref: '#/components/schemas/Uuid'
+        code:
+          type: string
+        message:
+          type: string
     BulkLifecyclePreview:
       type: object
       required: [event_type, effective_date, scheduled, counts, refusals]
@@ -38151,6 +39611,36 @@ components:
                 type: object
                 minProperties: 1
                 description: sex, address, careers, register_note, name_hanja, name_en, nationality, personal_email, emergency_contacts (and a first exit_reason or group_service_start_date) as in CorrectEmployeeRequest.changes.
+    BulkReportExitCasesRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required: [effective_exit_date, site_manager_note, items]
+      properties:
+        effective_exit_date:
+          type: string
+          description: YYYY-MM-DD
+        site_manager_note:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        exit_reason_code:
+          type: [string, 'null']
+        items:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items:
+            $ref: '#/components/schemas/BulkExitCaseItemInput'
+    BulkReportExitCasesResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [results]
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/BulkExitCaseItemResult'
     BulkSelection:
       type: object
       additionalProperties: false
@@ -38623,6 +40113,10 @@ components:
           x-extensible-enum: [EMPLOYEE, USER_ACCOUNT, BRANCH, ORGANIZATION, DATA_IMPORT_RUN]
         subject_id:
           $ref: '#/components/schemas/Uuid'
+        subject_name:
+          type: [string, 'null']
+        subject_number:
+          type: [string, 'null']
         payload:
           type: object
           additionalProperties: true
@@ -38662,6 +40156,20 @@ components:
           oneOf:
           - $ref: '#/components/schemas/Timestamp'
           - type: 'null'
+    ChangeRequestCountsResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [all, me, role]
+      properties:
+        all:
+          type: integer
+          format: int64
+        me:
+          type: integer
+          format: int64
+        role:
+          type: integer
+          format: int64
     ChangeSetDetail:
       allOf:
       - $ref: '#/components/schemas/ChangeSetSummary'
@@ -41106,6 +42614,29 @@ components:
           $ref: '#/components/schemas/Uuid'
         config:
           $ref: '#/components/schemas/FinancialConfigSnapshot'
+    CreateSelfChangeRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required:
+      - field
+      properties:
+        field:
+          type: string
+          enum: [address, bank_account_registered]
+        address:
+          anyOf:
+          - $ref: '#/components/schemas/KrAddress'
+          - type: 'null'
+        bank_account_registered:
+          type:
+          - boolean
+          - 'null'
+        note:
+          type:
+          - string
+          - 'null'
+          maxLength: 500
     CreateSeriesRequest:
       type: object
       description: Create a series and attach its first instance.
@@ -42587,6 +44118,15 @@ components:
           description: The namesakes for same_name_in_unit; empty for pay_below_minimum_wage.
           items:
             $ref: '#/components/schemas/Uuid'
+        matches:
+          type: array
+          description: Capped namesake match details (up to 20 entries).
+          items:
+            $ref: '#/components/schemas/EmployeeWarningMatch'
+        total_count:
+          type: integer
+          format: int64
+          description: Total number of matching namesakes before capping.
         floor_won:
           type: integer
           format: int64
@@ -43713,14 +45253,20 @@ components:
               type: string
               format: date
               description: 'r3:hire-16: the employment profile''s probation end date.'
+            id_type:
+              type: string
+              enum: [RRN, ARC, DOMESTIC_RESIDENCE, NOT_ISSUED]
+              description: Resolved legal identity document type for the created employee.
         refusal_code:
           type: string
-          enum: [duplicate_in_file, invalid_date, identity_mismatch, hire_date_required, former_load_closed,
+          x-extensible-enum: [duplicate_in_file, invalid_date, two_digit_year, identity_mismatch, hire_date_required, former_load_closed,
             workplace_conflict, identity_conflict, employee_number_taken, status_unmapped, status_conflict,
-            exit_date_required, leave_start_required, leave_type_unmapped, leave_return_required]
+            exit_date_required, leave_start_required, leave_type_unmapped, leave_return_required,
+            not_issued_requires_pre_hire, not_issued_with_rrn, not_issued_secondary_key_required,
+            id_type_invalid, id_type_rrn_mismatch, rrn_mod11_invalid]
         refusal_field:
           type: string
-          x-extensible-enum: [employee_number, name, hire_date, exit_date, birth_date, worksite_name, rrn, employment_status,
+          x-extensible-enum: [employee_number, name, hire_date, exit_date, birth_date, worksite_name, rrn, id_type, employment_status,
             leave_start_date, leave_type, leave_return_date, contract_end_date, probation_end_date]
         matched_by:
           type: string
@@ -44056,7 +45602,7 @@ components:
             decision:
               type: string
               x-extensible-enum: [identity, exclusions, company_map, unit_map, workplace_map, employment_type_map, status_map, leave_type_map,
-                employee_numbers, mapping, group_exclusions]
+                employee_numbers, mapping, group_exclusions, cells]
             key:
               type: string
             choices:
@@ -44080,6 +45626,9 @@ components:
                 x-extensible-enum: [same_name, normalized, path, suffix, registration_number, alias]
               alias:
                 type: [string, 'null']
+        expected_format:
+          type: string
+          description: Expected format hint for inline cell repair (for example YYYY-MM-DD).
     EmployeeImportReviewQueue:
       type: object
       description: 'IMPORT-2 (decisions #25): the "needs checking" queue, counted. Blocking items keep apply closed (422
@@ -45146,6 +46695,10 @@ components:
           type: string
           writeOnly: true
           description: Resident registration number, validated by the server; never retained in a draft.
+        id_type:
+          type: string
+          enum: [RRN, ARC, DOMESTIC_RESIDENCE]
+          description: Optional explicit identity document type paired with the registration number.
         step_up:
           $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
     EmployeeRrnRevealRequest:
@@ -45196,6 +46749,32 @@ components:
         recorded_at:
           type: [string, 'null']
           format: date-time
+    EmployeeUnitPosition:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [org_unit_id, index, total, prev_id, next_id, pre_hire_count]
+      properties:
+        org_unit_id:
+          oneOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        index:
+          type: integer
+          format: int64
+        total:
+          type: integer
+          format: int64
+        prev_id:
+          oneOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        next_id:
+          oneOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        pre_hire_count:
+          type: integer
+          format: int64
     EmployeeView:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
@@ -45233,6 +46812,17 @@ components:
           nullable: true
           allOf:
           - $ref: '#/components/schemas/ChangeRequest'
+    EmployeeWarningMatch:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        name:
+          type: string
+        employee_number:
+          type: string
     EmploymentAssignment:
       type: object
       required:
@@ -47047,6 +48637,55 @@ components:
           maxLength: 128
         step_up:
           $ref: '#/components/schemas/PasskeyStepUpAssertion'
+    ExitCaseCountsResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required:
+      - all
+      - open
+      - closed
+      - reported
+      - hr_confirmed
+      - hq_confirmed
+      - settlement_ready
+      - approval_drafted
+      - submitted
+      - rejected
+      - cancelled
+      properties:
+        all:
+          type: integer
+          format: int64
+        open:
+          type: integer
+          format: int64
+        closed:
+          type: integer
+          format: int64
+        reported:
+          type: integer
+          format: int64
+        hr_confirmed:
+          type: integer
+          format: int64
+        hq_confirmed:
+          type: integer
+          format: int64
+        settlement_ready:
+          type: integer
+          format: int64
+        approval_drafted:
+          type: integer
+          format: int64
+        submitted:
+          type: integer
+          format: int64
+        rejected:
+          type: integer
+          format: int64
+        cancelled:
+          type: integer
+          format: int64
     ExitCaseNextAction:
       type: object
       description: An action the case's current state admits, as a key; the client owns its label and route (the caller's capability is still checked by the action).
@@ -48420,11 +50059,18 @@ components:
       type: object
       required:
       - companies
+      - truncated
+      - total
       properties:
         companies:
           type: array
           items:
             $ref: '#/components/schemas/HrOrgChartCompany'
+        truncated:
+          type: boolean
+        total:
+          type: integer
+          format: int64
     HrOrgChartUnit:
       type: object
       required:
@@ -48546,12 +50192,87 @@ components:
           type:
           - boolean
           - 'null'
+    ImportCellsRepairRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      description: Map of candidate row source_key to canonical field repairs for a staged employee import run.
+      additionalProperties: false
+      required: [cells]
+      properties:
+        cells:
+          type: object
+          description: Per-row map of canonical target field names (excluding restricted columns) to repaired string values.
+          maxProperties: 5000
+          additionalProperties:
+            type: object
+            description: Map of canonical field names to repaired values for one row.
+            maxProperties: 64
+            additionalProperties:
+              type: string
+              maxLength: 500
+    ImportCellsRepairResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      description: Persisted inline cell repairs merged onto a staged employee import run.
+      additionalProperties: false
+      required: [cells, repaired_rows, run_id]
+      properties:
+        cells:
+          type: object
+          description: Effective per-row map of canonical field repairs persisted in dry_run_decisions.cells.
+          maxProperties: 5000
+          additionalProperties:
+            type: object
+            description: Map of canonical field names to repaired values for one row.
+            maxProperties: 64
+            additionalProperties:
+              type: string
+              maxLength: 500
+        repaired_rows:
+          type: integer
+          description: Count of candidate rows with persisted cell repairs.
+          minimum: 0
+        run_id:
+          $ref: '#/components/schemas/Uuid'
     ImportDryRunRequest:
       type: object
       additionalProperties: false
       properties:
         decisions:
           $ref: '#/components/schemas/EmployeeImportDecisions'
+    ImportRowIdentifierRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required: [rrn]
+      properties:
+        rrn:
+          type: string
+          writeOnly: true
+          description: Resident registration number validated by the server, sealed via RrnVault, and never logged or echoed.
+        id_type:
+          type: string
+          enum: [RRN, ARC, DOMESTIC_RESIDENCE]
+          description: Optional explicit identity document type paired with the registration number.
+        step_up:
+          $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
+    ImportRowIdentifierResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [run_id, source_key, id_type, recorded]
+      properties:
+        run_id:
+          $ref: '#/components/schemas/Uuid'
+        source_key:
+          type: string
+        id_type:
+          type: string
+          enum: [RRN, ARC, DOMESTIC_RESIDENCE]
+        recorded:
+          type: boolean
+        sex_derived:
+          type: string
+          enum: [MALE, FEMALE]
     InboxDocConfirmReceiptRequest:
       type: object
       description: >-
@@ -48645,6 +50366,46 @@ components:
           description: When receipt was confirmed (the legal receipt timestamp); null until then.
         created_at:
           $ref: '#/components/schemas/Timestamp'
+        payslip_meta:
+          anyOf:
+          - $ref: '#/components/schemas/InboxPayslipMeta'
+          - type: 'null'
+    InboxPayslipMeta:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      description: >-
+        Structured period and total summary for an issued payslip row in the inbox
+        list, avoiding N+1 detail fetches when stepping across periods.
+      required:
+      - period_start
+      - period_end
+      properties:
+        attribution_month:
+          type:
+          - string
+          - 'null'
+          description: Attribution month in YYYY-MM format.
+        period_start:
+          type: string
+          format: date
+        period_end:
+          type: string
+          format: date
+        pay_date:
+          type:
+          - string
+          - 'null'
+          format: date
+        gross_won:
+          type:
+          - integer
+          - 'null'
+          format: int64
+        net_won:
+          type:
+          - integer
+          - 'null'
+          format: int64
     IncidentLocation:
       type: object
       required:
@@ -49214,6 +50975,24 @@ components:
       type: object
       required: [id, label]
       properties: { id: { $ref: '#/components/schemas/Uuid' }, label: { type: string } }
+    InvitePlatformOperatorRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - display_name
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        login:
+          type: [string, 'null']
+        step_up:
+          $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
     IssueAppointmentNoticeRequest:
       type: object
       additionalProperties: false
@@ -49544,6 +51323,29 @@ components:
           - 'null'
           maxLength: 300
           description: Address exactly as printed on the certificate.
+    LeaveApprovalPreviewStep:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required:
+      - order
+      - step_kind
+      - role_label
+      properties:
+        order:
+          type: integer
+          format: int32
+        step_kind:
+          type: string
+        role_label:
+          type: string
+        approver_name:
+          type:
+          - string
+          - 'null'
+        approver_position:
+          type:
+          - string
+          - 'null'
     LeaveBalanceAmount:
       type: string
       pattern: '^-?(0|[1-9][0-9]{0,9})\.[0-9]{6}$'
@@ -51651,6 +53453,66 @@ components:
       - roles
       - branch_scope
       - capabilities
+    MeProfileResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required:
+      - employee_id
+      - employment_status
+      - emergency_contacts_registered
+      - emergency_contacts_count
+      - emergency_contacts
+      - bank_account_registered
+      - open_change_requests
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/Uuid'
+        employee_number:
+          type:
+          - string
+          - 'null'
+        org_unit:
+          type:
+          - string
+          - 'null'
+        grade:
+          type:
+          - string
+          - 'null'
+        position:
+          type:
+          - string
+          - 'null'
+        hire_date:
+          type:
+          - string
+          - 'null'
+          format: date
+        employment_status:
+          type: string
+        phone_masked:
+          type:
+          - string
+          - 'null'
+        emergency_contacts_registered:
+          type: boolean
+        emergency_contacts_count:
+          type: integer
+          format: int64
+        emergency_contacts:
+          type: array
+          items:
+            $ref: '#/components/schemas/SelfEmergencyContactSummary'
+        address_masked:
+          type:
+          - string
+          - 'null'
+        bank_account_registered:
+          type: boolean
+        open_change_requests:
+          type: array
+          items:
+            $ref: '#/components/schemas/SelfChangeRequestSummary'
     MediaKind:
       type: string
       enum:
@@ -52021,6 +53883,7 @@ components:
             - passkey_step_up_pii_reveal
             - passkey_step_up_pii_record
             - passkey_step_up_privacy_request
+            - passkey_step_up_privacy_request_decide
         replay_attempt:
           type:
             - integer
@@ -52095,6 +53958,7 @@ components:
                 - PII_REVEAL
                 - PII_RECORD
                 - PRIVACY_REQUEST
+                - PRIVACY_REQUEST_DECIDE
             object_id:
               $ref: '#/components/schemas/Uuid'
             reason_key:
@@ -52116,6 +53980,7 @@ components:
                 - passkey_step_up_pii_reveal
                 - passkey_step_up_pii_record
                 - passkey_step_up_privacy_request
+                - passkey_step_up_privacy_request_decide
             replay_attempt:
               type:
                 - integer
@@ -52149,6 +54014,7 @@ components:
         - PII_REVEAL
         - PII_RECORD
         - PRIVACY_REQUEST
+        - PRIVACY_REQUEST_DECIDE
     MobileVotePollRequest:
       type: object
       required:
@@ -52163,6 +54029,50 @@ components:
             $ref: '#/components/schemas/Uuid'
         step_up:
           $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
+    MyAccessLogEvent:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required:
+      - event_id
+      - occurred_at
+      - actor_name
+      - actor_team
+      - action
+      - field
+      - reason_code
+      - target_type
+      properties:
+        event_id:
+          type: string
+          format: uuid
+        occurred_at:
+          type: string
+          format: date-time
+        actor_name:
+          type: string
+        actor_team:
+          type: [string, 'null']
+        action:
+          type: string
+        field:
+          type: [string, 'null']
+        reason_code:
+          type: [string, 'null']
+        target_type:
+          type: string
+    MyAccessLogPage:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MyAccessLogEvent'
+        next_cursor:
+          type: [string, 'null']
     MyDispatchOffer:
       type: object
       description: >-
@@ -55129,6 +57039,31 @@ components:
         variable_period: {$ref: '#/components/schemas/PayGroupPeriodRule'}
         proration: {type: string, enum: [CALENDAR_DAYS, SCHEDULED_WORKDAYS]}
         channel: {type: string, enum: [ATTESTATION_ONLY, FILE_GENERIC]}
+    PayrollCalculationDeduction:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required:
+      - code
+      - label_ko
+      - amount_won
+      - source_url
+      properties:
+        code:
+          type: string
+          x-extensible-enum:
+          - NATIONAL_PENSION
+          - HEALTH_INSURANCE
+          - LONG_TERM_CARE
+          - EMPLOYMENT_INSURANCE
+          - INCOME_TAX
+          - LOCAL_INCOME_TAX
+        label_ko:
+          type: string
+        amount_won:
+          type: integer
+          format: int64
+        source_url:
+          type: string
     PayrollClosePreflight:
       type: object
       required:
@@ -55300,6 +57235,7 @@ components:
       - employee_company
       - gross_pay_source_present
       - net_pay_source_present
+      - bank_account_registered
       - nts_tax_row_status
       - calculation_status
       - blockers
@@ -55311,11 +57247,27 @@ components:
           - string
           - 'null'
           format: uuid
+        employee_number:
+          type:
+          - string
+          - 'null'
         employee_display_name:
           type: string
         employee_company:
           type: string
+        org_unit:
+          type:
+          - string
+          - 'null'
+        position:
+          type:
+          - string
+          - 'null'
         work_days:
+          type:
+          - number
+          - 'null'
+        paid_holiday_days:
           type:
           - number
           - 'null'
@@ -55347,6 +57299,8 @@ components:
           type: boolean
         net_pay_source_present:
           type: boolean
+        bank_account_registered:
+          type: boolean
         nts_tax_row_status:
           type: string
           enum: [REQUIRED_NOT_SUPPLIED, SUPPLIED_UNVERIFIED, VERIFIED_SOURCE_ROW]
@@ -55356,6 +57310,56 @@ components:
         blockers:
           type: array
           items: {}
+        calculation_version:
+          type:
+          - integer
+          - 'null'
+          format: int32
+        base_pay_won:
+          type:
+          - integer
+          - 'null'
+          format: int64
+        overtime_pay_won:
+          type:
+          - integer
+          - 'null'
+          format: int64
+        meal_allowance_won:
+          type:
+          - integer
+          - 'null'
+          format: int64
+        taxable_won:
+          type:
+          - integer
+          - 'null'
+          format: int64
+        gross_won:
+          type:
+          - integer
+          - 'null'
+          format: int64
+        deductions:
+          type:
+          - array
+          - 'null'
+          items:
+            $ref: '#/components/schemas/PayrollCalculationDeduction'
+        total_deductions_won:
+          type:
+          - integer
+          - 'null'
+          format: int64
+        net_won:
+          type:
+          - integer
+          - 'null'
+          format: int64
+        tax_table_version:
+          type:
+          - string
+          - 'null'
     PayrollLinkedRef:
       type: object
       required:
@@ -55711,6 +57715,18 @@ components:
           description: Always false until the labor attorney / tax accountant release gate flips the stored rows.
         kernel_rate_table:
           type: string
+        total_gross_won:
+          type:
+          - integer
+          - 'null'
+          format: int64
+          description: Whole KRW won. null unless EVERY line of the run calculated — never a partial sum presented as a total.
+        total_deductions_won:
+          type:
+          - integer
+          - 'null'
+          format: int64
+          description: Whole KRW won. null unless EVERY line of the run calculated — never a partial sum presented as a total.
         total_net_won:
           type:
           - integer
@@ -55727,6 +57743,7 @@ components:
       - lines_total
       - lines_limit
       - lines_offset
+      - missing_bank_account_count
       - exceptions_open
       - exceptions_total
       - calculation
@@ -55750,6 +57767,9 @@ components:
           type: integer
           format: int64
         lines_offset:
+          type: integer
+          format: int64
+        missing_bank_account_count:
           type: integer
           format: int64
         exceptions_open:
@@ -55980,6 +58000,171 @@ components:
             date, and not the latest promulgated slice.
         url: { type: string }
         retrieved_on: { type: string, format: date }
+    PeopleDataHealthResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required:
+      - cohort
+      - statutory_register
+      - id_summary
+      - placement_summary
+      - bank_account
+      - identity_review
+      - failed_actions
+      - drilldown_items
+      properties:
+        cohort:
+          type: object
+          required: [total, active, on_leave, pre_hire]
+          properties:
+            total:
+              type: integer
+              format: int64
+            active:
+              type: integer
+              format: int64
+            on_leave:
+              type: integer
+              format: int64
+            pre_hire:
+              type: integer
+              format: int64
+        statutory_register:
+          type: object
+          required: [complete_count, incomplete_count, missing_by_category]
+          properties:
+            complete_count:
+              type: integer
+              format: int64
+            incomplete_count:
+              type: integer
+              format: int64
+            missing_by_category:
+              type: object
+              required: [birth, job, hire, contract_end, sex, address, career]
+              properties:
+                birth:
+                  type: integer
+                  format: int64
+                job:
+                  type: integer
+                  format: int64
+                hire:
+                  type: integer
+                  format: int64
+                contract_end:
+                  type: integer
+                  format: int64
+                sex:
+                  type: integer
+                  format: int64
+                address:
+                  type: integer
+                  format: int64
+                career:
+                  type: integer
+                  format: int64
+        id_summary:
+          type: object
+          required: [rrn_recorded, not_issued, missing, by_type]
+          properties:
+            rrn_recorded:
+              type: integer
+              format: int64
+            not_issued:
+              type: integer
+              format: int64
+            missing:
+              type: integer
+              format: int64
+            by_type:
+              type: object
+              required: [rrn, arc, domestic_residence, not_issued, unset]
+              properties:
+                rrn:
+                  type: integer
+                  format: int64
+                arc:
+                  type: integer
+                  format: int64
+                domestic_residence:
+                  type: integer
+                  format: int64
+                not_issued:
+                  type: integer
+                  format: int64
+                unset:
+                  type: integer
+                  format: int64
+        placement_summary:
+          type: object
+          required: [placed, unplaced, department_missing]
+          properties:
+            placed:
+              type: integer
+              format: int64
+            unplaced:
+              type: integer
+              format: int64
+            department_missing:
+              type: integer
+              format: int64
+        bank_account:
+          type: object
+          required: [registered, missing]
+          properties:
+            registered:
+              type: integer
+              format: int64
+            missing:
+              type: integer
+              format: int64
+        identity_review:
+          type: object
+          required: [needs_review]
+          properties:
+            needs_review:
+              type: integer
+              format: int64
+        failed_actions:
+          type: object
+          required: [count]
+          properties:
+            count:
+              type: integer
+              format: int64
+        drilldown_items:
+          type: array
+          items:
+            type: object
+            required: [employee_id, employment_status, missing_categories]
+            properties:
+              employee_id:
+                $ref: '#/components/schemas/Uuid'
+              employee_number:
+                type: string
+              employment_status:
+                type: string
+                enum: [PRE_HIRE, ACTIVE, ON_LEAVE]
+              missing_categories:
+                type: array
+                items:
+                  type: string
+        latest_import:
+          type: object
+          required: [run_id, status, candidate_rows, created_at]
+          properties:
+            run_id:
+              $ref: '#/components/schemas/Uuid'
+            status:
+              type: string
+            candidate_rows:
+              type: integer
+              format: int32
+            created_at:
+              $ref: '#/components/schemas/Timestamp'
+            applied_at:
+              $ref: '#/components/schemas/Timestamp'
     Period:
       type: object
       required:
@@ -56742,6 +58927,66 @@ components:
       - GROUP_ADMIN
       - GROUP_VIEWER
       - GROUP_FINANCE
+    PlatformOperatorInviteResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required:
+      - operator
+      - invite_token
+      - expires_at
+      properties:
+        operator:
+          $ref: '#/components/schemas/PlatformOperatorSummary'
+        invite_token:
+          type: string
+          minLength: 1
+          description: One-time enrolment token returned once; deliver out-of-band and never log it.
+        expires_at:
+          $ref: '#/components/schemas/Timestamp'
+    PlatformOperatorStatus:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: string
+      x-extensible-enum:
+      - PENDING_ENROLMENT
+      - ACTIVE
+      - REVOKED
+      - EXPIRED
+    PlatformOperatorSummary:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required:
+      - user_id
+      - display_name
+      - is_active
+      - has_passkey
+      - device_bound_passkey
+      - status
+      - created_at
+      properties:
+        user_id:
+          $ref: '#/components/schemas/Uuid'
+        display_name:
+          type: string
+        sign_in_id:
+          type: [string, 'null']
+        is_active:
+          type: boolean
+        has_passkey:
+          type: boolean
+        device_bound_passkey:
+          type: boolean
+        status:
+          $ref: '#/components/schemas/PlatformOperatorStatus'
+        invited_by:
+          type: [string, 'null']
+          format: uuid
+        invite_expires_at:
+          type: [string, 'null']
+          format: date-time
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
     PlatformOpsResponse:
       type: object
       required:
@@ -59449,6 +61694,69 @@ components:
             omit deactivated rows.
         created_at:
           $ref: '#/components/schemas/Timestamp'
+    RegisterFactsQueryItem:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [employee_id, updated_at, sex, address, careers, exit_reason_code, exit_reason_label, register_note, birth_date]
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/Uuid'
+        updated_at:
+          type: string
+          format: date-time
+        sex:
+          type: [string, 'null']
+          enum: [MALE, FEMALE, null]
+        address:
+          type: [string, 'null']
+        careers:
+          type: [array, 'null']
+          items:
+            $ref: '#/components/schemas/EmployeeCareer'
+        exit_reason_code:
+          type: [string, 'null']
+        exit_reason_label:
+          type: [string, 'null']
+        register_note:
+          type: [string, 'null']
+        birth_date:
+          type: [string, 'null']
+    RegisterFactsQueryRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      properties:
+        ids:
+          oneOf:
+          - type: array
+            maxItems: 500
+            items:
+              $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        register_review_required:
+          type: [boolean, 'null']
+        cursor:
+          oneOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        limit:
+          type: [integer, 'null']
+          format: int64
+          minimum: 1
+          maximum: 200
+    RegisterFactsQueryResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RegisterFactsQueryItem'
+        next_cursor:
+          oneOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
     RegisterProductionSourceSystem:
       type: object
       required: [branch_id, source_system]
@@ -60216,6 +62524,13 @@ components:
         idempotency_key:
           type: string
           maxLength: 128
+    ReissuePlatformOperatorInviteRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      properties:
+        step_up:
+          $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
     RejectPeriodUnlockRequest:
       type: object
       additionalProperties: false
@@ -60587,6 +62902,16 @@ components:
         reason: { type: string, nullable: true }
         prev_hash: { type: string }
         row_hash: { type: string }
+    RevokePlatformOperatorRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      properties:
+        reason:
+          type: [string, 'null']
+          maxLength: 500
+        step_up:
+          $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
     RollbackWorkflowDefinitionRequest:
       type: object
       required:
@@ -60998,6 +63323,128 @@ components:
           $ref: '#/components/schemas/Uuid'
         step_up:
           $ref: '#/components/schemas/PasskeyStepUpAssertion'
+    SelfChangeRequestSummary:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required:
+      - id
+      - field
+      - status
+      - created_at
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        field:
+          type: string
+        status:
+          type: string
+        masked_summary:
+          type:
+          - string
+          - 'null'
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+    SelfEmergencyContactInput:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required:
+      - name
+      - relation
+      - phone
+      properties:
+        name:
+          type: string
+          maxLength: 50
+        relation:
+          type: string
+          enum: [SPOUSE, PARENT, CHILD, SIBLING, RELATIVE, OTHER]
+        phone:
+          type: string
+        contact_notified:
+          type: [boolean, "null"]
+    SelfEmergencyContactSummary:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required:
+      - name
+      - relation
+      - phone_masked
+      properties:
+        name:
+          type: string
+        relation:
+          type: string
+          enum: [SPOUSE, PARENT, CHILD, SIBLING, RELATIVE, OTHER]
+        phone_masked:
+          type: string
+    SelfFieldRevealed:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required:
+      - employee_id
+      - field
+      - value
+      - display_seconds
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/Uuid'
+        field:
+          type: string
+          enum: [PHONE, ADDRESS, EMERGENCY_CONTACTS]
+        value: {}
+        display_seconds:
+          type: integer
+          format: int64
+    SelfIssueCertificateRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required:
+      - kind
+      - items
+      - purpose
+      properties:
+        kind:
+          type: string
+          enum: [EMPLOYMENT, CAREER, EXIT]
+        items:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            enum: [period, duty, position, wage, birth]
+        purpose:
+          type: string
+          minLength: 1
+          maxLength: 200
+    SelfLeaveApprovalPreview:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required:
+      - filing_state
+      - steps
+      properties:
+        filing_state:
+          type: string
+          enum: [ready, home_branch_required]
+        home_branch_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        branch_name:
+          type:
+          - string
+          - 'null'
+        org_unit:
+          type:
+          - string
+          - 'null'
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/LeaveApprovalPreviewStep'
     SelfLeaveBalance:
       type: object
       required:
@@ -61013,6 +63460,10 @@ components:
           $ref: '#/components/schemas/Uuid'
         name:
           type: string
+        org_unit:
+          type:
+          - string
+          - 'null'
         accrued_units:
           allOf: [{$ref: '#/components/schemas/LeaveBalanceAmount'}]
           nullable: true
@@ -61032,6 +63483,42 @@ components:
           - 'null'
           format: uuid
           description: Active authoritative routing branch; null exactly when filing_state is home_branch_required.
+    SelfLeaveTeamOverlap:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required:
+      - active_count
+      - out_count
+      - members_out
+      properties:
+        org_unit:
+          type:
+          - string
+          - 'null'
+        active_count:
+          type: integer
+          format: int64
+        out_count:
+          type: integer
+          format: int64
+        members_out:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeamOverlapMember'
+    SelfRevealRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required:
+      - field
+      properties:
+        field:
+          type: string
+          enum: [PHONE, ADDRESS, EMERGENCY_CONTACTS]
+        step_up:
+          anyOf:
+          - $ref: '#/components/schemas/MobilePasskeyStepUpEnvelope'
+          - type: 'null'
     SendMailRequest:
       type: object
       description: Compose a message. For reply/forward, in_reply_to is required and references carries the accumulated chain.
@@ -62097,24 +64584,6 @@ components:
         note:
           type: [string, 'null']
           maxLength: 1000
-    SignupRequest:
-      type: object
-      required:
-      - email
-      properties:
-        email:
-          type: string
-          format: email
-          description: The email address to register and deliver the one-time code to.
-    SignupResponse:
-      type: object
-      required:
-      - accepted
-      properties:
-        accepted:
-          type: boolean
-          description: Always true. The signup was accepted and a one-time code was sent; the response intentionally carries
-            no account-existence or token information.
     SimulateWorkflowDefinitionRequest:
       type: object
       properties:
@@ -62946,6 +65415,22 @@ components:
             - string
             - 'null'
           format: date-time
+        request_expires_at:
+          type: string
+          format: date-time
+        requested_duration_seconds:
+          type: integer
+        scope:
+          type: array
+          items:
+            type: string
+        operator_approver_ref:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        tenant_approved:
+          type: boolean
       required:
         - id
         - org_id
@@ -63400,6 +65885,17 @@ components:
       - PREVENTION
       - MANAGEMENT
       - RECEPTION
+    TeamOverlapMember:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required:
+      - employee_id
+      - name
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/Uuid'
+        name:
+          type: string
     TenantEraseRead:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
@@ -64233,6 +66729,20 @@ components:
           oneOf:
           - $ref: '#/components/schemas/Uuid'
           - type: 'null'
+    UpdateMeProfileRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      properties:
+        phone:
+          type:
+          - string
+          - 'null'
+        emergency_contacts:
+          type: array
+          maxItems: 3
+          items:
+            $ref: '#/components/schemas/SelfEmergencyContactInput'
     UpdateNoticeDraftRequest:
       type: object
       properties:
@@ -64649,6 +67159,19 @@ components:
           - string
           - 'null'
         employee_position:
+          type:
+          - string
+          - 'null'
+        employee_hire_date:
+          type:
+          - string
+          - 'null'
+          format: date
+        employee_employment_status:
+          type:
+          - string
+          - 'null'
+        employee_grade:
           type:
           - string
           - 'null'

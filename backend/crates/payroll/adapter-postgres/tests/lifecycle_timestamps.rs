@@ -16,6 +16,8 @@ fn responses(at: OffsetDateTime, optional: Option<OffsetDateTime>) -> Vec<Value>
             blocked_lines: 0,
             payable: false,
             kernel_rate_table: "verified".into(),
+            total_gross_won: None,
+            total_deductions_won: None,
             total_net_won: None,
         })
         .unwrap(),

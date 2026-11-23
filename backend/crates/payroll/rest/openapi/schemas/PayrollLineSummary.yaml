@@ -5,6 +5,7 @@ required:
 - employee_company
 - gross_pay_source_present
 - net_pay_source_present
+- bank_account_registered
 - nts_tax_row_status
 - calculation_status
 - blockers
@@ -16,11 +17,27 @@ properties:
     - string
     - 'null'
     format: uuid
+  employee_number:
+    type:
+    - string
+    - 'null'
   employee_display_name:
     type: string
   employee_company:
     type: string
+  org_unit:
+    type:
+    - string
+    - 'null'
+  position:
+    type:
+    - string
+    - 'null'
   work_days:
+    type:
+    - number
+    - 'null'
+  paid_holiday_days:
     type:
     - number
     - 'null'
@@ -52,6 +69,8 @@ properties:
     type: boolean
   net_pay_source_present:
     type: boolean
+  bank_account_registered:
+    type: boolean
   nts_tax_row_status:
     type: string
     enum: [REQUIRED_NOT_SUPPLIED, SUPPLIED_UNVERIFIED, VERIFIED_SOURCE_ROW]
@@ -61,3 +80,53 @@ properties:
   blockers:
     type: array
     items: {}
+  calculation_version:
+    type:
+    - integer
+    - 'null'
+    format: int32
+  base_pay_won:
+    type:
+    - integer
+    - 'null'
+    format: int64
+  overtime_pay_won:
+    type:
+    - integer
+    - 'null'
+    format: int64
+  meal_allowance_won:
+    type:
+    - integer
+    - 'null'
+    format: int64
+  taxable_won:
+    type:
+    - integer
+    - 'null'
+    format: int64
+  gross_won:
+    type:
+    - integer
+    - 'null'
+    format: int64
+  deductions:
+    type:
+    - array
+    - 'null'
+    items:
+      $ref: '#/components/schemas/PayrollCalculationDeduction'
+  total_deductions_won:
+    type:
+    - integer
+    - 'null'
+    format: int64
+  net_won:
+    type:
+    - integer
+    - 'null'
+    format: int64
+  tax_table_version:
+    type:
+    - string
+    - 'null'

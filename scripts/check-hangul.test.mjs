@@ -36,6 +36,14 @@ test("ceiling uses the merge base, not later debt added on the target branch", t
   assert.match(f.run().stderr, /e2e: now 1, baseline 0/);
 });
 
+test("a merge base larger than one read of Git's output is read in batches", t => {
+  // Zeros cost Git almost nothing to store but expand past what a single bounded read of the tree holds.
+  const f = fixture(t, { "assets/zeros.bin": Buffer.alloc(129 * 1024 * 1024), "e2e/example.spec.ts": `// ${ko}` });
+  const result = f.run("--report");
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /Merge-base Hangul lines: .*"e2e":1/);
+});
+
 test("planted literal in shipped spec cannot hide behind removed test debt", t => {
   const file = "apps/web/src/features/entity/ui/name-correction-spec.tsx";
   const f = fixture(t, { [file]: "export {};", "apps/web/src/example.test.tsx": `// ${ko}` });
@@ -294,4 +302,12 @@ test("the declared import dictionary owns header synonyms without exempting othe
   assert.equal(check("backend/crates/hr/domain/tests/fixtures/input.json", catalogue).counts.other, 1);
   assert.equal(check(file, { ...catalogue, note: ko }).counts.other, 1);
   assert.throws(() => check(file, { fields: [{ aliases: [123] }] }), /aliases must be strings/);
+});
+
+test("the shared synthetic mock tenant JSON is pure data while any other e2e JSON or TS file remains checked", () => {
+  const file = "e2e/mock/saeon-universe.json";
+  assert.deepEqual(hangulDebt([{ file, text: JSON.stringify({ tenantName: ko }) }], []).counts, {});
+  assert.equal(hangulDebt([{ file: "e2e/mock/other.json", text: JSON.stringify({ tenantName: ko }) }], []).counts.e2e, 1);
+  assert.equal(hangulDebt([{ file: "e2e/mock/saeon.ts", text: `export const label = "${ko}";` }], []).counts.e2e, 1);
+  assert.throws(() => hangulDebt([{ file, text: "[]" }], []), /JSON object/);
 });

@@ -68,11 +68,11 @@ export function History({ q, subject, target }: { q: UseQueryResult<{ items: Rev
 }
 
 /** The entity's and its certificates' effective-dated history, newest first; nothing is ever overwritten. */
-export function HistoryTab({ e }: { e: LegalEntity }) {
+export function HistoryTab({ e, flat }: { e: LegalEntity; flat?: boolean }) {
   const own = useQuery({ ...entityHistoryQuery(e.id), retry: false });
   const regs = useQueries({ queries: e.registrations.map((r) => ({ ...registrationHistoryQuery(r.id), retry: false })) });
   return (
-    <section className="card panel" aria-labelledby="history-title">
+    <section className={flat ? "panel" : "card panel"} aria-labelledby="history-title">
       <h2 id="history-title" className="panel__title">{t("entity.history.title")}</h2>
       <History target={{ id: e.id }} q={own} subject={entityName(e)} />
       {e.registrations.map((r, i) => {

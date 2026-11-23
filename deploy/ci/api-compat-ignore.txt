@@ -30,3 +30,9 @@ POST /api/v1/employees/{id}/probation/confirm the `birth_date` response's proper
 # errors. Remove when no supported released baseline declares format date here.
 GET /api/v1/person-binding-reviews the `items/items/evidence/birth_date` response's property `format` changed from `date` to `none` for status `200`
 GET /api/v1/person-binding-reviews the `items/items/evidence/candidates/items/birth_date` response's property `format` changed from `date` to `none` for status `200`
+
+# Intentionally unmounted unauthenticated open signup endpoint (security hardening).
+# Users are onboarded via admin invite or enrollment redemption; requests to
+# POST /api/v1/auth/signup now return explicit 404 (tested in
+# backend/app/tests/open_signup_unmounted.rs).
+POST /api/v1/auth/signup api path removed without deprecation

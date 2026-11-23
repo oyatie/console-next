@@ -1,0 +1,15 @@
+{
+  "baseline": {
+    "apps/web/src/features/settings/ui/screen-style-sheet.tsx#ScreenStyleSheet": 35
+  },
+  "newScreens": {
+    "apps/web/src/features/settings/ui/screen-style-sheet.tsx#ScreenStyleSheet": {
+      "FACT": 18,
+      "REFUSAL": 16,
+      "EMPTY": 1,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    }
+  }
+}

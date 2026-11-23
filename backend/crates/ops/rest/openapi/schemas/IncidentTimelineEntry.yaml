@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["seq", "at", "actor", "kind", "summary"]
+properties:
+  seq: {"type": "integer", "minimum": 1}
+  at: {"$ref": "#/components/schemas/Timestamp"}
+  actor: {"$ref": "#/components/schemas/Text"}
+  kind: {"$ref": "#/components/schemas/Text"}
+  summary: {"$ref": "#/components/schemas/Text"}

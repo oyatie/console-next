@@ -22,7 +22,7 @@ import { ReviewResolve } from "./review-resolve";
  * table (the same control the queue uses); answering runs the dry run again.
  * plain tables (every text drawn); a LongTable per kind if a file brings thousands of distinct texts.
  */
-export function ValueTable({ dry, picks, busy, sel, onSel, onResolve, onSheets }: {
+export function ValueTable({ dry, picks, busy, sel, onSel, onResolve, onSheets, inlineResolve = true, consoleMode = false }: {
   dry: ImportDryRun;
   picks: Picks;
   busy: boolean;
@@ -30,6 +30,8 @@ export function ValueTable({ dry, picks, busy, sel, onSel, onResolve, onSheets }
   onSel: (id: string) => void;
   onResolve: (c: Picks) => void;
   onSheets: () => void;
+  inlineResolve?: boolean;
+  consoleMode?: boolean;
 }) {
   const units = useQuery(unitsQuery).data?.items ?? [];
   const entities = useQuery(entitiesRef).data?.items ?? [];
@@ -64,21 +66,22 @@ export function ValueTable({ dry, picks, busy, sel, onSel, onResolve, onSheets }
         const title = t("importValues.title", { kind: decisionLabel(g.decision) });
         const open = g.rows.find((r) => r.item.id === sel);
         return (
-          <Card key={g.decision} titleId={`import-values-${g.decision}`} title={title} meta={t("importValues.counts", { all: g.rows.length, open: g.open })}>
+          <Card key={g.decision} titleId={`import-values-${g.decision}`} title={title} meta={t("importValues.counts", { all: g.rows.length, open: g.open })} flush={consoleMode} look={consoleMode ? "flush" : undefined}>
             <Table<ValueRow>
               label={title}
+              mobileLayout={consoleMode ? "compact" : "cards"}
               rows={g.rows}
               rowId={(r) => r.item.id}
               selected={sel ?? undefined}
               onSelect={onSel}
               columns={[
-                { header: t("importValues.col.text"), cell: (r) => <b>{(r.item.value ?? r.item.resolution!.key) || t("import.rows.blank")}</b> },
-                { header: t("importValues.col.rows"), cell: (r) => <span className="num">{r.remembered ? "—" : r.item.rows}</span>, fit: true },
-                { header: t("importValues.col.place"), cell: (r) => answer(r) ?? <span className="muted">{t("importValues.none")}</span> },
-                { header: t("importValues.col.why"), cell: why, fit: true },
+                { header: t("importValues.col.text"), card: "fact", cell: (r) => <b>{(r.item.value ?? r.item.resolution!.key) || t("import.rows.blank")}</b> },
+                { header: t("importValues.col.rows"), card: "omit", cell: (r) => <span className="num">{r.remembered ? "—" : r.item.rows}</span>, fit: true },
+                { header: t("importValues.col.place"), card: "title", cell: (r) => answer(r) ?? <span className="muted">{t("importValues.none")}</span> },
+                { header: t("importValues.col.why"), card: "status", cell: why, fit: true },
               ]}
             />
-            {open && <ReviewResolve key={open.item.id} item={open.item} dry={dry} picks={picks} busy={busy} onResolve={onResolve} onSheets={onSheets} />}
+            {inlineResolve && open && <ReviewResolve key={open.item.id} item={open.item} dry={dry} picks={picks} busy={busy} onResolve={onResolve} onSheets={onSheets} />}
           </Card>
         );
       })}

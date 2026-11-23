@@ -24,6 +24,9 @@
       "get",
       "post"
     ],
+    "/api/v1/change-requests/counts": [
+      "get"
+    ],
     "/api/v1/change-requests/{id}/decide": [
       "post"
     ],
@@ -105,6 +108,9 @@
       "get",
       "post"
     ],
+    "/api/v1/employees/import/{run_id}/cells": [
+      "put"
+    ],
     "/api/v1/employees/import/{run_id}/dry-run": [
       "post"
     ],
@@ -115,6 +121,9 @@
       "get"
     ],
     "/api/v1/employees/import/{run_id}/reconcile/rows/{source_key}": [
+      "put"
+    ],
+    "/api/v1/employees/import/{run_id}/rows/{source_key}/identifier": [
       "put"
     ],
     "/api/v1/employees/import/{run_id}/signoff": [
@@ -133,6 +142,9 @@
       "post"
     ],
     "/api/v1/employees/register-facts/bulk": [
+      "post"
+    ],
+    "/api/v1/employees/register-facts/query": [
       "post"
     ],
     "/api/v1/employees/renumber/apply": [
@@ -243,6 +255,9 @@
     "/api/v1/employees/{id}/rrn/reveal": [
       "post"
     ],
+    "/api/v1/employees/{id}/unit-position": [
+      "get"
+    ],
     "/api/v1/employees/{id}/void": [
       "post"
     ],
@@ -295,6 +310,12 @@
       "get",
       "post"
     ],
+    "/api/v1/hr/exit-cases/bulk": [
+      "post"
+    ],
+    "/api/v1/hr/exit-cases/counts": [
+      "get"
+    ],
     "/api/v1/hr/exit-cases/{id}": [
       "get"
     ],
@@ -317,6 +338,9 @@
       "get"
     ],
     "/api/v1/hr/org-chart": [
+      "get"
+    ],
+    "/api/v1/hr/people/data-health": [
       "get"
     ],
     "/api/v1/hr/readiness-summary": [
@@ -425,10 +449,14 @@
     "BulkEmployeeCorrectionResult",
     "BulkEmployeeLifecycleEventRequest",
     "BulkEmployeeLifecycleEventResponse",
+    "BulkExitCaseItemInput",
+    "BulkExitCaseItemResult",
     "BulkLifecyclePreview",
     "BulkLifecycleRefusalBody",
     "BulkRegisterFactsOutcome",
     "BulkRegisterFactsRequest",
+    "BulkReportExitCasesRequest",
+    "BulkReportExitCasesResponse",
     "BulkSelection",
     "BulkTransferLine",
     "CancelEmployeeLifecycleEventRequest",
@@ -442,6 +470,7 @@
     "CertificateSettingsView",
     "CertificateSnapshot",
     "ChangeRequest",
+    "ChangeRequestCountsResponse",
     "ChangeSetDetail",
     "ChangeSetLine",
     "ChangeSetSummary",
@@ -527,8 +556,11 @@
     "EmployeeRrnRevealRequest",
     "EmployeeRrnRevealed",
     "EmployeeRrnStatus",
+    "EmployeeUnitPosition",
     "EmployeeVoidOutcome",
+    "EmployeeWarningMatch",
     "EmploymentType",
+    "ExitCaseCountsResponse",
     "ExitCaseNextAction",
     "ExitGuards",
     "ExitSettlementDeadline",
@@ -539,7 +571,11 @@
     "HrOrgChartResponse",
     "HrOrgChartUnit",
     "ImportApplyRequest",
+    "ImportCellsRepairRequest",
+    "ImportCellsRepairResponse",
     "ImportDryRunRequest",
+    "ImportRowIdentifierRequest",
+    "ImportRowIdentifierResponse",
     "IssueAppointmentNoticeRequest",
     "IssueCertificateRequest",
     "JobTitleKind",
@@ -563,6 +599,7 @@
     "OrgUnitList",
     "OrgUnitRevision",
     "OrgUnitStatus",
+    "PeopleDataHealthResponse",
     "PersonBindingReviews",
     "PersonRecordAward",
     "PersonRecordBasis",
@@ -585,6 +622,9 @@
     "PersonRecordTraining",
     "PersonRecordVeteran",
     "ProtectedExitPeriod",
+    "RegisterFactsQueryItem",
+    "RegisterFactsQueryRequest",
+    "RegisterFactsQueryResponse",
     "RehireEmployeeRequest",
     "ReportEmployeeExitCaseRequest",
     "ResolveEmployeeIdentityRequest",

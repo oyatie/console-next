@@ -1,26 +1,25 @@
-import { useId, useState } from "react";
+import { lazy, Suspense, useId, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, type LinkProps } from "@tanstack/react-router";
 import { ApiError } from "@console/api";
 import { t } from "@console/i18n";
-import { ACCESS_REQUEST_REASONS, grantersQuery, myAccessQuery, requestAccess, type AccessRequestReason } from "../../reference/authz/api";
+import { grantersQuery, myAccessQuery } from "../../reference/authz/api";
 import { grantLines, requirementText } from "../../reference/authz/present";
 import { orgStructureRef } from "../../reference/entity/api";
+import { chunk } from "../chunk-guard";
 import { failureText } from "../refusal";
-import { Banner } from "../../ui/banner/banner";
 import { Button } from "../../ui/button/button";
 import { buttonClass } from "../../ui/button/button-class";
 import { Card } from "../../ui/card/card";
 import { EmptyState } from "../../ui/empty-state";
-import { ReasonField } from "../../ui/reason/reason-field";
-import { reasonProblem, type Reason } from "../../ui/reason/reason";
+import { Skeleton } from "../../ui/skeleton/skeleton";
 import { ReadReference } from "./read-reference";
-import { CommandError } from "./command-error";
 import css from "./denied.module.css";
-import { useCommand } from "./command";
 import type { AccessRequirement } from "../../reference/authz/domain/access";
 
-const REASONS = ACCESS_REQUEST_REASONS.map((code) => ({ code, label: t(`common.denied.reason.${code}`) }));
+const DeniedRequestForm = lazy(() =>
+  chunk(import("./denied-request-form")).then((m) => ({ default: m.DeniedRequestForm })),
+);
 
 /** What this account holds today: one line per grant (role · scope · until), or that it holds nothing. */
 function Mine() {
@@ -46,33 +45,14 @@ function Mine() {
   );
 }
 
-/** "request access": reason chips (Other needs words), sent as a record the holders of access management see. */
+/** "request access": opens an on-demand form where reason chips and an optional note are submitted to access granters. */
 function RequestAccess({ screen }: { screen: string }) {
   const [open, setOpen] = useState(false);
-  const [reason, setReason] = useState<Reason>({ code: null, memo: "" });
-  const [tried, setTried] = useState(false);
-  const send = useCommand({
-    run: (r: Reason) => requestAccess({ screen, reason_code: r.code as AccessRequestReason, note: r.memo.trim() || null }),
-    invalidates: ["/api/v1/access"],
-    announce: () => t("common.denied.request.sent"),
-  });
-  if (send.data) return <Banner live="polite">{t("common.denied.request.sent")}</Banner>;
   if (!open) return <Button variant="primary" onClick={() => setOpen(true)}>{t("common.denied.request")}</Button>;
   return (
-    <form
-      className={css.form}
-      onSubmit={(e) => {
-        e.preventDefault();
-        setTried(true);
-        if (!reasonProblem(reason, "OTHER")) send.mutate(reason);
-      }}
-    >
-      <ReasonField label={t("common.denied.request.reason")} codes={REASONS} other="OTHER" value={reason} onChange={setReason} memoMax={500} showErrors={tried} />
-      <CommandError error={send.error} />
-      <div className={css.row}>
-        <Button variant="primary" type="submit" disabled={send.isPending}>{t("common.denied.request.send")}</Button>
-      </div>
-    </form>
+    <Suspense fallback={<Skeleton bones={["line", "line"]} />}>
+      <DeniedRequestForm screen={screen} />
+    </Suspense>
   );
 }
 

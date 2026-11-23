@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required: [scheduled_days, weekday_holidays, recognised_minutes, outside_minutes, unapproved_minutes, blocking_count, decision_count, issue_people_count, overtime_people_count]
+properties:
+  scheduled_days:
+    type: integer
+    format: int64
+  weekday_holidays:
+    type: integer
+    format: int64
+  recognised_minutes:
+    type: integer
+    format: int64
+  outside_minutes:
+    type: integer
+    format: int64
+  unapproved_minutes:
+    type: integer
+    format: int64
+  blocking_count:
+    type: integer
+    format: int64
+  decision_count:
+    type: integer
+    format: int64
+  issue_people_count:
+    type: integer
+    format: int64
+  overtime_people_count:
+    type: integer
+    format: int64

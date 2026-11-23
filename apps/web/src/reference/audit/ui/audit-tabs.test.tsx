@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { beforeAll, expect, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { loadCatalog } from "@console/i18n";
+import { loadCatalog, t } from "@console/i18n";
 import { AuditTabs } from "./audit-tabs";
 
 vi.mock("@tanstack/react-router", () => ({
@@ -12,10 +12,12 @@ vi.mock("@tanstack/react-router", () => ({
 
 beforeAll(() => loadCatalog("ko"));
 
-test("audit navigation exposes only the served support-access view", () => {
+test("audit navigation exposes audit log, access log review, and support-access views", () => {
   const html = renderToStaticMarkup(<AuditTabs />);
-  expect(html).not.toContain('href="/audit/access-log"');
-  expect(html).not.toContain("접속기록 점검");
+  expect(html).toContain('href="/audit"');
+  expect(html).toContain(t("audit.nav.log"));
+  expect(html).toContain('href="/audit/access-log"');
+  expect(html).toContain("접속기록 점검");
   expect(html).toContain('href="/audit/support-access"');
   expect(html).toContain("지원 접근");
 });

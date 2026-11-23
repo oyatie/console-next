@@ -263,3 +263,34 @@ fn deadline_display_config_is_platform_owned_and_ignores_tenant_rows() {
         Err(SettingError::NotEditable(key))
     );
 }
+
+#[test]
+fn display_experience_defaults_to_baseline_and_switches_neutrally_across_styles() {
+    let key: K = "display.experience".parse().unwrap();
+    assert!(key.client_required());
+    let resolved = resolve(key, &[], None, NOW).unwrap();
+    assert_eq!(
+        (resolved.value, resolved.version),
+        (V::Code("baseline"), SettingVersionId::CodeDefault)
+    );
+    for (from, to) in [
+        ("baseline", "console"),
+        ("console", "warm-clear"),
+        ("warm-clear", "baseline"),
+    ] {
+        let accepted = check_change(key, &json!(to), NOW, NOW, Some(V::Code(from)), false).unwrap();
+        assert_eq!(accepted.value, V::Code(to));
+        assert_eq!(accepted.direction, Direction::Neutral);
+    }
+    assert_eq!(
+        check_change(
+            key,
+            &json!("unknown-style"),
+            NOW,
+            NOW,
+            Some(V::Code("baseline")),
+            true
+        ),
+        Err(SettingError::InvalidValue(key))
+    );
+}

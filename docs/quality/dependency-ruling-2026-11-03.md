@@ -37,9 +37,10 @@ The owner approved `aws-lc-rs` as a direct workspace dependency on 2026-11-07,
 replacing XChaCha20-Poly1305 with AES-256-GCM: “no reason to pick
 chacha20poly1305 over aes-256-gcm”. This extends the 2026-11-03 JWT-only scope
 and the 2026-10-26 “aws-lc-rs everywhere” direction to AES-256-GCM payloads,
-AES-256-KWP DEK wrapping, HMAC-SHA256 matching and CSPRNG use for credential/RRN
-envelopes. The exact direct users are `console-comms-credential-cipher` and
-`console-app`, in frameworks & drivers/platform; ports remain provider-free.
+AES-256-KWP DEK wrapping, HKDF-SHA256 key derivation, HMAC-SHA256 matching and CSPRNG use for credential/RRN
+envelopes. The exact direct users are `console-platform-crypto`,
+`console-comms-credential-cipher`, and `console-app`, in frameworks &
+drivers/platform; ports remain provider-free.
 
 The [credential encryption architecture](../architecture/credential-encryption.md)
 records the suites, invocation limits and two-release rollout. The canonical

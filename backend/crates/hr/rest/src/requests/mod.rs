@@ -7,6 +7,7 @@ use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Extension, Json, Router};
 use console_hr_adapter_postgres::HrService;
+use console_hr_adapter_postgres::requests::counts::ChangeRequestCountsResponse;
 use console_hr_adapter_postgres::requests::{
     ChangeRequestListQuery, ChangeRequestPage, ChangeRequestResponse, CreateChangeRequest,
     DecideChangeRequest,
@@ -17,15 +18,27 @@ use uuid::Uuid;
 use crate::HrApiError;
 
 pub const CHANGE_REQUESTS_PATH: &str = "/api/v1/change-requests";
+pub const CHANGE_REQUESTS_COUNTS_PATH: &str = "/api/v1/change-requests/counts";
 pub const CHANGE_REQUEST_DECIDE_PATH: &str = "/api/v1/change-requests/{id}/decide";
-pub const CHANGE_REQUESTS_ROUTE_PATHS: &[&str] =
-    &[CHANGE_REQUESTS_PATH, CHANGE_REQUEST_DECIDE_PATH];
+pub const CHANGE_REQUESTS_ROUTE_PATHS: &[&str] = &[
+    CHANGE_REQUESTS_PATH,
+    CHANGE_REQUESTS_COUNTS_PATH,
+    CHANGE_REQUEST_DECIDE_PATH,
+];
 
 pub fn router(hr: HrService) -> Router {
     Router::new()
         .route(CHANGE_REQUESTS_PATH, get(list).post(create))
+        .route(CHANGE_REQUESTS_COUNTS_PATH, get(counts))
         .route(CHANGE_REQUEST_DECIDE_PATH, post(decide))
         .with_state(hr)
+}
+
+async fn counts(
+    State(hr): State<HrService>,
+    Extension(principal): Extension<Principal>,
+) -> Result<Json<ChangeRequestCountsResponse>, HrApiError> {
+    Ok(Json(hr.change_request_counts(principal).await?))
 }
 
 async fn list(

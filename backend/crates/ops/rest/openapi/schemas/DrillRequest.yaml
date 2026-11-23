@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["repo", "drill_type", "window"]
+additionalProperties: false
+properties:
+  repo: {"type": "string", "enum": ["1", "2", "auto"]}
+  drill_type: {"type": "string", "enum": ["name", "time"]}
+  target: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+  window: {"type": "string", "enum": ["window", "now"]}

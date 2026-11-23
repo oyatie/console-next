@@ -9,18 +9,18 @@ for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as 
   test(`first use opens the role editor with keyboard checkboxes at ${width}px ${colorScheme}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.emulateMedia({ colorScheme });
-    const fixture = await mockAccessScreen(page, accessScreens[1], "empty");
+    const fixture = await mockAccessScreen(page, accessScreens[1], "empty", "SETUP");
     await mockRoute(page, "get", "/api/v1/access/catalog", { status: 200, json: {
       domains: [
         { domain: "hr_basic", grantable: true, levels: ["view", "edit"], operations: [{ operation: "employee.update", level: "edit" }] },
         { domain: "pay", grantable: true, levels: ["view"], operations: [] },
       ], levels: ["view", "edit"], scope_kinds: [], reason_domain: "role_change",
     } });
-    await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: screenAccess("/access/roles/new") });
+    await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: screenAccess("/access/roles/new", "SETUP") });
     await page.goto("/access/roles");
     const main = page.getByRole("main");
     const nav = main.getByRole("navigation", { name: "권한 화면" });
-    await expect(main.getByText("역할에 할 수 있는 일을 정한 뒤, 사람에게 범위와 종료일을 지정해 부여합니다.", { exact: true })).toBeVisible();
+    await expect(main.getByRole("heading", { name: "역할이 없습니다", exact: true })).toBeVisible();
     await main.getByRole("link", { name: "역할 추가", exact: true }).click();
     const matrix = main.getByRole("table", { name: "데이터 영역별 권한" });
     const view = matrix.getByRole("checkbox", { name: "인사기본 조회", exact: true });

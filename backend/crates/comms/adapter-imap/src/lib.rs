@@ -11,7 +11,7 @@
 //! * **TLS enforced** (single rustls 0.23 stack): `SslTls` (993) does an implicit
 //!   TLS handshake on connect; `StartTls` (143) connects plaintext then issues
 //!   `STARTTLS` and upgrades. Certificate verification uses the webpki roots via
-//!   the rustls `ring` provider; the SNI/cert name is the ORIGINAL hostname even
+//!   the rustls `aws-lc-rs` provider; the SNI/cert name is the ORIGINAL hostname even
 //!   though we dial the pinned IP, so verification still matches. There is no
 //!   plaintext path and no permissive verifier.
 //! * **Mirror-in** ([`parse`]): `UID FETCH ... BODY.PEEK[]` (side-effect free —
@@ -233,18 +233,18 @@ where
     Ok(String::from_utf8_lossy(&buf).into_owned())
 }
 
-/// Build the rustls client config: webpki roots, the `ring` crypto provider, no
+/// Build the rustls client config: webpki roots, the `aws-lc-rs` crypto provider, no
 /// client auth, default (safe TLS 1.2 + 1.3) protocol versions. No permissive
-/// verifier. Built explicitly on the `ring` provider so it never depends on a
+/// verifier. Built explicitly on the `aws-lc-rs` provider so it never depends on a
 /// process-global default provider (which may be unset in a worker process).
 fn tls_client_config() -> Result<ClientConfig, MailServiceError> {
     let mut roots = RootCertStore::empty();
     roots.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
-    let provider = Arc::new(tokio_rustls::rustls::crypto::ring::default_provider());
+    let provider = Arc::new(tokio_rustls::rustls::crypto::aws_lc_rs::default_provider());
     let config = ClientConfig::builder_with_provider(provider)
         .with_safe_default_protocol_versions()
         // Only errors on an inconsistent provider/version set, which the bundled
-        // ring provider is not; map to a fixed code rather than panicking.
+        // aws-lc-rs provider is not; map to a fixed code rather than panicking.
         .map_err(|_| MailServiceError::Transport { code: "tls_setup" })?
         .with_root_certificates(roots)
         .with_no_client_auth();
@@ -555,9 +555,9 @@ mod tests {
 
     #[test]
     fn tls_config_builds_with_webpki_roots() {
-        // Building the client config must succeed (ring provider) and load real
+        // Building the client config must succeed (aws-lc-rs provider) and load real
         // roots — the verifier path is wired and the config is usable.
-        let cfg = tls_client_config().expect("ring-backed client config must build");
+        let cfg = tls_client_config().expect("aws-lc-rs-backed client config must build");
         let _ = Arc::new(cfg);
         assert!(!webpki_roots::TLS_SERVER_ROOTS.is_empty());
     }

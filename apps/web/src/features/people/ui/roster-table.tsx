@@ -1,5 +1,6 @@
 import { EntityName } from "../../../reference/entity/ui/entity-name";
 import { useQuery } from "@tanstack/react-query";
+import { AlertTriangle } from "lucide-react";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
@@ -22,19 +23,46 @@ type Employee = components["schemas"]["Employee"];
 export function StatusChip({ status }: { status?: string | null }) {
   const st = labeled(EMPLOYEE_STATUS, status ?? "UNKNOWN");
   // active is the quiet default (plain text); every other state stands out as a chip.
-  return status === "ACTIVE" ? <span className={s.steel}>{st.label}</span> : <Chip tone={st.tone}>{st.label}</Chip>;
+  return status === "ACTIVE" ? <bdi className={s.steel}>{st.label}</bdi> : <Chip tone={st.tone}>{st.label}</Chip>;
 }
 
 /** The most urgent next item, with "+n" when there are more (all of them in the tooltip and in the panel). */
 function Next({ e, today, soonDays }: { e: Employee; today: string; soonDays?: number }) {
   const items = nextItems(e, today, soonDays).map(nextText);
   const [first] = items;
-  if (!first) return <span className={s.steel}>{"—"}</span>;
+  if (!first) return <bdi className={s.steel}>{"—"}</bdi>;
   return (
-    <span className="num" title={items.map((i) => i.text).join("\n")}>
+    <bdi className="num" title={items.map((i) => i.text).join("\n")}>
       {first.tone ? <Chip tone={first.tone}>{first.text}</Chip> : first.text}
       {items.length > 1 && <> <Muted>{t("roster.next.more", { count: items.length - 1 })}</Muted></>}
-    </span>
+    </bdi>
+  );
+}
+
+function splitPosition(pos?: string | null): { grade: string; role: string } {
+  if (!pos) return { grade: "—", role: "" };
+  const parts = pos.split(" · ");
+  return { grade: parts[0] ?? "—", role: parts[1] ?? "" };
+}
+
+function MissingBadge({ e }: { e: Employee }) {
+  const missingAddr = (e as Employee & { missing_code?: string | null }).missing_code;
+  const labelText = missingAddr === "GENDER"
+    ? t("people.missing.gender")
+    : missingAddr === "ADDRESS"
+      ? t("people.missing.address")
+      : e.register_review_required
+        ? t("people.missing.address")
+        : e.identity_review_required
+          ? t("people.identityReview")
+          : !e.employment_type
+            ? t("roster.type.missing")
+            : null;
+  if (!labelText) return null;
+  return (
+    <Chip tone="warn">
+      <AlertTriangle size={11} aria-hidden="true" /> {labelText}
+    </Chip>
   );
 }
 
@@ -42,25 +70,92 @@ function Next({ e, today, soonDays }: { e: Employee; today: string; soonDays?: n
  * The roster's columns (E1): employee number, name (a shared name gets nothing added: same-name people are told apart by employee number and placement on the
  * same row), company, placement (workplace › department), position, employment type, hire date, status, next. One line each, the full text in the title.
  */
-function useColumns(today: string, soonDays: number | undefined, exited: boolean, shown: readonly ColumnId[]): LongColumn<Employee>[] {
+function useColumns(
+  today: string,
+  soonDays: number | undefined,
+  exited: boolean,
+  shown: readonly ColumnId[],
+  consoleMode: boolean,
+  rowIndex: (e: Employee) => number,
+): LongColumn<Employee>[] {
   const units = useQuery(unitsQuery).data?.items ?? [];
   const entities = useQuery(entitiesRef).data?.items ?? [];
   const entity = (e: Employee) => entities.find((x) => x.id === e.legal_entity_id);
   const place = (e: Employee) => {
-    if (!e.workplace_id) return t("roster.unplaced");
+    if (!e.workplace_id) return consoleMode ? "—" : t("roster.unplaced");
     const u = units.find((x) => x.id === e.org_unit_id);
     if (!u) {
       const site = entity(e)?.workplaces.find((w) => w.id === e.workplace_id)?.current?.name ?? "—";
+      if (consoleMode) return e.org_unit ? e.org_unit : site;
       return e.org_unit ? `${site} › ${e.org_unit}` : t("roster.siteDirect", { site });
     }
     const path = unitPath(units, u);
-    return u.kind === "SITE" ? t("roster.siteDirect", { site: path }) : path;
+    return u.kind === "SITE" ? (consoleMode ? path : t("roster.siteDirect", { site: path })) : path;
   };
   const kept: LongColumn<Employee>[] = [
-    { id: "last", header: t("roster.col.lastDay"), cell: (e) => <span className="num">{e.exit_date ? fmtDate(e.exit_date) : "—"}</span>, width: 120 },
-    { id: "keep", header: t("roster.col.keepUntil"), cell: (e) => <span className="num">{e.exit_date ? fmtDate(retentionEnd(e.exit_date)) : "—"}</span>, width: 120 },
-    { id: "left", header: t("roster.col.keepLeft"), cell: (e) => <Keep e={e} today={today} />, width: "1.4fr" },
+    { id: "last", header: t("roster.col.lastDay"), card: "fact", cell: (e) => <bdi className="num">{e.exit_date ? fmtDate(e.exit_date) : "—"}</bdi>, width: 112 },
+    { id: "keep", header: t("roster.col.keepUntil"), card: "fact", cell: (e) => <bdi className="num">{e.exit_date ? fmtDate(retentionEnd(e.exit_date)) : "—"}</bdi>, width: 112 },
+    { id: "left", header: t("roster.col.keepLeft"), card: "status", cell: (e) => <Keep e={e} today={today} />, width: "1.4fr" },
   ];
+  if (consoleMode) {
+    const seqCol: LongColumn<Employee> = {
+      id: "seq",
+      card: "omit",
+      header: t("people.col.seq"),
+      cell: (e) => <bdi className="num muted">{rowIndex(e)}</bdi>,
+      width: 40,
+      minWidth: 36,
+    };
+    const nameCol: LongColumn<Employee> = {
+      id: "name",
+      card: "title",
+      header: t("people.col.name"),
+      cell: (e) => <bdi className={s.nm} title={e.name}>{e.name}</bdi>,
+      rowHeader: true,
+      width: 68,
+      minWidth: 60,
+    };
+    const numCol: LongColumn<Employee> = {
+      id: "number",
+      card: "title",
+      header: t("people.col.number"),
+      cell: (e) => <bdi className="code">{e.employee_number ?? t("people.number.none")}</bdi>,
+      rowHeader: true,
+      width: 60,
+      minWidth: 56,
+    };
+    const entityCol: LongColumn<Employee> = {
+      id: "entity",
+      card: "fact",
+      header: t("roster.col.entity"),
+      cell: (e) => <EntityName entity={entity(e)} alias={entity(e) ? undefined : e.company} />,
+      width: "1.1fr",
+      minWidth: 68,
+    };
+    if (exited) return [seqCol, nameCol, numCol, entityCol, ...kept];
+    const consoleOptional: LongColumn<Employee>[] = [
+      entityCol,
+      { id: "unit", card: "fact", header: t("roster.col.place"), cell: (e) => <bdi title={place(e)}>{place(e)}</bdi>, width: "1.5fr", minWidth: 84 },
+      { id: "position", card: "fact", header: t("people.col.grade"), cell: (e) => <bdi>{splitPosition(e.position).grade}</bdi>, width: 48, minWidth: 42 },
+      { id: "role", card: "omit", header: t("people.col.role"), cell: (e) => <bdi className={s.steel}>{splitPosition(e.position).role}</bdi>, width: 52, minWidth: 44 },
+      { id: "type", card: "fact", header: t("roster.col.type"), cell: (e) => (e.employment_type ? label(EMPLOYMENT_TYPE, e.employment_type) : <bdi className={s.warnText}>{t("roster.type.missing")}</bdi>), width: 58, minWidth: 50 },
+      { id: "hired", card: "fact", header: t("people.col.hired"), cell: (e) => <bdi className="num">{e.hire_date ? e.hire_date : "—"}</bdi>, width: 84, minWidth: 76 },
+      {
+        id: "status",
+        card: "status",
+        header: t("people.col.missing"),
+        cell: (e) => <MissingBadge e={e} />,
+        width: 58,
+        minWidth: 52,
+      },
+    ];
+    return [
+      seqCol,
+      nameCol,
+      numCol,
+      ...consoleOptional.filter(col => col.id === "role" ? shown.includes("position") : shown.includes(col.id as ColumnId)),
+    ];
+  }
   const base: LongColumn<Employee>[] = [
     { id: "number", header: t("people.col.number"), cell: (e) => <span className="code">{e.employee_number ?? t("people.number.none")}</span>, rowHeader: true, width: 84 },
     { id: "name", header: t("people.col.name"), cell: (e) => <span className={s.nm} title={e.name}>{e.name}</span>, rowHeader: true, width: 100 },
@@ -106,10 +201,32 @@ type TableProps = Parameters<typeof LongTable<Employee>>[0];
 const SORT_COLUMNS: Record<RosterSort, string> = { name: "name", employee_number: "number", org_unit: "unit", hire_date: "hired" };
 
 /** The people table: compact rows of the roster's columns, everything else as LongTable takes it. */
-export function RosterTable({ today, soonDays, exited = false, shown, density, sort = "name", onSort, ...p }: Omit<TableProps, "columns" | "density" | "rowId" | "sortDescriptor" | "onSortChange"> & { today: string; soonDays?: number; exited?: boolean; shown: readonly ColumnId[]; density: "compact" | "regular"; sort?: RosterOrder; onSort?: (sort: RosterOrder) => void }) {
+export function RosterTable({
+  today,
+  soonDays,
+  exited = false,
+  shown,
+  density,
+  sort = "name",
+  onSort,
+  consoleMode = false,
+  rowIndex,
+  ...p
+}: Omit<TableProps, "columns" | "density" | "rowId" | "sortDescriptor" | "onSortChange"> & {
+  today: string;
+  soonDays?: number;
+  exited?: boolean;
+  shown: readonly ColumnId[];
+  density: "compact" | "regular";
+  sort?: RosterOrder;
+  onSort?: (sort: RosterOrder) => void;
+  consoleMode?: boolean;
+}) {
+  const indexById = new Map(p.rows.map((row, idx) => [row.id, idx + 1]));
+  const resolveIndex = rowIndex ?? ((e: Employee) => indexById.get(e.id) ?? 1);
   const activeKey = SORTS.find(key => sort === key || sort === `-${key}`)!;
-  const columns = useColumns(today, soonDays, exited, shown).map(column => ({ ...column, allowsSorting: Boolean(onSort) && Object.values(SORT_COLUMNS).includes(column.id) }));
-  return <LongTable {...p} density={density} columns={columns} rowId={(e) => e.id}
+  const columns = useColumns(today, soonDays, exited, shown, consoleMode, resolveIndex).map(column => ({ ...column, allowsSorting: Boolean(onSort) && Object.values(SORT_COLUMNS).includes(column.id) }));
+  return <LongTable {...p} rowIndex={rowIndex} density={density} columns={columns} rowId={(e) => e.id}
     sortDescriptor={onSort ? { column: SORT_COLUMNS[activeKey], direction: sort.startsWith("-") ? "descending" : "ascending" } : undefined}
     onSortChange={onSort && (descriptor => {
       const requestedKey = SORTS.find(key => SORT_COLUMNS[key] === descriptor.column);

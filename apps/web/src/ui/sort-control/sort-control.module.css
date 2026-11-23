@@ -1,0 +1,40 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  min-height: var(--control-h);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.prefix {
+  margin-inline-end: var(--space-1);
+  color: var(--steel);
+  font-size: var(--text-xs);
+}
+
+.fieldSelect {
+  appearance: none;
+  field-sizing: content;
+  height: var(--control-h);
+  min-width: 0;
+  padding: 0 var(--space-1);
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ink);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+}
+
+.fieldSelect:hover {
+  background: var(--surface-hover);
+}
+
+.dirBtn {
+  gap: var(--space-1);
+  padding-inline: var(--space-1);
+  font-weight: var(--fw-semibold);
+}

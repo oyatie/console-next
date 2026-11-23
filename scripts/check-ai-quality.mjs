@@ -24,9 +24,8 @@ export function findings(root) {
   };
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+export function run(args) {
   try {
-    const args = process.argv.slice(2);
     for (let i = 0; i < args.length; i++) {
       if (args[i] === "--report") continue;
       if (!["--root", "--base"].includes(args[i]) || !args[++i] || args[i].startsWith("--")) throw new Error("usage: check-ai-quality.mjs [--root path] [--base ref] [--report]");
@@ -36,22 +35,24 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const base = option("--base", qualityRef(root));
     const found = findings(root);
     if (args.includes("--report")) {
-      process.stdout.write(JSON.stringify(Object.fromEntries(Object.entries(found).sort(([a], [b]) => a.localeCompare(b))), null, 2) + "\n");
-    } else {
-      const baseline = JSON.parse(readFileSync(path.join(root, BASELINE), "utf8"));
-      const previous = atBase(root, base, BASELINE);
-      const problems = [...ratchet(found, baseline), ...(previous === undefined ? [] : baselineGrowth(baseline, JSON.parse(previous))), ...dependencyProblems(root, base)];
-      if (problems.length) {
-        console.error(`ai-quality: ${problems.length} problem(s):\n${problems.join("\n")}`);
-        process.exitCode = 1;
-      } else {
-        const counts = {};
-        for (const [key, count] of Object.entries(found)) counts[key.split(":")[0]] = (counts[key.split(":")[0]] ?? 0) + count;
-        console.log(`ai-quality: pass; inherited findings ${JSON.stringify(counts)}`);
-      }
+      return { status: 0, stdout: JSON.stringify(Object.fromEntries(Object.entries(found).sort(([a], [b]) => a.localeCompare(b))), null, 2) };
     }
+    const baseline = JSON.parse(readFileSync(path.join(root, BASELINE), "utf8"));
+    const previous = atBase(root, base, BASELINE);
+    const problems = [...ratchet(found, baseline), ...(previous === undefined ? [] : baselineGrowth(baseline, JSON.parse(previous))), ...dependencyProblems(root, base)];
+    if (problems.length) return { status: 1, stderr: `ai-quality: ${problems.length} problem(s):\n${problems.join("\n")}` };
+    const counts = {};
+    for (const [key, count] of Object.entries(found)) counts[key.split(":")[0]] = (counts[key.split(":")[0]] ?? 0) + count;
+    return { status: 0, stdout: `ai-quality: pass; inherited findings ${JSON.stringify(counts)}` };
   } catch (error) {
-    console.error(String(error));
-    process.exitCode = 1;
+    return { status: 1, stderr: String(error) };
   }
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const result = run(process.argv.slice(2));
+  if (result.status) {
+    console.error(result.stderr);
+    process.exitCode = result.status;
+  } else console.log(result.stdout);
 }

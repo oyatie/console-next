@@ -1,0 +1,316 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
+import { useMemo, useState } from "react";
+import { useQueries, useQuery } from "@tanstack/react-query";
+import { t } from "@console/i18n";
+import { todayKst } from "../../../lib/pure/today";
+import { useCommand } from "../../../lib/react/command";
+import { CommandError } from "../../../lib/react/command-error";
+import { Button } from "../../../ui/button/button";
+import { Segmented } from "../../../ui/button/segmented";
+import { DateField } from "../../../ui/date/date-field";
+import { isDate } from "../../../ui/date/days";
+import { Field } from "../../../ui/field/field";
+import { StatRow } from "../../../ui/key-value/key-value";
+import { FormPattern } from "../../../ui/patterns/form";
+import { FormSection } from "../../../ui/patterns/form-section";
+import { useEmployeeLink } from "../../../reference/person/ui/use-employee-link";
+import { SelfServiceUnlinked } from "../../../reference/person/ui/self-service-unlinked";
+import {
+  createLeaveRequest,
+  leaveSubmitError,
+  myLeaveApprovalPreviewQuery,
+  myLeaveQuery,
+  myLeaveTeamOverlapQuery,
+  myScheduleQuery,
+} from "../api";
+import {
+  buildLeaveCreatePayload,
+  collectLoadedSchedules,
+  computeRequestedDays,
+  listScheduleMonths,
+  parseLeaveUnits,
+  validateLeaveDates,
+  type LeaveOptionKind,
+  type LeaveSpanMode,
+} from "../domain/leave-form";
+import {
+  buildLeaveBalanceView,
+  formatTeamOverlapSummary,
+} from "../present";
+import { LeaveContextRows } from "./leave-context-rows";
+import { leaveKindItems, leaveSpanItems } from "./leave-options";
+import {
+  LeaveBalanceSummary,
+  LeaveHistorySection,
+  LeaveStatusBanners,
+} from "./leave-history-section";
+import { LeaveRequestBaseline } from "./leave-request-baseline";
+import s from "./leave-request-page.module.css";
+
+/** Self-service annual / half-day leave filing page (`P7` `FormPattern` at `/leave`). */
+export function LeaveRequestPage() {
+  const today = todayKst();
+  const { me, linked } = useEmployeeLink();
+  const q = useQuery({ ...myLeaveQuery, enabled: linked });
+  const [kind, setKind] = useState<LeaveOptionKind>("annual");
+  const [spanMode, setSpanMode] = useState<LeaveSpanMode>("one");
+  const [startDate, setStartDate] = useState<string>(today);
+  const [endDate, setEndDate] = useState<string>(today);
+  const [startInvalid, setStartInvalid] = useState(false);
+  const [endInvalid, setEndInvalid] = useState(false);
+  const [receipt, setReceipt] = useState<{ kind: LeaveOptionKind; startDate: string; endDate: string; days: number } | null>(null);
+
+  const startMonth = isDate(startDate) ? startDate.slice(0, 7) : today.slice(0, 7);
+  const rangeMonths = useMemo(() => {
+    if (kind !== "annual" || spanMode !== "multi" || !isDate(startDate) || !isDate(endDate) || endDate < startDate) {
+      return [startMonth];
+    }
+    const months = listScheduleMonths(startDate, endDate);
+    return months.length > 0 ? months : [startMonth];
+  }, [kind, spanMode, startDate, endDate, startMonth]);
+
+  const scheduleQueries = useQueries({
+    queries: rangeMonths.map((month) => ({
+      ...myScheduleQuery(month),
+      retry: false,
+      enabled: linked && (month === startMonth || (spanMode === "multi" && kind === "annual")),
+    })),
+  });
+
+  const { scheduleByDate, loadedMonths } = collectLoadedSchedules(rangeMonths, scheduleQueries);
+
+  const command = useCommand({
+    run: (input: { kind: LeaveOptionKind; startDate: string; endDate: string; days: number }, idempotencyKey) =>
+      createLeaveRequest(buildLeaveCreatePayload({ idempotencyKey, ...input })),
+    invalidates: ["/api/v2/me/leave", "/api/v1/me/action-inbox"],
+    settle: true,
+    onSuccess: (_out, input) => {
+      setReceipt(input);
+    },
+  });
+
+  const handleKindChange = (next: LeaveOptionKind) => {
+    setKind(next);
+    setReceipt(null);
+    command.reset();
+    if (next !== "annual") {
+      setSpanMode("one");
+      setEndDate(startDate);
+      setEndInvalid(false);
+    }
+  };
+
+  const handleSpanModeChange = (next: LeaveSpanMode) => {
+    setSpanMode(next);
+    setReceipt(null);
+    command.reset();
+    if (next === "one") {
+      setEndDate(startDate);
+      setEndInvalid(false);
+    } else if (kind !== "annual") {
+      setKind("annual");
+    }
+  };
+
+  const handleStartChange = (next: string) => {
+    setStartDate(next);
+    setReceipt(null);
+    command.reset();
+    if (spanMode === "one" || kind !== "annual" || (isDate(next) && (!isDate(endDate) || endDate < next))) {
+      setEndDate(next);
+      setEndInvalid(false);
+    }
+  };
+
+  const handleEndChange = (next: string) => {
+    setEndDate(next);
+    setReceipt(null);
+    command.reset();
+    if (kind === "annual" && isDate(next) && isDate(startDate) && next > startDate) {
+      setSpanMode("multi");
+    }
+  };
+
+  // Cached leave from before the account lost its link is not shown, filed against, or checked for overlap.
+  const balance = linked ? q.data?.balance : undefined;
+  const accrued = parseLeaveUnits(balance?.accrued_units);
+  const used = parseLeaveUnits(balance?.used_units);
+  const remaining = parseLeaveUnits(balance?.remaining_units);
+  const filingReady = balance?.filing_state === "ready";
+  const dateProblem = validateLeaveDates(startDate, endDate);
+  const startError = !isDate(startDate) && !startInvalid ? t("leave.failed.invalidRange") : undefined;
+  const endError =
+    dateProblem === "end_before_start"
+      ? t("leave.date.endBeforeStart")
+      : dateProblem === "range_max"
+        ? t("leave.date.rangeMax")
+        : undefined;
+
+  const requestedDays = computeRequestedDays({ kind, startDate, endDate, scheduleByDate, loadedMonths });
+  const remainingAfter = remaining != null ? Math.round((remaining - requestedDays) * 100) / 100 : null;
+  const datesValid = isDate(startDate) && isDate(endDate) && dateProblem === null;
+  const effectiveEndDate = kind === "annual" ? endDate : startDate;
+  const overlapQ = useQuery({
+    ...myLeaveTeamOverlapQuery(startDate, effectiveEndDate),
+    enabled: Boolean(balance) && datesValid,
+    retry: false,
+  });
+  const previewQ = useQuery({
+    ...myLeaveApprovalPreviewQuery,
+    enabled: Boolean(balance),
+    retry: false,
+  });
+  const overlapSummary = formatTeamOverlapSummary(overlapQ.data, balance?.org_unit);
+  const approvalSteps =
+    previewQ.data && previewQ.data.filing_state !== "home_branch_required"
+      ? previewQ.data.steps
+      : [];
+  const canSubmit =
+    Boolean(balance) &&
+    filingReady &&
+    !startInvalid &&
+    !endInvalid &&
+    datesValid &&
+    requestedDays > 0;
+
+  const { balanceStatItems, legendItems, meterData, consequenceItems } = buildLeaveBalanceView({
+    accrued,
+    used,
+    remaining,
+    requestedDays,
+    remainingAfter,
+    kind,
+  });
+
+  const kindItems = leaveKindItems(kind);
+  const spanItems = leaveSpanItems(spanMode);
+
+  const handleSubmit = () => {
+    if (!canSubmit || command.isPending) return;
+    setReceipt(null);
+    command.mutate({ kind, startDate, endDate, days: requestedDays });
+  };
+
+  const notes = (
+    <LeaveStatusBanners
+      hasBalance={Boolean(balance)}
+      filingReady={filingReady}
+      receipt={receipt}
+      onResetReceipt={() => {
+        setReceipt(null);
+        command.reset();
+      }}
+    />
+  );
+
+  const historySection = <LeaveHistorySection items={q.data?.requests.items ?? []} />;
+  const submitButton = (
+    <Button
+      type="submit"
+      variant="primary"
+      size="lg"
+      block
+      disabled={!canSubmit || command.isPending}
+      data-pending={command.isPending || undefined}
+    >
+      {t("leave.submit")}
+    </Button>
+  );
+  const submitNotice = command.error ? <CommandError error={command.error} own={leaveSubmitError} focusOnRefusal /> : null;
+
+  const head = { title: t("leave.title"), titleId: "leave-request-title" };
+  if (me.data && !linked) return <SelfServiceUnlinked q={me} head={head} pattern="form" floorplan="P-04" queryLayout="form" />;
+  // Until users/me answers, the page shows its pending or failed read rather than a leave read that was never sent.
+  const read = linked ? q : me;
+
+  return (
+    <FormPattern
+      q={read}
+      head={head}
+      notes={notes}
+      summary={<LeaveBalanceSummary statItems={balanceStatItems} meter={meterData} legendItems={legendItems} />}
+      sections={
+        <>
+          <FormSection>
+            <Field label={t("leave.type.label")} required={null}>
+              {() => (
+                <Segmented block label={t("leave.type.label")} value={kind} onChange={handleKindChange} items={kindItems} />
+              )}
+            </Field>
+          </FormSection>
+          <FormSection>
+            <div className={s.dateHead}>
+              <span className="t-sm t-medium t-ink">{t("leave.date.label")}</span>
+              <Segmented label={t("leave.date.modeLabel")} value={spanMode} onChange={handleSpanModeChange} items={spanItems} />
+            </div>
+            <div className={s.datePair}>
+              <DateField
+                label={t("leave.date.start")}
+                required={null}
+                value={startDate}
+                onChange={handleStartChange}
+                onInvalid={setStartInvalid}
+                today={today}
+                displayFormat="short-weekday"
+                error={startError}
+              />
+              <DateField
+                label={t("leave.date.end")}
+                required={null}
+                value={endDate}
+                onChange={handleEndChange}
+                onInvalid={setEndInvalid}
+                today={today}
+                min={startDate}
+                disabled={kind !== "annual"}
+                displayFormat="short-weekday"
+                error={endError}
+              />
+            </div>
+          </FormSection>
+          <LeaveContextRows
+            overlapError={overlapQ.isError}
+            overlapSummary={overlapSummary}
+            previewError={previewQ.isError}
+            approvalSteps={approvalSteps}
+          />
+          {historySection}
+        </>
+      }
+      notice={submitNotice}
+      consequence={<StatRow items={consequenceItems} label={t("leave.summary.label")} />}
+      actions={submitButton}
+      onSubmit={handleSubmit}
+      noValidate
+      baseline={() => (
+        <LeaveRequestBaseline
+          q={read}
+          statItems={balanceStatItems}
+          meter={meterData}
+          legendItems={legendItems}
+          notes={notes}
+          kind={kind}
+          onKindChange={handleKindChange}
+          kindItems={kindItems}
+          spanMode={spanMode}
+          onSpanModeChange={handleSpanModeChange}
+          spanItems={spanItems}
+          startDate={startDate}
+          endDate={endDate}
+          onStartChange={handleStartChange}
+          onEndChange={handleEndChange}
+          onStartInvalid={setStartInvalid}
+          onEndInvalid={setEndInvalid}
+          startError={startError}
+          endError={endError}
+          today={today}
+          consequenceItems={consequenceItems}
+          notice={submitNotice}
+          actions={submitButton}
+          history={historySection}
+          onSubmit={handleSubmit}
+        />
+      )}
+    />
+  );
+}

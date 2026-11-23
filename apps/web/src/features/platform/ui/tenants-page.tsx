@@ -22,6 +22,8 @@ import { VIEWS, inView, matches, type View } from "../domain/tenants";
 import { CodeDialog } from "./code-dialog";
 import { OnboardDialog } from "./onboard-form";
 import { SupportLookup } from "../../../lib/react/support-lookup";
+import { ExperienceSwitch } from "../../../ui/patterns/pattern-shell";
+import { PlatformConsole } from "./platform-console";
 import { TenantPanel } from "./tenant-panel";
 import { KeyNotices } from "./key-notices";
 
@@ -32,6 +34,14 @@ const route = getRouteApi("/app/platform");
 
 /** Vendor tier: every tenant, a panel per tenant for its lifecycle, and onboarding with a one-time first-admin code. */
 export function TenantsPage() {
+  return (
+    <ExperienceSwitch baseline={() => <TenantsBaseline />}>
+      {() => <PlatformConsole />}
+    </ExperienceSwitch>
+  );
+}
+
+function TenantsBaseline() {
   const { sel, q: q0 = "", view = "active" } = route.useSearch();
   const navigate = route.useNavigate();
   const set = (s: TenantsSearch) => navigate({ search: (p) => ({ ...p, ...s }), replace: true });
@@ -145,7 +155,7 @@ export function TenantsPage() {
                     { header: t("tenants.col.status"), width: "status", cell: (o) => { const s = labeled(TENANT_STATUS, o.status); return <><Chip tone={s.tone}>{s.label}</Chip>{" "}{o.lifecycle && <Chip tone={labeled(TENANT_LIFECYCLE, o.lifecycle).tone}>{labeled(TENANT_LIFECYCLE, o.lifecycle).label}</Chip>}</>; }, fit: true },
                     { header: t("tenants.col.users"), width: "summary", cell: (o) => { return <span className="num">{o.passkey_registered_count !== undefined ? t("tenants.accounts.states", { issued: o.code_issued_count ?? 0, registered: o.passkey_registered_count }) : "—"}</span>; }, fit: true },
                     { header: t("tenants.col.activity"), width: "datetime", cell: (o) => <span className="num">{fmtDateTime(health.get(o.id)?.last_activity_at)}</span>, fit: true, wide: true },
-                    { header: t("tenants.col.created"), width: "datetime", cell: (o) => <span className="num">{fmtDateTime(o.created_at)}</span>, fit: true },
+                    { header: t("tenants.col.created"), width: "datetime", cell: (o) => <bdi className="num">{fmtDateTime(o.created_at)}</bdi>, fit: true },
                   ]}
                 />
               </>

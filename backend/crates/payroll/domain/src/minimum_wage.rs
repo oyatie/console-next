@@ -7,7 +7,8 @@ use time::macros::date;
 use crate::{Instrument, MinimumWageCheck, statutory_instruments_retrieved_on};
 
 impl MinimumWageCheck {
-    pub(super) fn blocker_code(&self) -> Option<&'static str> {
+    #[must_use]
+    pub fn blocker_code(&self) -> Option<&'static str> {
         match self.passes {
             Some(false) => Some("MINIMUM_WAGE_BELOW_FLOOR"),
             None => Some("MINIMUM_WAGE_NOT_COMPARABLE"),

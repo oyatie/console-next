@@ -17,3 +17,4 @@ x-extensible-enum:
   - PII_REVEAL
   - PII_RECORD
   - PRIVACY_REQUEST
+  - PRIVACY_REQUEST_DECIDE

@@ -102,6 +102,7 @@ pub fn append_company_review(
                 choices: vec![],
             }),
             candidates: vec![],
+            expected_format: None,
         });
     }
     queue.count = queue.items.len();

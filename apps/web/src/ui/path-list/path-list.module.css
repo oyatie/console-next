@@ -4,7 +4,7 @@
 .search:focus-within { box-shadow: var(--focus); }
 .icon { color: var(--steel); }
 .input { flex: 1; min-width: 0; height: var(--target); border: 0; background: transparent; color: var(--ink); font: inherit; outline: none; }
-.list { display: flex; flex-direction: column; min-height: 0; overflow: auto; outline: none; }
+.list { display: flex; flex-direction: column; min-height: 0; overflow: auto; overscroll-behavior: contain; outline: none; }
 .item { display: flex; align-items: center; gap: var(--space-2); min-height: calc(var(--target) + var(--space-2)); padding-right: var(--space-3); border-top: 1px solid var(--border-soft); font-size: var(--text-sm); cursor: pointer; outline: none; }
 .item[data-focus-visible] { box-shadow: var(--focus); }
 .item[data-hovered] { background: var(--muted); }

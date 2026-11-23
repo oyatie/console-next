@@ -14,8 +14,11 @@ import { SelectInput } from "../../../ui/field/select-input";
 import { TextArea } from "../../../ui/field/text-area";
 import { FileDrop } from "../../../ui/file-drop/file-drop";
 import { StatRow } from "../../../ui/key-value/key-value";
+import type { ReadState } from "../../../lib/react/query-view";
 import { buttonClass } from "../../../ui/button/button-class";
 import { PageHead } from "../../../ui/page-head/page-head";
+import { ExperienceSwitch } from "../../../ui/patterns/pattern-shell";
+import { WizardPattern } from "../../../ui/patterns/wizard";
 import { BATCH_READS, entityBatch, type Committed } from "../../../reference/org/api/setup-batch";
 import { CommittedReceipt } from "../../../reference/org/ui/batch-receipt";
 import { BULK_FIELDS, BULK_OPERATIONS, bulkGaps, entityRowOp, entityRows, guessEntityColumns, type BulkColumns, type BulkOp, type EntityRow } from "../domain/bulk";
@@ -73,65 +76,99 @@ function EntityBulkEditor({ paste, canAct }: { paste: boolean; canAct: boolean }
   const mapped = columns && BULK_FIELDS.some((k) => columns[k] >= 0);
   const hold = !canAct ? t("setup.permissionNeeded", { permission: t("setup.permission.org::edit") }) : revising && (!from || !reason.trim()) ? t("setup.entityBulk.datedNeeded") : missing ? t("setup.entityBulk.missing", { count: missing }) : !rows?.length ? t("setup.entityBulk.empty") : null;
   const changeSource = () => { setRows(null); resetProof(); };
-  return <div className="page form">
-    <PageHead title={t(paste ? "setup.entityBulk.paste" : "setup.entityBulk.import")} tools={<Link to="/org/entities" className={buttonClass()}>{t("entityQuick.cancel")}</Link>} />
-    {!canAct && <output>{hold}</output>}
-    {done ? <CommittedReceipt committed={done} message={t("setup.entityBulk.done", { count: dry?.items.filter((i) => i.outcome !== "ERROR").length ?? 0 })} again={() => { load([]); setText(""); }} /> : <>
-      {!rows && <>
-        {paste ? <Field label={t("setup.entityBulk.input")} required>
-          {(f) => <TextArea {...f} value={text} onChange={(e) => setText(e.target.value)} spellCheck={false} />}
-        </Field> : <FileDrop label={t("setup.entityBulk.file")} accept={FILES} maxBytes={10 * 1048576} onFiles={([f]) => f && !busy && read.mutate(f)} busy={read.isPending ? t("common.loading") : undefined} error={read.isError ? t("orgBulk.import.unreadable") : undefined} />}
-        {paste && <Button disabled={!text.trim()} onClick={() => load([{ name: t("setup.entityBulk.input"), rows: readDelimited(text) }])}>{t("setup.entityBulk.columns")}</Button>}
-        {columns && <fieldset className="form__group form"><legend>{t("setup.entityBulk.columns")}</legend>
-          {sheets.length > 1 && <Field label={t("orgBulk.import.sheet")} required>{(f) => <SelectInput {...f} value={sheet} onChange={(e) => { const i = Number(e.target.value); setSheet(i); setHeader(0); setColumns(guessEntityColumns(sheets[i]?.rows[0] ?? [], words)); }}>
-            {sheets.map((s, i) => <option key={i} value={i}>{s.name}</option>)}
-          </SelectInput>}</Field>}
-          <Field label={t("orgBulk.import.headerRow")} required>{(f) => <SelectInput {...f} value={header} onChange={(e) => { const i = Number(e.target.value); setHeader(i); setColumns(guessEntityColumns(grid[i] ?? [], words)); }}>
-            {grid.slice(0, 5).map((_, i) => <option key={i} value={i}>{t("orgBulk.import.headerRowN", { n: i + 1 })}</option>)}
-          </SelectInput>}</Field>
-          {BULK_FIELDS.map((k) => <Field key={k} label={words[k]} required={false}>{(f) => <SelectInput {...f} value={columns[k]} onChange={(e) => setColumns({ ...columns, [k]: Number(e.target.value) })}>
-            <option value={-1}>{t("setup.entityBulk.unmapped")}</option>
-            {(grid[header] ?? []).map((h, i) => <option key={i} value={i}>{h || t("setup.entityBulk.column", { n: i + 1 })}</option>)}
-          </SelectInput>}</Field>)}
-          <Button disabled={!mapped || busy} onClick={() => map.mutate(undefined)}>{t("setup.entityBulk.review")}</Button>
-        </fieldset>}
-      </>}
-      <CommandError error={map.error} />
-      {rows && <>
-        {revising && <fieldset className="form__group form" disabled={busy}>
-          <DateField label={t("workplaceRegChange.from")} required value={from} today={todayKst()} onChange={(value) => { setFrom(value); resetProof(); }} />
-          <Field label={t("workplaceRegChange.reason")} required>{(f) => <TextInput {...f} value={reason} onChange={(e) => { setReason(e.target.value); resetProof(); }} />}</Field>
-        </fieldset>}
-        <StatRow items={[{ key: "entities", label: t("setup.entityBulk.records"), value: rows.length }]} />
-        {rows.map((r, i) => (
-          <BulkEntityRow
-            key={r.line}
-            row={r}
-            busy={busy}
-            records={heads}
-            changes={dry?.items.find((x) => x.ref === String(r.line))?.changes}
-            error={refused.find((x) => x.ref === String(r.line))?.error}
-            set={(draft) => {
-              if (busy) return;
-              setRows(rows.map((x, j) => (j === i ? { ...x, draft } : x)));
-              resetProof();
-            }}
-            setRow={(updated) => {
-              if (busy) return;
-              setRows(rows.map((x, j) => (j === i ? updated : x)));
-              resetProof();
-            }}
-          />
-        ))}
-        {refused.length > 0 && <output role="alert">{t("setup.entityBulk.refused", { count: refused.length })}</output>}
-        <CommandError error={preview.error ?? apply.error} />
-        <output id="entity-bulk-hold">{hold ?? t("setup.entityBulk.consequence")}</output>
-        <div className="form__actions">
-          <Button disabled={busy} onClick={changeSource}>{t("setup.entityBulk.back")}</Button>
-          <Button aria-disabled={Boolean(hold) || busy} aria-describedby="entity-bulk-hold" onClick={() => !hold && !busy && preview.mutate(undefined)}>{t("setup.entityBulk.preview")}</Button>
-          {dry && !refused.length && <Button variant="primary" aria-disabled={Boolean(hold) || busy} aria-describedby="entity-bulk-hold" onClick={() => !hold && !busy && apply.mutate(undefined)}>{t("setup.entityBulk.apply", { count: rows.length })}</Button>}
-        </div>
-      </>}
-    </>}
-  </div>;
+  const cancelLink = <Link to="/org/entities" className={buttonClass()}>{t("entityQuick.cancel")}</Link>;
+  const sourceStep = (
+    <>
+      {paste ? <Field label={t("setup.entityBulk.input")} required>
+        {(f) => <TextArea {...f} value={text} onChange={(e) => setText(e.target.value)} spellCheck={false} />}
+      </Field> : <FileDrop label={t("setup.entityBulk.file")} accept={FILES} maxBytes={10 * 1048576} onFiles={([f]) => f && !busy && read.mutate(f)} busy={read.isPending ? t("common.loading") : undefined} error={read.isError ? t("orgBulk.import.unreadable") : undefined} />}
+      {paste && <Button disabled={!text.trim()} onClick={() => load([{ name: t("setup.entityBulk.input"), rows: readDelimited(text) }])}>{t("setup.entityBulk.columns")}</Button>}
+      {columns && <fieldset className="form__group form"><legend>{t("setup.entityBulk.columns")}</legend>
+        {sheets.length > 1 && <Field label={t("orgBulk.import.sheet")} required>{(f) => <SelectInput {...f} value={sheet} onChange={(e) => { const i = Number(e.target.value); setSheet(i); setHeader(0); setColumns(guessEntityColumns(sheets[i]?.rows[0] ?? [], words)); }}>
+          {sheets.map((s, i) => <option key={i} value={i}>{s.name}</option>)}
+        </SelectInput>}</Field>}
+        <Field label={t("orgBulk.import.headerRow")} required>{(f) => <SelectInput {...f} value={header} onChange={(e) => { const i = Number(e.target.value); setHeader(i); setColumns(guessEntityColumns(grid[i] ?? [], words)); }}>
+          {grid.slice(0, 5).map((_, i) => <option key={i} value={i}>{t("orgBulk.import.headerRowN", { n: i + 1 })}</option>)}
+        </SelectInput>}</Field>
+        {BULK_FIELDS.map((k) => <Field key={k} label={words[k]} required={false}>{(f) => <SelectInput {...f} value={columns[k]} onChange={(e) => setColumns({ ...columns, [k]: Number(e.target.value) })}>
+          <option value={-1}>{t("setup.entityBulk.unmapped")}</option>
+          {(grid[header] ?? []).map((h, i) => <option key={i} value={i}>{h || t("setup.entityBulk.column", { n: i + 1 })}</option>)}
+        </SelectInput>}</Field>)}
+        <Button disabled={!mapped || busy} onClick={() => map.mutate(undefined)}>{t("setup.entityBulk.review")}</Button>
+      </fieldset>}
+    </>
+  );
+  const reviewRows = rows ? (
+    <>
+      {revising && <fieldset className="form__group form" disabled={busy}>
+        <DateField label={t("workplaceRegChange.from")} required value={from} today={todayKst()} onChange={(value) => { setFrom(value); resetProof(); }} />
+        <Field label={t("workplaceRegChange.reason")} required>{(f) => <TextInput {...f} value={reason} onChange={(e) => { setReason(e.target.value); resetProof(); }} />}</Field>
+      </fieldset>}
+      <StatRow items={[{ key: "entities", label: t("setup.entityBulk.records"), value: rows.length }]} />
+      {rows.map((r, i) => (
+        <BulkEntityRow
+          key={r.line}
+          row={r}
+          busy={busy}
+          records={heads}
+          changes={dry?.items.find((x) => x.ref === String(r.line))?.changes}
+          error={refused.find((x) => x.ref === String(r.line))?.error}
+          set={(draft) => {
+            if (busy) return;
+            setRows(rows.map((x, j) => (j === i ? { ...x, draft } : x)));
+            resetProof();
+          }}
+          setRow={(updated) => {
+            if (busy) return;
+            setRows(rows.map((x, j) => (j === i ? updated : x)));
+            resetProof();
+          }}
+        />
+      ))}
+      {refused.length > 0 && <output role="alert">{t("setup.entityBulk.refused", { count: refused.length })}</output>}
+    </>
+  ) : null;
+  const receipt = done ? (
+    <CommittedReceipt committed={done} message={t("setup.entityBulk.done", { count: dry?.items.filter((i) => i.outcome !== "ERROR").length ?? 0 })} again={() => { load([]); setText(""); }} />
+  ) : null;
+  const cmdErr = <CommandError error={preview.error ?? apply.error} />;
+  const holdOut = <output id="entity-bulk-hold">{hold ?? t("setup.entityBulk.consequence")}</output>;
+  const actionButtons = rows ? (
+    <>
+      <Button disabled={busy} onClick={changeSource}>{t("setup.entityBulk.back")}</Button>
+      <Button aria-disabled={Boolean(hold) || busy} aria-describedby="entity-bulk-hold" onClick={() => !hold && !busy && preview.mutate(undefined)}>{t("setup.entityBulk.preview")}</Button>
+      {dry && !refused.length && <Button variant="primary" aria-disabled={Boolean(hold) || busy} aria-describedby="entity-bulk-hold" onClick={() => !hold && !busy && apply.mutate(undefined)}>{t("setup.entityBulk.apply", { count: rows.length })}</Button>}
+    </>
+  ) : null;
+  const readyState: ReadState = { data: true, isPending: false, error: null, refetch: async () => undefined };
+  return (
+    <ExperienceSwitch baseline={() => (
+      <div className="page form">
+        <PageHead title={t(paste ? "setup.entityBulk.paste" : "setup.entityBulk.import")} tools={cancelLink} />
+        {!canAct && <output>{hold}</output>}
+        {receipt ?? <>
+          {!rows && sourceStep}
+          <CommandError error={map.error} />
+          {rows && <>
+            {reviewRows}
+            {cmdErr}
+            {holdOut}
+            <div className="form__actions">{actionButtons}</div>
+          </>}
+        </>}
+      </div>
+    )}>
+      {() => (
+        <WizardPattern
+          q={readyState}
+          head={{ title: t(paste ? "setup.entityBulk.paste" : "setup.entityBulk.import"), tools: cancelLink }}
+          notes={<>{!canAct && <output>{hold}</output>}<CommandError error={map.error} /></>}
+          body={receipt ?? (rows ? reviewRows : sourceStep)}
+          notice={rows && !done ? cmdErr : undefined}
+          consequence={rows && !done ? holdOut : undefined}
+          actions={done ? undefined : actionButtons}
+        />
+      )}
+    </ExperienceSwitch>
+  );
 }

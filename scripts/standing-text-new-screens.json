@@ -78,5 +78,13 @@
     "LEGAL": 12,
     "RECEIPT": 0,
     "EXPLANATION": 0
+  },
+  "apps/web/src/features/leave/ui/leave-request-page.tsx#LeaveRequestPage": {
+    "FACT": 20,
+    "REFUSAL": 6,
+    "EMPTY": 1,
+    "LEGAL": 0,
+    "RECEIPT": 2,
+    "EXPLANATION": 0
   }
 }

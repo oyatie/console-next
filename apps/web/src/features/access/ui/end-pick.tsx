@@ -27,11 +27,11 @@ export function EndPick({ value, onChange, today, error }: {
       <span id={`${id}-l`} className={field.label}>{t("access.grant.end")}</span>
       <div className={s.chips}>
         {presets.map((p) => (
-          <ToggleButton key={p.id} size="sm" pressed={value === p.date} aria-label={t("access.grant.end.preset", { label: t(`access.grant.end.${p.id}`), date: p.date })} onClick={() => (setTyping(false), onChange(p.date))}>
+          <ToggleButton look="chip" key={p.id} size="sm" pressed={value === p.date} aria-label={t("access.grant.end.preset", { label: t(`access.grant.end.${p.id}`), date: p.date })} onClick={() => (setTyping(false), onChange(p.date))}>
             {t(`access.grant.end.${p.id}`)}
           </ToggleButton>
         ))}
-        <ToggleButton size="sm" pressed={custom} onClick={() => (setTyping(true), preset && onChange(null))}>{value && !preset ? value : t("access.grant.end.pick")}</ToggleButton>
+        <ToggleButton look="chip" size="sm" pressed={custom} onClick={() => (setTyping(true), preset && onChange(null))}>{value && !preset ? value : t("access.grant.end.pick")}</ToggleButton>
       </div>
       {typing && (
         <DateInput label={t("access.grant.end.date")} className={s.endDate} min={today} value={value && !preset ? value : ""} onChange={(date) => onChange(date || null)} onBlur={(e) => e.currentTarget.value && setTyping(false)} />

@@ -53,10 +53,14 @@ fn path_and_library_variables_are_left_alone() {
             "CONSOLE_DEV_LIFECYCLE_TODAY_FILE".to_owned(),
             "/nonexistent/today".to_owned(),
         ),
+        (
+            "CONSOLE_AUDIT_CHAIN_CUSTODY_CA_FILE".to_owned(),
+            String::new(),
+        ),
         ("SSL_CERT_FILE".to_owned(), "/nonexistent/ca.pem".to_owned()),
     ]);
     resolve_file_vars(&mut vars).unwrap();
-    assert_eq!(vars.len(), 2);
+    assert_eq!(vars.len(), 3);
 }
 
 #[test]

@@ -135,6 +135,7 @@ export const enExit = {
   "exit.now": "Now · {step}",
   "exit.next": "Next: {step}",
   "exit.next.mine": "Your turn",
+  "exit.next.current": "Current step",
   "exit.next.others": "Someone with that right",
   "exit.next.otherHq": "Someone other than the HR confirmer",
   "exit.hr.blocking": "Withdraw the {count, plural, one {# record} other {# records}} scheduled after the last working day before confirming",

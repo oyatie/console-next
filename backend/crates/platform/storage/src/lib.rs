@@ -26,6 +26,7 @@ use time::format_description::well_known::Rfc3339;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 
+mod replica;
 mod sigv4;
 
 pub type StorageFuture<'a, T> = Pin<Box<dyn Future<Output = Result<T, StorageError>> + Send + 'a>>;
@@ -361,26 +362,6 @@ impl SeaweedS3Storage {
         Ok(PutObjectResult {
             version_id: header_string(response.headers(), "x-amz-version-id"),
         })
-    }
-
-    pub async fn put_compliance_retention(
-        &self,
-        bucket: &str,
-        key: &str,
-        retain_until: Timestamp,
-    ) -> Result<(), StorageError> {
-        let retain_until = retain_until
-            .format(&Rfc3339)
-            .map_err(|err| StorageError::S3(format!("invalid retain-until timestamp: {err}")))?;
-        let response = self
-            .s3(
-                Method::PUT,
-                self.object_subresource_url(bucket, key, "retention")?,
-                sigv4::content_type("application/xml")?,
-                retention_xml(&retain_until).into(),
-            )
-            .await?;
-        ensure_success("put object retention", response).await
     }
 
     /// Fetch an object's bytes and content type for internal processing. The
@@ -895,37 +876,7 @@ impl S3ObjectStore for SeaweedS3Storage {
     }
 
     fn copy_object(&self, request: CopyObjectRequest) -> StorageFuture<'_, ()> {
-        Box::pin(async move {
-            let mut headers = HeaderMap::new();
-            headers.insert(
-                HeaderName::from_static("x-amz-copy-source"),
-                header_value(&format!(
-                    "/{}/{}",
-                    request.source_bucket, request.source_key
-                ))?,
-            );
-            if let Some(retain_until) = request.retain_until {
-                headers.insert(
-                    HeaderName::from_static("x-amz-object-lock-mode"),
-                    HeaderValue::from_static("COMPLIANCE"),
-                );
-                headers.insert(
-                    HeaderName::from_static("x-amz-object-lock-retain-until-date"),
-                    header_value(&retain_until.format(&Rfc3339).map_err(|err| {
-                        StorageError::S3(format!("invalid retain-until timestamp: {err}"))
-                    })?)?,
-                );
-            }
-            let response = self
-                .s3(
-                    Method::PUT,
-                    self.object_url(&request.destination_bucket, &request.destination_key)?,
-                    headers,
-                    Vec::new(),
-                )
-                .await?;
-            ensure_success("copy object", response).await
-        })
+        Box::pin(self.copy_replica(request))
     }
 
     fn head_object(&self, bucket: String, key: String) -> StorageFuture<'_, ObjectHead> {
@@ -1645,13 +1596,19 @@ where
         media: &EvidenceMedia,
         now: Timestamp,
     ) -> Result<(), StorageError> {
+        // The object store reports whole seconds. Round up to cover the entire policy period.
+        let deadline = now + self.replication.retention_period;
+        let retain_until = deadline
+            + Duration::nanoseconds(i64::from(
+                (1_000_000_000 - deadline.nanosecond()) % 1_000_000_000,
+            ));
         self.object_store
             .copy_object(CopyObjectRequest {
                 source_bucket: self.primary_bucket.clone(),
                 source_key: media.s3_key.clone(),
                 destination_bucket: self.replica_bucket.clone(),
                 destination_key: media.s3_key.clone(),
-                retain_until: Some(now + self.replication.retention_period),
+                retain_until: Some(retain_until),
             })
             .await?;
         let head = self
@@ -1683,13 +1640,12 @@ where
                 "replica object is not under COMPLIANCE retention".to_owned(),
             ));
         }
-        let retain_until = retention.retain_until.or(head.retain_until);
-        if retain_until.is_none() {
+        let actual = retention.retain_until.or(head.retain_until);
+        if actual.and_then(|date| Timestamp::parse(&date, &Rfc3339).ok()) != Some(retain_until) {
             return Err(StorageError::Verification(
-                "replica object has no retain-until timestamp".to_owned(),
+                "replica retain-until differs from the requested deadline".to_owned(),
             ));
         }
-        let _ = now;
         Ok(())
     }
 
@@ -2801,12 +2757,6 @@ fn host_header(url: &Url) -> Result<String, StorageError> {
     })
 }
 
-fn retention_xml(retain_until: &str) -> String {
-    format!(
-        "<Retention><Mode>COMPLIANCE</Mode><RetainUntilDate>{retain_until}</RetainUntilDate></Retention>"
-    )
-}
-
 fn xml_tag_text(body: &str, tag: &str) -> Option<String> {
     let start_tag = format!("<{tag}>");
     let end_tag = format!("</{tag}>");
@@ -3015,6 +2965,42 @@ mod tests {
                 assert_eq!(audit_count, 1);
             },
         )
+        .await;
+    }
+
+    #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+    async fn replica_with_a_shorter_lock_stays_unverified(pool: PgPool) {
+        console_platform_request_context::scope_org(OrgId::one(), async move {
+            let seeded = seed_work_order(&pool).await;
+            let service = EvidenceService::new(
+                pool.clone(),
+                StaticObjectStore::ok(),
+                "primary".into(),
+                "replica".into(),
+            );
+            let now = OffsetDateTime::parse("2026-06-13T00:00:00Z", &Rfc3339).unwrap();
+            let ticket = service
+                .issue_presigned_upload(EvidenceUploadCommand {
+                    actor: seeded.uploaded_by,
+                    work_order_id: seeded.work_order_id,
+                    stage: AttachmentStage::Report,
+                    content_type: "image/jpeg".to_owned(),
+                    size_bytes: 1024,
+                    checksum_sha256: None,
+                    trace: TraceContext::generate(),
+                    occurred_at: now,
+                })
+                .await
+                .unwrap();
+            let outcome = service
+                .replicate_once(ticket.media.id, TraceContext::generate(), now)
+                .await
+                .unwrap();
+            assert_eq!(outcome.status, WormReplicaStatus::Pending);
+            let stored = evidence_media_by_id(&pool, ticket.media.id).await.unwrap();
+            assert!(stored.verified_at.is_none());
+            assert_eq!(stored.retry_count, 1);
+        })
         .await;
     }
 

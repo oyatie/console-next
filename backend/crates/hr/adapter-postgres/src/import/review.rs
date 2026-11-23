@@ -178,6 +178,7 @@ pub async fn review_of(
                     rows: 1,
                     resolution: None,
                     candidates: vec![],
+                    expected_format: None,
                 });
         }
     }

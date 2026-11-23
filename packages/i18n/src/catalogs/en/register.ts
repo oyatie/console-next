@@ -7,8 +7,8 @@ export const enRegister = {
   "register.name": "Name",
   "register.name.placeholder": "Name as written",
   "register.birth": "Birth date",
-  "register.birth.tag": "Register item 3",
-  "register.birth.hint": "Left empty, it becomes a to-do",
+  "register.birth.tag": "Register item",
+  "register.birth.hint": "Flagged for follow-up if left blank",
   "register.number": "Employee no.",
   "register.number.auto": "Assign automatically",
   "register.number.manual": "Type it",
@@ -146,4 +146,6 @@ export const enRegister = {
   "register.run.batchOp": "While operating, registrations stay in the history and are not undone. Correct a mistake on the record card.",
   "register.run.undoAll": "Undo all {n, number}",
   "register.run.submit": "Register",
+  "register.manyShort": "Register multiple",
+  "register.createMore": "Create more",
 } as const;

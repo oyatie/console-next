@@ -80,7 +80,7 @@ There is one look and one size. No prop changes either.
 
 Three things about these rules are worth knowing:
 
-- The trigger is 32 px high. A control of the Field family is 40 px (`--row-h`), so a `SelectField` beside a
+- The trigger is 32 px high. A control of the Field family is 40 px (`--field-h`), so a `SelectField` beside a
   `Field` is lower than it.
 - `--trigger-width` is not a token from `packages/tokens`. React Aria sets it on the popover to the width of the
   trigger.
@@ -345,6 +345,7 @@ How wide the trigger is at 390 px is decided by the layout around it.
 | `--space-1` | `gap`, `padding` |
 | `--space-2` | `gap`, `padding` |
 | `--space-3` | `padding` |
+| `--space-4` | `max-width`, `min-width` |
 | `--steel` | `color` |
 | `--surface` | `background` |
 | `--target` | `min-height` |

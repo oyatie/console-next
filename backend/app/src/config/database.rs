@@ -13,6 +13,27 @@ pub(crate) fn validate_database_urls(
     ontology_command_database_url: Option<&str>,
     platform_force_command_database_url: Option<&str>,
 ) -> Result<(), AppError> {
+    if role == AppRole::Ops {
+        for (name, url) in [
+            ("DATABASE_URL", database_url),
+            ("LEAVE_COMMAND_DATABASE_URL", leave_command_database_url),
+            (
+                "ONTOLOGY_COMMAND_DATABASE_URL",
+                ontology_command_database_url,
+            ),
+            (
+                "PLATFORM_FORCE_COMMAND_DATABASE_URL",
+                platform_force_command_database_url,
+            ),
+        ] {
+            if url.is_some() {
+                return Err(AppError::Config(format!(
+                    "ops role is database-free and refuses {name}"
+                )));
+            }
+        }
+        return Ok(());
+    }
     if role == AppRole::Api && database_url.is_some() && leave_command_database_url.is_none() {
         return Err(AppError::Config(
             "LEAVE_COMMAND_DATABASE_URL is required for api role when DATABASE_URL is configured"
@@ -89,7 +110,7 @@ pub(crate) fn validate_database_urls(
                 let expected_role = match role {
                     AppRole::Worker | AppRole::SchemaCheck => "console_rt",
                     AppRole::Migrate => "console_app",
-                    AppRole::Api => unreachable!("api database URLs are validated above"),
+                    AppRole::Api | AppRole::Ops => unreachable!("handled above"),
                 };
                 validate_database_url_identity("DATABASE_URL", database_url, expected_role)
             })

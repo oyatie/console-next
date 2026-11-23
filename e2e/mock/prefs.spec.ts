@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
+import { fmtNumber } from "@console/i18n/format";
 import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
-import { failure, inbox } from "./fixtures";
+import { failure, inbox, user } from "./fixtures";
 import { fits, expectAxe } from "../a11y";
 import { screens } from "../states/registry";
-import { OPTIONAL_COLUMNS } from "../../apps/web/src/features/people/domain/columns";
+import { floorOf } from "../../apps/web/src/ui/experience-floors";
 
 test.beforeAll(() => loadCatalog("ko"));
 // First-paint cases own their preferences, independently of the selected test pack.
@@ -15,8 +16,8 @@ test.use({ storageState: { cookies: [], origins: [] } });
 // The built entry chunk: nothing of the app has run until this script does.
 const ENTRY = /\/assets\/index-[^/]+\.js$/;
 
-async function expectRenderedFloors(page: Page) {
-  const sizes = await page.evaluate(() => {
+async function expectRenderedFloors(page: Page, floor: { text: number; control: number }) {
+  const sizes = await page.evaluate(least => {
     const root = document.documentElement;
     const experience = root.dataset.experience!;
     const controls = [...document.querySelectorAll<HTMLElement>('header button, header .btn, header input, header select, main button, main .btn, main input:not([type="hidden"]), main select, main [role="tab"], [role="dialog"] button, [role="dialog"] .check input')].filter(el => el.checkVisibility());
@@ -26,16 +27,16 @@ async function expectRenderedFloors(page: Page) {
     const baseline = heights();
     root.dataset.experience = experience;
     return {
-      // Existing status chips and inline editors are below 32px on baseline; an experience must never shrink them.
-      controls: controls.map((el, i) => ({ name: el.getAttribute("aria-label") || el.textContent?.trim() || el.outerHTML, height: actual[i]!, floor: Math.min(32, baseline[i]!) })),
+      // Existing status chips and inline editors are below the floor on baseline; an experience must never shrink them.
+      controls: controls.map((el, i) => ({ name: el.getAttribute("aria-label") || el.textContent?.trim() || el.outerHTML, height: actual[i]!, floor: Math.min(least, baseline[i]!) })),
       // <small> already renders below the floor on baseline; leave its repair to the shared typography.
       text: [...document.querySelectorAll<HTMLElement>('header *, main *, [role="dialog"] *')].filter(el => el.checkVisibility() && !el.closest("small") && [...el.childNodes].some(node => node.nodeType === Node.TEXT_NODE && node.textContent?.trim())).map(el => ({ text: el.textContent?.trim(), size: parseFloat(getComputedStyle(el).fontSize) })),
     };
-  });
+  }, floor.control);
   expect(sizes.controls.length).toBeGreaterThan(0);
   expect.soft(sizes.controls.filter(control => control.height + 0.01 < control.floor), "rendered control heights").toEqual([]);
   // Icon-only phone controls hide their accessible text at 0px.
-  expect.soft(sizes.text.filter(text => text.size > 0 && text.size < 14), "rendered text sizes").toEqual([]);
+  expect.soft(sizes.text.filter(text => text.size > 0 && text.size < floor.text), "rendered text sizes").toEqual([]);
 }
 
 /** Records every write of data-theme on <html> from the first script of the page on, same value or not. */
@@ -109,7 +110,7 @@ for (const from of ["a stored theme", "the system"] as const) test(`the shell ke
 // Pin the role values so the browser proves both boot registration and entry CSS delivery.
 const experiences = [
   ["warm-clear", "#f6f1e9", "#1d1914", "#17694f", "#82d6b4"],
-  ["control-room", "#e9edf1", "#101820", "#0b6672", "#6fd3df"],
+  ["console", "#e9edf1", "#101820", "#0b6672", "#6fd3df"],
 ] as const;
 
 for (const [experience, light, dark, primaryLight, primaryDark] of experiences) for (const theme of ["light", "dark"] as const) {
@@ -123,9 +124,18 @@ for (const [experience, light, dark, primaryLight, primaryDark] of experiences) 
     const queue = { ...inbox(1), counts: { turn: { total: 9999, total_is_exact: true } } };
     await mockRoute(page, "get", "/api/v1/me/action-inbox", { status: 200, json: queue });
     await page.goto("/people");
-    await expect(page.locator("header [data-count]")).toHaveText("9999", { timeout: 20_000 });
-    const controls = await page.getByRole("banner").locator("button, a, select").evaluateAll(els => els.filter(el => el.checkVisibility()).map(el => ({ name: el.getAttribute("aria-label") || el.textContent, left: el.getBoundingClientRect().left, right: el.getBoundingClientRect().right })));
-    expect(controls.filter(control => control.left < 0 || control.right > width)).toEqual([]);
+    if (experience === "console") {
+      const phoneNav = page.getByRole("navigation", { name: t("shell.nav"), exact: true });
+      await expect(phoneNav.locator('data[value="9999"]')).toHaveText(fmtNumber(9999), { timeout: 20_000 });
+      await expect(page.getByRole("banner")).toBeVisible();
+      const bannerControls = await page.getByRole("banner").locator("button, a, select").evaluateAll(els => els.filter(el => el.checkVisibility()).map(el => ({ name: el.getAttribute("aria-label") || el.textContent, left: el.getBoundingClientRect().left, right: el.getBoundingClientRect().right })));
+      const navControls = await phoneNav.locator("button, a, select").evaluateAll(els => els.filter(el => el.checkVisibility()).map(el => ({ name: el.getAttribute("aria-label") || el.textContent, left: el.getBoundingClientRect().left, right: el.getBoundingClientRect().right })));
+      expect([...bannerControls, ...navControls].filter(control => control.left < 0 || control.right > width)).toEqual([]);
+    } else {
+      await expect(page.locator("header [data-count]")).toHaveText("9999", { timeout: 20_000 });
+      const controls = await page.getByRole("banner").locator("button, a, select").evaluateAll(els => els.filter(el => el.checkVisibility()).map(el => ({ name: el.getAttribute("aria-label") || el.textContent, left: el.getBoundingClientRect().left, right: el.getBoundingClientRect().right })));
+      expect(controls.filter(control => control.left < 0 || control.right > width)).toEqual([]);
+    }
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     expect(fixture.unexpected).toEqual([]);
   });
@@ -168,13 +178,29 @@ for (const [experience, light, dark, primaryLight, primaryDark] of experiences) 
         return ["--canvas", "--primary"].map(name => css.getPropertyValue(name).trim());
       });
       expect(tokens).toEqual(theme === "light" ? [light, primaryLight] : [dark, primaryDark]);
-      await expectRenderedFloors(page);
-      const locale = await page.getByRole("combobox", { name: t("shell.locale"), exact: true }).boundingBox();
+      await expectRenderedFloors(page, floorOf(experience, width === 390 ? "phone" : "desk"));
       const banner = await page.getByRole("banner").boundingBox();
-      expect(locale!.y).toBeGreaterThanOrEqual(banner!.y);
-      expect(locale!.y + locale!.height).toBeLessThanOrEqual(banner!.y + banner!.height);
+      if (experience === "console") {
+        const accountBtn = page.getByRole("banner").getByRole("button", { name: user.display_name, exact: true });
+        await expect(accountBtn).toBeVisible();
+        const accountBox = await accountBtn.boundingBox();
+        expect(accountBox!.y).toBeGreaterThanOrEqual(banner!.y);
+        expect(accountBox!.y + accountBox!.height).toBeLessThanOrEqual(banner!.y + banner!.height);
+        await accountBtn.click();
+        const accountMenu = page.getByRole("group", { name: t("shell.account"), exact: true });
+        await expect(accountMenu).toBeVisible();
+        for (const key of ["shell.locale.ko", "shell.locale.en", "shell.theme.light", "shell.theme.dark", "shell.logout"] as const) {
+          await expect(accountMenu.getByRole("button", { name: t(key), exact: true })).toBeVisible();
+        }
+        await page.keyboard.press("Escape");
+        await expect(accountMenu).toBeHidden();
+      } else {
+        const locale = await page.getByRole("combobox", { name: t("shell.locale"), exact: true }).boundingBox();
+        expect(locale!.y).toBeGreaterThanOrEqual(banner!.y);
+        expect(locale!.y + locale!.height).toBeLessThanOrEqual(banner!.y + banner!.height);
+      }
       if (screen.key === "people") {
-        const find = await main.getByRole("searchbox", { name: t("roster.find"), exact: true }).boundingBox();
+        const find = await main.getByRole("searchbox", { name: t("people.find.placeholder"), exact: true }).boundingBox();
         expect(find!.x).toBeGreaterThanOrEqual(0);
         expect(find!.x + find!.width).toBeLessThanOrEqual(width);
       }
@@ -182,9 +208,9 @@ for (const [experience, light, dark, primaryLight, primaryDark] of experiences) 
       await expectAxe(page, `${experience}/${theme}/${screen.key}/${width}`);
       await info.attach(`${experience}-${theme}-${screen.key}-${width}`, { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });
       if (screen.key === "people") {
-        await page.getByRole("button", { name: t("roster.columns.open", { count: OPTIONAL_COLUMNS.length + 2 }), exact: true }).click();
+        await page.getByRole("button", { name: t("people.tools.columns"), exact: true }).click();
         await expect(page.getByRole("dialog", { name: t("roster.columns.title"), exact: true }).locator(".check input").first()).toBeVisible();
-        await expectRenderedFloors(page);
+        await expectRenderedFloors(page, floorOf(experience, width === 390 ? "phone" : "desk"));
       }
       expect(fixture.unexpected).toEqual([]);
     });

@@ -10,8 +10,8 @@ export const koRegister: Record<keyof typeof enRegister, string> = {
   "register.name": "이름",
   "register.name.placeholder": "한글 이름",
   "register.birth": "생년월일",
-  "register.birth.tag": "명부 3",
-  "register.birth.hint": "비우면 할 일",
+  "register.birth.tag": "근로자 명부 항목",
+  "register.birth.hint": "미입력 시 추후 보완 항목으로 표시됩니다",
   "register.number": "사번",
   "register.number.auto": "자동 부여",
   "register.number.manual": "직접 입력",
@@ -149,4 +149,6 @@ export const koRegister: Record<keyof typeof enRegister, string> = {
   "register.run.batchOp": "운영 중이라 등록은 변경 이력에 남고 되돌리지 않습니다. 잘못 적었으면 인사카드에서 정정합니다.",
   "register.run.undoAll": "{n, number}명 한 번에 되돌리기",
   "register.run.submit": "등록",
+  "register.manyShort": "여러 명 등록",
+  "register.createMore": "연속 등록",
 };

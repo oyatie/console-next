@@ -4,8 +4,7 @@ import type { components } from "@console/api/schema";
 import { atPhoneWidth, expectAccessible, fits } from "./a11y";
 import { firstSignIn, go, kstDate, routeReady } from "./flows";
 import { answer, SETUP_DEPARTMENT, setupCompany, startOperations } from "./setup-flows";
-import { passkeyAssertion } from "./auth";
-import { apiOf, bearerOf } from "./helpers/api";
+import { apiOf, bearerOf, stepUpAssertion } from "./helpers/api";
 import { openTenant } from "./helpers/tenant";
 import { leaveScreen, revealUnit } from "./structure-flows";
 
@@ -48,7 +47,7 @@ test("an org change is drafted, submitted from its page, rejected with a reason 
     const accountResponse = await api("/users", "POST", { display_name: name, employee_id: person.employee.id }, { "Idempotency-Key": crypto.randomUUID() });
     expect(accountResponse.status(), await accountResponse.text()).toBe(201);
     const account = await accountResponse.json() as components["schemas"]["UserSummary"];
-    const issued = await api("/auth/admin/otp/issue", "POST", { user_id: account.id, step_up: await setupAssertion(operator, api) });
+    const issued = await api("/auth/admin/otp/issue", "POST", { user_id: account.id, step_up: await stepUpAssertion(operator, api) });
     expect(issued.status(), await issued.text()).toBe(200);
     codes.push((await issued.json() as components["schemas"]["AdminIssueOtpResponse"]).otp);
     grants.push({ op: "grant", account_id: account.id, role_id: role.id, scope: { kind: "TENANT", include_descendants: true }, effective_in_setup: true });
@@ -58,7 +57,7 @@ test("an org change is drafted, submitted from its page, rejected with a reason 
   expect(previewResponse.status(), await previewResponse.text()).toBe(200);
   const preview = await previewResponse.json() as components["schemas"]["AccessGrantPreview"];
   expect(preview.refused).toBe(0);
-  const applied = await api("/access/grants/apply", "POST", { receipt_id: preview.receipt_id, step_up: await setupAssertion(operator, api) }, { "Idempotency-Key": crypto.randomUUID() });
+  const applied = await api("/access/grants/apply", "POST", { receipt_id: preview.receipt_id, step_up: await stepUpAssertion(operator, api) }, { "Idempotency-Key": crypto.randomUUID() });
   expect(applied.status(), await applied.text()).toBe(200);
   const outcome = await applied.json() as components["schemas"]["ApplyGrantsOutcome"];
   expect(outcome.items).toHaveLength(grants.length);
@@ -224,14 +223,6 @@ test("an org change is drafted, submitted from its page, rejected with a reason 
   await expect(planned).toHaveCount(1);
   await expect(planned).toContainText(`예정 · ${redraft.code}`);
 });
-
-/** A fresh assertion from the operator's enrolled passkey for API-only fixture setup. */
-async function setupAssertion(page: Page, api: ReturnType<typeof apiOf>): Promise<components["schemas"]["PasskeyStepUpAssertion"]> {
-  const response = await api("/auth/passkey/login/start", "POST", {});
-  expect(response.status(), await response.text()).toBe(200);
-  const ceremony = await response.json() as components["schemas"]["PasskeyLoginStartResponse"];
-  return passkeyAssertion(page, { ...ceremony, challenge: { publicKey: ceremony.challenge.publicKey as PublicKeyCredentialRequestOptionsJSON } });
-}
 
 async function checkScreen(page: Page, context: string) {
   await expectAccessible(page, context);

@@ -12,7 +12,7 @@ use sqlx::{Postgres, Transaction};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::read::change_request_from_row;
+use super::read::{change_request_from_row, hydrate_subject_meta};
 use super::{
     ASSIGNEE_ROLE_HR, ChangeRequestResponse, CreateChangeRequest, note, reason_code, refusal,
 };
@@ -170,7 +170,9 @@ pub async fn insert_change_request_in_tx(
     .bind(new.assignee_user_id)
     .fetch_one(tx.as_mut())
     .await?;
-    change_request_from_row(&row)
+    let mut created = change_request_from_row(&row)?;
+    hydrate_subject_meta(tx, new.org, &mut created).await?;
+    Ok(created)
 }
 
 impl HrService {

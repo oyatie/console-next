@@ -3,7 +3,7 @@ use crate::context::grants::resolve_feature_grant_keys_for_user_in_tx;
 use crate::context::load::load_user_auth_context_tx;
 use crate::device_login::token::device_login_status;
 use crate::device_login::token::device_login_token_response;
-use crate::device_login::token::hash_device_login_token;
+use crate::device_login::token::hash_device_login_token_candidates;
 use crate::device_login::token::normalize_device_login_token;
 use crate::device_login::tx::ensure_handoff_company_active_tx;
 use crate::device_login::tx::lock_handoff_account_tx;
@@ -46,16 +46,16 @@ pub(crate) async fn poll_device_login(
     .await?;
 
     let poll_token = normalize_device_login_token(&body.poll_token, "console_dlp_")?;
-    let poll_hash = hash_device_login_token(&poll_token);
+    let poll_hashes = hash_device_login_token_candidates(&poll_token);
 
     let status = sqlx::query(
         r#"
         SELECT id, expires_at, approved_at, consumed_at, approved_user_id, approved_org_id, approved_passkey_id, target_user_id, target_org_id
         FROM auth_device_login_handoffs
-        WHERE poll_token_hash = $1
+        WHERE poll_token_hash = ANY($1)
         "#,
     )
-    .bind(&poll_hash)
+    .bind(&poll_hashes[..])
     // rls-arming: ok auth_device_login_handoffs is a global pre-auth table.
     .fetch_optional(&state.pool)
     .await
@@ -118,14 +118,14 @@ pub(crate) async fn poll_device_login(
         r#"
         UPDATE auth_device_login_handoffs
         SET consumed_at = $2
-        WHERE poll_token_hash = $1 AND id = $3 AND approved_user_id = $4 AND approved_org_id = $5
+        WHERE poll_token_hash = ANY($1) AND id = $3 AND approved_user_id = $4 AND approved_org_id = $5
           AND consumed_at IS NULL
           AND approved_at IS NOT NULL
           AND expires_at > $2
         RETURNING id, approved_user_id, approved_org_id, approved_passkey_id
         "#,
     )
-    .bind(&poll_hash)
+    .bind(&poll_hashes[..])
     .bind(now)
     .bind(handoff_id)
     .bind(user_id)

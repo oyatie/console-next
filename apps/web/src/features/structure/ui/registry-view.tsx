@@ -28,7 +28,7 @@ const ICON = { entity: Building2, site: MapPin, dept: Network } as const;
  * department's code (CS-BE), direct/total people, and the rows as an org sheet. A workplace's manager is not served;
  * the table says nothing it cannot show.
  */
-export function RegistryView({ s, cmd, sel, onSelect, onVisibleRows, find: q = "", ref }: { s: Structure; cmd: Commands; sel: ReadonlySet<string>; onSelect: (ids: ReadonlySet<string>) => void; onVisibleRows?: (rows: readonly ChartNode[]) => void; find?: string; ref?: Ref<ViewCommands> }) {
+export function RegistryView({ s, cmd, sel, onSelect, onVisibleRows, find: q = "", compact = false, ref }: { s: Structure; cmd: Commands; sel: ReadonlySet<string>; onSelect: (ids: ReadonlySet<string>) => void; onVisibleRows?: (rows: readonly ChartNode[]) => void; find?: string; compact?: boolean; ref?: Ref<ViewCommands> }) {
   const g = useStructureGesturesBare(s, cmd);
   const [edit, setEdit] = useState<OutlineEdit | null>(null);
   const [level, setLevel] = useState<Level>("all");
@@ -77,7 +77,7 @@ export function RegistryView({ s, cmd, sel, onSelect, onVisibleRows, find: q = "
         );
       },
     },
-    { id: "code", card: "fact", width: 88, header: t("structure.list.code"), cell: (n) => (n.code ? <span className="code">{n.code}</span> : none) },
+    { id: "code", card: compact ? "omit" : "fact", width: 88, header: t("structure.list.code"), cell: (n) => (n.code ? <span className="code">{n.code}</span> : none) },
     // The head a level has: a legal entity's representatives, a department's head (a workplace's manager is not served).
     {
       id: "head",
@@ -87,13 +87,13 @@ export function RegistryView({ s, cmd, sel, onSelect, onVisibleRows, find: q = "
       header: t("structure.list.head"),
       cell: (n) =>
         n.kind === "entity" ? (n.reps ? t("structure.node.reps", { name: n.reps.first, more: n.reps.more }) : none)
-        : n.kind === "dept" ? <HeadCell n={n} readOnly={s.readOnly} />
+        : n.kind === "dept" ? <HeadCell n={n} readOnly={s.readOnly} quiet={compact} />
         : none,
     },
     { id: "people", card: "fact", width: 142, header: t("structure.list.people"), cell: (n) => <span className="num">{unitCounts(n)}</span> },
     { id: "site", card: "omit", width: 120, header: t("orgUnit.fact.place"), cell: (n) => n.kind === "site" ? n.name : n.siteId ? s.byId.get(n.siteId)?.name ?? none : none },
-    { id: "chips", card: "status", width: "2fr", minWidth: 112, header: t("structure.list.chips"), cell: (n) => n.chips.length ? <span className="row">{n.chips.map((c) => <Chip key={c} tone="warn">{t(`structure.chip.${c}`)}</Chip>)}</span> : null },
-    ...(!s.readOnly ? [{ id: "order", focusMode: "child" as const, card: "action" as const, width: 64, header: t("structureChart.list.order"), cell: (n: ChartNode) => <OrderCell s={s} n={n} order={cmd.order} /> }] : []),
+    { id: "chips", card: "status", width: "2fr", minWidth: 112, header: t("structure.list.chips"), cell: (n) => n.chips.length ? (compact ? <span className="muted">{n.chips.map((c) => t(`structure.chip.${c}`)).join(" · ")}</span> : <span className="row">{n.chips.map((c) => <Chip key={c} tone="warn">{t(`structure.chip.${c}`)}</Chip>)}</span>) : null },
+    ...(!s.readOnly ? [{ id: "order", focusMode: "child" as const, card: (compact ? "omit" : "action") as "omit" | "action", width: 64, header: t("structureChart.list.order"), cell: (n: ChartNode) => <OrderCell s={s} n={n} order={cmd.order} /> }] : []),
     ...(!s.readOnly ? [{
       id: "add",
       focusMode: "child" as const,
@@ -156,6 +156,7 @@ export function RegistryView({ s, cmd, sel, onSelect, onVisibleRows, find: q = "
         hasMore={false}
         onLoadMore={() => undefined}
         density="compact"
+        mobileLayout={compact ? "compact" : "cards"}
         empty={q ? t("structure.find.none", { q }) : t("structureChart.list.none")}
         selection={{ kind: "ids", ids: sel }}
         onSelectionChange={(x) => x.kind === "ids" && onSelect(x.ids)}

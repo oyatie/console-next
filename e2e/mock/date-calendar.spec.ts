@@ -104,7 +104,11 @@ for (const intent of ["hover", "focus"] as const) {
 test("a missing calendar chunk shows a local error without reloading the draft", async ({ page }) => {
   const fixture = await mockScreen(page, screens[1], "empty");
   let attempts = 0;
-  await page.route(calendarChunk, route => { attempts++; return route.abort(); });
+  let chunkURL = "";
+  const documents: string[] = [], errors: string[] = [];
+  page.on("request", request => { if (request.isNavigationRequest() && request.frame() === page.mainFrame()) documents.push(request.url()); });
+  page.on("pageerror", error => errors.push(error.message));
+  await page.route(calendarChunk, route => { attempts++; chunkURL = route.request().url(); return route.abort(); });
   try {
     await mockNavigate(page, "/_gallery?entry=date");
     const demo = page.locator("section").filter({ has: page.getByRole("heading", { name: "날짜 필드", exact: true }) });
@@ -112,16 +116,29 @@ test("a missing calendar chunk shows a local error without reloading the draft",
     const trigger = demo.getByRole("button", { name: t("uiDate.calendar.open"), exact: true }).first();
     await input.fill("20261115");
     await trigger.focus();
-    await expect.poll(() => attempts).toBe(1);
     await trigger.press("Enter");
     const calendar = page.getByRole("dialog", { name: t("uiDate.calendar.label"), exact: true });
     await expect(calendar.getByRole("alert")).toContainText("날짜를 직접 입력");
+    // Vite can preload the same URL before importing it; neither operation is an application retry.
+    const preloads = await page.locator('link[rel="modulepreload"], link[rel="preload"][as="script"]').evaluateAll(
+      (links, url) => links.filter(link => (link as HTMLLinkElement).href === url).length, chunkURL,
+    );
+    expect(attempts).toBeGreaterThan(0);
+    expect(attempts).toBeLessThanOrEqual(1 + preloads);
+    const failedAttempts = attempts;
     await page.keyboard.press("Escape");
     await expect(trigger).toBeFocused();
     await expect(input).toHaveValue("2026. 11. 15.");
     await input.fill("20261117");
     await input.press("Tab");
     await expect(input).toHaveValue("2026. 11. 17.");
+    await trigger.press("Enter");
+    await expect(calendar.getByRole("alert")).toHaveText(t("uiDate.calendar.failed"));
+    await page.keyboard.press("Escape");
+    await expect(trigger).toBeFocused();
+    expect(attempts).toBe(failedAttempts);
+    expect(documents).toHaveLength(1);
+    expect(errors).toEqual([]);
   } finally {
     fixture.release();
     await page.close();

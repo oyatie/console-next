@@ -15,10 +15,10 @@ const why = (code: string, setup: boolean) => (setup && code === "effective_date
  * the reason and the way to fix them (their card), and the rest can be placed on their own, or the user cancels and
  * keeps the batch whole.
  */
-export function UnplacedRefused({ held, place, pending, onRest, onCancel }: { held: Held; place: string; pending: boolean; onRest: () => void; onCancel: () => void }) {
+export function UnplacedRefused({ held, place, pending, onRest, onCancel, consoleMode = false }: { held: Held; place: string; pending: boolean; onRest: () => void; onCancel: () => void; consoleMode?: boolean }) {
   const n = held.refused.length;
   return (
-    <div className={u.dock}>
+    <div className={consoleMode ? u.inlineDock : u.dock}>
       <Banner
         tone="warn"
         live="assertive"

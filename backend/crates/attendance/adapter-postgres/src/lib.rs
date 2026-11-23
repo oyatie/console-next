@@ -32,7 +32,7 @@ mod schedule;
 use keys::{event, fingerprint, idempotency_lock};
 mod records;
 pub use records::{BoardQuery, BoardReadAccess, BoardReadTarget, GridQuery, RECORDS_PAGE_LIMIT};
-pub use schedule::ScheduleStoreError;
+pub use schedule::{DayKind, EmployeeScheduleSpan, ScheduleDaySummary, ScheduleStoreError};
 
 const CANCEL_SUBSTITUTION_SQL: &str = "UPDATE attendance_substitutions SET status='CANCELLED', cancel_reason=$1 WHERE id=$2 AND status='ASSIGNED'";
 const SUBSTITUTION_CANDIDATES_SQL: &str = "SELECT e.id,e.name,e.home_branch_id,TRUE AS employment_active,FALSE AS conflicts_with_assigned_substitution,FALSE AS approved_leave_covers_window,FALSE AS has_open_no_show FROM employees e JOIN employee_employment_profiles p ON p.employee_id=e.id AND p.org_id=e.org_id AND p.employment_type IS NOT NULL WHERE e.home_branch_id=$1 AND e.id <> $2 AND e.employment_status='ACTIVE' AND ($6::text IS NULL OR e.name ILIKE '%' || $6 || '%') AND NOT EXISTS (SELECT 1 FROM attendance_substitutions s WHERE s.worker_employee_id=e.id AND s.status='ASSIGNED' AND s.cover_date=$3 AND s.from_minutes < $5 AND s.to_minutes > $4) AND NOT EXISTS (SELECT 1 FROM leave_requests l WHERE l.subject_employee_id=e.id AND l.status IN ('approved','APPROVED') AND l.start_date <= $3 AND l.end_date >= $3 AND (l.leave_type='annual' OR (l.leave_type='half_day' AND ((l.partial_day_period='am' AND $4 < 720) OR (l.partial_day_period='pm' AND $5 > 720))))) AND NOT EXISTS (SELECT 1 FROM attendance_exceptions x WHERE x.employee_id=e.id AND x.kind='NO_SHOW' AND x.status='OPEN' AND x.work_date=$3) ORDER BY e.name,e.id LIMIT $7 OFFSET $8";

@@ -16,6 +16,9 @@
 //! of double-applying (state-machine idempotency; there is no client
 //! idempotency key to desynchronize).
 
+#[path = "payslip_payload.rs"]
+mod payslip_payload;
+
 use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, StatusCode};
@@ -579,18 +582,7 @@ pub(crate) async fn issue_payslips(
             // Stable recipient/line keys preserve deduplication on retries.
             let mut deliveries: Vec<(Uuid, Uuid, Uuid)> = Vec::with_capacity(lines.len());
             for line in &lines {
-                let payload = json!({
-                    "run_id": run_id,
-                    "line_id": line.line_id,
-                    "period_start": run.period_start.to_string(),
-                    "period_end": run.period_end.to_string(),
-                    "gross_won": line.gross_won,
-                    "deductions": line.deductions,
-                    "total_deductions_won": line.total_deductions_won,
-                    "net_won": line.net_won,
-                    "tax_table_version": line.tax_table_version,
-                    "calculation_version": line.version,
-                });
+                let payload = payslip_payload::build(run_id, &run, line);
                 let doc = NewInboxDoc::new(
                     InboxDocKind::Payslip,
                     &format!(

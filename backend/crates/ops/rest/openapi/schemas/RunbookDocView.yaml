@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: "object"
+required: ["evaluated_at", "doc"]
+properties:
+  evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+  bundle_sha: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+  deployed_sha: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+  stale_warning: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+  doc: {"$ref": "#/components/schemas/RunbookDoc"}

@@ -56,7 +56,7 @@ The trigger has three looks. `link` wins when both `link` and `chip` are passed.
 
 | Props | Classes | Look |
 |---|---|---|
-| Neither | `btn btn--ghost` | The `ghost` button look: a transparent border, and no fill until hovered, at least 36 px high (`calc(var(--row-h) - var(--space-1))`), 12 px side padding, a 6 px radius, weight 600, an 8 px gap between an icon and the text. |
+| Neither | `btn btn--ghost` | The `ghost` button look: a transparent border, and no fill until hovered, at least 36 px high (`--control-h`), 12 px side padding, a 6 px radius, weight 600, an 8 px gap between an icon and the text. |
 | `chip` | `btn btn--chip` | A pill: at least 28 px high (`calc(var(--space-6) - var(--space-1))`), 12 px of padding on the left and 8 px on the right, a 1 px `--control-border` border, a 100 px radius (`calc(var(--radius-lg) * 10)`), `--surface` fill, 13 px text (`--text-sm`) at weight 400, on one line. |
 | `link` | The module's `link` | Text that reads as a link: no border, no fill and no padding, `--primary` text at 12 px (`--text-xs`) and weight 600 (`--fw-medium`), on one line, a 4 px radius (`--radius-sm`), a 2 px gap (`calc(var(--space-1) / 2)`). No minimum height: one line comes to 18 px at the body's line height of 1.5. |
 

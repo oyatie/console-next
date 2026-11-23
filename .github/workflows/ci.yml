@@ -104,8 +104,8 @@ jobs:
     needs: [affected]
     if: &web-affected ${{ github.event_name != 'push' && needs.affected.outputs.web == 'true' }}
     runs-on: ubuntu-24.04
-    # 12m setup (9m observed browser install + 3m checkout/npm/artifacts) + existing 30m checks.
-    timeout-minutes: 42
+    # 12m setup (9m observed browser install + 3m checkout/npm/artifacts) + 45m Web checks + 5m script tests + 10m grid-table + 5m ops cockpit.
+    timeout-minutes: 77
     permissions:
       contents: read
     steps:
@@ -169,9 +169,11 @@ jobs:
         if: github.event_name == 'merge_group'
         with: {name: playwright-cache, path: '${{ runner.temp }}/playwright.tgz', retention-days: 1, if-no-files-found: error}
       - name: Web checks
-        timeout-minutes: 30
+        timeout-minutes: 45
+        run: npm run check
+      - name: CI and evidence script tests
+        timeout-minutes: 5
         run: |
-          npm run check
           node --test scripts/ci-backend.test.mjs
           node --test scripts/cache-retention.test.mjs
           node --test scripts/ghcr-retention.test.mjs
@@ -180,9 +182,13 @@ jobs:
           node --test scripts/d10-census.test.mjs
           python3 scripts/d10_evidence_test.py
           python3 scripts/d8_evidence_test.py
-          python3 scripts/states_evidence_test.py
           python3 scripts/pull_measured_evidence_test.py
-          CONSOLE_WEB_PORT=58743 npx playwright test --config apps/web/src/features/people/ui/grid-table.playwright.ts grid-table.spec.ts grid-table-focus.spec.ts grid-table-paste.spec.ts
+      - name: Grid table browser tests
+        timeout-minutes: 10
+        run: CONSOLE_WEB_PORT=58743 npx playwright test --config apps/web/src/features/people/ui/grid-table.playwright.ts grid-table.spec.ts grid-table-focus.spec.ts grid-table-paste.spec.ts
+      - name: Ops cockpit browser tests
+        timeout-minutes: 5
+        run: E2E_WORKERS=2 npx playwright test --config playwright.ops.config.ts
 
   # Duration-packed whole specs; matrix size and exact selections come from the same budget-checked plan.
   states-plan:
@@ -312,14 +318,6 @@ jobs:
           github-token: ${{ github.token }}
           name: states-plan
           path: .cache/states-plan
-      - name: Produce state evidence independently of live and backend results
-        run: python3 scripts/states-evidence.py .cache/states-evidence/states.json .cache/states-plan/modules.json .cache/states-reports/*.json
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        with:
-          name: states-evidence
-          path: .cache/states-evidence/states.json
-          include-hidden-files: true
-          if-no-files-found: error
       - name: Refresh measurements from complete CI results
         run: node scripts/states-shards.mjs refresh e2e/mock/timings.json .cache/states-plan/plan.json .cache/states-timings/timings.json .cache/states-reports/*.json
       - name: Cache complete dev timings before capacity checks
@@ -404,7 +402,10 @@ jobs:
           mkdir -p "$HOME/.cargo/registry/index" "$HOME/.cargo/registry/cache" "$HOME/.cargo/git/db" "$GITHUB_WORKSPACE/backend/target"
           touch "$RUNNER_TEMP/rust-cache-start"
       - run: cargo fmt --check
-      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - run: cargo clippy --workspace --all-targets --locked --features console-platform-storage/test-seaweedfs -- -D warnings
+      # Pull requests do not run the database tests, and only these features build them; lint them here so one that no longer compiles cannot merge.
+      - name: Lint the database test targets
+        run: cargo clippy --workspace --all-targets --locked --features test-postgres,console-app/full,console-app/e2e-test-support,console-app/dev-auth -- -D warnings
       - &cache-collect
         name: Collect Rust cache changes
         if: github.event_name == 'merge_group'
@@ -451,6 +452,14 @@ jobs:
       - *rust-cache
       - *rust-cache-report
       - *cache-mark
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: SQL migration crypto hygiene
+        working-directory: .
+        run: |
+          node --test scripts/check-migration-crypto.test.mjs
+          node scripts/check-migration-crypto.mjs
       - run: cargo test --locked -p console-gate-migration-safety
       - name: Backend code gates (release parity)
         shell: bash
@@ -800,20 +809,12 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         if: ${{ needs.affected.outputs.backend == 'true' && needs.affected.outputs.web == 'true' }}
         with: {run-id: '${{ needs.affected.outputs.run-id }}', github-token: '${{ github.token }}', name: d10-playwright, path: .cache/d10-input}
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-        if: ${{ needs.affected.outputs.backend == 'true' && needs.affected.outputs.web == 'true' }}
-        with: {run-id: '${{ needs.affected.outputs.run-id }}', github-token: '${{ github.token }}', pattern: states-report-*, merge-multiple: true, path: .cache/d8-input}
       - run: node scripts/d10-census.mjs > .cache/d10-census.json
         if: ${{ needs.affected.outputs.backend == 'true' && needs.affected.outputs.web == 'true' }}
       - run: python3 scripts/d10-evidence.py .cache/d10-evidence .cache/d10-census.json .cache/d7-evidence .cache/d10-input/*.json
         if: ${{ needs.affected.outputs.backend == 'true' && needs.affected.outputs.web == 'true' }}
-      - run: python3 scripts/d8-evidence.py .cache/d8-evidence .cache/d7-evidence/e2e.json .cache/d8-input/*.json .cache/d10-input/*.json
+      - run: python3 scripts/d8-evidence.py .cache/d8-evidence .cache/d7-evidence/e2e.json .cache/d10-input/*.json
         if: ${{ needs.affected.outputs.backend == 'true' && needs.affected.outputs.web == 'true' }}
-      - name: Produce route-state evidence from the existing reports
-        if: ${{ needs.affected.outputs.backend == 'true' && needs.affected.outputs.web == 'true' }}
-        run: |
-          node scripts/d8-module-routes.mjs .cache/d8-routes.json
-          python3 scripts/states-evidence.py .cache/d8-evidence/states.json .cache/d8-routes.json .cache/d8-input/*.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: ${{ !cancelled() && needs.affected.outputs.backend == 'true' && needs.affected.outputs.web == 'true' }}
         with:

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { Component, lazy, Suspense, useEffect, useId, useRef, useState, type FocusEventHandler, type KeyboardEventHandler, type Ref, type ReactNode } from "react";
 import { i18n, t } from "@console/i18n";
-import { fmtDateInput } from "@console/i18n/format";
+import { fmtDateInput, fmtDateShortWeekday } from "@console/i18n/format";
 import { CalendarDays } from "lucide-react";
 import { Button as AriaButton, Dialog, DialogTrigger, Popover } from "react-aria-components";
 import { localChunk } from "../../lib/chunk-guard";
@@ -25,7 +25,7 @@ class CalendarBoundary extends Component<{ children: ReactNode }, { failed: bool
 }
 
 /** The one keyboard-and-calendar date input used by DateField and fields that already own their label. */
-export function DateInput({ id, value, onChange, onDraftChange, onInvalid, required = false, today = todayKst(), min, minReason, max, maxReason, disabledDates = [], label, className, disabled, showErrors = true, "aria-describedby": describedBy, "aria-invalid": ariaInvalid, inputRef, onBlur, onKeyDown }: {
+export function DateInput({ id, value, onChange, onDraftChange, onInvalid, required = false, today = todayKst(), min, minReason, max, maxReason, disabledDates = [], label, className, disabled, showErrors = true, displayFormat = "default", "aria-describedby": describedBy, "aria-invalid": ariaInvalid, inputRef, onBlur, onKeyDown }: {
   id?: string;
   value: string;
   onChange: (value: string) => void;
@@ -45,6 +45,7 @@ export function DateInput({ id, value, onChange, onDraftChange, onInvalid, requi
   className?: string;
   disabled?: boolean;
   showErrors?: boolean;
+  displayFormat?: "default" | "short-weekday";
   onBlur?: FocusEventHandler<HTMLInputElement>;
   onKeyDown?: KeyboardEventHandler<HTMLInputElement>;
   "aria-describedby"?: string;
@@ -109,18 +110,23 @@ export function DateInput({ id, value, onChange, onDraftChange, onInvalid, requi
     setText(draft);
     emitDraft(draft);
   };
-  const commit = () => {
+  const commit = (exitEditing = true) => {
+    if (exitEditing) setEditing(false);
     if (!dirty.current) return;
     dirty.current = false;
-    setEditing(false);
     const result = parseTyped(text);
     const ok = "date" in result && inBounds(result.date, minimum, maximum) && !blocked.has(result.date);
     if (ok) {
       setText(fmtDateInput(result.date));
       emitValue(result.date);
-    } else if (!onDraftChange) emitValue("");
+    } else {
+      if (text.trim() !== "") setEditing(false);
+      if (!onDraftChange) emitValue("");
+    }
     onInvalid?.(!ok && text.trim() !== "");
   };
+
+  const shownText = !editing && displayFormat === "short-weekday" && isDate(value) && !problem ? fmtDateShortWeekday(value) : text;
 
   return (
     <div className={s.inputRow}>
@@ -137,14 +143,20 @@ export function DateInput({ id, value, onChange, onDraftChange, onInvalid, requi
         aria-describedby={described}
         aria-invalid={ariaInvalid || problem ? true : undefined}
         placeholder={t("uiDate.placeholder")}
-        value={text}
+        value={shownText}
+        onFocus={() => {
+          if (displayFormat === "short-weekday") {
+            setEditing(true);
+            if (isDate(value)) setText(fmtDateInput(value));
+          }
+        }}
         onChange={(e) => type(e.target.value)}
         onBlur={(e) => {
-          commit();
+          commit(true);
           onBlur?.(e);
         }}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && !(e.nativeEvent.isComposing || e.keyCode === 229)) commit();
+          if (e.key === "Enter" && !(e.nativeEvent.isComposing || e.keyCode === 229)) commit(false);
           onKeyDown?.(e);
         }}
       />

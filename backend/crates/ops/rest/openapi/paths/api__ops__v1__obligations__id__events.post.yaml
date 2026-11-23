@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+operationId: "opsObligationEvent"
+summary: "Append Obligation Event"
+x-cedar-action: "obligation.write"
+security: [{"accessJwt": []}]
+description: "Appends an obligation lifecycle transition to the obligations spool."
+parameters: [{"in": "path", "name": "id", "required": true, "schema": {"$ref": "#/components/schemas/Text"}}]
+requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ObligationEventRequest"}}}}
+responses: {"200": {"description": "Obligation updated.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ObligationWriteResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}

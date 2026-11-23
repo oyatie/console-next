@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { installFaultClock } from "./fault-clock";
 import { expect, test } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
+import { chooseRadio } from "../flows";
 import { mockRoute } from "../mock/route";
 import { AT, failure, id } from "../mock/fixtures";
 import { accessRole, accessScreens, mockAccessScreen } from "./access";
 
-for (const screen of accessScreens) for (const state of screen.states) for (const phase of ["SETUP", "OPERATING"] as const) for (const width of [1440, 390]) {
+test.beforeAll(() => loadCatalog("ko"));
+
+for (const screen of accessScreens.slice(0, 2)) for (const state of screen.states) for (const phase of ["SETUP", "OPERATING"] as const) for (const width of [1440, 390]) {
   test(`${screen.key}: ${state} ${phase} at ${width}px @ui-state`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     const errors: string[] = [];
@@ -18,7 +22,7 @@ for (const screen of accessScreens) for (const state of screen.states) for (cons
       if (state === "failed") {
         await expect(main.getByText("불러오지 못했습니다", { exact: true })).toBeVisible();
         await expect(main.getByRole("alert")).toHaveCount(1);
-        await expect(main.getByRole("heading", { name: /부여 0건|부여가 없습니다|아직 역할이 없습니다/ })).toHaveCount(0);
+        await expect(main.getByRole("heading", { name: /부여 0건|부여가 없습니다|역할이 없습니다/ })).toHaveCount(0);
         await expect(main.getByRole("button", { name: "권한 부여", exact: true })).toHaveCount(0);
         await expect(main.getByRole("link", { name: /역할 추가|여러 사람에게 부여/ })).toHaveCount(0);
         const tabs = main.getByRole("navigation", { name: "권한 화면", exact: true });
@@ -33,9 +37,9 @@ for (const screen of accessScreens) for (const state of screen.states) for (cons
         await expect(main.getByRole("table").or(main.getByRole("grid"))).toHaveCount(0);
       } else if (state === "loading") {
         await expect(main.locator("[data-read-layout]")).toBeVisible();
-        await expect(main.getByRole("heading", { name: /부여 0건|부여가 없습니다|아직 역할이 없습니다/ })).toHaveCount(0);
+        await expect(main.getByRole("heading", { name: /부여 0건|부여가 없습니다|역할이 없습니다/ })).toHaveCount(0);
       } else if (state === "empty") {
-        await expect(main.getByRole("heading", { name: screen.key === "access-grants" ? "부여가 없습니다" : "아직 역할이 없습니다", exact: true })).toBeVisible();
+        await expect(main.getByRole("heading", { name: screen.key === "access-grants" ? "부여가 없습니다" : "역할이 없습니다", exact: true })).toBeVisible();
         await expect(main.getByRole("searchbox")).toHaveCount(0);
       } else {
         if (screen.key === "access-roles") await expect(main.getByRole("link", { name: state === "long" ? "한국정밀서비스 전국사업운영지원본부 인사조직관리 담당" : accessRole.name_ko, exact: true })).toBeVisible();
@@ -161,6 +165,170 @@ test("account and request read outage renders one card without header writes @ui
     await expect(main.getByRole("alert")).toHaveCount(1);
     await expect(main.getByRole("button", { name: "권한 부여", exact: true })).toHaveCount(0);
     await expect(main.getByRole("link", { name: "여러 사람에게 부여", exact: true })).toHaveCount(0);
+    expect(fixture.unexpected).toEqual([]);
+  } finally {
+    fixture.release();
+  }
+});
+
+for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as const) {
+  test(`bulk grant supports server search, pagination and stacked labels at ${width}px ${colorScheme}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.emulateMedia({ colorScheme });
+    const fixture = await mockAccessScreen(page, accessScreens[2], "large");
+    try {
+      await page.goto("/access/grants/bulk");
+      const main = page.getByRole("main");
+      await expect(main.getByText("ACC-0001", { exact: true }).first()).toBeVisible();
+      const grid = main.getByRole("grid");
+      await grid.evaluate(el => { el.scrollTop = el.scrollHeight; });
+      await expect(main.getByText("ACC-0101", { exact: true }).first()).toBeVisible();
+      await main.getByRole("searchbox").fill("ACC-1500");
+      await expect(main.getByText("ACC-1500", { exact: true }).first()).toBeVisible();
+      await expect(main.getByText(t("access.grant.role"), { exact: true }).first()).toBeVisible();
+      await expect(main.getByText(t("access.grant.scope"), { exact: true }).first()).toBeVisible();
+      await fits(page, `access-bulk/${width}/${colorScheme}`);
+      await expectAxe(page, `access-bulk/${width}/${colorScheme}`);
+      expect(fixture.unexpected).toEqual([]);
+    } finally {
+      fixture.release();
+    }
+  });
+
+  test(`readiness adapts tabs and copy across SETUP and OPERATING at ${width}px ${colorScheme}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.emulateMedia({ colorScheme });
+    for (const phase of ["SETUP", "OPERATING"] as const) {
+      const fixture = await mockAccessScreen(page, accessScreens[3], "populated", phase);
+      try {
+        await page.goto("/access/ready");
+        const main = page.getByRole("main");
+        const nav = main.getByRole("navigation", { name: t("access.nav"), exact: true });
+        if (phase === "SETUP") {
+          const readyTab = nav.getByRole("link", { name: t("access.nav.ready"), exact: true });
+          await expect(readyTab).toHaveAttribute("aria-current", "page");
+          await expect(readyTab).toHaveAttribute("href", "/access/ready");
+          await expect(nav.getByRole("link", { name: t("access.nav.review"), exact: true })).toHaveCount(0);
+          await expect(main.getByText(t("access.ready.lede.setup"), { exact: true })).toBeVisible();
+          await expect(main.getByRole("link", { name: t("access.ready.goLive"), exact: true })).toHaveAttribute("href", "/setup/go-live");
+          await fits(page, `access-ready/${phase}/${width}/${colorScheme}`);
+          await expectAxe(page, `access-ready/${phase}/${width}/${colorScheme}`);
+        } else {
+          await expect(nav.getByRole("link", { name: t("access.nav.ready"), exact: true })).toHaveCount(0);
+          const reviewTab = nav.getByRole("link", { name: t("access.nav.review"), exact: true });
+          await expect(reviewTab).toHaveAttribute("href", "/access/review");
+          await expect(reviewTab).not.toHaveAttribute("aria-current", "page");
+          await expect(main.getByText(t("access.ready.lede.live"), { exact: true })).toBeVisible();
+          await expect(main.getByRole("link", { name: t("access.ready.goLive"), exact: true })).toHaveCount(0);
+          await fits(page, `access-ready/${phase}/${width}/${colorScheme}`);
+          await expectAxe(page, `access-ready/${phase}/${width}/${colorScheme}`);
+
+          await reviewTab.click();
+          await expect(page).toHaveURL(/\/access\/review$/);
+          await expect(reviewTab).toHaveAttribute("aria-current", "page");
+          await expect(reviewTab).toHaveAttribute("href", "/access/review");
+          await expect(main.getByRole("heading", { name: t("accessReview.title"), exact: true })).toBeVisible();
+          await expect(main.getByText("ACC-0001", { exact: true }).first()).toBeVisible();
+          await fits(page, `access-review/${phase}/${width}/${colorScheme}`);
+          await expectAxe(page, `access-review/${phase}/${width}/${colorScheme}`);
+        }
+        expect(fixture.unexpected).toEqual([]);
+      } finally {
+        fixture.release();
+      }
+    }
+  });
+
+  test(`role editor tabs (permissions, holders, history) and role-new render cleanly at ${width}px ${colorScheme}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.emulateMedia({ colorScheme });
+    const fixtureNew = await mockAccessScreen(page, accessScreens[4], "populated");
+    try {
+      await page.goto("/access/roles/new");
+      const main = page.getByRole("main");
+      await expect(main.getByRole("table", { name: t("access.grid.label") })).toBeVisible();
+      await expect(main.getByText(t("access.role.effect.none"), { exact: false })).toHaveCount(0);
+      await fits(page, `access-roles-new/${width}/${colorScheme}`);
+      await expectAxe(page, `access-roles-new/${width}/${colorScheme}`);
+      expect(fixtureNew.unexpected).toEqual([]);
+    } finally {
+      fixtureNew.release();
+    }
+
+    const fixtureEdit = await mockAccessScreen(page, accessScreens[5], "populated");
+    try {
+      for (const tab of ["permissions", "holders", "history"] as const) {
+        await page.goto(`/access/roles/${accessRole.id}?tab=${tab}`);
+        const main = page.getByRole("main");
+        if (tab === "permissions") await expect(main.getByRole("table", { name: t("access.grid.label") })).toBeVisible();
+        if (tab === "holders") await expect(main.getByText("ACC-0001", { exact: true }).first()).toBeVisible();
+        if (tab === "history") {
+          await expect(main.getByRole("button", { name: t("access.role.history.compare"), exact: true })).toBeVisible();
+          await main.getByRole("button", { name: t("access.role.history.compare"), exact: true }).click();
+          await expect(main.getByText(t("accessCodes.domain.hr_basic"), { exact: true })).toBeVisible();
+        }
+        await fits(page, `access-role-edit/${tab}/${width}/${colorScheme}`);
+        await expectAxe(page, `access-role-edit/${tab}/${width}/${colorScheme}`);
+      }
+      expect(fixtureEdit.unexpected).toEqual([]);
+    } finally {
+      fixtureEdit.release();
+    }
+  });
+
+  test(`ops person hides grants card and handles ops-usage populated, 403, and 503 at ${width}px ${colorScheme}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.emulateMedia({ colorScheme });
+    const fixture = await mockAccessScreen(page, accessScreens[7], "populated");
+    try {
+      await page.goto(`/access/people/${id(20)}`);
+      const main = page.getByRole("main");
+      await expect(main.getByRole("heading", { name: t("access.person.opsLog.title"), exact: true })).toBeVisible();
+      await expect(main.locator('[title="POST /api/v1/payroll/runs/1/lock"]')).toHaveText(t("access.person.opsLog.resource.payrollLock"));
+      await expect(main.getByText(t("access.grants.count", { count: 0 }), { exact: true })).toHaveCount(0);
+      await fits(page, `access-ops-person/${width}/${colorScheme}`);
+      await expectAxe(page, `access-ops-person/${width}/${colorScheme}`);
+
+      await mockRoute(page, "get", "/api/v1/access/ops-usage", { status: 403, json: failure("forbidden") });
+      await page.reload();
+      await expect(main.getByText(t("access.person.opsLog.title"), { exact: true })).toHaveCount(0);
+      await fits(page, `access-ops-person-403/${width}/${colorScheme}`);
+
+      await mockRoute(page, "get", "/api/v1/access/ops-usage", { status: 503, json: failure("service_unavailable") });
+      await page.reload();
+      await expect(main.getByRole("button", { name: t("common.retry"), exact: true })).toBeVisible({ timeout: 15_000 });
+      expect(fixture.unexpected).toEqual([]);
+    } finally {
+      fixture.release();
+    }
+  });
+}
+
+test("access refusal codes surface domain copy on role delete and request close failures", async ({ page }) => {
+  const fixture = await mockAccessScreen(page, accessScreens[1], "populated");
+  try {
+    await mockRoute(page, "get", "/api/v1/access/grants", { status: 200, json: [] });
+    await page.goto("/access/roles");
+    await page.getByRole("button", { name: t("access.roles.delete.label", { name: accessRole.name_ko }), exact: true }).click();
+    const dialog = page.getByRole("dialog");
+    await chooseRadio(dialog, new RegExp(t("accessCodes.reason.OTHER")));
+    await dialog.getByRole("textbox").fill("cleanup");
+    for (const code of ["role_not_draft", "role_has_active_grants"] as const) {
+      await mockRoute(page, "post", "/api/v1/access/roles/{roleId}/status", { status: 409, json: failure(code) });
+      await dialog.getByRole("button", { name: t("access.roles.delete.commit"), exact: true }).click();
+      await expect(dialog.getByText(t(`accessCodes.refusal.${code}`), { exact: false })).toBeVisible();
+    }
+
+    await mockRoute(page, "get", "/api/v1/access/requests", { status: 200, json: [{
+      id: id(40), requested_by: fixture.accounts[1]!.id, requester_name: fixture.accounts[1]!.display_name,
+      screen: "/people", reason_code: "NEW_DUTY", status: "OPEN", created_at: AT,
+    }] });
+    await page.goto("/access/grants");
+    for (const code of ["access_request_note_required", "access_request_closed", "access_request_not_found"] as const) {
+      await mockRoute(page, "post", "/api/v1/access/requests/{requestId}/close", { status: 409, json: failure(code) });
+      await page.getByRole("button", { name: t("accessGrants.requests.done"), exact: true }).click();
+      await expect(page.getByText(t(`accessCodes.refusal.${code}`), { exact: false })).toBeVisible();
+    }
     expect(fixture.unexpected).toEqual([]);
   } finally {
     fixture.release();

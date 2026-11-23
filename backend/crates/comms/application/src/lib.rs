@@ -40,131 +40,7 @@ use sha2::{Digest, Sha256};
 // the dependency direction clean (application does not depend on an adapter) and
 // is why the orphan-rule blanket impls for `&C` / `Arc<C>` live alongside it.
 // ---------------------------------------------------------------------------
-pub mod credential_cipher {
-    use secrecy::SecretBox;
-
-    /// Errors from the credential cipher. Deliberately coarse and free of any
-    /// secret material — an attacker learns only "it failed", never plaintext,
-    /// key bytes, or which check failed in a way that aids forgery.
-    #[derive(Debug, thiserror::Error)]
-    pub enum CipherError {
-        /// The master KEK env var is missing, not valid base64, or not 32 bytes.
-        #[error("master key configuration error")]
-        MasterKey,
-        /// AEAD encryption failed (allocation/internal). Carries no detail.
-        #[error("encryption failed")]
-        Encrypt,
-        /// AEAD decryption/authentication failed: wrong KEK, tampered ciphertext /
-        /// nonce / wrapped DEK, or mismatched AAD (wrong org/account/field).
-        #[error("decryption failed")]
-        Decrypt,
-        /// A persisted key_version this build cannot interpret.
-        #[error("unsupported key version")]
-        KeyVersion,
-    }
-
-    /// Associated data binding a ciphertext to the exact row + field it belongs
-    /// to.
-    ///
-    /// Encoded into the payload AEAD AAD (and the legacy AEAD DEK-wrap), so a
-    /// ciphertext lifted to a different org, account, or field fails to
-    /// authenticate. The encoding is unambiguous (length-prefixed) so distinct
-    /// triples can never collide.
-    #[derive(Debug, Clone, Copy)]
-    pub struct Aad<'a> {
-        /// The owning tenant (`email_accounts.org_id`).
-        pub org_id: &'a str,
-        /// The owning account row (`email_accounts.id`).
-        pub account_id: &'a str,
-        /// The credential field, e.g. `"smtp_password"` / `"imap_password"`.
-        pub field: &'a str,
-    }
-
-    impl Aad<'_> {
-        /// Length-prefixed, unambiguous byte encoding of the triple.
-        #[must_use]
-        pub fn encode(&self) -> Vec<u8> {
-            let mut out = Vec::new();
-            for part in [self.org_id, self.account_id, self.field] {
-                let bytes = part.as_bytes();
-                // u32 length prefix keeps `("ab","c",..)` distinct from
-                // `("a","bc",..)`.
-                out.extend_from_slice(&(bytes.len() as u32).to_be_bytes());
-                out.extend_from_slice(bytes);
-            }
-            out
-        }
-    }
-
-    /// The persisted output of [`CredentialCipher::encrypt`]. Every field is
-    /// opaque ciphertext / nonce material safe to store; NONE of it reveals the
-    /// plaintext.
-    #[derive(Debug, Clone, PartialEq, Eq)]
-    pub struct SealedCredential {
-        /// AEAD ciphertext of the secret, including its authentication tag.
-        pub ciphertext: Vec<u8>,
-        /// Payload nonce: 24 bytes for v1 XChaCha, 12 bytes for v2 AES-GCM.
-        pub nonce: Vec<u8>,
-        /// The DEK, wrapped under the KEK with integrity protection.
-        pub dek_wrapped: Vec<u8>,
-        /// 24-byte wrap nonce for v1; empty for nonce-free v2 AES-KWP.
-        pub dek_nonce: Vec<u8>,
-        /// Envelope suite: 1 = XChaCha20-Poly1305, 2 = AES-256-GCM + AES-256-KWP.
-        pub key_version: i16,
-    }
-
-    /// Envelope credential cipher port. A single implementation
-    /// (`EnvelopeCredentialCipher`, in `console-comms-credential-cipher`) backs it;
-    /// the trait exists so application/adapter layers depend on the capability,
-    /// not the concrete cipher.
-    pub trait CredentialCipher: Send + Sync {
-        /// Seal `plaintext` under a fresh per-row DEK wrapped by the master KEK,
-        /// binding `aad` (org/account/field) as associated data.
-        fn encrypt(&self, plaintext: &[u8], aad: Aad<'_>) -> Result<SealedCredential, CipherError>;
-
-        /// Recover the plaintext secret from a [`SealedCredential`]. Fails (with
-        /// the opaque [`CipherError::Decrypt`]) on a wrong KEK, any tampering, or
-        /// an AAD that does not match the row the ciphertext was sealed for.
-        fn decrypt(
-            &self,
-            sealed: &SealedCredential,
-            aad: Aad<'_>,
-        ) -> Result<SecretBox<Vec<u8>>, CipherError>;
-    }
-
-    /// Forward the port through a shared reference, so a `&C` satisfies a generic
-    /// `C: CredentialCipher` bound without moving/cloning the KEK. (Defined here,
-    /// where the trait is local, so there is no orphan-rule violation.)
-    impl<C: CredentialCipher + ?Sized> CredentialCipher for &C {
-        fn encrypt(&self, plaintext: &[u8], aad: Aad<'_>) -> Result<SealedCredential, CipherError> {
-            (**self).encrypt(plaintext, aad)
-        }
-
-        fn decrypt(
-            &self,
-            sealed: &SealedCredential,
-            aad: Aad<'_>,
-        ) -> Result<SecretBox<Vec<u8>>, CipherError> {
-            (**self).decrypt(sealed, aad)
-        }
-    }
-
-    /// Forward the port through an `Arc`, so the single shared cipher can satisfy
-    /// a generic `C: CredentialCipher` bound directly.
-    impl<C: CredentialCipher + ?Sized> CredentialCipher for std::sync::Arc<C> {
-        fn encrypt(&self, plaintext: &[u8], aad: Aad<'_>) -> Result<SealedCredential, CipherError> {
-            (**self).encrypt(plaintext, aad)
-        }
-
-        fn decrypt(
-            &self,
-            sealed: &SealedCredential,
-            aad: Aad<'_>,
-        ) -> Result<SecretBox<Vec<u8>>, CipherError> {
-            (**self).decrypt(sealed, aad)
-        }
-    }
-}
+pub mod credential_cipher;
 
 // ---------------------------------------------------------------------------
 // Local typed IDs
@@ -2415,6 +2291,10 @@ mod tests {
             dek_wrapped: vec![0; 48],
             dek_nonce: vec![0; 24],
             key_version: 1,
+            alg_id: None,
+            kek_id: None,
+            msg_id: None,
+            commitment_tag: None,
         };
         StoredAccount {
             id: EmailAccountId::new(),
@@ -2890,6 +2770,10 @@ mod tests {
                 dek_wrapped: vec![0; 48],
                 dek_nonce: vec![0; 24],
                 key_version: 1,
+                alg_id: None,
+                kek_id: None,
+                msg_id: None,
+                commitment_tag: None,
             })
         }
 
@@ -2988,6 +2872,10 @@ mod tests {
                 dek_wrapped: vec![0; 48],
                 dek_nonce: vec![0; 24],
                 key_version: 1,
+                alg_id: None,
+                kek_id: None,
+                msg_id: None,
+                commitment_tag: None,
             };
             StoredAccount {
                 id: EmailAccountId::new(),

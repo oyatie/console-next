@@ -21,3 +21,8 @@
 
 .scroll { flex-wrap: nowrap; overflow-x: auto; min-width: 0; }
 .scroll > a { flex-shrink: 0; white-space: nowrap; }
+@media (--phone) {
+  :where([data-experience]:not([data-experience="baseline"])) .scroll { gap: var(--space-half); padding-inline: var(--space-2); }
+  :where([data-experience]:not([data-experience="baseline"])) .scroll > a { gap: var(--space-1); padding-inline: var(--space-2); }
+  :where([data-experience]:not([data-experience="baseline"])) .scroll .count { min-width: auto; padding-inline: var(--space-1); }
+}
