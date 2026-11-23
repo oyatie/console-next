@@ -148,7 +148,8 @@ A sheet is **dirty** when it holds an edit that closing would lose. There are tw
   longer in the sheet is not compared, so a value held only by a control that goes away, such as a tree that
   closes on a pick, stops counting with it. A caller with such a control keeps the value on an element that
   stays. The dissolve sheet does: its members block keeps where everyone goes and each person sent elsewhere as
-  `data-form-value` on its summary line, which has an `id` and no label. See [Tree](tree.md).
+  `data-form-value` on its summary line, which has an `id` and no label. A person sent to where everyone goes is
+  left out of it. See [Tree](tree.md).
 
 Four gestures can close a sheet. Each calls `onClose`; none removes the sheet by itself.
 

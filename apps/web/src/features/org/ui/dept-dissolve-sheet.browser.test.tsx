@@ -36,15 +36,10 @@ const load = async () => {
   await element(group("Seoul office › Operations", 2)).toBeVisible();
 };
 const button = (name: string) => page.getByRole("button", { name, exact: true });
-// A pressed button that goes away, such as "Same as everyone", leaves focus on the page, where Escape reaches no sheet.
-const pressEscape = async () => {
-  await button(t("orgUnit.dissolve.changeTo")).focus();
-  await page.keyboard.press("Escape");
-};
 
 test("Escape closes the dissolve sheet when no one has changed where the members go", async () => {
   await load();
-  await pressEscape();
+  await page.keyboard.press("Escape");
   await element(open()).toHaveText("closed");
 });
 
@@ -63,10 +58,10 @@ test.each([
   await load();
   await change();
   await element(page.getByRole("treegrid")).toHaveCount(0);
-  await pressEscape();
+  await page.keyboard.press("Escape");
   await element(unsaved()).toBeVisible();
   await element(open()).toHaveText("open");
-  await pressEscape();
+  await page.keyboard.press("Escape");
   await element(open()).toHaveText("closed");
 });
 
@@ -76,7 +71,7 @@ test("a person sent elsewhere stays unsaved while another person's tree is open"
   await row("Support").click();
   await button(t("orgUnit.dissolve.elsewhere", { name: "Lee Jun" })).click();
   await element(page.getByRole("treegrid")).toHaveCount(1);
-  await pressEscape();
+  await page.keyboard.press("Escape");
   await element(unsaved()).toBeVisible();
   await element(open()).toHaveText("open");
 });
@@ -99,6 +94,8 @@ test.each([
   await load();
   await change();
   await element(group("Seoul office › Operations", 2)).toBeVisible();
-  await pressEscape();
+  // "Same as everyone" goes away once pressed and leaves focus on the page, where Escape reaches no sheet.
+  await button(t("orgUnit.dissolve.changeTo")).focus();
+  await page.keyboard.press("Escape");
   await element(open()).toHaveText("closed");
 });

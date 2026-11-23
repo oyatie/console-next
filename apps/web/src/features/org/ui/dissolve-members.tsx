@@ -27,7 +27,7 @@ export function DissolveMembers({ place, groups, to, onTo, overrides, onOverride
   // The trees close on a pick and take their value with them, so the line that stays carries the plan for the sheet to
   // compare: an override to where everyone goes changes nothing.
   const plan = [to.id, ...[...overrides].filter(([, n]) => n.id !== to.id).map(([id, n]) => `${id}>${n.id}`).sort()].join(" ");
-  const tree =(value: string | null, onChange: (id: string) => void, label: string) => (
+  const tree = (value: string | null, onChange: (id: string) => void, label: string) => (
     <TargetTree
       label={label}
       entity={place.entity}
