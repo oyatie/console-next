@@ -47,6 +47,8 @@ test("with single keys off ? waits, the help button stops announcing it, and the
 
 test("the help button follows a change made in another tab, without a reload", async () => {
   const help = page.getByRole("button", { name: t("structure.shortcuts.title"), exact: true });
+  // Storage is reachable only once the page is on the test origin, so open, clear the key, and open again.
+  await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}structure-keys-test`, help);
   await page.evaluate(key => localStorage.removeItem(key), SINGLE_KEYS_KEY);
   await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}structure-keys-test`, help);
   await element(help).toHaveAttribute("aria-keyshortcuts", "Shift+/");
