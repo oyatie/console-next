@@ -273,8 +273,7 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act, c
         const cell = r.cells[c];
         if (!cell) return null;
         if (consoleOrder) {
-          const hasEntries = r.cells.some((x) => Boolean(x.entry_kind));
-          return consoleCellContent(cell, hasEntries);
+          return consoleCellContent(cell);
         }
         const shape = cellShape(cell);
         const marks = cell.marks ?? [];

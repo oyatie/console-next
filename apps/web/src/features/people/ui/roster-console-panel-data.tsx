@@ -79,16 +79,7 @@ export function buildPanelBasicItems(opts: {
     ...(p?.nationality || r?.sex ? [{ key: "natSex", label: t("empCard.f.nationality"), value: [p?.nationality, r?.sex ? t(SEX_LABEL[r.sex]) : null].filter(Boolean).join(MID_DOT) }] : []),
   ];
 
-  const insuranceItems: PanelItem[] = e.hire_date
-    ? [
-        { key: "np", label: t("people.panel.ins.pension"), value: <bdi className="num">{t("people.panel.ins.enrolled")}{MID_DOT}{e.hire_date}</bdi> },
-        { key: "hi", label: t("people.panel.ins.health"), value: <bdi className="num">{t("people.panel.ins.enrolled")}{MID_DOT}{e.hire_date}</bdi> },
-        { key: "ei", label: t("people.panel.ins.employment"), value: <bdi className="num">{t("people.panel.ins.enrolled")}{MID_DOT}{e.hire_date}</bdi> },
-        { key: "wc", label: t("people.panel.ins.industrial"), value: <bdi className="num">{t("people.panel.ins.covered")}{MID_DOT}{e.hire_date}</bdi> },
-      ]
-    : [];
-
-  return { employmentItems, personalItems, insuranceItems };
+  return { employmentItems, personalItems };
 }
 
 export function buildPanelSummaryItems(opts: {
@@ -103,12 +94,11 @@ export function buildPanelSummaryItems(opts: {
   const summaryItems: { key: string; label: ReactNode; value: ReactNode }[] = [];
   if (attMonth) {
     const workedDays = attMonth.days.filter(day => day.recognition.recognised > 0).length;
-    const absentDays = attMonth.days.filter(day => day.marks.includes("ABSENT")).length;
     const approvedOtHours = Math.round((attMonth.totals.approved / 60) * 10) / 10;
     summaryItems.push({
       key: "att",
       label: <Link to="/attendance" search={{}}>{t("people.panel.summary.monthAtt", { month: monthNum })}</Link>,
-      value: t("people.panel.summary.attDetail", { work: workedDays, leave: absentDays, ot: approvedOtHours }),
+      value: t("people.panel.summary.attDetail", { work: workedDays, ot: approvedOtHours }),
     });
   }
   if (e.leave_remaining != null) {
@@ -119,9 +109,9 @@ export function buildPanelSummaryItems(opts: {
     });
   }
   if (payDraft && payDraft.gross_won != null) {
+    // The draft computes no income tax, so it has no net pay to show.
     const gross = payDraft.gross_won;
     const ded = payDraft.total_employee_insurance_won ?? 0;
-    const net = payDraft.remainder_after_insurance_won ?? gross - ded;
     summaryItems.push({
       key: "pay",
       label: (
@@ -129,7 +119,7 @@ export function buildPanelSummaryItems(opts: {
           {t("people.panel.summary.monthPay", { month: monthNum })}
         </Link>
       ),
-      value: t("people.panel.summary.payDetail", { net: fmtKrw(String(net)), gross: fmtKrw(String(gross)), ded: fmtKrw(String(ded)) }),
+      value: t("people.panel.summary.payDetail", { gross: fmtKrw(String(gross)), ded: fmtKrw(String(ded)) }),
     });
   }
   return summaryItems;
