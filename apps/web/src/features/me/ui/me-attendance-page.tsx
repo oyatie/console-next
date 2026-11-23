@@ -84,7 +84,7 @@ export function MeAttendancePage() {
       head={{
         title: t("me.attendance.title"),
         titleId: "me-attendance-title",
-        crumbs: [<Link key="account" to="/account" className={s.plainLink}>{t("shell.profile")}</Link>],
+        crumbs: [<Link key="account" to="/account">{t("shell.profile")}</Link>],
         filters,
       }}
       strip={<MeAttendanceStrip week52={week52.data} schedule={schedule} exceptions={exceptions.data?.items} />}

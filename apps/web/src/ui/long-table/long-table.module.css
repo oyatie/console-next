@@ -24,6 +24,8 @@
 /* A checked row and the open row share one tint; only the open row adds the start bar and semibold text. */
 :where([data-experience]:not([data-experience="baseline"])) .row[data-selected] { background: var(--surface-selected); }
 :where([data-experience]:not([data-experience="baseline"])) .row[data-active-row] { background: var(--surface-selected); box-shadow: var(--selected-bar); font-weight: var(--fw-semibold); }
+/* A link or medium-weight text sets its own weight, so the open row's semibold names it too. */
+:where([data-experience]:not([data-experience="baseline"])) .row[data-active-row] .td :is(a, :global(.t-medium)) { font-weight: var(--fw-semibold); }
 .row[data-focus-visible], .th[data-focus-visible] { outline: 2px solid var(--primary); outline-offset: -2px; }
 .td { display: flex; align-items: center; height: 100%; padding: 0 var(--space-3); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-sizing: border-box; outline: none; }
 .table[data-layout="rows"] .td { height: var(--row-h); }

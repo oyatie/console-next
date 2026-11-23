@@ -15,12 +15,14 @@ beforeAll(async () => {
       import { loadCatalog } from '@console/i18n';
       import { Crumbs } from '/apps/web/src/ui/page-head/crumbs.tsx';
       import { IndexBar } from '/apps/web/src/ui/index-bar/index-bar.tsx';
+      import accessCss from '/apps/web/src/features/access/ui/access.module.css';
       import '/apps/web/src/app.css';
       await loadCatalog('ko');
       document.documentElement.dataset.experience = 'console';
       document.documentElement.dataset.theme = 'light';
       const access = h('div', { 'data-access-page': '' }, h('table', null, h('tbody', null, h('tr', null,
-        h('td', null, h('a', { href: '#person', id: 'access-link' }, 'Person'))))));
+        h('td', null, h('a', { href: '#person', id: 'access-link' }, 'Person')),
+        h('td', null, h('a', { href: '#role', id: 'access-name', className: accessCss.plainLink }, 'Role'))))));
       createRoot(document.getElementById('root')).render(h('main', null,
         h(Crumbs, { items: [h('a', { href: '#org', id: 'crumb-link' }, 'Org')], current: 'Sales' }),
         access,
@@ -38,6 +40,7 @@ const underline = (selector: string) => mounted.page.locator(selector).evaluate(
 test("in Console a crumb and a link in an access table are underlined, as every link is drawn", async () => {
   expect(await underline("#crumb-link")).toBe("underline");
   expect(await underline("#access-link")).toBe("underline");
+  expect(await underline("#access-name")).toBe("underline");
 });
 
 test("in Console an index key is a whole pointer target with a control's edge: 24 px on a desk, 44 px on a phone", async () => {
