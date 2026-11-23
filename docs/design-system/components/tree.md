@@ -191,11 +191,15 @@ dialog or a sheet around the tree. `required` is for such a caller. With it:
   sheet that holds unsaved input shows its unsaved line on the first press and closes on the second. A pick is
   unsaved input while the tree is shown: the tree carries the chosen row's id as `data-form-value` (empty when none
   is chosen), so a sheet that works out its own dirty state warns before Escape throws the pick away. A tree that
-  closes on a pick takes its value with it, so its caller keeps the pick on an element that stays. The
-  destination trees of the dissolve sheet close on a pick, and its members block keeps the plan, where everyone
-  goes and each person sent elsewhere, as `data-form-value` on its summary line: a destination or a person sent
-  elsewhere there is unsaved input after its tree has closed. A person whose destination is where everyone goes
-  is left out of that value, since the plan is the same with or without them. See [Sheet](sheet.md#dirty-and-how-a-sheet-closes).
+  closes on a pick takes its value with it. The destination trees of the dissolve sheet close on a pick, so its
+  members block keeps the plan, where everyone goes and each person sent elsewhere, as `data-form-value` on its
+  summary line: a destination or a person sent elsewhere there is unsaved input after its tree has closed. A
+  person whose destination is where everyone goes is left out of that value, since the plan is the same with or
+  without them. See [Sheet](sheet.md#dirty-and-how-a-sheet-closes). The closed tree takes the focused row with it
+  too, and "Same as everyone" goes away once pressed, so after either the members block puts focus back on the
+  button that opened the tree. It does so on the next frame: moved while the key that picked is still being
+  handled, focus would carry that Enter to the button and open the tree again. The tests check this for a pick
+  by Enter and for "Same as everyone" pressed by Enter or by the pointer.
 - **Enter or a press** on the chosen row leaves it chosen. By the source the same holds for Space; the tests
   use Enter and the pointer only.
 
@@ -326,7 +330,7 @@ Tests:
 | `apps/web/src/features/org/ui/target-tree.browser.test.tsx` | In a browser, the target tree in a `Sheet` and in a `Dialog`, built by a fixture and not on the screens that show it. With nothing chosen, Escape from a row or from Cancel closes the sheet. A pick alone is unsaved input: Escape from the chosen row shows the unsaved line first, then closes. In a sheet that is told it is dirty, the same holds from a chosen row with no children, from a chosen open row, and from an expanded disclosure button. In the dialog, where no row is ever chosen, Escape from a row closes it, and so does a pick. ArrowLeft moves to the parent department, and stays on a department, with no children or closed, under a workplace that cannot be chosen. |
 | `apps/web/src/features/entity/ui/close-target-picker.browser.test.tsx` | In a browser, the destination picker itself. Opened again with a destination chosen, Escape from that row closes the dialog, focus returns to the button and the destination is kept. ArrowLeft moves from a department to its parent department or to its workplace. On a closed workplace, whose parent is the disabled top row, ArrowLeft stays, and ArrowRight opens it again. |
 | `apps/web/src/features/access/ui/scope-picker.browser.test.tsx` | In a browser, the scope sheet of a grant itself, with the structure read answered by the test: after a row is picked by the pointer or by Enter, the first Escape shows the unsaved line and the second closes the sheet; with nothing picked, Escape closes it at once. |
-| `apps/web/src/features/org/ui/dept-dissolve-sheet.browser.test.tsx` | In a browser, the dissolve sheet itself, with its reads answered by the test. Escape is pressed where the gesture before it left focus, except after "Same as everyone": that button goes away once pressed and leaves focus on the page, where Escape reaches no sheet, so the test first focuses the button that opens the destination tree. Untouched, the sheet closes at once. A new destination for everyone, or one person sent elsewhere, shows the unsaved line on the first Escape and closes on the second, and a person sent elsewhere still counts while another person's tree is open. A person put back with everyone, or everyone sent back to where one person was sent, leaves nothing unsaved. |
+| `apps/web/src/features/org/ui/dept-dissolve-sheet.browser.test.tsx` | In a browser, the dissolve sheet itself, with its reads answered by the test. Escape is pressed where the gesture before it left focus. Untouched, the sheet closes at once. A new destination for everyone, or one person sent elsewhere, shows the unsaved line on the first Escape and closes on the second, and a person sent elsewhere still counts while another person's tree is open. A person put back with everyone, or everyone sent back to where one person was sent, leaves nothing unsaved. A destination picked by Enter, for everyone or for one person, leaves focus on the button that opened its tree, and the tree stays closed. "Same as everyone", pressed by the pointer or by Enter, leaves focus on that person's "Send … elsewhere" button; after Enter no tree is open. |
 
 The first three are the component's own tests. Every browser test in the table launches Chromium and no other
 browser. Between them they press neither Space, PageUp nor PageDown, press ArrowLeft only on rows below the top

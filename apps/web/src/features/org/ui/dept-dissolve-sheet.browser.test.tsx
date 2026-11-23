@@ -81,6 +81,7 @@ test.each([
     await button(t("orgUnit.dissolve.elsewhere", { name: "Kim Mina" })).click();
     await row("Support").click();
     await button(t("orgUnit.dissolve.backToAll")).click();
+    await element(button(t("orgUnit.dissolve.elsewhere", { name: "Kim Mina" }))).toBeFocused();
   }],
   ["everyone sent back to where one person was sent", async () => {
     await button(t("orgUnit.dissolve.changeTo")).click();
@@ -94,8 +95,34 @@ test.each([
   await load();
   await change();
   await element(group("Seoul office › Operations", 2)).toBeVisible();
-  // "Same as everyone" goes away once pressed and leaves focus on the page, where Escape reaches no sheet.
-  await button(t("orgUnit.dissolve.changeTo")).focus();
   await page.keyboard.press("Escape");
   await element(open()).toHaveText("closed");
+});
+
+test.each([
+  ["a new destination for everyone", () => t("orgUnit.dissolve.changeTo"), 2],
+  ["one person sent elsewhere", () => t("orgUnit.dissolve.elsewhere", { name: "Kim Mina" }), 1],
+])("%s picked by Enter returns focus to the button that opened the tree, and the tree stays closed", async (_, opener, count) => {
+  await load();
+  await button(opener()).focus();
+  await page.keyboard.press("Enter");
+  await row("Support").focus();
+  await page.keyboard.press("Enter");
+  await element(group("Seoul office › Support", count)).toBeVisible();
+  await element(button(opener())).toBeFocused();
+  await element(page.getByRole("treegrid")).toHaveCount(0);
+});
+
+test("a person put back with everyone by Enter leaves focus on sending them elsewhere, with no tree open", async () => {
+  await load();
+  const elsewhere = button(t("orgUnit.dissolve.elsewhere", { name: "Kim Mina" }));
+  await elsewhere.click();
+  await row("Support").click();
+  await elsewhere.focus();
+  await page.keyboard.press("Shift+Tab");
+  await element(button(t("orgUnit.dissolve.backToAll"))).toBeFocused();
+  await page.keyboard.press("Enter");
+  await element(group("Seoul office › Operations", 2)).toBeVisible();
+  await element(elsewhere).toBeFocused();
+  await element(page.getByRole("treegrid")).toHaveCount(0);
 });
