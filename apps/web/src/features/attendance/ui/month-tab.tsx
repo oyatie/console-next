@@ -4,6 +4,7 @@ import { getRouteApi, Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { QueryState } from "../../../lib/react/query-state";
 import { PageReadGate } from "../../../reference/authz/ui/access-gate";
+import { modChord } from "../../../lib/pure/keys";
 import { todayKst } from "../../../lib/pure/today";
 import { Banner } from "../../../ui/banner/banner";
 import { Button } from "../../../ui/button/button";
@@ -11,7 +12,6 @@ import { buttonClass } from "../../../ui/button/button-class";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { EmptyState } from "../../../ui/empty-state";
 import { Kbd } from "../../../ui/kbd/kbd";
-import { hasCommandKey } from "../../../lib/command-key";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { at, rectIn, rectSize, type Range } from "../../../ui/sheet-grid/range";
 import { monthGridPages, type GridRow, type SaveReceipt } from "../api";
@@ -104,7 +104,7 @@ export function MonthTab({ head }: { head?: ReactNode }) {
   const empty = grid.isSuccess && total === 0;
   const saveButton = (
     <Button variant={dock ? "secondary" : "primary"} disabled={!!saveWhy} onClick={() => setDock({ kind: "save" })}>
-      {t("attendanceRecords.toolbar.save")} <Kbd keys={hasCommandKey() ? "⌘S" : "Ctrl+S"} />
+      {t("attendanceRecords.toolbar.save")} <Kbd keys={modChord("S")} />
     </Button>
   );
 

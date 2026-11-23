@@ -24,16 +24,23 @@ beforeAll(async () => {
   // A test names a system in the address, and the page then reports it as a browser on that system would.
   await page.addInitScript(() => {
     const platform = new URLSearchParams(location.search).get("platform");
-    if (platform) Object.defineProperty(Navigator.prototype, "platform", { get: () => platform });
+    if (!platform) return;
+    Object.defineProperty(navigator, "platform", { value: platform });
+    // Chromium reports its own system here first, so the named one has to be the only one.
+    Object.defineProperty(navigator, "userAgentData", { value: undefined });
   });
   await page.route("**/register-keys-test*", route => route.fulfill({ contentType: "text/html", body: `<html lang="ko"><title>Register keys</title><div id="root"></div><script type="module" src="${fixture}"></script></html>` }));
   // The hints are drawn before any read lands; every read answers with nothing registered.
   await page.route("**/api/v1/**", route => route.fulfill({ json: { items: [], entities: [], total: 0, limit: 100, offset: 0, next_cursor: null } }));
+  // A registration is taken as sent.
+  await page.route("**/api/v1/employees", route => route.request().method() === "POST"
+    ? route.fulfill({ status: 201, json: { employee: { id: "e1", name: route.request().postDataJSON().name, employee_number: "1", updated_at: "2026-11-19T00:00:00Z" }, warnings: [] } })
+    : route.fallback());
 }, 60_000);
 afterAll(async () => { await browser?.close(); await server?.close(); });
 
 // Both chords take Command or Control; each hint names the key this system's keyboard has.
-const SYSTEMS = [{ platform: "Win32", next: "Ctrl+↵", close: "Ctrl+Shift+↵" }, { platform: "MacIntel", next: "⌘↵", close: "⌘⇧↵" }];
+const SYSTEMS = [{ platform: "Win32", next: "Ctrl+↵", close: "Ctrl+⇧↵" }, { platform: "MacIntel", next: "⌘↵", close: "⌘⇧↵" }];
 
 test.each(SYSTEMS)("on $platform the registration sheet shows $next to register and go on, and $close to register and close", async ({ platform, next, close }) => {
   await page.goto(`${server.resolvedUrls!.local[0]}register-keys-test?case=sheet&platform=${platform}`);
@@ -50,4 +57,13 @@ test.each(SYSTEMS)("on $platform the run's entry row keeps the ⌘↵ cap and is
   // Speech input presses a control by the word on it, so the name holds the word the button shows.
   await element(save).toContainText(t("register.run.submit"));
   expect(t("register.run.save")).toContain(t("register.run.submit"));
+});
+
+// The finish button shows once a person is in the run.
+test.each(SYSTEMS)("on $platform the run page's finish button shows $close once a person is registered", async ({ platform, close }) => {
+  await page.goto(`${server.resolvedUrls!.local[0]}register-keys-test?case=run&platform=${platform}`);
+  await page.locator('[data-run="name"]').fill("홍길동");
+  await page.getByLabel(t("register.run.cell", { n: 1, field: t("register.run.col.hire") }), { exact: true }).fill("2026-11-19");
+  await page.keyboard.press("Control+Enter");
+  await element(page.getByRole("button", { name: t("register.run.finish"), exact: true }).locator("kbd")).toHaveText(close);
 });

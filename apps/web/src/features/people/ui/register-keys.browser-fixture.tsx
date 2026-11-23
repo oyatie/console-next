@@ -4,17 +4,19 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRootRoute, createRouter, RouterProvider } from "@tanstack/react-router";
 import { loadCatalog } from "@console/i18n";
 import { EMPTY } from "../domain/register";
+import { RegisterRun } from "./register-run-page";
 import { RunTable } from "./register-run-table";
 import { RegisterSheet } from "./register-sheet";
 import "../../../app.css";
 
 await loadCatalog("ko");
 const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-const table = new URLSearchParams(location.search).get("case") === "table";
+const which = new URLSearchParams(location.search).get("case");
 const noop = () => {};
-// The run's entry row before anyone is registered, and the registration sheet as the roster opens it.
+// The run's entry row before anyone is registered, the whole run page, and the registration sheet as the roster opens it.
 export function Fixture() {
-  return table
+  if (which === "run") return <RegisterRun />;
+  return which === "table"
     ? <RunTable rows={[]} showAll={false} onShowAll={noop} d={EMPTY} set={noop} hireText="" onHire={noop} today="2026-11-19" places={[]} carried={() => false} invalid={new Set()} undoable={false} onUndo={noop} onSave={noop} />
     : <RegisterSheet onClose={noop} onOpen={noop} onRehire={noop} />;
 }

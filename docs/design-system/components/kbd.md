@@ -96,11 +96,12 @@ Known gaps:
 - The key is not exposed to assistive technology in any way. The component cannot set `aria-keyshortcuts`, because
   it is a child of the control, and no caller does it for it: a search of `apps/web/src` for `aria-keyshortcuts`
   finds two controls, and neither holds a `Kbd` from this module.
-- `keys` is not adapted to the platform. A caller that passes the Command glyph shows it on every system. A
-  caller can pick the text first: the commit of `Composer` asks `hasCommandKey` (`lib/command-key`) and passes
-  `⌘↵` or `Ctrl+↵`. The register sheet and the register run's finish button under `features/people/ui`, and the
-  month tab under `features/attendance/ui`, pick the text of their hints the same way. The save button in the
-  register run's entry row does not: its column has no room for the wider text, so it shows `⌘↵` on every system.
+- `keys` is not adapted to the platform. A caller that passes the Command glyph shows it on every system.
+  A caller can pick the text first with `modChord` (`lib/pure/keys`). It puts `⌘` before the rest of the chord on
+  an Apple system and `Ctrl+` on any other, so `⇧↵` reads `⌘⇧↵` or `Ctrl+⇧↵`. The commit of `Composer`, the
+  register sheet's second commit and the register run's finish button under `features/people/ui`, and the month
+  tab's save under `features/attendance/ui` do. The save button in the register run's entry row does not: its
+  column has no room for the wider text, so it shows `⌘↵` on every system.
 - There are two components with this name. `ui/record/record-section.tsx` exports another `Kbd`, which takes `k`
   instead of `keys` and has its own, smaller look in `record.module.css`. Outside tests and gallery files,
   thirteen files import each of them. This page documents the one in `ui/kbd`.
