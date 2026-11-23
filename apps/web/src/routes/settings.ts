@@ -12,5 +12,8 @@ export const settingsRoute = createRoute({
     floorplan: "P-05",
     pattern: "settings",
   },
+  validateSearch: (search: Record<string, unknown>) => ({
+    section: typeof search.section === "string" ? search.section : undefined,
+  }),
   component: lazyRouteComponent(screen(() => import("../features/settings/ui/settings-hub")), "SettingsHub"),
 });

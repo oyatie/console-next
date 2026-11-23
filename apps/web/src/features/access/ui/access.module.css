@@ -85,3 +85,4 @@
   .phoneOnly { display: inline; }
   .plainLink { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; line-height: var(--space-5); }
 }
+.findField { flex: 1 1 calc(var(--space-6) * 8.5); width: calc(var(--space-6) * 8.5); max-width: 100%; }

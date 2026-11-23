@@ -138,6 +138,7 @@ export const koAccount: Record<keyof typeof enAccount, string> = {
   "account.privacy.identity": "접수할 때 패스키로 본인을 확인합니다",
   "account.privacy.submit": "요구 접수",
   "account.privacy.nav.rights": "권리 요구",
+  "account.privacy.nav.intake": "처리 대기함",
   "account.privacy.nav.accessLog": "내 정보 열람 기록",
   "account.privacy.nav.consent": "동의 내역",
   "account.privacy.nav.retention": "보존 기간 기준",

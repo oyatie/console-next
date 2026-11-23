@@ -62,6 +62,8 @@ const STATIC_ROUTES: Readonly<Record<string, () => string>> = {
   "/access/grants": () => t("shellRoutes.accessGrants"),
   "/access/grants/bulk": () => t("shellRoutes.accessGrantsBulk"),
   "/access/ready": () => t("shellRoutes.accessReady"),
+  "/access/review": () => t("accessReview.title"),
+  "/audit": () => t("shellRoutes.auditLog"),
   "/audit/support-access": () => t("shellRoutes.auditSupport"),
   "/audit/access-log": () => t("shellRoutes.auditAccessLog"),
   "/settings": () => t("shell.link.settings"),
@@ -94,6 +96,7 @@ function resolveQueryViewTitle(path: string, searchStr: string): string | null {
     if (tab === "overtime" || tab === "week") return t("shellRoutes.attendanceOvertime");
     if (tab === "issues") return t("shellRoutes.attendanceIssues");
     if (tab === "close") return t("shellRoutes.attendanceClose");
+    if (tab === "import") return t("shellRoutes.attendanceImport");
     return t("shellRoutes.attendanceMonth");
   }
   if (path === "/statutory") {

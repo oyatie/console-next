@@ -51,6 +51,13 @@ const ACTION_KINDS = {
   profile: ["composer.action.profile", "people"],
   registration: ["composer.action.registration", "people"],
   screenStyle: ["settingsHub.key.display.experience", "units"],
+  settingPolicy: ["settingsHub.policy.noun", "units"],
+  attendanceClose: ["attendance.close.noun", "units"],
+  attendanceException: ["attendance.issues.noun", "units"],
+  attendanceSubstitution: ["attendance.sub.noun", "units"],
+  payrollRun: ["payrollRun.noun", "units"],
+  accessLogReview: ["accessLog.review.noun", "units"],
+  privacyIntake: ["privacy.intake.noun", "units"],
 } as const;
 
 /** Withdraw pending approval; cancel before effect; correct an applied fact; revoke an applied act. */

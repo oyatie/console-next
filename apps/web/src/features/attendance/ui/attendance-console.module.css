@@ -114,9 +114,8 @@
 
 @media (--phone) {
   :where([data-experience]:not([data-experience="baseline"])) .tabNavWrap > nav {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
+    flex-wrap: wrap;
+    overflow-x: visible;
     gap: 0;
   }
 

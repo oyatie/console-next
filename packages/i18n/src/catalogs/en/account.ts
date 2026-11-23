@@ -131,6 +131,7 @@ export const enAccount = {
   "account.privacy.identity": "Verify your identity with a passkey when submitting",
   "account.privacy.submit": "Submit request",
   "account.privacy.nav.rights": "Rights requests",
+  "account.privacy.nav.intake": "Intake queue",
   "account.privacy.nav.accessLog": "Access history",
   "account.privacy.nav.consent": "Consent",
   "account.privacy.nav.retention": "Retention schedule",

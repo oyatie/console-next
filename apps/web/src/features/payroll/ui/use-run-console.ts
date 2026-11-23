@@ -11,6 +11,9 @@ import {
   type RegisterFilterMode,
 } from "../domain/run-register";
 
+import type { RunLifecycleSheetKind } from "../domain/run-lifecycle";
+import type { RunSideTab } from "./run-lifecycle-pane";
+
 export const RUN_PAGE_LIMIT = 50;
 
 export function useRunConsole(id: string) {
@@ -26,7 +29,8 @@ export function useRunConsole(id: string) {
   const [periodOverride, setPeriodOverride] = useState<string>();
   const [entityOverride, setEntityOverride] = useState<string>();
   const [exportOpen, setExportOpen] = useState(false);
-  const [submitOpen, setSubmitOpen] = useState(false);
+  const [lifecycleSheet, setLifecycleSheet] = useState<RunLifecycleSheetKind | null>(null);
+  const [sideTab, setSideTab] = useState<RunSideTab | null>(null);
   const [latchedHeadcount, setLatchedHeadcount] = useState<{ runId: string; total: number } | null>(null);
   const [bankIssuesKnown, setBankIssuesKnown] = useState(false);
 
@@ -180,8 +184,10 @@ export function useRunConsole(id: string) {
     setShowPreview,
     exportOpen,
     setExportOpen,
-    submitOpen,
-    setSubmitOpen,
+    lifecycleSheet,
+    setLifecycleSheet,
+    sideTab,
+    setSideTab,
     setOffset,
     setSelectedId,
     checkedIds,

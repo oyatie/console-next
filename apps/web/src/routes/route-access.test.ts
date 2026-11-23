@@ -57,8 +57,9 @@ test("route access exceptions can only shrink", () => assertExceptions(allow));
 
 test("the E2E route walk equals the router's static paths", () => {
   expect(routeList.map(route => route.path).sort()).toEqual(appRoutes.map(route => route.fullPath).sort());
-  expect(router.routesByPath).not.toHaveProperty("/access/review");
-  expect(router.routesByPath).not.toHaveProperty("/audit/access-log");
+  expect(router.routesByPath).toHaveProperty("/access/review");
+  expect(router.routesByPath).toHaveProperty("/audit");
+  expect(router.routesByPath).toHaveProperty("/audit/access-log");
 });
 
 test("exception growth is refused against dev's upstream when local dev has no registry", () => {

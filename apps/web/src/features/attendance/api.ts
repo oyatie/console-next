@@ -2,7 +2,7 @@ import { ApiError, api, unwrap } from "@console/api";
 import type { components, operations } from "@console/api/schema";
 import { cursorPages, get } from "../../lib/query";
 import { addDays, isDate, nextMonday } from "../../ui/date/days";
-export { session } from "@console/api";
+export { ApiError, session } from "@console/api";
 
 type S = components["schemas"];
 export type Pattern = S["AttendancePattern"];
@@ -123,3 +123,70 @@ export const conflictsOf = (e: unknown): Conflict[] =>
 /** The refused cells of a 422 cells_refused (error.details.refused), or none. */
 export const refusedOf = (e: unknown): CellPreview[] =>
   e instanceof ApiError && e.code === "cells_refused" ? ((e.details.refused as CellPreview[] | undefined) ?? []) : [];
+
+// --- M5 Phase 5 lifecycle & set-based import ---
+export type ClosePreflight = S["AttendanceClosePreflight"];
+export type AttendanceSubstitution = S["AttendanceSubstitution"];
+export type AttendanceImportPreview = S["AttendanceImportPreviewResponse"];
+export type AttendanceImportDryRun = S["AttendanceImportDryRunSummary"];
+export type AttendanceImportSummaryItem = S["AttendanceImportSummaryItem"];
+
+export const preflightClose = (month: string, branch_scope?: string | null) =>
+  unwrap(api.POST("/api/v1/attendance/closes/preflight", {
+    body: { month, ...(branch_scope && branch_scope !== "org" ? { branch_scope } : {}) },
+  }));
+
+export const confirmClose = (month: string, branch_scope?: string | null) =>
+  unwrap(api.POST("/api/v1/attendance/closes", {
+    body: { month, ...(branch_scope && branch_scope !== "org" ? { branch_scope } : {}), attest: true },
+  }));
+
+export const amendClose = (close_id: string, body: S["AttendanceCloseAmendmentRequest"], key: string) =>
+  unwrap(api.POST("/api/v1/attendance/closes/{close_id}/amendments", {
+    params: { path: { close_id }, ...idem(key) },
+    body,
+  }));
+
+export const raiseException = (body: S["RaiseAttendanceExceptionRequest"], key: string) =>
+  unwrap(api.POST("/api/v1/attendance/exceptions", { params: idem(key), body }));
+
+export const resolveException = (exception_id: string, body: S["ResolveAttendanceExceptionRequest"]) =>
+  unwrap(api.POST("/api/v1/attendance/exceptions/{exception_id}/resolve", { params: { path: { exception_id } }, body }));
+
+export const acknowledgeWeek52 = (employee_id: string, week_start: string) =>
+  unwrap(api.POST("/api/v1/attendance/week52/acks", { body: { employee_id, week_start } }));
+
+export const substitutionsQuery = (params: { month?: string; work_date?: string; from_date?: string; to_date?: string; branch_id?: string; limit?: number; offset?: number }) =>
+  get("/api/v1/attendance/substitutions", { params: { query: params } });
+
+export const substitutionCandidatesQuery = (params: { branch_id: string; covered_employee_id: string; cover_date: string; from_minutes: number; to_minutes: number; search?: string; limit?: number; offset?: number }) =>
+  get("/api/v1/attendance/substitution-candidates", { params: { query: params } });
+
+export const assignSubstitution = (body: S["AssignAttendanceSubstituteRequest"], key: string) =>
+  unwrap(api.POST("/api/v1/attendance/substitutions", { params: idem(key), body }));
+
+export const cancelSubstitution = (substitution_id: string, reason: string) =>
+  unwrap(api.POST("/api/v1/attendance/substitutions/{substitution_id}/cancel", { params: { path: { substitution_id } }, body: { reason } }));
+
+export const attendanceImportSummaryQuery = (limit = 20, offset = 0) =>
+  ({ ...get("/api/v1/hr/attendance-import/summary", { params: { query: { limit, offset } } }), retry: false });
+
+export const previewAttendanceImport = (file: File, pay_period_start: string, pay_period_end: string) =>
+  unwrap(
+    api.POST("/api/v1/hr/attendance-import/preview", {
+      body: { file: "", pay_period_start, pay_period_end },
+      bodySerializer: () => {
+        const form = new FormData();
+        form.append("file", file);
+        form.append("pay_period_start", pay_period_start);
+        form.append("pay_period_end", pay_period_end);
+        return form;
+      },
+    }),
+  );
+
+export const dryRunAttendanceImport = (run_id: string) =>
+  unwrap(api.POST("/api/v1/hr/attendance-import/{run_id}/dry-run", { params: { path: { run_id } } }));
+
+export const applyAttendanceImport = (run_id: string, checklist_all_acknowledged: boolean) =>
+  unwrap(api.POST("/api/v1/hr/attendance-import/{run_id}/apply", { params: { path: { run_id } }, body: { checklist_all_acknowledged } }));

@@ -204,12 +204,34 @@ for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as 
         await page.goto("/access/ready");
         const main = page.getByRole("main");
         const nav = main.getByRole("navigation", { name: t("access.nav"), exact: true });
-        const tabLabel = t(phase === "SETUP" ? "access.nav.ready" : "access.nav.review");
-        const activeTab = nav.getByRole("link", { name: tabLabel, exact: true });
-        await expect(activeTab).toHaveAttribute("aria-current", "page");
-        await expect(activeTab).toHaveAttribute("href", "/access/ready");
-        await fits(page, `access-ready/${phase}/${width}/${colorScheme}`);
-        await expectAxe(page, `access-ready/${phase}/${width}/${colorScheme}`);
+        if (phase === "SETUP") {
+          const readyTab = nav.getByRole("link", { name: t("access.nav.ready"), exact: true });
+          await expect(readyTab).toHaveAttribute("aria-current", "page");
+          await expect(readyTab).toHaveAttribute("href", "/access/ready");
+          await expect(nav.getByRole("link", { name: t("access.nav.review"), exact: true })).toHaveCount(0);
+          await expect(main.getByText(t("access.ready.lede.setup"), { exact: true })).toBeVisible();
+          await expect(main.getByRole("link", { name: t("access.ready.goLive"), exact: true })).toHaveAttribute("href", "/setup/go-live");
+          await fits(page, `access-ready/${phase}/${width}/${colorScheme}`);
+          await expectAxe(page, `access-ready/${phase}/${width}/${colorScheme}`);
+        } else {
+          await expect(nav.getByRole("link", { name: t("access.nav.ready"), exact: true })).toHaveCount(0);
+          const reviewTab = nav.getByRole("link", { name: t("access.nav.review"), exact: true });
+          await expect(reviewTab).toHaveAttribute("href", "/access/review");
+          await expect(reviewTab).not.toHaveAttribute("aria-current", "page");
+          await expect(main.getByText(t("access.ready.lede.live"), { exact: true })).toBeVisible();
+          await expect(main.getByRole("link", { name: t("access.ready.goLive"), exact: true })).toHaveCount(0);
+          await fits(page, `access-ready/${phase}/${width}/${colorScheme}`);
+          await expectAxe(page, `access-ready/${phase}/${width}/${colorScheme}`);
+
+          await reviewTab.click();
+          await expect(page).toHaveURL(/\/access\/review$/);
+          await expect(reviewTab).toHaveAttribute("aria-current", "page");
+          await expect(reviewTab).toHaveAttribute("href", "/access/review");
+          await expect(main.getByRole("heading", { name: t("accessReview.title"), exact: true })).toBeVisible();
+          await expect(main.getByText("ACC-0001", { exact: true }).first()).toBeVisible();
+          await fits(page, `access-review/${phase}/${width}/${colorScheme}`);
+          await expectAxe(page, `access-review/${phase}/${width}/${colorScheme}`);
+        }
         expect(fixture.unexpected).toEqual([]);
       } finally {
         fixture.release();

@@ -119,6 +119,8 @@ export const koEnum: Record<keyof typeof enEnum, string> = {
   "enum.stepUpAction.PII_RECORD": "주민등록번호 기록",
   "enum.stepUpAction.SUPPORT_SESSION": "지원 접근",
   "enum.stepUpAction.OPERATOR_RECOVERY": "운영 계정 복구",
+  "enum.stepUpAction.PRIVACY_REQUEST": "개인정보 권리 행사 청구",
+  "enum.stepUpAction.PRIVACY_REQUEST_DECIDE": "개인정보 권리 행사 결정",
   "enum.unknown": "확인되지 않은 항목",
   "enum.leaveType.CHILDCARE": "육아휴직",
   "enum.leaveType.MATERNITY": "출산전후휴가",

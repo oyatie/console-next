@@ -180,7 +180,7 @@ export const enPayroll = {
   "payroll.run.previewToggle": "Payslip preview",
   "payroll.run.requestApproval": "Request approval",
   "payroll.run.submitSheetTitle": "Request payroll approval",
-  "payroll.run.submitSheetConsequence": "Review pre-approval checks before requesting payroll approval.",
+  "payroll.run.submitSheetConsequence": "Submitting this payroll run routes it for approval and locks calculation edits.",
   "payroll.run.stagePendingApproval": "Pending approval",
   "payroll.run.stagePayDate": "Pay {date}",
   "payroll.run.statTarget": "Employees",

@@ -178,7 +178,7 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
     ? {
         title: pathname === "/account" ? t(experience === "baseline" ? "shell.account" : "shell.profile") : undefined,
         context: pathname === "/account" && experience !== "baseline" && !platform ? identity.data?.employee_company ?? undefined : undefined,
-        shellOwnsH1: pathname === "/account",
+        shellOwnsH1: pathname === "/account" || pathname === "/account/privacy",
         ...(isSelfService ? { phoneNav: "self-service" as const } : {}),
       }
     : pathname === "/leave"

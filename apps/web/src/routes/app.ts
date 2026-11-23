@@ -59,14 +59,19 @@ const tenants = createRoute({
   }),
   component: lazyRouteComponent(screen(() => import("../features/platform/Tenants")), "Tenants"),
 });
-const supportAccess = createRoute({getParentRoute:()=>app,path:"/audit/support-access", staticData: { access: "signed-in", floorplan: "P-01" },validateSearch:(s: Record<string, unknown>): { review?: string } => ({ review: str(s.review) }),component:lazyRouteComponent(screen(()=>import("../features/support-access/ui/support-access")),"SupportAccess")});
 // Home with the setup checklist composed in (routes compose slices).
 const home = createRoute({ getParentRoute: () => app, path: "/", validateSearch: (s: Record<string, unknown>): { sel?: string } => ({ sel: str(s.sel) }), staticData: { access: "signed-in", floorplan: "P-03", pattern: "worklist" }, component: lazyRouteComponent(screen(() => import("./home-screen")), "HomeScreen") });
 const loadAccount = () => import("../features/account/Account");
 const loadPrivacy = () => import("../features/account/ui/privacy-page");
 const account = createRoute({ getParentRoute: () => app, path: "/account", staticData: { access: "signed-in", floorplan: "P-05", pattern: "phone-hub" }, component: lazyRouteComponent(screen(loadAccount), "Account") });
 const privacyIntake = createRoute({ getParentRoute: () => app, path: "/account/privacy/intake/$id", staticData: { access: "signed-in", floorplan: "P-01", pattern: "record" }, component: lazyRouteComponent(screen(loadPrivacy), "PrivacyIntake") });
-const privacy = createRoute({ getParentRoute: () => app, path: "/account/privacy", staticData: { access: "signed-in", floorplan: "P-01", pattern: "settings" }, component: lazyRouteComponent(screen(loadPrivacy), "PrivacyRequests") });
+const privacy = createRoute({
+  getParentRoute: () => app,
+  path: "/account/privacy",
+  staticData: { access: "signed-in", floorplan: "P-01", pattern: "settings" },
+  validateSearch: (s: Record<string, unknown>): { view?: "intake" } => ({ view: s.view === "intake" ? "intake" : undefined }),
+  component: lazyRouteComponent(screen(loadPrivacy), "PrivacyRequests"),
+});
 
 // Test builds keep the gallery for the preview suite; normal production builds drop its route and chunk.
 const dev = import.meta.env.DEV || import.meta.env.MODE === "test"
@@ -90,15 +95,9 @@ const reviewStates = import.meta.env.VITE_REVIEW_STATE_ROUTES === "1" ? [
   createRoute({ getParentRoute: () => app, path: "/_review/patterns/canvas", staticData: { access: "signed-in", floorplan: "canvas", pattern: "canvas" }, validateSearch: reviewSearch, component: lazyRouteComponent(screen(() => import("../review/canvas-review")), "CanvasReview") }),
   createRoute({ getParentRoute: () => app, path: "/_review/patterns/phone-hub", staticData: { access: "signed-in", floorplan: "P-05", pattern: "phone-hub" }, validateSearch: reviewSearch, component: lazyRouteComponent(screen(() => import("../review/phone-hub-review")), "PhoneHubReview") }),
   createRoute({ getParentRoute: () => app, path: "/_review/patterns/phone-statement", staticData: { access: "signed-in", floorplan: "P-02", pattern: "phone-statement" }, validateSearch: reviewSearch, component: lazyRouteComponent(screen(() => import("../review/phone-statement-review")), "PhoneStatementReview") }),
-  createRoute({ getParentRoute: () => app, path: "/access/review", staticData: { access: "signed-in", floorplan: "P-01" }, component: lazyRouteComponent(screen(() => import("../features/access/ui/access-review-page")), "AccessReviewPage") }),
-  createRoute({
-    getParentRoute: () => app, path: "/audit/access-log", staticData: { access: "signed-in", floorplan: "P-01" },
-    validateSearch: (s: Record<string, unknown>): { period?: string; view?: "all"; search?: string; actor?: string; action?: string; target_type?: string; from?: string; to?: string } => ({ period: str(s.period), view: s.view === "all" ? "all" : undefined, search: str(s.search), actor: str(s.actor), action: str(s.action), target_type: str(s.target_type), from: str(s.from), to: str(s.to) }),
-    component: lazyRouteComponent(screen(() => import("../features/access-log/ui/access-log-page")), "AccessLogPage"),
-  }),
 ] : [];
 const reviewSignIn = import.meta.env.VITE_REVIEW_STATE_ROUTES === "1" ? [
   createRoute({ getParentRoute: () => root, path: "/_review/patterns/sign-in", staticData: { pattern: "sign-in" }, validateSearch: signInReviewSearch, component: lazyRouteComponent(bootScreen(() => import("../review/sign-in-review")), "SignInReview") }),
 ] : [];
 
-export const frame = { signIn: [login, setupPasskey, ...reviewSignIn, ...dev], screens: [tenants, home, account, privacy, privacyIntake, supportAccess, ...reviewStates] };
+export const frame = { signIn: [login, setupPasskey, ...reviewSignIn, ...dev], screens: [tenants, home, account, privacy, privacyIntake, ...reviewStates] };

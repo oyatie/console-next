@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
+import { chunk } from "../../../lib/chunk-guard";
 import { todayKst } from "../../../lib/pure/today";
 import { QueryState } from "../../../lib/react/query-state";
+import { Button } from "../../../ui/button/button-base";
 import { buttonClass } from "../../../ui/button/button-class";
 import { Chip } from "../../../ui/chip";
 import { KeyValue, StatRow } from "../../../ui/key-value/key-value";
@@ -18,6 +20,9 @@ import { PeriodStepper } from "./period-stepper";
 import { ScopePicker } from "./scope-picker";
 import s from "./attendance-console.module.css";
 
+const RaiseExceptionSheet = lazy(() => chunk(import("./issues-console-sheets")).then((m) => ({ default: m.RaiseExceptionSheet })));
+const ResolveExceptionSheet = lazy(() => chunk(import("./issues-console-sheets")).then((m) => ({ default: m.ResolveExceptionSheet })));
+
 const route = getRouteApi("/app/attendance");
 
 export function IssuesConsoleView({ baseline }: { baseline: () => React.ReactNode }) {
@@ -26,6 +31,7 @@ export function IssuesConsoleView({ baseline }: { baseline: () => React.ReactNod
   const month = search.month ?? (search.date ?? todayKst()).slice(0, 7);
   const query = useInfiniteQuery(exceptionsQuery(month, search.wp));
   const [selectedId, setSelectedId] = useState<string>();
+  const [sheet, setSheet] = useState<"raise" | "resolve" | null>(null);
   const detailQuery = useQuery({ ...exceptionDetailQuery(selectedId ?? ""), enabled: Boolean(selectedId), retry: false });
   const go = (patch: Record<string, unknown>) => void navigate({ search: prev => ({ ...prev, ...patch }) });
 
@@ -42,6 +48,11 @@ export function IssuesConsoleView({ baseline }: { baseline: () => React.ReactNod
       head={{
         title: t("attendance.title"),
         titleId: "attendance-issues-title",
+        actions: (
+          <Button size="sm" variant="primary" className={s.nowrap} onClick={() => setSheet("raise")}>
+            {t("attendance.issues.raiseButton")}
+          </Button>
+        ),
       }}
       filters={
         <div className={s.filterPair}>
@@ -139,10 +150,15 @@ export function IssuesConsoleView({ baseline }: { baseline: () => React.ReactNod
                         </RecordPaneSection>
                       ) : null}
                       <div className={s.paneActions}>
+                        {exc.status === "OPEN" && (
+                          <Button size="sm" variant="primary" className={s.nowrap} onClick={() => setSheet("resolve")}>
+                            {t("attendance.issues.resolveButton")}
+                          </Button>
+                        )}
                         <Link
                           to="/attendance"
                           search={{ tab: "day", date: exc.work_date, wp: exc.branch_id ?? search.wp, person: undefined }}
-                          className={buttonClass("primary", { size: "sm", className: s.nowrap })}
+                          className={buttonClass("secondary", { size: "sm", className: s.nowrap })}
                         >
                           {t("attendance.issues.pane.openDay")}
                         </Link>
@@ -153,6 +169,17 @@ export function IssuesConsoleView({ baseline }: { baseline: () => React.ReactNod
               ),
             }
           : null
+      }
+      overlays={
+        sheet ? (
+          <Suspense fallback={null}>
+            {sheet === "raise" ? (
+              <RaiseExceptionSheet defaultBranchId={search.wp} onClose={() => setSheet(null)} />
+            ) : detailQuery.data ? (
+              <ResolveExceptionSheet exception={detailQuery.data} onClose={() => setSheet(null)} />
+            ) : null}
+          </Suspense>
+        ) : undefined
       }
       statusSegments={
         query.data

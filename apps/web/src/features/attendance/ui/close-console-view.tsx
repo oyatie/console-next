@@ -1,49 +1,86 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
+import { chunk } from "../../../lib/chunk-guard";
 import { todayKst } from "../../../lib/pure/today";
+import { useCommand } from "../../../lib/react/command";
 import { readGroup } from "../../../lib/react/query-view";
+import { useIsDesktop } from "../../../lib/react/use-desktop";
 import { branchesQuery } from "../../../reference/org/api";
-import { buttonClass } from "../../../ui/button/button-class";
+import { Button } from "../../../ui/button/button-base";
 import { Chip } from "../../../ui/chip";
 import { KeyValue, StatRow } from "../../../ui/key-value/key-value";
 import { LongTable, type LongColumn } from "../../../ui/long-table/long-table";
 import { ListRecord } from "../../../ui/patterns/list-record";
 import { RecordIdentityBar, RecordPaneSection } from "../../../ui/patterns/list-record-parts";
-import { closesQuery, type AttendanceMonthCloseItem } from "../api";
+import { closesQuery, preflightClose, type AttendanceMonthCloseItem, type ClosePreflight } from "../api";
 import { AttendanceTabNav } from "./attendance-head";
+import { CloseConsoleActions } from "./close-console-actions";
 import { PeriodStepper } from "./period-stepper";
 import { ScopePicker } from "./scope-picker";
 import s from "./attendance-console.module.css";
 
+const CloseConfirmSheet = lazy(() => chunk(import("./close-console-sheets")).then((m) => ({ default: m.CloseConfirmSheet })));
+const CloseAmendSheet = lazy(() => chunk(import("./close-console-sheets")).then((m) => ({ default: m.CloseAmendSheet })));
+
 const route = getRouteApi("/app/attendance");
 
 export function CloseConsoleView({ baseline }: { baseline: () => React.ReactNode }) {
+  const isDesktop = useIsDesktop();
   const search = route.useSearch();
   const navigate = route.useNavigate();
   const month = search.month ?? (search.date ?? todayKst()).slice(0, 7);
   const board = useQuery(closesQuery(month, search.wp));
   const branches = useQuery(branchesQuery);
   const [selectedScope, setSelectedScope] = useState<string>();
+  const [dismissedAuto, setDismissedAuto] = useState(false);
+  const [preflightByScope, setPreflightByScope] = useState<Record<string, ClosePreflight>>({});
+  const [sheet, setSheet] = useState<"confirm" | "amend" | null>(null);
   const go = (patch: Record<string, unknown>) => void navigate({ search: prev => ({ ...prev, ...patch }) });
 
   const combined = readGroup([board, branches]);
   const items = board.data?.items ?? [];
+  const workplaceItems = items.filter(row => row.branch_scope !== "org");
+  const displayItems = workplaceItems.length > 0 ? workplaceItems : items;
   const places = branches.data ?? [];
   const placeName = (scope: string) =>
     scope === "org"
       ? t("attendanceRecords.scope.allUnknown")
       : places.find(place => place.id === scope)?.name ?? t("attendance.close.unavailable");
 
-  const selectedRow = items.find(r => r.branch_scope === selectedScope);
-  const hasLocks = items.some(row => row.close?.period_lock_id);
-  const closedCount = items.filter(r => r.closed).length;
-  const openCount = items.length - closedCount;
-  const totalOpenExceptions = items.reduce((sum, r) => sum + r.open_exceptions, 0);
-  const totalPendingLeave = items.reduce((sum, r) => sum + r.pending_leave, 0);
+  const effectiveSelectedScope = selectedScope ?? (isDesktop && !dismissedAuto ? displayItems[0]?.branch_scope : undefined);
+  const selectedRow = displayItems.find(r => r.branch_scope === effectiveSelectedScope);
+  const preflightKey = selectedRow ? `${month}:${selectedRow.branch_scope}` : "";
+  const activePreflight = preflightKey ? (preflightByScope[preflightKey] ?? null) : null;
+
+  const runPreflight = useCommand({
+    run: async (branchScope: string) => {
+      const res = await preflightClose(month, branchScope);
+      setPreflightByScope((prev) => ({ ...prev, [`${month}:${branchScope}`]: res }));
+      return res;
+    },
+  });
+
+  const openConfirm = async () => {
+    if (!selectedRow) return;
+    if (!activePreflight) {
+      try {
+        await runPreflight.mutateAsync(selectedRow.branch_scope);
+      } catch {
+        return;
+      }
+    }
+    setSheet("confirm");
+  };
+
+  const hasLocks = displayItems.some(row => row.close?.period_lock_id);
+  const closedCount = displayItems.filter(r => r.closed).length;
+  const openCount = displayItems.length - closedCount;
+  const totalOpenExceptions = displayItems.reduce((sum, r) => sum + r.open_exceptions, 0);
+  const totalPendingLeave = displayItems.reduce((sum, r) => sum + r.pending_leave, 0);
 
   return (
     <ListRecord
@@ -60,11 +97,11 @@ export function CloseConsoleView({ baseline }: { baseline: () => React.ReactNode
         </div>
       }
       stats={
-        items.length > 0 ? (
+        displayItems.length > 0 ? (
           <StatRow
             label={t("attendance.tab.close")}
             items={[
-              { key: "total", label: t("attendance.close.stat.total"), value: items.length },
+              { key: "total", label: t("attendance.close.stat.total"), value: displayItems.length },
               { key: "closed", label: t("attendance.close.stat.closed"), value: closedCount, tone: "ok" },
               { key: "open", label: t("attendance.close.stat.open"), value: openCount, tone: openCount > 0 ? "warn" : undefined },
               { key: "issues", label: t("attendance.tab.issues"), value: totalOpenExceptions, tone: totalOpenExceptions > 0 ? "danger" : undefined },
@@ -77,14 +114,17 @@ export function CloseConsoleView({ baseline }: { baseline: () => React.ReactNode
         <div className={s.tableWrap}>
           <LongTable<AttendanceMonthCloseItem>
             label={t("attendance.tab.close")}
-            rows={items}
+            rows={displayItems}
             rowId={row => row.branch_scope}
             hasMore={false}
             onLoadMore={() => {}}
             density="compact"
             mobileLayout="compact"
             activeRowId={selectedRow?.branch_scope}
-            onRowAction={id => setSelectedScope(id)}
+            onRowAction={id => {
+              setDismissedAuto(false);
+              setSelectedScope(id);
+            }}
             empty={t("attendance.close.empty")}
             columns={[
               { id: "place", header: t("attendance.col.workplace"), card: "title", rowHeader: true, cell: row => placeName(row.branch_scope) },
@@ -117,7 +157,7 @@ export function CloseConsoleView({ baseline }: { baseline: () => React.ReactNode
                     {
                       id: "lock",
                       header: t("attendance.close.periodLock"),
-                      card: "action",
+                      card: "omit",
                       cell: row =>
                         row.close?.period_lock_id ? (
                           <Link to="/people/period-locks" search={{ unlock: row.close.period_lock_id }}>
@@ -127,18 +167,43 @@ export function CloseConsoleView({ baseline }: { baseline: () => React.ReactNode
                     } satisfies LongColumn<AttendanceMonthCloseItem>,
                   ]
                 : []),
+              {
+                id: "action",
+                header: t("settingsHub.reasons.actionsCol"),
+                type: "action",
+                card: "action",
+                cell: row => (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className={s.nowrap}
+                    onClick={() => {
+                      setDismissedAuto(false);
+                      setSelectedScope(row.branch_scope);
+                    }}
+                  >
+                    {t("attendance.close.openRow")}
+                  </Button>
+                ),
+              },
             ]}
           />
         </div>
       }
-      onSelect={id => setSelectedScope(id)}
+      onSelect={id => {
+        setDismissedAuto(false);
+        setSelectedScope(id);
+      }}
       record={
         selectedRow
           ? {
               id: selectedRow.branch_scope,
               label: t("attendance.close.pane.title"),
               title: t("attendance.close.pane.title"),
-              onClose: () => setSelectedScope(undefined),
+              onClose: () => {
+                setSelectedScope(undefined);
+                setDismissedAuto(true);
+              },
               children: (
                 <div className={s.paneBody}>
                   <RecordIdentityBar
@@ -195,26 +260,35 @@ export function CloseConsoleView({ baseline }: { baseline: () => React.ReactNode
                       />
                     </RecordPaneSection>
                   ) : null}
-                  {selectedRow.close?.period_lock_id ? (
-                    <div className={s.paneActions}>
-                      <Link
-                        to="/people/period-locks"
-                        search={{ unlock: selectedRow.close.period_lock_id }}
-                        className={buttonClass("secondary", { size: "sm", className: s.nowrap })}
-                      >
-                        {t("attendanceRecords.month.requestUnlock")}
-                      </Link>
-                    </div>
-                  ) : null}
+                  <CloseConsoleActions
+                    row={selectedRow}
+                    activePreflight={activePreflight}
+                    preflightError={runPreflight.error}
+                    preflightPending={runPreflight.isPending}
+                    onRunPreflight={() => runPreflight.mutate(selectedRow.branch_scope)}
+                    onOpenConfirm={() => void openConfirm()}
+                    onOpenAmend={() => setSheet("amend")}
+                  />
                 </div>
               ),
             }
           : null
       }
+      overlays={
+        sheet && selectedRow ? (
+          <Suspense fallback={null}>
+            {sheet === "confirm" ? (
+              <CloseConfirmSheet month={month} branchScope={selectedRow.branch_scope} scopeLabel={placeName(selectedRow.branch_scope)} preflight={activePreflight} onClose={() => setSheet(null)} />
+            ) : selectedRow.close ? (
+              <CloseAmendSheet closeId={selectedRow.close.id} scopeLabel={placeName(selectedRow.branch_scope)} onClose={() => setSheet(null)} />
+            ) : null}
+          </Suspense>
+        ) : undefined
+      }
       statusSegments={
         board.data
           ? [
-              { id: "closed", content: `${closedCount}/${items.length}` },
+              { id: "closed", content: t("attendance.close.statusRatio", { closed: closedCount, total: displayItems.length }) },
               ...(selectedRow ? [{ id: "selected", tone: "strong" as const, content: placeName(selectedRow.branch_scope) }] : []),
             ]
           : undefined

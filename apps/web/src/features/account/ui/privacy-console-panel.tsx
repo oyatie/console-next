@@ -3,18 +3,15 @@ import type { ReactNode } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import type { PrivacyRightsReceipt } from "@console/api/pending";
 import { t } from "@console/i18n";
-import { fmtDateTime } from "@console/i18n/format";
 import { Button } from "../../../ui/button/button-base";
-import { Card } from "../../../ui/card/card";
-import { Chip } from "../../../ui/chip";
-import { DeadlineChip } from "../../../ui/deadline-chip/deadline-chip";
 import { EmptyState } from "../../../ui/empty-state";
 import { StatRow } from "../../../ui/key-value/key-value";
-import { Table } from "../../../ui/table";
+import { RecordPaneSection } from "../../../ui/patterns/list-record-parts";
 import { consentQuery, myAccessLogPages } from "../api";
 import { ConsentBody } from "./consent-card";
 import { MyAccessLogBody } from "./me-access-log";
 import { PrivacyRetentionSection } from "./privacy-retention";
+import { PrivacyReceiptTable } from "./privacy-receipt-table";
 import s from "./account.module.css";
 
 export function PrivacySummary({ items }: { items: PrivacyRightsReceipt[] }) {
@@ -61,63 +58,49 @@ export function PrivacyConsolePanel({
       : undefined,
   } as Parameters<typeof MyAccessLogBody>[0]["q"];
 
+  const hideEmptyLog = logQuery.isSuccess && (logQuery.data?.pages.every(p => p.items.length === 0) ?? false);
+
   return (
-    <>
+    <div className={s.consoleSections}>
       <div id="privacy-rights">{filingSection}</div>
-      <Card title={t("account.privacy.listTitle")} flush>
+      <RecordPaneSection title={t("account.privacy.listTitle")} padded={items.length === 0}>
         {items.length ? (
-          <Table
+          <PrivacyReceiptTable
             label={t("account.privacy.list")}
             rows={items}
-            rowId={item => item.id}
             selected={selectedId}
             onSelect={onSelect}
-            columns={[
-              { header: t("account.privacy.number"), card: "title", cell: item => item.receipt_no },
-              { header: t("account.privacy.controller"), card: "fact", cell: item => item.controller_label },
-              { header: t("account.privacy.kinds"), card: "fact", cell: item => item.kinds.map(kind => kind.label).join(" · ") },
-              { header: t("account.privacy.received"), card: "omit", cell: item => fmtDateTime(item.received_at), wide: true },
-              { header: t("account.privacy.status"), card: "status", cell: item => <Chip tone={item.status.tone}>{item.status.label}</Chip> },
-              {
-                header: t("account.privacy.due"),
-                card: "fact",
-                cell: item => (
-                  <>
-                    {item.clock && <DeadlineChip days={item.clock.days_left} severity={item.clock.severity} />}
-                    {item.without_delay && t("account.privacy.withoutDelay")}
-                    {!item.clock && !item.without_delay && t("account.privacy.noClock")}
-                  </>
-                ),
-              },
-            ]}
+            secondColumn="controller"
           />
         ) : (
           <EmptyState title={t("account.privacy.empty.title")} reason={null} />
         )}
         {loadMoreRequests}
-      </Card>
-      <Card id="privacy-access-log" title={t("account.accessLog.title")}>
-        <div className={s.pad}>
-          <MyAccessLogBody q={pagedAccessLog} />
-          {logQuery.hasNextPage && (
-            <div>
-              <Button disabled={logQuery.isFetchingNextPage} onClick={() => void logQuery.fetchNextPage()}>
-                {t("account.privacy.accessLog.more")}
-              </Button>
-            </div>
-          )}
+      </RecordPaneSection>
+      {!hideEmptyLog && (
+        <div id="privacy-access-log">
+          <RecordPaneSection title={t("account.accessLog.title")}>
+            <MyAccessLogBody q={pagedAccessLog} />
+            {logQuery.hasNextPage && (
+              <div>
+                <Button disabled={logQuery.isFetchingNextPage} onClick={() => void logQuery.fetchNextPage()}>
+                  {t("account.privacy.accessLog.more")}
+                </Button>
+              </div>
+            )}
+          </RecordPaneSection>
         </div>
-      </Card>
-      <Card id="privacy-consent" title={t("account.consent.title")}>
-        <div className={s.pad}>
+      )}
+      <div id="privacy-consent">
+        <RecordPaneSection title={t("account.consent.title")}>
           <ConsentBody />
-        </div>
-      </Card>
-      <Card id="privacy-retention" title={t("account.privacy.retention.title")}>
-        <div className={s.pad}>
+        </RecordPaneSection>
+      </div>
+      <div id="privacy-retention">
+        <RecordPaneSection title={t("account.privacy.retention.title")}>
           <PrivacyRetentionSection />
-        </div>
-      </Card>
-    </>
+        </RecordPaneSection>
+      </div>
+    </div>
   );
 }

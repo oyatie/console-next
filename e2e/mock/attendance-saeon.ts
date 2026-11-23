@@ -20,7 +20,9 @@ export function saeonOctoberDayKind(day: number): S["AttendanceDayKind"] {
 
 export function saeonAttendanceScheduleTree(): S["AttendanceScheduleTree"] {
   const precision = saeonUniverse.entities[0]!;
+  const seoul = precision.workplaces[0]!;
   const pyeongtaek = precision.workplaces[1]!;
+  const asan = precision.workplaces[2]!;
   const team1Name = pyeongtaek.departments[1]!.split(" › ").at(-1)!;
   const total = saeonUniverse.attendanceMonth.members.length;
   const baseLayer: S["AttendanceLayerSummary"] = {
@@ -45,11 +47,29 @@ export function saeonAttendanceScheduleTree(): S["AttendanceScheduleTree"] {
         unscheduled: 0,
       },
       {
+        id: seoul.id,
+        parent_id: precision.id,
+        name: seoul.name,
+        kind: "WORKPLACE",
+        people: 8,
+        effective: { ...baseLayer, from: "LEGAL_ENTITY" },
+        unscheduled: 0,
+      },
+      {
         id: pyeongtaek.id,
         parent_id: precision.id,
         name: pyeongtaek.name,
         kind: "WORKPLACE",
         people: total,
+        effective: { ...baseLayer, from: "LEGAL_ENTITY" },
+        unscheduled: 0,
+      },
+      {
+        id: asan.id,
+        parent_id: precision.id,
+        name: asan.name,
+        kind: "WORKPLACE",
+        people: 6,
         effective: { ...baseLayer, from: "LEGAL_ENTITY" },
         unscheduled: 0,
       },

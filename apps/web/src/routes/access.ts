@@ -42,5 +42,6 @@ const person = createRoute({
   component: lazyRouteComponent(screen(load), "PersonScreen"),
 });
 const ready = createRoute({ getParentRoute: () => app, path: "/access/ready", staticData: { access: readRequirement("/access/ready") }, component: lazyRouteComponent(screen(load), "ReadyScreen") });
+const review = createRoute({ getParentRoute: () => app, path: "/access/review", staticData: { access: readRequirement("/access/review"), floorplan: "P-01" }, component: lazyRouteComponent(screen(() => import("../features/access/ui/access-review-page")), "AccessReviewPage") });
 
-export const accessRoutes = [home, roles, roleNew, role, grants, bulk, person, ready];
+export const accessRoutes = [home, roles, roleNew, role, grants, bulk, person, ready, review];

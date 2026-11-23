@@ -181,7 +181,7 @@ export const koPayroll: Record<keyof typeof enPayroll, string> = {
   "payroll.run.previewToggle": "명세서 미리보기",
   "payroll.run.requestApproval": "결재 요청",
   "payroll.run.submitSheetTitle": "급여 결재 요청",
-  "payroll.run.submitSheetConsequence": "결재 요청 전 점검 사항을 확인합니다. 이 화면에서는 결재를 바로 상신하지 않습니다.",
+  "payroll.run.submitSheetConsequence": "결재를 상신하면 승인 대기 상태로 전환되며 급여 내용을 임의로 변경할 수 없습니다.",
   "payroll.run.stagePendingApproval": "결재 전",
   "payroll.run.stagePayDate": "지급 {date}",
   "payroll.run.statTarget": "대상",

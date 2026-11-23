@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { mockScreen } from "./screen";
 import { mockRoute } from "./route";
 import { checklist, inbox } from "./fixtures";
 import { screens } from "../states/registry";
 import { fits, expectAxe } from "../a11y";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 for (const setup of [false, true]) for (const width of [390, 1440]) for (const theme of ["light", "dark"]) {
   test(`privacy intake shares the queue at ${width}px ${theme} setup=${setup}`, async ({ page }, info) => {
@@ -37,7 +40,9 @@ for (const setup of [false, true]) for (const width of [390, 1440]) for (const t
     await expect(page.getByText(receipt.detail, { exact: true })).toBeVisible();
     await expect(page.getByText("열람 · 삭제", { exact: true })).toBeVisible();
     await expect(page.getByText("D-17", { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: /수용|거절|요구 접수/ })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: t("privacy.intake.decisionsTitle"), exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: t("privacy.intake.decideOpen"), exact: true })).toHaveCount(2);
+    await expect(page.getByRole("button", { name: t("privacy.intake.postponeOpen"), exact: true })).toHaveCount(1);
     await fits(page, "privacy intake receipt");
     await expectAxe(page, "privacy intake receipt");
     await page.screenshot({ path: info.outputPath(`receipt-${width}-${theme}.png`), fullPage: true });
