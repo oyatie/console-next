@@ -4,7 +4,7 @@ import { afterAll, beforeAll, test } from "vitest";
 import { createServer, type ViteDevServer } from "vite";
 import { expect as dom } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
-import { chromium, browserTestOptimizeDeps, type Browser } from "../../../lib/browser-test";
+import { chromium, browserTestOptimizeDeps, openBrowserTestPage, type Browser, type Page } from "../../../lib/browser-test";
 
 const CERT = {
   id: "00000000-0000-4000-8900-000000000001", certificate_no: "CERT-2026-0001", kind: "EMPLOYMENT", items: ["position"],
@@ -13,6 +13,7 @@ const CERT = {
 };
 let server: ViteDevServer;
 let browser: Browser;
+let page: Page;
 beforeAll(async () => {
   await loadCatalog("ko");
   server = await createServer({
@@ -50,12 +51,14 @@ beforeAll(async () => {
   });
   await server.listen();
   browser = await chromium.launch();
+  page = await browser.newPage();
+  await page.route("**/api/v1/me/certificates**", route => route.fulfill({ json: new URL(route.request().url()).pathname.endsWith(CERT.id) ? CERT : { items: [CERT], next_cursor: null } }));
+  // The first load compiles the module; the test then starts from a fresh load.
+  await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}sheet-test`, page.getByRole("dialog"));
 }, 60_000);
 afterAll(async () => { await browser?.close(); await server?.close(); });
 
 test("a sheet closed by Back opens again on its list, not on the certificate it last showed", async () => {
-  const page = await browser.newPage();
-  await page.route("**/api/v1/me/certificates**", route => route.fulfill({ json: new URL(route.request().url()).pathname.endsWith(CERT.id) ? CERT : { items: [CERT], next_cursor: null } }));
   await page.goto(`${server.resolvedUrls!.local[0]}sheet-test`);
   const sheet = page.getByRole("dialog", { name: t("account.certificates.title") });
   await sheet.getByRole("button", { name: t("account.certificates.openPreview") }).click();
@@ -66,5 +69,4 @@ test("a sheet closed by Back opens again on its list, not on the certificate it 
   await page.locator("#address-open").evaluate((button: HTMLButtonElement) => button.click());
   await dom(sheet.getByRole("button", { name: t("account.certificates.openPreview") })).toBeVisible();
   await dom(sheet.getByRole("button", { name: t("account.certificates.backToList") })).toHaveCount(0);
-  await page.close();
 });
