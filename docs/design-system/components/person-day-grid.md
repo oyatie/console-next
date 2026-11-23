@@ -34,9 +34,9 @@ component's own test and two browser-test fixtures: `person-day-grid.browser-fix
 
 | Part | Element | Holds |
 |---|---|---|
-| Box | `<div>` | The table. It is the scroll container, in both directions. The grid sets the offsets of the sticky side columns on it, as custom properties in its `style`: see Looks and sizes. |
-| Grid | `<table role="grid">` | `aria-label` from `label`, `aria-rowcount`, `aria-colcount`, `aria-multiselectable="true"`, `aria-activedescendant` and `tabindex="0"`. The key handler and the focus handler are here. The key handler acts only on a key pressed on the table itself. |
-| Head row | `<tr aria-rowindex="1">` in `<thead>` | The lead headers, the day headers, the tail headers, in that order. |
+| Box | `<div>` | The table. It is the scroll container, in both directions. |
+| Grid | `<table role="grid">` | `aria-label` from `label`, `aria-rowcount`, `aria-colcount`, `aria-multiselectable="true"`, `aria-activedescendant` and `tabindex="0"`. The key handler, the focus handler and the paste handler are here. The grid's own keys act only on a key pressed on the table itself: see Keyboard. |
+| Head row | `<tr aria-rowindex="1">` in `<thead>` | The lead headers, the day headers, the tail headers, in that order. With `tailGroupHeader` the head has two rows: the first ends in the group header over every tail column but the last and an empty cell over the last, and the second holds the tail headers. |
 | Lead header, tail header | `<th>` | The column's `header`. `data-w` carries the column's `width`. |
 | Day header | `<th>` | Two `<span>`s: the day's `label`, then its `sub` on a second line. `data-tone` and `aria-selected`. |
 | Spacer row | `<tr aria-hidden>` holding one `<td aria-hidden>` across every column | Nothing. It stands for the rows above or below the ones rendered, and has their height. |
@@ -73,8 +73,11 @@ prop speaks of a head; the code draws the rule only.
 - What happens after a commit. The grid only calls `onCommit` with `"down"`, `"right"` or `"stay"`. The caller
   writes the value, closes the editor and moves the selection. The comment on the prop says the grid then moves;
   the code leaves the move to the caller.
-- Its own keys. `onKey` is called first for every key pressed on the table itself while the editor is closed. A
-  key pressed on a link or a button inside a cell is not passed to it.
+- Its own keys. `onKey` is called first for every key pressed in the grid while the editor is closed: on the table
+  itself, and on a link or a button inside a cell. On such a control the grid's own keys do nothing, so a key the
+  caller does not take is the control's. The caller tells the two apart by `e.target`.
+- Its paste. `onPaste` is called for a paste anywhere in the grid, on its editor and its links too. The caller
+  tells a paste on the grid itself apart by `e.target`.
 - Loading more rows. `total` is the server's count of rows and `rows` is what has been loaded. The grid has no way
   to ask for more.
 
@@ -93,8 +96,7 @@ spacer rows.
   measured.
 - The grid reads the height of its box when it mounts, when the window is resized and when the box scrolls. A
   box that changes size with the window still (a panel opening beside it) is not followed until the next scroll.
-  That is the height, which decides the rows drawn. The offsets of the sticky side columns do follow such a
-  change: see Looks and sizes.
+  That is the height, which decides the rows drawn.
 - Columns are not windowed. Every day is rendered.
 - The editor is drawn inside its row. A row scrolled out of the window is not rendered, so its input is removed
   with it. Nothing in the component commits or cancels at that point, and nothing gives the grid the focus: the
@@ -139,11 +141,11 @@ There is one look and one size. No prop changes either, apart from the width a l
 | Box | `flex: 1`, `min-height: 0`, `max-height: 100%`, `overflow: auto`, `overscroll-behavior: contain`. It scrolls down only inside a parent that bounds its height. |
 | Table | As wide as its content and at least as wide as the box. 13 px text (`--text-sm`), tabular numbers. |
 | Head cells | Stick to the top of the box. `--surface` fill, a 1 px `--border` line below, 4 px padding top and bottom (`--space-1`), 8 px at the sides (`--space-2`), `--fw-medium`, `--steel`. |
-| Lead column | Held at the left of the box, past the lead columns before it: see the sticky side columns below. `--surface` fill, aligned left, 8 px side padding, one line, `--fw-body`. |
-| Lead column, `width: "code"` | `64px` wide, `--font-mono`. |
-| Lead column, `width: "name"` | At least `96px` wide. Its own rule sets `left: 64px`, which stands for a `name` lead column that takes no measured offset: one in first place, and a fifth on its side. For the second, third and fourth lead column the measured offset replaces it. See the sticky side columns below. |
+| Lead column | The first two stick to the left; a third and later ones scroll with the days: see the sticky side columns below. `--surface` fill, aligned left, 8 px side padding, one line, `--fw-body`. |
+| Lead column, `width: "code"` | `64px` wide, `--font-mono`. First, it sticks at the left edge; after a `name` column, `96px` from it. |
+| Lead column, `width: "name"` | At least `96px` wide. After a `code` column it sticks `64px` from the left edge. First, before a `code` column, it sticks at the edge and is `96px` wide at most: a longer name ends in an ellipsis. |
 | Lead column, `width: "total"` | No rule reads it. |
-| Tail column | Held at the right of the box, past the tail columns after it, while the box has room: see the sticky side columns below. `--surface` fill, a 1 px `--border` line on its left, 8 px side padding, aligned right, one line, at least `64px` wide. No rule reads `width` on a tail column. |
+| Tail column | The last one sticks to the right edge; the others scroll with the days: see the sticky side columns below. `--surface` fill, a 1 px `--border` line on its left, 8 px side padding, aligned right, one line, at least `64px` wide. No rule reads `width` on a tail column. |
 | Day header | At least `44px` wide, centred, with a pointer cursor. `sub` is on its own line at 12 px (`--text-xs`). |
 | Person row | `--row-h-compact` high, 32 px. Every cell has a 1 px `--border` line below. |
 | Group rule | A 2 px `--control-border` line above every cell of the first row of a group. |
@@ -172,71 +174,29 @@ outline widths and offsets and the hatch's spacing.
 
 ### The sticky side columns
 
-The lead columns and the tail columns stand side by side: each is held past the ones outside it.
+The stylesheet decides which side columns stick, by their place in the row. The grid measures nothing for them,
+and the same rules hold in every look and at every width.
 
-- **Measured offsets.** A column is as wide as what it holds, so the grid measures. It reads the widths of the
-  head row's cells and sets custom properties on the box: `--lead-1`, `--lead-2` and so on for the second lead
-  column onwards, each the width of the lead columns before it, and `--tail-0`, `--tail-1` and so on for the
-  tail columns counted from the last one inwards, each the width of the tail columns after it.
-- **When it measures.** After every render, and whenever the box or a head cell changes size without one: a
-  `ResizeObserver` watches the box and every head cell. A table that fits its box keeps the box's width when a
-  font arrives and shares it out again between its columns, so watching the table alone would miss that.
-- **What the stylesheet reads.** `--lead-1` to `--lead-3` are the `left` of the second, third and fourth cell
-  of a row when that cell is a lead cell. `--tail-0` to `--tail-3` are the `right` of the last four cells when
-  they are tail cells. Until the grid has set them, they have the values the stylesheet declares on the box:
-  `64px` for each lead offset and `0` for each tail offset.
-- **The first lead column** takes no property. It keeps `left: 0` from the base rule, or `left: 64px` when its
-  `width` is `"name"`. So by the stylesheet a `name` column in first place is held 64 px from the left edge of
-  the box, not at it. The attendance view puts a `code` column first. The browser fixture of the grid alone puts
-  a `name` column first, and no test reads where it is drawn.
-- **Lead columns are always held.**
-- **Tail columns are held from the outside in.** The room is the width of the box less the lead columns. A day
-  counts as the narrowest day column, so an open editor or a long draft, which widens its own column, changes
-  nothing.
-  - The last tail column is held while the box has room for one day and that column.
-  - Each tail column inside it is held while the box has room for a week of days, seven, and every tail column
-    from that one outwards.
-  - Once one is not held, none inside it is.
-  - A tail column that is not held gets `auto` as its offset and scrolls with the days. It is where the row
-    ends.
-  - A lone tail column is always held. In a box narrower than the lead columns, one day and that column, no
-    day column shows whole between the two sides.
-- **At most four sticky columns a side are placed.** The stylesheet has a rule for the second to the fourth
-  lead column and for the last four tail columns, and its comment says a fifth needs its own rule. The grid
-  still sets a property for a fifth, and no rule reads it. So a fifth lead column keeps the `left` a first one
-  has: `0`, or `64px` for a `name` column. A fifth tail column from the end keeps `right: 0`, where the last one
-  is held, whether or not the box has room. The attendance view passes one `code` column, up to two `name`
-  columns and four tail columns.
-- A `code` longer than 64 px widens its column, since in a table a cell's `width` is a least width. The offsets
-  are measured, so the columns after it move with it. No test has such a code.
+- The first two lead columns stick. Their offsets fit a `code` and a `name` column, in either order: see the
+  table above. The attendance view passes those two, `code` first in today's look and `name` first in the
+  console month.
+- A third lead column, and any after it, is `position: static` and scrolls with the days. In the attendance view
+  it is the schedule column when someone has no schedule, and in the console month otherwise the position or the
+  unit.
+- The last tail column sticks to the right edge. Every other tail column is `position: static`: it scrolls with
+  the days and is where the row ends.
+- With `tailGroupHeader`, the first head row ends in the group header, over every tail column but the last, and
+  an empty cell over the last that sticks to the right edge with it. In a visual style the group header row is
+  22 px high and the tail headers below it start there.
+- On a phone a visual style does not draw a lead column marked `hideOnPhone`, and a `name` column is 72 px wide.
+- A `code` longer than its width widens its column, since in a table a cell's `width` is a least width. A `name`
+  column after it still sticks at 64 px. No test has such a code.
 
-`apps/web/src/ui/person-day-grid/person-day-grid.browser.test.tsx` covers this in a browser, with the attendance
-view's two and three lead columns and four totals. In the head row and in a person's row, it reads that no side
-column in view is covered at its centre and that neighbours on a side touch. It reads that at the start of the
-sideways scroll in every box below, 300 px in wherever the box scrolls, and at the end of the row in the boxes
-1000 px and 640 px wide. At the end of the row in the three narrowest cases it reads less: see below the table.
-
-| Width of the box | Lead columns | Totals held |
-|---|---|---|
-| 1000 px | Two or three | All four, with a week of days or more between the two sides. They stay held while an editor is open. |
-| 640 px | Two | The outer two, with a week of days in view. The other two end the row. |
-| 452 px | Three | The last one, with a day or more in view beside it. |
-| 358 px | Two | The last one, with a day or more in view beside it. |
-| 358 px | Three | None. All four scroll with the days and end the row. |
-| 2200 px, wide enough for every column | Three | All four. Nothing scrolls sideways, and every column is where the table puts it. |
-
-Scrolled to the end of the row, the three narrowest cases assert the same three things. No total is covered at
-its centre, and each touches the total before it. All four totals start to the left of the box's right edge. The
-last one ends at that edge. A fault that names a lead column is left out of the check there, so the test does
-not assert where the lead columns are, or what covers them.
-
-- For 452 px with three lead columns and for 358 px with two, the test's comment says that all four totals show
-  whole there, over the lead columns, which a box that narrow cannot also show. That is the comment's wording.
-  The assertions are the three above, and none reads the overlap.
-- For 358 px with three lead columns, where no total is held, the test has no such comment. It asserts the
-  three things above and nothing about the lead columns: that the totals lie over them there is not asserted.
-
-The same test holds a lone total at the right edge of a box 390 px and 180 px wide, at the start of the sideways
+`person-day-grid.test.tsx` reads the stylesheet in the console look: a `name` column first is at most 96 px wide
+and the `code` column after it starts 96 px in, the third lead column is static, and of two tail columns the
+first is static and the last sticky. `person-day-grid.browser.test.tsx` reads in the console month, at a desk and
+at 390 px, that the name and the number stick and the third lead column is static, and on the phone that it is
+not drawn. It holds a lone total at the right edge of a box 390 px and 180 px wide, at the start of the sideways
 scroll, part way and at the end.
 
 ## States
@@ -273,7 +233,7 @@ While the editor is closed:
 | Key | What it does |
 |---|---|
 | Tab, Shift+Tab | Moves into the grid and out of it. A link or a button the caller put in a cell is a tab stop of its own. |
-| Any key pressed on the table itself | Goes to the caller's `onKey` first. When that returns `true`, the grid does nothing more. |
+| Any key, on the table or on a control in a cell | Goes to the caller's `onKey` first. When that returns `true`, the grid does nothing more. |
 | Arrow keys | Moves the focus one cell. The selection becomes that cell. |
 | Home, End | Moves to the first or the last day of the row. |
 | Page Up, Page Down | Moves ten rows. |
@@ -289,9 +249,12 @@ While the editor is closed:
   do nothing.
 - While `editing` is set, the table's handler returns before `onKey` is called. That holds even when the
   editor's row is not rendered.
-- The handler acts only on a key pressed on the table itself. A key pressed in a link or a button inside a cell
-  is that control's: the handler returns at once, the caller's `onKey` is not called, and the key's default is
-  left alone. Enter on a link follows the link.
+- The grid's own keys act only on a key pressed on the table itself. A key pressed in a link or a button inside a
+  cell goes to the caller's `onKey`, and when that does not take it, it is the control's: the grid moves nothing
+  and opens nothing, and the key's default is left alone. Enter on a link follows the link.
+- The attendance view takes Ctrl or Meta with S, Z or Y wherever the focus is in the grid: the save sheet, undo
+  and redo. Its other keys act only on the table itself. So Ctrl+S on a name link opens the save sheet, not the
+  browser's save dialog, and by the code Ctrl+Enter on the link is the link's.
 - Focus landing on such a control runs the table's focus handler too, which asks for the first cell when no
   focus cell is shown.
 - A pointer press on a control in a lead cell reaches the lead cell and selects the row, unless the control
@@ -300,28 +263,37 @@ While the editor is closed:
   button does not select the row. It stops neither on the name link it puts there: a press on the link selects
   the row, and the link's keys are its own. `person-day-grid.browser-editing.ts` runs the keys in a browser:
   Enter on the name link follows it and opens no editor, and `p`, Backspace, Delete, `]`, a digit, F2 and Arrow
-  Down pressed on the link change nothing in the grid.
-- The attendance view listens for a paste on the window and acts only while the table itself has the focus. A
-  paste with the editor, a name link or the button focused is not the grid's. The same test pastes on the link,
-  where no paste preview opens, and on the grid, where one does.
+  Down pressed on the link change nothing in the grid, and Ctrl+S, Ctrl+Z and Ctrl+Y pressed on it save, undo
+  and redo.
+- The attendance view handles a paste through `onPaste` and acts only on one pasted on the table itself. A paste
+  with the editor, a name link or the button focused is not the grid's, nor one on another grid on the screen,
+  such as the console month's list of open exceptions. The browser test pastes on the link and on a row of that
+  list, where no paste preview opens, and on the grid, where one does.
 - A change of focus row scrolls the box up or down so that the row is in view below the sticky head row. A row
   scrolled out of view by hand is not brought back by a key that keeps the focus row, such as Arrow Left.
-- The box scrolls sideways so that the focus cell's column shows whole between the lead columns and the totals
-  in view. The grid reads where the column is from the head row, which is always drawn. It does so each time a
-  range is set, not only when the column changes, and when an editor opens or closes.
+- The box scrolls sideways so that the focus cell's column shows whole between the sticky lead columns and the
+  last total. The grid reads where the columns are from a drawn person row, which has one cell per column, where a
+  head row may span the totals; the focus row may not be drawn yet. A lead column that scrolls with the days, or
+  is not drawn at this width, is left out. It does so each time a range is set, not only when the column changes,
+  and when an editor opens or closes, and it scrolls by whole pixels, since a column can start on a fraction of
+  one.
   - A movement key brings the focus cell back into view after the box was scrolled by hand, even a key with
     nowhere further to go.
   - An editor that opens widens its column, and the box scrolls until the column shows whole.
   - A press on a day cell that shows in part brings the rest of it into view.
+  - A range set from outside the grid is followed too, such as the save sheet's go-to in the attendance view.
   - A press on a lead cell is left out. It selects the row with the focus on the last day, and the box stays
     where the person has it. The next key brings the focus cell into view.
   - Scrolling the box by hand is not followed. The focus cell can be out of view, or under a sticky column,
     until the next range is set.
   - A column wider than the room between the two sides is placed with its start at the lead columns. Its end
-    stays under the totals or outside the box.
+    stays under the last total or outside the box.
+  - A lead column that scrolls with the days is not brought back: Home moves the box only as far as the first
+    day needs, so a third lead column can stay under the sticky ones.
 
-  `person-day-grid.browser.test.tsx` covers the first four in a browser, with the arrow keys, Home and End in
-  the attendance view. The last two were read from the code.
+  `person-day-grid.browser.test.tsx` covers the first five in a browser, with the arrow keys, Home and End in
+  the attendance view, in today's look and in the console month at a desk and at 390 px. The last three were
+  read from the code.
 
 While the editor is open, keys go to the input. The table says what a plain key does. A key the input method
 owns commits nothing and cancels nothing: see the keys the Korean input method owns, below.
@@ -370,12 +342,11 @@ the grid.
 - `person-day-grid.browser-editing.ts` runs each in a browser, and that one edit is still one step to undo:
   taking the focus back does not commit a second time.
 
-Where a journey spec of the timesheet goes on to a key on the grid after Enter, it gives the grid the focus
-itself first. It calls `focus()` on the grid and then presses the save key, Ctrl or Meta with S, as
-`e2e/attendance-long-span.spec.ts` and `e2e/attendance-approvals.spec.ts` do. Or it clicks a cell before the
-next key, as `e2e/attendance-records.spec.ts` and `e2e/session-recovery.spec.ts` do. None was found that presses
-a key on the grid straight after Enter: the files under `e2e` that reach a grid or a grid cell in attendance
-were searched for a press of Enter, and the lines after each were read.
+`e2e/mock/attendance-month-console.spec.ts` presses the save key, Ctrl or Meta with S, straight after Enter in
+the console month, so it relies on the focus coming back. Other journey specs of the timesheet still give the
+grid the focus first: `e2e/attendance-long-span.spec.ts` and `e2e/attendance-approvals.spec.ts` call `focus()`
+on the grid before the save key, and `e2e/attendance-records.spec.ts` and `e2e/session-recovery.spec.ts` click a
+cell before the next key.
 
 **Keys the Korean input method owns.**
 
@@ -386,7 +357,7 @@ were searched for a press of Enter, and the lines after each were read.
   cell. What differs between such keys is whether the key is stopped.
 - **Not stopped:** Enter, a letter and every other key the input method owns, except Escape and Tab. The editor
   returns without acting on the key and without stopping it. The key goes on to the table's handler, which
-  returns at once because the key was not pressed on the table, and the caller's `onKey` is not called. By the
+  returns at once because the editor is open, and the caller's `onKey` is not called. By the
   code the key then goes on to any handler above the grid. No test reads that.
 - **Stopped:** an Escape or a Tab the input method owns, which is one pressed while a syllable is composing. The
   shared helper `leaveImeKey` stops it in the capture phase, so it reaches no handler on the input, on the table
@@ -465,7 +436,8 @@ Known gaps:
   marks which cell is the focus.
 - The box does not follow the focus cell sideways after it is scrolled by hand, or after a press on a lead cell
   puts the focus on the last day. Until the next range is set, the focus cell can be out of view or under a
-  sticky column. A column wider than the room between the sticky columns keeps its end covered. See Keyboard.
+  sticky column. A column wider than the room between the sticky columns keeps its end covered, and a lead column
+  that scrolls with the days is not brought back by Home. See Keyboard.
 - A row scrolled out of view by hand is not brought back by a key that keeps the focus row: see Keyboard.
 - When the editor's row is scrolled out of the window, its input is removed and the grid does not take the
   focus: see Anatomy.
@@ -475,6 +447,8 @@ Known gaps:
 - A cell taller than the row height puts the spacers and the window out of step with the rows: see Anatomy.
 - Typing to open the editor does not handle the Korean input method. The table's handler has no check, and the
   first key of a syllable has no input to compose in: see Keyboard.
+- A Tab pressed while a syllable is composing keeps the focus in the editor in a browser test that composes Latin
+  text through the browser's input-method interface. It was not run with a real Korean input method.
 - Enter, F2 and a double-click open the editor on a draft's text only. The grid passes no value, and the
   attendance view opens a cell with no draft empty, whatever the cell shows.
 - The group's name is never shown or exposed.
@@ -482,12 +456,6 @@ Known gaps:
 - The header cells have no `scope`, and the lead and tail cells cannot be reached with the grid's keys.
 - The rows drawn do not follow a change of the box's height while the window keeps its size, until the next
   scroll: see Anatomy.
-- At most four sticky columns a side are placed. A fifth takes no measured offset and keeps the one its other
-  rules give: see Looks and sizes. That was read from the stylesheet, not run in a browser.
-- A `name` column in first place is held 64 px from the left edge of the box by its own rule: see Looks and
-  sizes. That was read from the stylesheet, not run in a browser.
-- A lone tail column is held in a box of any width. In a box with no room for a day between it and the lead
-  columns, no day column shows whole: see Looks and sizes.
 - While an editor is open its column is wider than the day columns: the stylesheet gives the editor
   `min-width: 88px` and a day header `min-width: 44px`. The columns to the right of it move as it opens and
   closes. The width was not measured.
@@ -523,10 +491,10 @@ The WCAG 2.2 criteria that apply:
 | 1.4.3 Contrast (Minimum) | The pairs above. The caller's content takes the caller's colours. |
 | 1.4.10 Reflow | The grid scrolls in both directions inside its box. It is a data table, which the criterion excepts. |
 | 1.4.11 Non-text Contrast | A test holds the refused outline and the group rule to 3:1 in both themes. The focus outline is above 3:1 on the two fills computed above. A focus cell has the selected fill whenever both corners of its range are shown. |
-| 2.1.1 Keyboard | Every day cell can be reached, selected and edited with keys. Lead and tail cells are not reached by the grid's keys. A link or a button the caller puts in a cell is a tab stop and keeps its own keys: the grid acts only on a key pressed on the table. A browser test runs Enter on the attendance view's name link. |
+| 2.1.1 Keyboard | Every day cell can be reached, selected and edited with keys. Lead and tail cells are not reached by the grid's keys. A link or a button the caller puts in a cell is a tab stop and keeps its own keys: the grid's own keys act only on a key pressed on the table, and the attendance view keeps only its save, undo and redo chords on such a control. A browser test runs Enter and those chords on the attendance view's name link. |
 | 2.4.3 Focus Order | When an edit ends by a key, the grid takes the focus again, so the next key lands where the person was working. A browser test covers Enter, Tab and Escape. Not answered when the editor's row is scrolled out of the window: the input is removed and the grid does not take the focus. |
 | 2.4.7 Focus Visible | Not met for a focused draft or refused cell. |
-| 2.4.11 Focus Not Obscured (Minimum) | When a key moves the focus cell, or an editor opens in it, the box scrolls so that the cell shows whole below the head row and between the sticky columns. A browser test covers both directions. Not answered after the box is scrolled by hand or a lead cell is pressed, until the next key, nor for a column wider than the room between the sticky columns: see the gaps. |
+| 2.4.11 Focus Not Obscured (Minimum) | When a key moves the focus cell, an editor opens in it or a range is set from outside the grid, the box scrolls so that the cell shows whole below the head row and between the sticky columns. A browser test covers both directions, in today's look and in the console month. Not answered after the box is scrolled by hand or a lead cell is pressed, until the next key, nor for a column wider than the room between the sticky columns: see the gaps. |
 | 2.5.7 Dragging Movements | A range can be made without a drag: Shift and a press, or the keys. Both need a keyboard. A press on a day header or a lead cell selects a whole day or row. |
 | 2.5.8 Target Size (Minimum) | A day cell is at least 44 px wide and 32 px high. |
 | 4.1.2 Name, Role, Value | The table above. The state behind a look is not exposed. |
@@ -542,8 +510,8 @@ What tests it:
 | Test | Covers |
 |---|---|
 | `apps/web/src/ui/person-day-grid/person-day-grid.test.tsx` | The role, the row count, a row index, the selected cells and the active descendant. That the editor and the focus stay in their person's row through a re-sort, a row added above and a filter, and go to nobody when that person is not shown. In a browser, with the real stylesheet and tokens: the refused outline is 2 px, solid and at least 3:1 against the cell's fill, in both themes, on a plain day, a holiday, a rest day and a selected focused cell; the group rule is 2 px, solid and at least 3:1. |
-| `apps/web/src/ui/person-day-grid/person-day-grid.browser.test.tsx`, with its probes in `person-day-grid.browser-probes.ts` | In a browser, served with the real stylesheet. The grid alone, with 400 people: the rows drawn and the spacers stand for every row at a row height of 32, 24 and 40 px; Arrow Down keeps the focus cell in view below the head row; a box taller than 600 px is filled with rows before the first scroll; a lone total stays at the right edge of a box 390 px and 180 px wide. The attendance view, with twelve people over 31 days: the sticky side columns stand side by side, and the totals held are the ones the table under Looks and sizes names; the focus cell stays in view between the sticky columns through the arrow keys, Home, End, an opening editor, a hand scroll and a press on a cell that shows in part; a press on a lead cell leaves the box where it is. |
-| `apps/web/src/ui/person-day-grid/person-day-grid.browser-editing.ts`, the editing cases of the test above | In the attendance view: the grid has the focus again after an edit ends by Enter, Tab or Escape; after a press on the grid that ends an edit it has the focus without the focus outline; a press outside the grid keeps the focus there; a Tab pressed during a composition keeps the focus in the editor; a press that ends an edit selects the pressed cell alone; Enter on a name link follows it, and keys and a paste on the link are not the grid's; a press inside the open editor, or on its cell beside the text, keeps the editor; Enter, F2 and a double-click open the editor on a draft's text, and an edit left unchanged writes nothing. |
+| `apps/web/src/ui/person-day-grid/person-day-grid.browser.test.tsx`, with its probes in `person-day-grid.browser-probes.ts` and its sideways cases in `person-day-grid.browser-sideways.ts` | In a browser, served with the real stylesheet. The grid alone, with 400 people: the rows drawn and the spacers stand for every row at a row height of 32, 24 and 40 px; Arrow Down keeps the focus cell in view below the head row; a box taller than 600 px is filled with rows before the first scroll; a lone total stays at the right edge of a box 390 px and 180 px wide. The attendance view, with twelve people over 31 days, in today's look and in the console month at a desk and on a 390 px screen: nothing covers either edge of the focus cell through the arrow keys, Home, End, an opening editor, a hand scroll, a press on a cell that shows in part and a range set from outside the grid; a press on a lead cell leaves the box where it is. In the console month: the name and the number stick, the third lead column is static and is not drawn on the phone, and a paste on a row of the open-exceptions list opens no paste preview. |
+| `apps/web/src/ui/person-day-grid/person-day-grid.browser-editing.ts`, the editing cases of the test above, in the same three looks | In the attendance view: the grid has the focus again after an edit ends by Enter, Tab or Escape; after a press on the grid that ends an edit it has the focus without the focus outline; a press outside the grid keeps the focus there; a Tab pressed during a composition keeps the focus in the editor; a press that ends an edit selects the pressed cell alone; Enter on a name link follows it, the grid's keys and a paste on the link are not the grid's, and Ctrl+S, Ctrl+Z and Ctrl+Y on it save, undo and redo; a press inside the open editor, or on its cell beside the text, keeps the editor; Enter, F2 and a double-click open the editor on a draft's text, and an edit left unchanged writes nothing. |
 | `apps/web/src/ui/ime-keys.browser.test.tsx` | In a browser: Enter, Tab and Escape sent to the editor as keys the input method owns commit nothing and close nothing, and no handler above the grid hears the Escape or the Tab. A plain Enter then commits. |
 | `apps/web/src/lib/pure/ime.test.ts` | The two helpers the editor uses: which keys the input method owns, and that an Escape or a Tab it owns is stopped while its Enter and a plain Escape or Tab go on. |
 | `apps/web/src/ui/sheet-grid/range.test.ts` | Moving, extending and stopping at the edge; a cell staying on its person; a focus that is gone starting again from the first cell; the rows a range covers. |
@@ -567,30 +535,20 @@ skips itself on the served build, which is the one the workflows use. The comman
 
 ## Phone behaviour at 390 px
 
-The stylesheet has no media query and no container query. What changes with the width is which tail columns are
-held, and the grid decides that from the width of its box, not of the screen: see Looks and sizes.
+The stylesheet's phone rules belong to a visual style, any `data-experience` but `baseline`, and follow the width
+of the screen (`--phone`). Today's look has none.
 
-- The grid keeps every column and scrolls in both directions inside its box. There is no narrower form.
-- The lead columns are always held and keep their widths. A lone tail column is always held too.
-- Of several tail columns, a narrow box holds the last one only, and only while a day fits beside it. By the
-  least widths in the stylesheet, a `code` column, a `name` column, one day and the last tail column take
-  268 px: `64px`, `96px`, `44px` and `64px`. A box 358 px wide has room for that, and not for the week of days
-  that a second tail column needs. Holding the last one leaves at most 134 px for days, which is three day
-  columns of `44px`. The columns are as wide as what they hold, so the room is less wherever a name or a header
-  is wider.
-- With a third lead column of at least `96px`, the same sum is 364 px. A box 358 px wide holds no tail column:
-  all of them scroll with the days and end the row.
-- `person-day-grid.browser.test.tsx` runs the attendance view both ways in a browser, in a box 358 px wide, the
-  width its cases take for a phone. With two lead columns the last total stays at the right edge with a day or
-  more showing whole beside it. With three, no total is held. Either way, at the end of the row the test asserts
-  that no total is covered at its centre, that all four start left of the box's right edge and that the last
-  one ends at it. For two lead columns its comment says the totals lie over the lead columns there. For three it
-  has no such comment, and that overlap is not asserted: see Looks and sizes.
-- A day cell stays at least 44 px wide and 32 px high. The 44 px is the literal `44px`: the module does not read
-  `--target-touch`.
-- While an editor is open its column is wider: the stylesheet gives the editor `min-width: 88px`. By the least
-  widths that is most of the room a 358 px box leaves for days. The box scrolls so that the column shows whole
-  between the two sides. That was not run at this width.
+- The grid keeps every column it draws and scrolls in both directions inside its box. There is no narrower form.
+- The first two lead columns and the last tail column stick at every width, as at a desk: see Looks and sizes.
+- In a visual style on a phone, a lead column marked `hideOnPhone` is not drawn, a `name` column is 72 px wide
+  with a `code` column after it 72 px from the left, and a day column is 30 px wide. The console month marks its
+  position and unit columns so.
+- In today's look a day cell stays at least 44 px wide and 32 px high. The 44 px is the literal `44px`: the
+  module does not read `--target-touch`.
+- While an editor is open its column is wider: the stylesheet gives the editor `min-width: 88px`. The box scrolls
+  so that the column shows whole between the sticky columns.
+- `person-day-grid.browser.test.tsx` runs the attendance view's editing and sideways cases in the console month
+  on a 390 px screen, and reads there that the third lead column is not drawn.
 - The editor opens from a key or from a double click. Focus on the table is not focus on a text control. Whether
   a double tap opens the editor on a phone, and whether a finger can drag a selection, was not checked.
 
@@ -640,7 +598,7 @@ uses touch: `e2e` was searched for `hasTouch`, `tap(`, `touchscreen` and `isMobi
 | `look` | yes | `(r: R, day: number) => CellLook` |  |  |
 | `onCommit` | yes | `(then: "down" \| "right" \| "stay") => void` |  | Commit the open editor; the grid then moves `then`. |
 | `onEdit` | yes | `(value: string \| null) => void` |  | With no editor open: a typed character starts an edit on that character, and "" (Enter, F2, a double-click) asks for one on what the cell holds, which only the caller knows. With one open: its new text. null closes it unsaved. |
-| `onKey` | yes | `(e: KeyboardEvent<Element>) => boolean` |  | The feature's keys first (⌘D, ⌘↵, =, Delete, P …); true when handled. |
+| `onKey` | yes | `(e: KeyboardEvent<Element>) => boolean` |  | The feature's keys first (⌘D, ⌘↵, =, Delete, P …); true when handled. It also sees a key pressed on a link or a button in a cell (`e.target` is not the grid), which is that control's unless the feature takes it (⌘S). |
 | `onRange` | yes | `(range: Range) => void` |  | The new selection. Never a commit: the grid commits the open editor itself before a person moves the selection, and its own collapse (the people under a range changed) leaves the editor and what is being typed alone. |
 | `range` | yes | `Range \| null` |  | By row and column key; null (or a corner not shown) selects nothing. |
 | `rowKey` | yes | `(r: R) => string` |  |  |
@@ -650,6 +608,7 @@ uses touch: `e2e` was searched for `hasTouch`, `tap(`, `touchscreen` and `isMobi
 | `activeRowId` | no | `string` |  | Active/selected employee row key highlighted with the selected row bar. |
 | `footerRows` | no | `readonly GridFooterRow[]` |  | Optional summary rows rendered inside tfoot beneath the grid body. |
 | `groupOf` | no | `(r: R) => string` |  | A row group's head is drawn above the first row of each group. |
+| `onPaste` | no | `(e: ClipboardEvent<HTMLTableElement>) => void` |  | A paste with the focus anywhere in the grid: on the grid itself, its editor, or a link or a button in a cell. |
 | `tailGroupHeader` | no | `ReactNode` |  | Optional group header spanning all tail columns (2-row thead). |
 
 <!-- /ds:props -->
@@ -707,9 +666,5 @@ Two descriptions say more than the code does. `groupOf` draws a rule above the f
 | `--warn-tx` | `border`, `color` |
 
 <!-- /ds:tokens -->
-
-`--lead-1` to `--lead-3` and `--tail-0` to `--tail-3` are not design tokens. They are the grid's own properties:
-the stylesheet declares them on the box, and the grid sets them there from the measured column widths. See Looks
-and sizes.
 
 The focus outline of anything the caller puts in a cell is a global rule and is not listed: it reads `--primary`.
