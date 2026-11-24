@@ -12,12 +12,13 @@ import { todayKst } from "../../../lib/pure/today";
 import { focusSoon } from "../../../lib/react/announce";
 import type { ReadState } from "../../../lib/react/query-view";
 import { useKeys } from "../../../lib/react/use-keys";
+import { useSingleKeys } from "../../../lib/react/use-single-keys";
 import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
 import { MenuButton, type MenuEntry } from "../../../ui/menu/menu-button";
 import { RecordPattern } from "../../../ui/patterns/record";
 import { FieldMark } from "../../../ui/record/field-row";
-import { Gate } from "../../../ui/record/record-section";
+import { Gate, Kbd } from "../../../ui/record/record-section";
 import { unitPositionQuery } from "../api/record";
 import { serviceSpan } from "../domain/card";
 import { retirementDate } from "../domain/employment";
@@ -60,6 +61,7 @@ function buildCardMeta({
   pos: UnitPosition | null; dismiss: () => void;
 }) {
   const { e } = c;
+  const singleKeys = useSingleKeys();
   const keys = useRef<{ next?: () => void; prev?: () => void; jump: (n: number) => void; history: () => void }>({ jump: () => {}, history: () => {} });
   useLayoutEffect(() => {
     keys.current.next = pos?.next_id ? () => go(pos.next_id!) : undefined;
@@ -133,11 +135,17 @@ function buildCardMeta({
           {certsCount !== undefined ? <Chip tone="outline">{t("people.panel.certsCount", { count: certsCount })}</Chip> : null}
         </>
       ),
-      tools: pos ? (
+      // The walk keys' caps show while single keys are on, as on the Classic card.
+      tools: pos || singleKeys ? (
         <div className="row">
-          <bdi className={s.pos}><strong className={s.posAt}>{t("empCard.pos.at", { index: pos.index, total: pos.total })}</strong></bdi>
-          <Button size="sm" variant="ghost" aria-label={t("empCard.prev")} disabled={!pos.prev_id} onClick={() => pos.prev_id && go(pos.prev_id)}><ChevronLeft size={14} aria-hidden="true" /></Button>
-          <Button size="sm" variant="ghost" aria-label={t("empCard.next")} disabled={!pos.next_id} onClick={() => pos.next_id && go(pos.next_id)}><ChevronRight size={14} aria-hidden="true" /></Button>
+          {pos ? (
+            <>
+              <bdi className={s.pos}><strong className={s.posAt}>{t("empCard.pos.at", { index: pos.index, total: pos.total })}</strong></bdi>
+              <Button size="sm" variant="ghost" aria-label={t("empCard.prev")} disabled={!pos.prev_id} onClick={() => pos.prev_id && go(pos.prev_id)}><ChevronLeft size={14} aria-hidden="true" /></Button>
+              <Button size="sm" variant="ghost" aria-label={t("empCard.next")} disabled={!pos.next_id} onClick={() => pos.next_id && go(pos.next_id)}><ChevronRight size={14} aria-hidden="true" /></Button>
+            </>
+          ) : null}
+          {singleKeys ? <bdi className={s.pos}><Kbd k="J" /><Kbd k="K" /> {t("empCard.walk")}</bdi> : null}
         </div>
       ) : undefined,
       actions: c.editable ? (

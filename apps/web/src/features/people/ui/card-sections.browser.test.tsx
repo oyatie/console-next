@@ -41,9 +41,9 @@ const links = () => page.getByRole("navigation", { name: t("uiRecord.sections"),
 const tab = (id: "card" | "ledger") => page.getByRole("navigation", { name: t("empCard.tabs"), exact: true }).getByRole("link", { name: t(`empCard.tab.${id}`), exact: true });
 // A jump lands two frames after its key; a key that must do nothing is given that long, and more, to do it.
 const settle = () => page.evaluate(() => new Promise<void>(done => { let n = 6; const tick = () => (--n ? requestAnimationFrame(tick) : done()); tick(); }));
-async function open(as: Partial<typeof reader> = {}) {
+async function open(as: Partial<typeof reader> = {}, look = "baseline") {
   Object.assign(reader, { manage: true, restricted: false }, as);
-  await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}card-sections-test?person=${moveDetail.employee.id}`, page.getByRole("heading", { level: 1, name: moveDetail.employee.name }));
+  await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}card-sections-test?person=${moveDetail.employee.id}&look=${look}`, page.getByRole("heading", { level: 1, name: moveDetail.employee.name }));
   await element(tab("card")).toHaveAttribute("aria-current", "page");
 }
 /** Every link's cap is the digit that opens its section and marks the link, and the number in the section's head. */
@@ -134,8 +134,8 @@ test("a digit or H pressed in the print view leaves the tab and the current sect
   await element(second).toHaveAttribute("aria-current", "true");
 }, 90_000);
 
-test("the card's key caps hide while single keys are off, and follow a change made in another tab", async () => {
-  await open();
+test.each(["baseline", "console"])("%s: the card's key caps hide while single keys are off, and follow a change made in another tab", async look => {
+  await open({}, look);
   const caps = page.locator("kbd").filter({ hasText: /^[JKH?]$/ });
   await element(caps).toHaveCount(4);
   const set = (value: string | null) => page.evaluate(([key, next]) => {
