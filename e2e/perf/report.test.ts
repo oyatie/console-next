@@ -38,3 +38,22 @@ test("the waterfall excerpt belongs to the cold p95 sample", () => {
     { lcp_ms: 100, waterfall_summary: { entries: 200, max_queue_ms: 10, last_response_end_ms: 90 } },
   ] }])).toContain("| / | h2 | 200 | 10 | 90 |");
 });
+
+test("the job summary explains an omitted transport once and keeps the gated cold tails", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "perf-report-"));
+  try {
+    const row = { route: "/", cache: "cold", protocol: "h2", lcp_p95_ms: 110, status: "pass", sample_count: 20 };
+    const file = path.join(dir, "route-load.json");
+    writeFileSync(file, JSON.stringify({ transports: ["h2"], rows: [row, { ...row, route: "/people", status: "fail" }], comparison: [] }));
+    const summary = execFileSync(process.execPath, ["e2e/perf/report.ts", file], { encoding: "utf8" });
+    expect(summary.trim().split("\n")).toEqual([
+      "HTTP/1.1 not measured on this run", "",
+      "| Route | HTTP/2 cold p95 LCP (ms) |", "| --- | --- |",
+      "| / | 110 (pass, n=20) |", "| /people | 110 (fail, n=20) |",
+    ]);
+
+    writeFileSync(file, JSON.stringify({ transports: ["http/1.1", "h2"], rows: [row], comparison: [] }));
+    expect(execFileSync(process.execPath, ["e2e/perf/report.ts", file], { encoding: "utf8" }))
+      .toContain("| / | unknown (missing) | 110 (pass, n=20) |");
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});

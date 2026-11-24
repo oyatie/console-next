@@ -1,16 +1,18 @@
 import { Link } from "@tanstack/react-router";
-import { useQueries, useQuery, type UseQueryResult } from "@tanstack/react-query";
+import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type { LegalEntity, Revision } from "@console/api/pending";
 import { t } from "@console/i18n";
 import { fmtDate, fmtDateTime } from "@console/i18n/format";
 import { CHANGE_MODE, labeled } from "../../../lib/labels";
 import { QueryState } from "../../../lib/react/query-state";
+import { Skeleton } from "../../../ui/skeleton/skeleton";
 import { OutcomeLink } from "../../../lib/react/outcome-link";
 import { ActorBadge } from "../../../ui/timeline-lanes/actor-badge";
 import { Chip } from "../../../ui/chip";
 import { TimelineLanes } from "../../../ui/timeline-lanes/timeline-lanes";
 import { FieldDiff } from "../../../ui/timeline-lanes/field-diff";
-import { entityDocumentsQuery, entityHistoryQuery, registrationHistoryQuery } from "../api";
+import { entityDocumentsQuery } from "../api";
+import { useHistoryReads } from "./use-history-reads";
 import { OpenOriginal } from "./open-original";
 import { revisionKind } from "../domain/history";
 import { entityName } from "../../../reference/entity/domain/names";
@@ -69,11 +71,11 @@ export function History({ q, subject, target }: { q: UseQueryResult<{ items: Rev
 
 /** The entity's and its certificates' effective-dated history, newest first; nothing is ever overwritten. */
 export function HistoryTab({ e, flat }: { e: LegalEntity; flat?: boolean }) {
-  const own = useQuery({ ...entityHistoryQuery(e.id), retry: false });
-  const regs = useQueries({ queries: e.registrations.map((r) => ({ ...registrationHistoryQuery(r.id), retry: false })) });
+  const { own, regs, arriving } = useHistoryReads(e);
   return (
     <section className={flat ? "panel" : "card panel"} aria-labelledby="history-title">
       <h2 id="history-title" className="panel__title">{t("entity.history.title")}</h2>
+      {arriving ? <Skeleton bones={["line"]} label={t("common.loading")} /> : <>
       <History target={{ id: e.id }} q={own} subject={entityName(e)} />
       {e.registrations.map((r, i) => {
         const name = r.brn?.display ?? entityName(e);
@@ -84,6 +86,7 @@ export function HistoryTab({ e, flat }: { e: LegalEntity; flat?: boolean }) {
           </section>
         );
       })}
+      </>}
     </section>
   );
 }

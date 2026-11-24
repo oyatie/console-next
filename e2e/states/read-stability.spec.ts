@@ -6,7 +6,7 @@ import { expectAccessible } from "../a11y";
 import { AT, failure, id, screenAccess, structure, token, user } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
-import { expectStable, recordShifts } from "../stability";
+import { clearShifts, expectStable, recordShifts } from "../stability";
 import { screens } from "./registry";
 
 test.beforeAll(() => loadCatalog("ko"));
@@ -40,6 +40,35 @@ for (const path of ["/people?view=accounts", ...["wp-create", "wp-edit", "wp-clo
     } finally { held.resolve(); await page.close(); fixture.release(); }
   });
 }
+
+test("/people: a roster read failing after first paint leaves the roster tools where they stood @ui-state", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript(recordShifts);
+  const fixture = await mockScreen(page, screens[1], "populated");
+  const held = Promise.withResolvers<void>();
+  await mockRoute(page, "get", "/api/v1/employees", async () => {
+    await held.promise;
+    return { status: 503, json: failure("service_unavailable") };
+  });
+  try {
+    await page.goto("/people");
+    const main = page.getByRole("main");
+    const density = main.getByRole("group", { name: t("roster.columns.density"), exact: true });
+    const views = main.getByRole("button", { name: t("directoryViews.open"), exact: true });
+    await expect(density).toBeVisible();
+    await expect(views).toBeVisible();
+    await page.evaluate(() => document.fonts.ready);
+    const before = await density.boundingBox();
+    await page.evaluate(clearShifts);
+    held.resolve();
+    await expect(main.getByRole("alert")).toContainText(t("common.loadFailed.title"), { timeout: 15_000 });
+    expect(await density.boundingBox()).toEqual(before);
+    // Still there, and not offered: saving a view needs the list it filters.
+    await expect(views).toBeDisabled();
+    await expectStable(page, "/people: roster read failed");
+    expect(fixture.unexpected).toEqual([]);
+  } finally { held.resolve(); await page.close(); fixture.release(); }
+});
 
 test("org: late fonts preserve loading and failed controls @ui-state", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });

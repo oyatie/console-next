@@ -80,17 +80,20 @@ export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, pick, dimme
   const drag = useDragMove(s, c.sel, (nodes, target) => g.moveTo(nodes, target));
   useImperativeHandle(ref, () => ({ find: c.stepHit, fold: () => c.setExpanded(new Set([c.focus.id])), add: g.add }));
 
+  // A find's result inside a compact workplace is shown by the tile it sits in.
+  const cursorBox = c.shown.get(c.cursor) ?? c.shown.get(drawnAt(s, c.shown, c.cursor) ?? "");
   // An open editor comes into view clear of the floating bars (its field must not sit under the zoom bar).
   const editing = c.L.boxes.find((b) => b.ghost) ?? (c.renaming ? c.shown.get(c.renaming) : undefined);
   const editor = editing && { ...editing, w: Math.max(editing.w, EDITOR_SIZE.w), h: Math.max(editing.h, EDITOR_SIZE.h) };
+  // A new box's editor brings the keyboard's box (the chart's one tab stop: the box added under, or the last box added
+  // there) with it: centred alone, that box was left under the top band's controls (a covered target).
+  const besideEditor = editing?.ghost ? cursorBox : undefined;
   useLayoutEffect(() => {
-    if (editor) canvas.current?.reveal(editor);
+    if (editor) canvas.current?.reveal(editor, besideEditor);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor?.x, editor?.y, c.renaming]);
 
   // The keyboard cursor follows into view, and DOM focus moves with it while it is on a box (never out of a field).
-  // A find's result inside a compact workplace is shown by the tile it sits in.
-  const cursorBox = c.shown.get(c.cursor) ?? c.shown.get(drawnAt(s, c.shown, c.cursor) ?? "");
   const hitId = c.q.trim() ? c.hits.ids[c.hit] : undefined;
   const hitTile = hitId && !c.shown.has(hitId) ? c.shown.get(drawnAt(s, c.shown, hitId) ?? "") : undefined;
   // A box pressed with the pointer is where the pointer is: panning it then would move it out from under the press
@@ -171,6 +174,7 @@ export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, pick, dimme
         resetKey={c.focus.id}
         size={{ w: c.L.w, h: c.L.h }}
         keep={editor ?? cursorBox}
+        keepAlso={besideEditor}
         dimmed={dimmed}
         lines={c.L.lines.map((l) => l.d)}
         top={drag.view ? (

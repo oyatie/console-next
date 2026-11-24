@@ -41,7 +41,9 @@ The family lives in `apps/web/src/ui/field`: `Field`, `FieldSet`, `Marker` and `
 | Error | `<p>` | `error`. |
 | Warning | `<p>` | `warning`. |
 
-The hint, error and warning lines are rendered only when they have something to show.
+The hint, error and warning lines are rendered only when they have something to show, with one exception: a hint
+set with `hintHeld` keeps its line at its own height but is `visibility: hidden` and left out of `aria-describedby`,
+so the value that later fills it moves nothing below.
 
 The control is a render prop. `children` is called with the attributes that tie the control to the rest, and the
 caller spreads them on the control:
@@ -49,7 +51,7 @@ caller spreads them on the control:
 | Attribute | Value |
 |---|---|
 | `id` | The `id` prop, or a generated one. The label points at it. |
-| `aria-describedby` | The ids of the hint, error and warning lines that are present, in that order. |
+| `aria-describedby` | The ids of the hint, error and warning lines that are present, in that order. A held hint is left out. |
 | `aria-invalid` | `true` when `error` is set. Otherwise absent. |
 | `required` | `true` only when the `required` prop is `true`. |
 
@@ -118,7 +120,7 @@ The text typed into a control inherits the body size, 14 px.
 
 | Component | Role | Accessible name | Also exposed |
 |---|---|---|---|
-| Control in a `Field` | The native control's own: `textbox`, `combobox` and so on. | The label, through `<label for>`. The marker and `tag` are inside the label, so they are part of the name. | The hint, error and warning as its description. `aria-invalid` and `required`. |
+| Control in a `Field` | The native control's own: `textbox`, `combobox` and so on. | The label, through `<label for>`. The marker and `tag` are inside the label, so they are part of the name. | The hint, error and warning as its description, less a held hint. `aria-invalid` and `required`. |
 | `FieldSet` | `group` | The legend, when `label` is given. With no `label` the group has no name. | Disabled, when set. |
 | `DerivedValue` | `group` | Its `label`, through `aria-labelledby`. | The Edit button is named by message `uiField.override.label`, which includes the field's label. The Revert button is named by its own text. |
 
@@ -202,6 +204,7 @@ How many fields sit side by side at 390 px is decided by the layout around them,
 | `error` | no | `ReactNode` |  |  |
 | `example` | no | `string` |  | A worked example, shown with an "e.g." prefix. |
 | `hint` | no | `ReactNode` |  |  |
+| `hintHeld` | no | `boolean` | `false` | The hint keeps its line but is not shown or read yet (a line the value will fill, so filling it moves nothing). |
 | `id` | no | `string` |  |  |
 | `tag` | no | `ReactNode` |  | Extra marks after the label, e.g. a derived-value tag. |
 | `unit` | no | `ReactNode` |  |  |
