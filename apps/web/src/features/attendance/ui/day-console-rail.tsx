@@ -9,6 +9,7 @@ import { RecordPaneSection } from "../../../ui/patterns/list-record-parts";
 import { type DayBoard } from "../api";
 import { cellKey, fillSchedule } from "../domain/grid";
 import { closed } from "../domain/month-state";
+import type { DayDockMode } from "../present";
 import { DayDock } from "./day-dock";
 import { DayRow } from "./day-row";
 import { SaveDock } from "./save-dock";
@@ -203,20 +204,27 @@ export function DayOpenPaneBody({
   employeeId,
   date,
   own,
+  mode,
+  onModeChange,
   onClose,
   onSetNote,
 }: {
   employeeId: string;
   date: string;
   own: boolean;
+  mode: DayDockMode;
+  onModeChange: (mode: DayDockMode) => void;
   onClose: () => void;
   onSetNote: (msg: string) => void;
 }) {
   return (
     <DayDock
+      variant="pane"
       employeeId={employeeId}
       date={date}
       own={own}
+      mode={mode}
+      onModeChange={onModeChange}
       onClose={onClose}
       onRewrite={onClose}
       onDone={m => {
