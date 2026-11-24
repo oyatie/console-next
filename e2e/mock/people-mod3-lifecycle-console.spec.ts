@@ -137,6 +137,8 @@ for (const width of [1440, 390] as const) {
         await main.getByRole("button", { name: t("renew.open", { count: 2 }), exact: true }).click();
         await expect(page).toHaveURL(/\/people\/renew/);
         await expect(page.locator('[data-pattern="wizard"]')).toHaveCount(1);
+        // One named region per table: the focusable scroller carries the name, its pane does not repeat it.
+        await expect(main.getByRole("region", { name: t("renew.crumb"), exact: true })).toHaveCount(1);
         await fits(page, `Console /people/renew ${width} ${theme}`);
         await expectAxe(page, `Console /people/renew ${width} ${theme}`);
         await capture(page, width, "people-renew", theme);
@@ -163,6 +165,7 @@ for (const width of [1440, 390] as const) {
         await expect(page).toHaveURL(/tab=appointments/);
         await expect.poll(() => idsBatchCalls.length).toBeGreaterThanOrEqual(1);
         await expect(main.getByRole("heading", { name: t("bulk.page.where"), exact: true })).toBeVisible();
+        await expect(main.getByRole("region", { name: t("bulk.page.people", { n: 2 }), exact: true })).toHaveCount(1);
         await fits(page, `Console /people/bulk populated ${width} ${theme}`);
         await expectAxe(page, `Console /people/bulk populated ${width} ${theme}`);
         await capture(page, width, "people-bulk", theme);

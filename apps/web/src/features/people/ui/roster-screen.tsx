@@ -110,12 +110,13 @@ function BaselineRosterScreen({ manage, scoped = false, switcher, notice, screen
         density={view.density}
         onDensity={view.setDensity}
         tools={<><RosterColumns shown={view.shown} onChange={view.set} density={view.density} onDensity={view.setDensity} />
-        {(!r.list.error || r.list.data !== undefined) && <RosterSavedViews filters={{ status, review: joinReview(review), unit, sort }} onApply={filters => {
+        {/* Kept in place when the list fails (its neighbours never slide), offered only with the list it filters. */}
+        <RosterSavedViews unavailable={!!r.list.error && r.list.data === undefined} filters={{ status, review: joinReview(review), unit, sort }} onApply={filters => {
           setSel(NO_SELECTION);
           find("");
           setFilter({ status: parseStatus(filters.status), review: parseReview(filters.review), unit: filters.unit ?? null, sort: parseOrder(filters.sort) });
           focusSoon("people-title");
-        }} />}</>}
+        }} /></>}
       />
       </>}
       notes={<>
