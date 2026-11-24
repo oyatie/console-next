@@ -5,7 +5,8 @@ import { useRef, useState } from "react";
 import { loadCatalog } from "@console/i18n";
 import { installDirtyTracker } from "../../experience/dirty-guard";
 import { Button } from "../button/button";
-import { FlexibleColumns } from "./flexible-columns";
+import { FlexibleColumns } from "../flexible-columns/flexible-columns";
+import { PaneGrid } from "./pane-grid";
 import "../../app.css";
 
 await loadCatalog("ko");
@@ -26,19 +27,23 @@ function NoteForm() {
   );
 }
 
-/** A list row that opens a record column whose body is an inline form, and a related column with no form. */
+// The same screen in either side-pane component: `?component=flexible-columns`, else the pane grid.
+const columns = new URLSearchParams(location.search).get("component") === "flexible-columns";
+
+/** A list row that opens a record pane whose body is an inline form, and a related pane with no form. */
 export function Fixture() {
   const [open, setOpen] = useState(false);
   const [related, setRelated] = useState(false);
   const row = useRef<HTMLButtonElement>(null);
+  const list = <Button ref={row} data-row-id="a" onClick={() => setOpen(true)}>Row A</Button>;
+  const record = open && { id: "a", label: "Record", onClose: () => setOpen(false), returnFocus: () => row.current,
+    children: <><NoteForm /><Button onClick={() => setRelated(true)}>Open related</Button></> };
+  const relatedPane = related && { id: "r", label: "Related", onClose: () => setRelated(false), children: <Button>Related action</Button> };
   return (
     <main>
-      <FlexibleColumns
-        list={<Button ref={row} data-row-id="a" onClick={() => setOpen(true)}>Row A</Button>}
-        record={open && { id: "a", label: "Record", onClose: () => setOpen(false), returnFocus: () => row.current,
-          children: <><NoteForm /><Button onClick={() => setRelated(true)}>Open related</Button></> }}
-        related={related && { id: "r", label: "Related", onClose: () => setRelated(false), children: <Button>Related action</Button> }}
-      />
+      {columns
+        ? <FlexibleColumns list={list} record={record} related={relatedPane} />
+        : <PaneGrid main={list} record={record} related={relatedPane} />}
     </main>
   );
 }
