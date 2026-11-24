@@ -78,6 +78,34 @@ test('the shared image preserves release provenance, probes and panic diagnostic
   assert.match(dockerfile, /USER 65532:65532/);
 });
 
+test('runtime smoke requires Docker to report both shell entrypoints missing', t => {
+  const dir = mkdtempSync(join(tmpdir(), 'image-smoke-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  writeFileSync(join(dir, 'docker'), `#!/bin/sh
+case "$*" in
+  *" --entrypoint $PROBE_SHELL smoke-image -c exit 0") exit "$PROBE_STATUS" ;;
+  *" --entrypoint "*) exit 127 ;;
+  *" --detach "*) echo 'starting application smoke' >&2; exit 42 ;;
+  *) exit 1 ;;
+esac
+`, { mode: 0o755 });
+  for (const shell of ['/bin/sh', '/busybox/sh']) {
+    for (const status of [0, 125, 126, 127]) {
+      const result = spawnSync('bash', ['deploy/ci/image-smoke.sh', 'smoke-image'], {
+        cwd: root, encoding: 'utf8',
+        env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, PROBE_SHELL: shell, PROBE_STATUS: String(status) },
+      });
+      if (status === 127) {
+        assert.equal(result.status, 42, result.stderr);
+        assert.match(result.stderr, /starting application smoke/);
+      } else {
+        assert.equal(result.status, 1, result.stderr);
+        assert.ok(result.stderr.includes(`PLAT_RUNTIME_SHELL: smoke-image: expected missing ${shell} (exit 127), got exit ${status}`), result.stderr);
+      }
+    }
+  }
+});
+
 const revision = 'a'.repeat(40);
 const response = { content: { 'application/problem+json': {} } };
 const operation = { security: [{ bearer: [] }], responses: { 401: response } };

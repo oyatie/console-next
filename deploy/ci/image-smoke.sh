@@ -2,11 +2,12 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
 set -euo pipefail
 image="$1"
+# Docker exits 127 for a missing entrypoint. The Distroless debug shell lives at /busybox/sh.
 for shell in /bin/sh /busybox/sh; do
   status=0
-  docker run --rm --entrypoint "${shell}" "${image}" -c 'exit 0' || status=$?
+  docker run --pull never --rm --entrypoint "${shell}" "${image}" -c 'exit 0' || status=$?
   if [[ ${status} -ne 127 ]]; then
-    echo "${image}: expected missing ${shell} (exit 127), got exit ${status}" >&2
+    echo "PLAT_RUNTIME_SHELL: ${image}: expected missing ${shell} (exit 127), got exit ${status}" >&2
     exit 1
   fi
 done
@@ -17,8 +18,6 @@ curl --fail --silent --show-error --retry 30 --retry-all-errors --retry-delay 1 
 curl --fail --silent --show-error "http://127.0.0.1:${port}/readyz" | jq -e '.status == "ready"'
 curl --fail --silent --show-error "http://127.0.0.1:${port}/" | grep -i '<!doctype html>' >/dev/null
 # An unknown role must retain the executable's EX_USAGE contract.
-set +e
-docker run --rm --env CONSOLE_APP_ROLE=invalid "${image}"
-code=$?
-set -e
-test "${code}" -eq 64
+status=0
+docker run --rm --env CONSOLE_APP_ROLE=invalid "${image}" || status=$?
+test "${status}" -eq 64

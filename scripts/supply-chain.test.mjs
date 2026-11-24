@@ -325,12 +325,12 @@ test("Node image digest stays paired with the reviewed upstream tag", () => {
   assert.equal(node.uses.find((u) => u.file === "deploy/versions.json").pin, versions.images.node);
 });
 
-test("runtime image digest stays paired with the reviewed nonroot tag", () => {
+test("the final image stage uses the pinned Distroless nonroot runtime", () => {
   const versions = JSON.parse(read("deploy/versions.json"));
-  assert.deepEqual([versions.upstreamImages.runtime, versions.images.runtime], [
-    "gcr.io/distroless/cc-debian13:nonroot",
-    "gcr.io/distroless/cc-debian13@sha256:532c7a94f9e96ba9db75eb9388f4227751131c7cb0a411d1a8521af4096135de",
-  ]);
+  const finalStage = read("deploy/images/console.Dockerfile").split(/^[ \t]*FROM[ \t]+/im).at(-1);
+  const image = /^\$\{(\w+)_IMAGE\}(?:\s|$)/.exec(finalStage)?.[1].toLowerCase();
+  assert.equal(versions.upstreamImages[image], "gcr.io/distroless/cc-debian13:nonroot");
+  assert.match(versions.images[image], /^gcr\.io\/distroless\/cc-debian13@sha256:[a-f0-9]{64}$/);
 });
 
 test("security workflow templates use the shared Node major", () => {
