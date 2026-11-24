@@ -42,7 +42,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     try {
       await page.goto("/people?sort=hire_date&review=identity#people-title");
       const main = page.getByRole("main");
-      const nav = main.getByRole("navigation", { name: "직원", exact: true });
+      const nav = main.getByRole("navigation", { name: t("roster.head.title"), exact: true });
       const links = nav.getByRole("link");
       await expect(links).toHaveText(["명부", "발령", "퇴직 진행"]);
       const destination = new URL((await links.nth(1).getAttribute("href"))!, page.url());
@@ -51,7 +51,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       expect(destination.searchParams.get("review")).toBe("identity");
       expect(destination.hash).toBe("#people-title");
       await expect(links.first()).toHaveAttribute("aria-current", "page");
-      await expect(main.getByRole("heading", { level: 1, name: "직원", exact: true })).toBeVisible();
+      await expect(main.getByRole("heading", { level: 1, name: t("roster.head.title"), exact: true })).toBeVisible();
       const history = await page.evaluate(() => window.history.length);
       await links.first().focus();
       await page.keyboard.press("Tab");
@@ -101,11 +101,11 @@ test("unplaced is a roster filter with the queue's rows on LongTable", async ({ 
     const grid = page.getByRole("grid", { name: "직원", exact: true });
     await expect(grid.getByText("가상미배치", { exact: true })).toBeVisible();
     await expect(grid.locator("[aria-sort]")).toHaveCount(0);
-    await expect(page.getByRole("navigation", { name: "직원", exact: true }).getByRole("link").first()).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("navigation", { name: t("roster.head.title"), exact: true }).getByRole("link").first()).toHaveAttribute("aria-current", "page");
     await page.reload();
     await expect(grid.getByText("가상미배치", { exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: t("roster.unplaced.place"), exact: true })).toHaveAttribute("href", "/people/unplaced");
-    const roster = page.getByRole("navigation", { name: "직원", exact: true }).getByRole("link", { name: "명부", exact: true });
+    const roster = page.getByRole("navigation", { name: t("roster.head.title"), exact: true }).getByRole("link", { name: "명부", exact: true });
     expect(new URL((await roster.getAttribute("href"))!, page.url()).searchParams.has("placement")).toBe(false);
     await roster.click();
     await expect(page).not.toHaveURL(/placement=/);
@@ -135,7 +135,7 @@ for (const reader of ["viewer", "workplace editor"] as const) {
       await expect(notice).toBeVisible();
       await expect(page.getByRole("button", { name: "미배치", exact: true })).toHaveCount(0);
       await expect(page.getByText("가상미배치", { exact: true })).toHaveCount(0);
-      const roster = page.getByRole("navigation", { name: "직원", exact: true }).getByRole("link", { name: "명부", exact: true });
+      const roster = page.getByRole("navigation", { name: t("roster.head.title"), exact: true }).getByRole("link", { name: "명부", exact: true });
       const destination = new URL((await roster.getAttribute("href"))!, page.url());
       expect(destination.searchParams.has("placement")).toBe(false);
       expect(destination.searchParams.get("sort")).toBe("hire_date");
@@ -183,7 +183,7 @@ for (const tab of ["appointments", "exits"] as const) {
         await expect(main.getByRole("grid", { name: t("exit.list.title"), exact: true })).toHaveCount(0);
         expect(exitReads).toEqual([]);
       }
-      await main.getByRole("navigation", { name: "직원", exact: true }).getByRole("link", { name: "명부", exact: true }).click();
+      await main.getByRole("navigation", { name: t("roster.head.title"), exact: true }).getByRole("link", { name: "명부", exact: true }).click();
       await expect(main.getByRole("grid", { name: "직원", exact: true })).toBeVisible();
       expect(state.unexpected).toEqual([]);
     } finally { await page.close(); state.release(); }
@@ -196,7 +196,7 @@ for (const textSize of ["100%", "75%"]) {
     try {
       await page.goto("/people?sort=hire_date&review=identity#people-title");
       const main = page.getByRole("main");
-      const nav = main.getByRole("navigation", { name: "직원", exact: true });
+      const nav = main.getByRole("navigation", { name: t("roster.head.title"), exact: true });
       await expect(nav.getByRole("link")).toHaveText(["명부", "발령", "퇴직 진행"]);
       await nav.evaluate((el, size) => { el.style.fontSize = size; }, textSize);
       await page.evaluate(() => document.fonts.ready);
@@ -242,7 +242,7 @@ for (const [tab, path] of [["roster", "/api/v1/employees"], ["appointments", "/a
       mode = "refused";
       await main.getByRole("button", { name: t("common.retry"), exact: true }).first().click();
       await expect(main.getByText(t("common.denied.title.plain"), { exact: true })).toBeVisible();
-      await expect(main.getByRole("navigation", { name: "직원", exact: true }).getByRole("link")).toHaveCount(3);
+      await expect(main.getByRole("navigation", { name: t("roster.head.title"), exact: true }).getByRole("link")).toHaveCount(3);
       await expect(target).toHaveCount(0);
       expect(state.unexpected).toEqual([]);
     } finally { await page.close(); state.release(); }

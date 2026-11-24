@@ -87,11 +87,11 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     const queries = await mockApprovals(page);
     await mockDocument(page);
     await page.goto("/approvals");
-    await expect(page.getByRole("heading", { level: 1, name: "결재함", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: t("approvals.title"), exact: true })).toBeVisible();
     if (width === 390) await page.getByRole("button", { name: t("shell.menu"), exact: true }).click();
-    await expect(page.getByRole("navigation", { name: t("shell.nav") }).getByRole("link", { name: "결재함", exact: true })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: t("shell.nav") }).getByRole("link", { name: new RegExp(`^${t("approvals.title")}`) })).toBeVisible();
     if (width === 390) await page.getByRole("button", { name: t("shell.menu"), exact: true }).click();
-    const tabs = page.getByRole("navigation", { name: "결재함 구분", exact: true });
+    const tabs = page.getByRole("navigation", { name: t("approvals.tabs"), exact: true });
     await expect(tabs.getByRole("link")).toHaveCount(5);
     await expect(tabs.getByRole("link", { name: /대기/ })).toHaveAttribute("aria-current", "page");
     const row = page.getByRole("row", { name: /영업 조직 개편안/ });
@@ -261,8 +261,8 @@ test("an unavailable approvals module hides the rail entry and refuses a direct 
   const mock = await mockScreen(page, screens[0], "empty", "not-ready");
   const queries = await mockApprovals(page);
   await page.goto("/approvals");
-  await expect(page.getByRole("navigation", { name: t("shell.nav") }).getByRole("link", { name: "결재함", exact: true })).toHaveCount(0);
-  await expect(page.getByRole("heading", { level: 1, name: "결재함", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("navigation", { name: t("shell.nav") }).getByRole("link", { name: new RegExp(`^${t("approvals.title")}`) })).toHaveCount(0);
+  await expect(page.getByRole("heading", { level: 1, name: t("approvals.title"), exact: true })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: t("common.denied.title.plain"), exact: true })).toBeVisible();
   await expect(page.getByText("module_disabled", { exact: true })).toBeHidden();
   await page.getByText(t("common.denied.why"), { exact: true }).click();
@@ -276,8 +276,8 @@ for (const state of ["failed", "refused"] as const) {
     const mock = await mockScreen(page, screens[0], "empty");
     await mockApprovals(page, state);
     await page.goto("/approvals");
-    await expect(page.getByRole("heading", { level: 1, name: "결재함", exact: true })).toBeVisible();
-    await expect(page.getByRole("navigation", { name: "결재함 구분", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: t("approvals.title"), exact: true })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: t("approvals.tabs"), exact: true })).toBeVisible();
     if (state === "failed") await expect(page.getByRole("heading", { name: t("common.loadFailed.title"), exact: true })).toBeVisible({ timeout: 20_000 });
     else await expect(page.getByRole("region", { name: t("common.denied.title.plain"), exact: true })).toBeVisible();
     await expect(page.locator("[data-id]")).toHaveCount(0);

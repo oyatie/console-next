@@ -58,7 +58,7 @@ WCAG 2.2 criteria:
 
 ## Phone behaviour at 390 px
 
-At `--phone`, body font size steps up to `--text-body` (`15px`), itemized rows step up to `40px` (`--row-h-compact`), total rows step up to `48px` (`--row-h`), horizontal padding widens to `--space-4`, and `inline` totals sit on `--surface`.
+At `--phone`, body font size steps up to `--text-body` (`15px`), itemized rows step up to `40px` (`--row-h-sm`), total rows step up to `48px` (`--row-h`), horizontal padding widens to `--space-4`, and `inline` totals sit on `--surface`.
 
 ## Copy rules
 
@@ -109,7 +109,7 @@ Built-in column headers read `uiLedger.colItem`, `uiLedger.colDetail`, and `uiLe
 | `--primary` | `color` |
 | `--radius-sm` | `border-radius` |
 | `--row-h` | `height`, `min-height` |
-| `--row-h-compact` | `height` |
+| `--row-h-sm` | `height` |
 | `--space-1` | `gap`, `padding` |
 | `--space-1-5` | `padding-block` |
 | `--space-2` | `gap`, `padding` |

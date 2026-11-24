@@ -34,7 +34,7 @@ export function GoLiveConsole({
         title: t("setup.golive.title"),
         actions: (
           <Link to="/" className={buttonClass("ghost", { size: "sm" })}>
-            {t(operating ? "shell.link.home" : "setup.title")}
+            {t(operating ? "shell.link.todo" : "setup.title")}
           </Link>
         ),
       }}
