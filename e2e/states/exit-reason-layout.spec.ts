@@ -2,6 +2,7 @@
 import { expect, test } from "@playwright/test";
 import type { components } from "@console/api";
 import { loadCatalog, t } from "@console/i18n";
+import { fmtDate } from "@console/i18n/format";
 import { routeReady } from "../flows";
 import { clearShifts, expectStable, recordShifts } from "../stability";
 import { exitReasons } from "../mock/reasons";
@@ -86,10 +87,13 @@ for (const step of ["report", "confirm"] as const) for (const width of [1440, 39
         const date = sheet.getByRole("textbox", { name: new RegExp(`^${t("exit.field.date")}`) });
         const chip = sheet.getByRole("radiogroup").getByText(t("reason.exit_reason.PERSONAL"), { exact: true });
         const before = (await chip.boundingBox())!;
+        // Before a date the echo's line is held unseen, so nothing describes the input yet.
+        await expect(date).toHaveAccessibleDescription("");
         await date.fill("2026-10-26");
         // The date commits on leaving the field: its echo lands in the line held for it, at its wrapped height.
         await date.blur();
-        await expect(sheet.locator('[data-hint="field"]').filter({ hasText: t("exit.field.date.statutory") })).toBeVisible();
+        const exitDay = fmtDate("2026-10-27");
+        await expect(date).toHaveAccessibleDescription(`${t("exit.field.date.statutory")} ${exitDay} · ${t("exit.field.date.loss")} ${exitDay}`);
         expect((await chip.boundingBox())!.y, "the reasons stay put when the date's echo appears").toBe(before.y);
         await routeReady(page);
         await expectStable(page, "exit report reasons after date feedback");
