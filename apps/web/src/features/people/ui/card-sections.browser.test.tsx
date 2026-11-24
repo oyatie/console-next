@@ -41,7 +41,7 @@ beforeAll(async () => {
 afterAll(async () => { i18n.set("ko"); await browser?.close(); await server?.close(); });
 
 const links = () => page.getByRole("navigation", { name: t("uiRecord.sections"), exact: true }).getByRole("link");
-const tab = (id: "card" | "ledger") => page.getByRole("navigation", { name: t("empCard.tabs"), exact: true }).getByRole("link", { name: t(`empCard.tab.${id}`), exact: true });
+const tab = (name: "card" | "ledger") => page.getByRole("navigation", { name: t("empCard.tabs"), exact: true }).getByRole("link", { name: t(`empCard.tab.${name}`), exact: true });
 // A jump lands two frames after its key; a key that must do nothing is given that long, and more, to do it.
 const settle = () => page.evaluate(() => new Promise<void>(done => { let n = 6; const tick = () => (--n ? requestAnimationFrame(tick) : done()); tick(); }));
 async function open(as: Partial<typeof reader> = {}, look = "baseline") {
