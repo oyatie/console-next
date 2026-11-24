@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { AxeBuilder } from "@axe-core/playwright";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { loadCatalog, t } from "@console/i18n";
 import { mountBrowserModule, type MountedGallery } from "../../../lib/gallery-browser-test";
@@ -96,12 +97,11 @@ test("a short home list unfolds in place and offers the to-do link once every ro
   await expect.poll(() => inboxLink().count()).toBe(1);
 });
 
-test.each([1440, 390])("the more bar keeps its button and the to-do link apart inside the bar at %ipx", async width => {
+test.each([1440, 390])("the more bar keeps its button and the to-do link apart inside the bar, accessible in both themes, at %ipx", async width => {
   await mounted.page.setViewportSize({ width, height: 900 });
   await mountHome(31);
   const more = mounted.page.getByRole("button", { name: t("home.worklist.moreCount", { count: 21 }), exact: true });
-  const bar = (await inboxLink().elementHandle())!;
-  const metrics = await bar.evaluate((link, buttonBox) => {
+  const metrics = await (await inboxLink().elementHandle())!.evaluate((link, buttonBox) => {
     const barBox = link.parentElement!.getBoundingClientRect();
     const linkBox = link.getBoundingClientRect();
     return {
@@ -113,4 +113,9 @@ test.each([1440, 390])("the more bar keeps its button and the to-do link apart i
   expect(metrics.gap).toBeGreaterThanOrEqual(8);
   expect(metrics.inside).toBe(true);
   expect(metrics.overflow).toBeLessThanOrEqual(0);
+  for (const theme of ["light", "dark"]) {
+    await mounted.page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
+    const scan = await new AxeBuilder({ page: mounted.page }).include('[class*="moreBar"]').withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
+    expect(scan.violations.map(violation => `${theme}: ${violation.id}`)).toEqual([]);
+  }
 });
