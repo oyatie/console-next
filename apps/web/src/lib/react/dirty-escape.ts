@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { isImeKey } from "../pure/ime";
+import { popupOpen } from "../pure/popup";
 
 /**
  * Esc closes an inline form, but never drops typed text on the first press: with input, the first Esc
@@ -15,7 +16,7 @@ export function useDirtyEscape<E extends HTMLElement = HTMLElement>(dirty: boole
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return void (armed && setArmed(false));
       const target = e.target as HTMLElement;
-      if (e.defaultPrevented || isImeKey(e) || target.closest('[role="listbox"], [role="dialog"]') || target.getAttribute("aria-expanded") === "true") return;
+      if (e.defaultPrevented || isImeKey(e) || target.closest('[role="listbox"], [role="dialog"]') || popupOpen(target)) return;
       e.preventDefault();
       if (dirty && !armed) return setArmed(true);
       setArmed(false);

@@ -14,6 +14,7 @@ beforeAll(async () => {
       import { createRoot } from 'react-dom/client';
       import { loadCatalog } from '@console/i18n';
       import { PaneGrid } from '/apps/web/src/ui/pane-grid/pane-grid.tsx';
+      import { TreeView } from '/apps/web/src/ui/tree/tree.tsx';
       import '/apps/web/src/app.css';
       await loadCatalog('ko');
       function App() {
@@ -33,7 +34,14 @@ beforeAll(async () => {
               id: selected, label: 'Record pane', title: 'Record ' + selected,
               onClose: () => setSelected(null),
               returnFocus: () => { setRestoreCalls(c => c + 1); return rowA.current; },
-              children: React.createElement('button', { type: 'button', 'data-inside-pane': '' }, 'Inside'),
+              children: React.createElement('div', null,
+                React.createElement('button', { type: 'button', 'data-inside-pane': '' }, 'Inside'),
+                React.createElement('button', { type: 'button', 'aria-haspopup': 'listbox', 'aria-expanded': 'true' }, 'Open select'),
+                React.createElement(TreeView, {
+                  label: 'Units', roots: [{ id: 'Head office', children: [{ id: 'Sales', children: [] }] }], childrenOf: u => u.children,
+                  textValue: u => u.id, row: u => u.id, onSelect: () => {}, required: true, expanded: new Set(['Head office']), onExpandedChange: () => {},
+                }),
+              ),
             } : null,
           }),
         );
@@ -98,4 +106,17 @@ test("PaneGrid rAF returnFocus preserves intentional focus moved before rAF and 
   await expect.poll(() => page.locator('[data-pane="record"]').count()).toBe(0);
   await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute("data-row-id") ?? null)).toBe("a");
   expect(await main.getAttribute("data-restore-calls")).toBe("1");
+});
+
+test("Escape from an unfolded tree row closes the record pane, and an open select keeps it", async () => {
+  const { page } = mounted;
+  await page.locator("[data-reset]").click();
+  await page.locator('[data-row-id="a"]').click();
+  const record = page.locator('[data-pane="record"]');
+  await page.getByRole("button", { name: "Open select", exact: true }).press("Escape");
+  await expect.poll(() => record.count()).toBe(1);
+  const unfolded = page.getByRole("row", { name: "Head office", exact: true });
+  expect(await unfolded.getAttribute("aria-expanded")).toBe("true");
+  await unfolded.press("Escape");
+  await expect.poll(() => record.count()).toBe(0);
 });

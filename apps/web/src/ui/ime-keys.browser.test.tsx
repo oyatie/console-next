@@ -142,6 +142,14 @@ test.each(Object.keys(ACTED).flatMap(which => COMPOSING.map(state => ({ which, s
     await element(ACTED[which]!()).toHaveCount(1);
   });
 
+test("dirty: an open combobox keeps its Escape, and an expanded disclosure button does not", async () => {
+  await open("dirty");
+  await page.getByRole("combobox", { name: "Pick" }).press("Escape");
+  await element(page.locator("#armed")).toHaveText("false");
+  await page.getByRole("button", { name: "More" }).press("Escape");
+  await element(page.locator("#armed")).toHaveText("true");
+});
+
 test.each(COMPOSING)("the find box stays open through an Escape pressed while composing %j, then closes on a plain Escape", async state => {
   await open("palette");
   const box = page.getByRole("searchbox", { name: "Find a person" });
