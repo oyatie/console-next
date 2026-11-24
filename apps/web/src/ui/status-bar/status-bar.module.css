@@ -33,12 +33,12 @@
 
 .segment[data-tone="strong"] {
   color: var(--ink);
-  font-weight: var(--fw-strong);
+  font-weight: var(--fw-semibold);
 }
 
 .segment[data-tone="attention"] {
   color: var(--warn-tx);
-  font-weight: var(--fw-strong);
+  font-weight: var(--fw-semibold);
 }
 
 .trailing {

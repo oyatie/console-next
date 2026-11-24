@@ -7,8 +7,9 @@ import { normalizeAppPath } from "./tab-href";
 export function tabIconForHref(href: string, allLinks: readonly NavLink[]): ReactNode {
   const cut = href.search(/[?#]/);
   const path = normalizeAppPath((cut === -1 ? href : href.slice(0, cut)) || "/");
-  if (path === "/leave") return <CalendarDays size={14} aria-hidden="true" />;
-  if (path === "/payslips") return <Banknote size={14} aria-hidden="true" />;
+  if (path === "/leave" || path === "/attendance") return <CalendarDays size={14} aria-hidden="true" />;
+  if (path === "/payslips" || path === "/payroll" || path.startsWith("/payroll/")) return <Banknote size={14} aria-hidden="true" />;
+  if (path.startsWith("/approvals/")) return <FileText size={14} aria-hidden="true" />;
   if (path === "/me/attendance") return <Clock size={14} aria-hidden="true" />;
   if (path === "/me/desk") return <Briefcase size={14} aria-hidden="true" />;
   if (path === "/account" || path.startsWith("/account/")) return <Settings size={14} aria-hidden="true" />;
