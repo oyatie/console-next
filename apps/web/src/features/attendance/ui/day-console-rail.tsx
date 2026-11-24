@@ -187,6 +187,7 @@ export function DaySavePaneBody({
 }) {
   return (
     <SaveDock
+      variant="pane"
       drafts={drafts}
       rows={rows}
       kindOf={kindOf}
