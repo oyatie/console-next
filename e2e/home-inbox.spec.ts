@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import type { components } from "@console/api/schema";
 import { atPhoneWidth, expectAccessible, fits } from "./a11y";
 import { startOperations, tenantInSetup } from "./setup-flows";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 test("Inbox ranks deadline rows before undated work and explains a failed read", { tag: "@hr" }, async ({ browser }, info) => {
   const { admin } = await tenantInSetup(browser, "homebuckets", "업무함기한상사");
@@ -29,7 +32,7 @@ test("Inbox ranks deadline rows before undated work and explains a failed read",
   });
   await admin.setViewportSize({ width: 1440, height: 900 });
   await admin.goto("/inbox");
-  const queue = admin.getByRole("region", { name: "업무함", exact: true });
+  const queue = admin.getByRole("region", { name: t("home.inbox.title"), exact: true });
   await expect(queue.getByRole("table")).toHaveCount(4);
   await expect(queue.getByRole("heading", { level: 3 })).toHaveText(["기한 지남", "기한 임박", "그 뒤", "기한 없음"]);
   const rows = queue.locator("[data-id]");

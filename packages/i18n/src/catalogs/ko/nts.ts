@@ -18,7 +18,7 @@ export const koNts: Record<keyof typeof enNts, string> = {
   "nts.result.noResult": "확인할 수 없습니다",
   "nts.reflectionPending": "국세청 반영 전일 수 있음",
   "nts.mismatch": "기록한 상태와 국세청 조회 결과가 다릅니다. 확인 후 휴업·폐업을 기록하십시오.",
-  "nts.inbox": "업무함에서 확인",
+  "nts.inbox": "할 일에서 확인",
   "nts.unavailable.NOT_CONFIGURED": "자동 확인 사용 불가 · 연동 키가 설정되지 않았습니다",
   "nts.unavailable.KEY_EXPIRED": "자동 확인 사용 불가 · 연동 키의 사용 기간이 지났습니다",
   "nts.unavailable.KEY_REJECTED": "자동 확인 사용 불가 · 국세청이 연동 키를 거절했습니다",

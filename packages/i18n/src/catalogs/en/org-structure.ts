@@ -1,6 +1,6 @@
 export const enOrgStructure = {
   "orgStructure.asOf": "As of {date}",
-  "orgStructure.title": "Org structure",
+  "orgStructure.title": "Organization structure",
   "orgStructure.cancel": "Cancel",
   "orgStructure.open": "Open",
   "orgStructure.openFull": "Open the full record of {name}",

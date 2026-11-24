@@ -18,6 +18,7 @@ const state = vi.hoisted(() => ({
   phase: { isPending: false, isFetching: false, isError: false },
   access: { isPending: false, isFetching: false, isError: false },
   settings: { isPending: false, isFetching: false, isError: false },
+  receiptArriving: false,
   options: undefined as ReturnType<typeof cursorPages> | undefined,
   action: undefined as Action | undefined,
   reads: [] as { path: string; enabled: boolean }[], hold: vi.fn(),
@@ -38,6 +39,8 @@ vi.mock("@tanstack/react-query", async (original) => ({
   },
 }));
 vi.mock("../features/onboarding/ui/use-setup", () => ({ useSetupChecklist: () => ({ phaseQ: state.phase }) }));
+vi.mock("../features/onboarding/ui/use-receipt", () => ({ useReceipt: () => ({ arriving: state.receiptArriving }) }));
+vi.mock("../features/onboarding/ui/setup-receipt", () => ({ SetupReceipt: () => null }));
 vi.mock("../ui/skeleton/skeleton", () => ({ ReadSkeleton: () => createElement("div", { "data-pending": "true" }) }));
 vi.mock("../lib/live/hold", () => ({ useLiveHold: (on: boolean, notice: boolean) => state.hold(on, notice) }));
 vi.mock("../features/home/Home", () => ({ Home: ({ setupPending, setup, action }: { setupPending?: boolean; setup: (c: Checklist) => ReactNode; action?: Action }) => {
@@ -55,6 +58,7 @@ beforeEach(() => {
   state.phase = { isPending: false, isFetching: false, isError: false };
   state.access = { isPending: false, isFetching: false, isError: false };
   state.settings = { isPending: false, isFetching: false, isError: false };
+  state.receiptArriving = false;
   state.settled = false; state.options = undefined; state.action = undefined;
   state.inbox = { data: undefined, isPending: true, isError: false, isFetching: true, isFetchedAfterMount: false };
   state.entities = { isSuccess: false, isFetching: true, isError: false };
@@ -86,6 +90,26 @@ test("an inbox without setup enables no setup references or live hold", () => {
   expect(state.reads).toHaveLength(2);
   expect(state.reads.every((read) => !read.enabled)).toBe(true);
   expect(state.hold).toHaveBeenLastCalledWith(false, true);
+});
+
+test("a go-live receipt still arriving holds Home: its counts and actions land above the queue", () => {
+  landed();
+  state.receiptArriving = true;
+  expect(render()).toContain('data-pending="true"');
+  state.receiptArriving = false;
+  expect(render()).toContain('data-pending="false"');
+});
+
+test("a receipt record the phase calls for once the band decides is still waited on: Home's arrival latches after the hold", () => {
+  landed();
+  const view = (settled: boolean) => renderToStaticMarkup(<PagePhase value={{ slot: null, settled }}><HomeScreen /></PagePhase>);
+  expect(view(false)).toContain('data-pending="false"');
+  expect(state.settled).toBe(false);
+  state.receiptArriving = true;
+  expect(view(true)).toContain('data-pending="true"');
+  state.receiptArriving = false;
+  expect(view(true)).toContain('data-pending="false"');
+  expect(state.settled).toBe(true);
 });
 
 test("a cached inbox mount refresh cannot settle setup's arrival before its current checklist", () => {

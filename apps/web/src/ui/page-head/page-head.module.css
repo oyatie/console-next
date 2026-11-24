@@ -47,7 +47,6 @@
 .crumbs { min-width: 0; font-size: var(--text-sm); color: var(--steel); }
 .trail { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); margin: 0; padding: 0; list-style: none; }
 .crumb { display: inline-flex; align-items: center; min-width: 0; }
-:where([data-experience]:not([data-experience="baseline"])) .crumb a { text-decoration: none; }
 .sep { display: inline-flex; color: var(--faint); }
 .current { color: var(--ink); font-weight: var(--fw-medium); }
 .phase { display: inline-flex; align-items: center; gap: var(--space-1); min-width: 0; color: var(--steel); font-size: var(--text-xs); }

@@ -21,6 +21,38 @@ import { DateField, DateInput } from "./date/date-field";
 
 beforeAll(() => loadCatalog("ko"));
 const [x, y, z] = ["x", "y", "z"];
+const hintLine = (markup: string) => markup.match(/<p data-hint="field" id="([^"]+)"[^>]*>([\s\S]*?)<\/p>/);
+const inputTag = (markup: string) => markup.match(/<input\b[^>]*>/)![0];
+
+test("an empty date field holds its echo's own line unseen and unread: committing a date never grows it", () => {
+  const field = (value: string) => html(<DateField label={x} required value={value} today="2026-10-20" echo={z} onChange={() => undefined} />);
+  // Before a date: the echo itself fills the line (it wraps as it will), held out of sight and out of the description.
+  const empty = field("");
+  expect(hintLine(empty)![0]).toContain("data-held");
+  expect(hintLine(empty)![2]).toContain(z);
+  expect(inputTag(empty)).not.toContain(hintLine(empty)![1]);
+  // Once a date is in, the same line shows it and the input is described by it.
+  const filled = field("2026-10-20");
+  expect(hintLine(filled)![0]).not.toContain("data-held");
+  expect(hintLine(filled)![2]).toContain(z);
+  expect(inputTag(filled)).toContain(`aria-describedby="${hintLine(filled)![1]}"`);
+  // A field that declares no echo draws no hint line at all.
+  expect(hintLine(html(<DateField label={x} required value="" today="2026-10-20" onChange={() => undefined} />))).toBeNull();
+});
+
+test("an empty date field holds its echo only on a free line: an error or another detail is shown in its place", () => {
+  const field = (more: { error?: string; basis?: string }) => html(<DateField label={x} required value="" today="2026-10-20" echo={z} onChange={() => undefined} {...more} />);
+  // A failed submit: the error stands alone under the input, so the echo taking its place when a date commits moves nothing.
+  const refused = field({ error: y });
+  expect(hintLine(refused)).toBeNull();
+  expect(inputTag(refused)).toMatch(/aria-describedby="[^"]+-error"/);
+  // A rule to know before choosing shows at once and describes the input; the echo waits for a date.
+  const ruled = field({ basis: "basis" });
+  expect(hintLine(ruled)![0]).not.toContain("data-held");
+  expect(hintLine(ruled)![2]).toContain("basis");
+  expect(hintLine(ruled)![2]).not.toContain(z);
+  expect(inputTag(ruled)).toContain(`aria-describedby="${hintLine(ruled)![1]}"`);
+});
 
 test("date consequences and preset refusal reasons stay in one visible field hint", () => {
   const markup = html(<DateField label={x} required value="2026-10-20" today="2026-10-20" minFrom={{ date: "2026-10-01", reason: y }} max="2026-10-31" basis="basis" echo={z} onChange={() => undefined} presets={[{ label: "earlier", date: "2026-09-30" }]} />);

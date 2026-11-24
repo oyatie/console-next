@@ -10,6 +10,7 @@ fieldset.field > .label { margin-bottom: var(--space-1); }
 .unit { font-size: var(--text-sm); color: var(--steel); white-space: nowrap; }
 .hint { margin: 0; font-size: var(--text-xs); color: var(--steel); }
 .hint > span + span::before { content: " · "; }
+.hint[data-held] { visibility: hidden; }
 .error { margin: 0; font-size: var(--text-sm); color: var(--danger-tx); }
 .warning { margin: 0; font-size: var(--text-sm); color: var(--warn-tx); }
 .value { font-weight: var(--fw-medium); font-variant-numeric: tabular-nums; }

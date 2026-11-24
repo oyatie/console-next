@@ -4,6 +4,7 @@ import { dirname, resolve } from "node:path";
 import { expect, type Browser, type Page } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 import { afterAll, beforeAll, test } from "vitest";
+import { i18n, loadCatalog, t } from "@console/i18n";
 import { browserEngine, browserTestOptimizeDeps } from "../../../lib/browser-test";
 
 const ENGINES = [browserEngine()];
@@ -11,6 +12,8 @@ let server: ViteDevServer;
 const sessions: { browser: Browser; page: Page }[] = [];
 
 beforeAll(async () => {
+  await loadCatalog("en");
+  i18n.set("en");
   server = await createServer({
     configFile: false,
     cacheDir: ".cache/approval-viewer-d6-test",
@@ -243,7 +246,7 @@ test.each(ENGINES.map((_, engine) => ({ engine })))(
     await expect(heading).toHaveAttribute("tabindex", "-1");
     await expect(heading).toBeFocused();
     await expect(article.getByRole("status")).toHaveText("Approved. The approval is complete.");
-    await expect(article.getByRole("link", { name: "Approval inbox", exact: true })).toHaveAttribute("href", "/approvals");
+    await expect(article.getByRole("link", { name: t("approvals.title"), exact: true })).toHaveAttribute("href", "/approvals");
   },
 );
 

@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { writeFile } from "node:fs/promises";
 import type { components } from "@console/api/schema";
 import { COMPANY, importPeople } from "../people-directory.fixture";
 import { tenantWithExecutive } from "../setup-flows";
 import { apiOf, bearerOf, headcount } from "../helpers/api";
 import { seedUnlockReview } from "./sole-unlock-fixture";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 test("served 2,000-person Home and its inbox stay within 2 seconds under burst", { tag: ["@hr", "@performance"] }, async ({ browser }, info) => {
   test.skip(process.env.E2E_SERVED !== "1", "Requires the served production web build");
@@ -63,7 +66,7 @@ test("served 2,000-person Home and its inbox stay within 2 seconds under burst",
         expect(next.items.length).toBeGreaterThan(0);
         expect(next.items.every(item => !firstIds.has(item.id))).toBe(true);
       }
-      await expect(admin.getByRole("region", { name: "업무함", exact: true }).locator("[data-id]").first()).toBeVisible();
+      await expect(admin.getByRole("region", { name: t("home.inbox.title"), exact: true }).locator("[data-id]").first()).toBeVisible();
       await admin.waitForFunction(() => performance.getEntriesByName("home:first-rows").length > 0);
       const timing = await admin.evaluate(() => {
         const navigation = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming;

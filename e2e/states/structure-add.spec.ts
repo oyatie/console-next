@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
-import { fits } from "../a11y";
+import { loadCatalog, t } from "@console/i18n";
+import { expectAxe, fits } from "../a11y";
 import { id, screenAccess, structure } from "../mock/fixtures";
 import { orgPanelReads } from "../mock/org-work";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { box, revealUnit } from "../structure-flows";
 import { screens } from "./registry";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 for (const width of [1440, 390]) for (const theme of ["light", "dark"] as const) {
   test(`inline department add keeps validation quiet during refresh at ${width}px in ${theme} @ui-state`, async ({ page }) => {
@@ -59,3 +62,75 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"] as const)
     } finally { release(); await page.close(); fixture.release(); }
   });
 }
+
+// The live journeys' default viewport: a held save's banner grows the bottom bar while the add field is open.
+test("a held department add keeps the box it is added under clear of the chart's top band @ui-state", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  const fixture = await mockScreen(page, screens[2], "populated");
+  await orgPanelReads(page);
+  const tree = structure(1);
+  tree.phase = "SETUP";
+  const parent = tree.entities[0]!.children[0]!;
+  parent.children = [];
+  await mockRoute(page, "get", "/api/v1/org-structure", { status: 200, json: tree });
+  await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { ...screenAccess("/org", "SETUP"), is_ops: true } });
+  await mockRoute(page, "get", "/api/v1/org-structure/change-dates", { status: 200, json: { items: [] } });
+  let sent = false;
+  await page.route(/\/api\/v1\/org-structure\/batches$/, async route => {
+    if (sent || route.request().method() !== "POST") return route.fallback();
+    sent = true;
+    await page.context().setOffline(true);
+    return route.abort("internetdisconnected");
+  });
+  try {
+    await page.goto("/org");
+    await box(page, parent.name).click();
+    await page.keyboard.press("a");
+    const field = page.getByRole("textbox", { name: t("structure.edit.addLabel", { parent: parent.name }), exact: true });
+    await field.fill("Support");
+    await field.press("Enter");
+    await expect(page.getByRole("status").filter({ hasText: t("requestOutcome.checking") })).toBeVisible();
+    await expect(field).toHaveValue("Support");
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    // The keyboard's box (the one tab stop in the chart) must not sit under a floating bar's controls: covered, it fails
+    // the 24 px target size and a press on it lands on the bar.
+    const covered = await page.evaluate(() => {
+      const cursor = document.querySelector('[role="treeitem"][tabindex="0"]')!;
+      const c = cursor.getBoundingClientRect();
+      return [...document.querySelectorAll("a[href], button, input, select, textarea")].filter(el => {
+        if (cursor.contains(el) || el.closest('[role="tree"]')) return false;
+        const b = el.getBoundingClientRect();
+        return b.width > 0 && b.height > 0 && b.left < c.right && b.right > c.left && b.top < c.bottom && b.bottom > c.top;
+      }).map(el => el.textContent?.trim() || el.getAttribute("aria-label"));
+    });
+    expect(covered).toEqual([]);
+    await expectAxe(page, "held department add");
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.context().setOffline(false); await page.close(); fixture.release(); }
+});
+
+test("an add opened from a box's hover toolbar keeps that box, not the keyboard's last one, beside its field @ui-state", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  const fixture = await mockScreen(page, screens[2], "populated");
+  await orgPanelReads(page);
+  const tree = structure(1);
+  tree.phase = "SETUP";
+  const parent = tree.entities[0]!.children[0]!;
+  await mockRoute(page, "get", "/api/v1/org-structure", { status: 200, json: tree });
+  await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { ...screenAccess("/org", "SETUP"), is_ops: true } });
+  await mockRoute(page, "get", "/api/v1/org-structure/change-dates", { status: 200, json: { items: [] } });
+  try {
+    await page.goto("/org");
+    const target = box(page, parent.name);
+    // The keyboard's box (the chart's one tab stop) is elsewhere: the pointer only passes over this one.
+    await expect(target).toHaveAttribute("tabindex", "-1");
+    await target.hover();
+    await page.getByRole("toolbar", { name: t("structure.tools.label", { name: parent.name }), exact: true })
+      .getByRole("button", { name: t("structure.tools.addDept"), exact: true }).click();
+    await expect(page.getByRole("textbox", { name: t("structure.edit.addLabel", { parent: parent.name }), exact: true })).toBeVisible();
+    // The box added under becomes the tab stop, so the field comes into view beside it.
+    await expect(target).toHaveAttribute("tabindex", "0");
+    await expect(target).toBeInViewport();
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});

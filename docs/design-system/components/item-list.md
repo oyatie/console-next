@@ -59,7 +59,7 @@ There is one look and one size.
 | Part | Look |
 |---|---|
 | List | A column with no padding, no margin and no list marker. |
-| Row | Its parts in one line, centred vertically, 8 px apart (`--space-2`). At least 32 px high (`--row-h-compact`). 13 px text (`--text-sm`). A 1 px `--border-soft` line above every row but the first. No side padding: the text starts at the edge of the list. |
+| Row | Its parts in one line, centred vertically, 8 px apart (`--space-2`). At least `--row-h-sm` high, the height of a line that is not a table row: 24 px on Console desk, 40 px on Console phone, 32 px on Classic. 13 px text (`--text-sm`). A 1 px `--border-soft` line above every row but the first. No side padding: the text starts at the edge of the list. |
 | Mark | `--steel`. It keeps the width of its content. |
 | Text | The colour it inherits. It takes the width that is left and may break anywhere (`overflow-wrap: anywhere`). |
 | End | 12 px (`--text-xs`), `--steel`, tabular numbers. It keeps the width of its content. |
@@ -79,7 +79,7 @@ colour takes it. The text and the end do not change.
 
 | `density` | What happens |
 |---|---|
-| `dense` | Writes `data-density="dense"`. The one rule that reads it sets the row's minimum height to `--row-h-compact`, the value it already has. |
+| `dense` | Writes `data-density="dense"`. The one rule that reads it sets the row's minimum height to `--row-h-sm`, the value it already has. |
 | `default` | Writes `data-density="default"`, which no rule reads. |
 
 ## States
@@ -94,7 +94,7 @@ colour takes it. The text and the end do not change.
 | Disabled | Does not exist. An item cannot be disabled; a row that cannot be pressed is an item without `onSelect`. |
 | Read-only | Does not exist. |
 | Invalid | Does not exist for a row. A list that failed to load has the error state. |
-| Loading (`loading`) | The root gets `aria-busy="true"`. One state row with `role="status"` and 12 px padding (`--space-3`) replaces the rows. It holds a `<span>` meant as a bar: `--row-h-compact` high, `--border-soft`, with a 4 px radius (`--radius-sm`). The `<span>` has no `display` rule, so it stays an inline box: its `height` does not apply and it has no content, so by the CSS no bar is drawn and the state row is empty padding. That is read from the CSS, not measured in a browser. The row holds no text. |
+| Loading (`loading`) | The root gets `aria-busy="true"`. One state row with `role="status"` and 12 px padding (`--space-3`) replaces the rows. It holds a `<span>` meant as a bar: `--row-h-sm` high, `--border-soft`, with a 4 px radius (`--radius-sm`). The `<span>` has no `display` rule, so it stays an inline box: its `height` does not apply and it has no content, so by the CSS no bar is drawn and the state row is empty padding. That is read from the CSS, not measured in a browser. The row holds no text. |
 | Error (`error`) | One state row with `role="alert"` and `data-state="error"` replaces the rows. It shows `error` at 13 px (`--text-sm`) in `--danger-solid`, inside 12 px padding. |
 | Empty | With no items and `empty` given, one state row shows `empty` at 13 px in `--steel`, centred, inside 12 px padding. With no items and no `empty`, the list is an empty `<ul>`. There is no built-in empty text. |
 
@@ -201,7 +201,7 @@ screenshots is checked in on this branch.
 Nothing in the list's own rules changes with the width of the screen. The module has no media query and no
 container query.
 
-- A row is at least 32 px high (`--row-h-compact`) at every width, and grows as its text wraps. Nothing grows to
+- A row is at least `--row-h-sm` high (24 px on Console desk, 40 px on Console phone, 32 px on Classic), and grows as its text wraps. Nothing grows to
   the 44 px touch size: the module does not read `--target-touch`.
 - The text takes what the mark and the end leave, and may break anywhere.
 - The mark and the end do not shrink (`flex: none`). A long end value leaves less room for the text; nothing is
@@ -251,7 +251,7 @@ The members of `Item` are under Anatomy.
 | `--muted` | `background` |
 | `--ok-solid` | `color` |
 | `--radius-sm` | `border-radius` |
-| `--row-h-compact` | `height`, `min-height` |
+| `--row-h-sm` | `height`, `min-height` |
 | `--space-2` | `gap` |
 | `--space-3` | `padding` |
 | `--steel` | `color` |

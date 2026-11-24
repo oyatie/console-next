@@ -120,7 +120,7 @@ export function resolveRouteTabMeta({
 }): RouteTabMeta {
   const path = normalizeAppPath(pathname);
   if (path === "/") {
-    return { title: platform ? t("shell.link.tenants") : t("shell.link.home"), isFallback: false, recordSpec: null };
+    return { title: platform ? t("shell.link.tenants") : t("shell.link.todo"), isFallback: false, recordSpec: null };
   }
   const viewTitle = resolveQueryViewTitle(path, searchStr);
   if (viewTitle) return { title: viewTitle, isFallback: false, recordSpec: null };

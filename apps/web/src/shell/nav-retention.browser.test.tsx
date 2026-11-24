@@ -53,7 +53,7 @@ for (const engine of [browserEngine()]) test(`a cold modules fault reuses only t
     await element(rail.getByRole("alert")).toHaveCount(1);
     await element(rail.getByRole("link")).toHaveText(entries);
     await page.evaluate(() => window.switchNavPrincipal());
-    await element(rail.getByRole("link")).toHaveText([t("shell.link.home"), t("shell.link.requests"), t("shell.link.settings")]);
+    await element(rail.getByRole("link")).toHaveText([t("shell.link.todo"), t("shell.link.requests"), t("shell.link.settings")]);
     expect(errors).toEqual([]);
   } finally { await browser.close(); await server.close(); }
 }, 60_000);
