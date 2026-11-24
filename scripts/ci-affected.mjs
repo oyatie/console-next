@@ -25,6 +25,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   if (!["push", "pull_request", "merge_group"].includes(event)) throw new Error("CI_AFFECTED_EVENT: unsupported event");
   let affected = { backend: true, web: true };
   let docs = "none";
+  let lockfile = true;
   if (event !== "push") {
     if (![base, head].every(sha => /^[a-f0-9]{40}$/.test(sha ?? ""))) throw new Error("CI_AFFECTED_SHA: expected base and head commit SHAs");
     const git = (...args) => execFileSync("git", args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
@@ -33,10 +34,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const paths = git("diff", "--no-ext-diff", "--no-textconv", "--no-renames", "--name-only", "-z", ancestor, head, "--");
     const files = paths.split("\0").filter(Boolean);
     affected = classifyPaths(files);
+    lockfile = files.includes("package-lock.json");
+    if (!lockfile) console.log(`Skipping npm signature verification: package-lock.json unchanged against ${base}`);
     const docCount = files.filter(file => file.startsWith("docs/")).length;
     if (docCount) docs = docCount === files.length ? "only" : "mixed";
   }
-  const output = `backend=${affected.backend}\nweb=${affected.web}\ndocs=${docs}\n`;
+  const output = `backend=${affected.backend}\nweb=${affected.web}\ndocs=${docs}\nlockfile=${lockfile}\n`;
   if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, output);
   process.stdout.write(output);
 }
