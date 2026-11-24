@@ -32,6 +32,8 @@ mod go_live;
 mod refusals;
 #[path = "support/http.rs"]
 mod support;
+#[path = "scope_ax5/warnings.rs"]
+mod warnings;
 #[path = "scope_ax5/world.rs"]
 mod world;
 
