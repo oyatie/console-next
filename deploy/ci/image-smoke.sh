@@ -2,6 +2,14 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
 set -euo pipefail
 image="$1"
+for shell in /bin/sh /busybox/sh; do
+  status=0
+  docker run --rm --entrypoint "${shell}" "${image}" -c 'exit 0' || status=$?
+  if [[ ${status} -ne 127 ]]; then
+    echo "${image}: expected missing ${shell} (exit 127), got exit ${status}" >&2
+    exit 1
+  fi
+done
 container="$(docker run --detach --read-only --tmpfs /tmp:rw,noexec,nosuid,size=64m --cap-drop ALL --security-opt no-new-privileges --publish 127.0.0.1::8080 "${image}")"
 trap 'docker logs "${container}"; docker rm --force "${container}" >/dev/null' EXIT
 port="$(docker port "${container}" 8080/tcp | cut -d: -f2)"

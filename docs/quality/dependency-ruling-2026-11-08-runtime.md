@@ -16,8 +16,8 @@ the same lock. The upstream authority retains the Distroless keyless signer
 `keyless@distroless.iam.gserviceaccount.com` and Google OIDC issuer.
 
 The [registry tag listing](https://gcr.io/v2/distroless/cc-debian13/tags/list)
-identifies the nonroot multiarch image. Its OpenSSL package is
-`libssl3t64 3.5.7-1~deb13u3`, fixing CVE-2026-54874, CVE-2026-63072,
+identifies the nonroot multiarch image. Its `libssl3t64` package includes
+Debian's fixes for CVE-2026-54874, CVE-2026-63072,
 CVE-2026-63076, CVE-2026-75803 (DSA-6465-1) and CVE-2026-84782 (DSA-6531-1),
 as recorded by the [Debian security tracker](https://security-tracker.debian.org/tracker/source-package/openssl).
 Distroless build definitions are Apache-2.0; bundled Debian packages retain their

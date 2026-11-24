@@ -325,6 +325,14 @@ test("Node image digest stays paired with the reviewed upstream tag", () => {
   assert.equal(node.uses.find((u) => u.file === "deploy/versions.json").pin, versions.images.node);
 });
 
+test("runtime image digest stays paired with the reviewed nonroot tag", () => {
+  const versions = JSON.parse(read("deploy/versions.json"));
+  assert.deepEqual([versions.upstreamImages.runtime, versions.images.runtime], [
+    "gcr.io/distroless/cc-debian13:nonroot",
+    "gcr.io/distroless/cc-debian13@sha256:532c7a94f9e96ba9db75eb9388f4227751131c7cb0a411d1a8521af4096135de",
+  ]);
+});
+
 test("security workflow templates use the shared Node major", () => {
   const pins = Object.values(REQUIRED_SECURITY_JOBS).flatMap((job) => job.steps)
     .filter((step) => step.uses?.startsWith("actions/setup-node@"))
@@ -336,7 +344,7 @@ test("security workflow templates use the shared Node major", () => {
 test("dependency/tool/image pin regeneration is current and refuses an unregistered image", () => {
   for (const [pins, status] of [["container:docker.io/library/node", 0], ["ci-tool:Node.js", 0], ["npm:qs", 0],
     ["npm:@axe-core/playwright", 0], ["npm:oxlint", 0], ["npm:@tanstack/react-query", 0], ["npm:lucide-react", 0],
-    ["container:unregistered/image", 1]]) {
+    ["container:gcr.io/distroless/cc-debian13", 0], ["container:unregistered/image", 1]]) {
     const result = spawnSync(process.execPath, ["scripts/quality/generate-tooling-ledger.mjs", `--pins=${pins}`], { encoding: "utf8" });
     assert.equal(result.status, status, result.stdout + result.stderr);
     if (status) assert.match(result.stderr, /unregistered tool\/image: container:unregistered\/image/);

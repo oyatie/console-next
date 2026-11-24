@@ -7521,7 +7521,7 @@
       "c": {
         "result": "pass",
         "source": "https://github.com/GoogleContainerTools/distroless#base-operating-system",
-        "reason": "Upstream maintains Debian 13 and deprecates Debian 12; the pinned nonroot artifact contains libssl3t64 3.5.7-1~deb13u3, fixing the five OpenSSL CVEs in the Debian tracker."
+        "reason": "Upstream maintains Debian 13 and deprecates Debian 12. The nonroot image's libssl3t64 package includes Debian's fixes for the five OpenSSL CVEs in the runtime ruling."
       },
       "d": {
         "result": "pass",
