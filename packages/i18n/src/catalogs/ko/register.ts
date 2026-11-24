@@ -135,7 +135,7 @@ export const koRegister: Record<keyof typeof enRegister, string> = {
   "register.run.numberAuto": "자동",
   "register.run.typePick": "선택",
   "register.run.carried": "이어서 쓴 값",
-  "register.run.save": "저장하고 다음 사람",
+  "register.run.save": "저장하고 다음 사람 · 등록",
   "register.run.undo": "되돌리기",
   "register.run.undoOf": "{name} 되돌리기",
   "register.run.undone": "되돌림",

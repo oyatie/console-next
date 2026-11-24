@@ -6,6 +6,7 @@ import { logout, session } from "@console/api";
 import { t } from "@console/i18n";
 import { personName } from "../../reference/person/present";
 import { chunk } from "../../lib/chunk-guard";
+import { modHint } from "../../lib/mod-hint";
 import { useTheme } from "../theme";
 
 const NeedsMeMenu = lazy(() => chunk(import("../top-bar/needs-me")).then(m => ({ default: m.NeedsMeMenu })));
@@ -18,7 +19,7 @@ export function SearchTrigger({ onSearch }: { onSearch: () => void }) {
   return <button type="button" className="btn top__jump" onClick={onSearch} aria-keyshortcuts="Meta+K Control+K">
     <Search size={16} aria-hidden />
     <span className="top__jumpText"><span className="top__jumpHint">{t("shell.jump")}</span><span className="top__jumpLabel">{t("shell.jumpLabel")}</span></span>
-    <kbd className="top__kbd" aria-hidden>{t("shell.jumpKey")}</kbd>
+    <kbd className="top__kbd" aria-hidden>{modHint("K")}</kbd>
   </button>;
 }
 

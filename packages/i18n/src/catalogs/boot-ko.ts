@@ -55,7 +55,6 @@ export const bootKo: Record<BootMessageId, string> = {
   "shell.settings.titles": "직위·직책",
   "common.denied.alternatives": "{requirements} 중 하나",
   "shell.link.org": "조직",
-  "shell.jumpKey": "⌘K",
   "shell.jumpLabel": "검색·이동",
   "shell.searchHint": "이름, 사번, 문서 번호 검색",
   "shell.jump": "검색·이동 — 법인·사업장·부서·직원, 사업자등록번호, 요청 번호",
