@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { INBOX_FILTERS } from "../../apps/web/src/features/home/domain/inbox-filter";
 import { expectAxe, fits } from "../a11y";
@@ -9,6 +9,7 @@ import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
 
 test.beforeAll(() => loadCatalog("ko"));
+const shellMain = (page: Page) => page.getByRole("main", { name: t("shell.main"), exact: true });
 
 for (const width of [1440, 390]) {
   for (const path of ["/", "/inbox", ...["waiting", "scheduled", "failures"].map(tab => `/inbox?tab=${tab}`), "/people/requests", "/requests", `/requests/${id(99)}`]) {
@@ -26,7 +27,7 @@ for (const width of [1440, 390]) {
       await mockRoute(page, "get", "/api/v1/requests/{key}", { status: 404, json: failure("request_not_found") });
       try {
         await page.goto(path);
-        const main = page.getByRole("main", { name: t("shell.main"), exact: true });
+        const main = shellMain(page);
         if (path === "/requests") {
           await expect(main.getByText(t("requestOutcome.empty"), { exact: true })).toBeVisible();
           await expect(main.getByRole("textbox")).toHaveValue("");
@@ -100,7 +101,7 @@ for (const width of [1440, 390]) {
       } });
       try {
         await page.goto(`/requests/${id(99)}`);
-        const alert = page.getByRole("main", { name: t("shell.main"), exact: true }).locator('[data-tone="danger"]');
+        const alert = shellMain(page).locator('[data-tone="danger"]');
         await expect(alert).toContainText(t(`common.failed.code.${code}`));
         await expect(alert).not.toContainText(code);
         const requests = alert.getByRole("link", { name: t("requests.title"), exact: true });

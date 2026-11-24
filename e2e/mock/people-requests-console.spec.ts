@@ -193,6 +193,14 @@ for (const width of [1440, 390] as const) {
         }
         await expect(pattern).toContainText(t("requests.reason.DATA_ENTRY_ERROR"));
 
+        const bottomBar = width === 390
+          ? page.getByRole("navigation", { name: t("shell.nav"), exact: true })
+          : page.getByRole("contentinfo", { name: t("shell.status.label"), exact: true });
+        await expect(bottomBar).toBeInViewport({ ratio: 1 });
+        const barBox = await bottomBar.boundingBox();
+        expect(barBox).not.toBeNull();
+        expect(Math.abs(barBox!.y + barBox!.height - page.viewportSize()!.height)).toBeLessThanOrEqual(1);
+
         if (width === 1440) {
           const sidePane = page.locator('aside[data-pane="record"]');
           await expect(sidePane).toBeVisible();
@@ -202,11 +210,6 @@ for (const width of [1440, 390] as const) {
           expect(gridBox).not.toBeNull();
           expect(sideBox).not.toBeNull();
           expect(gridBox!.x + gridBox!.width).toBeLessThanOrEqual(sideBox!.x + 1);
-          const statusBar = page.getByRole("contentinfo", { name: t("shell.status.label"), exact: true });
-          await expect(statusBar).toBeVisible();
-          const statusBox = await statusBar.boundingBox();
-          expect(statusBox).not.toBeNull();
-          expect(statusBox!.y + statusBox!.height).toBeLessThanOrEqual(900);
           await capture(page, width, "people-requests", theme);
 
           await sidePane.getByRole("button", { name: t("requests.decide.APPLY"), exact: true }).click();
@@ -221,7 +224,7 @@ for (const width of [1440, 390] as const) {
             expect(box).not.toBeNull();
             expect(box!.height).toBeGreaterThanOrEqual(48);
             expect(box!.height).toBeLessThanOrEqual(72);
-            if (box!.y + box!.height <= 900) aboveFold += 1;
+            if (box!.y + box!.height <= barBox!.y) aboveFold += 1;
           }
           expect(aboveFold).toBeGreaterThanOrEqual(6);
           await capture(page, width, "people-requests", theme);

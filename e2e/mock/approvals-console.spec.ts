@@ -20,6 +20,9 @@ import { screenAccess } from "./fixtures";
 import { mockScreen } from "./screen";
 
 test.beforeAll(() => loadCatalog("ko"));
+const shellBottomBar = (page: Page, width: number) => width === 390
+  ? page.getByRole("navigation", { name: t("shell.nav"), exact: true })
+  : page.getByRole("contentinfo", { name: t("shell.status.label"), exact: true });
 
 async function enableConsoleExperience(page: Page, theme: "light" | "dark" = "light", locale: "ko" | "en" = "ko") {
   await page.addInitScript(
@@ -192,10 +195,13 @@ for (const width of [1440, 390]) {
         await expect(kpiStrip).toBeVisible();
         await expect(kpiStrip.getByRole("button")).toHaveCount(6);
 
-        const bottomBar = width === 390
-          ? page.getByRole("navigation", { name: t("shell.nav"), exact: true })
-          : page.getByRole("contentinfo", { name: t("shell.status.label"), exact: true });
+        // The lazy phone bars can arrive after the queue draws, so wait before measuring or capturing it.
+        const bottomBar = shellBottomBar(page, width);
         await expect(bottomBar).toBeVisible();
+        await expect(bottomBar).toBeInViewport({ ratio: 1 });
+        const barBox = await bottomBar.boundingBox();
+        expect(barBox).not.toBeNull();
+        expect(Math.abs(barBox!.y + barBox!.height - page.viewportSize()!.height)).toBeLessThanOrEqual(1);
 
         if (width === 1440) {
           const initialSidePane = page.locator('aside[data-pane="record"]');
@@ -230,20 +236,17 @@ for (const width of [1440, 390]) {
           const rowHeights = await table.locator("tbody tr[data-id]").evaluateAll(rows =>
             rows.map(r => {
               const rect = r.getBoundingClientRect();
-              return { height: Math.round(rect.height), bottom: Math.round(rect.bottom) };
+              return { height: Math.round(rect.height), bottom: rect.bottom };
             }),
           );
           expect(rowHeights.every(r => r.height >= 48 && r.height <= 68)).toBe(true);
-          expect(rowHeights.filter(r => r.bottom <= 900).length).toBeGreaterThanOrEqual(6);
+          expect(rowHeights.filter(r => r.bottom <= barBox!.y).length).toBeGreaterThanOrEqual(6);
           const completedTabBox = await tabs.getByRole("link", { name: new RegExp(t("approvals.box.completed")) }).boundingBox();
           expect(completedTabBox).not.toBeNull();
           expect(completedTabBox!.x + completedTabBox!.width).toBeLessThanOrEqual(390);
         }
 
         await withFullPage(page, () => shot(page, `approvals--${width}-${theme}`));
-        const barBox = await bottomBar.boundingBox();
-        expect(barBox).not.toBeNull();
-        expect(barBox!.y + barBox!.height).toBeGreaterThanOrEqual(899);
         await fits(page, `Console /approvals ${width} ${theme}`);
         await expectAxe(page, `Console /approvals ${width} ${theme}`);
 
@@ -320,6 +323,7 @@ for (const width of [1440, 390]) {
         const cardBorder = await aside.locator("article").evaluate(el => getComputedStyle(el).borderStyle);
         expect(cardBorder).toBe("none");
 
+        await expect(shellBottomBar(page, width)).toBeVisible();
         await withFullPage(page, () => shot(page, `approval--${width}-${theme}`));
         await fits(page, `Console /approvals/$approvalId ${width} ${theme}`);
         await expectAxe(page, `Console /approvals/$approvalId ${width} ${theme}`);
