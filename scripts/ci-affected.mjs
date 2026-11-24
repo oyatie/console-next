@@ -35,7 +35,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const files = paths.split("\0").filter(Boolean);
     affected = classifyPaths(files);
     lockfile = files.includes("package-lock.json");
-    if (!lockfile) console.log(`Skipping npm signature verification: package-lock.json unchanged against ${base}`);
+    if (!lockfile) {
+      const reason = `Skipping npm signature verification: package-lock.json unchanged against ${base}`;
+      console.log(reason);
+      if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, reason + "\n");
+    }
     const docCount = files.filter(file => file.startsWith("docs/")).length;
     if (docCount) docs = docCount === files.length ? "only" : "mixed";
   }

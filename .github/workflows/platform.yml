@@ -21,22 +21,20 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a
+      - &harden-runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a
         with: {egress-policy: audit}
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
-          ref: ${{ github.event_name == 'schedule' && 'refs/heads/dev' || github.sha }}
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+      - &checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: {persist-credentials: false}
+      - &setup-node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with: {node-version-file: .node-version, cache: npm}
-      - run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Verify npm registry signatures and provenance
-        if: github.event_name == 'push' || github.event_name == 'schedule'
-        run: npm audit signatures
       - name: Locked tools
         run: python3 deploy/ci/tools.py flux cosign kind buildx conftest kubeconform syft kustomize actionlint helm kubectl
       - name: Contracts and strict manifests
         run: |
+          npm ci --ignore-scripts --no-audit --no-fund
           python3 -m unittest discover -s deploy/ci -p '*_test.py'
           node --test deploy/ci/*.test.mjs
           bash deploy/ci/validate.sh
@@ -87,6 +85,19 @@ jobs:
         run: &native-image-smoke |
           docker load --input "${RUNNER_TEMP}/console-${ARCH}.tar"
           bash deploy/ci/image-smoke.sh "console-platform:${ARCH}"
+
+  npm-signatures:
+    name: Verify npm registry signatures and provenance
+    if: github.event_name == 'push' || github.event_name == 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions: {contents: read}
+    steps:
+      - *harden-runner
+      - *checkout
+      - *setup-node
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm audit signatures
 
   prune-image-cache:
     name: Maintain image build cache
@@ -170,7 +181,7 @@ jobs:
   publish:
     name: Publish signed platform artifacts
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
-    needs: [validate, build]
+    needs: [validate, build, npm-signatures]
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     permissions:
