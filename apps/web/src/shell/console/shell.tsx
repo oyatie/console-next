@@ -7,15 +7,13 @@ import { healthStatus, pickLocalized, STATUS_PAGE_URL } from "../../features/hea
 import { chunk } from "../../lib/chunk-guard";
 import { useKeys } from "../../lib/react/use-keys";
 import { personName } from "../../reference/person/present";
-import { Kbd } from "../../ui/kbd/kbd";
 import type { ModuleNavItem } from "../../ui/module-nav/module-nav";
 import { PagePhoneHeader } from "../../ui/page/page-scope";
-import { StatusBar } from "../../ui/status-bar/status-bar";
-import { usePublishedStatusBar } from "../../ui/status-bar/status-bar-store";
 import { openWorkspaceTab, resolveAppHref } from "../../ui/workspace-tabs/open-tab";
 import { WorkspaceTabs } from "../../ui/workspace-tabs/workspace-tabs";
 import { ShellFrame, type ShellLayoutProps } from "../frame/shell-frame";
 import { activeLink, type NavLink } from "../nav";
+import { ConsoleStatusBar } from "./console-status-bar";
 import { ConsoleTopBar } from "./console-top-bar";
 import { tabIconForHref } from "./tab-icon";
 import { useResolvedTabTitle } from "./tab-titles";
@@ -282,42 +280,5 @@ function ConsoleLayout({
         )}
       </div>
     </PagePhoneHeader>
-  );
-}
-
-function ConsoleStatusBar({ platform, tenantName, currentTitle, inboxCount, inboxExact }: {
-  platform?: boolean; tenantName?: string; currentTitle: string; inboxCount?: number; inboxExact: boolean;
-}) {
-  const publishedSegments = usePublishedStatusBar();
-  const statusSegments = useMemo(() => {
-    if (publishedSegments && publishedSegments.length > 0) {
-      return publishedSegments;
-    }
-    const segments: { id: string; content: ReactNode; tone?: "default" | "strong" | "attention" }[] = [
-      { id: "scope", content: platform ? t("shell.hub.platform") : tenantName ?? t("app.name"), tone: "strong" },
-      { id: "module", content: currentTitle },
-    ];
-    if (!platform && inboxCount !== undefined && inboxCount > 0) {
-      segments.push({
-        id: "inbox",
-        content: t(inboxExact ? "shell.needsMe.count" : "shell.needsMe.countMore", { count: inboxCount }),
-        tone: "attention",
-      });
-    }
-    return segments;
-  }, [publishedSegments, platform, tenantName, currentTitle, inboxCount, inboxExact]);
-
-  return (
-    <StatusBar
-      segments={statusSegments}
-      trailing={
-        !platform ? (
-          <>
-            <bdi>{t("shell.jumpLabel")}</bdi>
-            <Kbd keys={t("shell.jumpKey")} />
-          </>
-        ) : undefined
-      }
-    />
   );
 }

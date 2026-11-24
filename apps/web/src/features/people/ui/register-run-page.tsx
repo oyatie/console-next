@@ -12,6 +12,7 @@ import { checklistRef, entitiesRef, orgStructureRef } from "../../../reference/e
 import { CommandError } from "../../../lib/react/command-error";
 import { peopleRefusal } from "../present";
 import { phoneE164 } from "../../../lib/pure/formats";
+import { modHint } from "../../../lib/mod-hint";
 import { todayKst } from "../../../lib/pure/today";
 import { Button } from "../../../ui/button/button";
 import { Kbd } from "../../../ui/kbd/kbd";
@@ -148,7 +149,7 @@ export function RegisterRun() {
               {t("register.run.sum", { n: live.length })}
               {chosen && <> · {t("register.run.unitNow", { unit: chosen.unit.name, count: chosen.unit.headcount })}</>}
             </span>
-            {live.length > 0 && <Button onClick={() => save(true)}>{t("register.run.finish")}<Kbd keys="⌘⇧↵" /></Button>}
+            {live.length > 0 && <Button onClick={() => save(true)}>{t("register.run.finish")}<Kbd keys={modHint("⇧↵")} /></Button>}
           </>
         }
       />

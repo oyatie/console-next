@@ -456,9 +456,6 @@ aside.panel { position: sticky; top: 0; }
   border-inline-start: var(--access-split-inline);
   border-block-start: var(--access-split-block);
 }
-:where([data-experience]:not([data-experience="baseline"])) [data-access-page] td a:not(:hover):not(:focus-visible) {
-  text-decoration-line: none;
-}
 :where([data-experience]:not([data-experience="baseline"])) [data-access-page] .btn--chip {
   border-radius: var(--space-1);
   padding: 0 var(--space-3);

@@ -25,7 +25,7 @@
 
 ## Looks and sizes
 
-Rows align to `--row-h-compact` (`24px` on Console desk, `40px` on Console phone, `32px` on Classic) with `1px` `--border-soft` hairlines and `--text-xs` typography.
+Rows align to `--row-h-sm`, the height of a line that is not a table row (`24px` on Console desk, `40px` on Console phone, `32px` on Classic), with `1px` `--border-soft` hairlines and `--text-xs` typography.
 
 ## States
 
@@ -71,7 +71,7 @@ Default list name reads `uiWorklist.changes` from `packages/i18n`; row values co
 | `--faint` | `color` |
 | `--fw-semibold` | `font-weight` |
 | `--ink` | `color` |
-| `--row-h-compact` | `min-height` |
+| `--row-h-sm` | `min-height` |
 | `--space-1` | `padding-inline` |
 | `--space-half` | `padding` |
 | `--steel` | `color` |
