@@ -61,8 +61,8 @@ use time::macros::date;
 use time::{OffsetDateTime, Time};
 use uuid::Uuid;
 
-#[path = "../../../../test-support/person_fixtures.rs"]
-mod person_fixtures;
+#[path = "support/pay_run_actors.rs"]
+mod pay_run_actors;
 
 const ORG: Uuid = Uuid::from_u128(0xe3b0_0000_0000_0000_0000_0000_0000_0011);
 const FOREIGN_ORG: Uuid = Uuid::from_u128(0xe3b0_0000_0000_0000_0000_0000_0000_0012);
@@ -85,7 +85,7 @@ async fn seed_org_and_user(owner_pool: &PgPool, org: Uuid, tag: &str) -> UserId 
     .await
     .unwrap();
     let user_id = seed_active_user(owner_pool, org, "SUPER_ADMIN", tag).await;
-    person_fixtures::bind_user_to_distinct_person(owner_pool, user_id).await;
+    pay_run_actors::bind_pay_editor(owner_pool, OrgId::from_uuid(org), user_id).await;
     user_id
 }
 

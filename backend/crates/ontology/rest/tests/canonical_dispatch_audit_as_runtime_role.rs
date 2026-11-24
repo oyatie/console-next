@@ -342,7 +342,7 @@ async fn seeded_org_actions_write_canonical_heads_through_owning_ports(owner_poo
     let actor = seed_user(&owner_pool, org_uuid, "foundry-org").await;
     let decider = seed_user(&owner_pool, org_uuid, "foundry-payroll-decider").await;
     for user in [actor, decider] {
-        person_fixtures::bind_user_to_distinct_person(&owner_pool, user).await;
+        canonical_dispatch::bind_pay_editor(&owner_pool, org, user).await;
     }
 
     let company_type = seed_canonical_org_action(

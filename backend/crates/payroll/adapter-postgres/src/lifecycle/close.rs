@@ -20,7 +20,8 @@ pub async fn close_preflight_in_tx(
     tx: &mut Transaction<'_, Postgres>,
     run_id: Uuid,
 ) -> Result<Option<ClosePreflight>, LifecycleError> {
-    let Some(run) = run_head(tx, run_id, false).await? else {
+    // Locked before `saved` is read, so a line committed by a writer it waited on is saved.
+    let Some(run) = run_head(tx, run_id, true).await? else {
         return Ok(None);
     };
     // The verdict judges the roster the close would write; the savepoint keeps

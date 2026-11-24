@@ -208,3 +208,64 @@ async fn port_commands_on_a_sensitive_groups_run_need_edit_clearance(pool: PgPoo
         )
     );
 }
+
+/// A run staged from imports has no group to check, but its commands still need
+/// tenant pay:edit, as over REST; SUPER_ADMIN alone carries none.
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn port_commands_on_an_import_run_need_tenant_pay_edit(pool: PgPool) {
+    let org = OrgId::new();
+    let admin = seed_org_and_super_admin(&pool, *org.as_uuid(), "import-admin").await;
+    let member = seed_active_user(&pool, *org.as_uuid(), "MEMBER", "import-member").await;
+    let granted = seed_active_user(&pool, *org.as_uuid(), "MEMBER", "import-granted").await;
+    for actor in [admin, member, granted] {
+        person_fixtures::bind_user_to_distinct_person(&pool, actor).await;
+    }
+    pay_access::grant_manage(&pool, org, granted, None).await;
+    // rls-arming: ok owner seeds a calculated import run, as calculated_run does.
+    let import_run = || async {
+        sqlx::query_scalar::<_, Uuid>("WITH run AS (INSERT INTO payroll_draft_runs (org_id,period_start,period_end,source_label,status) VALUES ($1,DATE '2026-06-01',DATE '2026-06-30',$2,'CALCULATED') RETURNING org_id,id), line AS (INSERT INTO payroll_draft_lines (org_id,run_id,employee_source_key,employee_display_name,employee_company) SELECT org_id,id,'calculated','Calculated','SAE' FROM run RETURNING org_id,run_id,id) INSERT INTO payroll_line_calculations (org_id,run_id,line_id,version,gross_won,deductions,total_deductions_won,net_won,tax_table_version) SELECT org_id,run_id,id,1,0,'[]',0,0,'fixture' FROM line RETURNING run_id")
+            .bind(org.as_uuid()).bind(format!("import-{}", Uuid::new_v4())).fetch_one(&pool).await.unwrap()
+    };
+    let rt = runtime_role_pool(&pool).await;
+    let mut manageable = Vec::new();
+    for actor in [admin, member, granted] {
+        let m = with_org_conn::<_, _, console_payroll_adapter_postgres::PgPayrollError>(
+            &rt,
+            org,
+            move |tx| {
+                Box::pin(async move {
+                    let facts = load_facts(tx, org, *actor.as_uuid()).await?;
+                    Ok(
+                        console_payroll_adapter_postgres::pay_groups::manageable_pay_groups_in_tx(
+                            tx, &facts, org,
+                        )
+                        .await?,
+                    )
+                })
+            },
+        )
+        .await
+        .unwrap();
+        manageable.push(m.is_some());
+    }
+    let port = PgPayRunPort::new(rt, tokio::runtime::Handle::current());
+    let mut outcomes = Vec::new();
+    for actor in [admin, member, granted] {
+        let run = import_run().await;
+        let submitted = dispatch(&port, org, actor, PayRunQuery::SubmitRun { run_id: run }).await;
+        outcomes.push((submitted, status(&pool, run).await));
+    }
+    let refused = || {
+        (
+            Err("Lifecycle(NotFound)".to_owned()),
+            "CALCULATED".to_owned(),
+        )
+    };
+    assert_eq!(
+        (manageable, outcomes),
+        (
+            vec![false, false, true],
+            vec![refused(), refused(), (Ok(()), "SUBMITTED".to_owned())]
+        )
+    );
+}

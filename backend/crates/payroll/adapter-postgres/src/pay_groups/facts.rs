@@ -79,25 +79,25 @@ pub async fn run_pay_group_in_tx(
 /// A command from a surface that skips the REST pay gate (the ontology action
 /// path) reaches a pay group's run only with tenant pay:edit and then that
 /// group's run access, sensitive clearance included; otherwise it answers as a
-/// run that does not exist. A run staged from imports has no group to check.
+/// run that does not exist. A run staged from imports needs tenant pay:edit only.
 pub(crate) async fn require_run_command_in_tx(
     tx: &mut Transaction<'_, Postgres>,
     org: OrgId,
     actor: uuid::Uuid,
     run_id: uuid::Uuid,
 ) -> Result<(), PayRunError> {
-    let group = run_pay_group_in_tx(tx, run_id)
+    let Some(group) = run_pay_group_in_tx(tx, run_id)
         .await
-        .map_err(KernelError::from)?;
-    let Some(Some(group)) = group else {
+        .map_err(KernelError::from)?
+    else {
+        // An unknown run: the lifecycle answers NotFound.
         return Ok(());
     };
     let facts = load_facts(tx, org, actor).await?;
-    let manageable = manageable_pay_groups_in_tx(tx, &facts, org).await?;
-    if manageable.is_some_and(|groups| groups.contains(&group)) {
-        return Ok(());
+    match manageable_pay_groups_in_tx(tx, &facts, org).await? {
+        Some(groups) if group.is_none_or(|group| groups.contains(&group)) => Ok(()),
+        _ => Err(LifecycleError::NotFound.into()),
     }
-    Err(LifecycleError::NotFound.into())
 }
 
 /// The pay groups whose runs `facts`' holder may submit or decide, or `None`

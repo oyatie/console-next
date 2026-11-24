@@ -4,9 +4,6 @@
 //! without sensitive:edit, exactly as a decision on a run that does not exist.
 use super::*;
 
-#[path = "../../../../payroll/rest/tests/fixtures/pay_view.rs"]
-mod pay_view;
-
 /// A legal entity's sensitive pay group with one run awaiting decision, seeded by the owner.
 async fn submitted_sensitive_run(owner: &PgPool, org: OrgId, submitter: UserId) -> Uuid {
     sqlx::query_scalar(

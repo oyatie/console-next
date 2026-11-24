@@ -25,6 +25,8 @@ mod placement;
 mod placement_migration;
 #[path = "roster_materialisation/places.rs"]
 mod places;
+#[path = "roster_materialisation/preflight_race.rs"]
+mod preflight_race;
 #[path = "roster_materialisation/seed.rs"]
 mod seed;
 
