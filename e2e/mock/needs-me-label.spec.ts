@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { shell, shellSelectors } from "../shell";
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test } from "@playwright/test";
-import { bootEn, bootKo } from "../../packages/i18n/src/catalogs/boot";
+import { expect } from "@playwright/test";
+import { i18n, loadCatalog, t } from "@console/i18n";
 import { breakpoints } from "../../apps/web/src/ui/breakpoints";
 import { MAX_RETRY_AFTER_MS } from "../../apps/web/src/lib/react/query-defaults";
 import { expectAxe, fits } from "../a11y";
+import { test } from "../locale-fixture";
 import { screens } from "../states/registry";
 import { failure, inbox } from "./fixtures";
 import { mockRoute } from "./route";
@@ -14,6 +15,8 @@ import { mockScreen } from "./screen";
 for (const locale of ["ko", "en"] as const) for (const width of [1440, 1024, 390]) {
   for (const state of ["loading", "zero", "one", "many", "inexact", "failed", "refused"] as const) {
     test(`inbox accessible name includes its label: ${locale}, ${width}px, ${state}`, async ({ page }) => {
+      await loadCatalog(locale);
+      i18n.set(locale);
       await page.setViewportSize({ width, height: 900 });
       await page.addInitScript(value => localStorage.setItem("console.locale", value), locale);
       const mock = await mockScreen(page, screens[0], "populated");
@@ -33,12 +36,11 @@ for (const locale of ["ko", "en"] as const) for (const width of [1440, 1024, 390
         await expect(page.locator("main h1").first()).toBeVisible();
         await expect(page.locator("html")).toHaveAttribute("lang", locale);
         const trigger = page.locator("#top-needs-me");
-        const title = locale === "ko" ? "업무함" : "Inbox";
+        const title = t("home.inbox.title");
         const counted = state === "one" || state === "many" || state === "inexact";
         if (counted) {
           await expect.soft(trigger).toHaveAccessibleName(`${title} ${count}${state === "inexact" ? "+" : ""}`);
-          await expect.soft(trigger).toHaveAccessibleDescription(locale === "ko" ? `업무함 ${count.toLocaleString(locale)}건${state === "inexact" ? " 이상" : ""}`
-            : state === "inexact" ? `Inbox · at least ${count.toLocaleString(locale)} items need my action` : `Inbox · ${count} ${count === 1 ? "item needs" : "items need"} my action`);
+          await expect.soft(trigger).toHaveAccessibleDescription(t(state === "inexact" ? "shell.needsMe.countMoreDescription" : "shell.needsMe.countDescription", { count }));
           await expect(trigger.locator("[data-count]")).toHaveText(`${count}${state === "inexact" ? "+" : ""}`);
         } else {
           await expect(trigger).toHaveAccessibleName(state === "zero" ? title
@@ -52,7 +54,7 @@ for (const locale of ["ko", "en"] as const) for (const width of [1440, 1024, 390
           expect.soft(scan.violations, `${theme} header label in name`).toEqual([]);
         }
         const jump = shell(page).search;
-        await expect(jump).toHaveAccessibleName((locale === "ko" ? bootKo : bootEn)[width === 1440 ? "shell.jump" : "shell.jumpLabel"]);
+        await expect(jump).toHaveAccessibleName(t(width === 1440 ? "shell.jump" : "shell.jumpLabel"));
         await expectAxe(page, `inbox label ${locale} ${width} ${state}`, { include: shellSelectors().banner });
         await fits(page, `inbox label ${locale} ${width} ${state}`);
         expect(mock.unexpected).toEqual([]);

@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { go, routeReady, takeCode, tenantOnboardSubmit, tenantSlugField, unique, vendorPage } from "./flows";
 import { tenantBeforeSetup } from "./setup-flows";
 import { clearShifts, expectStable } from "./stability";
 import { openCard, soloWorld } from "./record-actions/world";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 test("a delayed personnel action chunk leaves the open card body in place", async ({ browser }) => {
   const world = await soloWorld(browser, "firstpaint-card", "첫 화면 인사카드 검증", false);
@@ -123,7 +126,7 @@ test("the shell paints during a pending authz read and degrades on faults", asyn
     await admin.reload({ waitUntil: "domcontentloaded" });
     await expect(admin.getByRole("button", { name: "로그아웃" })).toBeVisible();
     await routeReady(admin);
-    await expect(admin.getByRole("navigation", { name: "주 메뉴" }).getByRole("link", { name: "조직 구조", exact: true })).toBeVisible();
+    await expect(admin.getByRole("navigation", { name: "주 메뉴" }).getByRole("link", { name: t("shell.link.org"), exact: true })).toBeVisible();
     await expect(admin.getByText("화면을 표시하지 못했습니다", { exact: true })).toHaveCount(0);
     await admin.unroute("**/api/v1/me/authz");
   }

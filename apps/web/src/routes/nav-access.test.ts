@@ -23,6 +23,53 @@ const menu = (pathname = "/", phase = "OPERATING", setupTargets?: readonly strin
   tenantNav(held, tree, false, context(pathname, phase, setupTargets));
 const top = (groups: ReturnType<typeof tenantNav>) => groups.flatMap(g => g.links.map(l => l.to));
 
+// Approvals and payroll show only with a modules answer, so these rows read every module as ready.
+const allReady = ["org", "people", "attendance", "statutory", "access", "approvals", "payroll"].map(key => ({ key, ready: true, unblock: null }));
+const live = (phase = "OPERATING", setupTargets?: readonly string[]) => ({ ...context("/", phase, setupTargets), modules: allReady });
+const noGrants = { is_ops: false, entries: [] } as unknown as AccessEffective;
+// The word each destination carries on the bar.
+const WORD: Readonly<Record<string, string>> = {
+  "/": "shell.link.todo",
+  "/people/requests": "shell.link.requests",
+  "/approvals": "shell.link.approvals",
+  "/org": "shell.link.org",
+  "/team": "shell.link.team",
+  "/people": "shell.link.people",
+  "/attendance": "shell.link.attendance",
+  "/payroll": "shell.link.payroll",
+  "/statutory": "shell.link.statutory",
+  "/access": "shell.link.access",
+  "/audit": "shell.link.audit",
+  "/audit/support-access": "shell.link.audit",
+  "/settings": "shell.link.settings",
+};
+
+test.each([
+  { viewer: "a full admin", held: admin, at: live(),
+    bar: ["/", "/people/requests", "/approvals", "/org", "/team", "/people", "/attendance", "/payroll", "/statutory", "/access", "/audit", "/settings"] },
+  { viewer: "an HR reader at DEPARTMENT", held: access("hr_basic", "view", "DEPARTMENT"), at: live(),
+    bar: ["/", "/people/requests", "/approvals", "/team", "/people", "/settings"] },
+  { viewer: "a tenant-wide pay reader", held: access("pay", "view"), at: live(),
+    bar: ["/", "/people/requests", "/approvals", "/payroll"] },
+  { viewer: "an approver, employee or unlinked account with no grants", held: noGrants, at: live(),
+    bar: ["/", "/people/requests", "/approvals"] },
+  { viewer: "a support approver with no grants", held: noGrants, support: true, at: live(),
+    bar: ["/", "/people/requests", "/approvals", "/audit/support-access"] },
+  { viewer: "an admin in SETUP with checklist targets", held: admin, at: live("SETUP", ["/org/entities/new", "/access/roles/new"]),
+    bar: ["/", "/org", "/access"] },
+  { viewer: "an admin in SETUP with the default targets", held: admin, at: live("SETUP"),
+    bar: ["/", "/org", "/people", "/access"] },
+  { viewer: "an admin in SETUP with no targets", held: admin, at: live("SETUP", []),
+    bar: ["/"] },
+  { viewer: "a full admin whose modules read is refused", held: admin, at: context(),
+    bar: ["/", "/people/requests", "/org", "/team", "/people", "/attendance", "/statutory", "/access", "/audit", "/settings"] },
+  { viewer: "a full admin whose modules read faulted", held: admin, at: { ...context(), modules: null },
+    bar: ["/", "/people/requests", "/audit", "/settings"] },
+])("navigation entries per viewer: $viewer", ({ held, support = false, at, bar }) => {
+  expect(tenantNav(held, routes, support, at).flatMap(g => g.links.map(({ to, label }) => ({ to, label }))))
+    .toEqual(bar.map(to => ({ to, label: WORD[to] })));
+});
+
 test("server readiness hides unusable modules and keeps destination permissions authoritative", () => {
   const modules: NonNullable<Parameters<typeof tenantNav>[3]>["modules"] = [{ key: "people", ready: false, unblock: "create_workplace" }, { key: "org", ready: true, unblock: null }];
   for (const path of ["/people", "/attendance", "/statutory"]) expect(top(tenantNav(admin, routes, false, { ...context(), modules }))).not.toContain(path);

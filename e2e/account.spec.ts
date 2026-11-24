@@ -174,6 +174,6 @@ test("a refused sign-in right after enrollment lands on the login screen, and th
   // Recovery waits for an explicit retry instead of starting another sign-in through autofill.
   expect(signIns).toBe(1);
   await passkeyLogin(page);
-  await expect(page.getByRole("heading", { name: "김신입님" })).toBeVisible();
+  await expect(page.getByRole("main").getByText("김신입님", { exact: true })).toBeVisible();
   expect(signIns).toBe(2);
 });

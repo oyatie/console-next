@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { OWN_ECHO_MS } from "../apps/web/src/lib/freshness";
 import { expectAccessible } from "./a11y";
 import { expectStable, forgetResize } from "./stability";
@@ -8,6 +9,8 @@ import { apiOf, bearerOf, codeOf } from "./helpers/api";
 import { openTenant } from "./helpers/tenant";
 import { letGrantsAge } from "./second-person-fixture";
 import { SETUP_DEPARTMENT, startOperations, tenantInSetup } from "./setup-flows";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 const today = kstDate();
 const lastMonth = new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 2, 1)).toISOString().slice(0, 7);
@@ -37,7 +40,7 @@ async function requestUnlock(admin: Page) {
   return row;
 }
 
-// The close authority confirms the grant's notice in 업무함 › 참조. The requester sees each outcome live;
+// The close authority confirms the grant's notice in 할 일 › 참조. The requester sees each outcome live;
 // the second person finds it on Home and the lock page, refuses it with a reason, then approves a new request.
 test("period unlock: a second close authority refuses, then approves; the requester sees each outcome", { tag: ["@hr", "@regression"] }, async ({ browser }) => {
   test.setTimeout(8 * 60_000); // two tenants, verified close authorities and two passkey decisions, all through the UI
@@ -65,11 +68,11 @@ test("period unlock: a second close authority refuses, then approves; the reques
     letGrantsAge(unique(slug), name);
   }
   await go(exec, "/");
-  await expect(exec.getByRole("region", { name: "업무함", exact: true }).locator("tbody tr").first()).toBeVisible();
+  await expect(exec.getByRole("region", { name: t("home.inbox.title"), exact: true }).locator("tbody tr").first()).toBeVisible();
   await expectStable(exec, "Home after the grant is confirmed");
   // A frame within OWN_ECHO_MS of this tab's own write is that write's echo (lib/live): the requester acts after it.
   await exec.waitForTimeout(OWN_ECHO_MS);
-  const paintedRows = exec.getByRole("region", { name: "업무함", exact: true }).locator("tbody tr");
+  const paintedRows = exec.getByRole("region", { name: t("home.inbox.title"), exact: true }).locator("tbody tr");
   const painted = await paintedRows.allTextContents();
   const position = await paintedRows.first().boundingBox();
 
@@ -120,7 +123,7 @@ test("period unlock: a second close authority refuses, then approves; the reques
 
   // Home holds the live insert until the second person asks to see it.
   await exec.waitForTimeout(OWN_ECHO_MS);
-  const inbox = exec.getByRole("region", { name: "업무함", exact: true });
+  const inbox = exec.getByRole("region", { name: t("home.inbox.title"), exact: true });
   const queue = inbox.getByRole("row").filter({ has: exec.locator(`a[href="${LOCKS}?review=${lock.id}"]`) });
   const held = exec.getByRole("button", { name: /^새 항목 \d+건 · 새로 고침$/ });
   await expect(held).toBeVisible();
