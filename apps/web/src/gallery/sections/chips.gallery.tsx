@@ -21,6 +21,8 @@ export default function Chips() {
         <Chip tone="danger">{t("enum.stepDecision.REJECTED")}</Chip>
         <Chip>{label(EMPLOYEE_STATUS, "EXITED")}</Chip>
         <Chip tone="info">{tg("sample.teamLong")}</Chip>
+        <Chip tone="outline">{label(EMPLOYEE_STATUS, "ACTIVE")}</Chip>
+        <Chip tone="accent">{t("home.inbox.reason.approval")}</Chip>
         <ActorBadge kind="OPS_ACCOUNT" />
         <ActorBadge kind="OPS_ACCOUNT" breakGlass />
         <ActorBadge kind="SUPPORT_OPERATOR" />
