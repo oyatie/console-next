@@ -1,10 +1,13 @@
 import { expect, test } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible, fits as fitsOn } from "./a11y";
 import { forgetResize } from "./stability";
 import { go, routeReady } from "./flows";
 import { tenantWithExecutive } from "./setup-flows";
 import { rosterXlsx } from "./workbook";
 import { confirmImportColumns, chooseWorkbook, payPeriod } from "./helpers/import";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 test("an HR admin imports a roster: preview → dry run → apply bound to it", { tag: "@hr" }, async ({ browser }) => {
   const { admin } = await tenantWithExecutive(browser, "peopleco", "사람주식회사");
@@ -14,7 +17,7 @@ test("an HR admin imports a roster: preview → dry run → apply bound to it", 
   });
   await test.step("navigation with focus left on the nav link focuses the page heading", async () => {
     await go(admin, "/org");
-    const people = admin.getByRole("navigation", { name: "주 메뉴" }).getByRole("link", { name: "직원", exact: true });
+    const people = admin.getByRole("navigation", { name: "주 메뉴" }).getByRole("link", { name: t("shell.link.people"), exact: true });
     await people.focus();
     await expect(people).toBeFocused();
     await people.press("Enter");
@@ -81,17 +84,17 @@ test("an HR admin imports a roster: preview → dry run → apply bound to it", 
   await expect(admin.getByRole("navigation", { name: "주 메뉴" })).toBeHidden();
   const menu = admin.getByRole("button", { name: "메뉴" });
   await menu.click();
-  await expect(admin.getByRole("navigation", { name: "주 메뉴" }).getByRole("link", { name: "홈" })).toBeFocused();
+  await expect(admin.getByRole("navigation", { name: "주 메뉴" }).getByRole("link", { name: t("shell.link.todo"), exact: true })).toBeFocused();
   await admin.keyboard.press("Escape");
   await expect(menu).toBeFocused();
   await menu.click();
-  await admin.getByRole("navigation", { name: "주 메뉴" }).getByRole("link", { name: "직원" }).click();
+  await admin.getByRole("navigation", { name: "주 메뉴" }).getByRole("link", { name: t("shell.link.people"), exact: true }).click();
   await expect(admin.getByRole("rowheader", { name: "김하나", exact: true })).toBeVisible();
   await expect(admin.getByRole("navigation", { name: "주 메뉴" })).toBeHidden();
   await fits("people");
   await expectAccessible(admin, "people list at 390px");
   await menu.click();
-  await admin.getByRole("navigation", { name: "주 메뉴" }).getByRole("link", { name: "조직 구조" }).click();
+  await admin.getByRole("navigation", { name: "주 메뉴" }).getByRole("link", { name: t("shell.link.org"), exact: true }).click();
   await expect(admin.getByRole("heading", { name: "조직 구조", level: 1 })).toBeVisible();
   await fits("org");
   await go(admin, "/people/new");

@@ -178,7 +178,7 @@ export const enSettingsHub = {
   "settingsHub.key.db.pool.peak_api_processes": "Peak API processes",
   "settingsHub.key.db.pool.peak_worker_processes": "Peak worker processes",
   "settingsHub.key.db.pool.reserved_connections": "Reserved database connections",
-  "settingsHub.key.action_inbox.source_concurrency": "Worklist source concurrency",
+  "settingsHub.key.action_inbox.source_concurrency": "To-dos source concurrency",
   "settingsHub.code.ON_CONFIRM": "On exit confirmation",
   "settingsHub.code.END_OF_EXIT_DATE": "End of exit date",
   "settingsHub.code.refuse": "Refuse solo action",

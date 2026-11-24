@@ -2,8 +2,6 @@
 .page { display: flex; flex-direction: column; height: 100%; min-height: 100%; }
 .page > * { flex-shrink: 0; }
 .grow { flex: 1; }
-.crumbLink { text-decoration: none; }
-.crumbLink:hover, .crumbLink:focus-visible { text-decoration: underline; }
 .toolbar { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-5); border-bottom: 1px solid var(--border); background: var(--surface); }
 .source { font-size: var(--text-sm); font-weight: var(--fw-medium); }
 .filters { display: flex; gap: var(--space-1); }

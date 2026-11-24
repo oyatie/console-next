@@ -1,7 +1,7 @@
 // Korean copy for `empCard.` ids (features/people/ui/card: the 인사카드, employee-ux/final E2). 합니다체, no "!".
 import type { enEmpCard } from "../en/emp-card";
 export const koEmpCard: Record<keyof typeof enEmpCard, string> = {
-  "empCard.crumb": "직원",
+  "empCard.crumb": "구성원",
   "empCard.unplaced": "미배치",
   "empCard.pos.unit": "{unit} 목록",
   "empCard.pos.at": "{index} / {total}",

@@ -135,7 +135,7 @@ test("approval document without a route omits the route card", async ({ page }) 
 test("approval document remains visible in the component gallery", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 });
   await mockNavigate(page, "/_gallery?entry=approvals-page");
-  const section = page.locator(".gallery__section", { has: page.getByRole("heading", { name: "결재함", exact: true }) });
+  const section = page.locator(".gallery__section", { has: page.getByRole("heading", { name: t("approvals.title"), exact: true }) });
   await expect(section.getByRole("region", { name: "문서 정보", exact: true })).toContainText("시행일");
   await expect(section.getByRole("button", { name: /승인|반려|보완 요청/ })).toHaveCount(0);
   await expect(section.getByText(t("org_change.refuse.identity_unbound"), { exact: true })).toBeVisible();

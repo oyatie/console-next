@@ -13,13 +13,13 @@ export default function BadgeAndChromeGallery() {
     <section className="card gallery__section">
       <h2 className="toolbar__title">{t("settingsHub.key.display.experience")}</h2>
       <div className="row">
-        <Button>{t("shell.link.home")}<Badge count={23} /></Button>
+        <Button>{t("shell.link.todo")}<Badge count={23} /></Button>
         <Button variant="primary">{t("shell.link.approvals")}<Badge count={4} tone="inverse" /></Button>
         <Avatar name="M" size="sm" />
         <Avatar name="M" tone="accent" />
       </div>
       <div className="toolbar" data-surface="chrome">
-        <Button variant="ghost" size="sm">{t("shell.link.home")}<Badge count={23} tone="attention" /></Button>
+        <Button variant="ghost" size="sm">{t("shell.link.todo")}<Badge count={23} tone="attention" /></Button>
         <Button variant="ghost" size="sm">{t("shell.link.approvals")}<Badge count={4} tone="attention" /></Button>
         <Button size="sm">{t("shell.jumpLabel")}<Kbd keys="/" /></Button>
         <Avatar name="M" size="sm" tone="accent" />

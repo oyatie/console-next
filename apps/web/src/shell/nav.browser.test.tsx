@@ -2,6 +2,7 @@
 import type { ViteDevServer } from "vite";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { expect as element, type Browser, type Page } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { user } from "../../../../e2e/mock/fixtures";
 import { clearShifts } from "../../../../e2e/stability";
 import { browserEngine, waitForBrowserTestPage } from "../lib/browser-test";
@@ -11,7 +12,10 @@ let server: ViteDevServer;
 let browser: Browser;
 let page: Page;
 let errors: string[];
-beforeAll(async () => { ({ server, browser, page, errors } = await navFixture(browserEngine())); }, 60_000);
+beforeAll(async () => {
+  await loadCatalog("ko");
+  ({ server, browser, page, errors } = await navFixture(browserEngine()));
+}, 60_000);
 afterAll(async () => { await browser?.close(); await server?.close(); });
 
 async function controlBounds() {
@@ -44,7 +48,7 @@ test("a pending tenant phase never flashes the operating rail", async () => {
     const bone = await rail.locator("[data-bone]").first().boundingBox();
     expect(bone!.width).toBeGreaterThan(0);
     release();
-    await element(rail.getByRole("link")).toHaveText(["홈", "조직 구조", "직원", "권한"]);
+    await element(rail.getByRole("link")).toHaveText([t("shell.link.todo"), t("shell.link.org"), t("shell.link.people"), t("shell.link.access")]);
   } finally {
     release();
     await page.unroute("**/api/v1/users/me");
@@ -63,7 +67,7 @@ test("a failed idle checklist refetch keeps the last good setup rail without a s
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(server.resolvedUrls!.local[0]!);
     const rail = page.getByRole("navigation", { name: "주 메뉴" });
-    const entries = ["홈", "조직 구조", "권한"];
+    const entries = [t("shell.link.todo"), t("shell.link.org"), t("shell.link.access")];
     await element(rail.getByRole("link")).toHaveText(entries);
     const bounds = await controlBounds();
     await page.evaluate(clearShifts);
@@ -102,7 +106,7 @@ test.each(["success", "conflict"])("a setup mutation's %s controls when the rail
   try {
     await page.goto(server.resolvedUrls!.local[0]!);
     const rail = page.getByRole("navigation", { name: "주 메뉴" });
-    await element(rail.getByRole("link")).toHaveText(["홈", "조직 구조", "권한"]);
+    await element(rail.getByRole("link")).toHaveText([t("shell.link.todo"), t("shell.link.org"), t("shell.link.access")]);
     const bounds = await controlBounds();
     await page.evaluate(clearShifts);
     const refreshed = page.waitForResponse("**/api/v1/onboarding/checklist");
@@ -118,12 +122,12 @@ test.each(["success", "conflict"])("a setup mutation's %s controls when the rail
     release();
     await refreshed;
     await page.evaluate(() => new Promise(done => setTimeout(done, 600)));
-    await element(rail.getByRole("link")).toHaveText(["홈", "조직 구조", "권한"]);
+    await element(rail.getByRole("link")).toHaveText([t("shell.link.todo"), t("shell.link.org"), t("shell.link.access")]);
     expect(await controlBounds()).toEqual(bounds);
     expect(await page.evaluate(() => window.__shifts ?? [])).toEqual([]);
     if (outcome === "success") {
-      await rail.getByRole("link", { name: "홈", exact: true }).click();
-      await element(rail.getByRole("link", { name: "직원", exact: true })).toBeVisible();
+      await rail.getByRole("link", { name: t("shell.link.todo"), exact: true }).click();
+      await element(rail.getByRole("link", { name: t("shell.link.people"), exact: true })).toBeVisible();
     }
   } finally {
     release();
@@ -147,7 +151,7 @@ test("a setup save with a 1.5 s checklist read reveals its entry only on the nex
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(`${server.resolvedUrls!.local[0]}org`);
     const rail = page.getByRole("navigation", { name: "주 메뉴" });
-    const entries = ["홈", "조직 구조", "권한"];
+    const entries = [t("shell.link.todo"), t("shell.link.org"), t("shell.link.access")];
     await element(rail.getByRole("link")).toHaveText(entries);
     const bounds = await controlBounds();
     await page.evaluate(clearShifts);
@@ -155,7 +159,7 @@ test("a setup save with a 1.5 s checklist read reveals its entry only on the nex
     const refreshed = page.waitForResponse("**/api/v1/onboarding/checklist");
     await page.getByRole("button", { name: "Complete setup" }).click();
     await saved;
-    await rail.getByRole("link", { name: "홈", exact: true }).click();
+    await rail.getByRole("link", { name: t("shell.link.todo"), exact: true }).click();
     await element(page).toHaveURL(server.resolvedUrls!.local[0]!);
     await element(rail.getByRole("link")).toHaveText(entries);
     await refreshed;
@@ -163,8 +167,8 @@ test("a setup save with a 1.5 s checklist read reveals its entry only on the nex
     expect(await controlBounds()).toEqual(bounds);
     expect(await page.evaluate(() => window.__shifts ?? [])).toEqual([]);
     await element(rail.getByRole("link")).toHaveText(entries);
-    await rail.getByRole("link", { name: "조직 구조", exact: true }).click();
-    await element(rail.getByRole("link")).toHaveText(["홈", "조직 구조", "직원", "권한"]);
+    await rail.getByRole("link", { name: t("shell.link.org"), exact: true }).click();
+    await element(rail.getByRole("link")).toHaveText([t("shell.link.todo"), t("shell.link.org"), t("shell.link.people"), t("shell.link.access")]);
   } finally {
     await page.unroute("**/api/v1/users/me");
     await page.unroute("**/api/v1/onboarding/checklist");
@@ -181,7 +185,7 @@ test("a changed idle checklist cannot change the rail until navigation", async (
   try {
     await page.goto(server.resolvedUrls!.local[0]!);
     const rail = page.getByRole("navigation", { name: "주 메뉴" });
-    const entries = ["홈", "조직 구조", "권한"];
+    const entries = [t("shell.link.todo"), t("shell.link.org"), t("shell.link.access")];
     await element(rail.getByRole("link")).toHaveText(entries);
     const bounds = await controlBounds();
     await page.evaluate(clearShifts);
@@ -191,8 +195,8 @@ test("a changed idle checklist cannot change the rail until navigation", async (
     await element(rail.getByRole("link")).toHaveText(entries);
     expect(await controlBounds()).toEqual(bounds);
     expect(await page.evaluate(() => window.__shifts ?? [])).toEqual([]);
-    await rail.getByRole("link", { name: "조직 구조", exact: true }).click();
-    await element(rail.getByRole("link", { name: "직원", exact: true })).toBeVisible();
+    await rail.getByRole("link", { name: t("shell.link.org"), exact: true }).click();
+    await element(rail.getByRole("link", { name: t("shell.link.people"), exact: true })).toBeVisible();
   } finally {
     await page.unroute("**/api/v1/users/me");
     await page.unroute("**/api/v1/onboarding/checklist");
@@ -219,7 +223,7 @@ test("a pending SETUP checklist waits before showing current entries", async () 
     await element(rail.getByRole("status")).toBeVisible();
     await element(rail.getByRole("link")).toHaveCount(0);
     release();
-    await element(rail.getByRole("link")).toHaveText(["홈", "조직 구조", "직원", "권한"]);
+    await element(rail.getByRole("link")).toHaveText([t("shell.link.todo"), t("shell.link.org"), t("shell.link.people"), t("shell.link.access")]);
   } finally {
     release();
     await page.unroute("**/api/v1/users/me");
@@ -232,12 +236,12 @@ test.each([1440, 390])("the shared shell keeps flat module links and one current
   await page.goto(`${server.resolvedUrls!.local[0]}people/exits`);
   const rail = page.getByRole("navigation", { name: "주 메뉴" });
   if (width === 390) await page.getByRole("button", { name: "메뉴", exact: true }).click();
-  await element(rail.getByRole("link", { name: "직원", exact: true })).toHaveAttribute("aria-current", "page");
+  await element(rail.getByRole("link", { name: t("shell.link.people"), exact: true })).toHaveAttribute("aria-current", "page");
   await element(rail.locator('[aria-current="page"]')).toHaveCount(1);
   await element(rail.locator("ul ul")).toHaveCount(0);
-  await rail.getByRole("link", { name: "조직 구조", exact: true }).click();
+  await rail.getByRole("link", { name: t("shell.link.org"), exact: true }).click();
   if (width === 390) await page.getByRole("button", { name: "메뉴", exact: true }).click();
-  await element(rail.getByRole("link", { name: "조직 구조", exact: true })).toHaveAttribute("aria-current", "page");
+  await element(rail.getByRole("link", { name: t("shell.link.org"), exact: true })).toHaveAttribute("aria-current", "page");
   await element(rail.locator('[aria-current="page"]')).toHaveCount(1);
   await element(rail.getByRole("link", { name: "법인·사업장", exact: true })).toHaveCount(0);
   if (width === 390) {
@@ -255,12 +259,12 @@ test("unattended navigation keeps controls stable and detects unexpected movemen
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(`${server.resolvedUrls!.local[0]}people/exits`);
   const rail = page.getByRole("navigation", { name: "주 메뉴" });
-  await element(rail.getByRole("link", { name: "직원", exact: true })).toBeVisible();
+  await element(rail.getByRole("link", { name: t("shell.link.people"), exact: true })).toBeVisible();
   const bounds = await controlBounds();
   await page.evaluate(clearShifts);
   const entries = await rail.getByRole("link").allTextContents();
   await page.evaluate(() => history.pushState({ ...history.state, __TSR_key: "flat-proof" }, "", "/org/entities"));
-  await element(rail.getByRole("link", { name: "조직 구조", exact: true })).toHaveAttribute("aria-current", "page");
+  await element(rail.getByRole("link", { name: t("shell.link.org"), exact: true })).toHaveAttribute("aria-current", "page");
   await element(rail.getByRole("link")).toHaveText(entries);
   await page.evaluate(() => new Promise(done => setTimeout(done, 600)));
   expect(await controlBounds()).toEqual(bounds);

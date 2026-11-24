@@ -92,7 +92,7 @@ export const enTenants = {
   "tenants.next.deliver": "Deliver the sign-in ID and code to the first admin. The code works once and expires at {at}.",
   "tenants.next.signIn": "The admin opens “First time? Use a one-time code” on the sign-in screen and registers a passkey on their device. They then sign in with their ID and passkey.",
   "tenants.next.lost": "If the code is lost or expires, issue a new one with “Confirm with a passkey and reissue the admin code” in this customer account’s panel, until the administrator enrolls a passkey.",
-  "tenants.next.setup": "Once signed in, the setup list on Home walks them through each step, from registering the legal entity (business registration certificate) to workplaces, the organisation, employees and “Start operations”. They can finish it alone.",
+  "tenants.next.setup": "Once signed in, the setup list in To-dos walks them through each step, from registering the legal entity (business registration certificate) to workplaces, the organisation, employees and “Start operations”. They can finish it alone.",
   "tenants.search.reset": "Reset search",
   "tenants.code.signInId": "Sign-in ID",
   "tenants.code.copyId": "Copy sign-in ID",

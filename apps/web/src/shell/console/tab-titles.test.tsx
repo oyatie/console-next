@@ -11,7 +11,7 @@ import type { NavLink } from "../nav";
 import { canonicalTabTarget, resolveRouteTabMeta, useResolvedTabTitle } from "./tab-titles";
 
 const SAMPLE_LINKS: readonly NavLink[] = [
-  { to: "/", label: "shell.link.home", icon: Home },
+  { to: "/", label: "shell.link.todo", icon: Home },
   { to: "/people", label: "shell.link.people", icon: Users },
 ];
 
@@ -40,7 +40,7 @@ test("resolveRouteTabMeta returns distinct sub-route titles in Korean and Englis
   for (const locale of ["ko", "en"] as const) {
     i18n.set(locale);
     const cases: Array<[string, string | undefined, string]> = [
-      ["/", undefined, t("shell.link.home")],
+      ["/", undefined, t("shell.link.todo")],
       ["/inbox", undefined, t("shellRoutes.inbox")],
       ["/people", undefined, t("shellRoutes.peopleRoster")],
       ["/people", "?view=accounts", t("shellRoutes.peopleAccounts")],
@@ -73,6 +73,10 @@ test("resolveRouteTabMeta returns distinct sub-route titles in Korean and Englis
     }
   }
   i18n.set("ko");
+});
+
+test("an unmatched tenant path keeps the home title", () => {
+  expect(resolveRouteTabMeta({ pathname: "/unknown", allLinks: SAMPLE_LINKS, platform: false }).title).toBe(t("shell.link.home"));
 });
 
 function Probe({ pathname, searchStr = "" }: { pathname: string; searchStr?: string }) {

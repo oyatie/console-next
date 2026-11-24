@@ -2,6 +2,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import createClient from "openapi-fetch";
 import { supportSessionsApi, type paths, type components } from "@console/api";
+import { loadCatalog, t } from "@console/i18n";
 import { expect, test, type Page } from "@playwright/test";
 import { atPhoneWidth, expectAccessible, fits } from "./a11y";
 import { firstSignIn, go, registerEmployee, unique, vendorPage, vendorStepUp } from "./flows";
@@ -12,6 +13,8 @@ import { addDepartments } from "./structure-flows";
 import { openTenant } from "./helpers/tenant";
 import { PORTS } from "./slot";
 import { forgetResize } from "./stability";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 const TENANT_SUPPORT = "/api/v1/support-sessions";
 
@@ -119,7 +122,7 @@ test("two operators and the customer authorize support; every read arrives live 
   expect((await pendingNotice.json()).pending_approvals[0].request_expires_at).toMatch(/Z$/);
   // The same SSE event updates both the safety notice and the unified inbox.
   await expect(tenant.getByText("지원 접근 승인 대기 1건", { exact: true }).first()).toBeVisible();
-  const review = tenant.getByRole("region", { name: "업무함", exact: true }).getByRole("link", { name: "지원 요청 확인", exact: true });
+  const review = tenant.getByRole("region", { name: t("home.inbox.title"), exact: true }).getByRole("link", { name: "지원 요청 확인", exact: true });
   await expect(review).toHaveAttribute("href", `/audit/support-access?review=${id}`);
   await expect(tenant.getByRole("region", { name: "지원 접근", exact: true }).getByRole("link", { name: "지원 요청 확인", exact: true })).toHaveAttribute("href", `/audit/support-access?review=${id}`);
   await auditLayouts(tenant, "Home support approval notice", "pending");

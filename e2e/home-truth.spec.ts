@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import type { components } from "@console/api/schema";
 import { atPhoneWidth, expectAccessible, fits } from "./a11y";
 import { inviteAccount } from "./access-flows";
 import { firstSignIn, go } from "./flows";
 import { forgetResize } from "./stability";
 import { homeRail, setupRail, startOperations, tenantInSetup } from "./setup-flows";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 // Home keeps healthy sources visible when another source fails;
 // refused sources are absent server-side, and a refused aggregate is asked once.
@@ -42,7 +45,7 @@ test("the setup rail and go-live promise no security contact that cannot be reco
   const { admin } = await tenantInSetup(browser, "truthrail", "약속상사");
   await go(admin, "/");
   await expect(await homeRail(admin)).toBeVisible();
-  const inbox = admin.getByRole("region", { name: "업무함", exact: true });
+  const inbox = admin.getByRole("region", { name: t("home.inbox.title"), exact: true });
   await expect(inbox.getByRole("region", { name: /운영 준비/ })).toHaveCount(1);
   await expect(setupRail(admin)).toHaveCount(1);
   await expect(setupRail(admin)).not.toContainText("보안 연락처");
@@ -87,7 +90,7 @@ test("Home keeps healthy work through a source failure, retries it, and asks a r
   });
   const reads = counter(admin, /^\/api\/v1\/me\/action-inbox(\?|$)/);
   await admin.reload();
-  const inbox = admin.getByRole("region", { name: "업무함", exact: true });
+  const inbox = admin.getByRole("region", { name: t("home.inbox.title"), exact: true });
   const failed = inbox.getByRole("alert").filter({ hasText: "변경 요청 업무를 불러오지 못했습니다." });
   await expect(failed).toBeVisible();
   await expect(failed).toContainText(`지원 문의 번호 ${supportReference}`);
@@ -165,7 +168,7 @@ test("an account with no work grant gets an honest home, and 기간 잠금 refus
   expect(body.items).toEqual([expect.objectContaining({
     kind: "account_security", links: [expect.objectContaining({ kind: "account", id: me.id })],
   })]);
-  const inbox = exec.getByRole("region", { name: "업무함", exact: true });
+  const inbox = exec.getByRole("region", { name: t("home.inbox.title"), exact: true });
   await expect(inbox.getByRole("heading", { name: "이 계정으로 처리할 업무가 없습니다", exact: true })).toBeVisible();
   await expect(inbox.getByRole("link", { name: "내 계정", exact: true })).toHaveAttribute("href", "/account");
   await expect(inbox.getByRole("button", { name: "패스키 등록", exact: true })).toBeVisible();
