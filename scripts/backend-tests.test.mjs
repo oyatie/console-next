@@ -297,14 +297,18 @@ test("database result collection proves all shards and preserves measured durati
 test("the database workflow is tiered, pinned and limited to four duration shards", () => {
   const file = readFileSync(new URL("../.github/workflows/db-tests.yml", import.meta.url), "utf8");
   const dbWorkflow = yaml.load(file);
-  assert.deepEqual(Object.keys(dbWorkflow.on).sort(), ["pull_request", "push", "schedule"]);
+  assert.deepEqual(Object.keys(dbWorkflow.on).sort(), ["pull_request", "push", "schedule", "workflow_dispatch"]);
+  assert.equal(dbWorkflow.on.workflow_dispatch, null);
   assert.doesNotMatch(file, /^\s*merge_group:/m);
   assert.match(file, /merge_group.*database.*proof/);
   assert.doesNotMatch(file, /60-minute queue/);
   assert.doesNotMatch(file, /CI-[A-Z]+/);
   assert.match(file, /push:\s*\n\s*branches: \[dev\]/);
   assert.match(file, /schedule:\s*\n\s*- cron:/);
-  assert.equal(dbWorkflow.concurrency.group, "db-tests-${{ github.event_name == 'pull_request' && github.ref || github.event_name == 'schedule' && 'nightly' || 'trunk' }}");
+  assert.equal(dbWorkflow.concurrency.group,
+    "db-tests-${{ github.event_name == 'pull_request' && github.ref || " +
+    "github.event_name == 'schedule' && 'nightly' || " +
+    "github.event_name == 'workflow_dispatch' && format('dispatch-{0}', github.ref) || 'trunk' }}");
   assert.equal(dbWorkflow.concurrency["cancel-in-progress"], false);
   assert.deepEqual(dbWorkflow.on.pull_request.paths, [
     ".github/workflows/db-tests.yml",
