@@ -166,7 +166,7 @@ export function NoticeNewConsole({
                 presets={datePresets(today, ["today"])}
                 value={date}
                 onChange={onDate}
-                echo={date ? t("notice.field.dateEcho") : undefined}
+                echo={t("notice.field.dateEcho")}
                 error={tried && gaps.date ? t("notice.missing.date") : undefined}
                 showErrors={tried}
               />

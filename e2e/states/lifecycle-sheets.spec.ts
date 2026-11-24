@@ -181,7 +181,8 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await today.click();
     await expect(today).toHaveAttribute("aria-pressed", "true");
     await expect(dateBox(sheet)).toHaveValue("2026. 10. 29.");
-    await expect(sheet).toContainText(t("lifecycle.when.today"));
+    // The echo's line is held unseen before a date, so only a shown line proves the date committed.
+    await expect(sheet.locator('[data-hint="field"]').filter({ hasText: t("lifecycle.when.today") })).toBeVisible();
     await fits(page, `today-preset/${width}/${theme}`);
     await expectAxe(page, `today-preset/${width}/${theme}`);
     expect(fixture.unexpected).toEqual([]);

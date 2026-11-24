@@ -304,7 +304,7 @@ and no container query.
 | `disabled` | no | `boolean` |  |  |
 | `disabledDates` | no | `readonly string[]` |  |  |
 | `displayFormat` | no | `"default" \| "short-weekday"` | `"default"` |  |
-| `echo` | no | `ReactNode` |  |  |
+| `echo` | no | `ReactNode` |  | What the entered date means, shown once one is entered. Given before a date too (worded for the date the field will likely get), it holds its line unseen at its wrapped height, so the line appearing when a date commits moves nothing. |
 | `error` | no | `ReactNode` |  |  |
 | `inputRef` | no | `Ref<HTMLInputElement>` |  |  |
 | `max` | no | `string` |  |  |

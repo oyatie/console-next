@@ -83,7 +83,14 @@ for (const step of ["report", "confirm"] as const) for (const width of [1440, 39
       };
       await expectChipFrames();
       if (step === "report") {
-        await sheet.getByRole("textbox", { name: new RegExp(`^${t("exit.field.date")}`) }).fill("2026-10-26");
+        const date = sheet.getByRole("textbox", { name: new RegExp(`^${t("exit.field.date")}`) });
+        const chip = sheet.getByRole("radiogroup").getByText(t("reason.exit_reason.PERSONAL"), { exact: true });
+        const before = (await chip.boundingBox())!;
+        await date.fill("2026-10-26");
+        // The date commits on leaving the field: its echo lands in the line held for it, at its wrapped height.
+        await date.blur();
+        await expect(sheet.locator('[data-hint="field"]').filter({ hasText: t("exit.field.date.statutory") })).toBeVisible();
+        expect((await chip.boundingBox())!.y, "the reasons stay put when the date's echo appears").toBe(before.y);
         await routeReady(page);
         await expectStable(page, "exit report reasons after date feedback");
         await expectChipFrames();

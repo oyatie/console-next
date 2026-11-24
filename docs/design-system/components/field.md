@@ -202,6 +202,7 @@ How many fields sit side by side at 390 px is decided by the layout around them,
 | `error` | no | `ReactNode` |  |  |
 | `example` | no | `string` |  | A worked example, shown with an "e.g." prefix. |
 | `hint` | no | `ReactNode` |  |  |
+| `hintHeld` | no | `boolean` | `false` | The hint keeps its line but is not shown or read yet (a line the value will fill, so filling it moves nothing). |
 | `id` | no | `string` |  |  |
 | `tag` | no | `ReactNode` |  | Extra marks after the label, e.g. a derived-value tag. |
 | `unit` | no | `ReactNode` |  |  |
