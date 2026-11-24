@@ -2,14 +2,16 @@
 //! close-attendance → calculate → exception review → SoD approval →
 //! operator-attested disbursement → release-gated payslip issuance.
 //!
-//! Authorization: Cedar pay:view admits reads; pay:edit admits commands.
+//! Authorization: Cedar pay:view admits reads; pay:edit admits commands. A run
+//! of a pay group also needs that group's access, sensitive clearance included;
+//! a run the caller may not read answers 404, as a run that does not exist.
 //! Canonical facts and the data operation share the tenant transaction.
 //!
 //! Every mutation runs inside `with_audits` (mutation + audit event atomic);
 //! admin reads of run-scoped data are themselves audited the same way. The
-//! close preflight is audited too, but computes its verdict in a read-only
-//! transaction so the verdict itself can never be persisted and later trusted
-//! (TOCTOU); the close recomputes it in the closing transaction. A 404
+//! close preflight is audited too, but computes its verdict in a transaction
+//! that persists nothing, so the verdict itself can never be persisted and
+//! later trusted (TOCTOU); the close recomputes it in the closing transaction. A 404
 //! never distinguishes "does not exist" from "another org's run" (RLS,
 //! deny-by-omission). Lifecycle guards make every mutation replay-safe: a
 //! second identical POST hits a state guard and returns a typed 409 instead
@@ -39,7 +41,7 @@ use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
 use uuid::Uuid;
 
-use crate::access::require_pay_action_in_tx;
+use crate::access::require_run_in_tx;
 use crate::{PageParams, PayrollRestState, RestError, principal_from_headers};
 
 impl RestError {
@@ -144,13 +146,14 @@ pub(crate) async fn get_close_preflight(
     let principal = principal_from_headers(&state, &headers).await?;
     let (org, actor) = (principal.org_id, principal.user_id);
     let pool = state.store.pool().clone();
-    // The verdict is computed in a read-only transaction, so no path here can
-    // persist it — and `close_attendance_in_tx` therefore has no stored verdict
-    // to trust instead of recomputing (TOCTOU). The read is still audited, in
+    // The verdict is computed in a transaction that persists nothing (the roster
+    // it judges is rolled back), so no path here can persist it — and
+    // `close_attendance_in_tx` therefore has no stored verdict to trust instead
+    // of recomputing (TOCTOU). The read is still audited, in
     // its own transaction below, before the blocking refs are disclosed.
     let preflight = with_org_conn::<_, Option<ClosePreflight>, RestError>(&pool, org, move |tx| {
         Box::pin(async move {
-            require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunRead).await?;
+            require_run_in_tx(tx, org, actor, Feature::PayrollRunRead, run_id).await?;
             lifecycle::close_preflight_in_tx(tx, run_id)
                 .await
                 .map_err(RestError::from_lifecycle)
@@ -190,7 +193,7 @@ pub(crate) async fn close_attendance(
     let pool = state.store.pool().clone();
     let detail = with_audits::<_, PayrollRunDetail, RestError>(&pool, org, move |tx| {
         Box::pin(async move {
-            require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunManage).await?;
+            require_run_in_tx(tx, org, actor, Feature::PayrollRunManage, run_id).await?;
             if !body.attest {
                 return Err(RestError::new(
                     StatusCode::UNPROCESSABLE_ENTITY,
@@ -237,7 +240,7 @@ pub(crate) async fn calculate_run(
     let pool = state.store.pool().clone();
     let detail = with_audits::<_, PayrollRunDetail, RestError>(&pool, org, move |tx| {
         Box::pin(async move {
-            require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunManage).await?;
+            require_run_in_tx(tx, org, actor, Feature::PayrollRunManage, run_id).await?;
             let outcome = lifecycle::calculate_run_in_tx(tx, run_id)
                 .await
                 .map_err(RestError::from_lifecycle)?;
@@ -277,7 +280,7 @@ pub(crate) async fn list_exceptions(
     let pool = state.store.pool().clone();
     let page = with_audits::<_, Option<ExceptionPage>, RestError>(&pool, org, move |tx| {
         Box::pin(async move {
-            require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunRead).await?;
+            require_run_in_tx(tx, org, actor, Feature::PayrollRunRead, run_id).await?;
             let page = lifecycle::list_exceptions_in_tx(tx, run_id, params.limit, params.offset)
                 .await
                 .map_err(RestError::from_lifecycle)?;
@@ -319,7 +322,7 @@ pub(crate) async fn resolve_exception(
     let pool = state.store.pool().clone();
     let exception = with_audits::<_, PayrollException, RestError>(&pool, org, move |tx| {
         Box::pin(async move {
-            require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunManage).await?;
+            require_run_in_tx(tx, org, actor, Feature::PayrollRunManage, run_id).await?;
             let exception = lifecycle::resolve_exception_in_tx(
                 tx,
                 run_id,
@@ -364,7 +367,7 @@ pub(crate) async fn submit_run(
     let pool = state.store.pool().clone();
     let detail = with_audits::<_, PayrollRunDetail, RestError>(&pool, org, move |tx| {
         Box::pin(async move {
-            require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunManage).await?;
+            require_run_in_tx(tx, org, actor, Feature::PayrollRunManage, run_id).await?;
             lifecycle::submit_run_in_tx(tx, run_id, *actor.as_uuid())
                 .await
                 .map_err(RestError::from_lifecycle)?;
@@ -401,7 +404,7 @@ pub(crate) async fn decide_run(
     let pool = state.store.pool().clone();
     let detail = with_audits::<_, PayrollRunDetail, RestError>(&pool, org, move |tx| {
         Box::pin(async move {
-            require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunManage).await?;
+            require_run_in_tx(tx, org, actor, Feature::PayrollRunManage, run_id).await?;
             lifecycle::decide_run_in_tx(
                 tx,
                 run_id,
@@ -437,7 +440,7 @@ pub(crate) async fn withdraw_run(
     let pool = state.store.pool().clone();
     let detail = with_audits::<_, PayrollRunDetail, RestError>(&pool, org, move |tx| {
         Box::pin(async move {
-            require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunManage).await?;
+            require_run_in_tx(tx, org, actor, Feature::PayrollRunManage, run_id).await?;
             lifecycle::withdraw_run_in_tx(tx, run_id)
                 .await
                 .map_err(RestError::from_lifecycle)?;
@@ -477,7 +480,7 @@ pub(crate) async fn schedule_disbursement(
     let pool = state.store.pool().clone();
     let disbursement = with_audits::<_, Disbursement, RestError>(&pool, org, move |tx| {
         Box::pin(async move {
-            require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunManage).await?;
+            require_run_in_tx(tx, org, actor, Feature::PayrollRunManage, run_id).await?;
             let scheduled_at =
                 OffsetDateTime::parse(&body.scheduled_at, &Rfc3339).map_err(|err| {
                     RestError::new(
@@ -529,7 +532,7 @@ pub(crate) async fn attest_disbursement(
     let pool = state.store.pool().clone();
     let disbursement = with_audits::<_, Disbursement, RestError>(&pool, org, move |tx| {
         Box::pin(async move {
-            require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunManage).await?;
+            require_run_in_tx(tx, org, actor, Feature::PayrollRunManage, run_id).await?;
             let disbursement = lifecycle::attest_disbursement_in_tx(
                 tx,
                 run_id,
@@ -574,7 +577,7 @@ pub(crate) async fn issue_payslips(
     // Delivery and final authorization share one commit: refusals expose no payslip.
     let summary = with_audits::<_, PayslipDeliverySummary, RestError>(&pool, org, move |tx| {
         Box::pin(async move {
-            require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunManage).await?;
+            require_run_in_tx(tx, org, actor, Feature::PayrollRunManage, run_id).await?;
             let (run, lines) = lifecycle::load_payslip_issuance_in_tx(tx, run_id)
                 .await
                 .map_err(RestError::from_lifecycle)?;
@@ -614,7 +617,7 @@ pub(crate) async fn issue_payslips(
                 deliveries.push((line.line_id, line.employee_id, *summary.id.as_uuid()));
             }
 
-            require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunManage).await?;
+            require_run_in_tx(tx, org, actor, Feature::PayrollRunManage, run_id).await?;
             lifecycle::record_payslip_deliveries_in_tx(tx, run_id, &deliveries)
                 .await
                 .map_err(RestError::from_lifecycle)?;
@@ -651,7 +654,7 @@ pub(crate) async fn get_payslip_delivery(
     let summary =
         with_audits::<_, Option<PayslipDeliverySummary>, RestError>(&pool, org, move |tx| {
             Box::pin(async move {
-                require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunRead).await?;
+                require_run_in_tx(tx, org, actor, Feature::PayrollRunRead, run_id).await?;
                 let summary =
                     lifecycle::payslip_delivery_in_tx(tx, run_id, params.limit, params.offset)
                         .await

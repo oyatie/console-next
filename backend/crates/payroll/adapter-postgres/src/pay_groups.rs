@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Typed configuration only; scheduling consumes these explicit choices.
 mod facts;
+pub use facts::{RlsPayGroupFacts, manageable_pay_groups_in_tx, run_pay_group_in_tx};
 pub mod run_preview;
 mod wire;
 use console_kernel_core::{AuditAction, AuditEvent, KernelError, OrgId, TraceContext, UserId};
