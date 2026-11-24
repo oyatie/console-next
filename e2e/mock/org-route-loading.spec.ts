@@ -20,7 +20,7 @@ for (const path of ["/org/entities", "/setup/company-names"]) {
     try {
       await page.goto(path, { waitUntil: "commit" });
       await chunks.requested;
-      await expect(page.getByRole("navigation").first()).toBeVisible();
+      await expect(page.getByRole("navigation", { name: t("structure.tabs"), exact: true })).toBeVisible();
       await expect(page.getByRole("heading", { level: 1, name: t("structure.title"), exact: true })).toBeVisible();
       const loading = page.locator('main [data-read-layout="list"][aria-busy="true"]');
       await expect(loading).toBeVisible();
