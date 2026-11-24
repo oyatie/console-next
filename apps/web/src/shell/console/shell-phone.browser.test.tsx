@@ -10,6 +10,12 @@ let server: ViteDevServer;
 let browser: Browser;
 let page: Page;
 
+/** The signed-in session: set by the page at once, or returned by the refresh a cold open restores through. */
+const TOKEN = {
+  access_token: `h.${Buffer.from(JSON.stringify({ sub: "hero", org: "tenant", name: "Hajun" })).toString("base64url")}.s`,
+  token_type: "Bearer", refresh_expires_at: "2099-01-01T00:00:00Z", requires_passkey_setup: false,
+};
+
 beforeAll(async () => {
   await loadCatalog("ko");
   server = await createServer({
@@ -33,16 +39,15 @@ beforeAll(async () => {
         import { createRoot } from 'react-dom/client';
         import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
         import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider, useLocation, useNavigate, useRouter } from '@tanstack/react-router';
-        import { session } from '@console/api';
+        import { configure, session } from '@console/api';
+        import { webPlatform } from '@console/api/web';
         import { useSidePanel } from '/apps/web/src/lib/side-panel/use-side-panel.ts';
         import { loadCatalog } from '@console/i18n';
         import { ConsoleShell } from '/apps/web/src/shell/console/shell.tsx';
         import '/apps/web/src/app.css';
         await loadCatalog('ko');
-        session.set({
-          access_token: 'h.' + btoa(JSON.stringify({ sub: 'hero', org: 'tenant', name: 'Hajun' })).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, '') + '.s',
-          token_type: 'Bearer', refresh_expires_at: '2099-01-01T00:00:00Z', requires_passkey_setup: false,
-        });
+        // ?cold opens with no session, as a reload does, so the shell restores it through the refresh the test answers.
+        if (location.search.includes('cold')) configure(webPlatform); else session.set(${JSON.stringify(TOKEN)});
         const h = React.createElement;
         const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
         function Screen({ title }) {
@@ -80,7 +85,8 @@ afterAll(async () => {
   await server?.close();
 });
 
-async function openPhoneShell(link: "LINKED" | "UNLINKED" = "LINKED") {
+/** `restore` opens cold: the page starts with no session, and the refresh that restores it waits for `restore.done`. */
+async function openPhoneShell(link: "LINKED" | "UNLINKED" = "LINKED", { restore }: { restore?: { asked: () => void; done: Promise<void> } } = {}) {
   const apiMocks: Record<string, unknown> = {
     "/api/v1/users/me": {
       id: "u1", display_name: "Hajun", employee_name: "Hajun", employee_id: link === "LINKED" ? "e1" : null,
@@ -95,16 +101,21 @@ async function openPhoneShell(link: "LINKED" | "UNLINKED" = "LINKED") {
     "/api/v1/auth/passkeys": [],
   };
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.route("**/console-phone-nav-test", route => route.fulfill({
+  await page.route(url => url.pathname.endsWith("/console-phone-nav-test"), route => route.fulfill({
     contentType: "text/html",
     body: '<html lang="ko" data-experience="console"><title>Console Phone</title><div id="root"></div><script type="module" src="/console-phone-nav-test.js"></script></html>',
   }));
-  await page.route("**/api/v1/**", route => {
+  await page.route("**/api/v1/**", async route => {
     const path = new URL(route.request().url()).pathname;
+    if (restore && path === "/api/v1/auth/token/refresh") {
+      restore.asked();
+      await restore.done;
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(TOKEN) });
+    }
     return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(apiMocks[path] ?? { items: [] }) });
   });
 
-  await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}console-phone-nav-test`, page.locator('[data-phone-screen="Account"]'));
+  await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}console-phone-nav-test${restore ? "?cold" : ""}`, page.locator('[data-phone-screen="Account"]'));
   return page.getByRole("navigation", { name: t("shell.nav"), exact: true });
 }
 
@@ -233,27 +244,61 @@ const pageFrame = () => page.evaluate(() => {
   return { above: main.top + window.scrollY, below: document.scrollingElement!.scrollHeight - (main.bottom + window.scrollY) };
 });
 
-test("on a phone the page keeps its place while the bars' code loads, since their room is held before they draw", async () => {
+/** How each bar's slot looks: its surface and the hairline on the side that meets the page. */
+const barLook = () => page.locator("[data-pinned-bar] > *").evaluateAll(([top, nav]) => [top, nav].map((el, i) => {
+  const style = getComputedStyle(el!);
+  return [style.backgroundColor, i === 0 ? style.borderBottomColor : style.borderTopColor, i === 0 ? style.borderBottomWidth : style.borderTopWidth];
+}));
+
+test("on a phone the page keeps its place while the bars' code loads, since an empty bar holds each bar's room", async () => {
   const chunk = "**/console-phone-chrome.tsx*";
   let release!: () => void, asked!: () => void;
-  const held = new Promise<void>(resolve => { release = resolve; });
-  const requested = new Promise<void>(resolve => { asked = resolve; });
+  const held = new Promise<void>(done => { release = done; });
+  const requested = new Promise<void>(done => { asked = done; });
   await page.route(chunk, async route => { asked(); await held; await route.continue(); });
   try {
     const opened = openPhoneShell();
+    // A failure before the release below closes the page under this open; its own error would only repeat that one.
+    opened.catch(() => {});
     // The new page has asked for the bars' code, so what is on screen now is that page, not the previous test's.
     await requested;
     await page.locator('[data-phone-screen="Account"]').waitFor();
     // The bars' code is still held back, so the screen is drawn without them.
     expect(await page.locator('header[data-surface="chrome"]').count()).toBe(0);
     const before = await pageFrame();
+    const heldLook = await barLook();
 
     release();
     await opened;
     await Promise.all([page.locator('header[data-surface="chrome"]').waitFor(), page.getByRole("navigation", { name: t("shell.nav"), exact: true }).waitFor()]);
     expect(await pageFrame()).toEqual(before);
+    // The held room looked like the bar that took its place, so nothing shows through a strip that takes no taps.
+    expect(heldLook).toEqual(await barLook());
   } finally {
     release();
     await page.unroute(chunk);
+  }
+});
+
+test("on a phone a reload keeps the page's place while the session restores, since the bars' room is held from the start", async () => {
+  let done!: () => void, asked!: () => void;
+  const restored = new Promise<void>(ok => { done = ok; });
+  const requested = new Promise<void>(ok => { asked = ok; });
+  const opened = openPhoneShell("LINKED", { restore: { asked, done: restored } });
+  // A failure before the restore below closes the page under this open; its own error would only repeat that one.
+  opened.catch(() => {});
+  try {
+    // The new page is restoring its session, so what is on screen now is that page, not the previous test's.
+    await requested;
+    await page.locator("#main").waitFor();
+    expect(await page.locator('header[data-surface="chrome"]').count()).toBe(0);
+    const before = await pageFrame();
+
+    done();
+    await opened;
+    await Promise.all([page.locator('header[data-surface="chrome"]').waitFor(), page.getByRole("navigation", { name: t("shell.nav"), exact: true }).waitFor()]);
+    expect(await pageFrame()).toEqual(before);
+  } finally {
+    done();
   }
 });

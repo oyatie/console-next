@@ -219,13 +219,17 @@
     z-index: var(--z-bar);
   }
 
-  /* Each bar's room, held while its code loads, so the page does not move when the bar draws. */
+  /* Each bar's room, drawn as the empty bar until the bar itself draws, so the page neither moves nor shows through
+     a strip that takes no taps. The top one takes the chrome surface from its data-surface. */
   .phoneTopHold {
     block-size: var(--phone-top-h);
+    border-block-end: 1px solid var(--border);
   }
 
   .phoneNavHold {
     block-size: var(--phone-nav-clear);
+    background: var(--surface);
+    border-block-start: 1px solid var(--border);
   }
 }
 
