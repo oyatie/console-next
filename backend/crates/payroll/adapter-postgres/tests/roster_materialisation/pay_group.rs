@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-//! A regular run of a 법인's only pay group lists every member of that 법인 once,
-//! imported or not, each placed as of the run's base-period end.
+//! A regular run of a legal entity's only pay group lists every member of that
+//! legal entity once, imported or not, each placed as of the run's base-period end.
 use super::places::*;
 use super::seed::*;
 use sqlx::PgPool;
@@ -11,7 +11,8 @@ use uuid::Uuid;
 pub(crate) const MONTHLY: &str = r#"{"start_day":"FIRST","month_offset":0}"#;
 pub(crate) const JUNE: (Date, Date) = (PERIOD_START, PERIOD_END);
 
-/// A 법인 with one workplace and a single monthly pay group, and its June run.
+/// A legal entity with one workplace and a single monthly pay group, and its June
+/// run.
 pub(crate) async fn single_group_run(pool: &PgPool, kind: &str) -> (Fixture, Uuid, Uuid) {
     let org = seed_org_and_run(pool).await.org;
     let le = entity(pool, org).await;
@@ -65,17 +66,18 @@ async fn a_regular_run_lists_each_member_of_its_legal_entity_once_with_their_pla
             (Some(date!(2026 - 06 - 20)), None),
             vec![(w1, date!(2026 - 06 - 20), None)],
         ),
+        // Assigned throughout: only the recorded hire or exit date keeps these two off.
         (
             "hired-after",
             "PRE_HIRE",
             (Some(date!(2026 - 07 - 05)), None),
-            vec![(w1, date!(2026 - 07 - 05), None)],
+            vec![(w1, LONG_AGO, None)],
         ),
         (
             "exited-before",
             "EXITED",
             (None, Some(date!(2026 - 05 - 20))),
-            vec![(w1, LONG_AGO, Some(date!(2026 - 05 - 21)))],
+            vec![(w1, LONG_AGO, None)],
         ),
         ("merged", "ACTIVE", (None, None), vec![(w1, LONG_AGO, None)]),
         ("voided", "ACTIVE", (None, None), vec![(w1, LONG_AGO, None)]),
@@ -177,8 +179,8 @@ async fn an_offset_group_places_lines_at_its_base_period_end(pool: PgPool) {
     );
 }
 
-/// Someone who moves to another 법인 mid-period is still a member of this run and
-/// is placed in this run's 법인, at the 사업장 they left from.
+/// Someone who moves to another legal entity mid-period is still a member of this
+/// run and is placed in this run's legal entity, at the workplace they left from.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_member_moved_to_another_legal_entity_is_placed_in_the_runs_legal_entity(pool: PgPool) {
     let (f, le, site) = single_group_run(&pool, "REGULAR").await;

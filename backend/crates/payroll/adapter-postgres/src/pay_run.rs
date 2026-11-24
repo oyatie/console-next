@@ -9,10 +9,10 @@
 //! retry idempotent, provenance mismatches fail closed, and the freeze check
 //! runs inside the staging transaction. Acknowledging first could lose a draft.
 
-use console_kernel_core::{KernelError, OrgId, UserId};
+use console_kernel_core::{OrgId, UserId};
 use console_ontology_canonical_domain::{
-    CanonicalPort, CanonicalPortError, CanonicalQuery, CommandId, CommandReceipt, DispatchTarget,
-    ObjectKey, PayRun, Preflight, ReceiptOwner,
+    CanonicalPort, CanonicalQuery, CommandId, CommandReceipt, DispatchTarget, ObjectKey, PayRun,
+    Preflight, ReceiptOwner,
 };
 use console_workflow_domain::{PayrollDraftStaging, PortFuture, StagePayrollDraft};
 use serde::Deserialize;
@@ -21,6 +21,12 @@ use sqlx::{PgPool, Postgres, Row, Transaction};
 use std::str::FromStr;
 use time::{Date, OffsetDateTime};
 use uuid::Uuid;
+
+use crate::pay_groups::require_run_command_in_tx;
+
+#[path = "pay_run_error.rs"]
+mod error;
+pub use error::PayRunError;
 
 // ---------------------------------------------------------------------------
 // The one statement that moved
@@ -391,63 +397,6 @@ pub struct PayRunCommand {
     pub object_type_id: Uuid,
 }
 
-#[derive(Debug, thiserror::Error)]
-pub enum PayRunError {
-    #[error("preflight blocked the command: {0:?}")]
-    Blocked(Vec<String>),
-    #[error(transparent)]
-    Database(#[from] sqlx::Error),
-    #[error(transparent)]
-    Lifecycle(#[from] crate::lifecycle::LifecycleError),
-    #[error("command {0} was already applied with a different payload")]
-    DigestConflict(Uuid),
-    #[error("a payroll draft for this run and period already exists with different provenance")]
-    ProvenanceConflict,
-    #[error("payroll period is locked; draft not staged")]
-    PeriodLocked,
-    #[error("stored receipt for command {0} names no dispatch target: {1}")]
-    UnreadableReceipt(Uuid, String),
-}
-
-impl CanonicalPortError for PayRunError {
-    fn into_kernel_error(self) -> KernelError {
-        match self {
-            Self::Blocked(_) => KernelError::validation(self.to_string()),
-            Self::DigestConflict(_) | Self::ProvenanceConflict | Self::PeriodLocked => {
-                KernelError::conflict(self.to_string())
-            }
-            Self::Lifecycle(err) => lifecycle_into_kernel_error(err),
-            Self::Database(_) | Self::UnreadableReceipt(_, _) => {
-                KernelError::internal(self.to_string())
-            }
-        }
-    }
-}
-
-/// Map payroll lifecycle failures onto [`KernelError`] kinds that match the
-/// REST `from_lifecycle` status surface (404 / 422 / 409 / 500), instead of
-/// flattening every arm to `Internal` via [`PayRunError::Lifecycle`].
-fn lifecycle_into_kernel_error(err: crate::lifecycle::LifecycleError) -> KernelError {
-    match err {
-        crate::lifecycle::LifecycleError::NotFound => KernelError::not_found(err.to_string()),
-        other => other.into_kernel_error(),
-    }
-}
-
-/// Map the staging writer's failure arms onto the port's error surface: a
-/// driver failure is [`PayRunError::Database`], a changed provenance is
-/// [`PayRunError::ProvenanceConflict`], a locked period is
-/// [`PayRunError::PeriodLocked`] (unreachable from the ungated canonical path).
-impl From<StageDraftError> for PayRunError {
-    fn from(err: StageDraftError) -> Self {
-        match err {
-            StageDraftError::Db(db) => Self::Database(db),
-            StageDraftError::ProvenanceMismatch => Self::ProvenanceConflict,
-            StageDraftError::PeriodLocked => Self::PeriodLocked,
-        }
-    }
-}
-
 /// The one permitted holder of production DML against the six `payroll_*` tables
 /// the contract assigns to `ObjectKey::PayRun`.
 #[derive(Debug, Clone)]
@@ -541,12 +490,14 @@ impl PgPayRunPort {
                 created
             }
             PayRunQuery::SubmitRun { .. } => {
+                require_run_command_in_tx(&mut tx, command.org_id, actor, run_id).await?;
                 crate::lifecycle::submit_run_in_tx(&mut tx, run_id, actor).await?;
                 true
             }
             PayRunQuery::DecideRun {
                 decision, reason, ..
             } => {
+                require_run_command_in_tx(&mut tx, command.org_id, actor, run_id).await?;
                 crate::lifecycle::decide_run_in_tx(
                     &mut tx,
                     run_id,

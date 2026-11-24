@@ -11,7 +11,7 @@ async fn sensitive_run(pool: &PgPool, org: OrgId) -> Uuid {
     let entity: Uuid = sqlx::query_scalar("INSERT INTO legal_entities (org_id,id,needs_confirmation,created_change_mode) VALUES ($1,gen_random_uuid(),true,'MIGRATION') RETURNING id")
         .bind(org.as_uuid()).fetch_one(pool).await.unwrap();
     // rls-arming: ok owner seeds a sensitive pay group.
-    let group: Uuid = sqlx::query_scalar("INSERT INTO pay_groups (org_id,id,legal_entity_id,name,pay_date_rule,base_period,variable_period,proration,channel,sensitive,pay_basis_allowed) VALUES ($1,gen_random_uuid(),$2,'임원 급여','{\"day\":\"LAST_DAY\",\"month_offset\":0,\"non_business_day\":\"PREVIOUS\"}','{\"start_day\":\"FIRST\",\"month_offset\":0}','{\"start_day\":16,\"month_offset\":-1}','CALENDAR_DAYS','ATTESTATION_ONLY',true,ARRAY['MONTHLY']) RETURNING id")
+    let group: Uuid = sqlx::query_scalar("INSERT INTO pay_groups (org_id,id,legal_entity_id,name,pay_date_rule,base_period,variable_period,proration,channel,sensitive,pay_basis_allowed) VALUES ($1,gen_random_uuid(),$2,'Executive pay','{\"day\":\"LAST_DAY\",\"month_offset\":0,\"non_business_day\":\"PREVIOUS\"}','{\"start_day\":\"FIRST\",\"month_offset\":0}','{\"start_day\":16,\"month_offset\":-1}','CALENDAR_DAYS','ATTESTATION_ONLY',true,ARRAY['MONTHLY']) RETURNING id")
         .bind(org.as_uuid()).bind(entity).fetch_one(pool).await.unwrap();
     // rls-arming: ok owner seeds the group's run as run creation stores it.
     let run: Uuid = sqlx::query_scalar("INSERT INTO payroll_draft_runs (org_id,pay_group_id,kind,attribution_month,pay_date,period_start,period_end,variable_period_start,variable_period_end,source_label) VALUES ($1,$2,'REGULAR',DATE '2026-06-01',DATE '2026-06-30',DATE '2026-06-01',DATE '2026-06-30',DATE '2026-05-16',DATE '2026-06-15','sensitive-run') RETURNING id")
@@ -128,5 +128,35 @@ async fn sensitive_view_clearance_reads_the_run_but_its_commands_are_forbidden(p
             state(&pool, run).await
         ),
         (Vec::<String>::new(), Some(1), before)
+    );
+}
+
+/// Edit clearance passes the gate: the run reads, and a command reaches the
+/// handler's own validation rather than a refusal of access.
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn sensitive_edit_clearance_passes_the_gate_to_the_command(pool: PgPool) {
+    let org = OrgId::one();
+    seed_org(&pool, org).await;
+    let (keys, rt) = (Keys::generate(), runtime_role_pool(&pool).await);
+    let run = sensitive_run(&pool, org).await;
+    let (actor, token) = pay_holder(&pool, &keys, org).await;
+    pay_view::grant_sensitive(&pool, org, actor, None, "edit").await;
+    let before = state(&pool, run).await;
+    let uri = format!("/api/v1/payroll/runs/{run}");
+    let (read, detail) = send(&rt, &keys, "GET", &uri, &token, None).await;
+    let close = format!("{uri}/close-attendance");
+    let body = Some(json!({"attest": false}));
+    let (refused, error) = send(&rt, &keys, "POST", &close, &token, body).await;
+    assert_eq!(
+        (
+            (read, detail["lines"].as_array().map(Vec::len)),
+            (refused, error["error"]["code"].clone()),
+            state(&pool, run).await
+        ),
+        (
+            (StatusCode::OK, Some(1)),
+            (StatusCode::UNPROCESSABLE_ENTITY, json!("validation")),
+            before
+        )
     );
 }

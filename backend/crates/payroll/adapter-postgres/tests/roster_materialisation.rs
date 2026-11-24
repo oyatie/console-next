@@ -15,6 +15,8 @@
 mod names;
 #[path = "roster_materialisation/pay_group.rs"]
 mod pay_group;
+#[path = "roster_materialisation/pay_group_ambiguous.rs"]
+mod pay_group_ambiguous;
 #[path = "roster_materialisation/pay_group_close.rs"]
 mod pay_group_close;
 #[path = "roster_materialisation/placement.rs"]

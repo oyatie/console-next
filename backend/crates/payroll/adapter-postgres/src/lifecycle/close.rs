@@ -13,8 +13,8 @@ use super::{
 use crate::roster::{CLOSEABLE, refresh_in_tx};
 
 /// The three preflight checks derivable from real tables today:
-/// attendance-material coverage per line, an active payroll period lock
-/// covering the run period, and (soft warn) pending leave requests
+/// attendance-material coverage per line of a defined roster, an active payroll
+/// period lock covering the run period, and (soft warn) pending leave requests
 /// overlapping the period. `can_close` is the AND of the hard checks.
 pub async fn close_preflight_in_tx(
     tx: &mut Transaction<'_, Postgres>,
@@ -28,20 +28,37 @@ pub async fn close_preflight_in_tx(
     // shortcut: each read rewrites every member line, then discards it, and holds
     // the run's row lock meanwhile; skip unchanged rows in the upsert if polling
     // ever shows as table bloat or close waiting on readers.
+    let saved = saved_lines(tx, run_id).await?;
     sqlx::query("SAVEPOINT close_preflight")
         .execute(tx.as_mut())
         .await?;
     refresh_in_tx(tx, run_id).await?;
-    let verdict = preflight_for(tx, &run).await?;
+    let verdict = preflight_for(tx, &run, &saved).await?;
     sqlx::query("ROLLBACK TO SAVEPOINT close_preflight")
         .execute(tx.as_mut())
         .await?;
     Ok(Some(verdict))
 }
 
+async fn saved_lines(
+    tx: &mut Transaction<'_, Postgres>,
+    run_id: Uuid,
+) -> Result<Vec<Uuid>, LifecycleError> {
+    Ok(
+        sqlx::query_scalar("SELECT id FROM payroll_draft_lines WHERE run_id = $1")
+            .bind(run_id)
+            .fetch_all(tx.as_mut())
+            .await?,
+    )
+}
+
+/// `saved` are the run's lines before the refresh: only they may be fix-links,
+/// since a line the refresh adds is rolled back with the read or the refused
+/// close, and its id would link to nothing. The note still counts it.
 async fn preflight_for(
     tx: &mut Transaction<'_, Postgres>,
     run: &RunHead,
+    saved: &[Uuid],
 ) -> Result<ClosePreflight, LifecycleError> {
     // 1. Every roster line must carry attendance material (source rows or
     //    direct events). Lines without any are the blocking refs (fix-links).
@@ -57,11 +74,12 @@ async fn preflight_for(
     let missing_refs: Vec<Uuid> = sqlx::query_scalar(
         "SELECT id FROM payroll_draft_lines \
          WHERE run_id = $1 AND attendance_source_row_count = 0 AND attendance_event_count = 0 \
-           AND calculation_status <> 'VOID' \
+           AND calculation_status <> 'VOID' AND id = ANY($3) \
          ORDER BY employee_company, employee_display_name LIMIT $2",
     )
     .bind(run.id)
     .bind(PREFLIGHT_REF_CAP)
+    .bind(saved)
     .fetch_all(tx.as_mut())
     .await?;
     // A run with NO lines had `missing_total == 0` and so passed this check
@@ -77,12 +95,28 @@ async fn preflight_for(
     .bind(run.id)
     .fetch_one(tx.as_mut())
     .await?;
+    // A regular run's roster is its legal entity's members only while that
+    // entity has one pay group; with more, the refresh adds, retracts and
+    // updates nobody, so the lines are no roster anyone can attest.
+    let undefined: bool = sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM payroll_draft_runs r \
+         JOIN pay_groups g ON g.org_id = r.org_id AND g.id = r.pay_group_id \
+         JOIN pay_groups o ON o.org_id = g.org_id AND o.legal_entity_id = g.legal_entity_id \
+          AND o.id <> g.id \
+         WHERE r.id = $1 AND r.kind = 'REGULAR')",
+    )
+    .bind(run.id)
+    .fetch_one(tx.as_mut())
+    .await?;
     let attendance = PreflightCheck {
         key: "attendance_material",
         label_ko: "근태 원천 확보",
-        ok: roster_total > 0 && missing_total == 0,
+        ok: !undefined && roster_total > 0 && missing_total == 0,
         warn: false,
-        note: if roster_total == 0 {
+        note: if undefined {
+            // The cause, as the code the run create refuses with.
+            Some("pay_group_roster_ambiguous".to_owned())
+        } else if roster_total == 0 {
             // Distinct from the missing-material note: nothing to attest is a
             // different problem from someone lacking attendance, and an attestor
             // reading "attendance source missing: 0 people" would reasonably
@@ -91,7 +125,8 @@ async fn preflight_for(
         } else {
             (missing_total > 0).then(|| format!("근태 원천 누락 {missing_total}명"))
         },
-        blocking_refs: missing_refs,
+        // No line is the fix while membership itself is unknown.
+        blocking_refs: if undefined { Vec::new() } else { missing_refs },
     };
 
     // 2. An active payroll period lock must cover the whole run period.
@@ -153,13 +188,14 @@ pub async fn close_attendance_in_tx(
     if !CLOSEABLE.contains(&run.status.as_str()) {
         return Err(invalid_state("close attendance for", &run.status));
     }
+    let saved = saved_lines(tx, run_id).await?;
     // The last write to the lines: from ATTENDANCE_CLOSED on nothing rewrites them.
     refresh_in_tx(tx, run_id).await?;
     // Recomputed HERE, inside the closing transaction, behind the run's
     // FOR UPDATE lock — never read back from a verdict computed earlier
     // (`close_receipt` is the attestation record this close writes, never an
     // input to it). A verdict trusted later is a TOCTOU hole.
-    let preflight = preflight_for(tx, &run).await?;
+    let preflight = preflight_for(tx, &run, &saved).await?;
     if !preflight.can_close {
         return Err(LifecycleError::PreflightBlocked(preflight));
     }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-//! Each line records the 법인, 사업장 and department in force at the run's period
-//! end, while the run is open and once more at attendance close; nothing rewrites
-//! a line after that.
+//! Each line records the legal entity, workplace and department in force at the
+//! run's period end, while the run is open and once more at attendance close;
+//! nothing rewrites a line after that.
 use super::places::*;
 use super::seed::*;
 use sqlx::PgPool;
@@ -63,13 +63,13 @@ async fn a_transfer_inside_the_period_records_the_last_workplace(pool: PgPool) {
     );
 }
 
-/// A person paid in the period after leaving before it keeps the 법인 and 사업장
-/// they left from, and the line prints that 법인's name rather than
-/// UNKNOWN_COMPANY.
+/// A person paid in the period after leaving before it keeps the legal entity and
+/// workplace they left from, and the line prints that legal entity's name rather
+/// than UNKNOWN_COMPANY.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_leaver_keeps_the_entity_and_workplace_they_left_from_and_its_name(pool: PgPool) {
     let f = seed_org_and_run(&pool).await;
-    let le = named_entity(&pool, f.org, "주식회사 가나테크").await;
+    let le = named_entity(&pool, f.org, "Ganatech Co., Ltd.").await;
     let site = workplace(&pool, f.org, le).await;
     let span = (None, Some(date!(2026 - 05 - 19)));
     let leaver = person(&pool, f.org, "emp-1", None, "EXITED", span).await;
@@ -97,7 +97,7 @@ async fn a_leaver_keeps_the_entity_and_workplace_they_left_from_and_its_name(poo
         (placements(&pool, f.run).await, company),
         (
             vec![placed("emp-1", le, site, None)],
-            "주식회사 가나테크".to_owned()
+            "Ganatech Co., Ltd.".to_owned()
         )
     );
 }
@@ -155,12 +155,12 @@ async fn an_imported_line_whose_assignments_all_start_later_takes_the_earliest(p
     );
 }
 
-/// A placed line whose assignment is later withdrawn loses its 법인, and with it
-/// the 법인 name it printed: the name and the id never disagree.
+/// A placed line whose assignment is later withdrawn loses its legal entity, and
+/// with it the name it printed: the name and the id never disagree.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn a_line_that_loses_its_placement_drops_the_entity_name(pool: PgPool) {
     let f = seed_org_and_run(&pool).await;
-    let le = named_entity(&pool, f.org, "주식회사 가나테크").await;
+    let le = named_entity(&pool, f.org, "Ganatech Co., Ltd.").await;
     let site = workplace(&pool, f.org, le).await;
     let person = imported(&pool, &f, "emp-1", None).await;
     assign(&pool, f.org, person, Some((le, site)), (LONG_AGO, None)).await;
@@ -178,7 +178,7 @@ async fn a_line_that_loses_its_placement_drops_the_entity_name(pool: PgPool) {
         (
             (
                 vec![placed("emp-1", le, site, None)],
-                "주식회사 가나테크".to_owned()
+                "Ganatech Co., Ltd.".to_owned()
             ),
             (
                 vec![("emp-1".to_owned(), None, None, None)],
@@ -276,7 +276,7 @@ async fn a_transfer_recorded_after_attendance_close_does_not_move_the_line(pool:
 }
 
 /// An import run keeps its admission rule, imported people only, even when its
-/// 법인 has a single pay group whose members include someone with no import.
+/// legal entity has a single pay group whose members include someone with no import.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn an_import_run_admits_only_imported_people_and_records_their_placement(pool: PgPool) {
     let f = seed_org_and_run(&pool).await;

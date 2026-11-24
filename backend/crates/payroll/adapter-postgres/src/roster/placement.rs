@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-//! Each line's 법인, 사업장 and department as of its run's period end, and the
-//! 법인 name the line prints.
+//! Each line's legal entity, workplace and department as of its run's period end,
+//! and the legal entity name the line prints.
 use sqlx::{Postgres, Transaction};
 use uuid::Uuid;
 
 /// One UPDATE over a run's lines. The placement is the assignment in force at the
-/// period end, or the last one held before it, so a leaver keeps the 법인 and
-/// 사업장 they left from; a pay-group run looks only at its own 법인. A line never
-/// placed keeps the company it was written with; a placed line names its 법인.
+/// period end, or the last one held before it, so a leaver keeps the legal entity
+/// and workplace they left from; a pay-group run looks only at its own legal
+/// entity. A line never placed keeps the company it was written with; a placed
+/// line names its legal entity.
 const PLACE_LINES_SQL: &str = r#"
 UPDATE payroll_draft_lines l
    SET legal_entity_id = p.legal_entity_id, workplace_id = p.workplace_id,
@@ -52,7 +53,7 @@ UPDATE payroll_draft_lines l
         ORDER BY entity_try_iso_date(h.effective_date), h.created_at, h.id LIMIT 1
     ) mv ON TRUE
     LEFT JOIN LATERAL (
-        -- 법인명 has one stored source (the entity), shown once a non-voided 등록증 open on the date is confirmed; no imported label is evidence.
+        -- The legal entity name has one stored source (the entity), shown once a non-voided registration certificate open on the date is confirmed; no imported label is evidence.
         SELECT x.name FROM legal_entity_revisions x
         WHERE x.org_id = e.org_id AND x.legal_entity_id = a.legal_entity_id AND x.effective_from <= r.period_end
           AND EXISTS (

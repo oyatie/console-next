@@ -4,11 +4,13 @@ use console_kernel_core::{KernelError, OrgId};
 use console_platform_authz::Feature;
 use console_platform_authz::access::{NodeKind, NodeRef};
 use console_platform_authz::cedar_pbac::visible::{
-    DecisionFacts, PayGroupFact, PayGroupFactLoader, PayrollModuleFactLoader,
+    DecisionFacts, PayGroupFact, PayGroupFactLoader, PayrollModuleFactLoader, load_facts,
 };
 use console_platform_db::settings_read::{SettingKey, SettingValue, resolve_in_tx};
 use sqlx::{Postgres, Transaction};
 
+use crate::lifecycle::LifecycleError;
+use crate::pay_run::PayRunError;
 use crate::{PgPayrollError, PgPayrollStore};
 
 /// Pay-group facts read through the caller's tenant transaction, for callers
@@ -74,7 +76,31 @@ pub async fn run_pay_group_in_tx(
     )
 }
 
-/// The pay groups whose submitted runs `facts`' holder may decide, or `None`
+/// A command from a surface that skips the REST pay gate (the ontology action
+/// path) reaches a pay group's run only with tenant pay:edit and then that
+/// group's run access, sensitive clearance included; otherwise it answers as a
+/// run that does not exist. A run staged from imports has no group to check.
+pub(crate) async fn require_run_command_in_tx(
+    tx: &mut Transaction<'_, Postgres>,
+    org: OrgId,
+    actor: uuid::Uuid,
+    run_id: uuid::Uuid,
+) -> Result<(), PayRunError> {
+    let group = run_pay_group_in_tx(tx, run_id)
+        .await
+        .map_err(KernelError::from)?;
+    let Some(Some(group)) = group else {
+        return Ok(());
+    };
+    let facts = load_facts(tx, org, actor).await?;
+    let manageable = manageable_pay_groups_in_tx(tx, &facts, org).await?;
+    if manageable.is_some_and(|groups| groups.contains(&group)) {
+        return Ok(());
+    }
+    Err(LifecycleError::NotFound.into())
+}
+
+/// The pay groups whose runs `facts`' holder may submit or decide, or `None`
 /// without tenant pay:edit. A run outside them would open as a missing run.
 pub async fn manageable_pay_groups_in_tx(
     tx: &mut Transaction<'_, Postgres>,
@@ -88,7 +114,7 @@ pub async fn manageable_pay_groups_in_tx(
     };
     if !facts
         .authorize(manage.as_str(), tenant)
-        .map_err(|_| KernelError::unavailable("payroll inbox decision unavailable"))?
+        .map_err(|_| KernelError::unavailable("payroll run decision unavailable"))?
     {
         return Ok(None);
     }

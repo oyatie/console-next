@@ -44,8 +44,8 @@ use uuid::Uuid;
 mod canonical_people;
 use canonical_people::{person_fixtures, seed_org, seed_user};
 
-#[path = "canonical_dispatch/company_fact_refusal.rs"]
-mod company_fact_refusal;
+#[path = "canonical_dispatch/mod.rs"]
+mod canonical_dispatch;
 
 const AT: OffsetDateTime = datetime!(2026-07-10 12:00 UTC);
 const PROMOTE_AT: OffsetDateTime = datetime!(2026-07-11 12:00 UTC);

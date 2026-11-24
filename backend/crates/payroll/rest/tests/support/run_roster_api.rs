@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-//! Creating a regular run writes its roster, the members of the group's 법인, with
-//! the run; a 법인 whose people cannot yet be split between several pay groups
-//! refuses to start one.
+//! Creating a regular run writes its roster, the members of the group's legal
+//! entity, with the run; a legal entity whose people cannot yet be split between
+//! several pay groups refuses to start one.
 use super::super::*;
 use super::run_create_api::create;
 use super::run_preview_api::{setup, uri};
@@ -27,7 +27,7 @@ async fn workplace(pool: &PgPool, entity: Uuid) -> Uuid {
 async fn employee(pool: &PgPool, place: Option<(Uuid, Uuid)>, unit: Option<Uuid>) -> Uuid {
     let org = OrgId::one();
     // rls-arming: ok owner seeds People; the run is created by console_rt over HTTP.
-    let id: Uuid = sqlx::query_scalar("INSERT INTO employees (org_id,company,name,source_filename,source_sheet,source_row,source_key,org_unit_id) VALUES ($1,'SAE','직원','roster.xlsx','s',1,gen_random_uuid()::text,$2) RETURNING id")
+    let id: Uuid = sqlx::query_scalar("INSERT INTO employees (org_id,company,name,source_filename,source_sheet,source_row,source_key,org_unit_id) VALUES ($1,'SAE','Employee','roster.xlsx','s',1,gen_random_uuid()::text,$2) RETURNING id")
         .bind(org.as_uuid()).bind(unit).fetch_one(pool).await.unwrap();
     if let Some((entity, workplace)) = place {
         // rls-arming: ok owner seeds the dated assignment that makes the person a member.
@@ -37,8 +37,8 @@ async fn employee(pool: &PgPool, place: Option<(Uuid, Uuid)>, unit: Option<Uuid>
     id
 }
 
-/// Each line's employee, 법인, 사업장 and department. Read through `to_jsonb` so a
-/// schema without the placement columns reads them as absent.
+/// Each line's employee, legal entity, workplace and department. Read through
+/// `to_jsonb` so a schema without the placement columns reads them as absent.
 async fn roster(pool: &PgPool, run: Uuid) -> Vec<Line> {
     // rls-arming: ok owner reads back what the create wrote.
     let mut lines: Vec<Line> = sqlx::query_as("SELECT employee_id, (to_jsonb(l)->>'legal_entity_id')::uuid, (to_jsonb(l)->>'workplace_id')::uuid, (to_jsonb(l)->>'org_unit_id')::uuid FROM payroll_draft_lines l WHERE run_id=$1")
@@ -86,7 +86,7 @@ async fn a_legal_entity_with_two_pay_groups_refuses_preview_and_create_with_a_co
 ) {
     let (service, token, group, actor, _) = setup(&pool).await;
     let mut second = pay_groups_api::input(group_entity(&pool, group).await);
-    second["name"] = json!("모의상사 시급");
+    second["name"] = json!("Mock Trading hourly");
     PgPayrollStore::new(runtime_role_pool(&pool).await)
         .create_pay_group(OrgId::one(), actor, serde_json::from_value(second).unwrap())
         .await

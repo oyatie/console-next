@@ -3,7 +3,7 @@ tags:
 - payroll
 operationId: submitPayrollRun
 summary: Submit a CALCULATED run for approval; fail-closed while any exception is still OPEN (409 carries the open count in error.details.open)
-description: Refused with 409 invalid_state when no line of the run has a calculation, since there is no pay to approve.
+description: Refused with 409 nothing_calculated when no line of the run has a calculation, since there is no pay to approve.
 security:
 - bearerAuth: []
 parameters:

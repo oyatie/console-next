@@ -54,8 +54,8 @@ pub(crate) const CLOSEABLE: [&str; 3] = ["STAGED", "BLOCKED_LEGAL_GATE", "READY_
 /// not at all.
 const MATERIALISE_ROSTER_SQL: &str = r#"
 WITH scope AS (
-    -- shortcut: membership is the whole 법인 while it has one pay group; upgrade to
-    -- per-employment pay-group terms and drop the single-group guard.
+    -- shortcut: membership is the whole legal entity while it has one pay group;
+    -- upgrade to per-employment pay-group terms and drop the single-group guard.
     -- Off-cycle, correction and exit-settlement runs name their own people.
     SELECT r.pay_group_id, g.legal_entity_id,
            r.pay_group_id IS NOT NULL AND r.kind = 'REGULAR' AND NOT EXISTS (
@@ -66,7 +66,7 @@ WITH scope AS (
     LEFT JOIN pay_groups g ON g.org_id = r.org_id AND g.id = r.pay_group_id
     WHERE r.org_id = $1 AND r.id = $2
 ), members AS (
-    -- Employed at some point of the period and assigned to the group's 법인 in it.
+    -- Employed at some point of the period and assigned to the group's legal entity.
     -- A line is a work record that blocks voiding a registration, so someone not
     -- started yet joins at close instead; a no-show can be voided until then.
     SELECT m.id AS employee_id
@@ -84,8 +84,9 @@ WITH scope AS (
             AND a.legal_entity_id = s.legal_entity_id
             AND a.valid_from <= $4 AND (a.valid_to IS NULL OR a.valid_to > $3)
       )
-    -- A registration void holds the person FOR UPDATE: it waits for this run, or
-    -- this run waits for it and then leaves the voided person off.
+    -- A registration void locks the person FOR UPDATE and only then reads their
+    -- work records: it waits for this run and sees its line, or this run waits
+    -- for it and then leaves the voided person off.
     FOR KEY SHARE OF m
 ), import_rows AS (
     SELECT
@@ -269,8 +270,9 @@ ON CONFLICT (org_id, run_id, employee_source_key) DO UPDATE SET
     source_data_import_row_ids = EXCLUDED.source_data_import_row_ids
 RETURNING id
 ), retracted AS (
-    -- Someone no longer a member; their line stays, as VOID.
-    UPDATE payroll_draft_lines x SET calculation_status = 'VOID', updated_at = now()
+    -- Someone no longer a member; their line stays, as VOID, waiting on nothing.
+    UPDATE payroll_draft_lines x
+       SET calculation_status = 'VOID', blockers = '[]'::jsonb, updated_at = now()
     FROM scope s
     WHERE s.roster_defined AND x.org_id = $1 AND x.run_id = $2
       AND x.calculation_status <> 'VOID' AND x.id NOT IN (SELECT id FROM upserted)

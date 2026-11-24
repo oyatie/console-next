@@ -23,6 +23,7 @@ describe("payrollErrorMessageKey", () => {
     expect(payrollErrorMessageKey("sod_violation")).toBe("payrollRun.error.sod_violation");
     expect(payrollErrorMessageKey("legal_gate")).toBe("payrollRun.error.legal_gate");
     expect(payrollErrorMessageKey("exceptions_open")).toBe("payrollRun.error.exceptions_open");
+    expect(payrollErrorMessageKey("nothing_calculated")).toBe("payrollRun.error.nothing_calculated");
     expect(payrollErrorMessageKey("preflight_blocked")).toBe("payrollRun.error.preflight_blocked");
     expect(payrollErrorMessageKey("payroll.refuse.identity_unbound")).toBe("payrollRun.error.payroll.refuse.identity_unbound");
     expect(payrollErrorMessageKey("unexpected_code")).toBeNull();

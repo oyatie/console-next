@@ -18,7 +18,7 @@ use uuid::Uuid;
 /// Before every period these tests use, so an assignment from it covers them all.
 pub(crate) const LONG_AGO: Date = date!(2026 - 01 - 01);
 
-/// A line's source key, 법인, 사업장 and department.
+/// A line's source key, legal entity, workplace and department.
 pub(crate) type Placed = (String, Option<Uuid>, Option<Uuid>, Option<Uuid>);
 
 pub(crate) async fn entity(pool: &PgPool, org: Uuid) -> Uuid {
@@ -26,7 +26,8 @@ pub(crate) async fn entity(pool: &PgPool, org: Uuid) -> Uuid {
         .bind(org).fetch_one(pool).await.unwrap()
 }
 
-/// A 법인 whose name payroll may print: a confirmed, open 등록증 and a revision.
+/// A legal entity whose name payroll may print: a confirmed, open registration
+/// certificate and a revision.
 pub(crate) async fn named_entity(pool: &PgPool, org: Uuid, name: &str) -> Uuid {
     let entity: Uuid = sqlx::query_scalar("INSERT INTO legal_entities (org_id,id,biz_kind,created_change_mode) VALUES ($1,gen_random_uuid(),'CORPORATION','MIGRATION') RETURNING id")
         .bind(org).fetch_one(pool).await.unwrap();
@@ -70,7 +71,8 @@ pub(crate) async fn active(pool: &PgPool, org: Uuid, key: &str, unit: Option<Uui
     person(pool, org, key, unit, "ACTIVE", (None, None)).await
 }
 
-/// A 법인 · 사업장 assignment over `[from, to)`; no 법인 records an unmapped migration.
+/// A legal entity and workplace assignment over `[from, to)`; no legal entity
+/// records an unmapped migration.
 pub(crate) async fn assign(
     pool: &PgPool,
     org: Uuid,
@@ -115,14 +117,14 @@ pub(crate) async fn department_move(
     on: Date,
 ) {
     let recorder = user(pool, org).await;
-    sqlx::query("INSERT INTO employee_lifecycle_events (org_id,employee_id,event_type,from_status,to_status,from_org_unit_id,to_org_unit_id,effective_date,comment,created_by,state) VALUES ($1,$2,'TRANSFER','ACTIVE','ACTIVE',$3,$4,$5::date::text,'부서 이동',$6,'APPLIED')")
+    sqlx::query("INSERT INTO employee_lifecycle_events (org_id,employee_id,event_type,from_status,to_status,from_org_unit_id,to_org_unit_id,effective_date,comment,created_by,state) VALUES ($1,$2,'TRANSFER','ACTIVE','ACTIVE',$3,$4,$5::date::text,'Department move',$6,'APPLIED')")
         .bind(org).bind(employee).bind(from).bind(to).bind(on).bind(recorder)
         .execute(pool).await.unwrap();
 }
 
 /// A non-sensitive pay group of `entity` whose base period follows `base_period`.
 pub(crate) async fn pay_group(pool: &PgPool, org: Uuid, entity: Uuid, base_period: &str) -> Uuid {
-    sqlx::query_scalar("INSERT INTO pay_groups (org_id,id,legal_entity_id,name,pay_date_rule,base_period,variable_period,proration,channel,sensitive,pay_basis_allowed) VALUES ($1,gen_random_uuid(),$2,'월급 '||gen_random_uuid(),'{\"day\":\"LAST_DAY\",\"month_offset\":0,\"non_business_day\":\"PREVIOUS\"}',$3::jsonb,'{\"start_day\":16,\"month_offset\":-1}','CALENDAR_DAYS','ATTESTATION_ONLY',false,ARRAY['MONTHLY']) RETURNING id")
+    sqlx::query_scalar("INSERT INTO pay_groups (org_id,id,legal_entity_id,name,pay_date_rule,base_period,variable_period,proration,channel,sensitive,pay_basis_allowed) VALUES ($1,gen_random_uuid(),$2,'Pay '||gen_random_uuid(),'{\"day\":\"LAST_DAY\",\"month_offset\":0,\"non_business_day\":\"PREVIOUS\"}',$3::jsonb,'{\"start_day\":16,\"month_offset\":-1}','CALENDAR_DAYS','ATTESTATION_ONLY',false,ARRAY['MONTHLY']) RETURNING id")
         .bind(org).bind(entity).bind(base_period).fetch_one(pool).await.unwrap()
 }
 
@@ -150,7 +152,7 @@ pub(crate) async fn materialise_for(pool: &PgPool, f: &Fixture, period: (Date, D
 }
 
 pub(crate) async fn lock_period(pool: &PgPool, org: Uuid, (start, end): (Date, Date)) {
-    sqlx::query("INSERT INTO period_locks (org_id,domain,period_start,period_end,reason) VALUES ($1,'payroll',$2,$3,'급여 동결')")
+    sqlx::query("INSERT INTO period_locks (org_id,domain,period_start,period_end,reason) VALUES ($1,'payroll',$2,$3,'Payroll freeze')")
         .bind(org).bind(start).bind(end).execute(pool).await.unwrap();
 }
 

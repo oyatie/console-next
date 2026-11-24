@@ -7868,7 +7868,7 @@ export interface paths {
         };
         /**
          * Read HR data readiness counters
-         * @description Returns import, payroll, annual-leave, and attendance readiness counters for org-wide HR operators without exposing raw workbook rows. `payroll.active_close_runs` counts only STAGED, BLOCKED_LEGAL_GATE, READY_FOR_REVIEW, and APPROVED payroll runs; terminal ISSUED and VOID history is excluded.
+         * @description Returns import, payroll, annual-leave, and attendance readiness counters for org-wide HR operators without exposing raw workbook rows. `payroll.active_close_runs` counts only STAGED, BLOCKED_LEGAL_GATE, READY_FOR_REVIEW, and APPROVED payroll runs; terminal ISSUED and VOID history is excluded. The `payroll` counters and `latest_*` fields cover runs staged from imports only; a pay group's runs and lines are left out, since they follow pay-group access.
          */
         get: operations["getHrReadinessSummary"];
         put?: never;
@@ -11673,7 +11673,7 @@ export interface paths {
         put?: never;
         /**
          * Submit a CALCULATED run for approval; fail-closed while any exception is still OPEN (409 carries the open count in error.details.open)
-         * @description Refused with 409 invalid_state when no line of the run has a calculation, since there is no pay to approve.
+         * @description Refused with 409 nothing_calculated when no line of the run has a calculation, since there is no pay to approve.
          */
         post: operations["submitPayrollRun"];
         delete?: never;
@@ -27132,6 +27132,7 @@ export interface components {
             ok: boolean;
             /** @description Soft signal only; can_close is the AND of the hard checks (attendance_material, period_lock). */
             warn: boolean;
+            /** @description On attendance_material, pay_group_roster_ambiguous when the run's legal entity has more than one pay group, so its roster is not known and the run cannot close. */
             note: string | null;
             /** @description Up to 50 fix-link ids (draft lines missing attendance material, or pending leave requests); the note carries the full count. */
             blocking_refs: components["schemas"]["Uuid"][];
@@ -56863,14 +56864,14 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description phase_not_operating during tenant setup; regular_run_exists for an occupied regular group/month; pay_group_roster_ambiguous when the group's legal entity has more than one pay group */
+            /** @description phase_not_operating during tenant setup; regular_run_exists for an occupied regular group/month; pay_group_roster_ambiguous when the group's legal entity has more than one pay group, so its members are not known; idempotency_key_reused for a changed body; command_processing or command_applied for an unavailable replay. */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description run_kind_unsupported for non-REGULAR kinds; Missing */
+            /** @description run_kind_unsupported for non-REGULAR kinds; Missing, malformed or extra fields, an invalid run kind, or invalid_request_key. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -56915,7 +56916,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description pay_group_roster_ambiguous when the group's legal entity has more than one pay group */
+            /** @description pay_group_roster_ambiguous when the group's legal entity has more than one pay group, so its members are not known. */
             409: {
                 headers: {
                     [name: string]: unknown;

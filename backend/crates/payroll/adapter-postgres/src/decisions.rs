@@ -15,7 +15,6 @@ pub async fn submit_run_in_tx(
     if open > 0 {
         return Err(LifecycleError::ExceptionsOpen(open));
     }
-    // Every line blocked means no pay to approve, schedule or attest as paid.
     let calculated: bool = sqlx::query_scalar(
         "SELECT EXISTS (SELECT 1 FROM payroll_line_calculations WHERE run_id = $1)",
     )
@@ -23,9 +22,7 @@ pub async fn submit_run_in_tx(
     .fetch_one(tx.as_mut())
     .await?;
     if !calculated {
-        return Err(LifecycleError::InvalidState(
-            "no line of this run has a calculation, so there is nothing to submit".to_owned(),
-        ));
+        return Err(LifecycleError::NothingCalculated);
     }
     sqlx::query(
         "UPDATE payroll_draft_runs \

@@ -18,6 +18,8 @@
 //! of double-applying (state-machine idempotency; there is no client
 //! idempotency key to desynchronize).
 
+#[path = "lifecycle_refusal.rs"]
+mod lifecycle_refusal;
 #[path = "payslip_payload.rs"]
 mod payslip_payload;
 
@@ -25,7 +27,7 @@ use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
-use console_inbox_adapter_postgres::{PgInboxError, emit_inbox_doc_in_tx};
+use console_inbox_adapter_postgres::emit_inbox_doc_in_tx;
 use console_inbox_application::EmitInboxDocCommand;
 use console_inbox_domain::{InboxDocKind, NewInboxDoc};
 use console_kernel_core::{AuditAction, AuditEvent, TraceContext, UserId};
@@ -43,66 +45,6 @@ use uuid::Uuid;
 
 use crate::access::require_run_in_tx;
 use crate::{PageParams, PayrollRestState, RestError, principal_from_headers};
-
-impl RestError {
-    fn from_lifecycle(err: lifecycle::LifecycleError) -> Self {
-        use lifecycle::LifecycleError as E;
-        match err {
-            E::NotFound => Self::new(StatusCode::NOT_FOUND, "not_found", "run not found"),
-            E::PreflightBlocked(preflight) => {
-                let details = serde_json::to_value(&preflight).ok();
-                Self::new(
-                    StatusCode::CONFLICT,
-                    "preflight_blocked",
-                    "attendance close preflight is blocked",
-                )
-                .with_details(details)
-            }
-            E::InvalidState(message) => Self::new(StatusCode::CONFLICT, "invalid_state", message),
-            E::ExceptionsOpen(open) => Self::new(
-                StatusCode::CONFLICT,
-                "exceptions_open",
-                format!("{open} exceptions are still open"),
-            )
-            .with_details(Some(json!({ "open": open }))),
-            E::IdentityUnbound | E::SodViolation => Self::from_kernel(err.into_kernel_error()),
-            E::AlreadyResolved => Self::new(
-                StatusCode::CONFLICT,
-                "already_resolved",
-                "exception is already resolved",
-            ),
-            E::InvalidTransition(message) => {
-                Self::new(StatusCode::CONFLICT, "invalid_transition", message)
-            }
-            E::LegalGate(message) => Self::new(StatusCode::CONFLICT, "legal_gate", message),
-            E::Validation(message) => {
-                Self::new(StatusCode::UNPROCESSABLE_ENTITY, "validation", message)
-            }
-            E::Db(err) => {
-                tracing::error!(error = %err, "payroll lifecycle db error");
-                Self::new(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "internal",
-                    "internal server error",
-                )
-            }
-        }
-    }
-
-    fn from_inbox(err: PgInboxError) -> Self {
-        match err {
-            PgInboxError::Domain(err) => Self::from_kernel(err),
-            other => {
-                tracing::error!(error = %other, "payslip inbox delivery error");
-                Self::new(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "internal",
-                    "internal server error",
-                )
-            }
-        }
-    }
-}
 
 fn audit_event(
     actor: UserId,
