@@ -359,7 +359,7 @@ The small parts:
 | `Tag` `plan` | `--info-bd` border, `--info-tx` text, `--info-bg` fill. |
 | `Tag` `void` | The colours of a tag with no kind, with a dashed border. |
 | `Kbd` | A box at least 18 px wide and 18 px high, with 4 px side padding, a 4 px radius, a 1 px `--border` border that is 2 px at the bottom, a `--kbd-bg` fill and 12 px `--steel` monospace text (`--font-mono`). |
-| `Masked` | 13 px text in the code face (`--font-code`) with the masked tracking (`--tracking-masked`): monospace with 0.5 px letter spacing, and the body face untracked in the console style. |
+| `Masked` | 13 px text in the code face (`--font-code`) with the masked tracking (`--tracking-masked`): monospace with 0.5 px letter spacing, and the body face untracked in the Console style. |
 | `RowInput` | The box of a `TextInput`, as wide as its cell up to 330 px (`calc(var(--panel-w) * 0.75)`). 28 px high (`calc(var(--space-6) - var(--space-1))`), not the 40 px of `field__input`: see the ties below. |
 | `Saving` | A `--ok-bg` fill behind the value, with 4 px side padding and a 4 px radius. The tick is a 12 px ring, 4 px after the value: a 2 px `--control-border` border with a `--primary` top edge. |
 | `EditRow` | A column with 8 px gaps, 8 px above and below, 8 px of padding top and bottom. The same fill and bar as a `FieldRow` with `edit`, drawn 16 px wider than its place on each side. No rule makes it span the columns of a `two` body. Its one call site, the row editor of the people card, is rendered in one-column bodies, where the fill reaches both edges of the section. |

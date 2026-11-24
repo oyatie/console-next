@@ -40,9 +40,9 @@ an `id` or an ARIA attribute.
 | `accent` | `--primary-soft` | none | `--primary-hover` |
 
 `--warn-mark` is the edge of a warn tag; a callout or a banner keeps `--warn-bd`. `outline` is semibold and `accent`
-is bold in every style. `warn`, `danger` and `info` take `--fw-tag-signal`: medium, and bold in the console style.
+is bold in every style. `warn`, `danger` and `info` take `--fw-tag-signal`: medium, and bold in the Console style.
 
-`TurnChip` marks the viewer's turn on a document (the `orgChange.turn` text). It is the `accent` chip in the console
+`TurnChip` marks the viewer's turn on a document (the `orgChange.turn` text). It is the `accent` chip in the Console
 style and the `info` chip in every other style.
 
 There is one size: 20 px high (`calc(var(--space-5) - var(--space-1))`), 8 px side padding, a 1 px border, a 4 px

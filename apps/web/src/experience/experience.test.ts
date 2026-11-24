@@ -32,7 +32,7 @@ test("the chooser offers the built style and the listed styles, and keeps an unl
   expect(offeredExperiences("warm-clear").map(experience => experience.id)).toEqual(["baseline", "console", "warm-clear"]);
 });
 
-test("the console style draws business dates as ISO days, and every other style keeps the locale form", async () => {
+test("the Console style draws business dates as ISO days, and every other style keeps the locale form", async () => {
   await import("./dom");
   for (const [document, day] of [
     [{ documentElement: { dataset: { experience: "console" } } }, "2026-11-06"],
