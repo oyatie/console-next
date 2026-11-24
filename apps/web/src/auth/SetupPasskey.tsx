@@ -20,6 +20,7 @@ import { pauseAutofill, rememberDomain } from "./sign-in-id";
 export function SetupPasskey() {
   const nav = useNavigate();
   const privacyDescription = useId();
+  const policyLine = useId();
   const termsDescription = useId();
   const disabledDescription = useId();
   const [error, setError] = useState<string | null>(null);
@@ -79,7 +80,7 @@ export function SetupPasskey() {
         <Checks
           label={t("auth.setup.consent.title")}
           items={[
-            { id: "privacy", label: t("auth.setup.consent.privacy"), description: privacyDescription },
+            { id: "privacy", label: t("auth.setup.consent.privacy"), description: `${policyLine} ${privacyDescription}` },
             { id: "terms", label: t("auth.setup.consent.terms"), description: termsDescription },
           ]}
           value={accepted ? ["privacy", "terms"] : signoffs}
@@ -87,10 +88,11 @@ export function SetupPasskey() {
           isDisabled={busy || !ready}
         />
         {documents.data && <>
+          {/* Notice before consent: the policy stays in view beside the boxes, never only inside a closed full text. */}
+          <div className="muted auth__terms" id={policyLine}>{t("auth.setup.consent.policy")}: {documents.data.privacy.policy_url}</div>
           <details className="muted" id={privacyDescription}>
             <summary>{t("auth.setup.consent.privacy")} · {t("auth.setup.consent.disclosure")}{documents.data.privacy.review_pending && <> ({t("auth.setup.consent.reviewPending")})</>}</summary>
             <p className="auth__terms">{documents.data.privacy.body}</p>
-            <div className="muted">{t("auth.setup.consent.policy")}: {documents.data.privacy.policy_url}</div>
           </details>
           <details className="muted" id={termsDescription}>
             <summary>{t("auth.setup.consent.terms")} · {t("auth.setup.consent.disclosure")}</summary>

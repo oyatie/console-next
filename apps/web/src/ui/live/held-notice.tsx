@@ -40,13 +40,13 @@ export function HeldNotice({ placement = "float" }: { placement?: "float" | "lis
     const region = notice.current?.parentElement;
     await showHeld();
     if (placement !== "list") return;
-    // Query observers publish on the next task; focus after their replacement rows commit.
-    setTimeout(() => requestAnimationFrame(() => {
+    // showHeld returns once the reads have published; focus after their replacement rows commit.
+    requestAnimationFrame(() => {
       if (!region?.isConnected) return;
       const target = region.querySelector<HTMLElement>(ROW_SELECTOR) ?? region;
       if (!target.hasAttribute("tabindex")) target.tabIndex = -1;
       target.focus({ preventScroll: true });
-    }), 0);
+    });
   };
   if (placement === "float" && (visible || !count)) return null;
   const content = (

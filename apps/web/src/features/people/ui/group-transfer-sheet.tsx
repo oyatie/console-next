@@ -112,7 +112,9 @@ export function GroupTransferSheet({ d, events, head, units, act, offer, seed, c
         {targets.kind !== "ready" && <GroupBlocked targets={targets} onTransfer={() => onOpen("TRANSFER")} />}
       </Composer>
     );
-  const words = { name: e.name, from, to, date: when !== "none" ? fmtDay(v0.date) : "", last: when !== "none" ? fmtDay(addDays(v0.date, -1)) : "" };
+  // Before a date, today's wording holds the echo's line (the field shows it once a date is in).
+  const day = when === "none" ? today : v0.date;
+  const words = { name: e.name, from, to, date: fmtDay(day), last: fmtDay(addDays(day, -1)) };
   const code = run.isError && !checking ? refusalOf(run.error)?.code : undefined;
   const refusal = run.isError && !checking && (
     groupCode(code) ? (
@@ -164,7 +166,7 @@ export function GroupTransferSheet({ d, events, head, units, act, offer, seed, c
       onChange={(date) => set({ date })}
       {...b}
       presets={presets}
-      echo={when !== "none" ? t("groupTransfer.date.echo", words) : undefined}
+      echo={t("groupTransfer.date.echo", words)}
       error={show("date") && when === "none" ? t("lifecycle.date.missing") : undefined}
       showErrors={tried}
     />

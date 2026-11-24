@@ -172,6 +172,15 @@ test("route load runs only nightly or manually without delaying live E2E", () =>
   assert.ok(build.steps.some(step => step.with?.name === "e2e-live-runtime"));
 });
 
+test("route load defaults to HTTP/2 and accepts an explicit paired run", () => {
+  const workflow = yaml.load(read(".github/workflows/route-load.yml"));
+  const input = workflow.on.workflow_dispatch?.inputs?.transports;
+  assert.equal(input?.type, "choice");
+  assert.equal(input.default, "h2");
+  assert.deepEqual(input.options, ["h2", "both"]);
+  assert.equal(workflow.jobs["route-load"].env.E2E_PERF_TRANSPORTS, "${{ inputs.transports || 'h2' }}");
+});
+
 test("route load publishes failed measurements against the served synthetic tenant", () => {
   const workflow = yaml.load(read(".github/workflows/route-load.yml"));
   const job = workflow.jobs["route-load"];

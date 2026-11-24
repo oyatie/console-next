@@ -54,7 +54,7 @@ for (const theme of ["light", "dark"]) {
       await mockRoute(page, "get", "/api/v1/requests/{key}", { status: 404, json: failure("request_not_found") });
       try {
         await page.goto(path);
-        const main = page.getByRole("main").first();
+        const main = page.getByRole("main", { name: t("shell.main"), exact: true });
         await expect(page.getByRole("main")).toHaveCount(2);
         await expect(main.getByRole("heading", { name: t("requestOutcome.title"), exact: true })).toBeVisible();
         await expect(main).toHaveClass(/\bmain\b/);
