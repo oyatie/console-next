@@ -1,5 +1,44 @@
 use super::*;
 
+pub async fn submit_run_in_tx(
+    tx: &mut Transaction<'_, Postgres>,
+    run_id: Uuid,
+    actor: Uuid,
+) -> Result<(), LifecycleError> {
+    let Some(run) = run_head(tx, run_id, true).await? else {
+        return Err(LifecycleError::NotFound);
+    };
+    if run.status != "CALCULATED" {
+        return Err(invalid_state("submit", &run.status));
+    }
+    let (open, _) = exception_counts_in_tx(tx, run_id).await?;
+    if open > 0 {
+        return Err(LifecycleError::ExceptionsOpen(open));
+    }
+    // Every line blocked means no pay to approve, schedule or attest as paid.
+    let calculated: bool = sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM payroll_line_calculations WHERE run_id = $1)",
+    )
+    .bind(run_id)
+    .fetch_one(tx.as_mut())
+    .await?;
+    if !calculated {
+        return Err(LifecycleError::InvalidState(
+            "no line of this run has a calculation, so there is nothing to submit".to_owned(),
+        ));
+    }
+    sqlx::query(
+        "UPDATE payroll_draft_runs \
+         SET status = 'SUBMITTED', submitted_by = $2, submitted_at = now(), updated_at = now() \
+         WHERE id = $1",
+    )
+    .bind(run_id)
+    .bind(actor)
+    .execute(tx.as_mut())
+    .await?;
+    Ok(())
+}
+
 pub async fn decide_run_in_tx(
     tx: &mut Transaction<'_, Postgres>,
     run_id: Uuid,

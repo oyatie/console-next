@@ -1555,10 +1555,10 @@ async fn seeded_org_actions_write_canonical_heads_through_owning_ports(owner_poo
         "a staged run must not be calculation-enabled — this path must not compute won"
     );
 
-    // The port has no calculate dispatch target. Submitting requires CALCULATED,
-    // so the table owner flips status only — no line math, calculation_enabled
-    // stays false.
-    sqlx::query("UPDATE payroll_draft_runs SET status = 'CALCULATED' WHERE id = $1")
+    // The port has no calculate dispatch target. Submitting requires CALCULATED
+    // and a calculated line, so the table owner writes one zero-won fixture
+    // calculation — calculation_enabled stays false.
+    sqlx::query("WITH run AS (UPDATE payroll_draft_runs SET status = 'CALCULATED' WHERE id = $1 RETURNING org_id, id), line AS (INSERT INTO payroll_draft_lines (org_id, run_id, employee_source_key, employee_display_name, employee_company) SELECT org_id, id, 'calculated', 'Calculated', 'SAE' FROM run RETURNING org_id, run_id, id) INSERT INTO payroll_line_calculations (org_id, run_id, line_id, version, gross_won, deductions, total_deductions_won, net_won, tax_table_version) SELECT org_id, run_id, id, 1, 0, '[]', 0, 0, 'fixture' FROM line")
         .bind(draft_run_id)
         .execute(&owner_pool)
         .await
