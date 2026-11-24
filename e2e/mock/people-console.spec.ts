@@ -97,7 +97,8 @@ for (const width of [1440, 390] as const) {
             expect(box!.height).toBeLessThanOrEqual(72);
             if (box!.y + box!.height <= 900) aboveFoldCount += 1;
           }
-          expect(aboveFoldCount).toBeGreaterThanOrEqual(6);
+          // Below the name index, whose keys are 44px phone targets in two rows of seven.
+          expect(aboveFoldCount).toBeGreaterThanOrEqual(5);
         }
 
         await fits(page, `Console /people ${width} ${theme}`);

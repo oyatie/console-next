@@ -1,6 +1,6 @@
 /* ui/item-list: compact rows split by hairlines (kit .mlist). Tokens only. */
 .list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
-.item { display: flex; align-items: center; gap: var(--space-2); min-height: var(--row-h-compact); border-top: 1px solid var(--border-soft); font-size: var(--text-sm); }
+.item { display: flex; align-items: center; gap: var(--space-2); min-height: var(--row-h-sm); border-top: 1px solid var(--border-soft); font-size: var(--text-sm); }
 .item:first-child { border-top: 0; }
 .mark { display: inline-flex; flex: none; color: var(--steel); }
 .item[data-tone="ok"] .mark { color: var(--ok-solid); }
@@ -9,10 +9,10 @@
 .text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .end { flex: none; color: var(--steel); font-size: var(--text-xs); font-variant-numeric: tabular-nums; }
 .item:hover, .item[data-hovered] { background: var(--muted); }
-.list[data-density="dense"] .item { min-height: var(--row-h-compact); }
+.list[data-density="dense"] .item { min-height: var(--row-h-sm); }
 .itemBtn { display: flex; align-items: center; gap: var(--space-2); width: 100%; min-height: inherit; padding: 0; background: transparent; border: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
 .itemBtn:focus-visible { outline: none; box-shadow: var(--focus); }
 .loading { padding: var(--space-3); }
-.skeleton { height: var(--row-h-compact); background: var(--border-soft); border-radius: var(--radius-sm); }
+.skeleton { height: var(--row-h-sm); background: var(--border-soft); border-radius: var(--radius-sm); }
 .empty { padding: var(--space-3); color: var(--steel); font-size: var(--text-sm); text-align: center; }
 .error { padding: var(--space-3); color: var(--danger-solid); font-size: var(--text-sm); }

@@ -58,7 +58,7 @@ export function MeAttendancePage() {
   const head = {
     title: t("me.attendance.title"),
     titleId: "me-attendance-title",
-    crumbs: [<Link key="account" to="/account" className={s.plainLink}>{t("shell.profile")}</Link>],
+    crumbs: [<Link key="account" to="/account">{t("shell.profile")}</Link>],
   };
   if (me.data && !linked) return <SelfServiceUnlinked q={me} head={head} pattern="record" floorplan="P-02" queryLayout="record" />;
 
