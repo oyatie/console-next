@@ -223,8 +223,10 @@ components read it: `FlexibleColumns` (`ui/flexible-columns`) and `PaneGrid` (`u
 handlers close an open pane. Each leaves a key pressed inside such an element alone, and closes nothing while its
 open pane holds such an element with `aria-busy="true"`. Both handlers run in the capture phase, on `document` and
 on the grid's root, so they see the key before the card does. In a record column the first Escape closes the form
-and the next one closes the column. While `pending` is set the card's listener is off and the attribute stays, so an
-Escape closes neither the form nor the column.
+and the next one closes the column, unless the column still holds unsaved input such as a typed opinion. Then that
+Escape only shows the unsaved line (`composer.unsaved`, a `role="status"` warning in the column head; see
+[Pane grid](pane-grid.md) and [Sheet](sheet.md)), and the one after it closes the column. While `pending` is set
+the card's listener is off and the attribute stays, so an Escape closes neither the form nor the column.
 
 After a decision made by keyboard in a record column, focus is on the recorded heading, inside the column, so an
 Escape closes the column. Both approvals lists (`features/approvals/ui/approvals-page.tsx`) then return focus to
@@ -370,7 +372,7 @@ no request changes:
 - There is no request-changes button, and one `btn--primary` button, which is approve.
 - Reject opens its form. Escape with focus on a reason radio closes the form, leaves the column open, keeps the
   text typed in the opinion field and returns focus to reject.
-- A second Escape closes the column.
+- A second Escape shows the unsaved line in the column. A third closes the column.
 
 The same search finds tests of the opposite case, a document that draws no decision button:
 `e2e/mock/approvals.spec.ts`, `e2e/mock/approval-document.spec.ts`, `e2e/mock/approval-refusal.spec.ts`,
