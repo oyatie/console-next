@@ -2,7 +2,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeAll, expect, test, vi } from "vitest";
 import { loadCatalog, t } from "@console/i18n";
-import { ConsoleStatusBar } from "./shell";
+import { ConsoleStatusBar } from "./console-status-bar";
 
 beforeAll(() => loadCatalog("ko"));
 afterEach(() => vi.unstubAllGlobals());
