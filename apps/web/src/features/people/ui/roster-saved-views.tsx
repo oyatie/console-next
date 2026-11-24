@@ -12,13 +12,14 @@ import { Composer } from "../../../ui/composer/composer";
 import { Field, TextInput } from "../../../ui/field/field";
 import { EmptyState } from "../../../ui/empty-state";
 
-export function RosterSavedViews({ filters, onApply }: { filters: EmployeeViewFilters; onApply: (filters: EmployeeViewFilters) => void }) {
+/** `unavailable`: the roster's own read failed; the page says so once, and the views wait for the list they filter. */
+export function RosterSavedViews({ filters, onApply, unavailable = false }: { filters: EmployeeViewFilters; onApply: (filters: EmployeeViewFilters) => void; unavailable?: boolean }) {
   const [open, setOpen] = useState(false);
   const list = useQuery(employeeViewsQuery);
   return <>
-    <Button disabled={!list.data || list.isError} onClick={() => setOpen(true)}>{t("directoryViews.open")}</Button>
-    {list.isError && <QueryState q={list} inline>{() => null}</QueryState>}
-    {open && list.data && !list.isError && <SavedViews list={list} filters={filters} onApply={value => { onApply(value); setOpen(false); }} onClose={() => setOpen(false)} />}
+    <Button disabled={unavailable || !list.data || list.isError} onClick={() => setOpen(true)}>{t("directoryViews.open")}</Button>
+    {list.isError && !unavailable && <QueryState q={list} inline>{() => null}</QueryState>}
+    {open && !unavailable && list.data && !list.isError && <SavedViews list={list} filters={filters} onApply={value => { onApply(value); setOpen(false); }} onClose={() => setOpen(false)} />}
   </>;
 }
 

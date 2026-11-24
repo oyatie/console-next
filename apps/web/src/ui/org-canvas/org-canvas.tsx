@@ -6,7 +6,7 @@ import { place } from "./place";
 import { barInsets, unzoomOf, useView, ZOOM, type Insets, type Rect } from "./use-view";
 import s from "./org-canvas.module.css";
 
-export type CanvasHandle = { fit: () => void; reveal: (r: Rect) => void };
+export type CanvasHandle = { fit: () => void; reveal: (r: Rect, also?: Rect) => void };
 /** Before the bars are measured: their single-row height plus the space kept clear of them. */
 const BARS: Insets = { top: 56, bottom: 64 };
 
@@ -57,6 +57,8 @@ export const OrgCanvas = forwardRef<CanvasHandle, {
   gutter?: ReactNode;
   /** The stage rect kept clear of the bars when the canvas changes size (the box the keyboard is on). */
   keep?: Rect;
+  /** Kept beside `keep` when both fit between the bars (the keyboard's box, beside a new box's editor). */
+  keepAlso?: Rect;
   /** Extra zoom-bar actions (collapse all). */
   tools?: ReactNode;
   minimap?: { rects: readonly MiniRect[]; userId?: string } | false;
@@ -77,7 +79,7 @@ export const OrgCanvas = forwardRef<CanvasHandle, {
     const corner = mini.current?.getBoundingClientRect();
     return { ...barInsets(v, top, bottom), corner: corner?.height ? { x: corner.left - v.left, y: corner.top - v.top, w: corner.width, h: corner.height } : undefined };
   };
-  const { view, vp, fit, zoomBy, panBy, reveal, centre, relayout } = useView(viewport, p.size, p.resetKey, insets, p.keep);
+  const { view, vp, fit, zoomBy, panBy, reveal, centre, relayout } = useView(viewport, p.size, p.resetKey, insets, p.keep, p.keepAlso);
   useLayoutEffect(() => {
     const el = viewport.current;
     if (!el) return;

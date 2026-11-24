@@ -1,4 +1,7 @@
 .status { display: contents; }
+/* The bar's own flex item, shrinking last: its share beside the search field rounds to nothing until that field is at its minimum. */
+.status > .chip { flex-shrink: 0.00001; min-width: 0; }
+.text { overflow: hidden; text-overflow: ellipsis; }
 /* The shared fixed dock keeps remote changes visible without moving record controls. */
 .notice { box-shadow: var(--shadow-pop); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
 .notice > span { flex: 1; min-width: 0; }

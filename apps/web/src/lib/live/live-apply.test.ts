@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { QueryClient } from "@tanstack/react-query";
+import { notifyManager, QueryClient, QueryObserver } from "@tanstack/react-query";
 import type { StreamOptions } from "@console/api/events";
+import { get } from "../query";
 import { closeLive, holdLive, liveApplying, liveHeld, openLive, showHeld } from "./live";
 
 let qc: QueryClient;
@@ -36,6 +37,10 @@ test.each([false, true])("a held refresh stays applying until its refetch settle
       await expect(applying).rejects.toBe(error);
     } else {
       resolve();
+      await Promise.resolve();
+      // Still applying until the screens have heard the refetch (one notify tick).
+      expect(liveApplying.get()).toBe(true);
+      await vi.advanceTimersByTimeAsync(0);
       await applying;
     }
     expect(liveApplying.get()).toBe(false);
@@ -65,6 +70,7 @@ test("a second refresh preserves newly held changes while the first refresh is a
     expect(liveHeld.get()).toBe(1);
     expect(liveApplying.get()).toBe(true);
     resolve();
+    await vi.advanceTimersByTimeAsync(0);
     await applying;
     expect(liveApplying.get()).toBe(false);
     expect(liveHeld.get()).toBe(1);
@@ -85,4 +91,32 @@ test("own-write echoes refresh the inbox without increasing a notice hold", asyn
     expect(liveHeld.get()).toBe(0);
     expect(invalidate).toHaveBeenCalledWith(expect.objectContaining({ refetchType: "active" }));
   } finally { release(); }
+});
+
+test("the held refresh stays applying until the shown reads have published their new data", async () => {
+  const inbox = get("/api/v1/me/action-inbox", { params: { query: {} } });
+  let items = ["undated"];
+  const observer = new QueryObserver(qc, { ...inbox, queryFn: async () => ({ items }) as never });
+  // A screen hears its observer through notifyManager.batchCalls (as useQuery subscribes), a task after the cache took it.
+  const published: unknown[] = [];
+  const off = observer.subscribe(notifyManager.batchCalls((r: { data: unknown }) => published.push(r.data)));
+  await vi.advanceTimersByTimeAsync(0);
+  const release = holdLive(true);
+  let paintedWhenApplied: unknown;
+  const offApplying = liveApplying.subscribe(() => { if (!liveApplying.get()) paintedWhenApplied = published.at(-1); });
+  try {
+    items = ["dated", "undated"];
+    frame("change", { type: "employee", id: "e1" });
+    await vi.advanceTimersByTimeAsync(250);
+    const applying = showHeld();
+    await vi.advanceTimersByTimeAsync(0);
+    await applying;
+    expect(liveApplying.get()).toBe(false);
+    // Clearing first would remount the list from the old pages, then insert the new group a task later.
+    expect(paintedWhenApplied).toEqual({ items: ["dated", "undated"] });
+  } finally {
+    offApplying();
+    off();
+    release();
+  }
 });
