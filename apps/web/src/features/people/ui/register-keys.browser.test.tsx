@@ -69,7 +69,7 @@ test("in both catalogs the row save's name holds the word it shows", async () =>
 // The finish button shows once a person is in the run.
 test.each(SYSTEMS)("on $platform the run page's finish button shows $close once a person is registered", async ({ platform, close }) => {
   await page.goto(`${server.resolvedUrls!.local[0]}register-keys-test?case=run&platform=${platform}`);
-  await page.locator('[data-run="name"]').fill("홍길동");
+  await page.locator('[data-run="name"]').fill("Hong Gildong");
   await page.getByLabel(t("register.run.cell", { n: 1, field: t("register.run.col.hire") }), { exact: true }).fill("2026-11-19");
   await page.keyboard.press("Control+Enter");
   await element(page.getByRole("button", { name: t("register.run.finish"), exact: true }).locator("kbd")).toHaveText(close);
@@ -85,7 +85,7 @@ test.each(SYSTEMS)("Console look: on $platform the registration sheet's register
 test.each(SYSTEMS)("Console look: on $platform the run page shows $next to register and $close to finish", async ({ platform, next, close }) => {
   await page.goto(`${server.resolvedUrls!.local[0]}register-keys-test?case=run&look=console&platform=${platform}`);
   await element(page.getByRole("button", { name: t("register.run.submit"), exact: true }).locator("kbd")).toHaveText(next);
-  await page.locator('[data-run="name"]').fill("홍길동");
+  await page.locator('[data-run="name"]').fill("Hong Gildong");
   await page.getByLabel(t("register.run.cell", { n: 1, field: t("register.run.col.hire") }), { exact: true }).fill("2026-11-19");
   await page.keyboard.press("Control+Enter");
   const finish = page.getByRole("button", { name: t("register.run.finish"), exact: true });
@@ -100,7 +100,7 @@ test.each([390, 1440])("the wider caps fit their buttons at %ipx", async width =
     await page.goto(`${server.resolvedUrls!.local[0]}register-keys-test?${at}&platform=Win32`);
     await page.locator('[data-run="name"], [role="dialog"] input').first().waitFor();
     if (at.startsWith("case=run")) {
-      await page.locator('[data-run="name"]').fill("홍길동");
+      await page.locator('[data-run="name"]').fill("Hong Gildong");
       await page.getByLabel(t("register.run.cell", { n: 1, field: t("register.run.col.hire") }), { exact: true }).fill("2026-11-19");
       await page.keyboard.press("Control+Enter");
       await page.getByRole("button", { name: t("register.run.finish"), exact: true }).first().waitFor();
