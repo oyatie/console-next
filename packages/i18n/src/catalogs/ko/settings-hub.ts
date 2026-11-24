@@ -179,7 +179,7 @@ export const koSettingsHub: Record<keyof typeof enSettingsHub, string> = {
   "settingsHub.key.db.pool.peak_api_processes": "최대 API 프로세스",
   "settingsHub.key.db.pool.peak_worker_processes": "최대 작업자 프로세스",
   "settingsHub.key.db.pool.reserved_connections": "예약 데이터베이스 연결",
-  "settingsHub.key.action_inbox.source_concurrency": "업무함 조회 동시성",
+  "settingsHub.key.action_inbox.source_concurrency": "할 일 조회 동시성",
   "settingsHub.code.ON_CONFIRM": "퇴직 확인 즉시",
   "settingsHub.code.END_OF_EXIT_DATE": "퇴직일 종료 시점",
   "settingsHub.code.refuse": "단독 처리 거부",

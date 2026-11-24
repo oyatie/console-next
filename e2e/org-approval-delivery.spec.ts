@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { firstSignIn, go, routeReady } from "./flows";
 import { apiOf, bearerOf } from "./helpers/api";
 import { setupCompany, startOperations } from "./setup-flows";
 import { inviteAccount } from "./access-flows";
 import { openTenant } from "./helpers/tenant";
 import { revealUnit } from "./structure-flows";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 for (const routeFirst of [false, true]) test(`an invited approver opens a routed change from the work inbox (routing first: ${routeFirst})`, { tag: ["@org", "@live"] }, async ({ browser }, info) => {
   test.setTimeout(300_000);
@@ -41,14 +44,14 @@ for (const routeFirst of [false, true]) test(`an invited approver opens a routed
   const approverApi = apiOf(exec, approverToken);
   const queue = await approverApi("/approvals?box=pending");
   await info.attach("approval-list", { body: await queue.body(), contentType: "application/json" });
-  await exec.getByRole("region", { name: "업무함", exact: true }).getByRole("link", { name: "업무함에서 모두 보기", exact: true }).click();
+  await exec.getByRole("region", { name: t("home.inbox.title"), exact: true }).getByRole("link", { name: t("home.inbox.viewInbox"), exact: true }).click();
   await expect(exec).toHaveURL(/\/inbox$/);
   await routeReady(exec, "/inbox");
   await exec.screenshot({ path: info.outputPath("inbox-after.png"), fullPage: true });
   await info.attach("inbox", { body: await exec.getByRole("main").ariaSnapshot(), contentType: "text/plain" });
-  const inbox = exec.getByRole("region", { name: "업무함", exact: true });
+  const inbox = exec.getByRole("region", { name: t("home.inbox.title"), exact: true });
   await expect(inbox).toContainText("결재전달부");
-  await expect(exec.getByRole("navigation", { name: "주 메뉴", exact: true }).getByRole("link", { name: "결재함", exact: true })).toBeVisible();
+  await expect(exec.getByRole("navigation", { name: "주 메뉴", exact: true }).getByRole("link", { name: t("shell.link.approvals"), exact: true })).toBeVisible();
   await inbox.getByRole("row", { name: /결재전달부/ }).getByRole("link", { name: "변경 내용 검토", exact: true }).click();
   await expect(exec).toHaveURL(new RegExp(`/org/changes/${change.id}$`));
   await routeReady(exec, `/org/changes/${change.id}`);

@@ -1,11 +1,14 @@
 import { inlineUnitDetails } from "./structure-flows";
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import type { components } from "@console/api/schema";
 import { go, kstDate } from "./flows";
 import { apiOf, bearerOf } from "./helpers/api";
 import { openUnit, sheet } from "./helpers/structure";
 import { SETUP_DEPARTMENT, staffedTenant } from "./setup-flows";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 test("scheduled system actions keep a neutral deadline under the registered window", { tag: "@hr" }, async ({ browser }) => {
   const { admin } = await staffedTenant(browser, "inboxdeadline", "신고기한회사");
@@ -42,8 +45,8 @@ test("scheduled system actions keep a neutral deadline under the registered wind
   expect(scheduled.due).toMatch(/Z$/);
   expect(Number.isFinite(Date.parse(scheduled.due!))).toBe(true);
   await go(admin, "/");
-  const inbox = admin.getByRole("region", { name: "업무함", exact: true });
-  await inbox.getByRole("link", { name: "업무함에서 모두 보기", exact: true }).click();
+  const inbox = admin.getByRole("region", { name: t("home.inbox.title"), exact: true });
+  await inbox.getByRole("link", { name: t("home.inbox.viewInbox"), exact: true }).click();
   await expect(admin).toHaveURL(/\/inbox$/);
   await inbox.getByRole("link", { name: /^예정 \d+\+?$/ }).click();
   await expect(inbox.locator(`a[href="/org/changes/${change.id}"]`)).toBeVisible();

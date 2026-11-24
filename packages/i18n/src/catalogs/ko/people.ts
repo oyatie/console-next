@@ -11,7 +11,7 @@ export const koPeople: Record<keyof typeof enPeople, string> = {
   "people.label.record": "{name} 인사카드",
   "people.label.grant": "{name} 권한 부여",
   // People
-  "people.title": "인사",
+  "people.title": "구성원",
   "people.tabs": "보기",
   "people.tab.employees": "직원",
   "people.tab.accounts": "계정",

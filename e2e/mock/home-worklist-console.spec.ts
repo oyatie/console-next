@@ -685,7 +685,7 @@ for (const locale of ["ko", "en"] as const) {
       const admin = saeonAdminUser();
       const principalKey = `console.tabs.${JSON.stringify(["00000000-0000-4000-8000-000000000002", admin.id])}`;
       const seededTabs = [
-        { id: "pinned-home", href: "/", label: t("shell.link.home"), pinned: true },
+        { id: "pinned-home", href: "/", label: t("shell.link.todo"), pinned: true },
         ...Array.from({ length: 7 }, (_, idx) => ({
           id: `tab-doc-${idx + 1}`,
           href: `/people?tab=${idx + 1}`,

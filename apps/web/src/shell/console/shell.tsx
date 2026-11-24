@@ -99,7 +99,7 @@ function ConsoleLayout({
   });
 
   const defaultHref = platform ? "/platform" : "/";
-  const defaultLabel = platform ? t("shell.link.tenants") : t("shell.link.home");
+  const defaultLabel = platform ? t("shell.link.tenants") : t("shell.link.todo");
   const navigateToHref = useCallback(
     (href: string) => {
       const resolved = resolveAppHref(href, pathname);

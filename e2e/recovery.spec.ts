@@ -56,7 +56,7 @@ test("vendor reissues a lost first-admin code; an admin resets a user's passkeys
   await expect(tenant).toContainText("관리자가 이미 패스키를 등록해 코드를 다시 발급하지 않습니다");
   await expectAccessible(v, "reissue refused after enrollment");
   const exec = await firstSignIn(browser, await inviteAccount(admin, "이임원", "oversight", true), undefined, true);
-  await expect(exec.getByRole("heading", { name: "이임원님" })).toBeVisible();
+  await expect(exec.getByRole("main").getByText("이임원님", { exact: true })).toBeVisible();
 
   // The executive lost their device: the admin resets their passkeys and hands over a new code.
   // A fresh load: the admin's account list predates the executive's enrollment.
@@ -77,5 +77,5 @@ test("vendor reissues a lost first-admin code; an admin resets a user's passkeys
 
   // The user signs in with the new code (consent was already given) and enrolls a new passkey.
   const again = await firstSignIn(browser, resetCode, undefined, true);
-  await expect(again.getByRole("heading", { name: "이임원님" })).toBeVisible();
+  await expect(again.getByRole("main").getByText("이임원님", { exact: true })).toBeVisible();
 });

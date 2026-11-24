@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { atPhoneWidth, expectAccessible, fits } from "./a11y";
 import { clickCounter } from "./clicks";
 import { withLifecycleDate } from "./clock";
@@ -9,6 +10,8 @@ import { staffedTenant } from "./setup-flows";
 import { signOff } from "./sheet";
 import { koDay } from "./dates";
 import { holdRead } from "./helpers/read";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 const head = (page: Page, name: string) => page.getByRole("heading", { name: new RegExp(name), level: 1 }).locator("..");
 // On the record the exit card sits inside the 휴직·퇴직 section (both named for 퇴직): the inner one is the exit card.
@@ -100,7 +103,7 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   // 2. The executive confirms as HQ, straight from Home's exit queue.
   await exec.goto("/");
   await routeReady(exec, "/");
-  const queue = exec.getByRole("region", { name: "업무함", exact: true }).getByRole("row").filter({ hasText: "강퇴직" }).filter({ has: exec.getByRole("link", { name: "본사 퇴직 확인", exact: true }) });
+  const queue = exec.getByRole("region", { name: t("home.inbox.title"), exact: true }).getByRole("row").filter({ hasText: "강퇴직" }).filter({ has: exec.getByRole("link", { name: "본사 퇴직 확인", exact: true }) });
   await expect(queue).toContainText("강퇴직");
   await expectAccessible(exec, "J5: Home exit queue");
   const trailRead = await holdRead(exec, /\/api\/v1\/(?:lifecycle-cases\/[^/?]+|employees\/[^/]+\/lifecycle-cases)(?:\?|$)/);
@@ -128,7 +131,7 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   // 3. HR prepares the settlement from Home and submits it for approval.
   await admin.goto("/");
   await routeReady(admin);
-  await c.click(admin.getByRole("region", { name: "업무함", exact: true }).getByRole("row").filter({ hasText: "강퇴직" }).getByRole("link", { name: "퇴직 정산 결재 준비", exact: true }));
+  await c.click(admin.getByRole("region", { name: t("home.inbox.title"), exact: true }).getByRole("row").filter({ hasText: "강퇴직" }).getByRole("link", { name: "퇴직 정산 결재 준비", exact: true }));
   await routeReady(admin);
   const settle = admin.getByRole("region", { name: /지금/ });
   await expect(settle.getByLabel("평균임금 산정 시작일")).toBeVisible();
@@ -160,8 +163,8 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   expect(c.done("J5 settlement draft, review and submit")).toBeLessThanOrEqual(3);
 
   // Every case, at any step, is reachable from the exit list; the server filters it by status and counts it.
-  await c.click(exec.getByRole("navigation", { name: "주 메뉴" }).getByRole("link", { name: "직원", exact: true }));
-  await c.click(exec.getByRole("main").getByRole("navigation", { name: "직원", exact: true }).getByRole("link", { name: "퇴직 진행", exact: true }));
+  await c.click(exec.getByRole("navigation", { name: "주 메뉴" }).getByRole("link", { name: t("shell.link.people"), exact: true }));
+  await c.click(exec.getByRole("main").getByRole("navigation", { name: t("roster.head.title"), exact: true }).getByRole("link", { name: "퇴직 진행", exact: true }));
   const list = exec.getByRole("grid", { name: "퇴직 관리" });
   const chips = exec.getByRole("group", { name: "상태" });
   await expect(list).toContainText("강퇴직");
@@ -191,7 +194,7 @@ test("J5 exit case: two-person confirmation, settlement submission, and a reject
   await exec.goto("/");
   await routeReady(exec);
   // The case page offers HQ confirmation and rejection side by side.
-  await c.click(exec.getByRole("region", { name: "업무함", exact: true }).getByRole("row").filter({ hasText: "문반려" }).getByRole("link", { name: "본사 퇴직 확인", exact: true }));
+  await c.click(exec.getByRole("region", { name: t("home.inbox.title"), exact: true }).getByRole("row").filter({ hasText: "문반려" }).getByRole("link", { name: "본사 퇴직 확인", exact: true }));
   await c.click(exitPanel(exec).getByRole("button", { name: "퇴직 철회" }));
   const reject = exec.getByRole("dialog", { name: "퇴직 철회" });
   await expect(reject).toContainText("퇴직 전 상태로 복원");

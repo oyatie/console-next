@@ -160,7 +160,7 @@ export const koSetup: Record<keyof typeof enSetup, string> = {
   "setup.receipt.recorded": "운영 시작 당시",
   "setup.receipt.unrecorded": "운영 시작 당시의 수치는 기록되지 않았습니다.",
   "setup.receipt.unsupported": "이 기록의 수치 형식은 아직 표시할 수 없습니다.",
-  "setup.error.go_live_receipt_not_found": "저장된 운영 시작 기록이 없습니다. 홈에서 운영 상태를 확인하십시오.",
+  "setup.error.go_live_receipt_not_found": "저장된 운영 시작 기록이 없습니다. 할 일에서 운영 상태를 확인하십시오.",
   "setup.receipt.liveDetails": "현재 구성",
   "setup.receipt.governed": "운영 시작 후 바뀐 것",
   "setup.receipt.roles": "현재 적용되는 역할",
