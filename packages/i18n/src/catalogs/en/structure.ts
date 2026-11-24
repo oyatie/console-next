@@ -191,7 +191,7 @@ export const enStructure = {
   "structure.delete.chosen": "Chosen departments",
   "structure.delete.line": "{name} · {count, number} people",
   "structure.delete.dissolveOne": "Dissolve {name}",
-  "structure.headcount.explain": "Explain headcount",
+  "structure.headcount.explain": "Headcount · View reason",
   "structure.headcount.label": "Headcount",
   "structure.headcount.total": "Headcount {count, number}",
   "structure.headcount.basis": "Headcount includes active employees in descendant units, including employees on leave, across all employment types. Concurrent posts count only at the primary assignment.",

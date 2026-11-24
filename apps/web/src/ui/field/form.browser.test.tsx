@@ -27,6 +27,7 @@ beforeAll(async () => {
         import { CommandError } from '/apps/web/src/lib/react/command-error.tsx';
         import { Form, Button } from '/apps/web/src/ui/button/button.tsx';
         import { Field, FieldSet, TextInput } from '/apps/web/src/ui/field/field.tsx';
+        import { DateField } from '/apps/web/src/ui/date/date-field.tsx';
         import '/apps/web/src/app.css';
         configure(webPlatform);
         const locale = new URLSearchParams(location.search).get('locale') ?? 'ko';
@@ -35,12 +36,13 @@ beforeAll(async () => {
         function Demo() {
           const [count, setCount] = useState(0), [keys, setKeys] = useState(0), [name, setName] = useState(''), [note, setNote] = useState('');
           const [bubbles, setBubbles] = useState(0), [inline, setInline] = useState('');
-          const [serverError, setServerError] = useState(null);
+          const [serverError, setServerError] = useState(null), [day, setDay] = useState('');
           return h('main', null, h('h1', null, 'Synthetic form'),
             h('div', { id: 'native-fieldset-container', style: { width: '200px' } },
               h('fieldset', { id: 'native-fieldset' }, 'UnbreakableValue'.repeat(30))),
             h(FieldSet, { id: 'locked-fields', required: null, disabled: true, ref: node => { if (node) node.dataset.measured = String(node.getBoundingClientRect().width); } },
               h(TextInput, { 'aria-label': 'Locked note' })),
+            h(DateField, { label: 'Start date', required: true, value: day, today: '2026-10-20', echo: 'Synthetic echo', onChange: setDay }),
             h(Form, { id: 'sample-form', onSubmit: () => setCount(n => n + 1), onKeyDown: e => { if (e.key === 'Enter') setBubbles(n => n + 1); } },
               h(Field, { id: 'name', label: '이름', required: true }, p => h(TextInput, { ...p, name: 'name', value: name, onChange: e => setName(e.target.value), onKeyDown: e => { if (e.metaKey && e.key === 'Enter') { setKeys(n => n + 1); e.currentTarget.form.requestSubmit(); } } })),
               h(Field, { id: 'note', label: 'Note', required: true }, p => h(TextInput, { ...p, name: 'note', value: note, onChange: e => setNote(e.target.value) })),
@@ -256,6 +258,20 @@ test("a native fieldset stays within a narrow container despite an unbreakable v
   const container = await page.locator("#native-fieldset-container").boundingBox();
   const fields = await page.locator("#native-fieldset").boundingBox();
   expect(fields!.width).toBeLessThanOrEqual(container!.width);
+});
+
+test("an empty date field keeps its echo's line unseen and unread until a date commits", async () => {
+  await open();
+  const date = page.getByRole("textbox", { name: /^Start date/ });
+  const echo = page.getByText("Synthetic echo", { exact: true });
+  // Held, not absent: the line is drawn at its height, so the date committing moves nothing below.
+  await dom(echo).toBeAttached();
+  await dom(echo).not.toBeVisible();
+  await dom(date).toHaveAccessibleDescription("");
+  await date.fill("2026-10-26");
+  await date.blur();
+  await dom(echo).toBeVisible();
+  await dom(date).toHaveAccessibleDescription("Synthetic echo");
 });
 
 test("a field set forwards its measurement ref and disables its controls", async () => {
