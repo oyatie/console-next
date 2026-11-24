@@ -83,9 +83,8 @@
   :where([data-experience]:not([data-experience="baseline"])) .compact:global(.table) tbody > tr[aria-selected="true"] td:first-child { box-shadow: none; }
 }
 /* On a phone a 2-line compact row's status and actions stand across both lines, so its 44px targets fit the row. The
-   name link keeps its line height, so the row stays two lines. The phone width is written out: record.module.css
-   composes this file, and a composed file skips the step that expands the shared breakpoint names. */
-@media (max-width: 767px) {
+   name link keeps its line height, so the row stays two lines. */
+@media (--phone) {
   :where([data-experience]:not([data-experience="baseline"])) .compactRow:has(> .compactLine2):has(.compactTail) { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-content: center; align-items: center; column-gap: var(--space-2); }
   :where([data-experience]:not([data-experience="baseline"])) .compactRow:has(> .compactLine2):has(.compactTail) .compactLine1 { display: contents; }
   :where([data-experience]:not([data-experience="baseline"])) .compactRow:has(> .compactLine2) .compactTail { grid-column: 2; grid-row: 1 / span 2; }
