@@ -165,8 +165,10 @@ export function WorklistConsole({
   const recordVisible = !loading && !meError && inbox.data !== undefined && ["ready", "stale", "offline"].includes(queryView(inbox));
   const showControls = !loading && !inSetup && !meError && !inbox.error && Boolean(first?.has_work || first?.available_filters.length);
   // Home's only way to the other lanes and to rows it does not load. A list of up to three more-bar steps unfolds in place
-  // first, as the home design draws it; a longer or paged one keeps the link from first paint, so it never drops out mid-unfold.
-  const inboxLink = mode === "home" && showControls && (remainingCount === 0 || Math.max(first?.total ?? 0, allItems.length) > 3 * HOME_CONSOLE_ROWS || inbox.hasNextPage)
+  // first, as the home design draws it; a longer or paged one keeps the link from first paint, so it never drops out
+  // mid-unfold. The size is the whole list's, not the chip's, so switching chips on a long list keeps it too.
+  const homeSize = Math.max(first?.attention_filters?.find(({ key }) => key === "all")?.total ?? first?.total ?? 0, allItems.length);
+  const inboxLink = mode === "home" && showControls && (remainingCount === 0 || homeSize > 3 * HOME_CONSOLE_ROWS || inbox.hasNextPage)
     ? <Link to="/inbox">{t("home.inbox.viewInbox")}</Link>
     : undefined;
   const selectItem = (id: string) => { if (allItems.some(item => item.id === id)) select(id); };

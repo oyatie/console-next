@@ -219,6 +219,11 @@ test("Console home links to the full to-do list beside the more bar when the lis
   expect(home()).toContain(inboxLink());
 });
 
+test("Console home keeps the to-do link on a chip of a long list, though the chip itself is short", () => {
+  state.inboxPages = [{ ...samplePage(), items: rows(15), total: 15, attention_filters: [{ key: "all", total: 2000, total_is_exact: true }, { key: "approvals", total: 15, total_is_exact: true }] }];
+  expect(home()).toContain(inboxLink());
+});
+
 test("Console home keeps the drawn more bar without the link while a short remainder is loaded", () => {
   state.inboxPages = [{ ...samplePage(), items: rows(23), total: 23 }];
   expect(home()).toContain(t("home.worklist.moreCount", { count: 13 }));

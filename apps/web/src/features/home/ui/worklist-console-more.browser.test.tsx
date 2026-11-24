@@ -71,7 +71,15 @@ const inboxLink = () => mounted.page.getByRole("link", { name: t("home.inbox.vie
 
 async function mountHome(count: number) {
   await mounted.page.evaluate(n => (window as unknown as { mountHome: (count: number) => void }).mountHome(n), count);
-  await mounted.page.locator('[data-pattern="worklist"] tbody tr[data-id]').first().waitFor();
+  await mounted.page.locator(count ? '[data-pattern="worklist"] tbody tr[data-id]' : '[data-pattern="worklist"] [class*="moreBar"]').first().waitFor();
+}
+
+async function expectBarAccessible() {
+  for (const theme of ["light", "dark"]) {
+    await mounted.page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
+    const scan = await new AxeBuilder({ page: mounted.page }).include('[class*="moreBar"]').withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
+    expect(scan.violations.map(violation => `${theme}: ${violation.id}`)).toEqual([]);
+  }
 }
 
 async function showMore(remaining: number) {
@@ -113,9 +121,15 @@ test.each([1440, 390])("the more bar keeps its button and the to-do link apart i
   expect(metrics.gap).toBeGreaterThanOrEqual(8);
   expect(metrics.inside).toBe(true);
   expect(metrics.overflow).toBeLessThanOrEqual(0);
-  for (const theme of ["light", "dark"]) {
-    await mounted.page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
-    const scan = await new AxeBuilder({ page: mounted.page }).include('[class*="moreBar"]').withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
-    expect(scan.violations.map(violation => `${theme}: ${violation.id}`)).toEqual([]);
-  }
+  await expectBarAccessible();
+});
+
+test.each([[3, 1440], [3, 390], [0, 1440], [0, 390]])("with %i rows the to-do link stands alone in its bar, accessible in both themes, at %ipx", async (count, width) => {
+  await mounted.page.setViewportSize({ width, height: 900 });
+  await mountHome(count);
+  await expect.poll(() => inboxLink().count()).toBe(1);
+  const bar = mounted.page.locator('[class*="moreBar"]');
+  await expect.poll(() => bar.locator("button").count()).toBe(0);
+  expect(await bar.evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0);
+  await expectBarAccessible();
 });
