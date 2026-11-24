@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { runInNewContext } from "node:vm";
 import yaml from "js-yaml";
 import * as backendTests from "./backend-tests.mjs";
 
@@ -294,21 +295,54 @@ test("database result collection proves all shards and preserves measured durati
   assert.throws(() => backendTests.collectDatabaseResults(plan, [junit(ids).replace('tests="2"', 'tests="3"')]), /count/);
 });
 
+const dbWorkflowFile = readFileSync(new URL("../.github/workflows/db-tests.yml", import.meta.url), "utf8");
+const dbWorkflow = yaml.load(dbWorkflowFile);
+
+test("database runs keep separate queues for pull requests, dev pushes, nightly runs and each dispatched ref", () => {
+  const format = (template, ...args) => template.replace(/\{(\d+)\}/g, (_, index) => args[index]);
+  for (const [event_name, ref, expected] of [
+    ["pull_request", "refs/pull/7/merge", "db-tests-refs/pull/7/merge"],
+    ["push", "refs/heads/dev", "db-tests-trunk"],
+    ["schedule", "refs/heads/dev", "db-tests-nightly"],
+    ["workflow_dispatch", "refs/heads/dev", "db-tests-dispatch-refs/heads/dev"],
+    ["workflow_dispatch", "refs/heads/feature", "db-tests-dispatch-refs/heads/feature"],
+    ["workflow_dispatch", "refs/tags/dev", "db-tests-dispatch-refs/tags/dev"],
+  ]) {
+    const github = { event_name, ref, ref_name: ref.split("/").slice(2).join("/") };
+    const group = dbWorkflow.concurrency.group.replace(/\$\{\{(.*?)\}\}/gs, (_, expression) =>
+      runInNewContext(expression, { github, format }));
+    assert.equal(group, expected, `${event_name} on ${ref}`);
+  }
+});
+
+test("an input-free branch dispatch runs the same three database jobs as automatic runs", () => {
+  assert.ok(Object.hasOwn(dbWorkflow.on, "workflow_dispatch"));
+  assert.deepEqual(Object.keys(dbWorkflow.on.workflow_dispatch?.inputs ?? {}), []);
+  for (const [event_name, ref] of [
+    ["workflow_dispatch", "refs/heads/feature"], ["push", "refs/heads/dev"],
+    ["schedule", "refs/heads/dev"], ["pull_request", "refs/pull/7/merge"],
+  ]) {
+    const github = { event_name, ref, ref_name: ref.split("/").slice(2).join("/") };
+    for (const id of ["db-test-timing-source", "db-tests", "db-test-timings"]) {
+      const job = dbWorkflow.jobs[id];
+      const needs = Object.fromEntries([job.needs ?? []].flat().map(name => [name, { result: "success" }]));
+      const condition = (job.if ?? "success()").replace(/^\$\{\{\s*|\s*\}\}$/g, "")
+        .replace(/needs\.([\w-]+)/g, 'needs["$1"]');
+      assert.ok(runInNewContext(condition, {
+        github, needs, success: () => true, always: () => true, cancelled: () => false, failure: () => false,
+      }), `${event_name}: ${id}`);
+    }
+  }
+});
+
 test("the database workflow is tiered, pinned and limited to four duration shards", () => {
-  const file = readFileSync(new URL("../.github/workflows/db-tests.yml", import.meta.url), "utf8");
-  const dbWorkflow = yaml.load(file);
   assert.deepEqual(Object.keys(dbWorkflow.on).sort(), ["pull_request", "push", "schedule", "workflow_dispatch"]);
-  assert.equal(dbWorkflow.on.workflow_dispatch, null);
-  assert.doesNotMatch(file, /^\s*merge_group:/m);
-  assert.match(file, /merge_group.*database.*proof/);
-  assert.doesNotMatch(file, /60-minute queue/);
-  assert.doesNotMatch(file, /CI-[A-Z]+/);
-  assert.match(file, /push:\s*\n\s*branches: \[dev\]/);
-  assert.match(file, /schedule:\s*\n\s*- cron:/);
-  assert.equal(dbWorkflow.concurrency.group,
-    "db-tests-${{ github.event_name == 'pull_request' && github.ref || " +
-    "github.event_name == 'schedule' && 'nightly' || " +
-    "github.event_name == 'workflow_dispatch' && format('dispatch-{0}', github.ref) || 'trunk' }}");
+  assert.doesNotMatch(dbWorkflowFile, /^\s*merge_group:/m);
+  assert.match(dbWorkflowFile, /merge_group.*database.*proof/);
+  assert.doesNotMatch(dbWorkflowFile, /60-minute queue/);
+  assert.doesNotMatch(dbWorkflowFile, /CI-[A-Z]+/);
+  assert.match(dbWorkflowFile, /push:\s*\n\s*branches: \[dev\]/);
+  assert.match(dbWorkflowFile, /schedule:\s*\n\s*- cron:/);
   assert.equal(dbWorkflow.concurrency["cancel-in-progress"], false);
   assert.deepEqual(dbWorkflow.on.pull_request.paths, [
     ".github/workflows/db-tests.yml",
