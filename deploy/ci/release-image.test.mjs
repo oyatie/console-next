@@ -58,8 +58,17 @@ ${script}`], { cwd: root, encoding: 'utf8', env: { ...process.env,
     assert.equal(result.status, 31, result.stderr);
     const args = readFileSync(join(dir, 'calls'), 'utf8').trim().split('\n');
     const versions = JSON.parse(read('deploy/versions.json'));
-    for (const name of ['node', 'rust', 'runtime']) assert.ok(args.includes(`${name.toUpperCase()}_IMAGE=${versions.images[name]}`));
-    assert.ok(args.includes(`SOURCE_REVISION=${revision}`));
+    const buildArgs = args.flatMap((arg, index) => {
+      if (arg === '--build-arg') return [args[index + 1]];
+      return arg.startsWith('--build-arg=') ? [arg.slice('--build-arg='.length)] : [];
+    });
+    for (const name of ['node', 'rust', 'runtime']) {
+      const key = `${name.toUpperCase()}_IMAGE=`;
+      assert.deepEqual(buildArgs.filter(arg => arg.startsWith(key)), [key + versions.images[name]]);
+    }
+    assert.ok(buildArgs.includes(`SOURCE_REVISION=${revision}`));
+    assert.ok(!args.some(arg => /^--(?:target|build-context)(?:=|$)/.test(arg)),
+      'the build must use the default stage and the pinned image inputs');
     assert.ok(!args.includes('--cache-to'));
     assert.ok(!args.includes('--push'));
   } finally { rmSync(dir, { recursive: true, force: true }); }
@@ -78,31 +87,61 @@ test('the shared image preserves release provenance, probes and panic diagnostic
   assert.match(dockerfile, /USER 65532:65532/);
 });
 
-test('runtime smoke requires Docker to report both shell entrypoints missing', t => {
+test('runtime smoke requires two missing shells and exit 64 for an invalid role', t => {
   const dir = mkdtempSync(join(tmpdir(), 'image-smoke-'));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
-  writeFileSync(join(dir, 'docker'), `#!/bin/sh
-case "$*" in
-  *" --entrypoint $PROBE_SHELL smoke-image -c exit 0") exit "$PROBE_STATUS" ;;
-  *" --entrypoint "*) exit 127 ;;
-  *" --detach "*) echo 'starting application smoke' >&2; exit 42 ;;
+  writeFileSync(join(dir, 'curl'), `#!/bin/bash
+case "\${!#}" in
+  */healthz) echo '{"status":"ok","role":"api"}' ;;
+  */readyz) echo '{"status":"ready"}' ;;
+  */) echo '<!doctype html>' ;;
   *) exit 1 ;;
 esac
 `, { mode: 0o755 });
+  writeFileSync(join(dir, 'docker'), `#!/bin/sh
+case "$1" in
+  port) echo 127.0.0.1:8080; exit 0 ;;
+  logs|rm) exit 0 ;;
+  run) shift ;;
+  *) exit 99 ;;
+esac
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --detach) echo smoke-container; exit 0 ;;
+    --pull) pull=$2; shift 2 ;;
+    --rm) cleanup=yes; shift ;;
+    --entrypoint) shell=$2; shift 2 ;;
+    --env) role=$2; shift 2 ;;
+    *) break ;;
+  esac
+done
+[ "$1" = smoke-image ] && [ "$cleanup" = yes ] || exit 99
+shift
+if [ "$role" = CONSOLE_APP_ROLE=invalid ]; then exit "$ROLE_STATUS"; fi
+[ "$pull" = never ] && [ "$1" = -c ] && sh "$@" || exit 99
+case "$shell" in
+  "$PROBE_SHELL") exit "$PROBE_STATUS" ;;
+  /bin/sh|/busybox/sh) exit 127 ;;
+  *) exit 99 ;;
+esac
+`, { mode: 0o755 });
+  function smoke(shell, probeStatus, roleStatus) {
+    return spawnSync('bash', ['deploy/ci/image-smoke.sh', 'smoke-image'], {
+      cwd: root, encoding: 'utf8',
+      env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, PROBE_SHELL: shell,
+        PROBE_STATUS: String(probeStatus), ROLE_STATUS: String(roleStatus) },
+    });
+  }
   for (const shell of ['/bin/sh', '/busybox/sh']) {
-    for (const status of [0, 125, 126, 127]) {
-      const result = spawnSync('bash', ['deploy/ci/image-smoke.sh', 'smoke-image'], {
-        cwd: root, encoding: 'utf8',
-        env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, PROBE_SHELL: shell, PROBE_STATUS: String(status) },
-      });
-      if (status === 127) {
-        assert.equal(result.status, 42, result.stderr);
-        assert.match(result.stderr, /starting application smoke/);
-      } else {
-        assert.equal(result.status, 1, result.stderr);
-        assert.ok(result.stderr.includes(`PLAT_RUNTIME_SHELL: smoke-image: expected missing ${shell} (exit 127), got exit ${status}`), result.stderr);
-      }
+    for (const status of [0, 125, 126]) {
+      const result = smoke(shell, status, 64);
+      assert.equal(result.status, 1, result.stderr);
+      assert.ok(result.stderr.includes(`PLAT_RUNTIME_SHELL: smoke-image: expected missing ${shell} (exit 127), got exit ${status}`), result.stderr);
     }
+  }
+  for (const roleStatus of [0, 1, 64]) {
+    const result = smoke('/bin/sh', 127, roleStatus);
+    assert.equal(result.status, roleStatus === 64 ? 0 : 1, result.stderr);
   }
 });
 

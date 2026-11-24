@@ -8,6 +8,7 @@ import path from "node:path";
 import test from "node:test";
 import { promisify } from "node:util";
 import yaml from "js-yaml";
+import { dockerfileStages } from "./quality/tooling-inventory.mjs";
 import { REQUIRED_SECURITY_JOBS } from "./check-workflow-hardening.mjs";
 
 const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
@@ -327,8 +328,11 @@ test("Node image digest stays paired with the reviewed upstream tag", () => {
 
 test("the shipped image stage builds on images.runtime, the reviewed Distroless cc-debian13 nonroot digest", () => {
   const versions = JSON.parse(read("deploy/versions.json"));
-  const stages = [...read("deploy/images/console.Dockerfile").matchAll(/^[ \t]*FROM[ \t]+(?:--platform=\S+[ \t]+)?(\S+)/gim)];
-  assert.equal(stages.at(-1)?.[1], "${RUNTIME_IMAGE}", "the shipped stage must build on images.runtime");
+  const file = "deploy/images/console.Dockerfile";
+  const runtime = dockerfileStages(read(file), file).at(-1);
+  assert.equal(runtime?.image, "${RUNTIME_IMAGE}", "the shipped stage must build on images.runtime");
+  assert.ok([undefined, "$TARGETPLATFORM", "${TARGETPLATFORM}"].includes(runtime.platform),
+    "the shipped stage must use the target architecture");
   // The image scan runs on dev pushes. Update this reviewed digest with the build pin so regressions fail before merge.
   assert.equal(versions.images.runtime, "gcr.io/distroless/cc-debian13@sha256:532c7a94f9e96ba9db75eb9388f4227751131c7cb0a411d1a8521af4096135de");
 });

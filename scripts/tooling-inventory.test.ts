@@ -69,6 +69,19 @@ describe("tooling inventory", () => {
     expect(rows.find((r) => r.name === "schema")?.kind).toBe("ci-source");
     expect(() => scan({ "unknown.Dockerfile": "FROM ${UNDECLARED_IMAGE}\n" })).toThrow("unresolved Dockerfile image argument");
   });
+  test("image inventory follows continued instructions, stage aliases and comment boundaries", () => {
+    const rows = scan({ Dockerfile: [
+      "FROM scratch AS build", "RUN echo \\", "  # a comment", "", "FROM decoy",
+      "  Fr\\", "Om --platform=$TARGETPLATFORM runtime:1 AS release", "FROM release",
+    ].join("\n") });
+    expect(rows.filter(r => r.kind === "container").map(r => r.name).sort()).toEqual(["alpine", "image/tool", "runtime"]);
+  });
+  test("image inventory refuses syntax that can disguise a build stage", () => {
+    for (const source of ["COPY <<EOF /file\nFROM decoy\nEOF", "# escape=`", "# syntax=frontend", "\fFROM scratch", "FROM\u00a0scratch"]) {
+      expect(() => scan({ Dockerfile: source })).toThrow("heredocs, parser directives and non-ASCII whitespace");
+    }
+    expect(() => scan({ Dockerfile: "FROM scratch AS" })).toThrow("invalid Dockerfile FROM instruction");
+  });
   test("Cargo aliases, target and dev dependencies survive; patched externals are not first-party", () => {
     const cargo = [{ workspace_members: ["own"], packages: [{ id: "own", name: "console-test-domain", manifest_path: "backend/crates/test/domain/Cargo.toml", dependencies: [
       { name: "tokio", rename: "runtime", kind: null, req: "1", target: "cfg(unix)", features: ["rt"] },

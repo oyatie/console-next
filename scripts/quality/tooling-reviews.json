@@ -7505,7 +7505,7 @@
     ],
     "layer": "CI/supply chain",
     "exitPlan": "Replace only the listed platform callers after image/admission/signature/restore parity, then remove the lock entry and regenerate this register.",
-    "securityProcess": "Verify the published Distroless keyless identity, generate the release SPDX SBOM and refuse fixable High/Critical findings with the locked Grype gate.",
+    "securityProcess": "The upstream policy records the Distroless keyless signer. Build CI does not verify that base signature. The release gate scans the verified SPDX attestation with locked Grype and refuses fixable High/Critical findings.",
     "ruleMapping": "Preserve digest/checksum pin, supported target architecture and deployment/admission/rollback test contract.",
     "standardTest": {
       "a": {
