@@ -65,7 +65,7 @@ function consoleReasonText(item: AttentionInboxItem, taskLabel: string): string 
 
 export function ConsoleWorklistTable({
   items, selected, onSelect, onOpen, checkedIds, onToggleCheck, onToggleIds, onToggleAll,
-  shownCols, action, inlineRowAction, focusAfter, extra, moreCount, morePending, onMore,
+  shownCols, action, inlineRowAction, focusAfter, extra, moreCount, moreLink, morePending, onMore,
 }: {
   items: readonly AttentionInboxItem[];
   selected?: string;
@@ -81,6 +81,7 @@ export function ConsoleWorklistTable({
   focusAfter?: string;
   extra?: RowAction;
   moreCount?: number;
+  moreLink?: ReactNode;
   morePending?: boolean;
   onMore?: () => void;
 }) {
@@ -287,12 +288,15 @@ export function ConsoleWorklistTable({
         onOpen={handleOpen}
         columns={columns}
       />
-      {moreCount && moreCount > 0 && onMore ? (
+      {(moreCount && moreCount > 0 && onMore) || moreLink ? (
         <WorklistMoreBar>
-          <Button variant="ghost" size="sm" disabled={morePending} onClick={onMore}>
-            <ChevronDown size={14} aria-hidden="true" />
-            {t("home.worklist.moreCount", { count: moreCount })}
-          </Button>
+          {moreCount && moreCount > 0 && onMore ? (
+            <Button variant="ghost" size="sm" disabled={morePending} onClick={onMore}>
+              <ChevronDown size={14} aria-hidden="true" />
+              {t("home.worklist.moreCount", { count: moreCount })}
+            </Button>
+          ) : null}
+          {moreLink}
         </WorklistMoreBar>
       ) : null}
     </div>

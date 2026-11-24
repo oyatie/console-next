@@ -104,3 +104,7 @@
 .tableWrap {
   min-width: 0;
 }
+
+.inboxLink {
+  margin-inline-start: auto;
+}

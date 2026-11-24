@@ -26,6 +26,7 @@ const state = vi.hoisted(() => ({
   orgDetail: undefined as OrgDetail | undefined,
   reads: [] as string[],
   inboxPages: [] as AttentionInboxResponse[],
+  hasNextPage: false,
 }));
 
 vi.mock("../../../experience/dom", async original => ({
@@ -110,7 +111,7 @@ vi.mock("@tanstack/react-query", async original => ({
     isSuccess: true,
     isPlaceholderData: false,
     dataUpdatedAt: 1,
-    hasNextPage: false,
+    hasNextPage: state.hasNextPage,
     isFetchingNextPage: false,
     fetchNextPage: vi.fn(),
     refetch: vi.fn(),
@@ -196,6 +197,38 @@ beforeEach(() => {
   state.orgDetail = undefined;
   state.reads = [];
   state.inboxPages = [samplePage()];
+  state.hasNextPage = false;
+});
+
+const inboxLink = () => `href="/inbox">${t("home.inbox.viewInbox")}</a>`;
+const home = () => renderNode("/", <Home canOrgStructure={false} />);
+
+test("Console home links to the full to-do list once every item is on the page, even with its own lane empty", () => {
+  state.inboxPages = [{ ...samplePage(), total: 2 }];
+  expect(home()).toContain(inboxLink());
+  state.inboxPages = [{ ...samplePage(), items: [], total: 0, attention_filters: [] }];
+  expect(home()).toContain(inboxLink());
+});
+
+test("Console home links to the full to-do list beside the more bar while the server holds more pages", () => {
+  state.inboxPages = [{ ...samplePage(), total: 2000 }];
+  state.hasNextPage = true;
+  expect(home()).toContain(t("home.worklist.moreCount", { count: 1998 }));
+  expect(home()).toContain(inboxLink());
+});
+
+test("Console home keeps the drawn more bar without the link while every remaining item is loaded", () => {
+  const items = Array.from({ length: 23 }, (_, i) => ({ ...samplePage().items[1]!, id: `stat-${i}` }));
+  state.inboxPages = [{ ...samplePage(), items, total: 23 }];
+  expect(home()).toContain(t("home.worklist.moreCount", { count: 13 }));
+  expect(home()).not.toContain(t("home.inbox.viewInbox"));
+});
+
+test("Console offers no to-do link when no lane holds anything, nor on /inbox itself", () => {
+  state.inboxPages = [{ ...samplePage(), items: [], total: 0, has_work: false, available_filters: [], attention_filters: [] }];
+  expect(home()).not.toContain(t("home.inbox.viewInbox"));
+  state.inboxPages = [{ ...samplePage(), total: 2 }];
+  expect(renderNode("/inbox", <InboxPage canOrgStructure={false} />)).not.toContain(t("home.inbox.viewInbox"));
 });
 
 test("baseline experience keeps Home on Classic fallback without firing Console lower reads", () => {
