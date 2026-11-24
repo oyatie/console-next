@@ -11,7 +11,8 @@ import { todayKst } from "../../../lib/pure/today";
 import { announce } from "../../../lib/react/announce";
 import { SEARCH_DEBOUNCE_MS } from "../../../lib/freshness";
 import { useIsDesktop } from "../../../lib/react/use-desktop";
-import { Button } from "../../../ui/button/button";
+import { Button, type ButtonSize } from "../../../ui/button/button";
+import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { Chip } from "../../../ui/chip";
 import { EmptyState } from "../../../ui/empty-state";
 import { KeyValue, StatRow } from "../../../ui/key-value/key-value";
@@ -69,9 +70,14 @@ export function AccessLogPage() {
   // Until choices have their own endpoint, recover with the smallest authorized log read.
   const choices = useInfiniteQuery({ ...accessLogPages(search.period, false, undefined, {}, 1), enabled: filterInvalid && !first?.filter_options });
   const source = first ?? (filterInvalid ? choices.data?.pages[0] : undefined);
-  const waitingForActor = actor && !source && (filterInvalid ? choices.isPending : q.isPending);
-  const appliedFilters = waitingForActor ? [] : [
-    { key: "actor", label: t("accessLog.actor"), value: actor && source?.filter_options && (source.filter_options.actors.find(choice => choice.id === actor)?.label ?? t("accessLog.actorUnavailable")) },
+  // Show the rows together on the initial read so the actor name cannot push the other filters down.
+  const actorLabelPending = Boolean(actor) && !source && q.isPending;
+  // A recovery alert may contain a copy button. Reserve the actor row above it while choices resolve.
+  const actorLabel = actor && (source?.filter_options
+    ? source.filter_options.actors.find(choice => choice.id === actor)?.label ?? t("accessLog.actorUnavailable")
+    : filterInvalid ? t("accessLog.actorNameUnconfirmed") : undefined);
+  const appliedFilters = actorLabelPending ? [] : [
+    { key: "actor", label: t("accessLog.actor"), value: actorLabel },
     { key: "action", label: t("accessLog.action"), value: action && codeText(`accessLog.action.${action}`, action) },
     { key: "target_type", label: t("accessLog.targetType"), value: target_type && codeText(`accessLog.target.${target_type}`, target_type) },
     { key: "from", label: t("accessLog.from"), value: from && fmtDate(from) },
@@ -87,6 +93,16 @@ export function AccessLogPage() {
   const effectiveSelected =
     selected ?? (isDesktop && !dismissedAuto ? (consoleRows[0] ?? null) : null);
 
+  const openReview = (eventId: string | null) => { setReviewEventId(eventId); setReviewOpen(true); };
+  // Keep monthly review in the toolbar from first paint so clear search stays in place.
+  const renderReviewButton = (size?: ButtonSize) => {
+    const disabled = !period || (!first && !filterInvalid);
+    const error = filterInvalid ? choices.error : q.error;
+    const label = t("accessLog.review.open");
+    return disabled && error
+      ? <DisabledReason layout="disclosure" reason={readFailureText(error)} control={props => <Button size={size} {...props}>{label}</Button>} />
+      : <Button size={size} disabled={disabled} onClick={() => openReview(null)}>{label}</Button>;
+  };
   const renderBaseline = () => (
     <AccessLogBaselineView
       q={q}
@@ -104,7 +120,8 @@ export function AccessLogPage() {
       onCompositionEnd={() => setComposing(false)}
       onNavigate={patch => void navigate({ search: s => ({ ...s, ...patch }), replace: true })}
       onOpenFilter={() => setFilterOpen(true)}
-      onOpenReview={eventId => { setReviewEventId(eventId); setReviewOpen(true); }}
+      reviewButton={renderReviewButton()}
+      onOpenReview={openReview}
       onClear={clear}
       onSelect={setSelected}
       sheetNode={
@@ -147,9 +164,7 @@ export function AccessLogPage() {
             <Button size="sm" variant="secondary" disabled={!first && !filterInvalid} onClick={() => setFilterOpen(true)}>
               {t("accessLog.chooseFilters")}
             </Button>
-            <Button size="sm" variant="secondary" disabled={!first || !period} onClick={() => { setReviewEventId(null); setReviewOpen(true); }}>
-              {t("accessLog.review.open")}
-            </Button>
+            {renderReviewButton("sm")}
             {filtered && (
               <Button size="sm" variant="ghost" onClick={clear}>
                 {t("accessLog.clearSearch")}

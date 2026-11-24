@@ -40,6 +40,7 @@ export function AccessLogBaselineView({
   onCompositionEnd,
   onNavigate,
   onOpenFilter,
+  reviewButton,
   onOpenReview,
   onClear,
   onSelect,
@@ -60,6 +61,7 @@ export function AccessLogBaselineView({
   onCompositionEnd: () => void;
   onNavigate: (patch: Record<string, string | undefined>) => void;
   onOpenFilter: () => void;
+  reviewButton: ReactNode;
   onOpenReview: (eventId: string | null) => void;
   onClear: () => void;
   onSelect: (event: AccessLogEvent | null) => void;
@@ -127,7 +129,7 @@ export function AccessLogBaselineView({
           <SearchField label={t("accessLog.search")} value={searchText} onChange={onSearchChange} onCompositionStart={onCompositionStart} onCompositionEnd={onCompositionEnd} />
           <div className="row wrap">
             <Button disabled={!first && !filterInvalid} onClick={onOpenFilter}>{t("accessLog.chooseFilters")}</Button>
-            <Button disabled={!first || !period} onClick={() => onOpenReview(null)}>{t("accessLog.review.open")}</Button>
+            {reviewButton}
             {filtered && <Button onClick={onClear}>{t("accessLog.clearSearch")}</Button>}
           </div>
           {!!appliedFilters.length && <KeyValue label={t("accessLog.appliedFilters")} items={appliedFilters} readOnly />}
