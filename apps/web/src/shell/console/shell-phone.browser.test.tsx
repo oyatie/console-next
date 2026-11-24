@@ -334,28 +334,28 @@ const desktopHolds: [string, (hold: Held) => Parameters<typeof openPhoneShell>[1
 ];
 
 for (const [what, hold] of desktopHolds) test(`on a desktop neither the page nor any chrome drawn moves when ${what}`, async () => {
-  let done!: () => void, asked!: () => void;
-  const answered = new Promise<void>(ok => { done = ok; });
-  const requested = new Promise<void>(ok => { asked = ok; });
-  const options = { ...hold({ asked, done: answered }), width: 1440 };
+  const requested = Promise.withResolvers<void>(), answered = Promise.withResolvers<void>();
+  const options = { ...hold({ asked: requested.resolve, done: answered.promise }), width: 1440 };
+  // A refused read falls back to the menu a returning reader was last shown, so the reader has opened the page before.
+  if (options.refused) await (await openPhoneShell("LINKED", { width: 1440 })).getByRole("link").first().waitFor();
   const opened = openPhoneShell("LINKED", options);
   // A failure before the release below closes the page under this open; its own error would only repeat that one.
   opened.catch(() => {});
   try {
-    await requested;
+    await requested.promise;
     await page.locator("#main").waitFor();
     await frames();
     const [before, frame] = [await chromePlaces(), await pageFrame()];
 
-    done();
-    // Settled once the tabs and the brand draw, and the menu unless a read it needs is refused: the brand is the
-    // tenant's name, or the product's when the reader's own read is refused.
+    answered.resolve();
+    // Settled once the tabs, the brand and the menu draw: the brand is the tenant's name, or the product's when the
+    // reader's own read is refused.
     await page.locator("[data-workspace-tab]").first().waitFor();
     await page.getByRole("link", { name: options.refused === "/api/v1/users/me" ? t("app.name") : "Saeon", exact: true }).waitFor();
-    if (!options.refused) await page.getByRole("navigation", { name: t("shell.nav"), exact: true }).getByRole("link").first().waitFor();
+    await page.getByRole("navigation", { name: t("shell.nav"), exact: true }).getByRole("link").first().waitFor();
     await frames();
     const after = await chromePlaces();
     expect(Object.fromEntries(Object.keys(before).map(key => [key, after[key] ?? "gone"]))).toEqual(before);
     expect(await pageFrame()).toEqual(frame);
-  } finally { done(); }
+  } finally { answered.resolve(); }
 });
