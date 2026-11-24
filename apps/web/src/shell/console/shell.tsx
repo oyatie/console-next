@@ -12,7 +12,7 @@ import { PagePhoneHeader } from "../../ui/page/page-scope";
 import { openWorkspaceTab, resolveAppHref } from "../../ui/workspace-tabs/open-tab";
 import { WorkspaceTabs } from "../../ui/workspace-tabs/workspace-tabs";
 import { ShellFrame, type ShellLayoutProps } from "../frame/shell-frame";
-import { activeLink, type NavLink } from "../nav";
+import { activeLink, PLATFORM_NAV, TENANT_NAV, type NavLink } from "../nav";
 import { ConsoleStatusBar } from "./console-status-bar";
 import { ConsoleTopBar } from "./console-top-bar";
 import { tabIconForHref } from "./tab-icon";
@@ -117,14 +117,11 @@ function ConsoleLayout({
     onNavigate: navigateToHref,
   });
 
-  const tabsWithIcons = useMemo(
-    () =>
-      workspaceTabs.tabs.map(tab => ({
-        ...tab,
-        icon: tabIconForHref(tab.href, allLinks),
-      })),
-    [workspaceTabs.tabs, allLinks],
-  );
+  // A tab's icon comes from the nav table, not the reader's menu, so the tab keeps its width when the menu lands.
+  const tabsWithIcons = useMemo(() => {
+    const iconLinks = (platform ? PLATFORM_NAV : TENANT_NAV).flatMap(group => group.links);
+    return workspaceTabs.tabs.map(tab => ({ ...tab, icon: tabIconForHref(tab.href, iconLinks) }));
+  }, [workspaceTabs.tabs, platform]);
 
   useKeys(
     platform
@@ -166,6 +163,9 @@ function ConsoleLayout({
   // move when they draw.
   const topHold = <div className={s.phoneTopHold} data-surface="chrome" />;
   const navHold = <div className={s.phoneNavHold} />;
+  // With a session, a desktop bar draws once the reader's own read has settled too: the tenant's name sets the brand's
+  // width, and the scope chip, the nav and the status segments sit after it.
+  const holding = restoring || (!platform && Boolean(session.token) && !userProfile && navigationState === "loading");
 
   return (
     <PagePhoneHeader value={phoneHeaderValue}>
@@ -174,7 +174,7 @@ function ConsoleLayout({
           <>
             <ConsoleTopBar
               platform={platform}
-              restoring={restoring}
+              restoring={holding}
               defaultHref={defaultHref}
               tenantName={tenantName}
               tenantPhase={tenantPhase}
@@ -186,8 +186,8 @@ function ConsoleLayout({
               onNavigate={navigateToHref}
               onSearch={onSearch}
             />
-            {!restoring ? (
-              <div className={s.tabsArea}>
+            <div className={s.tabsArea}>
+              {!holding ? (
                 <WorkspaceTabs
                   tabs={tabsWithIcons}
                   activeId={workspaceTabs.activeId}
@@ -215,8 +215,8 @@ function ConsoleLayout({
                     </Link>
                   )}
                 />
-              </div>
-            ) : null}
+              ) : null}
+            </div>
           </>
         ) : restoring ? (
           <div className={s.phoneTop} data-pinned-bar>{topHold}</div>
@@ -250,7 +250,7 @@ function ConsoleLayout({
 
         {!isPhone ? (
           <div className={s.statusArea}>
-            {!restoring ? (
+            {!holding ? (
               <ConsoleStatusBar
                 platform={platform}
                 tenantName={tenantName}

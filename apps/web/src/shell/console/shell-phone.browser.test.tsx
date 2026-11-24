@@ -85,8 +85,12 @@ afterAll(async () => {
   await server?.close();
 });
 
-/** `restore` opens cold: the page starts with no session, and the refresh that restores it waits for `restore.done`. */
-async function openPhoneShell(link: "LINKED" | "UNLINKED" = "LINKED", { restore }: { restore?: { asked: () => void; done: Promise<void> } } = {}) {
+type Held = { asked: () => void; done: Promise<void> };
+/**
+ * `restore` opens cold: the page starts with no session, and the refresh that restores it waits for `restore.done`.
+ * `held` holds the read at `held.path` until `held.done`, then answers it, or refuses it with `held.status`.
+ */
+async function openPhoneShell(link: "LINKED" | "UNLINKED" = "LINKED", { restore, held, width = 390 }: { restore?: Held; held?: Held & { path: string; status?: number }; width?: number } = {}) {
   const apiMocks: Record<string, unknown> = {
     "/api/v1/users/me": {
       id: "u1", display_name: "Hajun", employee_name: "Hajun", employee_id: link === "LINKED" ? "e1" : null,
@@ -99,8 +103,10 @@ async function openPhoneShell(link: "LINKED" | "UNLINKED" = "LINKED", { restore 
     "/api/v1/onboarding/checklist": { phase: "OPERATING", steps: [] },
     "/api/v1/me/action-inbox": { items: [], next_cursor: null, counts: { turn: { total: 0, total_is_exact: true } }, attention_filters: [] },
     "/api/v1/auth/passkeys": [],
+    // The reader's own choice keeps the page in Console once the shell syncs the style.
+    "/api/v1/me/workspace": { layout: { experience: "console" } },
   };
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
   await page.route(url => url.pathname.endsWith("/console-phone-nav-test"), route => route.fulfill({
     contentType: "text/html",
     body: '<html lang="ko" data-experience="console"><title>Console Phone</title><div id="root"></div><script type="module" src="/console-phone-nav-test.js"></script></html>',
@@ -111,6 +117,11 @@ async function openPhoneShell(link: "LINKED" | "UNLINKED" = "LINKED", { restore 
       restore.asked();
       await restore.done;
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(TOKEN) });
+    }
+    if (held && path === held.path) {
+      held.asked();
+      await held.done;
+      if (held.status) return route.fulfill({ status: held.status, contentType: "application/json", body: JSON.stringify({ code: "service_unavailable", message: "unavailable" }) });
     }
     return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(apiMocks[path] ?? { items: [] }) });
   });
@@ -300,6 +311,62 @@ test("on a phone a reload keeps the page's place while the session restores, sin
     await opened;
     await Promise.all([page.locator('header[data-surface="chrome"]').waitFor(), page.getByRole("navigation", { name: t("shell.nav"), exact: true }).waitFor()]);
     expect(await pageFrame()).toEqual(before);
+  } finally {
+    done();
+  }
+});
+
+/** Where each drawn part of the desktop chrome sits, by its look and, for tabs and status segments, its text. */
+const chromePlaces = () => page.evaluate(() => Object.fromEntries(
+  [...document.querySelectorAll("[data-console-shell] header > *, [data-console-shell] li, [data-console-shell] footer *")]
+    .map(el => [el.className + (el.matches("header > *") ? "" : `|${el.textContent}`), el.getBoundingClientRect()] as const)
+    .filter(([, r]) => r.width > 0)
+    .map(([key, r]) => [key, `${Math.round(r.x)},${Math.round(r.y)}`]),
+));
+
+test("on a desktop a reload keeps the page's place while the session restores, since the tab strip and status bar hold their room", async () => {
+  let done!: () => void, asked!: () => void;
+  const restored = new Promise<void>(ok => { done = ok; });
+  const requested = new Promise<void>(ok => { asked = ok; });
+  const opened = openPhoneShell("LINKED", { restore: { asked, done: restored }, width: 1440 });
+  // A failure before the restore below closes the page under this open; its own error would only repeat that one.
+  opened.catch(() => {});
+  try {
+    await requested;
+    await page.locator("#main").waitFor();
+    expect(await page.locator("[data-workspace-tab]").count()).toBe(0);
+    const before = await pageFrame();
+
+    done();
+    await opened;
+    await Promise.all([page.locator("[data-workspace-tab]").first().waitFor(), page.getByRole("navigation", { name: t("shell.nav"), exact: true }).waitFor()]);
+    expect(await pageFrame()).toEqual(before);
+  } finally {
+    done();
+  }
+});
+
+for (const [path, status] of [["/api/v1/users/me"], ["/api/v1/users/me", 503], ["/api/v1/access/me"]] as const) test(`on a desktop the chrome drawn before ${path} ${status ? "fails" : "lands"} stays where it was`, async () => {
+  let done!: () => void, asked!: () => void;
+  const answered = new Promise<void>(ok => { done = ok; });
+  const requested = new Promise<void>(ok => { asked = ok; });
+  const opened = openPhoneShell("LINKED", { held: { path, asked, done: answered, status }, width: 1440 });
+  opened.catch(() => {});
+  try {
+    await requested;
+    await page.locator("#main").waitFor();
+    await page.evaluate(() => new Promise<void>(ok => requestAnimationFrame(() => requestAnimationFrame(() => ok()))));
+    const [before, frame] = [await chromePlaces(), await pageFrame()];
+
+    done();
+    // The read has settled once the top bar draws its nav, with the tenant's name or, refused, the product's.
+    await page.locator("[data-workspace-tab]").first().waitFor();
+    await page.getByRole("link", { name: status ? t("app.name") : "Saeon", exact: true }).waitFor();
+    if (!status) await page.getByRole("navigation", { name: t("shell.nav"), exact: true }).getByRole("link").first().waitFor();
+    await page.evaluate(() => new Promise<void>(ok => requestAnimationFrame(() => requestAnimationFrame(() => ok()))));
+    const after = await chromePlaces();
+    expect(Object.fromEntries(Object.keys(before).map(key => [key, after[key] ?? "gone"]))).toEqual(before);
+    expect(await pageFrame()).toEqual(frame);
   } finally {
     done();
   }
