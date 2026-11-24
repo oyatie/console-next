@@ -13,6 +13,7 @@ import { fillRegister, openRegistered, pressRegister, receiptOf, registerSheet }
 import { expectSuccess } from "./helpers/setup-response";
 import { bootKo } from "../packages/i18n/src/catalogs/boot";
 import { redirectTargets } from "./helpers/route-list";
+import { accountControl, expectSignedIn } from "./shell";
 
 const loginFinish = (request: Request) => request.method() === "POST" && new URL(request.url()).pathname === "/api/v1/auth/passkey/login/finish";
 const verifying = new WeakMap<Page, Request>();
@@ -146,13 +147,15 @@ export async function go(page: Page, path: string, mayRedirect = false) {
 async function signedInScreen(page: Page, from: string) {
   await page.waitForURL(url => url.pathname !== from && url.pathname !== "/login");
   await routeReady(page);
-  await expect(page.getByRole("button", { name: bootKo["shell.logout"], exact: true }).first()).toBeVisible();
+  // Newer terms hold a sign-in on their consent screen, which has no shell and signs out itself; vendorPage goes on.
+  if (new URL(page.url()).pathname === "/setup-passkey") await expect(page.getByRole("button", { name: bootKo["shell.logout"], exact: true }).first()).toBeVisible();
+  else await expectSignedIn(page);
 }
 
 /** Either autofill or the explicit button submits one assertion. Only a verified assertion completes setup. */
 export async function passkeyLogin(page: Page) {
   const button = page.getByRole("button", { name: bootKo["auth.login.passkey"], exact: true });
-  const shell = page.getByRole("banner").getByRole("button", { name: bootKo["shell.logout"], exact: true });
+  const shell = accountControl(page);
   if (!verifying.has(page)) {
     await expect(button.or(shell).first(), "Expected the passkey sign-in button or signed-in shell").toBeVisible();
   }

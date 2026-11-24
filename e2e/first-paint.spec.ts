@@ -5,6 +5,7 @@ import { go, routeReady, takeCode, tenantOnboardSubmit, tenantSlugField, unique,
 import { tenantBeforeSetup } from "./setup-flows";
 import { clearShifts, expectStable } from "./stability";
 import { openCard, soloWorld } from "./record-actions/world";
+import { expectSignedIn } from "./shell";
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -115,7 +116,7 @@ test("the shell paints during a pending authz read and degrades on faults", asyn
   });
   try {
     await admin.reload({ waitUntil: "domcontentloaded" });
-    await expect(admin.getByRole("button", { name: "로그아웃" })).toBeVisible();
+    await expectSignedIn(admin);
     await expect.poll(() => reads).toBe(1);
   } finally { pending.resolve(); }
   await routeReady(admin);
@@ -124,7 +125,7 @@ test("the shell paints during a pending authz read and degrades on faults", asyn
   for (const status of [500, 0]) {
     await admin.route("**/api/v1/me/authz", route => status === 0 ? route.abort("failed") : route.fulfill({ status, json: { code: "internal_error" } }));
     await admin.reload({ waitUntil: "domcontentloaded" });
-    await expect(admin.getByRole("button", { name: "로그아웃" })).toBeVisible();
+    await expectSignedIn(admin);
     await routeReady(admin);
     await expect(admin.getByRole("navigation", { name: "주 메뉴" }).getByRole("link", { name: t("shell.link.org"), exact: true })).toBeVisible();
     await expect(admin.getByText("화면을 표시하지 못했습니다", { exact: true })).toHaveCount(0);
@@ -139,7 +140,7 @@ test("a platform refusal belongs to the Denied screen", async ({ browser }) => {
   try {
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page.getByRole("region", { name: "이 화면에 접근 권한이 없습니다", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "로그아웃" })).toBeVisible();
+    await expectSignedIn(page);
   } finally {
     await page.unroute("**/api/platform/orgs");
     // vendorPage is shared with later journeys; discard the mocked refusal in its query cache.

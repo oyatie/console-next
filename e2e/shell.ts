@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import type { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 import { bootKo } from "../packages/i18n/src/catalogs/boot";
 
 const shells = {
@@ -18,4 +18,26 @@ export function shell(page: Page) {
     account: page.locator(selectors.account), accountText: page.locator(selectors.accountText),
     search: page.locator(selectors.search), searchText: page.locator(selectors.searchText), spacer: page.locator(selectors.spacer),
   };
+}
+
+const signOutName = { name: bootKo["shell.logout"], exact: true };
+
+/**
+ * The signed-in account control in either style: Classic's bar holds the sign-out command itself; Console's bar
+ * holds the account menu, whose trigger is named after the person, so it is the collapsed button of a bar with no
+ * sign-out. A signed-out page has no bar, and a modal over the shell hides it.
+ */
+export function accountControl(page: Page) {
+  const banner = page.getByRole("banner");
+  return banner.getByRole("button", signOutName).or(banner.filter({ hasNot: page.getByRole("button", signOutName) }).getByRole("button", { expanded: false }));
+}
+
+export const expectSignedIn = (page: Page, options?: { timeout?: number }) => expect(accountControl(page)).toBeVisible(options);
+
+/** Signs out from the bar: Classic offers the command there, Console inside the account menu. */
+export async function signOut(page: Page) {
+  const command = page.getByRole("banner").getByRole("button", signOutName);
+  await expectSignedIn(page);
+  if (!(await command.isVisible())) await accountControl(page).click();
+  await command.click();
 }
