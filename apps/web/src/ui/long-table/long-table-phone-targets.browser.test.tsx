@@ -46,7 +46,10 @@ afterAll(async () => {
 type Box = { width: number; height: number };
 type Table = "Cards" | "Compact";
 
-/** The box a pointer can hit for each control of row A (a checkbox is hit through its label), and whether a cell clips. */
+/**
+ * The box a pointer can hit for each control of row A, as far as its cell shows it (a checkbox is hit through its
+ * label), the header's and the row's heights, and how many of the row's cells clip what they hold.
+ */
 async function targets(table: Table, style: string, width: number, layout: "cards" | "rows") {
   const { page } = mounted;
   await page.evaluate(s => { document.documentElement.dataset.experience = s; }, style);
@@ -60,7 +63,9 @@ async function targets(table: Table, style: string, width: number, layout: "card
     const row = el.querySelector('[data-row-id="A"]')!;
     const box = (target: Element | null): Box => {
       const r = target!.getBoundingClientRect();
-      return { width: Math.round(r.width), height: Math.round(r.height) };
+      const c = target!.closest('[role="rowheader"], [role="gridcell"], [role="columnheader"]')!.getBoundingClientRect();
+      const span = (start: number, end: number, from: number, to: number) => Math.round(Math.min(end, to) - Math.max(start, from));
+      return { width: span(r.left, r.right, c.left, c.right), height: span(r.top, r.bottom, c.top, c.bottom) };
     };
     const cells = [...row.querySelectorAll('[role="rowheader"], [role="gridcell"]')];
     return {
@@ -71,6 +76,7 @@ async function targets(table: Table, style: string, width: number, layout: "card
         ghost: box(row.querySelector('[data-k="ghost"]')),
         action: box(row.querySelector('[data-k="action"]')),
       },
+      head: Math.round(el.querySelector('[role="columnheader"]')!.getBoundingClientRect().height),
       row: Math.max(...cells.map(cell => Math.round(cell.getBoundingClientRect().height))),
       clipped: cells.filter(cell => cell.scrollHeight > cell.clientHeight + 1).length,
     };
@@ -81,6 +87,8 @@ const short = (boxes: Record<string, Box>, skip: string[] = []) =>
   Object.entries(boxes).filter(([k, b]) => !skip.includes(k) && Math.min(b.width, b.height) < 44).map(([k]) => k);
 const heights = (boxes: Record<string, Box>) => Object.fromEntries(Object.entries(boxes).map(([k, b]) => [k, b.height]));
 const DESK = { select: 24, selectAll: 24, link: 24, ghost: 24, action: 24 };
+// The header heights the table lays out for regular and compact density.
+const HEAD = { Cards: 40, Compact: 36 };
 
 test("in Console a phone card row keeps 44px touch targets for its checkbox, buttons and name link, as cards and as rows", async () => {
   for (const [width, layout] of [[390, "cards"], [700, "rows"]] as const) {
@@ -93,7 +101,7 @@ test("in Console a phone card row keeps 44px touch targets for its checkbox, but
 test("in Console a phone compact row keeps 44px touch targets for its checkbox and buttons within its 2-line height", async () => {
   const { boxes, row, clipped } = await targets("Compact", "console", 390, "cards");
   expect(short(boxes, ["link"])).toEqual([]);
-  // The name link keeps its line: the row itself opens the record.
+  // The name link keeps its line height, so the row stays two lines.
   expect(boxes.link.height).toBe(24);
   expect(row).toBeLessThanOrEqual(68);
   expect(clipped).toBe(0);
@@ -106,16 +114,19 @@ test("in Console a phone compact-density row clips none of its controls", async 
 
 test("in Console at the desk the row controls stay 24px tall and the checkbox 24px square", async () => {
   for (const table of ["Cards", "Compact"] as const) {
-    const { boxes } = await targets(table, "console", 1440, "rows");
+    const { boxes, head } = await targets(table, "console", 1440, "rows");
     expect(heights(boxes), table).toEqual(DESK);
     expect(boxes.select.width, table).toBe(24);
+    expect(head, table).toBe(HEAD[table]);
   }
 }, 30_000);
 
 test("in Classic the row controls keep their sizes on a phone and at the desk", async () => {
   for (const table of ["Cards", "Compact"] as const) for (const [width, layout] of [[390, "cards"], [1440, "rows"]] as const) {
-    const { boxes } = await targets(table, "baseline", width, layout);
+    const { boxes, head } = await targets(table, "baseline", width, layout);
     expect(heights(boxes), `${table} ${width}px`).toEqual(DESK);
     expect(boxes.select.width, `${table} ${width}px`).toBe(24);
+    expect(head, `${table} ${width}px`).toBe(HEAD[table]);
   }
 }, 30_000);
+

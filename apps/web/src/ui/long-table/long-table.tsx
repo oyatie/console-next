@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEventHandler, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEventHandler, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Button, Cell, Checkbox, Collection, Column, Input, Label, ResizableTableContainer, Row, SearchField, Table, TableBody, TableHeader, TableLayout, TableLoadMoreItem, Virtualizer, type CellProps, type ColumnProps, type SortDescriptor } from "react-aria-components";
 import { ArrowDown, ArrowUp } from "lucide-react";
@@ -125,6 +125,15 @@ export function LongTable<R>(p: {
     measure();
     return () => { resize.disconnect(); rows.disconnect(); };
   }, [cardLayout, mobileLayout]);
+  // The select-all checkbox may stand taller than the header is drawn (a phone's touch size); the header then grows to
+  // hold it above its 1px rule.
+  const [headCheckHeight, setHeadCheckHeight] = useState(0);
+  const observeHeadCheck = useCallback((check: HTMLLabelElement | null) => {
+    if (!check) return;
+    const resize = new ResizeObserver(([entry]) => setHeadCheckHeight(entry?.borderBoxSize[0]?.blockSize ?? 0));
+    resize.observe(check);
+    return () => resize.disconnect();
+  }, []);
   const captionId = useId();
   const open = p.rowKeys?.onOpen ?? p.onRowAction;
   const hasFind = Boolean(p.find);
@@ -152,11 +161,11 @@ export function LongTable<R>(p: {
   const density = p.density ?? "regular";
   const layout = useMemo(() => ({
     ...LAYOUT[density],
-    headingHeight: cardLayout && !p.selection ? 0 : LAYOUT[density].headingHeight,
+    headingHeight: cardLayout && !p.selection ? 0 : Math.max(LAYOUT[density].headingHeight, p.selection ? Math.ceil(headCheckHeight) + 1 : 0),
     estimatedRowHeight: cardLayout
       ? (cardHeight ?? (mobileLayout === "compact" ? 56 : LAYOUT[density].estimatedRowHeight))
       : p.editable ? LAYOUT[density].estimatedRowHeight * 2 : LAYOUT[density].estimatedRowHeight,
-  }), [cardLayout, cardHeight, density, mobileLayout, p.editable, p.selection]);
+  }), [cardLayout, cardHeight, density, headCheckHeight, mobileLayout, p.editable, p.selection]);
   const loaded = p.rows.map(p.rowId);
   const indices = new Map(p.rows.map((r, i) => [p.rowId(r), p.rowIndex?.(r) ?? i + 1]));
   const sel = p.selection;
@@ -252,7 +261,7 @@ export function LongTable<R>(p: {
           <TableHeader className={css.head} columns={cols}>
             {(c) => (
               <Column id={c.id} data-type={c.type} isRowHeader={c.rowHeader} allowsSorting={Boolean(p.onSortChange && c.allowsSorting)} width={c.width ?? widths[cols.findIndex(col => col.id === c.id)] ?? "1fr"} minWidth={c.minWidth ?? (c.type ? 0 : undefined)} className={`${css.th} ${cardLayout ? (c.id === SELECT ? css.selectHead : cards.visuallyHidden) : ""}`}>
-                {({ sortDirection }) => c.id === SELECT ? <Checkbox slot="selection" className={css.check} aria-label={toggleLabel}>{({ isSelected, isIndeterminate }) => <><Box selected={isSelected} indeterminate={isIndeterminate} />{cardLayout && toggleLabel}</>}</Checkbox> : <><div className={css.thLabel} title={typeof c.header === "string" ? c.header : undefined}>{c.header}</div>{sortDirection === "ascending" ? <ArrowUp size={14} aria-hidden /> : sortDirection === "descending" ? <ArrowDown size={14} aria-hidden /> : null}</>}
+                {({ sortDirection }) => c.id === SELECT ? <Checkbox slot="selection" ref={observeHeadCheck} className={css.check} aria-label={toggleLabel}>{({ isSelected, isIndeterminate }) => <><Box selected={isSelected} indeterminate={isIndeterminate} />{cardLayout && toggleLabel}</>}</Checkbox> : <><div className={css.thLabel} title={typeof c.header === "string" ? c.header : undefined}>{c.header}</div>{sortDirection === "ascending" ? <ArrowUp size={14} aria-hidden /> : sortDirection === "descending" ? <ArrowDown size={14} aria-hidden /> : null}</>}
               </Column>
             )}
           </TableHeader>
