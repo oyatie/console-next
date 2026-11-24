@@ -39,7 +39,10 @@ describe("chip tones in each style", () => {
           h('span', { 'data-tag': 'record', 'data-k': 'fix', className: record.tag }, 'fix'),
           h('span', { 'data-tag': 'sheet', className: sheet.tag }, 'sheet'),
           h('span', { 'data-tag': 'grid', className: grid.tag }, 'grid'),
-          h('span', { 'data-tag': 'tree', 'data-tone': 'chg', className: tree.tag }, 'tree')));
+          h('span', { 'data-tag': 'tree', 'data-tone': 'chg', className: tree.tag }, 'tree'),
+          h('div', { 'data-surface': 'chrome' },
+            h('span', { 'data-tag': 'frame' }, h(Chip, { tone: 'warn' }, 'frame')),
+            h('span', { 'data-tag': 'callout', style: { border: '1px solid var(--warn-bd)' } }, 'callout'))));
       `,
     });
   }, 60_000);
@@ -69,6 +72,8 @@ describe("chip tones in each style", () => {
     const chips = await look("console");
     expect(edges(chips)).toEqual(marks.map(() => "rgb(196, 122, 0)"));
     expect(chips.due).toMatchObject({ fill: "rgb(253, 240, 213)", text: "rgb(138, 79, 0)" });
+    // Inside the frame a warn tag takes the frame's warn edge, as a warn callout there does.
+    expect([chips.frame!.border, chips.callout!.border]).toEqual(["rgb(146, 97, 10)", "rgb(146, 97, 10)"]);
     expect(chips.info).toEqual({ fill: "rgb(255, 255, 255)", border: "rgb(54, 66, 78)", text: "rgb(20, 29, 38)", weight: "700" });
     expect(chips.accent).toEqual({ fill: "rgb(223, 240, 242)", border: "rgba(0, 0, 0, 0)", text: "rgb(8, 86, 96)", weight: "700" });
     for (const tone of ["warn", "danger"]) expect(chips[tone]!.weight, tone).toBe("700");
