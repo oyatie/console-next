@@ -20,7 +20,7 @@ for (const [reason, change, refused] of [
     Object.assign(fixture.liveBrowser, {event:'workflow_dispatch', path:'.github/workflows/e2e-live-partial.yml'});
   }, 'e2e-live.yml (missing candidate run)'],
   ['a fork run', fixture => { fixture.database.head_repository.full_name = 'other/console'; }, 'db-tests.yml (missing candidate run)'],
-  ...['pull_request', 'merge_group'].map(event => [`a lone ${event} run`,
+  ...['pull_request', 'merge_group', 'workflow_run'].map(event => [`a lone ${event} run`,
     fixture => { fixture.database.event = event; }, 'db-tests.yml (missing candidate run)']),
   ['a red push followed by a green pull request', fixture => {
     fixture.database.conclusion = 'failure';
@@ -48,6 +48,10 @@ for (const [reason, change, refused] of [
     fixture.jobs.get(fixture.liveBrowser.id).push({...job, run_attempt:2});
     job.conclusion = 'failure';
   }, 'e2e-live.yml (expected first attempt)'],
+  ['a green second attempt', fixture => {
+    fixture.liveBrowser.run_attempt = 2;
+    for (const job of fixture.jobs.get(fixture.liveBrowser.id)) job.run_attempt = 2;
+  }, 'e2e-live.yml (expected first attempt)'],
   ['an unknown run attempt', fixture => { delete fixture.database.run_attempt; }, 'db-tests.yml (expected first attempt)'],
   ['an invalid run ID', fixture => { fixture.database.id = 0; }, 'db-tests.yml (invalid run ID)'],
   ['a noninteger run ID', fixture => { fixture.database.id = 1.5; }, 'db-tests.yml (invalid run ID)'],
@@ -60,19 +64,33 @@ for (const [reason, change, refused] of [
   ['a nonstring job name', fixture => { databaseJob(fixture).name = 1; }, 'db-tests.yml (job identity mismatch)'],
   ['a run without status', fixture => { delete fixture.database.status; }, 'db-tests.yml (unfinished)'],
   ['a job without status', fixture => { delete databaseJob(fixture).status; }, 'db-tests.yml (job tests: unfinished)'],
-  ['an unfinished push reporting cancellation', fixture => {
+  ['an unfinished push reporting cancellation beside a green schedule', fixture => {
     Object.assign(fixture.database, {status:'in_progress', conclusion:'cancelled'});
     fixture.jobs.set(fixture.database.id, []);
+    fixture.addRun('db-tests.yml', 'schedule');
   }, 'db-tests.yml (in_progress)'],
-  ['a failed push with no jobs', fixture => {
+  ['a failed push with no jobs beside a green schedule', fixture => {
     fixture.database.conclusion = 'failure';
     fixture.jobs.set(fixture.database.id, []);
+    fixture.addRun('db-tests.yml', 'schedule');
   }, 'db-tests.yml (failure)'],
-  ['a cancelled push with jobs', fixture => { fixture.database.conclusion = 'cancelled'; }, 'db-tests.yml (cancelled)'],
-  ...['push', 'schedule', 'workflow_dispatch'].map(event => [`a cancelled ${event} with no jobs`, fixture => {
+  ['a cancelled push with jobs beside a green schedule', fixture => {
+    fixture.database.conclusion = 'cancelled';
+    fixture.addRun('db-tests.yml', 'schedule');
+  }, 'db-tests.yml (cancelled)'],
+  ...['push', 'schedule', 'workflow_dispatch'].map(event => [`only a ${event} cancelled before its jobs started`, fixture => {
     Object.assign(fixture.database, {event, conclusion:'cancelled'});
     fixture.jobs.set(fixture.database.id, []);
-  }, `db-tests.yml (${event === 'push' ? 'missing candidate run' : 'cancelled'})`]),
+  }, 'db-tests.yml (missing candidate run)']),
+  ['a skipped job past the first page of jobs', fixture => {
+    const jobs = fixture.jobs.get(fixture.liveBrowser.id);
+    jobs.unshift(...Array.from({length:100}, (_, shard) => ({...jobs[0], name:`shard ${shard}`})));
+    fixture.testsJob(fixture.liveBrowser).conclusion = 'skipped';
+  }, 'e2e-live.yml (job tests: skipped)'],
+  ['a failed run past the first page of runs', fixture => {
+    fixture.database.conclusion = 'failure';
+    for (let run = 0; run < 100; run++) fixture.addRun('db-tests.yml', 'schedule');
+  }, 'db-tests.yml (failure)'],
   ['an unfinished job', fixture => { databaseJob(fixture).status = 'in_progress'; }, 'db-tests.yml (job tests: in_progress)'],
   ...['failure', 'skipped', 'cancelled', null].map(conclusion => [`a job with conclusion ${conclusion}`,
     fixture => { databaseJob(fixture).conclusion = conclusion; }, `db-tests.yml (job tests: ${conclusion ?? 'missing conclusion'})`]),
@@ -88,9 +106,9 @@ for (const [reason, change, refused] of [
   assert.deepEqual(refusals, refused.split(', '));
 });
 
-test('a green schedule qualifies beside a push cancelled before its jobs started', async () => {
+for (const event of ['push', 'schedule', 'workflow_dispatch']) test(`a green schedule qualifies beside a ${event} cancelled before its jobs started`, async () => {
   const fixture = suiteRunsFixture(sha, candidate.repository);
-  fixture.database.conclusion = 'cancelled';
+  Object.assign(fixture.database, {event, conclusion:'cancelled'});
   fixture.jobs.set(fixture.database.id, []);
   const scheduled = fixture.addRun('db-tests.yml', 'schedule');
   const {runs, refusals} = await suiteGate(fixture);
@@ -129,6 +147,19 @@ for (const status of [401, 403, 404, 429, 500]) {
     await assert.rejects(() => suiteGate(fixture), actual => actual === error);
   });
 }
+
+test('suite jobs API error while checking a cancelled run propagates unchanged', async () => {
+  const fixture = suiteRunsFixture(sha, candidate.repository);
+  fixture.database.conclusion = 'cancelled';
+  fixture.addRun('db-tests.yml', 'schedule');
+  const error = Object.assign(new Error('jobs unavailable'), {status:502});
+  const {paginate} = fixture.github;
+  fixture.github.paginate = async (route, params) => {
+    if (params.run_id === fixture.database.id) throw error;
+    return paginate(route, params);
+  };
+  await assert.rejects(() => suiteGate(fixture), actual => actual === error);
+});
 
 test('production suite gate propagates a programming error unchanged', async () => {
   const error = new TypeError('invalid jobs response');

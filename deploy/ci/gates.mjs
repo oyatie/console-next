@@ -75,8 +75,8 @@ async function suiteEvidence(github, params, workflow, sha) {
     if (run.run_attempt !== 1) return {refusal:'expected first attempt'};
     const reason = unsuccessful(run);
     if (reason) {
-      // A queued dev push can lose its concurrency slot before it exercises the candidate.
-      if (run.event === 'push' && run.status === 'completed' && run.conclusion === 'cancelled' &&
+      // A queued run can lose its concurrency slot before it exercises the candidate.
+      if (run.status === 'completed' && run.conclusion === 'cancelled' &&
         !(await attemptJobs(github, params, run.id, 1)).length) continue;
       return {refusal:reason};
     }
