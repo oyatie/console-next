@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 use super::*;
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

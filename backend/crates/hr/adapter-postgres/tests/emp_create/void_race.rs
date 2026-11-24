@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 //! A void that waits for a payroll roster writer holding the person reads their
 //! work records after the wait, so the line that roster commits refuses it.
 
