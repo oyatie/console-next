@@ -67,8 +67,10 @@
   /* --z-bar: a frame bar pinned over the page: above the page's own sticky layers, under the skip link, rail, panels and sheets. */
   --z-bar: 8; --z-rail: 10; --z-panel: 15; --z-sheet: 20;
   --target: 32px; --target-touch: 44px; --chip-h: 22px; --kbd-h: 20px; --kbd-min-w: 24px;
-  /* Phone top bar and bottom-nav slot: the bars draw these heights, and content scrolled into view stops clear of them. */
+  /* Phone top bar and bottom-nav slot: the bars draw these heights, and content scrolled into view stops clear of them.
+     The nav's clearance adds its hairline and the home-indicator inset. */
   --phone-top-h: calc(var(--space-6) + var(--space-5) - var(--space-1)); --phone-nav-h: calc(var(--target-touch) + var(--space-3));
+  --phone-nav-clear: calc(var(--phone-nav-h) + 1px + env(safe-area-inset-bottom, 0px));
   /* Compact table rows (roster) and toolbar / page-head controls (tabs, 기준일, find box): design-language §2. */
   --row-h-compact: 32px; --control-h-sm: 36px;
   /* Heights of their own, so a style can size its rows without moving what stands in or beside them.

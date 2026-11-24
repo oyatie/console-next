@@ -69,7 +69,7 @@ function Site() {
   const raw = <input aria-label="Raw" />;
   const sites: Record<string, ReactNode> = {
     sheet: <Sheet open title="Note" onClose={close} dirty consequence="" actions={null}>{raw}</Sheet>,
-    dirty: <div ref={ref}>{raw}</div>,
+    dirty: <div ref={ref}>{raw}<input role="combobox" aria-label="Pick" aria-expanded="true" aria-controls="pick-options" /><button type="button" aria-expanded="true">More</button></div>,
     panel: <PanelShell crumb={["Org"]} icon={null} title="Unit" anchors={[]} onClose={close}>{raw}</PanelShell>,
     card: <ApprovalCard eyebrow="Change" step="My step" title="Dissolve" consequence="Approves" rejectConsequence="Rejects" approveLabel="Approve it" rejectLabel="Reject it"
       reason={() => raw} reasonComplete={false} onApprove={close} onReject={close}>Body</ApprovalCard>,
