@@ -20,6 +20,8 @@ import s from "./notice.module.css";
 import { entityName } from "../../../reference/entity/domain/names";
 
 const route = getRouteApi("/app/people/notices/$noticeId");
+// The notice as printed and copied keeps the locale date form whatever the screen style draws.
+const day = (v: unknown) => fmtDate(v, { style: "locale" });
 
 /**
  * One appointment notice as a document (spec E5-notice): its heading, number and date, a section per act with each
@@ -38,9 +40,9 @@ export function NoticePage() {
   const text = n
     ? [
         t("notice.doc.head"),
-        t("notice.doc.no", { no: n.notice_no, date: fmtDate(n.notice_date) }),
+        t("notice.doc.no", { no: n.notice_no, date: day(n.notice_date) }),
         ...parts.flatMap((p, i) => [t("notice.doc.section", { n: i + 1, kind: label(LIFECYCLE_EVENT, p.kind), count: p.lines.length }), ...p.lines.map((l) => [l.name, l.employee_number ?? "—", before(l), after(l)].join("\t"))]),
-        t("notice.doc.foot", { date: fmtDate(n.notice_date), entity }),
+        t("notice.doc.foot", { date: day(n.notice_date), entity }),
       ].join("\n")
     : "";
   const copy = () => void navigator.clipboard.writeText(text).then(() => setCopied(true));
@@ -89,9 +91,9 @@ export function NoticePage() {
 
 function NoticeArticle({ n, parts, entity }: { n: Notice; parts: ReturnType<typeof sections>; entity: string }) {
   return (
-    <article className={s.doc} aria-label={t("notice.doc.no", { no: n.notice_no, date: fmtDate(n.notice_date) })}>
+    <article className={s.doc} aria-label={t("notice.doc.no", { no: n.notice_no, date: day(n.notice_date) })}>
       <h2 className={s.docHead}>{t("notice.doc.head")}</h2>
-      <p className={s.docNo}>{t("notice.doc.no", { no: n.notice_no, date: fmtDate(n.notice_date) })}</p>
+      <p className={s.docNo}>{t("notice.doc.no", { no: n.notice_no, date: day(n.notice_date) })}</p>
       {n.title.replace(/\s/g, "") !== t("notice.doc.head").replace(/\s/g, "") && <p className={s.docNo}>{n.title}</p>}
       {parts.map((p, i) => (
         <section key={p.kind} className={s.docSection}>
@@ -112,7 +114,7 @@ function NoticeArticle({ n, parts, entity }: { n: Notice; parts: ReturnType<type
         </section>
       ))}
       {n.note && <p className={s.docNote}>{n.note}</p>}
-      <p className={s.docFoot}>{t("notice.doc.foot", { date: fmtDate(n.notice_date), entity })}</p>
+      <p className={s.docFoot}>{t("notice.doc.foot", { date: day(n.notice_date), entity })}</p>
     </article>
   );
 }

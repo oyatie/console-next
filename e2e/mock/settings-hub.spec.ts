@@ -2,6 +2,7 @@
 import { mockNavigate } from "./navigation";
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
+import { fmtDate } from "@console/i18n/format";
 import type { components } from "@console/api";
 import { routeReads } from "../../apps/web/src/routes/route-reads";
 import { settingsQuery } from "../../apps/web/src/reference/settings/api";
@@ -39,6 +40,8 @@ const displayStyle = (state: State): components["schemas"]["SettingEntry"] => ({
 
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) for (const state of states) {
   test(`settings cards ${state} at ${width}px in ${theme}`, async ({ page }) => {
+    // The screen draws a business date in the day style of the screen style the tenant has set.
+    const day = (v: string) => fmtDate(v, { style: displayStyle(state).value === "console" ? "iso" : "locale" });
     await page.setViewportSize({ width, height: 1000 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const fixture = await mockScreen(page, screens[0], "empty");
@@ -84,18 +87,18 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) for (con
       await expect(main.getByRole("region", { name: t("shell.settings.domain"), exact: true })).toContainText(state === "failed" || state === "refused" ? t("settingsHub.unknown") : state === "fresh" ? "current.test" : "current.test · example.test · 신청 중");
       await expect(main.getByRole("region", { name: t("identifiers.numbering.title"), exact: true })).toContainText("E-0012");
       await expect(main.getByRole("region", { name: t("shell.settings.titles"), exact: true })).toContainText("직급 1 · 직위 1 · 직책 1");
-      await expect(main.getByRole("region", { name: t("periodLocks.title"), exact: true })).toContainText("2026. 09. 30.");
+      await expect(main.getByRole("region", { name: t("periodLocks.title"), exact: true })).toContainText(day("2026-09-30"));
       await expect(main.getByRole("region", { name: t("rosterFields.title"), exact: true })).toContainText("1");
       const approval = main.getByRole("region", { name: t("settingsHub.approval"), exact: true });
       await expect(approval).toContainText(state === "direct" || state === "fresh" ? t("settingsHub.approval.direct") : t("settingsHub.key.approval.policy.org_structure"));
       await expect(approval.getByRole("link")).toHaveCount(0);
       if (state === "fresh") { await expect(approval.getByRole("list")).toHaveCount(0); await expect(main).not.toContainText("신청 전"); }
-      if (state === "scheduled") { await expect(approval).toContainText("2026. 12. 01."); await expect(approval).toContainText(t("settingsHub.code.none")); }
+      if (state === "scheduled") { await expect(approval).toContainText(day("2026-12-01")); await expect(approval).toContainText(t("settingsHub.code.none")); }
       if (state === "fixed") { await expect(approval.getByRole("listitem")).toHaveCount(2); await expect(approval).toContainText(t("settingsHub.governance.fixed")); await expect(approval).toContainText(t("settingsHub.readOnly")); await expect(approval).toContainText(t("settingsHub.layer.platform")); }
       const screenStyle = main.getByRole("region", { name: t("settingsHub.key.display.experience"), exact: true });
       await expect(screenStyle).toContainText(state === "populated" || state === "scheduled" ? t("settingsHub.code.console") : t("settingsHub.code.baseline"));
       await expect(screenStyle.getByRole("button", { name: t("settingsHub.experience.change"), exact: true })).toHaveCount(state === "fixed" ? 0 : 1);
-      if (state === "scheduled") { await expect(screenStyle).toContainText("2026. 12. 01."); await expect(screenStyle).toContainText(t("settingsHub.code.baseline")); }
+      if (state === "scheduled") { await expect(screenStyle).toContainText(day("2026-12-01")); await expect(screenStyle).toContainText(t("settingsHub.code.baseline")); }
       if (state === "fixed") { await expect(screenStyle).toContainText(t("settingsHub.governance.fixed")); await expect(screenStyle).toContainText(t("settingsHub.readOnly")); }
       expect(reads.toSorted()).toEqual(paths.toSorted());
       expect(identityReads).toBe(1);
