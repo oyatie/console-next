@@ -337,6 +337,7 @@ for (const [what, hold] of desktopHolds) test(`on a desktop neither the page nor
   const requested = Promise.withResolvers<void>(), answered = Promise.withResolvers<void>();
   const options = { ...hold({ asked: requested.resolve, done: answered.promise }), width: 1440 };
   // A refused read falls back to the menu a returning reader was last shown, so the reader has opened the page before.
+  // With no menu remembered, the top bar draws the read's failure notice and grows taller; these cases do not cover that.
   if (options.refused) await (await openPhoneShell("LINKED", { width: 1440 })).getByRole("link").first().waitFor();
   const opened = openPhoneShell("LINKED", options);
   // A failure before the release below closes the page under this open; its own error would only repeat that one.
