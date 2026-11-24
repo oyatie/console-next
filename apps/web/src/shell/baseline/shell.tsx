@@ -75,9 +75,10 @@ function BaselineLayout({ children, platform, restoring, menu, navigationState, 
         {!platform && (
           <SearchTrigger onSearch={onSearch} />
         )}
+        {/* Left of the spacer: the reconnecting chip takes free room and never pushes the controls on the right. */}
+        <LiveStatus />
         <span className="top__spacer" />
         {!platform && <NeedsMeSlot id="top-needs-me" />}
-        <LiveStatus />
         {!platform && <SupportAccessIndicator />}
         <LocaleSelect id="top-locale" label />
         <ThemeToggle />

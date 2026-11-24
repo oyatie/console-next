@@ -21,7 +21,7 @@ export function LiveStatus() {
   }, [state, since]);
   return (
     <span role="status" className={s.status}>
-      {state === "connecting" && lateSince === since && <Chip tone="warn">{t("live.status.reconnecting")}</Chip>}
+      {state === "connecting" && lateSince === since && <Chip tone="warn" className={s.chip}><span className={s.text}>{t("live.status.reconnecting")}</span></Chip>}
     </span>
   );
 }

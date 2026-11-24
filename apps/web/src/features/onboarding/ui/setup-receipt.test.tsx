@@ -6,8 +6,9 @@ import { loadCatalog } from "@console/i18n";
 import { myAccessQuery } from "../../../reference/authz/api";
 import { operationAccess } from "../../../reference/authz/domain/operation-access";
 import { settingsQuery } from "../../../reference/settings/api";
-import { goLiveReceiptQuery } from "../api";
+import { ApiError, goLiveReceiptQuery } from "../api";
 import { SetupReceipt } from "./setup-receipt";
+import { useReceipt } from "./use-receipt";
 
 const RECEIPT_NEED = operationAccess["GET /api/v1/onboarding/go-live/preview"];
 const HISTORY_NEED = operationAccess["GET /api/v1/org-structure/batches"];
@@ -32,13 +33,16 @@ const state = vi.hoisted(() => ({
   canRegister: true,
   snapshotVersion: 1,
   updatedAt: Date.parse("2026-11-04T12:00:00Z"),
+  phaseError: null as ApiError | null,
+  record: "answered" as "answered" | "loading" | "failing",
+  recordEnabled: undefined as boolean | undefined,
 }));
 
 vi.mock("../ui/use-setup", () => ({
   useSetupChecklist: () => ({
     phaseQ: {
-      isError: false,
-      error: null,
+      isError: state.phaseError !== null,
+      error: state.phaseError,
       dataUpdatedAt: state.updatedAt,
       data: {
         phase: state.phase,
@@ -84,6 +88,8 @@ vi.mock("@tanstack/react-query", () => ({
         },
       };
     }
+    if (opts.queryFn === goLiveReceiptQuery.queryFn) state.recordEnabled = (opts as { enabled?: boolean }).enabled;
+    if (opts.queryFn === goLiveReceiptQuery.queryFn && state.record !== "answered") return { data: undefined, isFetching: state.recordEnabled, failureCount: state.record === "failing" ? 1 : 0 };
     if (opts.queryFn === goLiveReceiptQuery.queryFn) return { data: {
       go_live_at: state.goLiveAt, facts_snapshot_version: state.snapshotVersion,
       facts_snapshot: { entities: 7, workplaces: 3, org_units: 8, employees: state.employees },
@@ -103,14 +109,44 @@ afterEach(() => {
   state.canRegister = true;
   state.snapshotVersion = 1;
   state.updatedAt = Date.parse("2026-11-04T12:00:00Z");
+  state.phaseError = null;
+  state.record = "answered";
+  state.recordEnabled = undefined;
 });
 
 const router = createRouter({ routeTree: createRootRoute(), history: createMemoryHistory({ initialEntries: ["/"] }) });
 const render = () => renderToStaticMarkup(
   <RouterContextProvider router={router}>
-    <SetupReceipt receiptNeed={RECEIPT_NEED} historyNeed={HISTORY_NEED} />
+    <Receipt />
   </RouterContextProvider>,
 );
+function Receipt() { return <SetupReceipt r={useReceipt(RECEIPT_NEED, HISTORY_NEED)} />; }
+function Arriving() { return <i data-arriving={useReceipt(RECEIPT_NEED, HISTORY_NEED).arriving} />; }
+const arrives = () => renderToStaticMarkup(<Arriving />).includes('data-arriving="true"');
+
+test("Home waits on the receipt record it will show, and a first failure releases it", () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-11-04T12:00:00Z"));
+  try {
+    state.record = "loading";
+    expect(arrives()).toBe(true);
+    expect(state.recordEnabled).toBe(true);
+    state.record = "failing";
+    expect(arrives()).toBe(false);
+  } finally { vi.useRealTimers(); }
+});
+
+test("a refused checklist re-read hides a cached go-live: no record is read or waited on", () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-11-04T12:00:00Z"));
+  try {
+    state.phaseError = new ApiError(403, "forbidden", "refused");
+    state.record = "loading";
+    expect(render()).toBe("");
+    expect(state.recordEnabled).toBe(false);
+    expect(arrives()).toBe(false);
+  } finally { vi.useRealTimers(); }
+});
 
 test("renders post-go-live receipt link and setup history link on Home within the configured window", () => {
   vi.useFakeTimers();

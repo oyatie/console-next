@@ -23,6 +23,12 @@ test("first sign-in requires privacy notice and terms consent before passkey enr
   expect(html).not.toContain('name="email"');
 });
 
+test("the privacy policy address stands beside the consent, outside the closed full texts", () => {
+  const open = renderToStaticMarkup(<SetupPasskey />).replace(/<details\b[\s\S]*?<\/details>/g, "");
+  expect(open).toContain("https://cosskorea.com/privacy");
+  expect(open.indexOf("https://cosskorea.com/privacy")).toBeLessThan(open.indexOf("<button"));
+});
+
 test("no personal-data inputs render on setup-passkey", () => {
   const html = renderToStaticMarkup(<SetupPasskey />);
   expect(html).not.toContain('input type="text"');

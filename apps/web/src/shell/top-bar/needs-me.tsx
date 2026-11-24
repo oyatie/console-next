@@ -4,20 +4,15 @@ import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
 import { useLocation } from "@tanstack/react-router";
 import { Button, Dialog, DialogTrigger, Popover } from "react-aria-components";
 import { Inbox } from "lucide-react";
-import { api, session, unwrap } from "@console/api";
-import type { components } from "@console/api/schema";
+import { session } from "@console/api";
 import { t } from "@console/i18n";
-import { cursorPages, cursorRead } from "../../lib/query";
+import { cursorPages } from "../../lib/query";
 import { inboxReadFilter, inboxView } from "../../features/home/domain/inbox-filter";
 import { chunk } from "../../lib/chunk-guard";
 import { ReadSkeleton } from "../../ui/skeleton/skeleton";
+import { countRead, useNewestPage, type InboxPage } from "./inbox-count";
 import s from "./top-bar.module.css";
 
-type InboxPage = components["schemas"]["ActionInboxResponse"];
-// Off the queue pages the count is a background read with a key of its own: a command there re-reads the page first
-// and the count a moment later (lib/query), so the header never adds a heavy read to the page's own.
-const countRead = { ...cursorRead<InboxPage>("/api/v1/me/action-inbox", { filter: "turn", background: true }, cursor =>
-  unwrap(api.GET("/api/v1/me/action-inbox", { params: { query: { filter: "turn", cursor } } } as never)) as Promise<InboxPage>), meta: { background: true } };
 const NeedsMePanel = lazy(() => chunk(import("./needs-me-panel")).then(m => ({ default: m.NeedsMePanel })));
 
 /** Header 'needs me' badge and popover task panel driven by `/api/v1/me/action-inbox` (`filter: "turn"`). */
@@ -35,8 +30,9 @@ export function NeedsMeMenu({ id, seed }: { id: string; seed?: InboxPage }) {
   const separate = fullInbox && filter !== "turn";
   // Other inbox tabs supply counts, but the task panel always reads my turn when opened.
   const tasks = useInfiniteQuery({ ...cursorPages("/api/v1/me/action-inbox", { filter: "turn" }), enabled: !seed && !platform && separate && open, notifyOnChangeProps: "all" });
+  const page = useNewestPage(inbox);
   if (platform) return null;
-  const turn = (seed ?? (inbox.isSuccess ? inbox.data.pages[0] : undefined))?.counts?.turn;
+  const turn = (seed ?? page)?.counts?.turn;
   const count = turn?.total;
   const exact = turn?.total_is_exact;
   const label = count == null ? t(inbox.isPending ? "shell.needsMe.loading" : "shell.needsMe.unknown") : t(count > 0 ? exact ? "shell.needsMe.count" : "shell.needsMe.countMore" : "home.inbox.title", { count });

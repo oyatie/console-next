@@ -8,7 +8,7 @@ import { attendanceBoardScreens } from "../states/attendance";
 import { lifecycleSheetScreens } from "../states/lifecycle-sheets";
 import { openGradeFix } from "../helpers/grade-fix";
 import { commitLabel } from "../../apps/web/src/ui/composer/actions";
-import { AT, checklist, id, screenAccess, structure, user } from "./fixtures";
+import { AT, checklist, failure, id, screenAccess, structure, user } from "./fixtures";
 import { previewData } from "./onboarding";
 import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
@@ -156,6 +156,60 @@ for (const width of [1440, 390]) {
       await expect(page.getByRole("main")).toContainText(t("attendance.phase.operating"));
       expect(await tab.boundingBox()).toEqual(before);
       await expectStable(page, "attendance phase");
+      expect(fixture.unexpected).toEqual([]);
+    } finally { held.resolve(); fixture.release(); }
+  });
+
+  test(`renewal: the fixed-term rule lands with the sheet, not under its presets at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
+    const held = Promise.withResolvers<void>();
+    const requested = Promise.withResolvers<void>();
+    // The record's employment facts do not say CONTRACT yet (a type change just corrected): the act's prefetch skips the
+    // fixed-term read, so the renewal sheet opens on its own read of it.
+    await mockRoute(page, "get", "/api/v1/employees/{id}", { status: 200, json: { ...moveDetail,
+      employee: { ...moveDetail.employee, employment_type: "CONTRACT", contract_end_date: "2026-11-30" },
+      allowed_events: [{ event_type: "CONTRACT_RENEWAL", required_signoffs: [] }] } });
+    await mockRoute(page, "get", "/api/v1/employees/{id}/fixed-term", async () => {
+      requested.resolve();
+      await held.promise;
+      return { status: 200, json: { applies: true, cumulative_days: 600, two_year_date: "2027-03-31", basis: "CONTRACT_HISTORY" as const, rule: null, available_exceptions: [] } };
+    });
+    try {
+      await page.goto(`/people/${id(4000)}?act=CONTRACT_RENEWAL`);
+      const sheet = page.getByRole("dialog");
+      await expect(sheet).toBeVisible();
+      await requested.promise;
+      await page.evaluate(() => document.fonts.ready);
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      await page.evaluate(clearShifts);
+      held.resolve();
+      await expect(sheet.getByRole("group", { name: t("lifecycle.renewal.periods"), exact: true })).toBeVisible();
+      await expectStable(page, "renewal fixed-term rule");
+      expect(fixture.unexpected).toEqual([]);
+    } finally { held.resolve(); fixture.release(); }
+  });
+
+  test(`renewal: a failing fixed-term read opens the sheet at its first failure, not after its retries at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
+    const held = Promise.withResolvers<void>();
+    let reads = 0;
+    await mockRoute(page, "get", "/api/v1/employees/{id}", { status: 200, json: { ...moveDetail,
+      employee: { ...moveDetail.employee, employment_type: "CONTRACT", contract_end_date: "2026-11-30" },
+      allowed_events: [{ event_type: "CONTRACT_RENEWAL", required_signoffs: [] }] } });
+    // The first read fails; its retries never answer, so the sheet shows only if it stops waiting at that failure.
+    await page.route(url => url.pathname.endsWith("/fixed-term"), async route => {
+      if (++reads > 1) await held.promise;
+      await route.fulfill({ status: 503, json: failure("service_unavailable") });
+    });
+    try {
+      const failed = page.waitForResponse(response => new URL(response.url()).pathname.endsWith("/fixed-term"));
+      await page.goto(`/people/${id(4000)}?act=CONTRACT_RENEWAL`);
+      const sheet = page.getByRole("dialog");
+      await expect(sheet).toBeVisible();
+      await failed;
+      await expect(sheet.getByRole("group", { name: t("lifecycle.renewal.periods"), exact: true })).toBeVisible();
       expect(fixture.unexpected).toEqual([]);
     } finally { held.resolve(); fixture.release(); }
   });

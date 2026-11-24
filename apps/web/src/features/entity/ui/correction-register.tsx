@@ -31,20 +31,23 @@ const statusText = (r: Case) => label(IDENTIFIER_CORRECTION_STATUS, r.reviewed_a
 const fieldText = (r: Case) => r.proposal ? t(`entityRecord.id.field.${r.proposal.field}`) : t("entityRecord.corrections.title");
 const valueText = (r: Case) => !r.proposal ? t("entityOps.info.none") : r.proposal.field === "crn" ? FORMATS.corpRegNo.display(r.proposal.value) : r.proposal.field === "brn" ? FORMATS.bizRegNo.display(r.proposal.value) : label(BIZ_KIND, r.proposal.value);
 
-/** Org-wide readers only: branch-scoped entity viewers have no register read permission. */
-export function CorrectionRegister(props: { entityId?: string; correctionId?: string; onSelect?: (id: string | null) => void }) {
+/**
+ * Org-wide readers only: branch-scoped entity viewers have no register read permission. `hidden`: read but not yet
+ * shown, while what sits above it is still arriving.
+ */
+export function CorrectionRegister(props: { entityId?: string; correctionId?: string; onSelect?: (id: string | null) => void; hidden?: boolean }) {
   const can = useCan();
   return can("legal_entity_manage", "tenant") || can("org_change_apply", "tenant") ? <Register {...props} /> : null;
 }
 
-function Register({ entityId, correctionId, onSelect }: { entityId?: string; correctionId?: string; onSelect?: (id: string | null) => void }) {
+function Register({ entityId, correctionId, onSelect, hidden }: { entityId?: string; correctionId?: string; onSelect?: (id: string | null) => void; hidden?: boolean }) {
   const [offsets, setOffsets] = useState([0]);
   const [selected, setSelected] = useState<string | null>(null);
   const select = onSelect ?? setSelected;
   const active = correctionId ?? selected;
   const q = useQuery({ ...correctionRegisterQuery(entityId, offsets.at(-1)), retry: false, refetchOnMount: "always" });
   return (
-    <section id="identifier-corrections" aria-labelledby="identifier-corrections-title">
+    <section id="identifier-corrections" aria-labelledby="identifier-corrections-title" hidden={hidden}>
       <SectionHead level={2} id="identifier-corrections-title">
         {t("entityRecord.corrections.title")}
       </SectionHead>
