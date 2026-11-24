@@ -135,16 +135,12 @@ function buildCardMeta({
           {certsCount !== undefined ? <Chip tone="outline">{t("people.panel.certsCount", { count: certsCount })}</Chip> : null}
         </>
       ),
-      // The walk keys' caps show while single keys are on, as on the Classic card.
-      tools: pos || singleKeys ? (
+      // The walk keys show beside the position only: with no unit, J and K have no one to go to.
+      tools: pos ? (
         <div className="row">
-          {pos ? (
-            <>
-              <bdi className={s.pos}><strong className={s.posAt}>{t("empCard.pos.at", { index: pos.index, total: pos.total })}</strong></bdi>
-              <Button size="sm" variant="ghost" aria-label={t("empCard.prev")} disabled={!pos.prev_id} onClick={() => pos.prev_id && go(pos.prev_id)}><ChevronLeft size={14} aria-hidden="true" /></Button>
-              <Button size="sm" variant="ghost" aria-label={t("empCard.next")} disabled={!pos.next_id} onClick={() => pos.next_id && go(pos.next_id)}><ChevronRight size={14} aria-hidden="true" /></Button>
-            </>
-          ) : null}
+          <bdi className={s.pos}><strong className={s.posAt}>{t("empCard.pos.at", { index: pos.index, total: pos.total })}</strong></bdi>
+          <Button size="sm" variant="ghost" aria-label={t("empCard.prev")} disabled={!pos.prev_id} onClick={() => pos.prev_id && go(pos.prev_id)}><ChevronLeft size={14} aria-hidden="true" /></Button>
+          <Button size="sm" variant="ghost" aria-label={t("empCard.next")} disabled={!pos.next_id} onClick={() => pos.next_id && go(pos.next_id)}><ChevronRight size={14} aria-hidden="true" /></Button>
           {singleKeys ? <bdi className={s.pos}><Kbd k="J" /><Kbd k="K" /> {t("empCard.walk")}</bdi> : null}
         </div>
       ) : undefined,
