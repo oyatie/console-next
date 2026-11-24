@@ -66,7 +66,8 @@ pub fn allowed_lifecycle_events(
         .collect()
 }
 
-pub async fn load_employee_detail(
+/// Loads employee detail without reader-specific masking or warnings.
+pub(crate) async fn load_employee_detail_unfiltered(
     tx: &mut sqlx::Transaction<'_, Postgres>,
     org_id: Uuid,
     employee_id: Uuid,
@@ -151,7 +152,6 @@ pub async fn load_employee_detail(
         None => Vec::new(),
     };
     let employee = employee_from_row(row)?;
-    let warnings = super::read_warnings::current_warnings(tx, org_id, &employee).await?;
     let retention = if employee.status.as_deref() == Some("EXITED") {
         let exit = employee
             .exit_date
@@ -194,16 +194,19 @@ pub async fn load_employee_detail(
         allowed_scheduled_events,
         schedule_after,
         classification,
-        warnings,
+        warnings: Vec::new(),
     })
 }
 
+/// Includes only warning matches within the reader's directory access.
 pub(super) async fn detail_with_visible_warnings(
     tx: &mut sqlx::Transaction<'_, Postgres>,
     reader: &Principal,
     employee_id: Uuid,
 ) -> Result<EmployeeDetailResponse, HrError> {
-    let mut detail = load_employee_detail(tx, *reader.org_id.as_uuid(), employee_id).await?;
+    let org = *reader.org_id.as_uuid();
+    let mut detail = load_employee_detail_unfiltered(tx, org, employee_id).await?;
+    detail.warnings = super::read_warnings::current_warnings(tx, org, &detail.employee).await?;
     super::read_warnings::visible_warnings(tx, reader, &mut detail.warnings).await?;
     Ok(detail)
 }

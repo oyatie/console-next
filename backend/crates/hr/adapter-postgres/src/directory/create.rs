@@ -228,6 +228,7 @@ impl HrService {
         } else {
             created
         };
+        // Only the registration transaction checked which namesakes the creator may see.
         detail.warnings = warnings;
         detail
             .warnings

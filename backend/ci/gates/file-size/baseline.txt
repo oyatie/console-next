@@ -30,7 +30,7 @@ app/tests/facilities_pilot_story.rs	652
 app/tests/field_visit_api.rs	804
 app/tests/hr_attendance_manager_scope.rs	367
 app/tests/hr_lifecycle_stage_d.rs	1741
-app/tests/hr_people_create_api.rs	1144
+app/tests/hr_people_create_api.rs	1141
 app/tests/logistics_pilot_story.rs	593
 app/tests/m2_real_engine_drive.rs	479
 app/tests/maintenance_chain_api.rs	1025

@@ -634,7 +634,8 @@ async fn employee_create_assigns_numbers_warns_on_same_name_and_masks_readers(po
     let second = post(service.clone(), EMPLOYEES_PATH, &token, second).await;
     assert_eq!(second.status, StatusCode::CREATED, "{:?}", second.json);
     assert_eq!(second.json["employee"]["employee_number"], "E-000002");
-    let matches = json!([{"id": id, "name": "김동명", "employee_number": "E-000001"}]);
+    let matches =
+        json!([{"id": id, "name": first.json["employee"]["name"], "employee_number": "E-000001"}]);
     assert_eq!(
         second.json["warnings"],
         json!([
@@ -677,12 +678,8 @@ async fn employee_create_assigns_numbers_warns_on_same_name_and_masks_readers(po
     let executive = UserId::new();
     seed_user_with_roles(&pool, org, executive, &["EXECUTIVE"]).await;
     let executive_token = bearer(&pool, &keys, org, executive, &["EXECUTIVE"]).await;
-    let read = get(
-        service.clone(),
-        &format!("{EMPLOYEES_PATH}/{id}"),
-        &executive_token,
-    )
-    .await;
+    let person = format!("{EMPLOYEES_PATH}/{id}");
+    let read = get(service.clone(), &person, &executive_token).await;
     assert_eq!(read.status, StatusCode::OK, "{:?}", read.json);
     assert_eq!(read.json["employment"]["employment_type"], "REGULAR");
     assert!(
@@ -699,13 +696,13 @@ async fn employee_create_assigns_numbers_warns_on_same_name_and_masks_readers(po
     assert!(read.json["employee"]["next_event"].is_null());
     let events = get(
         service.clone(),
-        &format!("{EMPLOYEES_PATH}/{id}/lifecycle-events"),
+        &format!("{person}/lifecycle-events"),
         &executive_token,
     )
     .await;
     assert_eq!(events.status, StatusCode::OK, "{:?}", events.json);
     assert_eq!(events.json["items"][0]["state"], "APPLIED");
-    let full = get(service.clone(), &format!("{EMPLOYEES_PATH}/{id}"), &token).await;
+    let full = get(service.clone(), &person, &token).await;
     assert_eq!(full.json["employment"]["phone_e164"], "010-••••-2222");
     assert_eq!(full.json["employment"]["base_pay"], "50000000.00");
     let denied = post(

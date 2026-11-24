@@ -21,7 +21,7 @@ async fn rehire_and_replay_hide_namesakes_outside_the_directory_grant(pool: PgPo
         .bind(&w.a2).execute(&w.pool).await.unwrap();
     let rehire = json!({
         "hire_date": hire_date, "employment_type": "REGULAR", "org_unit_id": w.dept_y,
-        "position": "사원", "idempotency_key": Uuid::new_v4()
+        "position": "Staff", "idempotency_key": Uuid::new_v4()
     });
     for expected in [StatusCode::CREATED, StatusCode::OK] {
         let (status, detail) = hr
