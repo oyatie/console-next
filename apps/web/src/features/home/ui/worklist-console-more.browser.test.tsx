@@ -18,6 +18,7 @@ beforeAll(async () => {
       import { QueryClient, QueryClientProvider, useInfiniteQuery } from '@tanstack/react-query';
       import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider } from '@tanstack/react-router';
       import { loadCatalog } from '@console/i18n';
+      import { cursorRead } from '/apps/web/src/lib/query.ts';
       import { InboxReadContext } from '/apps/web/src/features/home/ui/use-inbox-read.ts';
       import { WorklistConsole } from '/apps/web/src/features/home/ui/worklist-console.tsx';
       import '/apps/web/src/app.css';
@@ -38,7 +39,7 @@ beforeAll(async () => {
       });
 
       function Home({ count, all }) {
-        const inbox = useInfiniteQuery({ queryKey: ['inbox', count, all], queryFn: () => page(count, all), initialPageParam: null, getNextPageParam: () => undefined, enabled: true });
+        const inbox = useInfiniteQuery({ ...cursorRead('/inbox-test', { count, all }, async () => page(count, all)), enabled: true });
         return React.createElement(InboxReadContext.Provider, { value: { inbox, attention: 'all', setAttention: () => {} } },
           React.createElement(WorklistConsole, { mode: 'home', title: 'Home', titleId: 'home-title', baseline: () => null }));
       }
