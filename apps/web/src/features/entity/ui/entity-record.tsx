@@ -62,7 +62,11 @@ export function EntityScreen() {
   return <EntityRecord key={`${id}:${wp ?? ""}`} id={id} workplace={wp} />;
 }
 
-/** The correction register under the tabs reads at once but shows with the history tab's first answers, never above them. */
+/**
+ * The correction register under the tabs reads at once. Arriving on the history tab, it shows with that tab's first
+ * answers, never above them. Elsewhere it shows once it has read: the hold covers the history tab's own sections only,
+ * not the overview aside's latest history, which reads the same history in its own column.
+ */
 function HeldRegister({ e, tab }: { e: LegalEntity; tab: Tab }) {
   return <CorrectionRegister entityId={e.id} hidden={useHistoryReads(e, tab === "history").arriving} />;
 }
