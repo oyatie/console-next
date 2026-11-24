@@ -11,7 +11,7 @@ The scanner still discovers every REST operation, named list/count/search/export
 Detailed census (including current line numbers) is available on demand, without a committed snapshot:
 `node scripts/access-inventory.mjs --census > /tmp/access-census.json`.
 Static references are reviewer leads, never proof of enforcement or route/first-read parity.
-Legacy method calls and production code after test items are included; function declarations and `cfg(test)` items are excluded.
+Legacy method calls and production code after test items are included; function declarations and items under `cfg(test)` or `cfg(all(test, ...))` are excluded.
 Detector fixtures retain historical defects after the product fixes them.
 
 | Model | File | Kind | Maximum count |

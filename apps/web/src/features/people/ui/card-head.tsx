@@ -31,6 +31,7 @@ import { EmployeeWarnings } from "./employee-warnings";
 import type { Card } from "./use-card";
 import s from "./card.module.css";
 import { EmployeePayLink } from "../../../reference/payroll/ui/employee-pay-link";
+import { useSingleKeys } from "../../../lib/react/use-single-keys";
 
 export type CardTab = "card" | "events" | "docs" | "ledger" | "access";
 
@@ -43,6 +44,7 @@ const TABS: CardTab[] = ["card", "events", "docs", "ledger", "access"];
 export function CardHead({ c, onTab, onAct, onGo, onKeys }: { c: Card; onTab: (t: CardTab) => void; onAct: (act: string) => void; onGo: (id: string) => void; onKeys: (next?: () => void, prev?: () => void) => void }) {
   const { e, d } = c;
   const documents = useDocumentsServed();
+  const singleKeys = useSingleKeys();
   const today = todayKst();
   const unitPos = useQuery({ ...unitPositionQuery(e.id), enabled: Boolean(e.org_unit_id) });
   const pos = unitPos.data && unitPos.data.index > 0 ? unitPos.data : null;
@@ -98,7 +100,7 @@ export function CardHead({ c, onTab, onAct, onGo, onKeys }: { c: Card; onTab: (t
         )}
         <Button variant="ghost" aria-label={t("empCard.prev")} disabled={!prevId} onClick={() => prevId && onGo(prevId)}><ChevronLeft size={16} aria-hidden /></Button>
         <Button variant="ghost" aria-label={t("empCard.next")} disabled={!nextId} onClick={() => nextId && onGo(nextId)}><ChevronRight size={16} aria-hidden /></Button>
-        <span className={s.pos}><Kbd k="J" /><Kbd k="K" /> {t("empCard.walk")}</span>
+        {singleKeys && <span className={s.pos}><Kbd k="J" /><Kbd k="K" /> {t("empCard.walk")}</span>}
       </div>
       <div className={s.hdr}>
         <Avatar size="lg" name={e.name} src={photo ?? undefined} alt={t("empCard.photo", { name: e.name })} fallbackAlt={t("empCard.photo.none")} />

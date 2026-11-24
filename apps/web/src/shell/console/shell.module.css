@@ -180,18 +180,6 @@
   min-width: 0;
 }
 
-.phoneTop {
-  grid-area: phoneTop;
-  min-width: 0;
-}
-
-.phoneNav {
-  grid-area: phoneNav;
-  min-width: 0;
-  position: relative;
-  z-index: 2;
-}
-
 @media (--below-wide) {
   .scopeChip,
   .dateText {
@@ -208,9 +196,40 @@
 }
 
 @media (--phone) {
+  /* A column, not a grid: a grid item sticks only within its own row. The page itself still scrolls, so phone browsers can fold their bars. */
   .shell {
+    display: flex;
+    flex-direction: column;
     height: auto;
-    grid-template: "phoneTop" auto "notices" auto "main" 1fr "phoneNav" auto / minmax(0, 1fr);
+  }
+
+  .shell > :global(.main) {
+    flex: 1 0 auto;
+  }
+
+  .phoneTop {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: var(--z-bar);
+  }
+
+  .phoneNav {
+    position: sticky;
+    inset-block-end: 0;
+    z-index: var(--z-bar);
+  }
+
+  /* Each bar's room, drawn as the empty bar until the bar itself draws, so the page neither moves nor shows through
+     a strip that takes no taps. The top one takes the chrome surface from its data-surface. */
+  .phoneTopHold {
+    block-size: var(--phone-top-h);
+    border-block-end: 1px solid var(--border);
+  }
+
+  .phoneNavHold {
+    block-size: var(--phone-nav-clear);
+    background: var(--surface);
+    border-block-start: 1px solid var(--border);
   }
 }
 

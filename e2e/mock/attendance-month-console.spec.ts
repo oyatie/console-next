@@ -287,7 +287,6 @@ test("Console /attendance Month supports Segmented filters, DayDock SidePane, an
     await cell.dblclick();
     await page.keyboard.type("9-18");
     await page.keyboard.press("Enter");
-    await grid.focus();
     await page.keyboard.press("ControlOrMeta+s");
     await expect(recordPane).toBeVisible();
     await expect(recordPane).toContainText(t("attendanceRecords.evidence.PAPER_SHEET"));

@@ -157,14 +157,17 @@ function ConsoleLayout({
   const displayName = rawName && roleMeta ? `${shortName} · ${roleMeta}` : shortName;
   const phoneActiveId = pathname === "/leave" || pathname === "/payslips"
     ? pathname
-    : phoneHeader?.phoneNav === "self-service" &&
-        (pathname === "/people/certificates" || pathname.startsWith("/people/certificates/"))
-      ? "/people/certificates"
+    : phoneHeader?.phoneNav === "self-service" && pathname === "/account" && location.search.sheet === "certificates"
+      ? "/account?sheet=certificates"
       : pathname === "/me/attendance" || pathname === "/me/desk" || pathname === "/account" || pathname.startsWith("/account/")
         ? "/account"
         : currentModuleTo;
   const shellOwnsH1 = isPhone && Boolean(phoneHeader?.shellOwnsH1);
   const phoneHeaderValue = useMemo(() => ({ shellOwnsH1 }), [shellOwnsH1]);
+  // An empty bar holds each bar's room while the session restores and while the bars' code loads, so the page does not
+  // move when they draw.
+  const topHold = <div className={s.phoneTopHold} data-surface="chrome" />;
+  const navHold = <div className={s.phoneNavHold} />;
 
   return (
     <PagePhoneHeader value={phoneHeaderValue}>
@@ -217,9 +220,11 @@ function ConsoleLayout({
               </div>
             ) : null}
           </>
-        ) : !restoring ? (
-          <div className={s.phoneTop}>
-            <Suspense fallback={null}>
+        ) : restoring ? (
+          <div className={s.phoneTop} data-pinned-bar>{topHold}</div>
+        ) : (
+          <div className={s.phoneTop} data-pinned-bar>
+            <Suspense fallback={topHold}>
               <ConsolePhoneTop
                 title={phoneHeader?.title ?? currentTitle}
                 shellOwnsH1={phoneHeader?.shellOwnsH1}
@@ -232,7 +237,7 @@ function ConsoleLayout({
               />
             </Suspense>
           </div>
-        ) : null}
+        )}
 
         {showOutage || showStale ? (
           <section aria-label={t("live.noticesLabel")} className={s.noticesArea}>
@@ -257,21 +262,24 @@ function ConsoleLayout({
               />
             ) : null}
           </div>
-        ) : !restoring ? (
-          <div className={s.phoneNav}>
-            <Suspense fallback={null}>
+        ) : restoring ? (
+          <div className={s.phoneNav} data-pinned-bar>{navHold}</div>
+        ) : (
+          <div className={s.phoneNav} data-pinned-bar>
+            <Suspense fallback={navHold}>
               <ConsolePhoneBottom
                 links={allLinks}
                 inboxCount={inboxCount}
                 approvalsCount={approvalsCount}
                 platform={platform}
                 mode={phoneHeader?.phoneNav}
+                unlinked={userProfile?.employee_link_status === "UNLINKED"}
                 activeId={phoneActiveId}
                 onNavigate={navigateToHref}
               />
             </Suspense>
           </div>
-        ) : null}
+        )}
       </div>
     </PagePhoneHeader>
   );

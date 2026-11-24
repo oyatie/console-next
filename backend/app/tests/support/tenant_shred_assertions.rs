@@ -78,18 +78,31 @@ pub fn seal_pre_shred_legacy_envelopes(
     }
 }
 
+/// The erased tenant and what was sealed for it before the shred: every check below must see these fail closed.
+pub struct ShreddedTenant<'a> {
+    pub rt: &'a PgPool,
+    pub org: OrgId,
+    pub mail_base: &'a Arc<EnvelopeCredentialCipher>,
+    pub rrn: &'a SealedRrn,
+    pub smtp_password: &'a SealedCredential,
+    pub mail_account: Uuid,
+}
+
 pub async fn assert_shredded_fail_closed_all_versions(
     owner: &PgPool,
-    rt: &PgPool,
-    org: OrgId,
+    tenant: &ShreddedTenant<'_>,
     store: &PgTenantKeyStore,
     warm_vault: &EnvRrnVault,
-    mail_base: &EnvelopeCredentialCipher,
-    tdek_rrn: &SealedRrn,
-    tdek_mail: &SealedCredential,
     legacy: &PreShredLegacyEnvelopes,
-    mail_acc_id: Uuid,
 ) {
+    let &ShreddedTenant {
+        rt,
+        org,
+        mail_base,
+        rrn: tdek_rrn,
+        smtp_password: tdek_mail,
+        mail_account: mail_acc_id,
+    } = tenant;
     let org_uuid = *org.as_uuid();
     // All EV + evidence tables for the erased tenant must be empty.
     for (table, sql) in [
@@ -191,19 +204,21 @@ pub async fn assert_shredded_fail_closed_all_versions(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 pub async fn assert_cold_pitr_fails_closed(
-    rt: &PgPool,
-    org: OrgId,
+    tenant: &ShreddedTenant<'_>,
     ring: &str,
     h_b64: &str,
-    mail_base: &Arc<EnvelopeCredentialCipher>,
-    sealed_a: &SealedRrn,
     staged_a: &SealedRrn,
-    smtp_password: &SealedCredential,
     imap_password: &SealedCredential,
-    acc_a: Uuid,
 ) {
+    let &ShreddedTenant {
+        rt,
+        org,
+        mail_base,
+        rrn: sealed_a,
+        smtp_password,
+        mail_account: acc_a,
+    } = tenant;
     let org_uuid = *org.as_uuid();
     let cold_store = Arc::new(PgTenantKeyStore::new(TenantDekMode::Active));
     let cold_vault = build_env_vault(rt.clone(), ring, h_b64, cold_store);

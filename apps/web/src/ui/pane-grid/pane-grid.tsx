@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useCallback, useEffect, useLayoutEffect, useRef, type ReactNode, type RefObject } from "react";
 import { isImeKey } from "../../lib/pure/ime";
+import { popupOpen } from "../../lib/pure/popup";
 import { editable, FOCUS_SETTLE_MS, ROW_SELECTOR, rowStep } from "../long-table/row-keys";
 import { PaneSplitter, SidePane, type SidePaneSpec } from "./pane-grid-side";
 import s from "./pane-grid.module.css";
@@ -194,7 +195,7 @@ export function PaneGrid({
       if (e.key !== "Escape" || (!rel && !rec) || editable(e.target)) return;
       if (
         e.target instanceof Element &&
-        e.target.closest('[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"], [data-sheet-layer], [data-escape-scope], [aria-expanded="true"]')
+        (e.target.closest('[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"], [data-sheet-layer], [data-escape-scope]') || popupOpen(e.target))
       ) {
         return;
       }
