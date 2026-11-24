@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { installFaultClock } from "./fault-clock";
 import { expect, test } from "@playwright/test";
+import type { components } from "@console/api";
 import { loadCatalog, t } from "@console/i18n";
 import { TABS } from "../../apps/web/src/features/entity/domain/tabs";
+import { EXPERIENCE_KEY } from "../../apps/web/src/lib/prefs";
 import { expectAxe, fits } from "../a11y";
 import { routeReady } from "../flows";
 import { mockRoute } from "../mock/route";
-import { checklist, failure, id } from "../mock/fixtures";
+import { authz, checklist, failure, id } from "../mock/fixtures";
 import { entityRecordPath, entityRecordStates, mockEntityRecord } from "./entity-record";
+import { clearShifts, expectStable, recordShifts } from "../stability";
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -231,6 +234,50 @@ test("late document and history counts preserve the tab positions @ui-state", as
   } finally {
     await page.close();
     release();
+    fixture.release();
+  }
+});
+
+for (const experience of ["baseline", "console"] as const) test(`arriving on the history tab draws its revisions and the correction register under them at once in ${experience} @ui-state`, async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.addInitScript(recordShifts);
+  if (experience === "console") await page.addInitScript(key => localStorage.setItem(key, "console"), EXPERIENCE_KEY);
+  const fixture = await mockEntityRecord(page, "populated");
+  // An org-wide entity manager also gets the identifier-correction register under the tabs.
+  await mockRoute(page, "get", "/api/v1/me/authz", { status: 200, json: { ...authz, capabilities: [...authz.capabilities,
+    { feature: "legal_entity_manage", permission: "allow", branch_scope: { kind: "all" }, org_wide: true, scoped: false }] } });
+  const correction: components["schemas"]["IdentifierCorrectionCase"] = {
+    id: id(4190), entity_id: fixture.entity.id, entity_name: "Synthetic Entity", subject_id: fixture.entity.id, subject_type: "LEGAL_ENTITY",
+    status: "PENDING", requested_by: id(1), payload_hash: "a".repeat(64), proposal: null, expires_at: "2026-12-01T00:00:00Z",
+    created_at: "2026-11-01T00:00:00Z", review_due_at: null, reviewed_at: null, consumed_at: null, can_apply: false,
+  };
+  await mockRoute(page, "get", "/api/v1/entity-identifier-corrections", { status: 200, json: { items: [correction], next_offset: 20 } });
+  const held = Promise.withResolvers<void>();
+  const revisions = (n: number) => ({ status: 200 as const, json: { items: Array.from({ length: n }, (_, k) => ({
+    version: k + 1, effective_from: "2026-01-01", recorded_at: "2026-01-01T00:00:00Z", change_mode: "SETUP" as const, changes: [],
+  })) } });
+  const requested = page.waitForRequest(request => new URL(request.url()).pathname.endsWith("/revisions"));
+  const corrections = page.waitForResponse(response => new URL(response.url()).pathname === "/api/v1/entity-identifier-corrections");
+  await mockRoute(page, "get", "/api/v1/legal-entities/{entityId}/revisions", async () => { await held.promise; return revisions(6); });
+  await mockRoute(page, "get", "/api/v1/business-registrations/{registrationId}/revisions", async () => { await held.promise; return revisions(2); });
+  const register = page.locator("#identifier-corrections");
+  try {
+    await page.goto(`${entityRecordPath}?tab=history`);
+    await Promise.all([requested, corrections]);
+    await expect(page.getByRole("tablist", { name: t("entityRecord.tabs") })).toBeVisible();
+    expect(await page.locator("html").getAttribute("data-experience") ?? "baseline").toBe(experience);
+    // The register reads beside the history but shows with it: drawn first, the revisions pushed it down the page.
+    expect.soft(await register.isVisible(), "the correction register waits for the history tab's first answers").toBe(false);
+    await page.evaluate(() => document.fonts.ready);
+    await page.evaluate(clearShifts);
+    held.resolve();
+    await expect(page.locator('section[aria-labelledby="history-title"]').getByRole("listitem").first()).toBeVisible();
+    await expect(register.getByRole("button", { name: t("entityRecord.corrections.next"), exact: true })).toBeVisible();
+    await expectStable(page, `history tab arrival in ${experience}`);
+    expect(fixture.unexpected).toEqual([]);
+  } finally {
+    held.resolve();
+    await page.close();
     fixture.release();
   }
 });
