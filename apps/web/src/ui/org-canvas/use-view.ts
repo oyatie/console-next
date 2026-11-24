@@ -34,7 +34,14 @@ const onScreen = (r: Rect, v: View, vp: { w: number; h: number }) =>
  * The view that shows stage rect `r` inside the viewport between the bars (`i`): unchanged when it already is, else
  * centred there (a box brought from under a bar lands well clear of it, its neighbours with it).
  */
-export function revealView(v: View, r: Rect, vp: { w: number; h: number }, i: Insets): View {
+export function revealView(v: View, r: Rect, vp: { w: number; h: number }, i: Insets, also?: Rect): View {
+  // `also` (the box an editor opens beside) joins `r` when both fit between the bars; `r` alone is kept otherwise.
+  if (also) {
+    const x = Math.min(r.x, also.x), y = Math.min(r.y, also.y);
+    const both = { x, y, w: Math.max(r.x + r.w, also.x + also.w) - x, h: Math.max(r.y + r.h, also.y + also.h) - y };
+    // The insets already hold the bars' clearance: fitting inside them is enough.
+    if (both.w * v.zoom + 2 * CLEAR <= vp.w && both.h * v.zoom <= vp.h - i.top - i.bottom) r = both;
+  }
   const drawn = { x: r.x * v.zoom + v.x, y: r.y * v.zoom + v.y, w: r.w * v.zoom, h: r.h * v.zoom };
   if (drawn.x >= CLEAR && drawn.y >= i.top + CLEAR && drawn.x + drawn.w <= vp.w - CLEAR && drawn.y + drawn.h <= vp.h - i.bottom - CLEAR && (!i.corner || !overlaps(drawn, i.corner))) return v;
   const next = { ...v, x: vp.w / 2 - (r.x + r.w / 2) * v.zoom, y: (vp.h - i.bottom + i.top) / 2 - (r.y + r.h / 2) * v.zoom };
@@ -66,9 +73,9 @@ export function firstView(vw: number, size: { w: number; h: number }, top: numbe
  * along the top. `insets` measures the floating bars (they wrap on a narrow canvas), so a revealed box
  * lands clear of them; until anything moves the view, the bars settling (a font arriving) lays the first view out
  * again. When the viewport changes size (a side panel opens beside it), the view stays; `keep` (the box the keyboard
- * is on) is brought back only if the new edge cut it off entirely.
+ * is on) is brought back only if the new edge cut it off entirely, with `keepAlso` beside it when both fit.
  */
-export function useView(viewport: RefObject<HTMLElement | null>, size: { w: number; h: number }, resetKey: string, insets: () => Insets, keep?: Rect) {
+export function useView(viewport: RefObject<HTMLElement | null>, size: { w: number; h: number }, resetKey: string, insets: () => Insets, keep?: Rect, keepAlso?: Rect) {
   const [view, setView] = useState<View>({ zoom: 1, x: 0, y: insets().top });
   const [vp, setVp] = useState({ w: 0, h: 0 });
   const first = useRef<string | null>(null);
@@ -96,7 +103,7 @@ export function useView(viewport: RefObject<HTMLElement | null>, size: { w: numb
       first.current = resetKey;
       auto.current = true;
       setView(initial(el.clientWidth));
-      if (keep) reveal(keep);
+      if (keep) reveal(keep, keepAlso);
     } else auto.current = false;
     const ro = new ResizeObserver(measure);
     ro.observe(el);
@@ -105,12 +112,12 @@ export function useView(viewport: RefObject<HTMLElement | null>, size: { w: numb
   }, [viewport, resetKey, size.w, size.h]);
 
   /** Brings a stage rect into view (centred) when any part of it is outside the area between the floating bars. */
-  const reveal = (r: Rect) => {
+  const reveal = (r: Rect, also?: Rect) => {
     const { w, h } = dims();
     if (!w) return;
     const i = insets();
     setView((v) => {
-      const next = revealView(v, r, { w, h }, i);
+      const next = revealView(v, r, { w, h }, i, also);
       if (next !== v) auto.current = false;
       return next;
     });
@@ -124,7 +131,7 @@ export function useView(viewport: RefObject<HTMLElement | null>, size: { w: numb
     was.current = vp;
     if (!before.w || (before.w === vp.w && before.h === vp.h) || !size.w) return;
     auto.current = false;
-    if (keep && !onScreen(keep, view, vp)) reveal(keep);
+    if (keep && !onScreen(keep, view, vp)) reveal(keep, keepAlso);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vp.w, vp.h]);
 
@@ -135,7 +142,7 @@ export function useView(viewport: RefObject<HTMLElement | null>, size: { w: numb
     // Only bars settling on the same canvas: a canvas that changed size is the resize effect's (it keeps the view).
     if (!d.w || !size.w || d.w !== was.current.w || d.h !== was.current.h) return;
     if (auto.current) setView(initial(d.w));
-    else if (keep && (i.top > before.top || i.bottom > before.bottom)) reveal(keep);
+    else if (keep && (i.top > before.top || i.bottom > before.bottom)) reveal(keep, keepAlso);
   };
   /** Zooms about the viewport centre. */
   const zoomBy = (d: number) => {

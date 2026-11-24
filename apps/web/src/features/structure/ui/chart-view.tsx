@@ -83,8 +83,11 @@ export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, pick, dimme
   // An open editor comes into view clear of the floating bars (its field must not sit under the zoom bar).
   const editing = c.L.boxes.find((b) => b.ghost) ?? (c.renaming ? c.shown.get(c.renaming) : undefined);
   const editor = editing && { ...editing, w: Math.max(editing.w, EDITOR_SIZE.w), h: Math.max(editing.h, EDITOR_SIZE.h) };
+  // A new box's editor brings the keyboard's box (the chart's one tab stop) with it: centred alone, that box was left
+  // under the top band's controls (a covered target).
+  const besideEditor = editing?.ghost ? c.shown.get(c.cursor) : undefined;
   useLayoutEffect(() => {
-    if (editor) canvas.current?.reveal(editor);
+    if (editor) canvas.current?.reveal(editor, besideEditor);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor?.x, editor?.y, c.renaming]);
 
@@ -171,6 +174,7 @@ export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, pick, dimme
         resetKey={c.focus.id}
         size={{ w: c.L.w, h: c.L.h }}
         keep={editor ?? cursorBox}
+        keepAlso={editor ? besideEditor : undefined}
         dimmed={dimmed}
         lines={c.L.lines.map((l) => l.d)}
         top={drag.view ? (

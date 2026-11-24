@@ -31,6 +31,13 @@ test("a box partly under the bottom bar is centred between the bars", () => {
   expect(revealView(v, { x: 100, y: 500, w: 200, h: 80 }, { w: 1000, h: 600 }, { top: 60, bottom: 70 })).toEqual({ zoom: 1, x: 300, y: -245 });
 });
 
+test("an editor brings the box it opened from when both fit between the bars, and comes alone when they do not", () => {
+  const v = { zoom: 1, x: 0, y: 0 };
+  const editor = { x: 100, y: 500, w: 200, h: 80 };
+  expect(revealView(v, editor, { w: 1000, h: 600 }, { top: 60, bottom: 70 }, { x: 100, y: 400, w: 200, h: 50 })).toEqual({ zoom: 1, x: 300, y: -195 });
+  expect(revealView(v, editor, { w: 1000, h: 600 }, { top: 60, bottom: 70 }, { x: 100, y: 0, w: 200, h: 50 })).toEqual({ zoom: 1, x: 300, y: -245 });
+});
+
 test("a box in the clear area leaves the view as it is", () => {
   const v = { zoom: 1, x: 0, y: 0 };
   expect(revealView(v, { x: 100, y: 100, w: 200, h: 80 }, { w: 1000, h: 600 }, { top: 60, bottom: 70 })).toBe(v);
