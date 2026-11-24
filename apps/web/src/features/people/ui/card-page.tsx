@@ -13,7 +13,7 @@ import { usePageActive } from "../../../lib/react/page-active";
 import { freshOnOpen } from "../../../lib/query";
 import { todayKst } from "../../../lib/pure/today";
 import { useKeys } from "../../../lib/react/use-keys";
-import { contractsQuery, employeeQuery, endOptionsQuery, eventsQuery, exitCasesQuery } from "../api";
+import { contractsQuery, employeeQuery, endOptionsQuery, eventsQuery, exitCasesQuery, personBindingReviewsQuery } from "../api";
 import { rrnStatusQuery } from "../api/record";
 import { assignmentsRef, entitiesRef } from "../../../reference/entity/api";
 import { unitsQuery } from "../../../reference/org/api";
@@ -65,10 +65,12 @@ export function EmployeeCard() {
   const account = freshOnOpen(useQuery({ ...directorySearch(detail.data?.employee.employee_number || detail.data?.employee.name || "", true), enabled: users && !!detail.data, staleTime: 0, refetchOnMount: "always" }));
   // The exit block's first answer changes section 4's height, so it settles before the controls appear too.
   const exits = freshOnOpen(useQuery({ ...exitCasesQuery({ employeeId: id }), refetchOnMount: "always" }));
+  // Open binding evidence adds the identity review chip and button to the name row (wrapping it): it lands with the head.
+  const binding = useQuery({ ...personBindingReviewsQuery(id), enabled: manage });
   // Only until each first answers: a read the reader may not make (403) retries behind the card, never behind the skeleton.
   const first = (q: { isPending: boolean; failureCount: number }) => q.isPending && q.failureCount === 0;
   const view = queryView(detail);
-  const loading = (authzApplies() && authz.isPending) || first(events) || first(placed) || first(entities) || first(units) || (manage && (first(contracts) || first(ends) || first(exits) || first(rrn))) || (users && !!detail.data && first(account));
+  const loading = (authzApplies() && authz.isPending) || first(events) || first(placed) || first(entities) || first(units) || (manage && (first(contracts) || first(ends) || first(exits) || first(rrn) || first(binding))) || (users && !!detail.data && first(account));
   if (detail.isSuccess && !loading && opened !== id) setOpened(id);
 
   const renderBaseline = () => {

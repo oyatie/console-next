@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { installFaultClock } from "./fault-clock";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+import type { components } from "@console/api";
 import { loadCatalog, t } from "@console/i18n";
 import { TABS } from "../../apps/web/src/features/entity/domain/tabs";
+import { EXPERIENCE_KEY } from "../../apps/web/src/lib/prefs";
 import { expectAxe, fits } from "../a11y";
 import { routeReady } from "../flows";
 import { mockRoute } from "../mock/route";
-import { checklist, failure, id } from "../mock/fixtures";
+import { authz, checklist, failure, id } from "../mock/fixtures";
 import { entityRecordPath, entityRecordStates, mockEntityRecord } from "./entity-record";
+import { clearShifts, expectStable, recordShifts } from "../stability";
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -231,6 +234,112 @@ test("late document and history counts preserve the tab positions @ui-state", as
   } finally {
     await page.close();
     release();
+    fixture.release();
+  }
+});
+
+/** An org-wide entity manager also gets the identifier-correction register under the tabs; `read` settles once it has read. */
+async function mockRegister(page: Page, entityId: string) {
+  await mockRoute(page, "get", "/api/v1/me/authz", { status: 200, json: { ...authz, capabilities: [...authz.capabilities,
+    { feature: "legal_entity_manage", permission: "allow", branch_scope: { kind: "all" }, org_wide: true, scoped: false }] } });
+  const correction: components["schemas"]["IdentifierCorrectionCase"] = {
+    id: id(4190), entity_id: entityId, entity_name: "Synthetic Entity", subject_id: entityId, subject_type: "LEGAL_ENTITY",
+    status: "PENDING", requested_by: id(1), payload_hash: "a".repeat(64), proposal: null, expires_at: "2026-12-01T00:00:00Z",
+    created_at: "2026-11-01T00:00:00Z", review_due_at: null, reviewed_at: null, consumed_at: null, can_apply: false,
+  };
+  await mockRoute(page, "get", "/api/v1/entity-identifier-corrections", { status: 200, json: { items: [correction], next_offset: 20 } });
+  return { read: page.waitForResponse(response => new URL(response.url()).pathname === "/api/v1/entity-identifier-corrections") };
+}
+const revisions = (n: number) => ({ status: 200 as const, json: { items: Array.from({ length: n }, (_, k) => ({
+  version: k + 1, effective_from: "2026-01-01", recorded_at: "2026-01-01T00:00:00Z", change_mode: "SETUP" as const, changes: [],
+})) } });
+const registerNext = (page: Page) => page.getByRole("region", { name: t("entityRecord.corrections.title"), exact: true })
+  .getByRole("button", { name: t("entityRecord.corrections.next"), exact: true });
+const historyRegion = (page: Page) => page.getByRole("region", { name: t("entity.history.title"), exact: true });
+
+for (const experience of ["baseline", "console"] as const) test(`arriving on the history tab draws its revisions and the correction register under them at once in ${experience} @ui-state`, async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.addInitScript(recordShifts);
+  if (experience === "console") await page.addInitScript(key => localStorage.setItem(key, "console"), EXPERIENCE_KEY);
+  const fixture = await mockEntityRecord(page, "populated");
+  const { read: corrections } = await mockRegister(page, fixture.entity.id);
+  const held = Promise.withResolvers<void>();
+  const requested = page.waitForRequest(request => new URL(request.url()).pathname.endsWith("/revisions"));
+  await mockRoute(page, "get", "/api/v1/legal-entities/{entityId}/revisions", async () => { await held.promise; return revisions(6); });
+  await mockRoute(page, "get", "/api/v1/business-registrations/{registrationId}/revisions", async () => { await held.promise; return revisions(2); });
+  try {
+    await page.goto(`${entityRecordPath}?tab=history`);
+    await Promise.all([requested, corrections]);
+    await expect(page.getByRole("tablist", { name: t("entityRecord.tabs") })).toBeVisible();
+    expect(await page.locator("html").getAttribute("data-experience") ?? "baseline").toBe(experience);
+    // The register reads beside the history but shows with it: drawn first, the revisions pushed it down the page.
+    expect.soft(await registerNext(page).isVisible(), "the correction register waits for the history tab's first answers").toBe(false);
+    await page.evaluate(() => document.fonts.ready);
+    await page.evaluate(clearShifts);
+    held.resolve();
+    await expect(historyRegion(page).getByRole("listitem").first()).toBeVisible();
+    await expect(registerNext(page)).toBeVisible();
+    await expectStable(page, `history tab arrival in ${experience}`);
+    expect(fixture.unexpected).toEqual([]);
+  } finally {
+    held.resolve();
+    await page.close();
+    fixture.release();
+  }
+});
+
+test("asking a failed certificate history again keeps the drawn revisions and the correction register in place @ui-state", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  const fixture = await mockEntityRecord(page, "populated");
+  const { read: corrections } = await mockRegister(page, fixture.entity.id);
+  await mockRoute(page, "get", "/api/v1/legal-entities/{entityId}/revisions", revisions(6));
+  const held = Promise.withResolvers<void>();
+  let asked = 0;
+  await mockRoute(page, "get", "/api/v1/business-registrations/{registrationId}/revisions", async () => {
+    if (asked++ === 0) return { status: 503, json: failure("service_unavailable") };
+    await held.promise;
+    return revisions(2);
+  });
+  try {
+    await page.goto(`${entityRecordPath}?tab=history`);
+    await corrections;
+    const revision = historyRegion(page).getByRole("listitem").first();
+    const retry = historyRegion(page).getByRole("button", { name: t("common.retry"), exact: true });
+    await expect(revision).toBeVisible();
+    await expect(registerNext(page)).toBeVisible();
+    await retry.click();
+    // The re-ask has reached the screen once the failure, and its button, gives way.
+    await expect(retry).toHaveCount(0);
+    // Only the failed certificate's section waits on its answer: what the tab already drew, and the register, stay.
+    await expect(revision).toBeVisible();
+    await expect(registerNext(page)).toBeVisible();
+    held.resolve();
+    const certificate = historyRegion(page).getByRole("region", { name: t("entity.history.registration", { name: fixture.entity.registrations[0]!.brn!.display }), exact: true });
+    await expect(certificate.getByRole("listitem")).toHaveCount(2);
+    expect(fixture.unexpected).toEqual([]);
+  } finally {
+    held.resolve();
+    await page.close();
+    fixture.release();
+  }
+});
+
+test("the correction register shows at once on the overview tab while the history is still on its way @ui-state", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  const fixture = await mockEntityRecord(page, "populated");
+  const { read: corrections } = await mockRegister(page, fixture.entity.id);
+  const held = Promise.withResolvers<void>();
+  const requested = page.waitForRequest(request => new URL(request.url()).pathname.endsWith("/revisions"));
+  await mockRoute(page, "get", "/api/v1/legal-entities/{entityId}/revisions", async () => { await held.promise; return revisions(6); });
+  try {
+    await page.goto(entityRecordPath);
+    await Promise.all([requested, corrections]);
+    // The register waits only for the history tab's sections, not the overview aside's read of the same history.
+    await expect(registerNext(page)).toBeVisible();
+    expect(fixture.unexpected).toEqual([]);
+  } finally {
+    held.resolve();
+    await page.close();
     fixture.release();
   }
 });

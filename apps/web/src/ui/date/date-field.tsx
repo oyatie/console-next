@@ -30,6 +30,11 @@ export function DateField({ label, required, value, onChange, onInvalid, today, 
   disabledDates?: readonly string[];
   basis?: ReactNode;
   note?: ReactNode;
+  /**
+   * What the entered date means, shown once one is entered. Given before a date too (worded for the date the field will
+   * likely get), it holds its line unseen and unread at its wrapped height while no other detail or error uses that line,
+   * so the line appearing when a date commits moves nothing.
+   */
   echo?: ReactNode;
   presets?: readonly DatePreset[];
   suggestWeekday?: boolean;
@@ -56,9 +61,13 @@ export function DateField({ label, required, value, onChange, onInvalid, today, 
     !why && presets?.some((pr) => !inBounds(pr.date, min, max)) ? t("uiDate.outOfRange") : null,
     disabled.size > 0 ? t("uiDate.disabled") : null,
   ].filter((detail) => detail != null);
+  // A date commits on blur: an echo line appearing then grew the field under a press already on its way below it.
+  // With an error shown, the echo takes the error's line on commit (held beside it, the field shrank instead).
+  // shortcut: a line already showing another detail (basis, a bound's reason) takes the echo unheld; hold that too if one wraps.
+  const held = !filled && echo != null && details.length === 0 && shown == null;
   return (
     <div className={s.date}>
-      <Field label={label} required={required} tag={note} hint={details.length > 0 ? details.map((detail, i) => <Fragment key={i}>{i > 0 && " · "}{detail}</Fragment>) : undefined} error={shown == null ? undefined : <>{shown}{remedy != null && <span className={s.remedy}>{remedy}</span>}</>}>
+      <Field label={label} required={required} tag={note} hint={held ? echo : details.length > 0 ? details.map((detail, i) => <Fragment key={i}>{i > 0 && " · "}{detail}</Fragment>) : undefined} hintHeld={held} error={shown == null ? undefined : <>{shown}{remedy != null && <span className={s.remedy}>{remedy}</span>}</>}>
         {(p) => (
           <div className={s.row}>
             {presets && presets.length > 0 && (
