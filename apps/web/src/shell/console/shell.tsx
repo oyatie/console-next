@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { lazy, Suspense, useCallback, useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { session } from "@console/api";
 import { i18n, t } from "@console/i18n";
+import { meQuery } from "../../features/account/api";
 import { healthStatus, pickLocalized, STATUS_PAGE_URL } from "../../features/health/api/active-status";
 import { chunk } from "../../lib/chunk-guard";
 import { useKeys } from "../../lib/react/use-keys";
@@ -71,6 +73,8 @@ function ConsoleLayout({
   const showOutage = noticesActive && notices.outage !== null;
   const showStale = noticesActive && notices.stale;
   const { inboxCount, inboxExact, approvalsCount } = useConsoleCounts(noticesActive);
+  // Watches the frame's own read of the reader without sending it again.
+  const profileRead = useQuery({ ...meQuery, enabled: false });
 
   const allLinks: readonly NavLink[] = useMemo(() => menu?.flatMap(group => group.links) ?? [], [menu]);
   const currentModuleTo = useMemo(
@@ -165,7 +169,7 @@ function ConsoleLayout({
   const navHold = <div className={s.phoneNavHold} />;
   // With a session, a desktop bar draws once the reader's own read has settled too: the tenant's name sets the brand's
   // width, and the scope chip, the nav and the status segments sit after it.
-  const holding = restoring || (!platform && Boolean(session.token) && !userProfile && navigationState === "loading");
+  const holding = restoring || (!platform && Boolean(session.token) && profileRead.isPending);
 
   return (
     <PagePhoneHeader value={phoneHeaderValue}>

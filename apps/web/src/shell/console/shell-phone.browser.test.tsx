@@ -88,9 +88,9 @@ afterAll(async () => {
 type Held = { asked: () => void; done: Promise<void> };
 /**
  * `restore` opens cold: the page starts with no session, and the refresh that restores it waits for `restore.done`.
- * `held` holds the read at `held.path` until `held.done`, then answers it, or refuses it with `held.status`.
+ * `held` holds the read at `held.path` until `held.done`; `refused` refuses the read at that path, once its hold ends.
  */
-async function openPhoneShell(link: "LINKED" | "UNLINKED" = "LINKED", { restore, held, width = 390 }: { restore?: Held; held?: Held & { path: string; status?: number }; width?: number } = {}) {
+async function openPhoneShell(link: "LINKED" | "UNLINKED" = "LINKED", { restore, held, refused, width = 390 }: { restore?: Held; held?: Held & { path: string }; refused?: string; width?: number } = {}) {
   const apiMocks: Record<string, unknown> = {
     "/api/v1/users/me": {
       id: "u1", display_name: "Hajun", employee_name: "Hajun", employee_id: link === "LINKED" ? "e1" : null,
@@ -121,8 +121,8 @@ async function openPhoneShell(link: "LINKED" | "UNLINKED" = "LINKED", { restore,
     if (held && path === held.path) {
       held.asked();
       await held.done;
-      if (held.status) return route.fulfill({ status: held.status, contentType: "application/json", body: JSON.stringify({ code: "service_unavailable", message: "unavailable" }) });
     }
+    if (path === refused) return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ code: "service_unavailable", message: "unavailable" }) });
     return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(apiMocks[path] ?? { items: [] }) });
   });
 
@@ -325,18 +325,20 @@ const chromePlaces = () => page.evaluate(() => Object.fromEntries(
 ));
 
 const frames = () => page.evaluate(() => new Promise<void>(ok => requestAnimationFrame(() => requestAnimationFrame(() => ok()))));
-const desktopHolds = [
-  ["the session restores", (hold: Held) => ({ restore: hold })],
-  ["/api/v1/users/me lands", (hold: Held) => ({ held: { ...hold, path: "/api/v1/users/me" } })],
-  ["/api/v1/users/me fails", (hold: Held) => ({ held: { ...hold, path: "/api/v1/users/me", status: 503 } })],
-  ["/api/v1/access/me lands", (hold: Held) => ({ held: { ...hold, path: "/api/v1/access/me" } })],
-] as const;
+const desktopHolds: [string, (hold: Held) => Parameters<typeof openPhoneShell>[1]][] = [
+  ["the session restores", hold => ({ restore: hold })],
+  ["/api/v1/users/me lands", hold => ({ held: { ...hold, path: "/api/v1/users/me" } })],
+  ["/api/v1/users/me fails", hold => ({ held: { ...hold, path: "/api/v1/users/me" }, refused: "/api/v1/users/me" })],
+  ["/api/v1/access/me lands", hold => ({ held: { ...hold, path: "/api/v1/access/me" } })],
+  ["/api/v1/users/me lands after /api/v1/access/me fails", hold => ({ held: { ...hold, path: "/api/v1/users/me" }, refused: "/api/v1/access/me" })],
+];
 
 for (const [what, hold] of desktopHolds) test(`on a desktop neither the page nor any chrome drawn moves when ${what}`, async () => {
   let done!: () => void, asked!: () => void;
   const answered = new Promise<void>(ok => { done = ok; });
   const requested = new Promise<void>(ok => { asked = ok; });
-  const opened = openPhoneShell("LINKED", { ...hold({ asked, done: answered }), width: 1440 });
+  const options = { ...hold({ asked, done: answered }), width: 1440 };
+  const opened = openPhoneShell("LINKED", options);
   // A failure before the release below closes the page under this open; its own error would only repeat that one.
   opened.catch(() => {});
   try {
@@ -346,11 +348,11 @@ for (const [what, hold] of desktopHolds) test(`on a desktop neither the page nor
     const [before, frame] = [await chromePlaces(), await pageFrame()];
 
     done();
-    // Settled once the tabs and the brand draw: the tenant's name, or the product's when the read is refused.
-    const refused = what.endsWith("fails");
+    // Settled once the tabs and the brand draw, and the menu unless a read it needs is refused: the brand is the
+    // tenant's name, or the product's when the reader's own read is refused.
     await page.locator("[data-workspace-tab]").first().waitFor();
-    await page.getByRole("link", { name: refused ? t("app.name") : "Saeon", exact: true }).waitFor();
-    if (!refused) await page.getByRole("navigation", { name: t("shell.nav"), exact: true }).getByRole("link").first().waitFor();
+    await page.getByRole("link", { name: options.refused === "/api/v1/users/me" ? t("app.name") : "Saeon", exact: true }).waitFor();
+    if (!options.refused) await page.getByRole("navigation", { name: t("shell.nav"), exact: true }).getByRole("link").first().waitFor();
     await frames();
     const after = await chromePlaces();
     expect(Object.fromEntries(Object.keys(before).map(key => [key, after[key] ?? "gone"]))).toEqual(before);
