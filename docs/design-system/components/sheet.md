@@ -141,6 +141,16 @@ A sheet is **dirty** when it holds an edit that closing would lose. There are tw
   `searchbox` or `combobox`, so text typed to filter a list does not count. A value put back to what it was makes
   the sheet clean again.
 
+  The sheet knows a control again by the first of these it has: for an element with `data-form-value`, its
+  label; its `id`; its `name`, with its tag, an input's type, and a checkbox's or a radio's value; its label,
+  with its tag. Its label is its `aria-label`, or else the text of the first `<label>` inside it less a trailing
+  `*`. A control with none of them is known as that element. Controls known the same way are told apart by their
+  order in the sheet. A control that is no longer in the sheet is not compared, so a value held only by a
+  control that goes away, such as a tree that closes on a pick, stops counting with it. The dissolve sheet,
+  whose destination trees close on a pick, keeps its plan on an element that stays: its members block writes
+  where everyone goes and each person sent elsewhere as `data-form-value` on its summary line, which has an `id`
+  and no label. A person sent to where everyone goes is left out of it. See [Tree](tree.md).
+
 Four gestures can close a sheet. Each calls `onClose`; none removes the sheet by itself.
 
 | Gesture | Clean sheet | Dirty sheet | While `pending` |
@@ -199,8 +209,8 @@ opens nothing that Escape closes. Escape from it is handled like any other Escap
 the first press shows the unsaved line and the second closes.
 `apps/web/src/features/org/ui/target-tree.browser.test.tsx` drives this in Chromium from both, in a sheet that is
 told it is dirty. The tree there has `required`, so it leaves Escape to the sheet: see [Tree](tree.md).
-Four other Escape guards (the side panel, the pane grid, flexible columns and the dirty-escape hook) still treat
-every expanded control as a popup.
+The Escape handlers of the side panel, the pane grid, flexible columns and the dirty-escape hook use the same
+test: each stands aside for a control whose popup is open, and not for one that is only expanded.
 
 The last case is the sheet's rule for the Korean input method. `sheet-dismiss.ts` checks `isComposing` and
 nothing else: it does not check key code 229 and listens for no composition event. An Escape flagged as composing
@@ -294,6 +304,9 @@ checks that it fits, runs axe over the dialog, and checks that the record behind
 the sheet opens or closes. Two browser tests of features press Escape on a row of a tree inside a sheet:
 `apps/web/src/features/org/ui/target-tree.browser.test.tsx` and
 `apps/web/src/features/access/ui/scope-picker.browser.test.tsx`. See Keyboard, and [Tree](tree.md).
+`apps/web/src/features/org/ui/dept-dissolve-sheet.browser.test.tsx` drives the dissolve sheet itself: a new
+destination for everyone, or one person sent elsewhere, is unsaved after its tree has closed on the pick, and a
+plan put back to where it started is not.
 
 Other specs drive a sheet on the screen that owns it. One example: `e2e/states/structure-sheet-read.spec.ts` holds
 a read back and expects a `common.loading` status inside the sheet. Where this page traced it, for the sheet that

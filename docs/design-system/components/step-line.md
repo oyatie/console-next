@@ -15,13 +15,15 @@ people, edit, check, apply.
 The step line only displays. The caller works out the state of every step and passes the steps in order. A step
 cannot be pressed.
 
-Five feature views use it:
+Five baseline views and nine Console views use it:
 
 | View | Where it puts the line |
 |---|---|
 | `features/people/ui/grid-page.tsx`, `features/people/ui/renew-page.tsx`, `features/import/ui/import-page.tsx` | In the `tools` of the page head (`ui/page-head`). |
-| `features/people/ui/bulk-page.tsx` | In the `subtitle` of the composer (`ui/composer`), after the phase line. In its page layout the composer passes that to the page head as `sub`. |
+| `features/people/ui/bulk-baseline.tsx` | In the `subtitle` of the composer (`ui/composer`), after the phase line. In its page layout the composer passes that to the page head as `sub`. |
 | `features/payroll/ui/run-page.tsx` | In the page's content, under the facts of the run. |
+| `features/import/ui/import-console.tsx`, `features/org-bulk/ui/import-console.tsx`, `features/payroll/ui/run-create-console.tsx`, `features/payroll/ui/payroll-setup-console.tsx`, `features/people/ui/bulk-console.tsx`, `features/people/ui/grid-console.tsx`, `features/people/ui/renew-console.tsx`, `features/entity/ui/entity-wizard-console.tsx` | In the `steps` of `WizardPattern` (`ui/patterns/wizard.tsx`), a bar under the page head. |
+| `features/payroll/ui/run-console.tsx` | In the `stageRail` of `RegisterTotalsStrip` (`ui/patterns/register-totals-parts.tsx`). |
 
 | Do not use it for | Use instead |
 |---|---|
@@ -41,7 +43,7 @@ the React key of the step and must be unique among the steps of one line.
 |---|---|---|
 | List | `<ol aria-label>` | One item for each step, in the order given. |
 | Step | `<li data-state>` | The number and the label. A `current` step carries `aria-current="step"`. |
-| Number | `<span aria-hidden="true" data-n>` | For a `done` step, a 14 px check icon, an `<svg>`. For any other step, nothing: the stylesheet draws the number from `data-n`, the step's place counted from 1, as generated content. |
+| Number | `<span data-n>` | For a `done` step, a 14 px check icon, an `<svg>`. For any other step, nothing: the stylesheet draws the number from `data-n`, the step's place counted from 1, as generated content. On a `done` or a `waiting` step the box has `role="img"` and an `aria-label` that names the state. On any other step it has `aria-hidden="true"`. |
 | Label | `<span>` | `label`. |
 | Rule | The `::before` of every step but the first | A line. It is generated content of the step that follows it. |
 
@@ -82,11 +84,17 @@ The step line has no states of its own beyond the three step states above.
 | Loading | Does not exist. There is no pending prop and no placeholder. |
 | Empty | With no steps the line renders an empty `<ol>` that still has its name. Nothing checks for it. |
 
-Nothing requires one step to be `current`. Two callers pass a line with none:
+Nothing requires one step to be `current`. Five callers pass a line with none:
 
-- `features/import/ui/import-page.tsx` passes every step as `done` once the import has finished.
+- `features/import/ui/import-page.tsx` and `features/import/ui/import-console.tsx` pass every step as `done` once
+  the import has finished.
 - `features/payroll/ui/run-page.tsx` passes every step as `done` for a complete run, and every step as `waiting`
   for a void run. A browser test asserts both: see the tests below.
+- `features/payroll/ui/run-console.tsx` passes three stages from `buildCompactRunStages`
+  (`features/payroll/domain/run-register.ts`): every stage `done` for a paid run, and every stage `waiting` for a
+  void run or a status that function does not know.
+- `features/payroll/ui/payroll-setup-console.tsx` passes its three steps as `done` once the fields of all three are
+  set.
 
 Nothing limits `current` to one step either. Every step passed as `current` gets `aria-current="step"` and the
 current look.
@@ -103,23 +111,25 @@ of the component's folder for `isComposing`, `keyCode`, `229` and `composition` 
 - **Role:** `list`, from the `<ol>`, with a `listitem` for each step.
 - **Accessible name:** `aria-label` on the list, from `label`. The prop is required.
 - **Current step:** `aria-current="step"` on the item.
-- **What a step reads as:** its label and nothing else. The number box is hidden from a screen reader, with the
-  number or the check inside it. The place of a step comes from the order of the list.
+- **What a step reads as:** a `done` or a `waiting` step reads as an image named with its state, then its label.
+  The names are `uiStepLine.state.done` and `uiStepLine.state.waiting`: see Copy rules. The current step reads as
+  its label alone: its box is hidden from a screen reader, and so is the box of a step whose `state` the
+  component does not know. The check is hidden too: its `<svg>` carries `aria-hidden="true"`. The number of a
+  `waiting` step is generated content inside the image. ARIA makes what an image holds presentational; whether a
+  screen reader speaks the number was not checked. The place of a step comes from the order of the list.
+- **Text:** the state adds no text to a step. The text of every step is its label alone.
 - **Announced:** nothing. The line has no live region. A step that becomes current or done is not announced.
 
 Known gaps:
 
-- Nothing tells a screen reader that a step is done. The check is inside the hidden box, and there is no hidden
-  word and no attribute for it. A step before the current one can be taken as done; when no step is current, as
-  on the import page after it has finished, nothing in the line says where the task stands.
 - A step cannot be marked as failed.
 
 The WCAG 2.2 criteria that apply:
 
 | Criterion | How the step line answers it |
 |---|---|
-| 1.1.1 Non-text Content | The number and the check have no text alternative. The number repeats the list order. The check does not repeat anything a screen reader gets: see the first gap. |
-| 1.3.1 Info and Relationships | An ordered list and `aria-current="step"`. The done state is on screen only. |
+| 1.1.1 Non-text Content | The box of a `done` or a `waiting` step is an image named with the state. The number in a box has no text alternative of its own: it repeats the list order. The box of the current step is hidden, and `aria-current` says what its fill shows. |
+| 1.3.1 Info and Relationships | An ordered list, `aria-current="step"` on the current step, and the name of the box on a `done` or a `waiting` step. |
 | 1.4.1 Use of Color | A done step has a check where the number was. The current step has a filled box and heavier, darker text. Neither rests on colour alone. |
 | 1.4.3 Contrast (Minimum), 1.4.11 Non-text Contrast | Every colour is a token; none is written in the component. |
 | 1.4.10 Reflow | The row wraps. |
@@ -134,6 +144,17 @@ These tests assert its output. They were found by searching `e2e` and `apps/web/
 - `apps/web/src/ui/step-line/step-line.test.tsx`, the first of its two tests: for a line of three steps it finds
   the labels of the first two in the markup, `aria-current="step"`, and the `done` and `current` states. The
   second test in that file is for `GateRail`.
+- `apps/web/src/ui/step-line/step-line.browser.test.tsx`, in Chromium, with the line as two callers pass it. Every
+  step of a finished import and every stage of an issued payroll run holds an image named
+  `uiStepLine.state.done`, and every stage of a void run one named `uiStepLine.state.waiting`. A calculated run
+  has two done stages, a current stage with no such image and a hidden box, and three waiting stages. The text
+  of each step is its label alone. The box of a done stage holds an `<svg>`, the first of them with
+  `aria-hidden="true"`, and the box of every other stage draws its number.
+- `apps/web/src/ui/patterns/wizard.browser.test.tsx`, on the fixture of `WizardPattern`, whose `steps` is a step
+  line: the item that has `aria-current="step"` holds the label of the basics step, then of the certificate step
+  after next, of the basics step again after back, and of the review step after two more.
+- `e2e/mock/payroll-run-console.spec.ts`, on the baseline run page: the list named `payroll.stages.title` is
+  visible in the main region.
 - `features/payroll/ui/run-header.browser.test.tsx`, for a staged, an issued and a void run: the list is found by
   its name and has six items, with no button or link inside. One item is current for the staged run and none for
   the other two. All six are `done` for the issued run and none for the other two.
@@ -145,7 +166,7 @@ These tests assert its output. They were found by searching `e2e` and `apps/web/
   that has `aria-current="step"`: `import.step.preview` or `import.step.dryrun`. They look for it in the whole
   page, not in the list.
 
-None of these asserts the check, the drawn number, the rule, a `waiting` step by its state or the wrapping.
+None of these asserts the rule or the wrapping.
 
 No workflow runs the accessibility scan of the gallery. `e2e/visual.spec.ts` runs axe with the WCAG 2.2 A and AA
 rules over the whole gallery, in the light and the dark theme, when it is run against a development stack. It
@@ -154,27 +175,39 @@ skips itself on the served build, which is the one the workflows use. The comman
 
 ## Phone behaviour at 390 px
 
-Nothing in `step-line.module.css` changes with the width of the screen. It has no media query and no container
-query.
+`step-line.module.css` has one media query, `(max-width: 767px)`, and its rules apply only under a Console
+experience: an element with a `data-experience` other than `baseline` above the line. There the gap is 6 px
+(`--space-1-5`) between rows and 12 px (`--space-3`) between steps, and no rule is drawn between steps. It has no
+container query.
 
 - The row wraps: a step that does not fit drops to the next row.
-- The rule belongs to the step that follows it, so it wraps with that step. A wrapped row starts with a rule.
+- In the baseline, the rule belongs to the step that follows it, so it wraps with that step. A wrapped row starts
+  with a rule.
 - Nothing in the line is a touch target.
 
 A search of the stylesheets under `apps/web/src` for the component's name finds no view that restyles it. Where
 the line sits at phone width is up to what holds it. The `tools` slot of the page head, which three of the five
-callers use, is itself a row that wraps (`.tools` in `ui/page-head/page-head.module.css`), inside the head's
-title row, which wraps too. So there the line shares a wrapping row with any other tool the caller passes.
+baseline callers use, is itself a row that wraps (`.tools` in `ui/page-head/page-head.module.css`), inside the
+head's title row, which wraps too. So there the line shares a wrapping row with any other tool the caller passes.
 
 ## Copy rules
 
-- The step line holds no text of its own and owns no message id. It does not import the message catalog.
+- The step line draws no text of its own. It owns two message ids, in
+  `packages/i18n/src/catalogs/en/ui-step-line.ts` and its `ko` twin. Each is the name of a number box and is not
+  shown on screen:
+
+| Message id | Where it is used |
+|---|---|
+| `uiStepLine.state.done` | The name of the box of a `done` step. |
+| `uiStepLine.state.waiting` | The name of the box of a `waiting` step. |
+
 - `label`, the name of the list, and the `label` of each step come from the message catalog in `packages/i18n`,
   through the caller. The `en` catalog is the source and the `ko` catalog must define every id.
-- The callers name the list with `bulk.page.steps`, `renew.steps`, `import.steps` and `payroll.stages.title`. The
-  gallery uses `common.steps`.
-- A step's label is a word or two that names the step. It must make sense without its number: the number is not
-  read out.
+- The callers name the list with `bulk.page.steps`, `renew.steps`, `import.steps`, `payroll.stages.title`,
+  `entityCreate.steps`, `orgBulk.import.title`, `payroll.setup.page` and `payroll.create.title`. The gallery uses
+  `common.steps`, and the wizard pattern's fixture `pat.wizard.stepsLabel`.
+- A step's label is a word or two that names the step. It must make sense without its number: the number is drawn
+  by the stylesheet and is not part of the step's text.
 - The gallery's sample labels are in the gallery catalog, which production builds leave out.
 
 ## Props

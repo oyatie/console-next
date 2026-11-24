@@ -825,7 +825,7 @@ test("Console /approvals full-screen button works on auto-selected row and clear
     await fullBtn.click();
     await expect(fullBtn).toHaveAttribute("aria-pressed", "false");
 
-    // Start decision on doc 1 (409 sets decisionDocId and refetches doc 1 with my_actions=none), switch to doc 2, switch back -> no empty footer
+    // Start a decision on doc 1: the 409 refetches it with my_actions=none, so the inbox holds it as once offered only while it stays open. Switch to doc 2, switch back -> no empty footer
     await sidePane.getByRole("button", { name: t("composer.verb.approve"), exact: true }).click();
     await expect(sidePane.getByRole("alert")).toContainText(t("approvals.viewer.changed"));
 
