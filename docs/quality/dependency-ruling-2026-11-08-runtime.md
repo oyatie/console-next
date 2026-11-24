@@ -10,10 +10,11 @@ maintenance decision, not a new explicit owner approval of Debian 13.
 The existing CI/supply chain users remain `deploy` and
 `deploy/images/console.Dockerfile`.
 
-`deploy/versions.json` `images.runtime` is the sole digest authority. The Docker
-build receives that value as `RUNTIME_IMAGE`; generated inventory derives from
-the same lock. The upstream authority retains the Distroless keyless signer
-`keyless@distroless.iam.gserviceaccount.com` and Google OIDC issuer.
+`images.runtime` in `deploy/versions.json` supplies the Docker build's
+`RUNTIME_IMAGE` and the generated inventory. The supply-chain test holds the
+reviewed digest for comparison before merge. The upstream authority retains
+the Distroless keyless signer `keyless@distroless.iam.gserviceaccount.com` and
+Google OIDC issuer.
 
 The [registry tag listing](https://gcr.io/v2/distroless/cc-debian13/tags/list)
 identifies the nonroot multiarch image. Its `libssl3t64` package includes

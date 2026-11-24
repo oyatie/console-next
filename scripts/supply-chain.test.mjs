@@ -325,12 +325,12 @@ test("Node image digest stays paired with the reviewed upstream tag", () => {
   assert.equal(node.uses.find((u) => u.file === "deploy/versions.json").pin, versions.images.node);
 });
 
-test("the final image stage uses the pinned Distroless nonroot runtime", () => {
+test("the shipped image stage builds on images.runtime, the reviewed Distroless cc-debian13 nonroot digest", () => {
   const versions = JSON.parse(read("deploy/versions.json"));
-  const finalStage = read("deploy/images/console.Dockerfile").split(/^[ \t]*FROM[ \t]+/im).at(-1);
-  const image = /^\$\{(\w+)_IMAGE\}(?:\s|$)/.exec(finalStage)?.[1].toLowerCase();
-  assert.equal(versions.upstreamImages[image], "gcr.io/distroless/cc-debian13:nonroot");
-  assert.match(versions.images[image], /^gcr\.io\/distroless\/cc-debian13@sha256:[a-f0-9]{64}$/);
+  const stages = [...read("deploy/images/console.Dockerfile").matchAll(/^[ \t]*FROM[ \t]+(?:--platform=\S+[ \t]+)?(\S+)/gim)];
+  assert.equal(stages.at(-1)?.[1], "${RUNTIME_IMAGE}", "the shipped stage must build on images.runtime");
+  // The image scan runs on dev pushes. Update this reviewed digest with the build pin so regressions fail before merge.
+  assert.equal(versions.images.runtime, "gcr.io/distroless/cc-debian13@sha256:532c7a94f9e96ba9db75eb9388f4227751131c7cb0a411d1a8521af4096135de");
 });
 
 test("security workflow templates use the shared Node major", () => {

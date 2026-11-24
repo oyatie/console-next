@@ -302,7 +302,6 @@
   },
   "upstreamImages": {
     "node": "docker.io/library/node:26.12.1-bookworm-slim",
-    "runtime": "gcr.io/distroless/cc-debian13:nonroot",
     "seaweed": "docker.io/chrislusf/seaweedfs:4.48",
     "quay.io/argoproj/argo-rollouts:latest": "quay.io/argoproj/argo-rollouts:v1.10.1",
     "ghcr.io/sigstore/policy-controller/policy-controller@sha256:0bcd60beb93f4427c29cf3a669743caf58490e98ded4380c33c09f092734a6ab": "ghcr.io/sigstore/policy-controller/policy-controller:v0.15.1"
