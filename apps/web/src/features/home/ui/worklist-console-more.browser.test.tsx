@@ -25,31 +25,31 @@ beforeAll(async () => {
       await loadCatalog('ko');
       document.documentElement.dataset.experience = 'console';
 
-      const page = count => ({
+      const page = (count, all) => ({
         items: Array.from({ length: count }, (_, i) => ({
           id: 'row-' + i, kind: 'insurance_filing', lane: 'turn', title: 'Insurance filing ' + i, ref: 'INS-' + i,
           urg: 'wait', due: '2026-11-17T00:00:00+09:00', due_basis: 'statutory', dueTone: 'neutral', done: false,
           days_remaining: 7, links: [{ kind: 'statutory', id: 'ins-' + i }],
         })),
         total: count, total_is_exact: true, next_cursor: null, unavailable: [], available_filters: ['turn', 'waiting'],
-        attention_filters: [{ key: 'all', total: count, total_is_exact: true }],
+        attention_filters: [{ key: 'all', total: all, total_is_exact: true }],
         counts: { turn: { total: count, total_is_exact: true } }, upcoming: [], has_work: true, quick_starts: [],
         as_of: '2026-11-10T09:00:00+09:00',
       });
 
-      function Home({ count }) {
-        const inbox = useInfiniteQuery({ queryKey: ['inbox', count], queryFn: () => page(count), initialPageParam: null, getNextPageParam: () => undefined, enabled: true });
+      function Home({ count, all }) {
+        const inbox = useInfiniteQuery({ queryKey: ['inbox', count, all], queryFn: () => page(count, all), initialPageParam: null, getNextPageParam: () => undefined, enabled: true });
         return React.createElement(InboxReadContext.Provider, { value: { inbox, attention: 'all', setAttention: () => {} } },
           React.createElement(WorklistConsole, { mode: 'home', title: 'Home', titleId: 'home-title', baseline: () => null }));
       }
 
       let root;
-      window.mountHome = count => {
+      window.mountHome = (count, all = count) => {
         root?.unmount();
         const rootRoute = createRootRoute();
         const router = createRouter({
           routeTree: rootRoute.addChildren([
-            createRoute({ getParentRoute: () => rootRoute, path: '/', component: () => React.createElement(Home, { count }) }),
+            createRoute({ getParentRoute: () => rootRoute, path: '/', component: () => React.createElement(Home, { count, all }) }),
             createRoute({ getParentRoute: () => rootRoute, path: '/inbox', component: () => null }),
           ]),
           history: createMemoryHistory({ initialEntries: ['/'] }),
@@ -69,8 +69,8 @@ afterAll(async () => {
 
 const inboxLink = () => mounted.page.getByRole("link", { name: t("home.inbox.viewInbox"), exact: true });
 
-async function mountHome(count: number) {
-  await mounted.page.evaluate(n => (window as unknown as { mountHome: (count: number) => void }).mountHome(n), count);
+async function mountHome(count: number, all = count) {
+  await mounted.page.evaluate(([n, a]) => (window as unknown as { mountHome: (count: number, all: number) => void }).mountHome(n, a), [count, all] as const);
   await mounted.page.locator(count ? '[data-pattern="worklist"] tbody tr[data-id]' : '[data-pattern="worklist"] [class*="moreBar"]').first().waitFor();
 }
 
@@ -102,6 +102,11 @@ test("a short home list unfolds in place and offers the to-do link once every ro
   await showMore(13);
   await expect.poll(() => inboxLink().count()).toBe(0);
   await showMore(3);
+  await expect.poll(() => inboxLink().count()).toBe(1);
+});
+
+test("a short chip of a long home list keeps the to-do link", async () => {
+  await mountHome(15, 2000);
   await expect.poll(() => inboxLink().count()).toBe(1);
 });
 
