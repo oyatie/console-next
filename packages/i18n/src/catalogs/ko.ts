@@ -81,6 +81,7 @@ import { koUiHandoff } from "./ko/ui-handoff";
 import { koUiLongTable } from "./ko/ui-long-table";
 import { koUiServerPicker } from "./ko/ui-server-picker";
 import { koUiSetupRail } from "./ko/ui-setup-rail";
+import { koUiStepLine } from "./ko/ui-step-line";
 import { koUiSectionConfirm } from "./ko/ui-section-confirm";
 import { koUiFileDrop } from "./ko/ui-file-drop";
 import { koUiCodePicker } from "./ko/ui-code-picker";
@@ -208,6 +209,7 @@ export const ko: Record<ScreenMessageId, string> = {
   ...koUiLongTable,
   ...koUiServerPicker,
   ...koUiSetupRail,
+  ...koUiStepLine,
   ...koUiSectionConfirm,
   ...koUiFileDrop,
   ...koUiCodePicker,
