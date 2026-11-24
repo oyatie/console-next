@@ -2,6 +2,7 @@
 import { shell } from "../shell";
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
+import { fmtNumber } from "@console/i18n/format";
 import { expectAxe, fits } from "../a11y";
 import { clearShifts, expectStable, recordShifts } from "../stability";
 import { go } from "../flows";
@@ -9,6 +10,7 @@ import { screens } from "../states/registry";
 import { failure, inbox, screenAccess, token } from "./fixtures";
 import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
+import { EXPERIENCE_KEY } from "../../apps/web/src/lib/prefs";
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -146,9 +148,10 @@ test("Home shares its arrival read and refreshes held work after attention chang
   expect(mock.unexpected).toEqual([]);
 });
 
-test("the task count never steps back to an older copy while a page re-reads it", async ({ page }) => {
+for (const experience of ["baseline", "console"] as const) test(`the task count never steps back to an older copy while a page re-reads it in ${experience}`, async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.addInitScript(recordShifts);
+  if (experience === "console") await page.addInitScript(key => localStorage.setItem(key, "console"), EXPERIENCE_KEY);
   const mock = await mockScreen(page, screens[0], "populated");
   await page.addInitScript(() => {
     const fetch = window.fetch;
@@ -171,28 +174,32 @@ test("the task count never steps back to an older copy while a page re-reads it"
     queue.counts.turn = { total: turn, total_is_exact: turn < 100 };
     return { status: 200, json: queue };
   });
-  await page.goto("/people");
+  const nav = page.getByRole("navigation", { name: t("shell.nav"), exact: true });
+  // Baseline shows the count on the header's task button; the console on the rail's Home link.
   const trigger = page.locator("#top-needs-me");
-  await expect(trigger).toHaveAccessibleName(t("shell.needsMe.count", { count: 5 }), { timeout: 20_000 });
+  const shows = (count: number, options?: { timeout: number }) => experience === "baseline"
+    ? expect(trigger).toHaveAccessibleName(t(count < 100 ? "shell.needsMe.count" : "shell.needsMe.countMore", { count }), options)
+    : expect(nav.getByRole("link", { name: t("shell.link.todo") }).getByText(fmtNumber(count), { exact: true })).toBeVisible(options);
+  await page.goto("/people");
+  await shows(5, { timeout: 20_000 });
   turn = 125;
   await go(page, "/");
-  const newer = t("shell.needsMe.countMore", { count: 125 });
-  await expect(trigger).toHaveAccessibleName(newer);
+  await shows(125);
   // A change arrives on Home: the roster's own copy of the count is marked stale there, not re-read (nothing shows it).
   await page.evaluate(() => window.dispatchEvent(new Event("inbox-arrival")));
   await page.getByRole("button", { name: t("live.list.new_rows", { count: 1 }), exact: true }).click();
-  await expect(trigger).toHaveAccessibleName(newer);
+  await shows(125);
   const held = Promise.withResolvers<void>();
   hold = held.promise;
   await page.evaluate(clearShifts);
   try {
-    await page.getByRole("navigation", { name: t("shell.nav"), exact: true }).getByRole("link", { name: t("shell.link.people"), exact: true }).click();
+    await nav.getByRole("link", { name: t("shell.link.people"), exact: true }).click();
     await expect(page).toHaveURL(/\/people$/);
     await expect(page.getByRole("main").locator("h1").first()).toBeVisible();
-    // Arriving re-reads that stale copy: the badge keeps the newer count it showed meanwhile.
-    await expect(trigger).toHaveAccessibleName(newer);
+    // Arriving re-reads that stale copy: the count keeps the newer one it showed meanwhile.
+    await shows(125);
   } finally { held.resolve(); }
-  await expect(trigger.locator("[data-count]")).toHaveText("125+");
+  await shows(125);
   await expectStable(page, "task count re-read on arrival");
   expect(mock.unexpected).toEqual([]);
 });

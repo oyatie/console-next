@@ -356,7 +356,22 @@ for (const width of [1440, 1024]) test(`baseline top bar keeps its controls in p
   await page.evaluate(clearShifts);
   // The browser reports the network gone: the stream reconnects at once and its server refuses it.
   await page.evaluate(() => { document.documentElement.dataset.streamDown = "1"; window.dispatchEvent(new Event("offline")); });
-  await expect(page.getByText(t("live.status.reconnecting"), { exact: true })).toBeVisible({ timeout: 8_000 });
+  const reconnecting = page.getByText(t("live.status.reconnecting"), { exact: true });
+  await expect(reconnecting).toBeVisible({ timeout: 8_000 });
+  // Measured in the font it settles in: the chip's own glyphs may arrive after it appears.
+  await page.evaluate(() => document.fonts.ready);
+  // The search field gives way first: the warning is drawn whole, never cut to an ellipsis. Measured against an unclipped
+  // copy, since a fraction of a pixel short already draws the ellipsis and rounded scroll sizes cannot see it.
+  const [drawn, whole] = await reconnecting.evaluate(el => {
+    const copy = el.cloneNode(true) as HTMLElement;
+    copy.style.position = "absolute";
+    copy.style.visibility = "hidden";
+    el.after(copy);
+    const widths = [el.getBoundingClientRect().width, copy.getBoundingClientRect().width];
+    copy.remove();
+    return widths;
+  });
+  expect(drawn, "the reconnecting text is not clipped").toBeGreaterThanOrEqual(whole!);
   expect(await boxes()).toEqual(before);
   expect(await page.getByRole("banner").evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
   await expectStable(page, "stream reconnecting");
