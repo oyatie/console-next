@@ -123,8 +123,19 @@ test("transitioning into recorded while a reason form is open moves focus to the
   await page.getByRole("button", { name: "Request changes", exact: true }).focus();
   await page.keyboard.press("Enter");
   await expectDom(page.getByRole("heading", { level: 3, name: "Return for edits" })).toBeFocused();
-  await page.locator("#record-async").click();
+  // The receipt arrives on its own, so the trigger must not take the focus the form holds.
+  await page.locator("#record-async").dispatchEvent("click");
   const doneHeading = page.getByRole("article", { name: "Dissolves the support team on 2 Nov" }).getByRole("heading", { level: 2 });
   await expectDom(doneHeading).toBeFocused();
   await expectDom(page.getByRole("status")).toHaveText("Recorded while form open 0");
+});
+
+test("a receipt that arrives while focus is on a control outside the card leaves focus there", async () => {
+  await openBrowserTestPage(page, url(), page.getByRole("button", { name: "Approve dissolution", exact: true }));
+  await expectDom(page.locator("#external")).toBeFocused();
+  await page.locator("#record-async").dispatchEvent("click");
+  await expectDom(page.getByRole("status")).toHaveText("Recorded while form open 0");
+  await expectDom(page.locator("#external")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expectDom(page.locator("#external")).toHaveText("External 1");
 });

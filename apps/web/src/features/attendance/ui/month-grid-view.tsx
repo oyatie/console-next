@@ -19,9 +19,8 @@ import type { useDrafts } from "./use-drafts";
 const HOLIDAY = new Set(["PUBLIC_HOLIDAY", "SUBSTITUTE_HOLIDAY", "ELECTION_DAY", "LABOR_DAY", "CONTRACTUAL_HOLIDAY"]);
 const REST = new Set(["WEEKLY_HOLIDAY", "REST_DAY"]);
 
-/** The open editor: its person-day, the If-Match base seen when typing began, whether its month is closed, and the
- * drafts scope it was typed in. */
-type Editing = { value: string; key: string; base: string | null; own: boolean; closed: boolean; name: string; scope: string };
+/** The open editor: its person-day, its draft when it opened ("" for none), the If-Match base, whether its month is closed, its drafts scope. */
+type Editing = { value: string; was: string; key: string; base: string | null; own: boolean; closed: boolean; name: string; scope: string };
 
 export type GridAct =
   | { kind: "day"; row: GridRow; day: number }
@@ -74,7 +73,9 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act, c
   const start = (value: string): Editing | null => {
     if (!f) return null;
     const x = facts(f.r, f.c);
-    return { value, key: x.key, base: baseOf(drafts, x.key, x.entryId), own: x.own, closed: x.closed, name: rows[f.r]!.name, scope: store.scope };
+    // Opened without a typed character (Enter, F2, a double-click), the editor holds the cell's draft.
+    const was = drafts[x.key]?.value ?? "";
+    return { value: value || was, was, key: x.key, base: baseOf(drafts, x.key, x.entryId), own: x.own, closed: x.closed, name: rows[f.r]!.name, scope: store.scope };
   };
   const columns: DayColumn[] = useMemo(() => days.map((d, c) => {
     const kind = rows[0]?.cells[c]?.plan_kind ?? "";
@@ -87,8 +88,10 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act, c
     // Closed is read at the commit, not when typing began: a live unlock or re-lock may have landed in between.
     const row = editing.scope === store.scope ? rows.find((x) => x.employee_id === splitKey(editing.key).employee_id) : undefined;
     const shut = row ? closed(row.month_state) : editing.closed;
-    const refused = editing.own ? t("attendanceRecords.grid.ownRow") : shut ? t("attendanceRecords.grid.closedRow") : null;
-    if (!refused) store.put(editing.key, v ? { value: v, base: editing.base } : null);
+    // Left as it opened: nothing to write, to undo or to refuse.
+    const changed = v !== editing.was;
+    const refused = !changed ? null : editing.own ? t("attendanceRecords.grid.ownRow") : shut ? t("attendanceRecords.grid.closedRow") : null;
+    if (changed && !refused) store.put(editing.key, v ? { value: v, base: editing.base } : null);
     setEditing(null);
     const { employee_id, work_date } = splitKey(editing.key);
     const r = axes.rows.indexOf(employee_id);
@@ -102,7 +105,7 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act, c
   // its person's draft in the scope it was typed in, never the scope on screen now, and says so.
   const leave = (e: Editing) => {
     const v = e.value.trim();
-    if (!v) return;
+    if (!v || v === e.was) return;
     if (e.own || e.closed) return act({ kind: "note", message: t(e.own ? "attendanceRecords.grid.editDiscarded" : "attendanceRecords.grid.editDiscardedClosed", { name: e.name }) });
     const problem = store.keep(e.scope, e.key, { value: v, base: e.base });
     act({ kind: "note", message: t(problem ? "attendanceRecords.grid.editNotKept" : "attendanceRecords.grid.editKept", { name: e.name }) });
@@ -168,6 +171,8 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act, c
     if (mod && e.key.toLowerCase() === "s") return run(() => act({ kind: "save" }));
     if (mod && e.key.toLowerCase() === "z") return run(e.shiftKey ? store.redo : store.undo);
     if (mod && e.key.toLowerCase() === "y") return run(store.redo);
+    // The chords above are the page's on the table and on a control in a cell; the rest act on the selection, from the table itself.
+    if (e.target !== e.currentTarget) return false;
     if ((e.key === "[" || e.key === "]") && !mod) return run(() => act({ kind: "month", step: e.key === "[" ? -1 : 1 }));
     if (!f || !rect) return false;
     if (mod && e.key.toLowerCase() === "d") return run(() => {
@@ -198,14 +203,15 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act, c
   };
 
   // ⌘V while the grid has focus: rows by employee number, one row across from the focused cell.
+  const table = useRef<HTMLTableElement>(null);
   const box = useRef({ rows, focus: f });
   useEffect(() => {
     box.current = { rows, focus: f };
   });
   useEffect(() => {
     const paste = (e: ClipboardEvent) => {
-      const active = document.activeElement;
-      if (!(active instanceof HTMLElement) || active.matches("input, textarea, [contenteditable]") || !active.closest('[role="grid"]')) return;
+      // A paste goes to the text selection, so the focus says whose it is: this grid itself, not a control in it or another grid.
+      if (document.activeElement !== table.current) return;
       const text = e.clipboardData?.getData("text/plain");
       if (!text) return;
       e.preventDefault();
@@ -237,7 +243,7 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act, c
   const scheduleLead = {
     key: "schedule", header: t("attendanceRecords.day.plan"), width: "name" as const,
     cell: (r: GridRow) => r.cells.some((c) => c.plan_kind === "NO_SCHEDULE") ? <>
-      {t("attendance.dayKind.NO_SCHEDULE")} <Button size="sm" onPointerDown={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} onClick={() => act({ kind: "assign", row: r })}>{t("attendanceRecords.unscheduled.assign")}</Button>
+      {t("attendance.dayKind.NO_SCHEDULE")} <Button size="sm" onPointerDown={(e) => e.stopPropagation()} onClick={() => act({ kind: "assign", row: r })}>{t("attendanceRecords.unscheduled.assign")}</Button>
     </> : null,
   };
   const positionLead = { key: "position", header: t("attendance.monthConsole.grid.position"), width: "name" as const, hideOnPhone: true, cell: (r: GridRow) => r.position ?? "–" };
@@ -302,6 +308,7 @@ export function MonthGridView({ rows, total, days, store, range, onRange, act, c
       onEdit={(v) => setEditing(v === null ? null : editing ? { ...editing, value: v } : start(v))}
       onCommit={commit}
       onKey={onKey}
+      tableRef={table}
       groupOf={(r) => r.unit_name ?? ""}
     />
       {pasting && <PastePreviewSheet plan={pasting.plan} people={pasting.people} month={pasting.month} onClose={() => setPasting(null)} onAccept={acceptPaste} />}

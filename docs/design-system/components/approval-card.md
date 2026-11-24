@@ -11,15 +11,25 @@ It lives in `apps/web/src/ui/approval-card`: the component in `approval-card.tsx
 ## When to use it, and when not
 
 Use it for one approval item on which the server offers this person approve and reject, with or without request
-changes. One feature renders it: the approval viewer, `features/approvals/ui/approval-viewer.tsx`, and only when
-the server offers both commands. The viewer is shown in two places: on a page of its own, and in the record column
-of the approvals list (`features/approvals/ui/approvals-page.tsx`), which is a pane of `FlexibleColumns`
-(`ui/flexible-columns`). The column is where the card's `data-escape-scope` attribute matters: see Keyboard.
+changes. One feature renders it: the decision panel of approvals, `features/approvals/ui/approval-decision-panel.tsx`.
+The panel draws the card while the server offers both commands, while a decision it sent is on its way, and with the
+receipt once the decision is recorded. Three screens draw the panel:
+
+- The baseline viewer, `ApprovalDocumentView` in `features/approvals/ui/approval-viewer.tsx`, on a page of its own
+  and in the record column of the baseline approvals list (`features/approvals/ui/approvals-page.tsx`), which is a
+  pane of `FlexibleColumns` (`ui/flexible-columns`).
+- The Console document page, `ApprovalViewerPage` in `approval-viewer.tsx`, with `docked`, in the decision column of
+  `DocumentDecision` (`ui/patterns/document-decision.tsx`).
+- The Console approvals list in `approvals-page.tsx`, with `docked` and `compact`, in the footer of the record pane
+  of `Worklist` (`ui/patterns/worklist.tsx`), which is a pane of `PaneGrid` (`ui/pane-grid`).
+
+The record columns are where the card's `data-escape-scope` attribute matters: see Keyboard.
 
 Two rules for the caller:
 
 - Give the card a `key` that is the item's id. The open form is the card's own state, and a new key is what stops
-  it from carrying over to the next item. The viewer keys the panel that holds the card.
+  it from carrying over to the next item. Each of the three screens keys the panel that holds the card by the
+  document's id.
 - Pass `returnLabel`, `returnConsequence` and `onReturn` together, or none of them. The type refuses one or two.
   Without them the card offers approve and reject only.
 
@@ -50,7 +60,7 @@ The card has three shapes: deciding, a reason form, and recorded.
 | Title | `<h2>` | `title`. |
 | Children | None of its own | `children`, as passed. |
 | Consequence | `<div role="note">` | `consequence`. |
-| Bar | `<div>` | In this order: the blocked reason, a `<span>`, only with `approveBlocked`; the meta, a `<span>`, only with `meta`; a spacer `<span>`; the reject button; the request-changes button, only with `onReturn`; the approve button. |
+| Bar | `<div>` | In this order: the blocked reason, a `<span>` with `staleBlocked`, or else `approveBlocked`, only when one of them is given; the meta, a `<span>`, only with `meta`; a spacer `<span>`; the reject button; the request-changes button, only with `onReturn`; the approve button. |
 
 **A reason form** opens when reject or request changes is pressed. It takes the place of the consequence and the
 bar. The body above it stays.
@@ -61,7 +71,7 @@ bar. The body above it stays.
 | Form heading | `<h3 tabindex="-1">` | `rejectLabel` or `returnLabel`. |
 | Reason | None of its own | What `reason` returns for the open form, `"reject"` or `"return"`. |
 | Consequence | `<div role="note">` | `rejectConsequence` or `returnConsequence`. |
-| Bar | `<div>` | A back button; a spacer `<span>`; the missing-reason text, a `<span>`, only while the reason is not complete; the commit button, which shows the same label as the heading. |
+| Bar | `<div>` | A back button; a spacer `<span>`; while `staleBlocked` is set, the blocked reason, a `<bdi>` with `staleBlocked`, and otherwise the missing-reason text, a `<span>`, only while the reason is not complete; the commit button, which shows the same label as the heading. |
 
 The reason is complete when `reasonComplete` is `true`, or, when it is a function, when it returns `true` for the
 open form.
@@ -77,6 +87,12 @@ truth, so any falsy value is not given: `false`, `null`, `undefined`, `0` or an 
 
 The recorded card keeps `title` as its heading and renders no eyebrow, step, `children`, consequence or button.
 
+**Docked** (`docked`) changes the deciding and the recorded shapes. The `<article>` has no `card` class. A
+`PaneHead` (`ui/pane-grid`), a `<header>` with `title` and `meta`, stands above the body in place of the `<h2>`: its
+heading is an `<h2>`, with `tabindex="-1"` in the recorded shape. The eyebrow is not drawn. The body begins with a
+row that holds `step` and `due`, drawn only when one of them is given. The bar leaves `meta` out. `compact` sets
+`data-compact` on the `<article>`, which the stylesheet reads in the record pane of a Console screen.
+
 Every button is a React Aria `Button`, a native `<button type="button">`, with the global `btn` classes. The card
 does not use the `Button` of `ui/button`.
 
@@ -85,7 +101,8 @@ nothing.
 
 ## Looks and sizes
 
-There is one look and one size. No prop picks a variant.
+No prop picks a look. The table below is the look of the baseline. A Console screen draws the card in a look of its
+own, after the class table, and `compact` changes that look in a record pane.
 
 | Part | Look |
 |---|---|
@@ -117,6 +134,35 @@ The buttons take these classes:
 Reject, request changes and approve share one minimum height and sit side by side while the row has room. Approve
 differs only in its `btn--primary` colours.
 
+**The Console look.** Under a Console experience (an element above the card with a `data-experience` other than
+`baseline`), inside the decision column of `DocumentDecision` (`[data-pattern="document-decision"]`) or a record
+pane (`[data-pane="record"]`), the stylesheet changes these parts:
+
+| Part | Console look |
+|---|---|
+| Card | Full width, with no border, radius, shadow or fill. |
+| Progress | 8 px (`--space-2`) top and bottom, 12 px (`--space-3`) side padding. |
+| Body | 12 px (`--space-3`) padding, 8 px (`--space-2`) between its parts. |
+| Eyebrow | No extra letter spacing. |
+| Step | 2 px (`--space-half`) by 8 px (`--space-2`) padding, semibold (`--fw-semibold`). |
+| Title | 13 px (`--text-sm`), semibold, `--lh-tight` line height. |
+| Consequence | Plain text, not a box: no margin, border, radius or fill, 12 px (`--space-3`) padding at the sides and the bottom, 12 px (`--text-xs`) `--steel` text at `--lh-base`, and a following `<p>` the same size. It is drawn after the bar (`order: 1`). In a form it keeps its place before the bar and has no padding. |
+| Bar | 8 px (`--space-2`) by 12 px (`--space-3`) padding, and no spacer. The meta takes a row of its own. Each button in the bar grows to share its row, approve twice as much as the others, with its label centred and kept on one line. In a form the bar has 8 px of padding on top only. |
+| Form | 12 px (`--space-3`) padding and a `--border` line on top. Its parts have no side margins. |
+| Form heading | 13 px (`--text-sm`), no margin. |
+| Done | 12 px (`--space-3`) padding, 8 px (`--space-2`) between its parts. |
+
+With `compact`, in a record pane, these change again:
+
+| Part | Compact look |
+|---|---|
+| Card | Does not clip what overflows it. |
+| Pane head | Pulled out over the footer's padding, 8 px (`--space-2`) at the top and 12 px (`--space-3`) at the sides, and at least `--row-h-compact` high. |
+| Body | 4 px (`--space-1`) padding on top only, 4 px between its parts. A `<div>` in the body, as the opinion field is, lays out its first part and its second in a row 8 px (`--space-2`) apart: the first does not shrink or wrap, and the second takes the rest of the row. A text area is `--field-h` high, with 4 px (`--space-1`) by 8 px (`--space-2`) padding. |
+| Consequence, bar | 4 px (`--space-1`) padding on top only. |
+| Form | 8 px (`--space-2`) padding on top only. |
+| Done | 8 px (`--space-2`) padding on top only, 6 px (`--space-1-5`) between its parts. |
+
 ## States
 
 | State | What happens |
@@ -126,11 +172,11 @@ differs only in its `btn--primary` colours.
 | Keyboard focus | Buttons, the form heading, and the recorded heading take the global 2 px `--primary` `:focus-visible` outline, 2 px away. When focus moves programmatically on a keyboard-driven transition (opening a form or transitioning into `receipt`), the heading shows `:focus-visible`, while pointer-triggered transitions leave it without a ring. |
 | Pressed down | No look. Neither `approval-card.module.css` nor `app.css` has an `:active` rule or a `data-pressed` rule. |
 | Selected | Does not exist. An open form is not marked on the button that opened it: that button is not rendered while the form is open. |
-| Disabled | The native `disabled` attribute, drawn by the global `.btn[disabled]` rule: half opacity and a `not-allowed` cursor. Approve is disabled while `approveBlocked` is set. The commit of a form is disabled until the reason is complete. Every button is disabled while `pending` is set. In the first two cases the reason is visible text in the bar; while `pending`, nothing says why. |
+| Disabled | The native `disabled` attribute, drawn by the global `.btn[disabled]` rule: half opacity and a `not-allowed` cursor. Approve is disabled while `approveBlocked` or `staleBlocked` is set. The commit of a form is disabled until the reason is complete, and while `staleBlocked` is set. Every button is disabled while `pending` is set. Except while `pending`, the reason is visible text in the bar: `staleBlocked` before `approveBlocked`, and in a form `staleBlocked` in place of the missing-reason text. While `pending`, nothing says why. |
 | Read-only | Does not exist. No prop shows the item without its decisions, other than `receipt`. |
 | Invalid | None of its own. A reason that is not complete is not drawn as an error: the commit is disabled and the missing-reason text is `--steel`. What `reason` returns brings its own invalid look. |
 | Loading | `pending` sets `aria-busy="true"` on the card and disables every button. There is no spinner and no text. The three values of `pending` render alike: the component only tests whether it is set. |
-| Empty | `progress`, `meta`, the blocked reason, the request-changes button and `next` are left out when they are not passed. The eyebrow and the step are always rendered, so an empty `step` leaves an empty `<span>` in the body's column. The viewer passes the label of the current step of the route, which is `undefined` when no step is current. |
+| Empty | `progress`, `meta`, the blocked reason, the request-changes button and `next` are left out when they are not passed. Outside `docked`, the eyebrow and the step are always rendered, so an empty `step` leaves an empty `<span>` in the body's column. The panel passes the `orgChange.turn` message for the current step of the route as `step`, except with `compact`, and `undefined` when no step is current. |
 
 ## Keyboard
 
@@ -140,13 +186,23 @@ differs only in its `btn--primary` colours.
 | Enter, Space | Presses the focused button. |
 | Escape | With a form open and `pending` not set: closes the form, as back does. Focus can be anywhere inside the card, `children` included. |
 
-The card moves focus in three cases:
+The card moves focus in four cases:
 
 - When a form opens, focus goes to the form heading.
 - When a form closes, by back or by Escape, focus returns to the button that opened it.
-- When `receipt` transitions from falsy to truthy, focus moves to the recorded card's `<h2>` heading. It never moves focus on an initial mount that already carries `receipt`, nor on subsequent re-renders while `receipt` remains truthy.
+- When `receipt` turns from falsy to truthy while `document.activeElement` is the `<body>`, focus goes to the heading
+  of the recorded shape. The buttons are gone by then, so focus they held is on the `<body>`. Focus the person has
+  put on a control outside the card, a find box for one, stays there. Focus never moves on a mount that already
+  carries `receipt`, nor on a later render while `receipt` stays truthy.
+- When a command ends with no receipt, as after one the server refused, focus returns to the commit that was
+  pressed: approve, or the commit of the open form.
 
-The card does not move focus when `pending` is set or cleared without a receipt.
+The card remembers a commit when it is pressed. After every render in which `pending` is not set, it reads
+`document.activeElement`: if that is the `<body>` or the remembered button, and the button is not disabled, the
+button takes focus and is forgotten. If focus is anywhere else, or the button is gone, as it is once `receipt` is
+given, the button is forgotten and focus stays where it is. While the button is still disabled, as every commit is
+while `staleBlocked` is set, the card waits for a later render. None of the card's `focus()` calls passes
+`preventScroll`. The card does not move focus when a commit is pressed or when `pending` is set.
 
 Escape is a native `keydown` listener on the `<article>`, in the bubble phase, added only while a form is open
 and `pending` is not set. A key pressed anywhere inside the card reaches it: in the form, in `progress` or in
@@ -162,19 +218,41 @@ Which handlers run before it was read from the code and is not tested:
   and the card's `stopPropagation` keeps that Escape from reaching it at all. A React `onKeyDownCapture` does run
   first.
 
-While the listener is on, the card also carries a `data-escape-scope` attribute. One other component reads that
-attribute: `FlexibleColumns` (`ui/flexible-columns`), whose own Escape handler closes an open pane and leaves a key
-pressed inside such an element alone. That handler is on `document` in the capture phase, so it sees the key
-before the card does. In the record column of the approvals list the first Escape closes the form and the next one
-closes the column. While `pending` is set the listener and the attribute are both gone, so the card no longer
-keeps an Escape from the columns.
+The card carries a `data-escape-scope` attribute while a form is open and while `pending` is set. Two other
+components read it: `FlexibleColumns` (`ui/flexible-columns`) and `PaneGrid` (`ui/pane-grid`), whose own Escape
+handlers close an open pane. Each leaves a key pressed inside such an element alone, and closes nothing while its
+open pane holds such an element with `aria-busy="true"`. Both handlers run in the capture phase, on `document` and
+on the grid's root, so they see the key before the card does. In a record column the first Escape closes the form
+and the next one closes the column. While `pending` is set the card's listener is off and the attribute stays, so an
+Escape closes neither the form nor the column.
 
-A key the Korean input method owns: the Escape listener returns at once when `event.isComposing` is true. That is
-all the code checks. It has no key code 229 check, which `Field` (`ui/field`), `Composer` (`ui/composer`) and
-`MaskedField` (`ui/masked-field`) pair with `isComposing` in their own key handlers. What an Escape pressed during
-a composition does, in the reason's memo for one, is untested: no approvals spec presses a key during a
-composition. A search of the component's folder for `isComposing`, `keyCode`, `229` and `composition` finds that
-one line. The card binds no other key, and Enter and Space on a button are the library's.
+After a decision made by keyboard in a record column, focus is on the recorded heading, inside the column, so an
+Escape closes the column. Both approvals lists (`features/approvals/ui/approvals-page.tsx`) then return focus to
+the row of the document. When that row has left the list, as a decided document leaves the pending box, focus goes
+to the first row left in the list, or to the find box when the list is empty. The Console list opens its first
+document by itself when the address names none; a decision started there chooses that document, so the column stays
+on it and shows the receipt.
+
+A key the Korean input method owns: the Escape listener returns at once when `isImeKey` (`lib/pure/ime`) says the
+input method owns the key: `isComposing` is true, the key code is 229, or the key is `Process`. The card binds no
+other key, and Enter and Space on a button are the library's.
+
+The panel draws one more line where the card was. When it has drawn the card and a later read of the document
+offers no decision, with no receipt, no command on its way and no command error, as after someone else has decided,
+it draws the `approvals.viewer.unavailable` message as a `<p role="status" tabindex="-1">`: in a [`Card`](card.md)
+titled `approvals.viewer.decision`, or, when docked, in `DocDecisionPad` (`ui/patterns/document-decision-parts.tsx`).
+That line takes focus if `document.activeElement` is the `<body>`, which is where the browser leaves focus once the
+card that held it is gone. When focus is on any element other than the line, it stays there, and the panel passes
+the line's words to `announce` (`lib/react/announce`), the shell's one polite live region: a `role="status"` drawn
+with its words already in it is not read out by every screen reader. A command still on its way passes through the
+same state just before its receipt, and shows no such line. After a command error the panel shows the error in the card's place instead.
+
+The panel keeps the card's place, and the Console document page and the Console list keep the panel, while the
+document whose decision was offered stays the one shown: all three ask `useDecisionOffered`
+(`features/approvals/ui/use-approval-decision.ts`). The baseline viewer always draws the panel. So the line shows on
+all three screens. Once another document, or none, has been shown, a document that offers nothing draws no panel
+when it is shown again, with one exception: the Console list keeps the receipt of the last decision made in it, and
+draws the recorded card again when that document is opened again.
 
 ## Accessibility contract
 
@@ -183,14 +261,17 @@ one line. The card binds no other key, and Enter and Space on a button are the l
 - **Accessible name:** the `<article>` is named by its `<h2>` `title` through `aria-labelledby` in both the deciding
   and recorded shapes. The form is named by its `<h3>` heading. Each button is named by its text.
 - **Description:** approve is described, through `aria-describedby`, by the consequence box, or by the blocked
-  reason while `approveBlocked` is set. The commit of a form is described by the missing-reason text until the
-  reason is complete, and by the form's consequence box after that.
-- **Announced:** nothing by the card itself. It has no live region. Opening a form moves focus to its heading,
-  which is what a screen reader reads at that point. `aria-busy` is the only thing set while a command runs. The
-  receipt is announced only if what the caller passes announces itself: the viewer passes a `<p role="status">`.
+  reason while `approveBlocked` or `staleBlocked` is set. The commit of a form is described by the blocked reason
+  while `staleBlocked` is set, else by the missing-reason text until the reason is complete, and by the form's
+  consequence box after that.
+- **Announced:** nothing by the card itself. It has no live region. Opening a form moves focus to its heading, and
+  a receipt that arrives while focus is on the `<body>` moves it to the recorded heading, which is what a screen
+  reader reads at those points. `aria-busy` is the only thing set while a command runs. The receipt is announced
+  only if the caller announces it: the panel passes it in a `<p role="status">`, and its command passes the same
+  words to `announce` (`lib/react/announce`).
 
 The button that opens a form and the commit of that form can have the same name. The opener's text is built in;
-the commit's is `rejectLabel` or `returnLabel`. The viewer passes the built-in messages as both. The two are never
+the commit's is `rejectLabel` or `returnLabel`. The panel passes the built-in messages as both. The two are never
 rendered together.
 
 The heading levels are fixed: `<h2>` for the title and `<h3>` for a form. No prop changes them.
@@ -202,25 +283,30 @@ Known gaps:
   reason is visible text that comes before the button in the reading order. [`DisabledReason`](disabled-reason.md)
   keeps a blocked control focusable; the card does not use it.
 - When a command starts, the button that was pressed gets the native `disabled` attribute while it holds focus.
-  When `pending` clears with no receipt, as after a command the server refused, the card calls no `focus()`.
-  Where a browser leaves focus on a button that was disabled and is enabled again was not checked.
-- The card has no slot for the error of a command that failed. The caller places it. The viewer puts
+  Chromium then drops focus to the `<body>`, not always at once: a refusal that comes quickly can find focus still
+  on the button. After a refusal the card returns focus to that button once it is enabled: see Keyboard. The panel
+  sets `staleBlocked` after a refusal with status 409, until the document it reads again has another fingerprint,
+  and until then focus stays on the `<body>`. The card cannot tell that from a person who has clicked plain text in
+  the meantime: the commit takes focus from the `<body>` either way once it is enabled.
+- The card has no slot for the error of a command that failed. The caller places it. The panel puts
   `CommandError` (`lib/react/command-error`) first in `children`, above its opinion field.
 - A running command has no words: no status text and no spinner, only `aria-busy` and disabled buttons.
-- The Escape listener checks `isComposing` and not key code 229: see Keyboard. Whether an Escape that belongs to
-  a composition closes the form is untested.
+- A document the Console list opened by itself, with no document named in the address, does not stay shown when
+  someone else decides it and the next read of the list no longer holds it, as the pending box does not: the column
+  moves on to the first document left, or closes when none is left. The line does not stay, what was typed in the
+  opinion is gone, and focus that was in the card is left on the `<body>`.
 
 The WCAG 2.2 criteria that apply:
 
 | Criterion | How the card answers it |
 |---|---|
 | 1.3.1 Info and Relationships | The title and the form are headings, each consequence is a note, and each commit points at its consequence or its reason with `aria-describedby`. |
-| 1.3.2 Meaningful Sequence | The document order is the order on screen: the body, the consequence, then the buttons. |
+| 1.3.2 Meaningful Sequence | The document order is the body, the consequence, then the buttons. In the baseline look that is the order on screen. The Console look draws the consequence of the deciding shape after the buttons (`order: 1`), so there a screen reader reads it before the buttons while the eye reaches it after them. |
 | 1.4.1 Use of Color | The danger fill of the reject commit repeats its label. A disabled button is paler, and its reason is in words beside it, except while `pending`. |
 | 1.4.3 Contrast (Minimum) | Every colour is a token; none is written in the component. A disabled button is drawn at half opacity; the criterion does not cover an inactive control. |
 | 1.4.10 Reflow | The card is never wider than its container, and the bar wraps. |
 | 2.1.1 Keyboard | Native buttons, and Escape for the form. |
-| 2.4.3 Focus Order | Focus goes to the form heading when a form opens, back to its opener when it closes, and to the recorded heading when `receipt` arrives. Not checked after a refused command: see the gaps. |
+| 2.4.3 Focus Order | Focus goes to the form heading when a form opens, back to its opener when it closes, and to the recorded heading when `receipt` arrives while focus is on the `<body>`. After a refused command it returns to the commit that was pressed, once that button is enabled: see the gaps. |
 | 2.4.6 Headings and Labels | The title and the form heading are the caller's words. The form heading repeats the commit's label. |
 | 2.4.7 Focus Visible | The global outline on the buttons, the form heading, and the recorded heading. |
 | 2.5.8 Target Size (Minimum) | The buttons are at least 40 px high (`--control-h-lg`), above the 24 px minimum. |
@@ -233,7 +319,39 @@ blocked, and recorded with a `next` link. All three pass `progress` and `meta`. 
 request changes is pressed. Pressing a commit there sets `pending`, and nothing clears it. The gallery does not
 show a card without request changes.
 
-The component has its own SSR unit test (`apps/web/src/ui/approval-card/approval-card.test.tsx`) and real-browser focus test (`apps/web/src/ui/approval-card/approval-card.browser.test.tsx`), covering `aria-labelledby` in both shapes, transition-only focus move into the recorded heading (including when a reason form was open), `:focus-visible` on keyboard-driven transitions, and no focus steal on pre-recorded mount or subsequent re-renders. Two browser specs also drive it through the approval viewer against a mocked server:
+The component has its own SSR unit test (`apps/web/src/ui/approval-card/approval-card.test.tsx`) and real-browser focus test (`apps/web/src/ui/approval-card/approval-card.browser.test.tsx`), covering `aria-labelledby` in both shapes, transition-only focus move into the recorded heading (including when a reason form was open), `:focus-visible` on keyboard-driven transitions, no focus steal on pre-recorded mount or subsequent re-renders, and a receipt that arrives while focus is on a control outside the card leaving focus there. `ui/ime-keys.browser.test.tsx` presses Escape in the reason with `isComposing` true, and with key code 229, and checks that the form stays open until a plain Escape.
+
+`features/approvals/ui/approval-decision.browser.test.tsx`, a Vitest browser test in Chromium at 1440 px, drives the
+panel on a mocked server in each screen that draws it, under StrictMode as the app is drawn. The baseline cases put a
+text field above the viewer that stands for the find box of the list:
+
+- After approve, reject and request changes made by keyboard on the viewer's own page, no button is left, focus is
+  on the recorded heading, axe passes, and an observer inside the page finds that `approvals.viewer.unavailable`
+  was not drawn on the way.
+- While the server holds a decision the card has `aria-busy="true"`. A receipt that arrives while the person types
+  in the text field leaves focus there, and the next keys go into the field.
+- When the server refuses a decision made by keyboard because the document changed, focus is back on the commit
+  that was pressed once the document has been read again, a second Enter sends the decision, and focus ends on the
+  recorded heading: approve and reject held until focus has dropped to the `<body>`, and approve refused at once, on
+  the viewer's own page; approve in the Console list; reject on the Console document page. A refusal that arrives
+  while the person types in the text field leaves focus there.
+- When the document is read again without its decision and none was sent, with focus in the opinion field, the
+  card gives way to `approvals.viewer.unavailable`, which has focus, on the viewer's own page, in the Console list
+  and on the Console document page, and nothing is passed to `announce`. On the viewer's own page, with focus in
+  the text field, the line leaves focus there and its words are passed to `announce`. When the decision is then
+  offered again and made by keyboard, focus is on the recorded heading.
+- While the server holds an approve and the document is read again without its decision, the card stays busy and
+  no status line is drawn. Once the server answers, focus is on the recorded heading.
+- In the Console list, when a document whose decision was withdrawn while it was open is opened again after one
+  that offers no decision, the record pane has no footer.
+- In the baseline list that drops a decided document, and in the Console list with the document chosen or opened
+  by the list itself, Escape after an approve made by keyboard closes the column, and focus is on the row that is
+  left, or in the find box when no row is left. In each the receipt shows before the Escape.
+
+`features/approvals/ui/approval-viewer.browser.test.tsx` checks that the panel keeps the card and focuses its
+recorded heading when the document read after an approve offers no decision.
+
+Two browser specs also drive it through the approval viewer against a mocked server:
 
 `e2e/mock/approval-viewer.spec.ts`, on the viewer's own page:
 
@@ -258,8 +376,23 @@ The same search finds tests of the opposite case, a document that draws no decis
 `e2e/mock/approvals.spec.ts`, `e2e/mock/approval-document.spec.ts`, `e2e/mock/approval-refusal.spec.ts`,
 `e2e/approval-document.spec.ts` and `features/approvals/ui/approvals-page.browser.test.tsx`.
 
-None of these asserts `aria-busy`, the `aria-describedby` targets, the blocked reason's row, where focus is after
-the receipt or after a refused command, or a key pressed during a composition.
+`e2e/mock/approvals-console.spec.ts` drives the docked card in the Console list and on the Console document page:
+
+- On the document page at 1440 px: after approve the recorded heading has focus and the receipt and the link to the
+  list show; reject with the other reason needs its memo, and Escape from the form returns focus to reject and keeps
+  the opinion; after a refusal because the document changed the opinion stays and a second approve is recorded; a
+  refusal by the server shows an alert and axe passes; a document that offers nothing draws no decision column.
+- In the Console list at 1440 px: the recorded heading has focus after approve while the list is read again late; a
+  refused reject keeps its commit disabled until the document is read again, and the alert stays when that read
+  offers nothing; Escape while a reject is on its way leaves the pane open.
+- At 1280 by 720 and 1366 by 768 px, after a refused reject, the pane body stays at least 80 px high and the footer
+  scrolls with the commit inside it.
+- After a refused approve on the document the list opened by itself, opening another document and coming back
+  leaves no empty footer.
+- At 320 px the record pane does not scroll sideways, and at 390 px the document page fits.
+
+None of these asserts the `aria-describedby` targets, the blocked reason's row, or the scroll position after a
+heading takes focus.
 
 No workflow runs the accessibility scan of the gallery. `e2e/visual.spec.ts` runs axe with the WCAG 2.2 A and AA
 rules over the whole gallery, in the light and the dark theme, when it is run against a development stack. It
@@ -292,7 +425,7 @@ query. The component's own comment calls it a desktop card; the approval viewer 
 
 - Everything else is the caller's, from the message catalog in `packages/i18n`. The `en` catalog is the source and
   the `ko` catalog must define every id.
-- `approveLabel`, `rejectLabel` and `returnLabel` are a verb and its object. The viewer passes
+- `approveLabel`, `rejectLabel` and `returnLabel` are a verb and its object. The panel passes
   `uiApprovalCard.reject` and `uiApprovalCard.return` as the two form labels.
 - `consequence` says what approving does and who can undo it. `rejectConsequence` and `returnConsequence` say what
   each of those does.
