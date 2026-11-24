@@ -35,7 +35,7 @@ for (const width of [1440, 1024, 390]) for (const theme of ["light", "dark"]) {
         const surface = path === "/" ? "home" : path.slice(1);
         await page.screenshot({ path: info.outputPath(`${surface}-arrival-${width}-${theme}.png`), fullPage: true });
         const unknown = state === "failed" || state === "refused";
-        const label = unknown ? "업무함 · 확인 불가" : state === "zero" ? t("home.inbox.title") : t(state === "inexact" ? "shell.needsMe.countMore" : "shell.needsMe.count", { count: state === "inexact" ? 12 : 3 });
+        const label = unknown ? t("shell.needsMe.unknown") : state === "zero" ? t("home.inbox.title") : t(state === "inexact" ? "shell.needsMe.countMore" : "shell.needsMe.count", { count: state === "inexact" ? 12 : 3 });
         const header = shell(page).banner;
         const trigger = header.getByRole("button", { name: label, exact: true });
         await expect(trigger).toBeVisible({ timeout: 20_000 });
@@ -59,7 +59,7 @@ for (const width of [1440, 1024, 390]) for (const theme of ["light", "dark"]) {
         if (unknown) {
           await expect(panel.getByText(t("home.inbox.empty.title"), { exact: true })).toHaveCount(0);
           if (state === "refused") {
-            await expect(panel.getByRole("status")).toHaveText("업무함에 접근 권한이 없습니다");
+            await expect(panel.getByRole("status")).toHaveText(t("shell.needsMe.denied"));
             await expect(panel.getByText(t("common.denied.title.plain"), { exact: true })).toHaveCount(0);
             await expect(panel.getByRole("link")).toHaveCount(1);
           } else await expect(panel.getByRole("heading", { name: t("common.loadFailed.title"), exact: true })).toBeVisible({ timeout: 20_000 });
@@ -270,7 +270,7 @@ for (const width of [1440, 1024, 390]) for (const theme of ["light", "dark"]) {
     await page.goto("/people");
     const trigger = page.locator("#top-needs-me");
     try {
-      await expect(trigger).toHaveAccessibleName("업무함 · 불러오는 중…", { timeout: 20_000 });
+      await expect(trigger).toHaveAccessibleName(t("shell.needsMe.loading"), { timeout: 20_000 });
       await expect(trigger.locator("[data-count]")).toHaveCount(0);
       await trigger.click();
       const panel = page.getByRole("dialog", { name: t("shell.needsMe"), exact: true });

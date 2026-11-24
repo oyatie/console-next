@@ -307,7 +307,7 @@ test.describe("one state contract across console routes", () => {
     const page = await admin.context().newPage();
     await page.route("**/api/v1/onboarding/checklist", () => {});
     await page.goto("/people");
-    await expect(page.getByRole("heading", { name: "직원", exact: true }).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: ko["roster.head.title"], exact: true }).first()).toBeVisible();
     await page.close();
   });
 

@@ -8,6 +8,10 @@ const STANDALONE_TEXT_SELECTOR = 'main textarea, main input:not([type="checkbox"
 
 const installedDocuments = new WeakSet<Document>();
 const initialValues = new WeakMap<Element, string>();
+// A submit clears `initialValues` before the screen accepts or refuses it, so a pane is asked against its opening values.
+// shortcut: a pane form that saves in place and stays open still reads unsaved, costing one extra Escape; read a saved
+// signal from the form once a pane form saves in place.
+const openingValues = new WeakMap<Element, string>();
 
 function controlValue(control: Element): string {
   const committed = control.getAttribute("data-form-value");
@@ -48,20 +52,25 @@ function shouldIgnore(control: Element, exclude?: Element | null): boolean {
   return false;
 }
 
-function snapshotTarget(target: EventTarget | null) {
-  if (!(target instanceof Element)) return;
-  const control = target.matches(TRACKED_SELECTOR) ? target : target.closest(TRACKED_SELECTOR);
-  if (control && !shouldIgnore(control) && !initialValues.has(control)) {
-    initialValues.set(control, controlValue(control));
-  }
+function snapshot(control: Element) {
+  if (shouldIgnore(control)) return;
+  for (const baselines of [initialValues, openingValues]) if (!baselines.has(control)) baselines.set(control, controlValue(control));
 }
 
-function clearFormBaselines(target: EventTarget | null) {
+function snapshotTarget(target: EventTarget | null) {
+  if (!(target instanceof Element)) return;
+  const control = target.closest(TRACKED_SELECTOR);
+  if (control) snapshot(control);
+  // A press can set a value elsewhere in its form or sheet, so every control there is recorded before it lands.
+  for (const each of target.closest(CONTAINER_SELECTOR)?.querySelectorAll(TRACKED_SELECTOR) ?? []) snapshot(each);
+}
+
+function clearFormBaselines(target: EventTarget | null, ...maps: WeakMap<Element, string>[]) {
   if (!(target instanceof Element)) return;
   const form = target.matches("form, .form") ? target : target.closest("form, .form");
   if (!form) return;
   for (const control of form.querySelectorAll(TRACKED_SELECTOR)) {
-    initialValues.delete(control);
+    for (const baselines of maps) baselines.delete(control);
   }
 }
 
@@ -73,10 +82,10 @@ export function installDirtyTracker(doc: Document | undefined = typeof document 
   doc.addEventListener("focusin", capture, true);
   doc.addEventListener("pointerdown", capture, true);
   doc.addEventListener("keydown", capture, true);
-  doc.addEventListener("submit", event => clearFormBaselines(event.target), true);
+  doc.addEventListener("submit", event => clearFormBaselines(event.target, initialValues), true);
   doc.addEventListener("reset", event => {
     const target = event.target;
-    queueMicrotask(() => clearFormBaselines(target));
+    queueMicrotask(() => clearFormBaselines(target, initialValues, openingValues));
   }, true);
 }
 
@@ -94,13 +103,19 @@ function hasPersistedSessionDraft(): boolean {
   return false;
 }
 
-/** True while any mounted sheet, dialog, page form, or draft holds unsaved input. */
+/**
+ * True while any mounted sheet, dialog or page form under `root` holds unsaved input, or, asked of the whole page, a
+ * draft does. Asked of one element (a pane), a form counts against the values it opened with, a submit or not.
+ */
 export function hasUnsavedInput(
   root: Document | Element | undefined = typeof document === "undefined" ? undefined : document,
   exclude?: Element | null,
 ): boolean {
-  if (hasPersistedSessionDraft()) return true;
   if (!root) return false;
+  const pane = root instanceof Element;
+  // Drafts are registered by key, not by place, and a stored draft outlives its form.
+  if (!pane && hasPersistedSessionDraft()) return true;
+  const baselines = pane ? openingValues : initialValues;
   const candidates = new Set<Element>();
   for (const container of root.querySelectorAll(CONTAINER_SELECTOR)) {
     for (const control of container.querySelectorAll(TRACKED_SELECTOR)) candidates.add(control);
@@ -108,8 +123,8 @@ export function hasUnsavedInput(
   for (const control of root.querySelectorAll(STANDALONE_TEXT_SELECTOR)) candidates.add(control);
   for (const control of candidates) {
     if (shouldIgnore(control, exclude)) continue;
-    if (initialValues.has(control)) {
-      if (controlValue(control) !== initialValues.get(control)) return true;
+    if (baselines.has(control)) {
+      if (controlValue(control) !== baselines.get(control)) return true;
     } else if (defaultDomDirty(control)) {
       return true;
     }

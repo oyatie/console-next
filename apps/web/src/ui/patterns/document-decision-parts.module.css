@@ -68,7 +68,7 @@
   }
 
   :where([data-experience]:not([data-experience="baseline"])) .linkList[data-cols="2"] .linkItem {
-    min-height: var(--row-h-compact);
+    min-height: var(--row-h-sm);
     padding: var(--space-1) var(--space-2);
   }
 

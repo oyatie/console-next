@@ -105,7 +105,7 @@ export const enEmpDoc = {
   "empDoc.void.employee.reason.NOT_OURS.d": "Another company's list got mixed in",
   "empDoc.void.employee.reason.OTHER": "Other",
   "empDoc.void.employee.reason.OTHER.d": "Write the reason",
-  "empDoc.certificate.register": "Certificate register",
+  "empDoc.certificate.register": "Certificates issued",
   "empDoc.certificate.purpose": "Submission purpose",
   "empDoc.certificate.number": "Certificate number {number}",
   "empDoc.certificate.numberLabel": "Number",

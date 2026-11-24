@@ -133,6 +133,8 @@ test("the self-service certificates tab opens the employee's own certificates, a
   // An employee on the self-service nav holds no HR grant, so the HR certificate list would only refuse them.
   expect(await tab.getAttribute("href")).toBe("/account?sheet=certificates");
   await expectCurrent("/account", t("shell.link.profile"));
+  // The self-service bar still names "/" Home; only the desk bar calls it To-dos.
+  expect(await nav.getByRole("link", { name: t("shell.link.home"), exact: true }).getAttribute("href")).toBe("/");
   const first = await screenEntry();
 
   await tab.click();

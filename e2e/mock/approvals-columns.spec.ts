@@ -123,6 +123,9 @@ test("the decision panel works in the column and an open reason form keeps Escap
   await expect(column(page)).toBeVisible();
   await expect(opinion).toHaveValue("검토 의견");
   await expect(column(page).getByRole("button", { name: "반려", exact: true })).toBeFocused();
+  // The typed opinion is still unsaved, so the column warns once before it closes.
+  await page.keyboard.press("Escape");
+  await expect(column(page).getByRole("status").filter({ hasText: t("composer.unsaved") })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(column(page)).toHaveCount(0);
 });

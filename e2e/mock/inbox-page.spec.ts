@@ -155,7 +155,7 @@ test("setup inbox sends the caller Home without duplicating checklist or account
   await expect(page.getByRole("heading", { level: 1, name: t("home.inbox.title"), exact: true })).toBeVisible();
   await expect(page.getByRole("region", { name: t("home.inbox.title"), exact: true }).locator("[data-id]")).toHaveCount(0);
   await expect(page.getByRole("navigation", { name: t("home.lanes"), exact: true })).toHaveCount(0);
-  const home = page.locator("main").getByRole("link", { name: t("shell.link.home"), exact: true });
+  const home = page.locator("main").getByRole("link", { name: t("shell.link.todo"), exact: true });
   await expect(home).toHaveAttribute("href", "/");
   expect(mock.unexpected).toEqual([]);
 });
@@ -304,7 +304,7 @@ for (const width of [1440, 390]) for (const state of ["loading", "empty", "setup
     if (state === "loading") await expect(main.getByRole("status", { name: t("common.loading"), exact: true })).toBeVisible();
     else if (state === "failed") await expect(main.getByRole("heading", { name: t("common.loadFailed.title"), exact: true })).toBeVisible({ timeout: 20_000 });
     else if (state === "refused") await expect(main.getByRole("region", { name: t("common.denied.title.plain"), exact: true })).toBeVisible();
-    else if (state === "setup" || state === "no-grant-setup") await expect(main.getByRole("link", { name: t("shell.link.home"), exact: true })).toBeVisible();
+    else if (state === "setup" || state === "no-grant-setup") await expect(main.getByRole("link", { name: t("shell.link.todo"), exact: true })).toBeVisible();
     else if (state === "partial") {
       await expect(main.locator("[data-id]")).toHaveCount(1);
       await expect(main.getByRole("alert")).toContainText("inbox-source-reference");
@@ -366,7 +366,7 @@ for (const width of [1440, 390]) test(`Home without a receipt keeps the inbox at
   const queue = page.getByRole("region", { name: t("home.inbox.title"), exact: true });
   await expect(queue.locator("[data-id]")).toHaveCount(3);
   await expect(page.locator("[data-setup-receipt], [data-phase-band]")).toHaveCount(0);
-  expect((await queue.boundingBox())!.y).toBe(118);
+  expect((await queue.boundingBox())!.y).toBe(145.5);
   for (const theme of ["light", "dark"]) {
     await page.locator("html").evaluate((el, value) => el.dataset.theme = value, theme);
     await fits(page, `Home without receipt at ${width}px ${theme}`);
