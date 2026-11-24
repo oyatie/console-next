@@ -77,7 +77,7 @@
 .itemCell,
 .detailCell,
 .amountCell {
-  height: var(--row-h-compact);
+  height: var(--row-h-sm);
   padding: var(--space-1) var(--space-2);
   border-block-end: 1px solid var(--border-soft);
   vertical-align: middle;
@@ -171,7 +171,7 @@
 .totalRow[data-kind="note"] .itemCell,
 .totalRow[data-kind="note"] .detailCell,
 .totalRow[data-kind="note"] .amountCell {
-  height: var(--row-h-compact);
+  height: var(--row-h-sm);
   background: var(--surface);
   color: var(--steel);
   font-size: var(--text-xs);
@@ -211,7 +211,7 @@
 }
 
 .skeleton {
-  height: var(--row-h-compact);
+  height: var(--row-h-sm);
   border-radius: var(--radius-sm);
   background: var(--border-soft);
 }

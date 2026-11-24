@@ -2,7 +2,7 @@
 export const enEntityCreate = {
   "entityCreate.title": "Register legal entity",
   "entityCreate.crumb": "Location",
-  "entityCreate.crumbRoot": "Org structure",
+  "entityCreate.crumbRoot": "Organization structure",
   "entityCreate.steps": "Steps to add a legal entity",
   "entityCreate.context": "Entity no. {n, number}",
   "entityCreate.close": "Close legal entity registration",

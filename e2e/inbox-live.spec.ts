@@ -1,16 +1,19 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Page } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { atPhoneWidth, expectAccessible, fits } from "./a11y";
 import { go, kstDate, unique } from "./flows";
 import { apiOf, bearerOf } from "./helpers/api";
 import { staffedTenant } from "./setup-flows";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 const INBOX_API = "/me/action-inbox";
 const INBOX = `/api/v1${INBOX_API}`;
 const SOURCE_READ = /^\/api\/v1\/(employees|org-changes|org-units|branches|hr\/exit-cases|change-requests|period-locks|statutory\/insurance-filings)(\?|$)/;
 type Item = { id: string; kind: string; title: string; lane: string; links: { kind: string; id: string }[] };
 type Inbox = { items: Item[]; total: number; next_cursor: string | null; unavailable: unknown[] };
-const inbox = (page: Page) => page.getByRole("region", { name: "업무함", exact: true });
+const inbox = (page: Page) => page.getByRole("region", { name: t("home.inbox.title"), exact: true });
 const readFilter = (page: Page, filter: string) => page.waitForResponse((response) => {
   const url = new URL(response.url());
   return response.request().method() === "GET" && url.pathname === INBOX && url.searchParams.get("filter") === filter;
@@ -65,7 +68,7 @@ test("one server queue supplies Home and every inbox filter and holds remote res
   }
   const row = inbox(reader).locator(`[data-id="${draftItem.id}"]`);
   await expect(row).toHaveCount(1);
-  await inbox(reader).getByRole("link", { name: "업무함에서 모두 보기", exact: true }).click();
+  await inbox(reader).getByRole("link", { name: t("home.inbox.viewInbox"), exact: true }).click();
   await expect(reader).toHaveURL(/\/inbox$/);
   await expect(row).toHaveCount(1);
   await expect(row.getByRole("link", { name: "초안 편집", exact: true })).toBeVisible();

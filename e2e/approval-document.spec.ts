@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import type { components } from "@console/api/schema";
 import { go } from "./flows";
 import { apiOf, bearerOf } from "./helpers/api";
 import { openTenant } from "./helpers/tenant";
 import { setupCompany, startOperations } from "./setup-flows";
 import { inlineUnitDetails, revealUnit } from "./structure-flows";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 test("requester opens a submitted source change in the approval document viewer", { tag: ["@org", "@live"] }, async ({ browser }) => {
   test.setTimeout(300_000);
@@ -19,7 +22,7 @@ test("requester opens a submitted source change in the approval document viewer"
   const modules = await api("/onboarding/modules");
   expect(modules.status()).toBe(200);
   expect(await modules.json()).toEqual(expect.arrayContaining([expect.objectContaining({ key: "approvals", ready: true })]));
-  await expect(admin.getByRole("navigation", { name: "주 메뉴", exact: true }).getByRole("link", { name: "결재함", exact: true })).toBeVisible();
+  await expect(admin.getByRole("navigation", { name: "주 메뉴", exact: true }).getByRole("link", { name: t("shell.link.approvals"), exact: true })).toBeVisible();
   const policy = await api("/settings/approval.policy.org_structure", "POST", { value: "route", reason_code: "POLICY_REVIEW" });
   expect(policy.status()).toBe(201);
   await admin.reload();
