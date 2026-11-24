@@ -108,3 +108,29 @@ test("a held department add keeps the box it is added under clear of the chart's
     expect(fixture.unexpected).toEqual([]);
   } finally { await page.context().setOffline(false); await page.close(); fixture.release(); }
 });
+
+test("an add opened from a box's hover toolbar keeps that box, not the keyboard's last one, beside its field @ui-state", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  const fixture = await mockScreen(page, screens[2], "populated");
+  await orgPanelReads(page);
+  const tree = structure(1);
+  tree.phase = "SETUP";
+  const parent = tree.entities[0]!.children[0]!;
+  await mockRoute(page, "get", "/api/v1/org-structure", { status: 200, json: tree });
+  await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { ...screenAccess("/org", "SETUP"), is_ops: true } });
+  await mockRoute(page, "get", "/api/v1/org-structure/change-dates", { status: 200, json: { items: [] } });
+  try {
+    await page.goto("/org");
+    const target = box(page, parent.name);
+    // The keyboard's box (the chart's one tab stop) is elsewhere: the pointer only passes over this one.
+    await expect(target).toHaveAttribute("tabindex", "-1");
+    await target.hover();
+    await page.getByRole("toolbar", { name: t("structure.tools.label", { name: parent.name }), exact: true })
+      .getByRole("button", { name: t("structure.tools.addDept"), exact: true }).click();
+    await expect(page.getByRole("textbox", { name: t("structure.edit.addLabel", { parent: parent.name }), exact: true })).toBeVisible();
+    // The box added under becomes the tab stop, so the field comes into view beside it.
+    await expect(target).toHaveAttribute("tabindex", "0");
+    await expect(target).toBeInViewport();
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});

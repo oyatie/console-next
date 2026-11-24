@@ -35,7 +35,7 @@ const onScreen = (r: Rect, v: View, vp: { w: number; h: number }) =>
  * centred there (a box brought from under a bar lands well clear of it, its neighbours with it).
  */
 export function revealView(v: View, r: Rect, vp: { w: number; h: number }, i: Insets, also?: Rect): View {
-  // `also` (the box an editor opens beside) joins `r` when both fit between the bars; `r` alone is kept otherwise.
+  // `also` (the box kept beside an editor) joins `r` when both fit between the bars; `r` alone is kept otherwise.
   if (also) {
     const x = Math.min(r.x, also.x), y = Math.min(r.y, also.y);
     const both = { x, y, w: Math.max(r.x + r.w, also.x + also.w) - x, h: Math.max(r.y + r.h, also.y + also.h) - y };
