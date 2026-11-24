@@ -191,8 +191,15 @@ dialog or a sheet around the tree. `required` is for such a caller. With it:
   sheet that holds unsaved input shows its unsaved line on the first press and closes on the second. A pick is
   unsaved input while the tree is shown: the tree carries the chosen row's id as `data-form-value` (empty when none
   is chosen), so a sheet that works out its own dirty state warns before Escape throws the pick away. A tree that
-  closes on a pick takes its value with it: the destination trees of the dissolve sheet do, so a destination picked
-  there leaves that sheet clean.
+  closes on a pick takes its value with it. The destination trees of the dissolve sheet close on a pick, so its
+  members block keeps the plan, where everyone goes and each person sent elsewhere, as `data-form-value` on its
+  summary line: a destination or a person sent elsewhere there is unsaved input after its tree has closed. A
+  person whose destination is where everyone goes is left out of that value, since the plan is the same with or
+  without them. See [Sheet](sheet.md#dirty-and-how-a-sheet-closes). The closed tree takes the focused row with it
+  too, and "Same as everyone" goes away once pressed, so after either the members block puts focus back on the
+  button that opened the tree. It does so on the next frame: moved while the key that picked is still being
+  handled, focus would carry that Enter to the button and open the tree again. The tests check this for a pick
+  by Enter and for "Same as everyone" pressed by Enter or by the pointer.
 - **Enter or a press** on the chosen row leaves it chosen. By the source the same holds for Space; the tests
   use Enter and the pointer only.
 
@@ -325,12 +332,14 @@ Tests:
 | `apps/web/src/ui/side-panel/side-panel.browser.test.tsx` | In a browser, a tree with `required` inside a `SidePanel`, built by a fixture: Escape from an open row closes the panel. |
 | `apps/web/src/ui/pane-grid/pane-grid-focus.browser.test.tsx` | In a browser, a tree with `required` in the record pane of a `PaneGrid`, built by a fixture: Escape from an open row closes the pane. |
 | `apps/web/src/features/access/ui/scope-picker.browser.test.tsx` | In a browser, the scope sheet of a grant itself, with the structure read answered by the test: after a row is picked by the pointer or by Enter, the first Escape shows the unsaved line and the second closes the sheet; with nothing picked, Escape closes it at once. |
+| `apps/web/src/features/org/ui/dept-dissolve-sheet.browser.test.tsx` | In a browser, the dissolve sheet itself, with its reads answered by the test. Escape is pressed where the gesture before it left focus. Untouched, the sheet closes at once. A new destination for everyone, or one person sent elsewhere, shows the unsaved line on the first Escape and closes on the second, and a person sent elsewhere still counts while another person's tree is open. A person put back with everyone, or everyone sent back to where one person was sent, leaves nothing unsaved. A destination picked by Enter, for everyone or for one person, moves focus to the button that opened its tree while Enter is still held, and the tree stays closed once it is let go. "Same as everyone", pressed by the pointer or by Enter, leaves focus on that person's "Send … elsewhere" button; after Enter no tree is open. |
 
 The first three are the component's own tests. Every browser test in the table launches Chromium and no other
 browser, except the pane grid's, which launches the engine the run selects in `e2e/browser.ts`, Chromium by default. Between them they press neither Space, PageUp nor PageDown, press ArrowLeft only on rows below the top
 level, render no tree in `tab` mode and no row with a control in its content, and press Escape in a tree without
 `required` only inside a dialog. Escape from the target tree is driven in the fixture's sheet and dialog, not in
-the real sheets that merge or dissolve a department or on the bulk move page. Two unit tests of views,
+the real sheets that merge or dissolve a department or on the bulk move page. The dissolve sheet's test presses
+Escape outside its trees. Two unit tests of views,
 `features/org/ui/target-tree.test.tsx` and `features/attendance/ui/scope-tree.test.tsx`, replace `TreeView`
 with a stub. Journey specs reach a tree by its `treegrid` role, for example `e2e/structure-dept.spec.ts` and
 `e2e/access-roles.spec.ts`.
