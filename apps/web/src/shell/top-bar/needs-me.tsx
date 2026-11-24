@@ -35,8 +35,12 @@ export function NeedsMeMenu({ id, seed }: { id: string; seed?: InboxPage }) {
   const separate = fullInbox && filter !== "turn";
   // Other inbox tabs supply counts, but the task panel always reads my turn when opened.
   const tasks = useInfiniteQuery({ ...cursorPages("/api/v1/me/action-inbox", { filter: "turn" }), enabled: !seed && !platform && separate && open, notifyOnChangeProps: "all" });
+  // Home, the inbox and other pages each key their own copy of the count: arriving where an older copy is cached (and
+  // being re-read) must not step the badge back to it. The newest answer shown stays until a newer one lands.
+  const [shown, setShown] = useState<{ page?: InboxPage; at: number }>({ at: 0 });
+  if (inbox.isSuccess && !inbox.isPlaceholderData && inbox.dataUpdatedAt > shown.at) setShown({ page: inbox.data.pages[0], at: inbox.dataUpdatedAt });
   if (platform) return null;
-  const turn = (seed ?? (inbox.isSuccess ? inbox.data.pages[0] : undefined))?.counts?.turn;
+  const turn = (seed ?? (inbox.isSuccess ? shown.page ?? inbox.data.pages[0] : undefined))?.counts?.turn;
   const count = turn?.total;
   const exact = turn?.total_is_exact;
   const label = count == null ? t(inbox.isPending ? "shell.needsMe.loading" : "shell.needsMe.unknown") : t(count > 0 ? exact ? "shell.needsMe.count" : "shell.needsMe.countMore" : "home.inbox.title", { count });

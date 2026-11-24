@@ -6,6 +6,7 @@ import { expectAxe, fits } from "../a11y";
 import { EXPERIENCE_SOURCE_KEY } from "../../apps/web/src/experience/store";
 import { EXPERIENCE_KEY } from "../../apps/web/src/lib/prefs";
 import { shot, withFullPage } from "../shots";
+import { clearShifts, expectStable, recordShifts } from "../stability";
 import { screens } from "../states/registry";
 import { failure, token } from "./fixtures";
 import { mockRoute } from "./route";
@@ -325,6 +326,41 @@ test("unknown, expired, null evidence_expires_at, and network abort never claim 
       fixture.release();
     }
   }
+});
+
+for (const width of [1440, 1024]) test(`baseline top bar keeps its controls in place while the stream reconnects at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 844 });
+  const fixture = await mockScreen(page, screens[0], "populated");
+  await seedExperience(page, "baseline", "light");
+  await page.addInitScript(recordShifts);
+  await page.addInitScript(() => {
+    const origFetch = window.fetch;
+    window.fetch = (input, init) => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      if (new URL(request.url).pathname !== "/api/v1/events") return origFetch(input, init);
+      if (document.documentElement.dataset.streamDown) return Promise.resolve(new Response(null, { status: 503 }));
+      return Promise.resolve(new Response(new ReadableStream({ start(controller) {
+        controller.enqueue(new TextEncoder().encode(": connected\n\n"));
+        request.signal.addEventListener("abort", () => controller.close(), { once: true });
+      } }), { headers: { "content-type": "text/event-stream" } }));
+    };
+  });
+  await page.goto("/");
+  await expect(page.locator("[data-route-ready]")).toHaveAttribute("data-route-ready", "/");
+  const needsMe = page.locator("#top-needs-me");
+  const logout = page.getByRole("banner").getByRole("button", { name: t("shell.logout"), exact: true });
+  await expect(needsMe.locator("[data-count]")).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+  const boxes = async () => [await needsMe.boundingBox(), await logout.boundingBox()];
+  const before = await boxes();
+  await page.evaluate(clearShifts);
+  // The browser reports the network gone: the stream reconnects at once and its server refuses it.
+  await page.evaluate(() => { document.documentElement.dataset.streamDown = "1"; window.dispatchEvent(new Event("offline")); });
+  await expect(page.getByText(t("live.status.reconnecting"), { exact: true })).toBeVisible({ timeout: 8_000 });
+  expect(await boxes()).toEqual(before);
+  expect(await page.getByRole("banner").evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+  await expectStable(page, "stream reconnecting");
+  expect(fixture.unexpected).toEqual([]);
 });
 
 test("baseline experience remains completely unaltered under outage, SSE drop, and crash", async ({ page }) => {

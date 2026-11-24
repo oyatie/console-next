@@ -1,4 +1,7 @@
 .status { display: contents; }
+/* The chip is the bar's own flex item: short of room, it gives way (ellipsis) instead of pushing its neighbours. */
+.status > .chip { flex-shrink: 1; min-width: 0; }
+.text { overflow: hidden; text-overflow: ellipsis; }
 /* The shared fixed dock keeps remote changes visible without moving record controls. */
 .notice { box-shadow: var(--shadow-pop); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
 .notice > span { flex: 1; min-width: 0; }

@@ -3,7 +3,8 @@ import { shell } from "../shell";
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
-import { expectStable, recordShifts } from "../stability";
+import { clearShifts, expectStable, recordShifts } from "../stability";
+import { go } from "../flows";
 import { screens } from "../states/registry";
 import { failure, inbox, screenAccess, token } from "./fixtures";
 import { mockRoute } from "./route";
@@ -142,6 +143,57 @@ test("Home shares its arrival read and refreshes held work after attention chang
   await page.evaluate(() => window.dispatchEvent(new Event("inbox-arrival")));
   await page.getByRole("button", { name: t("live.list.new_rows", { count: 1 }), exact: true }).click();
   await expect(trigger).toHaveAccessibleName(t("shell.needsMe.count", { count: 7 }));
+  expect(mock.unexpected).toEqual([]);
+});
+
+test("the task count never steps back to an older copy while a page re-reads it", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript(recordShifts);
+  const mock = await mockScreen(page, screens[0], "populated");
+  await page.addInitScript(() => {
+    const fetch = window.fetch;
+    window.fetch = (input, init) => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      if (new URL(request.url).pathname !== "/api/v1/events") return fetch(input, init);
+      return Promise.resolve(new Response(new ReadableStream({ start(controller) {
+        const emit = () => controller.enqueue(new TextEncoder().encode('event: change\ndata: {"type":"inbox","id":null}\n\n'));
+        controller.enqueue(new TextEncoder().encode(": connected\n\n"));
+        window.addEventListener("inbox-arrival", emit);
+        request.signal.addEventListener("abort", () => { window.removeEventListener("inbox-arrival", emit); controller.close(); }, { once: true });
+      } }), { headers: { "content-type": "text/event-stream" } }));
+    };
+  });
+  let turn = 5;
+  let hold: Promise<void> | undefined;
+  await mockRoute(page, "get", "/api/v1/me/action-inbox", async () => {
+    await hold;
+    const queue = inbox(3);
+    queue.counts.turn = { total: turn, total_is_exact: turn < 100 };
+    return { status: 200, json: queue };
+  });
+  await page.goto("/people");
+  const trigger = page.locator("#top-needs-me");
+  await expect(trigger).toHaveAccessibleName(t("shell.needsMe.count", { count: 5 }), { timeout: 20_000 });
+  turn = 125;
+  await go(page, "/");
+  const newer = t("shell.needsMe.countMore", { count: 125 });
+  await expect(trigger).toHaveAccessibleName(newer);
+  // A change arrives on Home: the roster's own copy of the count is marked stale there, not re-read (nothing shows it).
+  await page.evaluate(() => window.dispatchEvent(new Event("inbox-arrival")));
+  await page.getByRole("button", { name: t("live.list.new_rows", { count: 1 }), exact: true }).click();
+  await expect(trigger).toHaveAccessibleName(newer);
+  const held = Promise.withResolvers<void>();
+  hold = held.promise;
+  await page.evaluate(clearShifts);
+  try {
+    await page.getByRole("navigation", { name: t("shell.nav"), exact: true }).getByRole("link", { name: t("shell.link.people"), exact: true }).click();
+    await expect(page).toHaveURL(/\/people$/);
+    await expect(page.getByRole("main").locator("h1").first()).toBeVisible();
+    // Arriving re-reads that stale copy: the badge keeps the newer count it showed meanwhile.
+    await expect(trigger).toHaveAccessibleName(newer);
+  } finally { held.resolve(); }
+  await expect(trigger.locator("[data-count]")).toHaveText("125+");
+  await expectStable(page, "task count re-read on arrival");
   expect(mock.unexpected).toEqual([]);
 });
 
