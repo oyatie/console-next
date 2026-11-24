@@ -11479,7 +11479,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get one payroll draft run and its per-employee readiness lines (tenant pay:view) */
+        /**
+         * Get one payroll draft run and its per-employee readiness lines (tenant pay:view)
+         * @description A run of a pay group the caller may not read answers 404, as a run that does not exist.
+         */
         get: operations["getPayrollRun"];
         put?: never;
         post?: never;
@@ -11668,7 +11671,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Submit a CALCULATED run for approval; fail-closed while any exception is still OPEN (409 carries the open count in error.details.open) */
+        /**
+         * Submit a CALCULATED run for approval; fail-closed while any exception is still OPEN (409 carries the open count in error.details.open)
+         * @description Refused with 409 invalid_state when no line of the run has a calculation, since there is no pay to approve.
+         */
         post: operations["submitPayrollRun"];
         delete?: never;
         options?: never;
@@ -56811,7 +56817,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Page of payroll draft runs, newest period first. */
+            /** @description Page of payroll draft runs, newest period first. Runs of pay groups the caller may not read are left out of the page and its total. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -56840,7 +56846,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description The created run with its immutable derived schedule snapshot, or that original result on a same-key retry under current Cedar access. */
+            /** @description The created run with its immutable derived schedule snapshot, or that original result on a same-key retry under current Cedar access. The run's roster, one line per member of the group's legal entity, is written in the same transaction and read through GET /api/v1/payroll/runs/{id}. */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -56857,7 +56863,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description phase_not_operating during tenant setup; regular_run_exists for an occupied regular group/month; idempotency_key_reused for a changed body; command_processing or command_applied for an unavailable replay. */
+            /** @description phase_not_operating during tenant setup; regular_run_exists for an occupied regular group/month; pay_group_roster_ambiguous when the group's legal entity has more than one pay group */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -56904,6 +56910,13 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             /** @description Cedar refuses pay-group edit or sensitive edit clearance. Unknown and foreign groups also refuse. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description pay_group_roster_ambiguous when the group's legal entity has more than one pay group */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
