@@ -1,8 +1,11 @@
 import { expect, test } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "./a11y";
 import { chooseRadio, firstSignIn, go, routeReady, stepUp } from "./flows";
 import { inviteAccount } from "./access-flows";
 import { startOperations, tenantInSetup } from "./setup-flows";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 // Decision #26 pilot roles, from an empty database: the ops account finds no preset role, creates one in SETUP,
 // duplicates and deletes a copy, invites an HR worker and grants the role over the 법인 to start at 운영 시작. The
@@ -118,7 +121,7 @@ test("pilot roles: no presets, a role made in setup, granted for go-live, enforc
   await go(admin, "/access/grants");
   await expect(admin.getByRole("row", { name: /김인사/ })).toContainText("적용 중");
   await go(hr, "/people");
-  await expect(hr.getByRole("heading", { name: "인사", level: 1 })).toBeVisible();
+  await expect(hr.getByRole("heading", { name: t("roster.head.title"), level: 1, exact: true })).toBeVisible();
   await expect(hr.getByRole("link", { name: "권한" })).toHaveCount(0);
   await go(hr, "/access/roles");
   await expect(hr.getByText("접근 권한이 없습니다")).toBeVisible();

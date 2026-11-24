@@ -6,7 +6,7 @@ import { readDevSecrets } from "../scripts/dev-secrets";
 /**
  * Lets time pass for `person`'s grants in `slug`'s tenant: their ledger rows and the tenant's roles move 400 days into
  * the past, so a grant made and noticed through the UI is as old as `authz.second_person.min_grant_age` requires.
- * The grant and its scope go through 권한; the holder confirms the notice in 업무함 › 참조.
+ * The grant and its scope go through 권한; the holder confirms the notice in 할 일 › 참조.
  * shortcut: eligibility SQL still uses wall time; replace ageing when all readers share the kernel clock.
  * See e2e/TESTING.md. No screen can age a grant, so this fixture stands in for the calendar alone.
  */

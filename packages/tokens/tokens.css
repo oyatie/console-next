@@ -71,8 +71,9 @@
      The nav's clearance adds its hairline and the home-indicator inset. */
   --phone-top-h: calc(var(--space-6) + var(--space-5) - var(--space-1)); --phone-nav-h: calc(var(--target-touch) + var(--space-3));
   --phone-nav-clear: calc(var(--phone-nav-h) + 1px + env(safe-area-inset-bottom, 0px));
-  /* Compact table rows (roster) and toolbar / page-head controls (tabs, 기준일, find box): design-language §2. */
-  --row-h-compact: 32px; --control-h-sm: 36px;
+  /* Compact table rows (roster) and toolbar / page-head controls (tabs, 기준일, find box): design-language §2.
+     --row-h-sm: a line that is not a table row: a slip line, a before/after line, a pane's link or header line. */
+  --row-h-compact: 32px; --row-h-sm: 32px; --control-h-sm: 36px;
   /* Heights of their own, so a style can size its rows without moving what stands in or beside them.
      --control-h: a button, and any control in a toolbar. --control-h-lg: the approval card's decision buttons.
      --control-h-compact: a button inside a compact grid. --toolbar-h, --toolbar-py: a toolbar's least height and its

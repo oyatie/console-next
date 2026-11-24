@@ -29,8 +29,7 @@
    link in a side column is as tall as its row, so a name half under the sticky head is still a whole target. */
 :where([data-experience]:not([data-experience="baseline"])) .row > * { --rules: inset 0 -1px 0 var(--border); border-bottom: 0; box-shadow: var(--rules); }
 :where([data-experience]:not([data-experience="baseline"])) .row[data-group] > * { --rules: inset 0 2px 0 var(--control-border), inset 0 -1px 0 var(--border); border-top: 0; }
-:where([data-experience]:not([data-experience="baseline"])) .lead > a { display: inline-block; line-height: var(--row-h-compact); vertical-align: middle; min-width: var(--target); min-height: var(--row-h-compact); text-decoration: none; }
-:where([data-experience]:not([data-experience="baseline"])) .lead > a:is(:hover, :focus-visible) { text-decoration: underline; }
+:where([data-experience]:not([data-experience="baseline"])) .lead > a { display: inline-block; line-height: var(--row-h-compact); vertical-align: middle; min-width: var(--target); min-height: var(--row-h-compact); }
 :where([data-experience]:not([data-experience="baseline"])) .table thead th { padding: var(--space-half) var(--space-1); font-size: var(--text-xs); }
 :where([data-experience]:not([data-experience="baseline"])) .lead { padding: 0 var(--space-1-5); }
 :where([data-experience]:not([data-experience="baseline"])) .lead[data-w="code"] { width: 56px; min-width: 56px; }

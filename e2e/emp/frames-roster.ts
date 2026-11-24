@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test";
+import { ko } from "../../packages/i18n/src/catalogs/ko";
 import { go } from "../flows";
 import { shot } from "./shot";
 import { HERO } from "./universe";
@@ -8,7 +9,7 @@ export async function rosterFrames(a: Page) {
   // E12-loading: the list read held back, so the skeleton (final geometry) is what shows.
   await a.route("**/api/v1/employees?*", async (r) => (await new Promise((f) => setTimeout(f, 8000)), r.continue().catch(() => undefined)));
   await a.goto("/people");
-  await expect(a.getByRole("heading", { name: "직원", level: 1 })).toBeVisible();
+  await expect(a.getByRole("heading", { name: ko["roster.head.title"], level: 1 })).toBeVisible();
   await a.waitForTimeout(400); // past the skeleton delay, so the placeholder rows show
   await shot(a, "E12-loading");
   await a.unrouteAll({ behavior: "ignoreErrors" });
@@ -67,7 +68,7 @@ export async function rosterFrames(a: Page) {
   await expect(a.getByText(/맞는 사람이 내 권한 범위에 없습니다/)).toBeVisible();
   await shot(a, "E1-jump-empty");
   await a.keyboard.press("Escape");
-  await a.getByRole("heading", { name: "직원", level: 1 }).click();
+  await a.getByRole("heading", { name: ko["roster.head.title"], level: 1 }).click();
   await a.keyboard.press("?");
   await expect(a.getByRole("heading", { name: "단축키" })).toBeVisible();
   await shot(a, "E1-keys");

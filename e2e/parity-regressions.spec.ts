@@ -1,9 +1,12 @@
 import { expect, test } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "./a11y";
 import { apiAs, sent, soloTenant } from "./chaos";
 import { go, kstDate } from "./flows";
 import { openRegistered, pressRegister, receiptOf, registerSheet } from "./helpers/register";
 import { requireActionInbox } from "./require-action-inbox";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 for (const explicit of [false, true]) {
   test(`name and hire date register ${explicit ? "explicitly" : "implicitly"} unplaced with statutory follow-ups`, { tag: ["@hr", "@regression"] }, async ({ browser }) => {
@@ -58,7 +61,7 @@ for (const explicit of [false, true]) {
     const reviewPage = await reviewResponse.json() as { items: { id: string }[] };
     expect(reviewPage.items.map(({ id }) => id)).toContain(`hr_register:${detail.employee.id}`);
     await expect(page.getByRole("main").getByText("불러오는 중…", { exact: true })).toBeHidden({ timeout: 15_000 });
-    const review = page.getByRole("region", { name: "업무함", exact: true }).getByRole("row").filter({ hasText: "최최소" }).filter({ has: page.locator('a[href="/people?review=register"]') });
+    const review = page.getByRole("region", { name: t("home.inbox.title"), exact: true }).getByRole("row").filter({ hasText: "최최소" }).filter({ has: page.locator('a[href="/people?review=register"]') });
     await expect(review.getByRole("link", { name: "빠진 정보 입력", exact: true })).toBeVisible();
     await review.locator('a[href="/people?review=register"]').click();
     await expect(page.getByRole("grid", { name: "직원", exact: true }).getByText("최최소", { exact: true })).toBeVisible();

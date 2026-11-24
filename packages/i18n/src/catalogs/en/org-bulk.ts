@@ -2,8 +2,8 @@
 export const enOrgBulk = {
   "orgBulk.paste.error.kind_not_allowed": "Line {line}: departments cannot have a workplace kind. Delete the second cell.",
   "orgBulk.plan.status.kind_not_allowed": "Delete second cell",
-  "orgBulk.crumb": "Org structure",
-  "orgBulk.close": "Close and return to org structure",
+  "orgBulk.crumb": "Organization structure",
+  "orgBulk.close": "Close and return to Organization structure",
   "orgBulk.paste.title": "Paste a list",
   "orgBulk.paste.under.entity": "Under {entity} · the first level is a workplace, indented lines are departments under it · no type is asked",
   "orgBulk.paste.under.workplace": "Under {workplace} · every line is a department; indented lines go under the line above",

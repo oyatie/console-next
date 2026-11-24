@@ -223,6 +223,11 @@ test("baseline experience keeps Home on Classic fallback without firing Console 
   expect(state.reads).not.toContain("/api/v1/org-structure");
 });
 
+test.each(["baseline", "console"] as const)("the %s home page is headed by the inbox title, not a greeting", experience => {
+  state.experience = experience;
+  expect(renderNode("/", <Home canOrgStructure={false} />).match(/<h1\b[^>]*>([^<]*)<\/h1>/)?.[1]).toBe(t("home.inbox.title"));
+});
+
 test("Console Worklist gates lower band reads for unpermitted users", () => {
   const markup = renderNode("/", <Home canOrgStructure={false} />);
   expect(markup).toContain('data-pattern="worklist"');
