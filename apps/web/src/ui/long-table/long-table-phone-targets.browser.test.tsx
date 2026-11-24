@@ -11,7 +11,8 @@ beforeAll(async () => {
     viewport: { width: 390, height: 844 },
     // The row controls the org list, the exits list, statutory filings and the roster put in a cell: the selection
     // checkbox, a ghost button, a small action button and a name link. "Cards" is the default phone layout, and
-    // "Compact" the 2-line row the exits list and statutory filings use.
+    // "Compact" the 2-line row the exits list and statutory filings use. "No tail" and "One line" are compact rows
+    // without status and actions, and without facts.
     moduleCode: `
       import { createElement as h, useState } from 'react';
       import { createRoot } from 'react-dom/client';
@@ -25,16 +26,18 @@ beforeAll(async () => {
       const columns = [
         { id: 'name', header: 'Name', rowHeader: true, card: 'title', width: 200,
           cell: r => h('span', { style: { display: 'flex', alignItems: 'center' } }, h('a', { href: '#' + r.id, 'data-k': 'link' }, 'Person ' + r.id)) },
-        { id: 'unit', header: 'Unit', card: 'fact', width: 120, cell: () => 'Unit' },
+        { id: 'unit', header: 'Unit', card: 'fact', width: 120, cell: () => h('span', { 'data-k': 'fact' }, 'Unit') },
         { id: 'fold', header: 'Fold', card: 'status', width: 120, cell: r => h(Button, { variant: 'ghost', 'data-k': 'ghost', 'aria-label': 'Fold ' + r.id }, '-') },
         { id: 'open', header: 'Open', card: 'action', width: 120, cell: r => h(Button, { size: 'sm', 'data-k': 'action' }, 'Open ' + r.id) },
       ];
-      function Table({ label, compact }) {
+      function Table({ label, compact, shown = columns }) {
         const [selection, setSelection] = useState({ kind: 'ids', ids: new Set() });
-        return h(LongTable, { label, rows, columns, rowId: r => r.id, hasMore: false, onLoadMore: () => {}, empty: 'None',
+        return h(LongTable, { label, rows, columns: shown, rowId: r => r.id, hasMore: false, onLoadMore: () => {}, empty: 'None',
           selection, onSelectionChange: setSelection, ...(compact ? { density: 'compact', mobileLayout: 'compact' } : {}) });
       }
-      createRoot(document.getElementById('root')).render(h('main', null, h(Table, { label: 'Cards' }), h(Table, { label: 'Compact', compact: true })));
+      createRoot(document.getElementById('root')).render(h('main', null, h(Table, { label: 'Cards' }), h(Table, { label: 'Compact', compact: true }),
+        h(Table, { label: 'No tail', compact: true, shown: columns.slice(0, 2) }),
+        h(Table, { label: 'One line', compact: true, shown: [columns[0], columns[2], columns[3]] })));
     `,
   });
 }, 60_000);
@@ -101,10 +104,28 @@ test("in Console a phone card row keeps 44px touch targets for its checkbox, but
 test("in Console a phone compact row keeps 44px touch targets for its checkbox and buttons within its 2-line height", async () => {
   const { boxes, row, clipped } = await targets("Compact", "console", 390, "cards");
   expect(short(boxes, ["link"])).toEqual([]);
-  // The name link keeps its line height, so the row stays two lines.
-  expect(boxes.link.height).toBe(24);
   expect(row).toBeLessThanOrEqual(68);
   expect(clipped).toBe(0);
+}, 30_000);
+
+test("in Console a phone compact row keeps its fact line under the name, and a 1-line row keeps the name level with its actions", async () => {
+  const { page } = mounted;
+  await targets("Compact", "console", 390, "cards");
+  const place = (table: string) => page.getByRole("grid", { name: table, exact: true }).evaluate(el => {
+    const row = el.querySelector('[data-row-id="A"]')!;
+    const rect = (k: string) => {
+      const r = row.querySelector(`[data-k="${k}"]`)?.getBoundingClientRect();
+      return r && { left: Math.round(r.left), top: Math.round(r.top), bottom: Math.round(r.bottom), middle: Math.round((r.top + r.bottom) / 2) };
+    };
+    return { link: rect("link")!, fact: rect("fact"), action: rect("action") };
+  });
+  for (const table of ["Compact", "No tail"]) {
+    const { link, fact } = await place(table);
+    expect(fact!.top, table).toBeGreaterThanOrEqual(link.bottom);
+    expect(fact!.left, table).toBe(link.left);
+  }
+  const { link, action } = await place("One line");
+  expect(Math.abs(link.middle - action!.middle)).toBeLessThanOrEqual(1);
 }, 30_000);
 
 test("in Console a phone compact-density row clips none of its controls", async () => {
