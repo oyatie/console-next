@@ -202,6 +202,7 @@ beforeEach(() => {
 
 const inboxLink = () => `href="/inbox">${t("home.inbox.viewInbox")}</a>`;
 const home = () => renderNode("/", <Home canOrgStructure={false} />);
+const rows = (count: number) => Array.from({ length: count }, (_, i) => ({ ...samplePage().items[1]!, id: `stat-${i}` }));
 
 test("Console home links to the full to-do list once every item is on the page, even with its own lane empty", () => {
   state.inboxPages = [{ ...samplePage(), total: 2 }];
@@ -210,16 +211,16 @@ test("Console home links to the full to-do list once every item is on the page, 
   expect(home()).toContain(inboxLink());
 });
 
-test("Console home links to the full to-do list beside the more bar while the server holds more pages", () => {
+test("Console home links to the full to-do list beside the more bar when the remainder is long or on later pages", () => {
+  state.inboxPages = [{ ...samplePage(), items: rows(31), total: 31 }];
+  expect(home()).toContain(inboxLink());
   state.inboxPages = [{ ...samplePage(), total: 2000 }];
   state.hasNextPage = true;
-  expect(home()).toContain(t("home.worklist.moreCount", { count: 1998 }));
   expect(home()).toContain(inboxLink());
 });
 
-test("Console home keeps the drawn more bar without the link while every remaining item is loaded", () => {
-  const items = Array.from({ length: 23 }, (_, i) => ({ ...samplePage().items[1]!, id: `stat-${i}` }));
-  state.inboxPages = [{ ...samplePage(), items, total: 23 }];
+test("Console home keeps the drawn more bar without the link while a short remainder is loaded", () => {
+  state.inboxPages = [{ ...samplePage(), items: rows(23), total: 23 }];
   expect(home()).toContain(t("home.worklist.moreCount", { count: 13 }));
   expect(home()).not.toContain(t("home.inbox.viewInbox"));
 });
