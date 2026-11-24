@@ -115,7 +115,7 @@ test("WorkspaceTabs passes WCAG 2.2 AA axe checks, meets target sizes, handles k
   await expect.poll(() => page.evaluate(() => document.activeElement?.textContent)).toBe(t("shell.link.people"));
 
   await page.keyboard.press("Home");
-  await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute("href"))).toBe("#home");
+  await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute("href"))).toBe("#todo");
 
   // Closing the active tab moves focus to an adjacent surviving tab link instead of dropping focus to <body>.
   const closePerson = full.getByRole("button", { name: t("shell.tabs.closeOne", { name: tg("search.person") }) });

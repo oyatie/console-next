@@ -9,7 +9,7 @@ export const order = 84;
 /** Open workspace tab strip showing pinned first tab, closable tabs, count badge, `+` action, and narrow overflow. */
 export default function WorkspaceTabsGallery() {
   const initialTabs: readonly WorkspaceTab[] = [
-    { id: "home", label: t("shell.link.home"), href: "#home", count: 23, pinned: true },
+    { id: "todo", label: t("shell.link.todo"), href: "#todo", count: 23, pinned: true },
     { id: "people", label: t("shell.link.people"), href: "#people" },
     { id: "person", label: tg("search.person"), href: "#person" },
     { id: "approvals", label: t("shell.link.approvals"), href: "#approvals", count: 4 },

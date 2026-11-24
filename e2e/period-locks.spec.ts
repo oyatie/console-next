@@ -1,8 +1,11 @@
 import { expect, test } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { atPhoneWidth, expectAccessible, fits } from "./a11y";
 import { clickCounter } from "./clicks";
 import { koDate, kstDate, option } from "./flows";
 import { tenantWithExecutive } from "./setup-flows";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 // The last finished month and the current one in Korea, as YYYY-MM, and how the app names a month.
 const ym = (d: Date) => d.toISOString().slice(0, 7);
@@ -23,7 +26,7 @@ test("period locks: month lock, overlap blocked with fixes, unlock with a reason
   // Settings views keep 설정 current.
   await expect(nav.getByRole("link", { name: "설정", exact: true })).toHaveAttribute("aria-current", "page");
   await expect(nav.getByRole("link", { name: "기간 잠금" })).toHaveCount(0);
-  await expect(nav.getByRole("link", { name: "직원", exact: true })).not.toHaveAttribute("aria-current", "page");
+  await expect(nav.getByRole("link", { name: t("shell.link.people"), exact: true })).not.toHaveAttribute("aria-current", "page");
   await expectAccessible(admin, "period locks (empty)");
 
   // Nothing is chosen: pressing the primary lists the errors and moves to the first.

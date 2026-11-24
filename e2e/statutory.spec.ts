@@ -1,15 +1,18 @@
 import { expect, test } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { atPhoneWidth, expectAccessible, fits } from "./a11y";
 import { go, kstDate, registerEmployee } from "./flows";
 import { prepareFilingCompletion, selectFilingFact } from "./helpers/statutory";
 import { staffedTenant } from "./setup-flows";
 
+test.beforeAll(() => loadCatalog("ko"));
+
 test("statutory filings and a dated worker register from an empty tenant", { tag: "@hr" }, async ({ browser }) => {
   const { admin } = await staffedTenant(browser, "statutory", "법정서류회사");
   await go(admin, "/statutory");
   await expect(admin.getByText("신고할 항목이 없습니다", { exact: true })).toBeVisible();
-  await expect(admin.getByText("직원에서 입사·퇴직·휴직·복직 기록을 확인하십시오.", { exact: true })).toBeVisible();
-  await expect(admin.getByRole("link", { name: "직원 열기" })).toHaveAttribute("href", "/people");
+  await expect(admin.getByText(t("statutory.emptyReason"), { exact: true })).toBeVisible();
+  await expect(admin.getByRole("link", { name: t("statutory.openPeople"), exact: true })).toHaveAttribute("href", "/people");
   await admin.getByRole("tab", { name: "근로자 명부" }).click();
   await expect(admin.getByText("사업장을 선택하거나 조직 구조에서 사업장을 등록하십시오.", { exact: true })).toBeVisible();
   await expect(admin.getByRole("link", { name: "조직 구조 열기" })).toHaveAttribute("href", "/org");
@@ -22,7 +25,7 @@ test("statutory filings and a dated worker register from an empty tenant", { tag
   const hiredOn = kstDate(0);
   await registerEmployee(admin, { name: "김신고", number: "S-1", hired: hiredOn });
   await go(admin, "/statutory");
-  await expect(admin.getByRole("heading", { name: "법정 신고·서류" })).toBeVisible();
+  await expect(admin.getByRole("heading", { name: t("statutory.title"), exact: true, level: 1 })).toBeVisible();
   await expect(admin.getByRole("tab")).toHaveCount(2);
   const row = admin.getByRole("row").filter({ hasText: "김신고" }).filter({ hasText: "국민연금" });
   await expect(row).toContainText("취득 신고");
@@ -59,7 +62,7 @@ test("statutory filings and a dated worker register from an empty tenant", { tag
   await dialog.getByRole("textbox", { name: /^신고일/ }).fill(kstDate());
   await dialog.getByLabel(/^접수번호/).fill("batch-101");
   await dialog.getByRole("button", { name: "미리보기" }).click();
-  await expect(dialog).toContainText("업무함과 홈에서 완료로 표시");
+  await expect(dialog).toContainText("할 일에서 완료로 표시");
   await expectAccessible(admin, "filing completion preview");
   await dialog.getByRole("button", { name: "신고 완료", exact: true }).click();
   await expect(dialog).toBeHidden();
@@ -121,7 +124,7 @@ test("statutory filings and a dated worker register from an empty tenant", { tag
   await admin.getByRole("button", { name: "닫고 직원 목록으로", exact: true }).click();
   await expect(admin).toHaveURL(/\/people$/);
   await go(admin, "/");
-  const queue = admin.getByRole("region", { name: "업무함", exact: true });
+  const queue = admin.getByRole("region", { name: t("home.inbox.title"), exact: true });
   const filings = queue.locator("[data-id]").filter({ has: admin.getByRole("link", { name: "4대보험 신고 열기", exact: true }) });
   await expect(filings).toHaveCount(1);
   const fold = queue.getByRole("button", { name: "4대보험 신고 · 3건", exact: true });

@@ -69,7 +69,7 @@ test("go-live counts what the panels show and fixes each record in place; the te
 
   // #29: the screen is 「조직 구조」; the rail names the customer account's terms, never a 회사.
   const nav = admin.getByRole("navigation", { name: "주 메뉴" });
-  await expect(nav.getByRole("link", { name: "조직 구조" })).toBeVisible();
+  await expect(nav.getByRole("link", { name: t("shell.link.org"), exact: true })).toBeVisible();
   await expect(nav).not.toContainText(/(?<!주식)회사/);
   await expect(setupRail(admin)).not.toContainText(/(?<!주식)회사/);
   await expect(setupRail(admin)).not.toContainText("보안 연락처");
@@ -181,7 +181,7 @@ test("after go-live the only ops holder is asked for a second passkey on Home an
   await startOperations(admin);
 
   // The single queue names account work; recovery guidance lives on its resolving record.
-  const home = admin.getByRole("region", { name: "업무함", exact: true });
+  const home = admin.getByRole("region", { name: t("home.inbox.title"), exact: true });
   const security = home.getByRole("row").filter({ hasText: "다른 기기에 패스키 하나 더" });
   await expect(security).toHaveCount(1);
   await expect(security.getByRole("button", { name: "패스키 등록", exact: true })).toBeVisible();

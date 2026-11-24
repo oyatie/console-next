@@ -222,7 +222,7 @@ export function WorklistConsole({
       list={() => {
         const noWork = !first?.has_work && unavailable.length === 0;
         if (mode === "inbox" && inSetup && !allItems.length && !unavailable.length && !inbox.hasNextPage) {
-          return <EmptyState title={t("home.inbox.setup.title")} reason={null} actions={<Link to="/" className={buttonClass("primary")}>{t("shell.link.home")}</Link>} />;
+          return <EmptyState title={t("home.inbox.setup.title")} reason={null} actions={<Link to="/" className={buttonClass("primary")}>{t("shell.link.todo")}</Link>} />;
         }
         return (
           <div ref={surfaceRef} className={s.tableWrap}>
