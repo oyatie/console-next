@@ -41,11 +41,11 @@ export default function PageHeadGallery() {
         <div data-page-head-demo="command">
           <PageHead
             band
-            title={t("shell.link.home")}
+            title={t("shell.link.todo")}
             filters={
               <>
                 <ToggleButton pressed onClick={() => {}} count={23}>
-                  {t("shell.link.home")}
+                  {t("shell.link.todo")}
                 </ToggleButton>
                 <ToggleButton pressed={false} onClick={() => {}} count={4}>
                   {t("shell.link.approvals")}

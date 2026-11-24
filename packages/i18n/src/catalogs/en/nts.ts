@@ -21,7 +21,7 @@ export const enNts = {
   "nts.result.noResult": "Unable to verify",
   "nts.reflectionPending": "May be awaiting NTS data refresh",
   "nts.mismatch": "The recorded status differs from NTS. Review before recording suspension or closure.",
-  "nts.inbox": "Review in the inbox",
+  "nts.inbox": "Review in To-dos",
   "nts.unavailable.NOT_CONFIGURED": "Automatic check unavailable · integration key is not configured",
   "nts.unavailable.KEY_EXPIRED": "Automatic check unavailable · integration key has expired",
   "nts.unavailable.KEY_REJECTED": "Automatic check unavailable · NTS rejected the integration key",

@@ -58,14 +58,6 @@
   gap: var(--space-4);
 }
 
-:where([data-experience]:not([data-experience="baseline"])) .plainLink {
-  text-decoration: none;
-}
-
-:where([data-experience]:not([data-experience="baseline"])) .plainLink:hover {
-  text-decoration: underline;
-}
-
 @media (--phone) {
   .filters {
     width: 100%;

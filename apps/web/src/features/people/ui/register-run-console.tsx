@@ -116,7 +116,7 @@ export function RegisterRunConsole({
       back={{ to: "/people", label: t("people.title") }}
       head={{
         title,
-        crumbs: <Crumbs items={[<Link key="people" to="/people" search={{}} className={s.crumbLink}>{t("people.title")}</Link>]} current={t("register.run.crumb")} />,
+        crumbs: <Crumbs items={[<Link key="people" to="/people" search={{}}>{t("people.title")}</Link>]} current={t("register.run.crumb")} />,
         meta: <PhaseLine phase={setup ? "setup" : "operating"}>{t(setup ? "register.run.phaseSetup" : "register.run.phaseOp")}</PhaseLine>,
         tools: (
           <bdi className={s.sum} role="status">

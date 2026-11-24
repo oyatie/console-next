@@ -107,7 +107,7 @@
 }
 :where([data-experience]:not([data-experience="baseline"])) [data-pane="record"] .card[data-compact] > header {
   margin: calc(var(--space-2) * -1) calc(var(--space-3) * -1) 0;
-  min-height: var(--row-h-compact);
+  min-height: var(--row-h-sm);
 }
 :where([data-experience]:not([data-experience="baseline"])) [data-pane="record"] .card[data-compact] .body {
   padding: var(--space-1) 0 0;
@@ -127,8 +127,9 @@
   min-width: 0;
 }
 :where([data-experience]:not([data-experience="baseline"])) [data-pane="record"] .card[data-compact] .body textarea {
-  min-height: var(--field-h);
-  height: var(--field-h);
+  /* The side pane draws its decision box as tall as a row, above the field height. */
+  min-height: var(--row-h);
+  height: var(--row-h);
   padding: var(--space-1) var(--space-2);
 }
 :where([data-experience]:not([data-experience="baseline"])) [data-pane="record"] .card[data-compact] .consequence {
