@@ -8,7 +8,7 @@ export const order = 83;
 /** Horizontal module navigation bar inside `[data-surface="chrome"]` at full width and constrained overflow width. */
 export default function ModuleNavGallery() {
   const items: readonly ModuleNavItem[] = [
-    { id: "home", label: t("shell.link.home"), href: "#home", count: 23 },
+    { id: "todo", label: t("shell.link.todo"), href: "#todo", count: 23 },
     { id: "requests", label: t("shell.link.requests"), href: "#requests" },
     { id: "approvals", label: t("shell.link.approvals"), href: "#approvals", count: 4 },
     { id: "org", label: t("shell.link.org"), href: "#org" },

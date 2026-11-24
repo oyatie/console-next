@@ -4,6 +4,7 @@ import { getRouteApi, Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { QueryState } from "../../../lib/react/query-state";
 import { PageReadGate } from "../../../reference/authz/ui/access-gate";
+import { modHint } from "../../../lib/mod-hint";
 import { todayKst } from "../../../lib/pure/today";
 import { Banner } from "../../../ui/banner/banner";
 import { Button } from "../../../ui/button/button";
@@ -103,7 +104,7 @@ export function MonthTab({ head }: { head?: ReactNode }) {
   const empty = grid.isSuccess && total === 0;
   const saveButton = (
     <Button variant={dock ? "secondary" : "primary"} disabled={!!saveWhy} onClick={() => setDock({ kind: "save" })}>
-      {t("attendanceRecords.toolbar.save")} <Kbd keys="⌘S" />
+      {t("attendanceRecords.toolbar.save")} <Kbd keys={modHint("S")} />
     </Button>
   );
 

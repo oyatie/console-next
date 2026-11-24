@@ -10,7 +10,6 @@ import { Kbd } from "../../../ui/kbd/kbd";
 import { Crumbs } from "../../../ui/page-head/crumbs";
 import { WizardPattern } from "../../../ui/patterns/wizard";
 import { StepLine } from "../../../ui/step-line/step-line";
-import s from "./grid-page.module.css";
 
 type Step = { key: string; label: string; state: "done" | "current" | "waiting" };
 
@@ -76,7 +75,7 @@ export function GridConsole({
       back={{ to: "/people", label: t("people.title") }}
       head={{
         title: t("bulkGrid.title", { scope }),
-        crumbs: <Crumbs items={[<Link key="people" to="/people" search={{}} className={s.crumbLink}>{t("people.title")}</Link>]} current={t("bulkGrid.crumb")} />,
+        crumbs: <Crumbs items={[<Link key="people" to="/people" search={{}}>{t("people.title")}</Link>]} current={t("bulkGrid.crumb")} />,
         actions: (
           <IconButton label={t("bulk.page.close")} onClick={onClose}>
             <X size={16} aria-hidden />

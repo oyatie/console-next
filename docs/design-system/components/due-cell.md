@@ -24,7 +24,7 @@
 
 ## Looks and sizes
 
-Inline form (`fill={false}`) aligns to `--row-h-compact` with `--radius-sm`. Full-cell form (`fill={true}`) stretches across `--row-h` with edge-to-edge `--over-bg` or `--due-bg` tint.
+Inline form (`fill={false}`) is a badge, not a row: it aligns to `--row-h-sm`, the height of a line that is not a table row, with `--radius-sm`. In a 28 px Console row it leaves the row its height. Full-cell form (`fill={true}`) stretches across `--row-h` with edge-to-edge `--over-bg` or `--due-bg` tint.
 
 ## States
 
@@ -77,7 +77,7 @@ Built-in copy reads `uiDeadlineChip.over`, `uiDeadlineChip.left`, `uiWorklist.to
 | `--over-tx` | `color` |
 | `--radius-sm` | `border-radius` |
 | `--row-h` | `min-height` |
-| `--row-h-compact` | `min-height` |
+| `--row-h-sm` | `min-height` |
 | `--space-1` | `gap` |
 | `--space-1-5` | `padding` |
 | `--space-half` | `margin-block` |

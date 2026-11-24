@@ -121,7 +121,7 @@ function Queue({ preview = false, filter = "turn", setup, setupPhase = false, se
           const head = pages[0];
           const unavailable = [...new Map(pages.flatMap((page) => page.unavailable).map((part) => [part.source, part])).values()];
           const noWork = !head?.has_work && unavailable.length === 0;
-          if (!preview && (setupPhase || checklist) && !rows.length && !unavailable.length && !inbox.hasNextPage) return <EmptyState title={t("home.inbox.setup.title")} reason={null} actions={<Link to="/" className={buttonClass("primary")}>{t("shell.link.home")}</Link>} />;
+          if (!preview && (setupPhase || checklist) && !rows.length && !unavailable.length && !inbox.hasNextPage) return <EmptyState title={t("home.inbox.setup.title")} reason={null} actions={<Link to="/" className={buttonClass("primary")}>{t("shell.link.todo")}</Link>} />;
           return <>
             <UnavailableBanners unavailable={unavailable} onRetry={() => void inbox.refetch()} retrying={inbox.isFetching} />
             {checklist && setup?.(checklist)}

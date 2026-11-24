@@ -25,13 +25,15 @@ export function FieldSet({ label, required, children, className, ...props }: Com
  * under the field. Server errors arrive here too: the caller maps `errors[].field` to `error`.
  * The control is a render prop so any native control (input, select, textarea, date) gets the ids.
  */
-export function Field({ id: givenId, label, required, unit, hint, example, error, warning, tag, children }: {
+export function Field({ id: givenId, label, required, unit, hint, hintHeld = false, example, error, warning, tag, children }: {
   id?: string;
   label: ReactNode;
   /** `null`: a search or filter box, which is neither required nor optional, so it carries no marker. */
   required: boolean | null;
   unit?: ReactNode;
   hint?: ReactNode;
+  /** The hint keeps its line but is not shown or read yet (a line the value will fill, so filling it moves nothing). */
+  hintHeld?: boolean;
   /** A worked example, shown with an "e.g." prefix. */
   example?: string;
   error?: ReactNode;
@@ -47,7 +49,7 @@ export function Field({ id: givenId, label, required, unit, hint, example, error
   const errorId = `${id}-error`;
   const warningId = `${id}-warning`;
   const hasHint = hint != null || example != null;
-  const describedBy = [hasHint && hintId, error != null && errorId, warning != null && warningId].filter(Boolean).join(" ") || undefined;
+  const describedBy = [hasHint && !hintHeld && hintId, error != null && errorId, warning != null && warningId].filter(Boolean).join(" ") || undefined;
   return (
     <div className={s.field}>
       <label className={s.label} htmlFor={id}>
@@ -60,7 +62,7 @@ export function Field({ id: givenId, label, required, unit, hint, example, error
         {unit != null && <span className={s.unit}>{unit}</span>}
       </div>
       {hasHint && (
-        <p data-hint="field" id={hintId} className={s.hint}>
+        <p data-hint="field" id={hintId} className={s.hint} data-held={hintHeld || undefined}>
           {hint != null && <span>{hint}</span>}
           {example != null && <span>{t("uiField.example", { example })}</span>}
         </p>

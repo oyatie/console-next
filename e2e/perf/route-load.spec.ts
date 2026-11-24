@@ -3,10 +3,10 @@ import { execFileSync } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import path from "node:path";
-import { expect, test, type BrowserContext } from "@playwright/test";
+import { expect, type BrowserContext } from "@playwright/test";
 import { vendorPage } from "../flows";
 import { routeList } from "../helpers/route-list";
-import { launchHTTP1 } from "./transport";
+import { test } from "./transport";
 import { budget } from "./budget";
 import { buildTenant } from "./fixture";
 import { assertBudget, measure, observePaint, reportActivity, summarize, type Sample } from "./measurement";
@@ -116,7 +116,7 @@ test("a previous document's event stream is outside the next load", { tag: "@per
   }
 });
 
-test("cold and warm route LCP at the synthetic tenant size, with a held-read control", { tag: "@perf" }, async ({ browser, baseURL }, info) => {
+test("cold and warm route LCP at the synthetic tenant size, with a held-read control", { tag: "@perf" }, async ({ browser, baseURL, transports }, info) => {
   test.setTimeout(1_200_000);
   expect(process.env.E2E_SERVED, "lab evidence requires the built application").toBe("1");
   const dir = path.resolve(process.env.PERF_EVIDENCE_DIR ?? "");
@@ -130,13 +130,13 @@ test("cold and warm route LCP at the synthetic tenant size, with a held-read con
   const comparison: typeof rows = [];
   const report = {
     commit: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(), run_at: new Date().toISOString(),
-    source_command: `E2E_SERVED=1 E2E_PERF=1 E2E_BROWSER=${browser.browserType().name()} npx playwright test --config=playwright.perf.config.ts --project=${info.project.name}`,
+    transports: transports.map(({ protocol }) => protocol),
+    source_command: `E2E_SERVED=1 E2E_PERF=1 E2E_PERF_TRANSPORTS=${process.env.E2E_PERF_TRANSPORTS ?? "h2"} E2E_BROWSER=${browser.browserType().name()} npx playwright test --config=playwright.perf.config.ts --project=${info.project.name}`,
     browser: browser.browserType().name(), build: "served", budget, negative_control: {} as object, failure: null as string | null, rows, comparison,
   };
   await mkdir(dir, { recursive: true });
   const save = () => writeFile(path.join(dir, "route-load.json"), JSON.stringify(report, null, 2) + "\n");
   let context: BrowserContext | undefined;
-  const h1 = await launchHTTP1(browser);
   try {
     const { admin, urls } = await test.step("Build the synthetic tenant through product controls", () => buildTenant(browser), { timeout: 1_200_000 });
     test.setTimeout(budget.run_ms);
@@ -146,7 +146,6 @@ test("cold and warm route LCP at the synthetic tenant size, with a held-read con
     // A setup tab must not later rotate the cookie copied into the measured context.
     await admin.context().close();
     await vendor.context().close();
-    const transports = [{ protocol: "http/1.1", browser: h1 }, { protocol: "h2", browser }];
     const fresh = async (realm: keyof typeof states, engine = browser) => {
       context = await engine.newContext({ storageState: states[realm], baseURL: origin, ignoreHTTPSErrors: true, locale: "ko-KR", timezoneId: "Asia/Seoul", viewport: { width: 1440, height: 900 }, serviceWorkers: "block" });
       context.setDefaultTimeout(30_000);
@@ -213,7 +212,6 @@ test("cold and warm route LCP at the synthetic tenant size, with a held-read con
     throw error;
   } finally {
     await context?.close();
-    await h1.close();
     await save();
   }
 });

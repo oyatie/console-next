@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Page } from "@playwright/test";
 import type { components } from "@console/api/schema";
+import { loadCatalog, t } from "@console/i18n";
 import { atPhoneWidth, expectAccessible, fits } from "./a11y";
 import { firstSignIn, go, kstDate, routeReady } from "./flows";
 import { answer, SETUP_DEPARTMENT, setupCompany, startOperations } from "./setup-flows";
 import { apiOf, bearerOf, stepUpAssertion } from "./helpers/api";
 import { openTenant } from "./helpers/tenant";
 import { leaveScreen, revealUnit } from "./structure-flows";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 // The change record (the HCM journey covers the one-step Home path): keep a draft, re-date it, submit it from its
 // page, a rejection that requires the approver's reason, and a redraft that keeps the content but not the date.
@@ -176,7 +179,7 @@ test("an org change is drafted, submitted from its page, rejected with a reason 
   // My rejected change waits for my redraft: Home's turn leads to the reason, and the default view still lists it.
   await admin.bringToFront();
   await go(admin, "/");
-  await expect(admin.getByRole("region", { name: "업무함", exact: true })).toContainText("영남권");
+  await expect(admin.getByRole("region", { name: t("home.inbox.title"), exact: true })).toContainText("영남권");
   await expect(admin.getByRole("link", { name: "반려 사유 보기" })).toHaveCount(1);
   await go(admin, "/org/changes");
   await expect(admin.getByRole("button", { name: "진행 중 1" })).toHaveAttribute("aria-pressed", "true");

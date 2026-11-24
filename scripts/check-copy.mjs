@@ -130,8 +130,6 @@ const MATURITY_RULES = [
   { rule: "term.이력", re: /변경 내역/, use: "변경 이력" },
   { rule: "term.미배치", re: /소속 지점 미지정/, use: "미배치" },
   { rule: "term.대기", re: /내 차례/, use: "대기" },
-  { rule: "term.업무함", re: /(?<![가-힣])할 일/, when: ({ id, text }) => /title|heading|panel/i.test(id) || (id === "runtime" && text === "할 일"), use: "업무함" },
-  { rule: "term.직원", re: /구성원/, when: ({ id, text }) => /(?:^|\.)(?:title|heading|tab)(?:\.|$)/i.test(id) || (id === "runtime" && /^구성원(?: 관리| 목록)?$/.test(text)), use: "직원 (titles and tabs)" },
   { rule: "term.검색", re: /찾기/, when: ({ id, text }) => /search|jump/i.test(id) || (id === "runtime" && /^(?:사람 )?찾기$/.test(text)), use: "검색 (find-in-page remains 찾기)" },
   { rule: "verb.부여", re: /권한을? (?:줄|주[는고며면지]|줍)/, use: "권한 부여" },
   { rule: "prose.위치", re: /(?:왼쪽|오른쪽|아래|위쪽|상단|하단)(?:의|에 있는|에서|에)?\s*(?:버튼|단추|입력란|메뉴)(?:을|를|에서|로)?|화면 (?:왼쪽|오른쪽|아래|위쪽|상단|하단)에 있습니다/, use: "name the control, not its position" },

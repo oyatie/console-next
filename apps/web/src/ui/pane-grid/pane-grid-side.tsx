@@ -111,6 +111,7 @@ export function SidePane({
   full,
   onFull,
   onCloseRequest,
+  armed,
 }: {
   kind: SideKind;
   pane: SidePaneSpec;
@@ -119,6 +120,8 @@ export function SidePane({
   full?: boolean;
   onFull?: (on: boolean) => void;
   onCloseRequest: (pane: SidePaneSpec) => void;
+  /** Escape found unsaved input here: the pane says so, and the next Escape closes it. */
+  armed?: boolean;
 }) {
   const backRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -176,7 +179,12 @@ export function SidePane({
           {pane.children}
         </div>
       </SidePanelReadContext>
-      {pane.footer != null ? <div className={s.paneFooter}>{pane.footer}</div> : null}
+      {pane.footer != null || armed ? (
+        <div className={s.paneFooter}>
+          {armed ? <div role="status">{t("composer.unsaved")}</div> : null}
+          {pane.footer}
+        </div>
+      ) : null}
     </aside>
   );
 }

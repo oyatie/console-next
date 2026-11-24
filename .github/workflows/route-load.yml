@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: "17 18 * * *"
   workflow_dispatch:
+    inputs:
+      transports:
+        description: Measure HTTP/2 alone or include the HTTP/1.1 comparison
+        type: choice
+        default: h2
+        options: [h2, both]
 permissions: {}
 concurrency:
   group: route-load-${{ github.ref }}
@@ -71,6 +77,7 @@ jobs:
       E2E_PREBUILT: "1"
       E2E_SERVED: "1"
       E2E_PERF: "1"
+      E2E_PERF_TRANSPORTS: ${{ inputs.transports || 'h2' }}
       E2E_WORKERS: "1"
     steps:
       - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
@@ -93,7 +100,7 @@ jobs:
           CONSOLE_DEV_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
           PERF_EVIDENCE_DIR: ${{ runner.temp }}/route-load
         run: npx playwright test --config=playwright.perf.config.ts --project=parallel --retries=0
-      - name: Paired cold LCP comparison for the job summary
+      - name: Cold LCP measurements for the job summary
         if: ${{ always() }}
         env:
           PERF_EVIDENCE_DIR: ${{ runner.temp }}/route-load
