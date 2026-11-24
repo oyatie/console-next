@@ -5,6 +5,7 @@ import { Link } from "@tanstack/react-router";
 import { isMessageId, t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { reasonCodesQuery, reasonOptions, type ReasonDomain } from "../../../lib/reason-codes";
+import { announce } from "../../../lib/react/announce";
 import { readsAreStale } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { ApprovalCard } from "../../../ui/approval-card/approval-card";
@@ -20,7 +21,7 @@ import { ReasonField } from "../../../ui/reason/reason-field";
 import { reasonProblem, type Reason } from "../../../ui/reason/reason";
 import type { ApprovalDecision, ApprovalDocument } from "../api";
 import { decisionRefusalText, relatedApprovalLinks } from "../present";
-import { useApprovalDecisionCommand } from "./use-approval-decision";
+import { useApprovalDecisionCommand, useDecisionOffered } from "./use-approval-decision";
 
 const emptyReason = (): Reason => ({ code: null, memo: "" });
 /** The longest note a reason takes (the reason catalog's own limit). */
@@ -31,6 +32,18 @@ type DecisionForm = "reject" | "return";
 const consequenceText = (key: string) => {
   const id = `approvals.consequence.${key}`;
   return isMessageId(id) ? t(id) : key;
+};
+
+/**
+ * A line that replaces the card takes the focus the card held, which the browser has left on the page by then. Focus
+ * the person put elsewhere stays, and the line is said through the shell's live region instead: a status drawn with
+ * its words already in it is not read out by every screen reader. Defined once, so React calls it when the line is
+ * drawn and not on every render; a line that already has focus, as on the second call StrictMode makes, is not said.
+ */
+const takeDroppedFocus = (line: HTMLElement | null) => {
+  if (!line) return;
+  if (document.activeElement === document.body) line.focus();
+  else if (document.activeElement !== line) announce(line.textContent);
 };
 
 /** The reasons of one decision, from the catalog domain the server names. */
@@ -65,6 +78,7 @@ export function ApprovalDecisionPanel({
 }) {
   const [opinion, setOpinion] = useState("");
   const [reasons, setReasons] = useState<Record<DecisionForm, Reason>>({ reject: emptyReason(), return: emptyReason() });
+  const offered = useDecisionOffered(d);
   const internal = useApprovalDecisionCommand(d.id, onReceipt);
   const { command, localReceipt } = controller ?? internal;
   const receipt = controlledReceipt ?? localReceipt;
@@ -89,20 +103,15 @@ export function ApprovalDecisionPanel({
         : undefined;
   // Only the action the server offers is drawn; nothing is inferred from the document's status.
   const reject = actions.kind === "approve" ? actions.reject : undefined;
-  const receiptMessage = receipt && <p role="status">{receipt}</p>;
+  // A card drawn here that a later read no longer offers means someone else has decided: the status line says so, in
+  // place of the card. A decision of this person's on its way is still pending here, and shows nothing of the kind.
+  const withdrawn = offered && !reject && !receipt && !command.isPending && !command.error;
+  const status = receipt ?? (withdrawn ? t("approvals.viewer.unavailable") : undefined);
+  const statusLine = status && <p role="status" tabIndex={withdrawn ? -1 : undefined} ref={withdrawn ? takeDroppedFocus : undefined}>{status}</p>;
   if (!reject && !receipt && !command.isPending) {
-    if (command.error) {
-      return docked ? (
-        <DocDecisionPad>
-          <CommandError error={command.error} own={ownError} />
-        </DocDecisionPad>
-      ) : (
-        <Card title={t("approvals.viewer.decision")}>
-          <CommandError error={command.error} own={ownError} />
-        </Card>
-      );
-    }
-    return null;
+    const content = command.error ? <CommandError error={command.error} own={ownError} /> : statusLine;
+    if (!content) return null;
+    return docked ? <DocDecisionPad>{content}</DocDecisionPad> : <Card title={t("approvals.viewer.decision")}>{content}</Card>;
   }
   const stale = readsAreStale(command.error) && command.variables?.seen_fingerprint === d.fingerprint;
   const currentStepIdx = d.route.findIndex(step => step.state === "current");
@@ -168,7 +177,7 @@ export function ApprovalDecisionPanel({
         approveBlocked={stale ? t("approvals.viewer.changed") : undefined}
         staleBlocked={stale ? t("approvals.viewer.changed") : undefined}
         meta={docked ? stepMeta : t("approvals.viewer.revision", { revision: d.revision })}
-        receipt={receiptMessage}
+        receipt={statusLine}
         next={
           receipt && showNext ? (
             <Link to="/approvals" search={{}} className={buttonClass("secondary", { size: "sm" })}>
