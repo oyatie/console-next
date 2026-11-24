@@ -324,50 +324,36 @@ const chromePlaces = () => page.evaluate(() => Object.fromEntries(
     .map(([key, r]) => [key, `${Math.round(r.x)},${Math.round(r.y)}`]),
 ));
 
-test("on a desktop a reload keeps the page's place while the session restores, since the tab strip and status bar hold their room", async () => {
-  let done!: () => void, asked!: () => void;
-  const restored = new Promise<void>(ok => { done = ok; });
-  const requested = new Promise<void>(ok => { asked = ok; });
-  const opened = openPhoneShell("LINKED", { restore: { asked, done: restored }, width: 1440 });
-  // A failure before the restore below closes the page under this open; its own error would only repeat that one.
-  opened.catch(() => {});
-  try {
-    await requested;
-    await page.locator("#main").waitFor();
-    expect(await page.locator("[data-workspace-tab]").count()).toBe(0);
-    const before = await pageFrame();
+const frames = () => page.evaluate(() => new Promise<void>(ok => requestAnimationFrame(() => requestAnimationFrame(() => ok()))));
+const desktopHolds = [
+  ["the session restores", (hold: Held) => ({ restore: hold })],
+  ["/api/v1/users/me lands", (hold: Held) => ({ held: { ...hold, path: "/api/v1/users/me" } })],
+  ["/api/v1/users/me fails", (hold: Held) => ({ held: { ...hold, path: "/api/v1/users/me", status: 503 } })],
+  ["/api/v1/access/me lands", (hold: Held) => ({ held: { ...hold, path: "/api/v1/access/me" } })],
+] as const;
 
-    done();
-    await opened;
-    await Promise.all([page.locator("[data-workspace-tab]").first().waitFor(), page.getByRole("navigation", { name: t("shell.nav"), exact: true }).waitFor()]);
-    expect(await pageFrame()).toEqual(before);
-  } finally {
-    done();
-  }
-});
-
-for (const [path, status] of [["/api/v1/users/me"], ["/api/v1/users/me", 503], ["/api/v1/access/me"]] as const) test(`on a desktop the chrome drawn before ${path} ${status ? "fails" : "lands"} stays where it was`, async () => {
+for (const [what, hold] of desktopHolds) test(`on a desktop neither the page nor any chrome drawn moves when ${what}`, async () => {
   let done!: () => void, asked!: () => void;
   const answered = new Promise<void>(ok => { done = ok; });
   const requested = new Promise<void>(ok => { asked = ok; });
-  const opened = openPhoneShell("LINKED", { held: { path, asked, done: answered, status }, width: 1440 });
+  const opened = openPhoneShell("LINKED", { ...hold({ asked, done: answered }), width: 1440 });
+  // A failure before the release below closes the page under this open; its own error would only repeat that one.
   opened.catch(() => {});
   try {
     await requested;
     await page.locator("#main").waitFor();
-    await page.evaluate(() => new Promise<void>(ok => requestAnimationFrame(() => requestAnimationFrame(() => ok()))));
+    await frames();
     const [before, frame] = [await chromePlaces(), await pageFrame()];
 
     done();
-    // The read has settled once the top bar draws its nav, with the tenant's name or, refused, the product's.
+    // Settled once the tabs and the brand draw: the tenant's name, or the product's when the read is refused.
+    const refused = what.endsWith("fails");
     await page.locator("[data-workspace-tab]").first().waitFor();
-    await page.getByRole("link", { name: status ? t("app.name") : "Saeon", exact: true }).waitFor();
-    if (!status) await page.getByRole("navigation", { name: t("shell.nav"), exact: true }).getByRole("link").first().waitFor();
-    await page.evaluate(() => new Promise<void>(ok => requestAnimationFrame(() => requestAnimationFrame(() => ok()))));
+    await page.getByRole("link", { name: refused ? t("app.name") : "Saeon", exact: true }).waitFor();
+    if (!refused) await page.getByRole("navigation", { name: t("shell.nav"), exact: true }).getByRole("link").first().waitFor();
+    await frames();
     const after = await chromePlaces();
     expect(Object.fromEntries(Object.keys(before).map(key => [key, after[key] ?? "gone"]))).toEqual(before);
     expect(await pageFrame()).toEqual(frame);
-  } finally {
-    done();
-  }
+  } finally { done(); }
 });
