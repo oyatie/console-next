@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
-import { expect as dom, type Browser, type Page, type Route } from "@playwright/test";
+import { expect as dom, type Browser, type Page, type Request, type Route } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { loadCatalog, t } from "@console/i18n";
@@ -56,15 +56,18 @@ beforeAll(async () => {
         createRoot(document.getElementById('root')).render(h(QueryClientProvider,{client},h(RouterProvider,{router})));
       ` : undefined,
       configureServer: vite => { vite.middlewares.use((req, res, next) => {
-        if (!req.url?.startsWith("/roster-layout-test?")) return next();
+        if (!req.url?.startsWith("/roster-layout-test?") && !req.url?.startsWith("/roster-layout-default?")) return next();
         res.setHeader("Content-Type", "text/html");
-        res.end('<html lang="ko"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Roster</title><div id="root"></div><script type="module" src="/roster-layout-test.js"></script></html>');
+        // The default page runs the app's boot script first, as index.html does, so nothing stored paints the default style.
+        const boot = req.url.startsWith("/roster-layout-default?") ? '<script src="/prefs.js"></script>' : "";
+        res.end(`<html lang="ko"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Roster</title>${boot}<div id="root"></div><script type="module" src="/roster-layout-test.js"></script></html>`);
       }); },
     }],
   });
   await server.listen();
   browser = await browserEngine().launch();
   page = await browser.newPage();
+  await page.route("**/prefs.js", route => route.fulfill({ path: resolve("apps/web/public/prefs.js") }));
   await page.route("**/api/v1/**", route => {
     const path = new URL(route.request().url()).pathname;
     return route.fulfill({ json: path === "/api/v1/access/me" ? { is_ops: true, entries: [] } : path === "/api/v1/org-structure" ? { entities: [] } : { items: [] } });
@@ -98,9 +101,10 @@ test.each([1012, 1172, 760, 390].flatMap(width => ["light", "dark"].map(theme =>
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
-test.each([1012, 390].flatMap(width => ["light", "dark"].map(theme => ({ width, theme }))))("a unit-filtered roster loading zero rows keeps its filter band at $width px in $theme", async ({ width, theme }) => {
+/** The roster's reads for a unit with no one in it; the employee list waits for `release`. */
+function zeroRows() {
   let release!: () => void;
-  const pending = new Promise<void>(resolve => { release = resolve; });
+  const pending = new Promise<void>(done => { release = done; });
   const respond = async (route: Route) => {
     const path = new URL(route.request().url()).pathname;
     if (path === "/api/v1/employees") {
@@ -114,10 +118,17 @@ test.each([1012, 390].flatMap(width => ["light", "dark"].map(theme => ({ width, 
     } } });
     return route.fallback();
   };
+  return { respond, release };
+}
+const employeesRead = (unit: string | null) => (request: Request) =>
+  new URL(request.url()).pathname === "/api/v1/employees" && new URL(request.url()).searchParams.get("org_unit_id") === unit;
+
+test.each([1012, 390].flatMap(width => ["light", "dark"].map(theme => ({ width, theme }))))("a unit-filtered roster loading zero rows keeps its filter band at $width px in $theme", async ({ width, theme }) => {
+  const { respond, release } = zeroRows();
   await page.route("**/api/v1/**", respond);
   try {
     await page.setViewportSize({ width: width === 390 ? width : 1280, height: 900 });
-    const requested = page.waitForRequest(request => new URL(request.url()).pathname === "/api/v1/employees" && new URL(request.url()).searchParams.get("org_unit_id") === "department");
+    const requested = page.waitForRequest(employeesRead("department"));
     await page.goto(`${server.resolvedUrls!.local[0]}roster-layout-test?width=${width}px&unit=department`);
     await requested;
     const reset = page.getByRole("button", { name: t("people.filter.reset"), exact: true });
@@ -139,6 +150,29 @@ test.each([1012, 390].flatMap(width => ["light", "dark"].map(theme => ({ width, 
     await reset.click();
     await dom(page.getByRole("button", { name: t("people.filter.anyUnit"), exact: true })).toHaveCount(0);
     await dom(reset).toHaveCount(0);
+  } finally {
+    release();
+    await page.unroute("**/api/v1/**", respond);
+  }
+});
+
+// A device with nothing stored paints the shipped default, so this is the roster most people open.
+test.each([1012, 390])("with no style stored, a unit-filtered roster that loads zero rows is Console and its reset clears the unit at %spx", async width => {
+  const { respond, release } = zeroRows();
+  await page.route("**/api/v1/**", respond);
+  try {
+    await page.setViewportSize({ width: width === 390 ? width : 1280, height: 900 });
+    const requested = page.waitForRequest(employeesRead("department"));
+    await page.goto(`${server.resolvedUrls!.local[0]}roster-layout-default?width=${width}px&unit=department`);
+    await requested;
+    await dom(page.locator("html")).toHaveAttribute("data-experience", "console");
+    release();
+    await dom(page.getByRole("heading", { name: t("people.noMatch.title"), exact: true })).toBeVisible();
+    await dom(page.getByRole("searchbox")).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    const cleared = page.waitForRequest(employeesRead(null));
+    await page.getByRole("button", { name: t("people.filter.reset"), exact: true }).click();
+    await cleared;
   } finally {
     release();
     await page.unroute("**/api/v1/**", respond);

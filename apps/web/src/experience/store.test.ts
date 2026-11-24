@@ -50,6 +50,20 @@ test("personal override beats tenant default and device storage", () => {
     settingsItems: [{ key: "display.experience", value: "console" }],
     storedDevice: { id: "console", source: "tenant" },
   })).toEqual({ id: "baseline", choice: "baseline", tenantId: "console", source: "personal" });
+
+  // With no organization setting: saved to the account, or only on this device before the account answers.
+  expect(resolveEffectiveExperience({
+    workspaceLayout: { experience: "baseline" },
+    settingsItems: [],
+    storedDevice: { id: null, source: null },
+  })).toEqual({ id: "baseline", choice: "baseline", tenantId: "console", source: "personal" });
+  for (const settingsItems of [[], undefined]) {
+    expect(resolveEffectiveExperience({
+      workspaceLayout: {},
+      settingsItems,
+      storedDevice: { id: "baseline", source: "personal" },
+    })).toEqual({ id: "baseline", choice: "baseline", tenantId: "console", source: "personal" });
+  }
 });
 
 test("explicit follow-organization-default uses the tenant setting even when the device had an older personal choice", () => {
@@ -62,8 +76,17 @@ test("explicit follow-organization-default uses the tenant setting even when the
   expect(resolveEffectiveExperience({
     workspaceLayout: { experience: "tenant" },
     settingsItems: [],
-    storedDevice: { id: "console", source: "personal" },
-  })).toEqual({ id: "baseline", choice: "tenant", tenantId: "baseline", source: "tenant" });
+    storedDevice: { id: "baseline", source: "personal" },
+  })).toEqual({ id: "console", choice: "tenant", tenantId: "console", source: "tenant" });
+});
+
+test("with nothing stored and no organization setting, the style is Console", () => {
+  for (const settingsItems of [[], [{ key: "display.page_size", value: 100 }], undefined]) {
+    for (const workspaceLayout of [{}, undefined]) {
+      expect(resolveEffectiveExperience({ workspaceLayout, settingsItems, storedDevice: { id: null, source: null } }))
+        .toEqual({ id: "console", choice: "tenant", tenantId: "console", source: "tenant" });
+    }
+  }
 });
 
 test("an unset server workspace follows the tenant default on a fresh device, and preserves an explicit device seed", () => {
@@ -94,7 +117,7 @@ test("unknown workspace or setting codes fall back safely without prototype poll
       workspaceLayout: { experience: invalid },
       settingsItems: [{ key: "display.experience", value: invalid }],
       storedDevice: { id: null, source: null },
-    })).toEqual({ id: "baseline", choice: "tenant", tenantId: "baseline", source: "tenant" });
+    })).toEqual({ id: "console", choice: "tenant", tenantId: "console", source: "tenant" });
   }
 });
 
@@ -112,18 +135,18 @@ test("merging the experience choice preserves unrelated workspace layout keys", 
   });
 });
 
-test("device storage keeps fresh baseline clean, caches non-baseline tenant defaults, and clears stale tenant cache", () => {
+test("device storage keeps the Console default clean, caches a Classic tenant default, and clears stale tenant cache", () => {
   const store = memoryStorage();
   expect(readStoredExperience(store)).toEqual({ id: null, source: null });
 
-  expect(writeStoredExperience("baseline", "tenant", store)).toBe(true);
+  expect(writeStoredExperience("console", "tenant", store)).toBe(true);
   expect(store.snapshot()).toEqual({});
 
-  expect(writeStoredExperience("console", "tenant", store)).toBe(true);
-  expect(store.snapshot()).toEqual({ [EXPERIENCE_KEY]: "console", [EXPERIENCE_SOURCE_KEY]: "tenant" });
-  expect(readStoredExperience(store)).toEqual({ id: "console", source: "tenant" });
-
   expect(writeStoredExperience("baseline", "tenant", store)).toBe(true);
+  expect(store.snapshot()).toEqual({ [EXPERIENCE_KEY]: "baseline", [EXPERIENCE_SOURCE_KEY]: "tenant" });
+  expect(readStoredExperience(store)).toEqual({ id: "baseline", source: "tenant" });
+
+  expect(writeStoredExperience("console", "tenant", store)).toBe(true);
   expect(store.snapshot()).toEqual({});
 
   expect(writeStoredExperience("baseline", "personal", store)).toBe(true);

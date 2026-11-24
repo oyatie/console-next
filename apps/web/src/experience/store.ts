@@ -49,8 +49,9 @@ export function useExperienceSync(enabled: boolean): void {
       settingsItems: items,
       storedDevice: readStoredExperience(),
     });
-    if (resolved.id !== readDomExperienceId() && hasUnsavedInput()) return;
+    // Stored even while unsaved input holds the swap back, so the next load paints it first.
     writeStoredExperience(resolved.id, resolved.source);
-    applyDomExperience(resolved.id, resolved.source);
+    if (resolved.id !== readDomExperienceId() && hasUnsavedInput()) return;
+    applyDomExperience(resolved.id);
   }, [enabled, workspace.isSuccess, workspace.data, settings.isSuccess, settings.data]);
 }

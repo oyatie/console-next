@@ -40,6 +40,78 @@ beforeAll(async () => {
   browser = await browserEngine().launch();
   page = await browser.newPage();
   await page.route("**/tenants-test", route => route.fulfill({ contentType: "text/html", body: '<html lang="ko"><title>Tenants</title><div id="root"></div><script type="module" src="/tenants-test.js"></script></html>' }));
+  // The app's own page: its boot script runs first, as in index.html, and paints the default with nothing stored.
+  await page.route("**/prefs.js", route => route.fulfill({ path: resolve("apps/web/public/prefs.js") }));
+  await page.route("**/tenants-default", route => route.fulfill({ contentType: "text/html", body: '<html lang="ko"><title>Tenants</title><script src="/prefs.js"></script><div id="root"></div><script type="module" src="/tenants-test.js"></script></html>' }));
+}, 60_000);
+
+/** Answers the page's reads from `state`, which a test changes before each refetch. */
+async function answer(state: { count: number; failed: boolean }) {
+  await page.route("**/api/platform/orgs", route => state.failed ? route.fulfill({ status: 503, json: failure("service_unavailable") }) : route.fulfill({ json: Array.from({ length: state.count }, (_, index) => ({
+    id: id(5000 + index), name: `Synthetic customer ${index + 1}`, slug: `customer-${index + 1}`, group_id: null, group_slug: null, group_name: null,
+    status: "ACTIVE", created_at: AT, updated_at: AT,
+  })) }));
+  await page.route("**/api/platform/ops", route => route.fulfill({ json: { tenants: [], notices: [] } }));
+}
+const refetch = () => page.evaluate(() => (window as unknown as { refetchTenants: () => Promise<void> }).refetchTenants());
+
+// A platform operator's page never syncs a style, so with nothing stored on the device it stays on the default.
+test.each([1440, 390].flatMap(width => [0, 9].map(initial => ({ width, initial }))))("with no style stored the page is Console: counts from $initial keep its controls stable and empty actions useful at $width px", async ({ width, initial }) => {
+  await page.setViewportSize({ width, height: 900 });
+  const state = { count: initial, failed: false };
+  await answer(state);
+  try {
+    await page.goto(`${server.resolvedUrls!.local[0]}tenants-default`);
+    await element(page.locator("html")).toHaveAttribute("data-experience", "console");
+    const rows = page.locator("#tenants-list tbody tr");
+    await element(page.locator("#tenants-list")).toBeVisible();
+    await element(rows).toHaveCount(state.count);
+    await page.evaluate(() => document.fonts.ready);
+    const search = page.getByRole("searchbox", { name: t("tenants.search"), exact: true });
+    const counts = page.getByLabel(t("tenants.stat.label"), { exact: true });
+    const create = page.getByRole("button", { name: t("tenants.create"), exact: true });
+    const controls = [search, create, page.getByRole("button", { name: t("tenants.supportLookup.title"), exact: true })];
+    const boxes = () => Promise.all(controls.map(control => control.boundingBox()));
+    if (initial === 0) {
+      await element(search).toHaveCount(0);
+      await element(counts).toHaveCount(0);
+      await element(page.locator("#tenants-list").getByRole("button", { name: t("tenants.create"), exact: true })).toBeEnabled();
+    } else {
+      await element(search).toBeVisible();
+      await search.focus();
+    }
+    const before = initial === 0 ? undefined : await boxes();
+    state.count = 48;
+    await refetch();
+    await element(rows).toHaveCount(state.count);
+    if (before) {
+      expect(await boxes()).toEqual(before);
+      await element(search).toBeFocused();
+    }
+    await element(counts.locator("dd").first()).toHaveText(String(state.count));
+    await page.evaluate(() => document.fonts.ready);
+    const populated = await boxes();
+    state.failed = true;
+    await refetch();
+    await element(rows).toHaveCount(state.count);
+    expect(await boxes()).toEqual(populated);
+    await element(create).toBeEnabled();
+    await element(create).not.toHaveAttribute("aria-disabled", "true");
+    await create.click();
+    await element(page.getByRole("dialog")).toBeVisible();
+    await page.getByRole("dialog").getByRole("button", { name: t("common.cancel"), exact: true }).click();
+    Object.assign(state, { failed: false, count: 0 });
+    await refetch();
+    await element(rows).toHaveCount(0);
+    await element(search).toHaveCount(0);
+    await element(counts).toHaveCount(0);
+    await element(page.locator("#tenants-list").getByRole("button", { name: t("tenants.create"), exact: true })).toBeEnabled();
+    state.failed = true;
+    await refetch();
+    await element(search).toHaveCount(0);
+    await element(create).toBeEnabled();
+    await element(create).not.toHaveAttribute("aria-disabled", "true");
+  } finally { await page.unroute("**/api/platform/orgs"); await page.unroute("**/api/platform/ops"); }
 }, 60_000);
 afterAll(async () => { await browser?.close(); await server?.close(); });
 

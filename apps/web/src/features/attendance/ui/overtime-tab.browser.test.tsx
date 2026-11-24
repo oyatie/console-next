@@ -4,12 +4,14 @@ import { resolve } from "node:path";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { expect as expectElement } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
+import { loadCatalog, t } from "@console/i18n";
 import { browserTestOptimizeDeps, chromium, type Browser, type Page } from "../../../lib/browser-test";
 
 let server: ViteDevServer;
 let browser: Browser;
 let pages: [Page, Page];
 beforeAll(async () => {
+  await loadCatalog("ko");
   server = await createServer({
     configFile: false, cacheDir: ".cache/overtime-tab-test", logLevel: "error", optimizeDeps: browserTestOptimizeDeps,
     define: { "process.env.VIRT_ON": "true" },
@@ -40,9 +42,11 @@ beforeAll(async () => {
         createRoot(document.getElementById('root')).render(h(QueryClientProvider,{client},h(RouterProvider,{router})));
       ` : undefined,
       configureServer: vite => { vite.middlewares.use((req, res, next) => {
-        if (req.url !== "/overtime-test") return next();
+        if (req.url !== "/overtime-test" && req.url !== "/overtime-default") return next();
         res.setHeader("Content-Type", "text/html");
-        res.end('<html lang="ko"><title>Overtime</title><div id="root"></div><script type="module" src="/overtime-test.js"></script></html>');
+        // The default page runs the app's boot script first, as index.html does, so nothing stored paints the default style.
+        const boot = req.url === "/overtime-default" ? '<script src="/prefs.js"></script>' : "";
+        res.end(`<html lang="ko"><title>Overtime</title>${boot}<div id="root"></div><script type="module" src="/overtime-test.js"></script></html>`);
       }); },
     }],
   });
@@ -61,6 +65,24 @@ test.each([1440, 390])("week52 preserves unknown totals and the server tone at %
     await expectElement(page.getByText("2.25시간", { exact: true })).toBeVisible();
     await expectElement(page.getByText("위험", { exact: true })).toBeVisible();
     await expectElement(page.getByText("미제공", { exact: true })).toHaveCount(2);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+  } finally { await page.close(); }
+});
+
+test.each([1440, 390])("with no style stored, week52 in Console preserves unknown totals and the server tone at %spx", async width => {
+  const page = await browser.newPage({ viewport: { width, height: 900 } });
+  try {
+    await page.route("**/prefs.js", route => route.fulfill({ path: resolve("apps/web/public/prefs.js") }));
+    await page.goto(`${server.resolvedUrls!.local[0]}overtime-default`);
+    await expectElement(page.locator("html")).toHaveAttribute("data-experience", "console");
+    const grid = page.getByRole("grid");
+    await expectElement(grid).toBeVisible();
+    // The week's tallies above the grid name the tones too, so each value is read from its person's row.
+    const known = grid.getByRole("row", { name: /^Known/ });
+    for (const text of [t("attendance.hours", { hours: 37.25 }), t("attendance.hours", { hours: 2.25 }), t("attendance.overtime.DANGER")]) {
+      await expectElement(known.getByText(text, { exact: true })).toBeVisible();
+    }
+    await expectElement(grid.getByRole("row", { name: /^Unknown/ }).getByText(t("attendance.overtime.notReported"), { exact: true })).toHaveCount(2);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
   } finally { await page.close(); }
 });

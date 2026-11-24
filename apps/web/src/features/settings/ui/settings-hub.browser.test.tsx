@@ -159,7 +159,7 @@ test("tenant default screen style composer validates, sends expected_version and
         {
           key: "display.experience",
           kind: { type: "code", allowed: ["baseline", "console", "warm-clear"] },
-          default: "baseline",
+          default: "console",
           looser_when: "neutral",
           value: currentStyle,
           version: currentVersion,

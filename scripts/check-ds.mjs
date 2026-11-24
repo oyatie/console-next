@@ -92,7 +92,7 @@ function walk(dir, out = []) {
 
 /**
  * The selectors of a stylesheet that name a visual style in a shape the gate does not accept. One shape is accepted:
- * `:where([data-experience]:not([data-experience="baseline"]))`, which matches every style but today's look and adds
+ * `:where([data-experience]:not([data-experience="baseline"]))`, which matches every style but Classic and adds
  * no specificity, so a rule under it is a correction all new styles share. Anything else (a style's own id, the bare
  * attribute, the guard without `:where`) would let a rule belong to one style, or outrank the rules it corrects.
  */

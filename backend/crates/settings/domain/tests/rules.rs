@@ -265,13 +265,13 @@ fn deadline_display_config_is_platform_owned_and_ignores_tenant_rows() {
 }
 
 #[test]
-fn display_experience_defaults_to_baseline_and_switches_neutrally_across_styles() {
+fn display_experience_defaults_to_console_and_switches_neutrally_across_styles() {
     let key: K = "display.experience".parse().unwrap();
     assert!(key.client_required());
     let resolved = resolve(key, &[], None, NOW).unwrap();
     assert_eq!(
         (resolved.value, resolved.version),
-        (V::Code("baseline"), SettingVersionId::CodeDefault)
+        (V::Code("console"), SettingVersionId::CodeDefault)
     );
     for (from, to) in [
         ("baseline", "console"),

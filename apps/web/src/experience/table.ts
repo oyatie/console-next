@@ -17,9 +17,15 @@ export const experiences: readonly [ExperienceEntry, ...ExperienceEntry[]] = [
   { id: "warm-clear", label: "account.experience.warmClear", listing: "unlisted" },
 ];
 
+/** The style with no choice made: no stored choice, no organization setting. public/prefs.js paints the same one. */
+export const DEFAULT_EXPERIENCE_ID: ExperienceEntry["id"] = "console";
+
 /** What the chooser offers: every listed or preview style, and the style in force even when it is unlisted. */
 export const offeredExperiences = (current: string) => experiences.filter(experience => experience.listing !== "unlisted" || experience.id === current);
 
+const findExperience = (id?: string) => experiences.find(experience => experience.id === id);
+
 export function resolveExperience(id?: string): ExperienceEntry {
-  return experiences.find(experience => experience.id === id) ?? experiences[0];
+  // The last fallback is reached only if the default left the list.
+  return findExperience(id) ?? findExperience(DEFAULT_EXPERIENCE_ID) ?? experiences[0];
 }

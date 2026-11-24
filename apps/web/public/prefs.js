@@ -2,14 +2,15 @@
 // Appearance before the first paint. The shell that applies the theme is a lazy chunk, so until it mounted (sign-in,
 // every first paint) the page was light whatever was stored or the system preferred. This classic script sits before
 // the module entry, outside the hashed bundle (the content security policy allows no inline script), and puts on
-// <html> each stored choice it knows. It only reads: src/shell/theme.ts stays the one place that changes the theme
-// and writes the store.
+// <html> each stored choice it knows, or the default experience when none is stored. It only reads:
+// src/shell/theme.ts stays the one place that changes the theme and writes the store.
 (function () {
   // Per attribute (data-<name>): its storage key and the closed list of values. Anything else stored is no choice.
   var prefs = {
     theme: { key: "console.theme", values: ["light", "dark"] },
-    // An experience becomes known by adding its id to this list; a test holds the list to the experience token files.
-    experience: { key: "console.experience", values: ["baseline", "console", "warm-clear"] },
+    // An experience becomes known by adding its id to this list; a test holds the list to the experience token files,
+    // and the default to the bundle's.
+    experience: { key: "console.experience", values: ["baseline", "console", "warm-clear"], default: "console" },
   };
   // With no stored theme the shell follows the system (src/shell/theme.ts), so the first paint does too.
   function system() {
@@ -28,7 +29,7 @@
       // Storage can refuse the read (private mode, blocked site data): that is no choice either.
     }
     if (name === "experience" && value === "control-room") value = "console";
-    if (prefs[name].values.indexOf(value) < 0) value = name === "theme" ? system() : null;
+    if (prefs[name].values.indexOf(value) < 0) value = name === "theme" ? system() : prefs[name].default;
     if (value) document.documentElement.setAttribute("data-" + name, value);
   }
   // Published so there is one list of each. Today only tests read them; choosing an experience will check against them.

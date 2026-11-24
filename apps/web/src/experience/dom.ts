@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useSyncExternalStore } from "react";
 import { hasUnsavedInput, installDirtyTracker } from "./dirty-guard";
-import { experiences, resolveExperience } from "./table";
+import { DEFAULT_EXPERIENCE_ID, experiences, resolveExperience } from "./table";
 
 export { hasUnsavedInput, installDirtyTracker };
 export type ExperienceId = (typeof experiences)[number]["id"];
@@ -55,7 +55,8 @@ export function writeStoredExperience(
 ): boolean {
   if (!storage) return false;
   try {
-    if (source === "tenant" && id === "baseline") {
+    // public/prefs.js paints the default with nothing stored; any other organization default is kept for the next load.
+    if (source === "tenant" && id === DEFAULT_EXPERIENCE_ID) {
       storage.removeItem(EXPERIENCE_KEY);
       storage.removeItem(EXPERIENCE_SOURCE_KEY);
     } else {
@@ -92,7 +93,7 @@ export function resolveEffectiveExperience({
 } {
   const settingRow = settingsItems?.find(item => item.key === "display.experience");
   const normalizedSetting = settingRow ? normalizeExperienceId(settingRow.value) : undefined;
-  const tenantId: ExperienceId = isKnownExperienceId(normalizedSetting) ? normalizedSetting : "baseline";
+  const tenantId: ExperienceId = isKnownExperienceId(normalizedSetting) ? normalizedSetting : DEFAULT_EXPERIENCE_ID;
   const rawChoice = workspaceLayout && Object.hasOwn(workspaceLayout, "experience")
     ? normalizeExperienceId(workspaceLayout.experience)
     : undefined;
@@ -106,26 +107,22 @@ export function resolveEffectiveExperience({
   if (storedDevice.id !== null && storedDevice.source !== "tenant") {
     return { id: storedDevice.id, choice: storedDevice.id, tenantId, source: "personal" };
   }
-  const id: ExperienceId = settingsItems !== undefined ? tenantId : (storedDevice.id ?? "baseline");
+  const id: ExperienceId = settingsItems !== undefined ? tenantId : (storedDevice.id ?? DEFAULT_EXPERIENCE_ID);
   return { id, choice: "tenant", tenantId, source: "tenant" };
 }
 
 export function readDomExperienceId(): ExperienceId {
-  return resolveExperience(typeof document === "undefined" ? undefined : document.documentElement.dataset.experience).id;
+  // With no attribute the stylesheets draw Classic, so the scripts read Classic too, whatever the default.
+  return resolveExperience((typeof document === "undefined" ? undefined : document.documentElement.dataset.experience) ?? "baseline").id;
 }
 
-export function applyDomExperience(id: ExperienceId, source: ExperienceSource): void {
+export function applyDomExperience(id: ExperienceId): void {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
-  const previous = root.dataset.experience;
-  if (source === "tenant" && id === "baseline") {
-    if (previous !== undefined) delete root.dataset.experience;
-  } else if (previous !== id) {
-    root.dataset.experience = id;
-  }
-  if (root.dataset.experience !== previous && typeof window !== "undefined") {
-    window.dispatchEvent(new Event(EXPERIENCE_EVENT));
-  }
+  // Classic is written too, as public/prefs.js does, so the attribute always names the style in force.
+  if (root.dataset.experience === id) return;
+  root.dataset.experience = id;
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(EXPERIENCE_EVENT));
 }
 
 function subscribeDomExperience(onChange: () => void): () => void {
@@ -141,5 +138,6 @@ function subscribeDomExperience(onChange: () => void): () => void {
 }
 
 export function useActiveExperienceId(): ExperienceId {
+  // Static markup takes this: print documents render through it and look the same in every style.
   return useSyncExternalStore(subscribeDomExperience, readDomExperienceId, () => "baseline");
 }

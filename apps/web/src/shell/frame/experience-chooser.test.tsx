@@ -6,7 +6,7 @@ import { ExperienceChooser } from "./experience-chooser";
 
 beforeAll(async () => { await loadCatalog("ko"); await loadCatalog("en"); });
 
-test.each(["en", "ko"] as const)("%s: the chooser offers the listed styles, and defaults to baseline", locale => {
+test.each(["en", "ko"] as const)("%s: the chooser offers the listed styles, and selects Classic in static markup", locale => {
   i18n.set(locale);
   try {
     const html = renderToStaticMarkup(<ExperienceChooser id="test-experience" />);

@@ -20,7 +20,7 @@ test("every displayed policy key has Korean and English copy; unknown keys are n
   }
   const styleEntry: components["schemas"]["SettingEntry"] = {
     ...entry(), key: "display.experience", kind: { type: "code", allowed: ["baseline", "console", "warm-clear"] },
-    default: "baseline", value: "baseline", looser_when: "neutral",
+    default: "console", value: "baseline", looser_when: "neutral",
   };
   expect(settingValue(styleEntry, "baseline", t)).toBe(ko["account.experience.baseline"]);
   expect(settingValue(styleEntry, "console", t)).toBe(ko["account.experience.console"]);
@@ -112,7 +112,7 @@ test("screen style summary reports the active style, editability, scheduled chan
     ...entry(),
     key: "display.experience",
     kind: { type: "code", allowed: ["baseline", "console", "warm-clear"] },
-    default: "baseline",
+    default: "console",
     value: "baseline",
     looser_when: "neutral",
   };

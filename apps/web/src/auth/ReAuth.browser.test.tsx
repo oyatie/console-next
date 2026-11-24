@@ -49,11 +49,14 @@ beforeAll(async () => {
       ` : undefined,
       configureServer: vite => { vite.middlewares.use((req, res, next) => {
         if (req.url?.split("?")[0] !== "/reauth-test") return next();
-        res.setHeader("Content-Type", "text/html"); res.end('<!doctype html><html lang="ko"><head><title>다시 로그인</title></head><body><div id="root"></div><script type="module" src="/reauth-test.js"></script></body></html>');
+        // With `boot` the app's boot script runs first, as index.html does, so nothing stored paints the default style.
+        const boot = new URLSearchParams(req.url.split("?")[1]).has("boot") ? '<script src="/prefs.js"></script>' : "";
+        res.setHeader("Content-Type", "text/html"); res.end(`<!doctype html><html lang="ko"><head><title>다시 로그인</title>${boot}</head><body><div id="root"></div><script type="module" src="/reauth-test.js"></script></body></html>`);
       }); },
     }],
   });
   await server.listen(); browser = await chromium.launch(); page = await (await browser.newContext()).newPage();
+  await page.route("**/prefs.js", route => route.fulfill({ path: resolve("apps/web/public/prefs.js") }));
 }, 60_000);
 afterAll(async () => { await browser?.close(); await server?.close(); });
 
@@ -92,9 +95,11 @@ test("code sign-in focuses the single code field", async () => {
   expect(await page.getByText("처음이면", { exact: false }).count()).toBe(0);
 });
 
-test.each(["reset", "login", "setup"])("%s recovery screen fits phone and desktop in both themes", async view => {
+// Signed out, nothing syncs a style: a device with nothing stored gets the default, which is Console.
+test.each(["reset", "login", "setup"].flatMap(view => [{ view, look: "baseline" }, { view, look: "console" }]))("$view recovery screen fits phone and desktop in both themes ($look)", async ({ view, look }) => {
   await page.route("**/api/v1/onboarding/terms", route => route.fulfill({ json: { version: "terms", sha256: "hash", body: "서비스 이용약관", privacy: { version: "privacy", sha256: "hash", body: "개인정보 수집·이용", policy_url: "https://example.com/privacy", review_pending: false } } }));
-  await page.goto(`${server.resolvedUrls!.local[0]}reauth-test?${view === "reset" ? "reason=session_passkey_reset&draft" : `view=${view}`}`);
+  await page.goto(`${server.resolvedUrls!.local[0]}reauth-test?${view === "reset" ? "reason=session_passkey_reset&draft" : `view=${view}`}${look === "console" ? "&boot" : ""}`);
+  expect(await page.locator("html").getAttribute("data-experience")).toBe(look === "console" ? "console" : null);
   if (view === "reset") await page.getByRole("button", { name: "코드로 로그인" }).waitFor();
   if (view === "login") await page.getByLabel("일회용 코드").waitFor();
   if (view === "setup") await page.getByRole("button", { name: /동의하고 패스키 등록/, disabled: false }).waitFor();
@@ -106,7 +111,7 @@ test.each(["reset", "login", "setup"])("%s recovery screen fits phone and deskto
       expect(await page.evaluate(() => document.scrollingElement!.scrollWidth <= innerWidth)).toBe(true);
       const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
       expect(violations.filter(v => v.impact === "serious" || v.impact === "critical")).toEqual([]);
-      await page.screenshot({ path: resolve(`.cache/reauth-test/${view}-${width}-${theme}.png`) });
+      await page.screenshot({ path: resolve(`.cache/reauth-test/${view}-${look}-${width}-${theme}.png`) });
     }
   }
 });

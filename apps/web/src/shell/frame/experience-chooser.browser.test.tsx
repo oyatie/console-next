@@ -7,6 +7,7 @@ import { createServer, type ViteDevServer } from "vite";
 import { browserEngine, browserTestOptimizeDeps, openBrowserTestPage, type Browser, type Page } from "../../lib/browser-test";
 import { loadCatalog, t } from "@console/i18n";
 import { EXPERIENCE_KEY } from "../../lib/prefs";
+import { EXPERIENCE_SOURCE_KEY } from "../../experience/dom";
 
 let server: ViteDevServer;
 let browser: Browser;
@@ -32,6 +33,7 @@ beforeAll(async () => {
         import { loadCatalog, t } from '@console/i18n';
         import { ExperienceChooser } from '/apps/web/src/shell/frame/experience-chooser.tsx';
         import { useExperienceSync } from '/apps/web/src/experience/store.ts';
+        import { useActiveExperienceId } from '/apps/web/src/experience/dom.ts';
         import { useDraft } from '/apps/web/src/lib/react/use-draft.ts';
         import { Sheet } from '/apps/web/src/ui/sheet/sheet.tsx';
         import '/apps/web/src/app.css';
@@ -56,7 +58,8 @@ beforeAll(async () => {
           return React.createElement('main', null,
             React.createElement('h1', null, 'Experience Harness'),
             React.createElement('label', { htmlFor: 'acct-exp' }, t('account.experience')),
-            React.createElement(ExperienceChooser, { id: 'acct-exp' }),
+            // The app's shell remounts the page when the style changes.
+            React.createElement(ExperienceChooser, { id: 'acct-exp', key: useActiveExperienceId() }),
             React.createElement('form', { className: 'form', onSubmit: e => { e.preventDefault(); } },
               React.createElement('label', { htmlFor: 'page-note' }, 'Page note'),
               React.createElement('input', { id: 'page-note', value: note, onChange: e => setNote(e.target.value) }),
@@ -87,11 +90,21 @@ beforeAll(async () => {
   await server.listen();
   browser = await browserEngine().launch();
   page = await browser.newPage();
-  await page.route("**/experience-switch-test", route => route.fulfill({
+  await serve(page);
+}, 60_000);
+
+// Holds the workspace and settings reads until it settles; a test sets it to act before the first sync.
+let reads: Promise<void> = Promise.resolve();
+
+async function serve(target: Page) {
+  // The app's boot script runs first, as in index.html, so a device with nothing stored starts on the default style.
+  await target.route("**/prefs.js", route => route.fulfill({ path: resolve("apps/web/public/prefs.js") }));
+  await target.route("**/experience-switch-test", route => route.fulfill({
     contentType: "text/html",
-    body: '<html lang="ko"><title>Experience</title><div id="root"></div><script type="module" src="/experience-switch-test.js"></script></html>',
+    body: '<html lang="ko"><title>Experience</title><script src="/prefs.js"></script><div id="root"></div><script type="module" src="/experience-switch-test.js"></script></html>',
   }));
-  await page.route("**/api/v1/me/workspace", async route => {
+  await target.route("**/api/v1/me/workspace", async route => {
+    await reads;
     if (route.request().method() === "PUT") {
       const body = route.request().postDataJSON() as { layout: Record<string, unknown> };
       writes.push(body.layout);
@@ -100,27 +113,27 @@ beforeAll(async () => {
     }
     return route.fulfill({ status: 200, json: { layout: workspaceLayout } });
   });
-  await page.route("**/api/v1/settings", route => route.fulfill({
+  await target.route("**/api/v1/settings", async route => { await reads; await route.fulfill({
     status: 200,
     json: {
       can_change: false,
       items: [{
         key: "display.experience",
         kind: { type: "code", allowed: ["baseline", "console", "warm-clear"] },
-        default: "baseline",
+        default: "console",
         value: tenantStyle,
         looser_when: "neutral",
         governance: "tenant",
         legal_basis: null,
         version: "code_default",
         effective_from: null,
-        source: { layer: tenantStyle === "baseline" ? "code_default" : "tenant", scope_entity_id: null },
+        source: { layer: tenantStyle === "console" ? "code_default" : "tenant", scope_entity_id: null },
         chain: [],
         scheduled: [],
       }],
     },
-  }));
-}, 60_000);
+  }); });
+}
 
 afterAll(async () => { await page?.close(); await browser?.close(); await server?.close(); });
 
@@ -134,10 +147,10 @@ test("style choice switches in place without reloading, saves personal override,
   const bootBefore = await page.evaluate(() => (window as Window & { bootToken?: string }).bootToken);
   const chooser = page.getByRole("combobox", { name: t("account.experience"), exact: true });
 
-  // Tenant default (console) applies automatically on a fresh device.
+  // Tenant default (console) applies automatically on a fresh device; as the shipped default it needs nothing stored.
   await expect(chooser).toHaveValue("tenant");
   await expect(page.locator("html")).toHaveAttribute("data-experience", "console");
-  expect(await page.evaluate(key => localStorage.getItem(key), EXPERIENCE_KEY)).toBe("console");
+  expect(await page.evaluate(key => localStorage.getItem(key), EXPERIENCE_KEY)).toBeNull();
 
   // Choosing a personal override applies immediately without reloading and preserves existing workspace keys.
   await chooser.selectOption("baseline");
@@ -153,6 +166,27 @@ test("style choice switches in place without reloading, saves personal override,
   await expect(page.locator("html")).toHaveAttribute("data-experience", "console");
   expect(await page.evaluate(() => (window as Window & { bootToken?: string }).bootToken)).toBe(bootBefore);
   await expect.poll(() => writes.at(-1)).toEqual({ tabs: ["/people"], experience: "tenant" });
+});
+
+test("a device that refuses to store the choice still says so after the switch remounts the page", async () => {
+  workspaceLayout = { tabs: ["/people"] };
+  tenantStyle = "console";
+  writes = [];
+  await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}experience-switch-test`, page.getByRole("heading", { name: "Experience Harness" }));
+  const chooser = page.getByRole("combobox", { name: t("account.experience"), exact: true });
+  await expect(chooser).toHaveValue("tenant");
+  await expect(page.locator("html")).toHaveAttribute("data-experience", "console");
+
+  await page.evaluate(() => { Storage.prototype.setItem = () => { throw new Error("Storage refused"); }; });
+  await chooser.selectOption("baseline");
+  await expect(page.locator("html")).toHaveAttribute("data-experience", "baseline");
+  await expect(chooser).toHaveValue("baseline");
+  await expect(page.getByRole("alert")).toHaveText(t("account.experience.failed"));
+
+  // Back on the default nothing needs storing, so the warning goes.
+  await chooser.selectOption("tenant");
+  await expect(page.locator("html")).toHaveAttribute("data-experience", "console");
+  await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
 test("unsaved input in either a page form or a sheet refuses a style switch until discarded", async () => {
@@ -215,4 +249,30 @@ test("unsaved input in either a page form or a sheet refuses a style switch unti
   await expect(chooser).toHaveValue("console");
   await expect(page.locator("html")).toHaveAttribute("data-experience", "console");
   await expect.poll(() => writes).toHaveLength(3);
+});
+
+test("an organization style held back by unsaved input is still stored, so the next load paints it", async () => {
+  workspaceLayout = { tabs: ["/people"] };
+  tenantStyle = "baseline";
+  writes = [];
+  const fresh = await browser.newPage();
+  let release = () => {};
+  reads = new Promise(done => { release = done; });
+  try {
+    await serve(fresh);
+    await openBrowserTestPage(fresh, `${server.resolvedUrls!.local[0]}experience-switch-test`, fresh.getByRole("heading", { name: "Experience Harness" }));
+    await expect(fresh.locator("html")).toHaveAttribute("data-experience", "console");
+    const note = fresh.getByLabel("Page note");
+    await note.fill("unsaved draft text");
+    release();
+    await expect.poll(() => fresh.evaluate(keys => keys.map(key => localStorage.getItem(key)), [EXPERIENCE_KEY, EXPERIENCE_SOURCE_KEY]))
+      .toEqual(["baseline", "tenant"]);
+    // The swap itself waits for the input.
+    await expect(fresh.locator("html")).toHaveAttribute("data-experience", "console");
+    await expect(note).toHaveValue("unsaved draft text");
+  } finally {
+    release();
+    reads = Promise.resolve();
+    await fresh.close();
+  }
 });

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { createElement, lazy, type ComponentType, type LazyExoticComponent, type ReactNode } from "react";
 import { screen } from "../lib/fonts";
+import { readDomExperienceId } from "./dom";
 import { resolveExperience, type experiences } from "./table";
 
 type ExperienceId = (typeof experiences)[number]["id"];
@@ -27,8 +28,7 @@ const shells = {
 } satisfies Record<ExperienceId, LazyExoticComponent<ShellComponent>>;
 
 export function loadPack(id?: string) {
-  const current = id ?? (typeof document === "undefined" ? undefined : document.documentElement.dataset.experience);
-  return packs[resolveExperience(current).id]();
+  return packs[id === undefined ? readDomExperienceId() : resolveExperience(id).id]();
 }
 
 export function ExperienceShell({ experienceId, ...props }: ShellProps & { experienceId: ExperienceId }) {

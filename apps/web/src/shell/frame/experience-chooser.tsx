@@ -51,7 +51,7 @@ function DeviceExperienceChooser({ id }: { id: string }) {
           return;
         }
         setProblem(null);
-        applyDomExperience(next.id, "personal");
+        applyDomExperience(next.id);
       }}>
       {offeredExperiences(selected.id).map(experience => <option key={experience.id} value={experience.id}>
         {formatOptionLabel(experience.id)}
@@ -63,8 +63,14 @@ function DeviceExperienceChooser({ id }: { id: string }) {
   </>;
 }
 
+// A switch that restyles the page remounts it under the other shell, so a refused store must outlive this chooser.
+// shortcut: the flag clears only on the next switch, so reopening the chooser before then shows the warning again;
+// clear it once read when a remount can be told apart from a new visit.
+let storageRefused = false;
+const noteStorageRefused = (refused: boolean) => (storageRefused = refused);
+
 function TenantExperienceChooser({ id }: { id: string }) {
-  const [problem, setProblem] = useState<LocalProblem>(null);
+  const [problem, setProblem] = useState<LocalProblem>(() => (storageRefused ? "storage" : null));
   const activeId = useActiveExperienceId();
   const workspace = useQuery(workspaceQuery);
   const settings = useQuery(settingsQuery);
@@ -88,9 +94,8 @@ function TenantExperienceChooser({ id }: { id: string }) {
     invalidates: ["/api/v1/me/workspace"],
     awaitFirstRead: true,
     onSuccess: (_response, input) => {
-      const stored = writeStoredExperience(input.id, input.source);
-      setProblem(stored ? null : "storage");
-      applyDomExperience(input.id, input.source);
+      setProblem(noteStorageRefused(!writeStoredExperience(input.id, input.source)) ? "storage" : null);
+      applyDomExperience(input.id);
     },
   });
 
@@ -98,6 +103,7 @@ function TenantExperienceChooser({ id }: { id: string }) {
   return <>
     <SelectInput id={id} data-experience-ignore-dirty aria-label={t("account.experience")} aria-describedby={`${id}-hint`}
       value={resolved.choice} onChange={event => {
+        noteStorageRefused(false);
         if (hasUnsavedInput(document, event.currentTarget)) {
           setProblem("unsaved");
           return;
