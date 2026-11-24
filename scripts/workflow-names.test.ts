@@ -2,6 +2,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { expect, test } from "vitest";
 import { load } from "js-yaml";
+import { suiteEvents } from "../deploy/ci/suite-runs.mjs";
 
 const workflows = Object.fromEntries(readdirSync(".github/workflows").filter(file => /\.ya?ml$/.test(file))
   .map(file => [file, load(readFileSync(`.github/workflows/${file}`, "utf8"))]));
@@ -13,9 +14,8 @@ test("each promotion environment selects existing workflows that can supply suit
   for (const file of Object.values(environmentSuites).flat()) {
     const workflow = workflows[file];
     expect(workflow, file).toBeDefined();
-    const triggers = typeof workflow.on === "string" ? [workflow.on]
-      : Array.isArray(workflow.on) ? workflow.on : Object.keys(workflow.on);
-    expect(triggers.some(event => ["push", "schedule", "workflow_dispatch"].includes(event)), file).toBe(true);
+    const triggers = Object.keys(workflow.on);
+    expect(triggers.some(event => suiteEvents.includes(event)), file).toBe(true);
   }
 });
 

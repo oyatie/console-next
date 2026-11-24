@@ -124,14 +124,15 @@ const executeTool = (bin, args, options = {}) => execFileSync(bin, args, {
 
 // Resolve mutable tags once, then verify and pull only that digest.
 export async function publishEnvironment({github, proof, environment, predicate, runUrl, directory,
-  registryUser, registryToken, root = '.', candidateRoot = root}, execute = executeTool) {
+  root = '.', candidateRoot = root}, execute = executeTool) {
   validatePredicate(predicate, proof.sha, runUrl);
   assertPromotion(proof, root);
   const {channel} = readEnvironment(environment, root);
   assert.ok(channel, 'PROMOTE_ENVIRONMENT: select a configured channel');
   const {runs:suiteRuns, refusals} = await collectSuiteRuns(github, environment, proof);
-  if (refusals.length) return {published:false, summary:`${environment} not published: ${refusals.join(', ')}`};
-  execute('docker', ['login', 'ghcr.io', '--username', registryUser, '--password-stdin'], {input:registryToken});
+  if (refusals.length) {
+    return {published:false, code:'PROMOTE_SUITES', summary:`${environment} not published: ${refusals.join(', ')}`};
+  }
   const deploy = `ghcr.io/${proof.repository.toLowerCase()}/console-deploy`;
   const issuer = '--certificate-oidc-issuer=https://token.actions.githubusercontent.com';
   const identity = workflow => `--certificate-identity=https://github.com/${proof.repository}/.github/workflows/${workflow}.yml@refs/heads/dev`;

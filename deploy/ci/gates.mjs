@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from 'node:assert/strict';
-import { attemptJobs, devRuns, isCandidateRun } from './suite-runs.mjs';
+import { execFileSync } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
 import { matchesGlob } from 'node:path';
+import { attemptJobs, devRuns, isCandidateRun } from './suite-runs.mjs';
 import policy from '../../.github/release-admission-policy.json' with {type:'json'};
 import gatesPolicy from '../gates.json' with {type:'json'};
 import admission from '../../.github/release-admission.cjs';
-import { execFileSync } from 'node:child_process';
-import { writeFileSync } from 'node:fs';
 
 // Gate names are the console-gates/v1 host contract, not GitHub check names.
 const required = ['code-gates', 'api-compat', 'sbom', 'scan', 'smoke'];

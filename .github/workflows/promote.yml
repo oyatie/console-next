@@ -113,10 +113,12 @@ jobs:
           git -c core.hooksPath=/dev/null worktree add --detach .tmp/candidate "${CANDIDATE_SHA}"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with: {node-version-file: .node-version}
-      - name: Install locked promotion tools
+      - name: Locked promotion tools and registry login
+        env: {REGISTRY_TOKEN: '${{ github.token }}'}
         run: |
           python3 deploy/ci/tools.py flux cosign buildx kustomize kubeconform conftest
           npm ci --ignore-scripts --no-audit --no-fund
+          printf '%s' "${REGISTRY_TOKEN}" | docker login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
           mkdir -p .tmp/promotion
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with: {name: promotion-proof, path: .tmp/promotion}
@@ -135,8 +137,8 @@ jobs:
             const proof = await collectPlatformProof(github, process.env.GITHUB_REPOSITORY, saved.run.id);
             if (proof.sha !== saved.sha || proof.run.run_attempt !== saved.run.run_attempt) throw new Error('PROMOTE_NOT_GREEN: platform attempt changed');
             const result = await publishEnvironment({github, proof, environment:process.env.PROMOTION_ENVIRONMENT, directory,
-              registryUser:context.actor, registryToken:core.getInput('github-token', {required:true}),
               candidateRoot:`${process.env.GITHUB_WORKSPACE}/.tmp/candidate`,
               predicate:JSON.parse(readFileSync(`${directory}/console-gates.json`)),
               runUrl:`${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/attempts/${process.env.GITHUB_RUN_ATTEMPT}`});
+            if (!result.published) core.notice(`${result.code}: ${result.summary}`);
             await core.summary.addRaw(result.summary).write();

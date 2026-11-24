@@ -5,9 +5,9 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, 
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { suiteRunsFixture } from './fixtures/suite-runs.mjs';
 import { after, test } from 'node:test';
 import { runInNewContext } from 'node:vm';
+import { suiteRunsFixture } from './fixtures/suite-runs.mjs';
 
 const root = resolve(process.env.PLATFORM_REPO_ROOT ?? '.');
 const api = () => import(pathToFileURL(join(root, 'deploy/ci/promote.mjs')));
@@ -401,10 +401,6 @@ async function publishingFixture(options = {}) {
   writeFileSync(join(envConfig, 'platform.json'), JSON.stringify({target:'host', channel:environment}));
   const execute = (bin, args, toolOptions) => {
     calls.push([bin, ...args]);
-    if (bin === 'docker') {
-      assert.deepEqual(args, ['login', 'ghcr.io', '--username', 'fixture', '--password-stdin']);
-      assert.equal(toolOptions.input, 'fixture-token');
-    }
     if (bin === 'buildx') {
       const tag = args[2].split(':').at(-1);
       const kind = tag === `shadow-${sha}` || tag === 'shadow' ? 'shadow' : tag === environment ? 'current' : 'artifact';
@@ -483,7 +479,6 @@ async function publishingFixture(options = {}) {
     return '';
   };
   const input = {proof:{...proof(), currentRevision:null}, environment, github:options.github ?? suiteRunsFixture(sha, repository).github,
-    registryUser:'fixture', registryToken:'fixture-token',
     predicate:options.missingPredicate ? undefined : predicate(), runUrl, root:historyRoot,
     candidateRoot:options.candidateRoot, directory};
   if (options.failedGate) input.predicate.gates[0].result = 'fail';
@@ -496,18 +491,18 @@ async function publishingFixture(options = {}) {
   return {publish, calls, directory, deploy, digests};
 }
 
-test('publisher refuses production before any registry call when a suite is missing', async () => {
+test('publisher reports PROMOTE_SUITES before reading or writing artifacts when a suite is missing', async () => {
   const suites = suiteRunsFixture(sha, repository);
   suites.runs['route-load.yml'] = [];
   const fixture = await publishingFixture({github:suites.github});
   try {
-    assert.deepEqual(await fixture.publish(), {published:false,
+    assert.deepEqual(await fixture.publish(), {published:false, code:'PROMOTE_SUITES',
       summary:'production not published: route-load.yml (missing candidate run)'});
     assert.deepEqual(fixture.calls, []);
   } finally { rmSync(fixture.directory, {recursive:true, force:true}); }
 });
 
-test('publisher fails before registry access if the suite API fails after a refusal', async () => {
+test('publisher fails before reading or writing artifacts if the suite API fails after a refusal', async () => {
   const error = Object.assign(new Error('actions unavailable', {cause:new Error('timeout')}), {status:500});
   const github = {paginate:async (route, params) => {
     if (params.workflow_id === 'db-tests.yml') return [];
@@ -520,7 +515,7 @@ test('publisher fails before registry access if the suite API fails after a refu
   } finally { rmSync(fixture.directory, {recursive:true, force:true}); }
 });
 
-test('publisher fails before registry access if the configured channel has no suite policy', async () => {
+test('publisher fails before reading or writing artifacts if the configured channel has no suite policy', async () => {
   const fixture = await publishingFixture({environment:'candidate'});
   try {
     await assert.rejects(fixture.publish, {name:'AssertionError', message:'PROMOTE_ENVIRONMENT: candidate has no suite policy'});
@@ -735,10 +730,24 @@ test('publish workflow executes promotion policy from dev and renders the separa
   assert.ok(checkouts.every(step => step.with['persist-credentials'] === false && step.with['fetch-depth'] === 0));
   const script = jobs.publish.steps.find(step => step.with?.script?.includes('publishEnvironment')).with.script;
   assert.match(script, /import\(`\$\{process.env.GITHUB_WORKSPACE\}\/deploy\/ci\/promote.mjs`\)/);
-  assert.match(script, /await core\.summary\.addRaw\(result\.summary\)\.write\(\)/);
-  assert.doesNotMatch(script, /\.catch\(|PROMOTE_SUITES/);
-  assert.ok(jobs.publish.steps.every(step => !step.run?.includes('docker login')));
   assert.match(script, /candidateRoot:`\$\{process.env.GITHUB_WORKSPACE\}\/\.tmp\/candidate`/);
+});
+
+test('promotion tools authenticate to the registry with the job token on stdin', async () => {
+  const {load} = await import('js-yaml');
+  const {jobs} = load(readFileSync(join(root, '.github/workflows/promote.yml'), 'utf8'));
+  const setup = jobs.publish.steps.find(step => step.run?.includes('deploy/ci/tools.py'));
+  assert.equal(setup.env?.REGISTRY_TOKEN, '${{ github.token }}');
+  assert.ok(setup.run.split('\n').includes(`printf '%s' "\${REGISTRY_TOKEN}" | docker login ghcr.io --username "\${GITHUB_ACTOR}" --password-stdin`));
+});
+
+test('publish script reports suite refusals and lets promotion errors fail the job', async () => {
+  const {load} = await import('js-yaml');
+  const {jobs} = load(readFileSync(join(root, '.github/workflows/promote.yml'), 'utf8'));
+  const script = jobs.publish.steps.find(step => step.with?.script?.includes('publishEnvironment')).with.script;
+  assert.ok(script.includes('if (!result.published) core.notice(`${result.code}: ${result.summary}`);'));
+  assert.match(script, /await core\.summary\.addRaw\(result\.summary\)\.write\(\)/);
+  assert.doesNotMatch(script, /\.catch\(/);
 });
 
 for (const candidate of ['ancestor', 'tip', 'unmerged', 'newer', 'unknown']) {

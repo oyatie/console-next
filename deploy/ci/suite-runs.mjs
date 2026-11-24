@@ -2,6 +2,8 @@
 import assert from 'node:assert/strict';
 import gatesPolicy from '../gates.json' with {type:'json'};
 
+export const suiteEvents = ['push', 'schedule', 'workflow_dispatch'];
+
 export function devRuns(github, params, workflow, sha, event) {
   return github.paginate('GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}/runs',
     {...params, workflow_id:workflow, head_sha:sha, branch:'dev', ...(event && {event})});
@@ -25,7 +27,7 @@ async function suiteEvidence(github, params, workflow, sha) {
   const history = await devRuns(github, params, workflow, sha);
   const candidates = history.filter(run => isCandidateRun(run, workflow, sha) &&
     run.head_repository?.full_name === `${params.owner}/${params.repo}` &&
-    ['push', 'schedule', 'workflow_dispatch'].includes(run.event));
+    suiteEvents.includes(run.event));
   const runs = [];
   for (const run of candidates) {
     if (!Number.isSafeInteger(run.id) || run.id < 1) return {refusal:'invalid run ID'};
