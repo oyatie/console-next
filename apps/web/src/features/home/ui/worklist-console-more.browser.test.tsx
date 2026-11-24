@@ -1,0 +1,116 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
+import { afterAll, beforeAll, expect, test } from "vitest";
+import { loadCatalog, t } from "@console/i18n";
+import { mountBrowserModule, type MountedGallery } from "../../../lib/gallery-browser-test";
+
+let mounted: MountedGallery;
+
+beforeAll(async () => {
+  await loadCatalog("ko");
+  mounted = await mountBrowserModule({
+    slug: "worklist-console-more-browser-test",
+    viewport: { width: 1440, height: 900 },
+    readySelector: '[data-id="row-0"]',
+    moduleCode: `
+      import React from 'react';
+      import { createRoot } from 'react-dom/client';
+      import { QueryClient, QueryClientProvider, useInfiniteQuery } from '@tanstack/react-query';
+      import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider } from '@tanstack/react-router';
+      import { loadCatalog } from '@console/i18n';
+      import { InboxReadContext } from '/apps/web/src/features/home/ui/use-inbox-read.ts';
+      import { WorklistConsole } from '/apps/web/src/features/home/ui/worklist-console.tsx';
+      import '/apps/web/src/app.css';
+
+      await loadCatalog('ko');
+      document.documentElement.dataset.experience = 'console';
+
+      const page = count => ({
+        items: Array.from({ length: count }, (_, i) => ({
+          id: 'row-' + i, kind: 'insurance_filing', lane: 'turn', title: 'Insurance filing ' + i, ref: 'INS-' + i,
+          urg: 'wait', due: '2026-11-17T00:00:00+09:00', due_basis: 'statutory', dueTone: 'neutral', done: false,
+          days_remaining: 7, links: [{ kind: 'statutory', id: 'ins-' + i }],
+        })),
+        total: count, total_is_exact: true, next_cursor: null, unavailable: [], available_filters: ['turn', 'waiting'],
+        attention_filters: [{ key: 'all', total: count, total_is_exact: true }],
+        counts: { turn: { total: count, total_is_exact: true } }, upcoming: [], has_work: true, quick_starts: [],
+        as_of: '2026-11-10T09:00:00+09:00',
+      });
+
+      function Home({ count }) {
+        const inbox = useInfiniteQuery({ queryKey: ['inbox', count], queryFn: () => page(count), initialPageParam: null, getNextPageParam: () => undefined, enabled: true });
+        return React.createElement(InboxReadContext.Provider, { value: { inbox, attention: 'all', setAttention: () => {} } },
+          React.createElement(WorklistConsole, { mode: 'home', title: 'Home', titleId: 'home-title', baseline: () => null }));
+      }
+
+      let root;
+      window.mountHome = count => {
+        root?.unmount();
+        const rootRoute = createRootRoute();
+        const router = createRouter({
+          routeTree: rootRoute.addChildren([
+            createRoute({ getParentRoute: () => rootRoute, path: '/', component: () => React.createElement(Home, { count }) }),
+            createRoute({ getParentRoute: () => rootRoute, path: '/inbox', component: () => null }),
+          ]),
+          history: createMemoryHistory({ initialEntries: ['/'] }),
+        });
+        const client = new QueryClient({ defaultOptions: { queries: { enabled: false, retry: false } } });
+        root = createRoot(document.getElementById('root'));
+        root.render(React.createElement(QueryClientProvider, { client }, React.createElement(RouterProvider, { router })));
+      };
+      window.mountHome(31);
+    `,
+  });
+}, 60_000);
+
+afterAll(async () => {
+  await mounted?.close();
+});
+
+const inboxLink = () => mounted.page.getByRole("link", { name: t("home.inbox.viewInbox"), exact: true });
+
+async function mountHome(count: number) {
+  await mounted.page.evaluate(n => (window as unknown as { mountHome: (count: number) => void }).mountHome(n), count);
+  await mounted.page.locator('[data-pattern="worklist"] tbody tr[data-id]').first().waitFor();
+}
+
+async function showMore(remaining: number) {
+  await mounted.page.getByRole("button", { name: t("home.worklist.moreCount", { count: remaining }), exact: true }).click();
+}
+
+test("the to-do link stays beside the more bar while a long home list unfolds", async () => {
+  await mountHome(31);
+  await expect.poll(() => inboxLink().count()).toBe(1);
+  for (const remaining of [21, 11, 1]) {
+    await showMore(remaining);
+    await expect.poll(() => inboxLink().count(), { message: `after showing the remaining ${remaining}` }).toBe(1);
+  }
+  await expect.poll(() => mounted.page.locator('[data-pattern="worklist"] tbody tr[data-id]').count()).toBe(31);
+});
+
+test("a short home list unfolds in place and offers the to-do link once every row is shown", async () => {
+  await mountHome(23);
+  await expect.poll(() => inboxLink().count()).toBe(0);
+  await showMore(13);
+  await expect.poll(() => inboxLink().count()).toBe(0);
+  await showMore(3);
+  await expect.poll(() => inboxLink().count()).toBe(1);
+});
+
+test.each([1440, 390])("the more bar keeps its button and the to-do link apart inside the bar at %ipx", async width => {
+  await mounted.page.setViewportSize({ width, height: 900 });
+  await mountHome(31);
+  const more = mounted.page.getByRole("button", { name: t("home.worklist.moreCount", { count: 21 }), exact: true });
+  const bar = (await inboxLink().elementHandle())!;
+  const metrics = await bar.evaluate((link, buttonBox) => {
+    const barBox = link.parentElement!.getBoundingClientRect();
+    const linkBox = link.getBoundingClientRect();
+    return {
+      gap: linkBox.left - (buttonBox.x + buttonBox.width),
+      inside: linkBox.right <= barBox.right + 0.5 && buttonBox.x >= barBox.left - 0.5,
+      overflow: link.parentElement!.scrollWidth - link.parentElement!.clientWidth,
+    };
+  }, (await more.boundingBox())!);
+  expect(metrics.gap).toBeGreaterThanOrEqual(8);
+  expect(metrics.inside).toBe(true);
+  expect(metrics.overflow).toBeLessThanOrEqual(0);
+});

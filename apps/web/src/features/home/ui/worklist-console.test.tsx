@@ -211,10 +211,10 @@ test("Console home links to the full to-do list once every item is on the page, 
   expect(home()).toContain(inboxLink());
 });
 
-test("Console home links to the full to-do list beside the more bar when the remainder is long or on later pages", () => {
+test("Console home links to the full to-do list beside the more bar when the list is long or on later pages", () => {
   state.inboxPages = [{ ...samplePage(), items: rows(31), total: 31 }];
   expect(home()).toContain(inboxLink());
-  state.inboxPages = [{ ...samplePage(), total: 2000 }];
+  state.inboxPages = [{ ...samplePage(), total: 15, total_is_exact: false }];
   state.hasNextPage = true;
   expect(home()).toContain(inboxLink());
 });

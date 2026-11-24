@@ -86,6 +86,7 @@ export function ConsoleWorklistTable({
   onMore?: () => void;
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const canMore = Boolean(onMore) && (moreCount ?? 0) > 0;
   const tableSectionRef = useRef<HTMLDivElement>(null);
   const pendingFoldFocus = useRef<{ rowId: string; button: boolean } | null>(null);
 
@@ -288,9 +289,9 @@ export function ConsoleWorklistTable({
         onOpen={handleOpen}
         columns={columns}
       />
-      {(moreCount && moreCount > 0 && onMore) || moreLink ? (
+      {canMore || moreLink ? (
         <WorklistMoreBar>
-          {moreCount && moreCount > 0 && onMore ? (
+          {canMore ? (
             <Button variant="ghost" size="sm" disabled={morePending} onClick={onMore}>
               <ChevronDown size={14} aria-hidden="true" />
               {t("home.worklist.moreCount", { count: moreCount })}

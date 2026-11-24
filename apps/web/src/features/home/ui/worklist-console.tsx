@@ -164,9 +164,9 @@ export function WorklistConsole({
   const columnsEnabled = !inSetup;
   const recordVisible = !loading && !meError && inbox.data !== undefined && ["ready", "stale", "offline"].includes(queryView(inbox));
   const showControls = !loading && !inSetup && !meError && !inbox.error && Boolean(first?.has_work || first?.available_filters.length);
-  // Home's only way to the other lanes and to rows it does not load; left out only while a short loaded remainder (two
-  // more-bar steps, as the home board draws) still expands in place.
-  const inboxLink = mode === "home" && showControls && (remainingCount === 0 || remainingCount > 2 * HOME_CONSOLE_ROWS || inbox.hasNextPage)
+  // Home's only way to the other lanes and to rows it does not load. A list of up to three more-bar steps unfolds in place
+  // first, as the home design draws it; a longer or paged one keeps the link from first paint, so it never drops out mid-unfold.
+  const inboxLink = mode === "home" && showControls && (remainingCount === 0 || Math.max(first?.total ?? 0, allItems.length) > 3 * HOME_CONSOLE_ROWS || inbox.hasNextPage)
     ? <Link to="/inbox">{t("home.inbox.viewInbox")}</Link>
     : undefined;
   const selectItem = (id: string) => { if (allItems.some(item => item.id === id)) select(id); };
