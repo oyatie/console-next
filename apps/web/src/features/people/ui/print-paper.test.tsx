@@ -40,8 +40,8 @@ test("the printed record keeps the locale date form whatever day style the scree
 
 function card(event: LifecycleEvent) {
   return {
-    e: { id: "person", name: "경계직원", hire_date: "2020-01-02" },
-    d: { classification: {} }, place: { entity: "법인", path: [] }, title: () => undefined,
+    e: { id: "person", name: "Test Person", hire_date: "2020-01-02" },
+    d: { classification: {} }, place: { entity: "Test Co", path: [] }, title: () => undefined,
     events: { data: { items: [event] } }, register: {}, personal: {}, facts: {}, records: {},
   } as unknown as Card;
 }
