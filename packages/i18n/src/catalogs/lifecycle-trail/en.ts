@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 export const enLifecycleTrail = {
   "lifecycle.trail.title": "Documents · legal deadlines · tasks",
-  "lifecycle.trail.shared": "This case shares its items with statutory filings and the task inbox.",
+  "lifecycle.trail.shared": "This case shares its items with Filings and To-dos.",
   "lifecycle.trail.empty": "No lifecycle dossier is linked to this event.",
   "lifecycle.trail.record": "Event record",
   "lifecycle.trail.documents": "Document review",
@@ -51,7 +51,7 @@ export const enLifecycleTrail = {
   "lifecycle.refuse.withdrawn": "A withdrawn change cannot be decided. Check its current status in the change history.",
   "lifecycle.refuse.stale_version": "The change details have changed. Review the latest history before continuing.",
   "lifecycle.refuse.merge_not_allowed": "Approval steps cannot be combined. Each step must be decided in order by its assigned person.",
-  "lifecycle.refuse.scope": "This item is not in your inbox. It may already be handled or assigned to someone else.",
+  "lifecycle.refuse.scope": "This item is not in your To-dos. It may already be handled or assigned to someone else.",
   "lifecycle.trail.documents.hire": "Hiring documents and employment contract",
   "lifecycle.trail.documents.appoint": "Appointment documents",
   "lifecycle.trail.documents.leave_start": "Leave request and evidence",

@@ -15,7 +15,6 @@ import { PhaseLine } from "../../../ui/page-head/phase-line";
 import { WizardPattern } from "../../../ui/patterns/wizard";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { StepLine } from "../../../ui/step-line/step-line";
-import s from "./bulk-page.module.css";
 
 type Step = { key: string; label: string; state: "done" | "current" | "waiting" };
 
@@ -73,7 +72,7 @@ export function BulkConsole({
       back={{ to: "/people", label: t("people.title") }}
       head={{
         title,
-        crumbs: <Crumbs items={[<Link key="people" to="/people" search={{}} className={s.crumbLink}>{t("people.title")}</Link>]} current={t("bulk.page.crumb")} />,
+        crumbs: <Crumbs items={[<Link key="people" to="/people" search={{}}>{t("people.title")}</Link>]} current={t("bulk.page.crumb")} />,
         meta: <PhaseLine phase={setup ? "setup" : "operating"}>{t(setup ? "bulk.page.phaseSetup" : "bulk.page.phaseOp")}</PhaseLine>,
         actions: (
           <Button variant="ghost" size="sm" icon aria-label={t("composer.dismiss")} onClick={onClose}>

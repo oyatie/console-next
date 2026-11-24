@@ -100,7 +100,7 @@ export const koTenants: Record<keyof typeof enTenants, string> = {
   "tenants.next.deliver": "아이디와 코드를 첫 관리자에게 전달하십시오. 코드는 한 번만 쓸 수 있으며 {at}에 만료됩니다.",
   "tenants.next.signIn": "관리자는 로그인 화면의 「처음이면 일회용 코드」로 로그인한 뒤 자기 기기에 패스키를 등록합니다. 이후에는 아이디와 패스키로 로그인합니다.",
   "tenants.next.lost": "코드를 잃어버렸거나 기한이 지났다면, 관리자가 패스키를 등록하기 전까지 이 고객 계정 패널의 「패스키로 확인하고 관리자 코드 재발급」으로 새 코드를 발급할 수 있습니다.",
-  "tenants.next.setup": "로그인하면 홈의 운영 준비 목록이 법인 등록(사업자등록증)부터 사업장, 조직, 직원 등록, 「운영 시작」까지 순서대로 안내합니다. 혼자서도 끝까지 마칠 수 있습니다.",
+  "tenants.next.setup": "로그인하면 할 일의 운영 준비 목록이 법인 등록(사업자등록증)부터 사업장, 조직, 직원 등록, 「운영 시작」까지 순서대로 안내합니다. 혼자서도 끝까지 마칠 수 있습니다.",
   "tenants.search.reset": "검색 초기화",
   "tenants.code.signInId": "아이디",
   "tenants.code.copyId": "아이디 복사",

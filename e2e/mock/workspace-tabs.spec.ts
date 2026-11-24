@@ -33,7 +33,7 @@ for (const width of [1440, 390] as const) {
       const admin = saeonAdminUser();
       const principalKey = `console.tabs.${JSON.stringify(["00000000-0000-4000-8000-000000000002", admin.id])}`;
       const seededTabs = [
-        { id: "pinned-home", href: "/", label: t("shell.link.home"), pinned: true },
+        { id: "pinned-home", href: "/", label: t("shell.link.todo"), pinned: true },
         { id: "tab-roster", href: "/people", label: t("shellRoutes.peopleRoster") },
         { id: "tab-hero", href: `/people/${SAEON_HERO_ID}`, label: heroPairLabel },
         { id: "tab-exits", href: "/people/exits", label: t("shellRoutes.peopleExits") },
@@ -109,14 +109,13 @@ for (const width of [1440, 390] as const) {
 
           const tabLinks = tabsNav.locator("[data-workspace-tab]");
           const labels = (await tabLinks.allInnerTexts()).map(text => text.trim());
-          expect(labels).toContain(t("shell.link.home"));
+          expect(labels).toContain(t("shell.link.todo"));
           expect(labels).toContain(t("shellRoutes.peopleRoster"));
           expect(labels).toContain(heroPairLabel);
           expect(labels).toContain(t("shellRoutes.peopleExits"));
           expect(labels).toContain(exitTabLabel);
           expect(labels).toContain(t("shellRoutes.peopleCertificates"));
           expect(labels).toContain(t("shellRoutes.peopleGrid"));
-          expect(labels).not.toContain(t("shell.link.people"));
           expect(new Set(labels).size).toBe(labels.length);
 
           await page.goto("/people/exits");

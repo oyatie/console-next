@@ -161,7 +161,7 @@ export function GoLive() {
       const operatingActions = (
         <>
           <Link to="/org/history" className={buttonClass()}>{t("setup.bulk.history")}</Link>
-          <Link to="/" className={buttonClass("primary")}>{t("shell.link.home")}</Link>
+          <Link to="/" className={buttonClass("primary")}>{t("shell.link.todo")}</Link>
         </>
       );
       return {
@@ -218,7 +218,7 @@ export function GoLive() {
       baseline={() => (
         <div className="page">
           <div className="page__head">
-            <Link to="/" className={buttonClass("ghost")}>{t(operating ? "shell.link.home" : "setup.title")}</Link>
+            <Link to="/" className={buttonClass("ghost")}>{t(operating ? "shell.link.todo" : "setup.title")}</Link>
             <h1 className="page__title" tabIndex={-1}>{t("setup.golive.title")}</h1>
           </div>
           <QueryState q={effectiveQ}>

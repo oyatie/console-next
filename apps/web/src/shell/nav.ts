@@ -20,7 +20,7 @@ const REQUESTS: NavLink = { to: "/people/requests", label: "shell.link.requests"
 // One entry table; future destinations appear only when their route is served.
 export const TENANT_NAV: readonly NavHub[] = [
   { hub: "shell.hub.work", links: [
-    { to: "/", label: "shell.link.home", icon: Home, countKey: "inbox" },
+    { to: "/", label: "shell.link.todo", icon: Home, countKey: "inbox" },
     // Keep own requests reachable until the inbox page includes the requester's tab.
     REQUESTS,
   ] },

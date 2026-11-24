@@ -18,7 +18,6 @@ import { rulesQuery } from "../api";
 import { scopes, type Scope } from "../domain/numbering";
 import { RenumberCard } from "./renumber-card";
 import { RulesCard } from "./rules-card";
-import s from "./identifiers.module.css";
 
 /**
  * Employee numbering for the company: the rule per scope (tenant, legal entity, workplace; the most specific wins)
@@ -71,7 +70,7 @@ function NumberingWorkspace() {
       head={{
         title: t("identifiers.numbering.title"),
         titleId: "numbering-title",
-        crumbs: <Crumbs items={[<Link key="people" to="/people" search={{}} className={s.crumbLink}>{t("people.title")}</Link>]} />,
+        crumbs: <Crumbs items={[<Link key="people" to="/people" search={{}}>{t("people.title")}</Link>]} />,
       }}
       views={navItems.length > 0 ? <SettingsViewsNav items={navItems} current="/people/numbering" /> : undefined}
       summary={
