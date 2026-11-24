@@ -11,8 +11,8 @@ beforeAll(async () => {
     viewport: { width: 390, height: 844 },
     // The row controls the org list, the exits list, statutory filings and the roster put in a cell: the selection
     // checkbox, a ghost button, a small action button and a name link. "Cards" is the default phone layout, and
-    // "Compact" the 2-line row the exits list and statutory filings use. "No tail" and "One line" are compact rows
-    // without status and actions, and without facts.
+    // "Compact" the 2-line row the exits list and statutory filings use. "No tail" is a compact row without status and
+    // actions, and "One line" one without facts and with a plain-text name.
     moduleCode: `
       import { createElement as h, useState } from 'react';
       import { createRoot } from 'react-dom/client';
@@ -37,7 +37,7 @@ beforeAll(async () => {
       }
       createRoot(document.getElementById('root')).render(h('main', null, h(Table, { label: 'Cards' }), h(Table, { label: 'Compact', compact: true }),
         h(Table, { label: 'No tail', compact: true, shown: columns.slice(0, 2) }),
-        h(Table, { label: 'One line', compact: true, shown: [columns[0], columns[2], columns[3]] })));
+        h(Table, { label: 'One line', compact: true, shown: [{ ...columns[0], cell: r => 'Person ' + r.id }, columns[2], columns[3]] })));
     `,
   });
 }, 60_000);
@@ -113,19 +113,19 @@ test("in Console a phone compact row keeps its fact line under the name, and a 1
   await targets("Compact", "console", 390, "cards");
   const place = (table: string) => page.getByRole("grid", { name: table, exact: true }).evaluate(el => {
     const row = el.querySelector('[data-row-id="A"]')!;
-    const rect = (k: string) => {
-      const r = row.querySelector(`[data-k="${k}"]`)?.getBoundingClientRect();
+    const rect = (selector: string) => {
+      const r = row.querySelector(selector)?.getBoundingClientRect();
       return r && { left: Math.round(r.left), top: Math.round(r.top), bottom: Math.round(r.bottom), middle: Math.round((r.top + r.bottom) / 2) };
     };
-    return { link: rect("link")!, fact: rect("fact"), action: rect("action") };
+    return { name: rect('[id$="-title"]')!, fact: rect('[data-k="fact"]'), action: rect('[data-k="action"]') };
   });
   for (const table of ["Compact", "No tail"]) {
-    const { link, fact } = await place(table);
-    expect(fact!.top, table).toBeGreaterThanOrEqual(link.bottom);
-    expect(fact!.left, table).toBe(link.left);
+    const { name, fact } = await place(table);
+    expect(fact!.top, table).toBeGreaterThanOrEqual(name.bottom);
+    expect(fact!.left, table).toBe(name.left);
   }
-  const { link, action } = await place("One line");
-  expect(Math.abs(link.middle - action!.middle)).toBeLessThanOrEqual(1);
+  const { name, action } = await place("One line");
+  expect(Math.abs(name.middle - action!.middle)).toBeLessThanOrEqual(1);
 }, 30_000);
 
 test("in Console a phone compact-density row clips none of its controls", async () => {
