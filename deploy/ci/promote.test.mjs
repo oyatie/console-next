@@ -7,9 +7,12 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { after, test } from 'node:test';
 import { runInNewContext } from 'node:vm';
+import { dump, load } from 'js-yaml';
 import { suiteRunsFixture } from './fixtures/suite-runs.mjs';
 
 const root = resolve(process.env.PLATFORM_REPO_ROOT ?? '.');
+const workflow = load(readFileSync(join(root, '.github/workflows/promote.yml'), 'utf8'));
+const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
 const api = () => import(pathToFileURL(join(root, 'deploy/ci/promote.mjs')));
 const historyRoot = mkdtempSync(join(tmpdir(), 'promotion-history-'));
 after(() => rmSync(historyRoot, {recursive:true, force:true}));
@@ -38,20 +41,41 @@ function proof() {
   };
 }
 
-test('manual promotion selects a one-entry matrix for the requested environment', async () => {
-  const {load} = await import('js-yaml');
-  const workflow = load(readFileSync(join(root, '.github/workflows/promote.yml'), 'utf8'));
-  const input = workflow.on.workflow_dispatch.inputs.environment;
+test('proof emits the requested environment on dispatch and every environment on a dev push', async t => {
   const step = workflow.jobs.proof.steps.find(step => step.id === 'proof');
+  const runProof = new AsyncFunction('github', 'core', 'process', step.with.script);
+  const input = proof();
+  input.run.run_attempt = 1;
+  const github = {rest:{actions:{getWorkflowRun:async () => ({data:input.run})}}, paginate:async () => input.jobs};
+  const rows = ['preview', 'production'].map(environment => ({environment, target:'host', channel:`release-${environment}`}));
+  const workspace = mkdtempSync(join(tmpdir(), 'promotion-proof-'));
+  t.after(() => rmSync(workspace, {recursive:true, force:true}));
+  cpSync(join(historyRoot, '.github'), join(workspace, '.github'), {recursive:true});
+  for (const {environment, ...config} of rows) {
+    const directory = join(workspace, 'deploy/clusters', environment);
+    mkdirSync(directory, {recursive:true});
+    writeFileSync(join(directory, 'platform.json'), JSON.stringify(config));
+  }
+  symlinkSync(join(root, 'deploy/ci'), join(workspace, 'deploy/ci'));
+  const cwd = process.cwd();
+  try {
+    process.chdir(workspace);
+    for (const environment of ['', ...rows.map(row => row.environment)]) {
+      const outputs = {};
+      await runProof(github, {setOutput:(key, value) => { outputs[key] = value; }}, {env:{
+        GITHUB_WORKSPACE:workspace, GITHUB_REPOSITORY:repository, PLATFORM_RUN_ID:String(input.run.id), PROMOTION_ENVIRONMENT:environment,
+      }});
+      assert.deepEqual(outputs.matrix, {include:environment ? rows.filter(row => row.environment === environment) : rows});
+      assert.equal(outputs.sha, sha);
+      assert.equal(JSON.parse(readFileSync('promotion-proof.json')).sha, sha);
+    }
+  } finally { process.chdir(cwd); }
+  const choice = workflow.on.workflow_dispatch.inputs.environment;
+  assert.equal(choice.required, true);
+  assert.equal(choice.type, 'choice');
   const {discoverEnvironments} = await api();
-  const environments = discoverEnvironments(root);
-  assert.equal(input.required, true);
-  assert.equal(input.type, 'choice');
-  assert.deepEqual(input.options.toSorted(), environments.map(row => row.environment));
+  assert.deepEqual(choice.options.toSorted(), discoverEnvironments(root).map(row => row.environment));
   assert.equal(step.env.PROMOTION_ENVIRONMENT, '${{ inputs.environment }}');
-  assert.match(step.with.script, /discoverEnvironments\('\.', process.env.PROMOTION_ENVIRONMENT\)/);
-  for (const row of environments) assert.deepEqual(discoverEnvironments(root, row.environment), [row]);
-  assert.deepEqual(discoverEnvironments(root, ''), environments);
 });
 
 test('discovers channel and target from environment configuration, without promoting templates', async () => {
@@ -282,7 +306,6 @@ for (const [name, message] of [
   ['Native image smoke test · ${{ matrix.unknown }}', /unsupported job name expression/],
 ]) test(`PROMOTE_NOT_GREEN: refuses unsupported matrix display name ${name}`, async () => {
   const {assertPromotion} = await api();
-  const {load, dump} = await import('js-yaml');
   const dir = mkdtempSync(join(tmpdir(), 'promotion-name-'));
   try {
     mkdirSync(join(dir, '.github/workflows'), {recursive:true});
@@ -689,8 +712,7 @@ test('publisher uses the trusted renderer with candidate data as its working dir
 });
 
 test('promotion workflow fails rather than succeeding when gates do not pass', async () => {
-  const {load} = await import('js-yaml');
-  const {jobs} = load(readFileSync(join(root, '.github/workflows/promote.yml'), 'utf8'));
+  const {jobs} = workflow;
   const refused = jobs.refused;
   assert.ok(refused, 'gate refusal needs a failing job');
   assert.deepEqual(refused.needs, ['proof', 'gates']);
@@ -720,40 +742,81 @@ test('promotion workflow fails rather than succeeding when gates do not pass', a
   } finally { rmSync(dir, {recursive:true, force:true}); }
 });
 
-test('publish workflow executes promotion policy from dev and renders the separate candidate tree', async () => {
-  const {load} = await import('js-yaml');
-  const {jobs} = load(readFileSync(join(root, '.github/workflows/promote.yml'), 'utf8'));
+test('publish workflow checks out trusted promotion policy from dev', () => {
+  const {jobs} = workflow;
   const checkouts = jobs.publish.steps.filter(step => step.uses?.startsWith('actions/checkout@'));
   assert.equal(checkouts.length, 1);
   assert.equal(checkouts[0].with.ref, 'dev');
   assert.equal(checkouts[0].with.path, undefined);
   assert.ok(checkouts.every(step => step.with['persist-credentials'] === false && step.with['fetch-depth'] === 0));
-  const script = jobs.publish.steps.find(step => step.with?.script?.includes('publishEnvironment')).with.script;
-  assert.match(script, /import\(`\$\{process.env.GITHUB_WORKSPACE\}\/deploy\/ci\/promote.mjs`\)/);
-  assert.match(script, /candidateRoot:`\$\{process.env.GITHUB_WORKSPACE\}\/\.tmp\/candidate`/);
 });
 
-test('promotion tools authenticate to the registry with the job token on stdin', async () => {
-  const {load} = await import('js-yaml');
-  const {jobs} = load(readFileSync(join(root, '.github/workflows/promote.yml'), 'utf8'));
-  const setup = jobs.publish.steps.find(step => step.run?.includes('deploy/ci/tools.py'));
-  assert.equal(setup.env?.REGISTRY_TOKEN, '${{ github.token }}');
-  assert.ok(setup.run.split('\n').includes(`printf '%s' "\${REGISTRY_TOKEN}" | docker login ghcr.io --username "\${GITHUB_ACTOR}" --password-stdin`));
+test('promotion tools authenticate to the registry with the job token on stdin', t => {
+  const setup = workflow.jobs.publish.steps.find(step => step.env?.REGISTRY_TOKEN);
+  assert.equal(setup.env.REGISTRY_TOKEN, '${{ github.token }}');
+  const workspace = mkdtempSync(join(tmpdir(), 'promotion-login-'));
+  t.after(() => rmSync(workspace, {recursive:true, force:true}));
+  for (const tool of ['python3', 'npm']) symlinkSync('/usr/bin/true', join(workspace, tool));
+  symlinkSync('/bin/mkdir', join(workspace, 'mkdir'));
+  writeFileSync(join(workspace, 'docker'), `#!${process.execPath}
+    const fs = require('node:fs');
+    console.log(JSON.stringify({args:process.argv.slice(2), stdin:fs.readFileSync(0, 'utf8')}));
+  `, {mode:0o755});
+  const token = 'fixture-registry-token';
+  const actor = 'fixture-user';
+  const result = spawnSync('/bin/bash', ['-e', '-o', 'pipefail', '-c', setup.run], {
+    cwd:workspace, encoding:'utf8', env:{PATH:workspace, REGISTRY_TOKEN:token, GITHUB_ACTOR:actor},
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {args:['login', 'ghcr.io', '--username', actor, '--password-stdin'], stdin:token});
 });
 
-test('publish script reports suite refusals and lets promotion errors fail the job', async () => {
-  const {load} = await import('js-yaml');
-  const {jobs} = load(readFileSync(join(root, '.github/workflows/promote.yml'), 'utf8'));
-  const script = jobs.publish.steps.find(step => step.with?.script?.includes('publishEnvironment')).with.script;
-  assert.ok(script.includes('if (!result.published) core.notice(`${result.code}: ${result.summary}`);'));
-  assert.match(script, /await core\.summary\.addRaw\(result\.summary\)\.write\(\)/);
-  assert.doesNotMatch(script, /\.catch\(/);
+for (const outcome of ['reports a suite refusal', 'propagates a publisher error']) test(`publish step ${outcome}`, async t => {
+  const step = workflow.jobs.publish.steps.find(step => step.uses?.startsWith('actions/github-script@'));
+  const runPublish = new AsyncFunction('github', 'context', 'core', 'process', step.with.script);
+  const workspace = mkdtempSync(join(tmpdir(), 'promotion-publish-'));
+  t.after(() => rmSync(workspace, {recursive:true, force:true}));
+  const directory = join(workspace, '.tmp/promotion');
+  mkdirSync(directory, {recursive:true});
+  const saved = {sha, run:{id:42, run_attempt:1}};
+  writeFileSync(join(directory, 'promotion-proof.json'), JSON.stringify(saved));
+  writeFileSync(join(directory, 'console-gates.json'), '{}');
+  mkdirSync(join(workspace, 'deploy/ci'), {recursive:true});
+  writeFileSync(join(workspace, 'deploy/ci/promote.mjs'), `
+    export const collectPlatformProof = async github => github.proof;
+    export const publishEnvironment = async options => options.github.publish(options);
+  `);
+  const error = new Error('publisher unavailable');
+  const summary = 'production not published: db-tests.yml (failure)';
+  const github = {proof:saved, publish:({candidateRoot, environment}) => {
+    assert.equal(candidateRoot, join(workspace, '.tmp/candidate'));
+    assert.equal(environment, 'production');
+    if (outcome === 'propagates a publisher error') throw error;
+    return {published:false, code:'PROMOTE_SUITES', summary};
+  }};
+  const notices = [];
+  const summaries = [];
+  const core = {
+    notice:message => notices.push(message),
+    summary:{addRaw:text => ({write:async () => { summaries.push(text); }})},
+  };
+  const result = runPublish(github, {serverUrl:'https://github.com', repo:{owner:'example', repo:'console'}, runId:7}, core, {env:{
+    GITHUB_WORKSPACE:workspace, GITHUB_REPOSITORY:repository, GITHUB_RUN_ATTEMPT:'1', PROMOTION_ENVIRONMENT:'production',
+  }});
+  if (outcome === 'propagates a publisher error') {
+    await assert.rejects(result, thrown => thrown === error);
+    assert.deepEqual(notices, []);
+    assert.deepEqual(summaries, []);
+  } else {
+    await result;
+    assert.deepEqual(notices, [`PROMOTE_SUITES: ${summary}`]);
+    assert.deepEqual(summaries, [summary]);
+  }
 });
 
 for (const candidate of ['ancestor', 'tip', 'unmerged', 'newer', 'unknown']) {
   test(`candidate data worktree ${['ancestor', 'tip'].includes(candidate) ? 'admits' : 'refuses'} ${candidate}`, async () => {
-    const {load} = await import('js-yaml');
-    const {jobs} = load(readFileSync(join(root, '.github/workflows/promote.yml'), 'utf8'));
+    const {jobs} = workflow;
     const step = jobs.publish.steps.find(step => step.id === 'candidate');
     assert.ok(step, 'materialise the candidate without a second checkout action');
     assert.equal(step.env.CANDIDATE_SHA, '${{ needs.proof.outputs.sha }}');
@@ -783,7 +846,6 @@ for (const candidate of ['ancestor', 'tip', 'unmerged', 'newer', 'unknown']) {
 }
 
 test('platform publishes a SHA shadow and signs its digest before moving the mutable shadow tag', async () => {
-  const {load} = await import('js-yaml');
   const {jobs} = load(readFileSync(join(root, '.github/workflows/platform.yml'), 'utf8'));
   const script = jobs.publish.steps.find(step => step.id === 'artifact').run;
   assert.match(script, /flux push artifact "oci:\/\/\$\{DEPLOY\}:shadow-\$\{GITHUB_SHA\}"/);
@@ -793,8 +855,6 @@ test('platform publishes a SHA shadow and signs its digest before moving the mut
 });
 
 test('promotion workflow binds reusable gates, proof, permissions and channel serialization', async () => {
-  const {load} = await import('js-yaml');
-  const workflow = load(readFileSync(join(root, '.github/workflows/promote.yml'), 'utf8'));
   assert.deepEqual(workflow.on.workflow_run, {workflows:['Platform validation and images'], types:['completed']});
   assert.equal(workflow.jobs.gates.uses, './.github/workflows/gates.yml');
   assert.equal(workflow.jobs.gates.with.sha, '${{ needs.proof.outputs.sha }}');

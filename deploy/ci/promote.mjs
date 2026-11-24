@@ -1,26 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
+import { cpSync, lstatSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { load } from 'js-yaml';
-import { attemptJobs, collectSuiteRuns } from './suite-runs.mjs';
+import { readEnvironment } from './environment.mjs';
+import { attemptJobs, collectSuiteRuns } from './gates.mjs';
 import gatesPolicy from '../gates.json' with {type:'json'};
-
-export function readEnvironment(environment, root = '.') {
-  assert.match(environment ?? '', /^[a-z0-9][a-z0-9-]*$/, 'PLAT_OVERLAY: select a committed environment');
-  const directory = join(root, 'deploy/clusters', environment);
-  assert.ok(existsSync(directory) && lstatSync(directory).isDirectory() &&
-    existsSync(join(directory, 'platform.json')) && lstatSync(join(directory, 'platform.json')).isFile(),
-  'PLAT_OVERLAY: select a committed environment');
-  const config = JSON.parse(readFileSync(join(directory, 'platform.json'), 'utf8'));
-  if (config.target !== undefined || config.channel !== undefined) {
-    assert.ok(['host', 'kubernetes'].includes(config.target) && typeof config.channel === 'string' &&
-      /^[a-z0-9][a-z0-9_.-]*$/.test(config.channel) && config.channel.length <= 87,
-    'PROMOTE_ENVIRONMENT: target and channel must be valid; reserve room for the immutable SHA tag');
-  }
-  return config;
-}
 
 export function discoverEnvironments(root = '.', environment) {
   const channels = new Set();

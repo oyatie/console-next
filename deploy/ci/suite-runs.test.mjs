@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { suiteRunsFixture } from './fixtures/suite-runs.mjs';
 
 const root = resolve(process.env.PLATFORM_REPO_ROOT ?? '.');
-const {collectSuiteRuns} = await import(pathToFileURL(resolve(root, 'deploy/ci/suite-runs.mjs')));
+const {collectSuiteRuns} = await import(pathToFileURL(resolve(root, 'deploy/ci/gates.mjs')));
 const sha = 'a'.repeat(40);
 const candidate = {sha, repository:'example/console'};
 const databaseJob = fixture => fixture.testsJob(fixture.database);
