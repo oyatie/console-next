@@ -97,8 +97,9 @@ export async function firstSignIn(browser: Browser, code: string, keep?: string,
     expectSuccess(page.waitForResponse(response => loginFinish(response.request())), "post-enrollment sign-in"),
     enroll.click(),
   ]);
-  await signedInScreen(page, "/setup-passkey");
+  // Kept before any screen check: the code is spent now, so a red below still leaves later workers this passkey.
   if (keep) writeFileSync(keep, JSON.stringify(await authn.export()));
+  await signedInScreen(page, "/setup-passkey");
   return page;
 }
 
