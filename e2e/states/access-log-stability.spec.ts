@@ -2,10 +2,14 @@
 import { installFaultClock } from "./fault-clock";
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
+import { EXPERIENCE_KEY, THEME_KEY } from "../../apps/web/src/lib/prefs";
+import { mockRoute } from "../mock/route";
 import { expectAxe, fits } from "../a11y";
 import { failure, id } from "../mock/fixtures";
 import { filtersFixture } from "./access-log-filters-fixture";
 import { expectStable, recordShifts } from "../stability";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 for (const state of ["available", "absent", "failed", "search_invalid"] as const) {
   test(`access-log actor availability waits for loaded choices: ${state} @ui-state`, async ({ page }, testInfo) => {
@@ -44,7 +48,6 @@ for (const state of ["available", "absent", "failed", "search_invalid"] as const
 }
 
 test("access-log keeps clear search in place and presents the applied filters together @ui-state", async ({ page }) => {
-  await loadCatalog("ko");
   await page.setViewportSize({ width: 1440, height: 900 });
   const fixture = await filtersFixture(page);
   const read = Promise.withResolvers<void>();
@@ -77,7 +80,6 @@ test("access-log keeps clear search in place and presents the applied filters to
 });
 
 test("access-log keeps the stale-filter alert in place while choices load @ui-state", async ({ page }) => {
-  await loadCatalog("ko");
   await page.setViewportSize({ width: 390, height: 900 });
   await page.addInitScript(recordShifts);
   await page.addInitScript(() => localStorage.setItem("console.theme", "dark"));
@@ -104,3 +106,39 @@ test("access-log keeps the stale-filter alert in place while choices load @ui-st
     expect(fixture.unexpected).toEqual([]);
   } finally { choices.resolve(); fixture.release(); }
 });
+
+for (const experience of ["baseline", "console"] as const) for (const width of [390, 1440]) {
+  test(`access-log disabled review keeps its toolbar in place in ${experience} at ${width}px @ui-state`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(({ experienceKey, value, themeKey }) => {
+      localStorage.setItem(experienceKey, value);
+      localStorage.setItem(themeKey, "dark");
+    }, { experienceKey: EXPERIENCE_KEY, value: experience, themeKey: THEME_KEY });
+    const fixture = await filtersFixture(page);
+    await mockRoute(page, "get", "/api/v1/access/access-log", { status: 422, json: failure("search_invalid") });
+    try {
+      await page.goto("/audit/access-log?period=2026-10&action=employee.export");
+      const alert = page.getByRole("alert").filter({ has: page.getByRole("heading", { name: t("common.loadFailed.title") }) });
+      const reason = t("common.failed.code.search_invalid");
+      await expect(alert.getByText(reason, { exact: true })).toBeVisible();
+      await expect(page.locator("html")).toHaveAttribute("data-experience", experience);
+      const filter = page.getByRole("button", { name: t("accessLog.chooseFilters"), exact: true });
+      const review = page.getByRole("button", { name: t("accessLog.review.open"), exact: true });
+      const clear = page.getByRole("button", { name: t("accessLog.clearSearch"), exact: true });
+      await expect(review).toBeDisabled();
+      await expect(review).toHaveAccessibleDescription(reason);
+      await page.evaluate(() => document.fonts.ready);
+      const boxes = () => Promise.all([filter, review, clear, alert].map(element => element.boundingBox()));
+      const atRest = await boxes();
+      await review.focus();
+      await expect(review).toBeFocused();
+      expect(await boxes()).toEqual(atRest);
+      await clear.focus();
+      await review.hover();
+      expect(await boxes()).toEqual(atRest);
+      await expect(review).toHaveAttribute("title", reason);
+      await fits(page, "access-log toolbar");
+      expect(fixture.unexpected).toEqual([]);
+    } finally { fixture.release(); }
+  });
+}

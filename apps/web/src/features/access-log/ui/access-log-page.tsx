@@ -89,25 +89,31 @@ export function AccessLogPage() {
   }, [filtered, count, q.isSuccess, q.isPlaceholderData, q.isFetching]);
   const period = search.period ?? source?.period.from.slice(0, 7) ?? "";
   const consoleRows = q.data?.pages.flatMap(p => p.items) ?? [];
-  const consoleFirst = q.data?.pages[0];
   const effectiveSelected =
     selected ?? (isDesktop && !dismissedAuto ? (consoleRows[0] ?? null) : null);
 
   const openReview = (eventId: string | null) => { setReviewEventId(eventId); setReviewOpen(true); };
-  // Keep monthly review in the toolbar from first paint so clear search stays in place.
+  const filtersDisabled = !first && !filterInvalid;
+  const reviewDisabled = !period || filtersDisabled;
+  const reviewError = filterInvalid ? choices.error : q.error;
+  const reviewReason = reviewDisabled && reviewError ? readFailureText(reviewError) : undefined;
+  const filterAlert = filterInvalid && <EmptyState alert title={t("accessLog.filterInvalid")}
+    reason={[readFailureText(q.error), reviewReason].filter(Boolean).join(" ")}
+    meta={<ReadReference error={q.error} />}
+  />;
   const renderReviewButton = (size?: ButtonSize) => {
-    const disabled = !period || (!first && !filterInvalid);
-    const error = filterInvalid ? choices.error : q.error;
     const label = t("accessLog.review.open");
-    return disabled && error
-      ? <DisabledReason layout="disclosure" reason={readFailureText(error)} control={props => <Button size={size} {...props}>{label}</Button>} />
-      : <Button size={size} disabled={disabled} onClick={() => openReview(null)}>{label}</Button>;
+    return reviewReason
+      ? <DisabledReason reason={reviewReason} control={props => <Button size={size} title={reviewReason} {...props}>{label}</Button>}>
+          {({ control, reason }) => <>{control}<div className="sr-only">{reason}</div></>}
+        </DisabledReason>
+      : <Button size={size} disabled={reviewDisabled} onClick={() => openReview(null)}>{label}</Button>;
   };
   const renderBaseline = () => (
     <AccessLogBaselineView
       q={q}
       first={first}
-      filterInvalid={filterInvalid}
+      filterAlert={filterAlert}
       filtered={filtered}
       all={all}
       period={period}
@@ -119,7 +125,7 @@ export function AccessLogPage() {
       onCompositionStart={() => setComposing(true)}
       onCompositionEnd={() => setComposing(false)}
       onNavigate={patch => void navigate({ search: s => ({ ...s, ...patch }), replace: true })}
-      onOpenFilter={() => setFilterOpen(true)}
+      onOpenFilter={filtersDisabled ? undefined : () => setFilterOpen(true)}
       reviewButton={renderReviewButton()}
       onOpenReview={openReview}
       onClear={clear}
@@ -161,7 +167,7 @@ export function AccessLogPage() {
         titleId: "audit-access-log-title",
         actions: (
           <>
-            <Button size="sm" variant="secondary" disabled={!first && !filterInvalid} onClick={() => setFilterOpen(true)}>
+            <Button size="sm" variant="secondary" disabled={filtersDisabled} onClick={() => setFilterOpen(true)}>
               {t("accessLog.chooseFilters")}
             </Button>
             {renderReviewButton("sm")}
@@ -193,26 +199,19 @@ export function AccessLogPage() {
         </div>
       }
       stats={
-        !filterInvalid && consoleFirst && consoleRows.length > 0 ? (
+        !filterInvalid && first && consoleRows.length > 0 ? (
           <StatRow
             label={t("accessLog.summary")}
             items={[
-              { key: "events", label: t("accessLog.all"), value: fmtNumber(consoleFirst.totals.events), active: all, onPress: () => void navigate({ search: s => ({ ...s, view: "all" }), replace: true }) },
-              { key: "flagged", label: t("accessLog.flagged"), value: fmtNumber(consoleFirst.totals.flagged), active: !all, onPress: () => void navigate({ search: s => ({ ...s, view: undefined }), replace: true }) },
+              { key: "events", label: t("accessLog.all"), value: fmtNumber(first.totals.events), active: all, onPress: () => void navigate({ search: s => ({ ...s, view: "all" }), replace: true }) },
+              { key: "flagged", label: t("accessLog.flagged"), value: fmtNumber(first.totals.flagged), active: !all, onPress: () => void navigate({ search: s => ({ ...s, view: undefined }), replace: true }) },
             ]}
           />
         ) : undefined
       }
       notes={appliedFilters.length ? <KeyValue label={t("accessLog.appliedFilters")} items={appliedFilters} readOnly /> : undefined}
       list={
-        filterInvalid ? (
-          <EmptyState
-            alert
-            title={t("accessLog.filterInvalid")}
-            reason={readFailureText(q.error)}
-            meta={<ReadReference error={q.error} />}
-          />
-        ) : !consoleRows.length ? (
+        filterAlert || (!consoleRows.length ? (
           <EmptyState
             title={t(filtered ? "accessLog.noResults" : "accessLog.empty")}
             reason={t(filtered ? "accessLog.noResultsReason" : "accessLog.emptyReason")}
@@ -223,7 +222,7 @@ export function AccessLogPage() {
             rows={consoleRows}
             rowId={row => row.event_id}
             activeRowId={effectiveSelected?.event_id}
-            total={all ? (consoleFirst?.totals.events ?? consoleRows.length) : (consoleFirst?.totals.flagged ?? consoleRows.length)}
+            total={all ? (first?.totals.events ?? consoleRows.length) : (first?.totals.flagged ?? consoleRows.length)}
             hasMore={q.hasNextPage}
             loadingMore={q.isFetchingNextPage}
             onLoadMore={() => void q.fetchNextPage()}
@@ -243,7 +242,7 @@ export function AccessLogPage() {
               { id: "at", header: t("accessLog.at"), card: "fact", type: "date", width: 200, cell: row => fmtDateTime(row.occurred_at) },
             ]}
           />
-        )
+        ))
       }
       onSelect={id => {
         setDismissedAuto(false);

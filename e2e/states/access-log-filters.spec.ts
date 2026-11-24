@@ -4,24 +4,25 @@ import { expect, test } from "@playwright/test";
 import { expectAxe, fits } from "../a11y";
 import { loadCatalog, t } from "@console/i18n";
 import { failure, id } from "../mock/fixtures";
+import { mockRoute } from "../mock/route";
 import { filtersFixture } from "./access-log-filters-fixture";
 import { expectStable, recordShifts } from "../stability";
 
-for (const [state, status, code] of [["failed", 503, "service_unavailable"], ["refused", 422, "search_invalid"]] as const) test(`access-log explains unavailable monthly review after a ${state} read @ui-state`, async ({ page }, testInfo) => {
-  await loadCatalog("ko");
-  if (state === "failed") await installFaultClock(page);
+test.beforeAll(() => loadCatalog("ko"));
+
+for (const [status, code] of [[503, "service_unavailable"], [422, "search_invalid"]] as const) test(`access-log disables filters and explains unavailable monthly review after ${code} @ui-state`, async ({ page }, testInfo) => {
+  if (status === 503) await installFaultClock(page);
   await page.setViewportSize({ width: 390, height: 900 });
   await page.addInitScript(() => localStorage.setItem("console.theme", "dark"));
   const fixture = await filtersFixture(page);
-  await page.route(url => url.pathname === "/api/v1/access/access-log",
-    route => route.fulfill({ status, json: failure(code) }));
+  await mockRoute(page, "get", "/api/v1/access/access-log", { status, json: failure(code) });
   try {
     await page.goto("/audit/access-log?period=2026-10");
     await expect(page.getByRole("heading", { name: t("common.loadFailed.title"), exact: true })).toBeVisible();
     const review = page.getByRole("button", { name: t("accessLog.review.open"), exact: true });
     await expect(review).toBeDisabled();
-    await expect(review).toHaveAccessibleDescription(t(state === "failed" ? "common.read.failedReason" : "common.failed.code.search_invalid"));
-    await expect(page.getByRole("button", { name: "필터 선택", exact: true })).toBeDisabled();
+    await expect(review).toHaveAccessibleDescription(t(status === 503 ? "common.read.failedReason" : "common.failed.code.search_invalid"));
+    await expect(page.getByRole("button", { name: t("accessLog.chooseFilters"), exact: true })).toBeDisabled();
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await fits(page, "audit page read failure");
     await expectAxe(page, "audit page read failure");
@@ -257,7 +258,6 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
 
 for (const state of ["unsupported", "failed", "refused"] as const) {
   test(`access-log filter choices handle ${state} server reads @ui-state`, async ({ page }) => {
-    await loadCatalog("ko");
     if (state === "failed") await installFaultClock(page);
     const fixture = await filtersFixture(page);
     await page.route(url => url.pathname === "/api/v1/access/access-log", route => {
@@ -268,12 +268,15 @@ for (const state of ["unsupported", "failed", "refused"] as const) {
     });
     try {
       await page.goto("/audit/access-log?actor=unavailable");
-      await expect(page.getByText("필터의 선택 항목과 기간을 확인한 뒤 다시 조회하십시오.", { exact: true })).toBeVisible();
+      const alert = page.getByRole("alert").filter({ has: page.getByRole("heading", { name: t("accessLog.filterInvalid") }) });
+      await expect(alert).toContainText(t("common.failed.code.filter_invalid"));
       const review = page.getByRole("button", { name: t("accessLog.review.open"), exact: true });
       if (state === "unsupported") await expect(review).toBeEnabled();
       else {
         await expect(review).toBeDisabled();
-        await expect(review).toHaveAccessibleDescription(state === "failed" ? t("common.read.failedReason") : t("common.failed.permanent", { status: "403" }));
+        const reason = state === "failed" ? t("common.read.failedReason") : t("common.failed.permanent", { status: "403" });
+        await expect(review).toHaveAccessibleDescription(reason);
+        await expect(alert.getByText(reason, { exact: false })).toBeVisible();
       }
       await page.getByRole("button", { name: "필터 선택", exact: true }).click();
       const sheet = page.getByRole("dialog", { name: "접속기록 필터" });

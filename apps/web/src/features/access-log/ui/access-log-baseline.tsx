@@ -5,8 +5,6 @@ import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { fmtDateTime, fmtNumber } from "@console/i18n/format";
 import { codeText } from "../../../lib/labels";
-import { ReadReference } from "../../../lib/react/read-reference";
-import { readFailureText } from "../../../lib/refusal";
 import { AuditTabs } from "../../../reference/audit/ui/audit-tabs";
 import { Button } from "../../../ui/button/button";
 import { Card } from "../../../ui/card/card";
@@ -27,7 +25,7 @@ const flagText = (flag: AccessLogFlag) => t(`accessLog.flag.${flag}`);
 export function AccessLogBaselineView({
   q,
   first,
-  filterInvalid,
+  filterAlert,
   filtered,
   all,
   period,
@@ -48,7 +46,7 @@ export function AccessLogBaselineView({
 }: {
   q: UseInfiniteQueryResult<InfiniteData<LogPage>>;
   first?: LogPage;
-  filterInvalid: boolean;
+  filterAlert: ReactNode;
   filtered: boolean;
   all: boolean;
   period: string;
@@ -60,15 +58,15 @@ export function AccessLogBaselineView({
   onCompositionStart: () => void;
   onCompositionEnd: () => void;
   onNavigate: (patch: Record<string, string | undefined>) => void;
-  onOpenFilter: () => void;
+  onOpenFilter?: () => void;
   reviewButton: ReactNode;
   onOpenReview: (eventId: string | null) => void;
   onClear: () => void;
   onSelect: (event: AccessLogEvent | null) => void;
   sheetNode: ReactNode;
 }) {
-  const content = filterInvalid
-    ? { children: <EmptyState alert title={t("accessLog.filterInvalid")} reason={readFailureText(q.error)} meta={<ReadReference error={q.error} />} /> }
+  const content = filterAlert
+    ? { children: filterAlert }
     : {
         q,
         children: (data: InfiniteData<LogPage>) => {
@@ -128,7 +126,7 @@ export function AccessLogBaselineView({
           </TabNav>
           <SearchField label={t("accessLog.search")} value={searchText} onChange={onSearchChange} onCompositionStart={onCompositionStart} onCompositionEnd={onCompositionEnd} />
           <div className="row wrap">
-            <Button disabled={!first && !filterInvalid} onClick={onOpenFilter}>{t("accessLog.chooseFilters")}</Button>
+            <Button disabled={!onOpenFilter} onClick={onOpenFilter}>{t("accessLog.chooseFilters")}</Button>
             {reviewButton}
             {filtered && <Button onClick={onClear}>{t("accessLog.clearSearch")}</Button>}
           </div>
