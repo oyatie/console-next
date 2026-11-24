@@ -7,6 +7,7 @@ import type { Group } from "../domain/unplaced";
 import { sourceText } from "../present";
 import c from "./unplaced-console.module.css";
 import s from "./unplaced.module.css";
+import { useSingleKeys } from "../../../lib/react/use-single-keys";
 
 export type DoneGroup = { value: string; count: number; place: string };
 
@@ -23,6 +24,7 @@ export function UnplacedGroups({ groups, done, current, onPick, hint, consoleMod
   hint: (g: Group) => string;
   consoleMode?: boolean;
 }) {
+  const singleKeys = useSingleKeys();
   const sizes = [...done.map((d) => d.count), ...groups.map((g) => g.people.length)];
   const total = sizes.reduce((a, b) => a + b, 0);
   const placed = done.reduce((a, d) => a + d.count, 0);
@@ -32,8 +34,7 @@ export function UnplacedGroups({ groups, done, current, onPick, hint, consoleMod
         <Layers size={14} aria-hidden />
         <span>{t("unplaced.groups", { n: total })}</span>
         <span className={s.grow} />
-        <Kbd keys="J" />
-        <Kbd keys="K" />
+        {singleKeys && <><Kbd keys="J" /><Kbd keys="K" /></>}
       </div>
       <ul className={consoleMode ? `${s.groupList} ${c.groupList}` : s.groupList}>
         {done.map((d) => (

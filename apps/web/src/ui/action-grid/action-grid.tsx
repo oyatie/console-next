@@ -3,6 +3,7 @@ import { Ban } from "lucide-react";
 import { isImeKey } from "../../lib/pure/ime";
 import { singleKey } from "../../lib/pure/keys";
 import { singleKeysOn } from "../../lib/prefs";
+import { useSingleKeys } from "../../lib/react/use-single-keys";
 import { Kbd } from "../kbd/kbd";
 import s from "./action-grid.module.css";
 
@@ -28,6 +29,7 @@ export function ActionGrid({ label, head, groups, tail, foot, onPick, onClose }:
   onClose: () => void;
 }) {
   const box = useRef<HTMLDivElement>(null);
+  const singleKeys = useSingleKeys();
   const all = [...groups.flatMap((g) => g.items), ...(tail ? [tail] : [])];
   const latest = useRef({ all, onPick, onClose });
   useLayoutEffect(() => void (latest.current = { all, onPick, onClose }));
@@ -53,7 +55,7 @@ export function ActionGrid({ label, head, groups, tail, foot, onPick, onClose }:
       <span className={s.icon} aria-hidden>{i.disabled ? <Ban size={14} /> : i.icon}</span>
       <span className={s.title}>{i.title}</span>
       <small id={`${i.id}-d`} className={s.desc}>{i.disabled ?? i.desc}</small>
-      {i.keys && !i.disabled && (i.keys.length > 1 || singleKeysOn()) && <Kbd keys={i.keys} />}
+      {i.keys && !i.disabled && (i.keys.length > 1 || singleKeys) && <Kbd keys={i.keys} />}
     </button>
   );
   return (

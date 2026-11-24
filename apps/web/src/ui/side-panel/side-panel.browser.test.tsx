@@ -38,6 +38,18 @@ test("Chromium: a nested modal owns Escape, then the peek restores its row", asy
   await element(row).toBeFocused();
 });
 
+test("Chromium: Escape from an unfolded tree row closes the peek, and an open picker keeps it", async () => {
+  await page.goto(`${server.resolvedUrls!.local[0]}panel-test`);
+  await page.getByRole("button", { name: "Open peek", exact: true }).click();
+  const panel = page.getByRole("complementary");
+  await panel.getByRole("button", { name: "Expanded picker" }).press("Escape");
+  await element(panel).toBeVisible();
+  const unfolded = panel.getByRole("row", { name: "Head office", exact: true });
+  await element(unfolded).toHaveAttribute("aria-expanded", "true");
+  await unfolded.press("Escape");
+  await element(panel).toHaveCount(0);
+});
+
 test("Chromium: pending reads keep focus, handled/composing Escape stays local, and the background stays live", async () => {
   await page.goto(`${server.resolvedUrls!.local[0]}panel-test`);
   await page.getByRole("button", { name: "Open peek", exact: true }).click();
