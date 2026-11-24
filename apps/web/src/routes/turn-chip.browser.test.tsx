@@ -73,7 +73,7 @@ const turnChips = (experience: string) => mounted.page.evaluate(([style, names])
 
 // The style switch reaches the chip through an observer and a render, so each read waits for the expected tone.
 async function settle(experience: string, tone: string) {
-  await expect.poll(async () => (await turnChips(experience)).map(chip => chip?.tone), { timeout: 10_000 }).toEqual(bodies.map(() => `chip chip--${tone}`));
+  await expect.poll(async () => (await turnChips(experience)).map(chip => chip?.tone)).toEqual(bodies.map(() => `chip chip--${tone}`));
   return turnChips(experience);
 }
 
