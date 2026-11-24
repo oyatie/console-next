@@ -166,8 +166,10 @@ While the listener is on, the card also carries a `data-escape-scope` attribute.
 attribute: `FlexibleColumns` (`ui/flexible-columns`), whose own Escape handler closes an open pane and leaves a key
 pressed inside such an element alone. That handler is on `document` in the capture phase, so it sees the key
 before the card does. In the record column of the approvals list the first Escape closes the form and the next one
-closes the column. While `pending` is set the listener and the attribute are both gone, so the card no longer
-keeps an Escape from the columns.
+closes the column, unless the column still holds unsaved input such as a typed opinion. Then that Escape only shows
+the unsaved line (`composer.unsaved`, a `role="status"` warning in the column head; see [Pane grid](pane-grid.md)
+and [Sheet](sheet.md)), and the one after it closes the column. While `pending` is set the listener and the
+attribute are both gone, so the card no longer keeps an Escape from the columns.
 
 A key the Korean input method owns: the Escape listener returns at once when `event.isComposing` is true. That is
 all the code checks. It has no key code 229 check, which `Field` (`ui/field`), `Composer` (`ui/composer`) and
@@ -252,7 +254,7 @@ no request changes:
 - There is no request-changes button, and one `btn--primary` button, which is approve.
 - Reject opens its form. Escape with focus on a reason radio closes the form, leaves the column open, keeps the
   text typed in the opinion field and returns focus to reject.
-- A second Escape closes the column.
+- A second Escape shows the unsaved line in the column. A third closes the column.
 
 The same search finds tests of the opposite case, a document that draws no decision button:
 `e2e/mock/approvals.spec.ts`, `e2e/mock/approval-document.spec.ts`, `e2e/mock/approval-refusal.spec.ts`,
