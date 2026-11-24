@@ -105,9 +105,7 @@ async function openPhoneShell(link: "LINKED" | "UNLINKED" = "LINKED") {
   });
 
   await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}console-phone-nav-test`, page.locator('[data-phone-screen="Account"]'));
-  const nav = page.getByRole("navigation", { name: t("shell.nav"), exact: true });
-  await nav.waitFor();
-  return nav;
+  return page.getByRole("navigation", { name: t("shell.nav"), exact: true });
 }
 
 const screenEntry = async () => Number(await page.locator("[data-phone-screen]").getAttribute("data-entry"));
