@@ -6,6 +6,19 @@ import { load } from "js-yaml";
 const workflows = Object.fromEntries(readdirSync(".github/workflows").filter(file => /\.ya?ml$/.test(file))
   .map(file => [file, load(readFileSync(`.github/workflows/${file}`, "utf8"))]));
 
+test("each promotion environment selects existing workflows that can supply suite evidence", async () => {
+  const { discoverEnvironments } = await import("../deploy/ci/promote.mjs");
+  const { environmentSuites } = JSON.parse(readFileSync("deploy/gates.json", "utf8"));
+  expect(Object.keys(environmentSuites).sort()).toEqual(discoverEnvironments().map(row => row.environment));
+  for (const file of Object.values(environmentSuites).flat()) {
+    const workflow = workflows[file];
+    expect(workflow, file).toBeDefined();
+    const triggers = typeof workflow.on === "string" ? [workflow.on]
+      : Array.isArray(workflow.on) ? workflow.on : Object.keys(workflow.on);
+    expect(triggers.some(event => ["push", "schedule", "workflow_dispatch"].includes(event)), file).toBe(true);
+  }
+});
+
 function checkName(name: unknown, id: string, matrix = false) {
   expect(typeof name, `${id}: explicit name`).toBe("string");
   expect((name as string).trim(), `${id}: plain name`).not.toBe("");

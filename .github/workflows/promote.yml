@@ -6,6 +6,11 @@ on:
     types: [completed]
   workflow_dispatch:
     inputs:
+      environment:
+        description: Environment to promote
+        required: true
+        type: choice
+        options: [production, preview]
       platform_run_id:
         description: Successful dev-push platform run to promote (ancestry still enforced)
         required: true
@@ -36,6 +41,7 @@ jobs:
       - id: proof
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
         env:
+          PROMOTION_ENVIRONMENT: ${{ inputs.environment }}
           PLATFORM_RUN_ID: ${{ github.event.workflow_run.id || inputs.platform_run_id }}
         with:
           script: |
@@ -44,7 +50,7 @@ jobs:
             const proof = await collectPlatformProof(github, process.env.GITHUB_REPOSITORY, Number(process.env.PLATFORM_RUN_ID));
             writeFileSync('promotion-proof.json', JSON.stringify(proof));
             core.setOutput('sha', proof.sha);
-            core.setOutput('matrix', {include:discoverEnvironments()});
+            core.setOutput('matrix', {include:discoverEnvironments('.', process.env.PROMOTION_ENVIRONMENT)});
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with: {name: promotion-proof, path: promotion-proof.json, if-no-files-found: error}
 
@@ -107,12 +113,10 @@ jobs:
           git -c core.hooksPath=/dev/null worktree add --detach .tmp/candidate "${CANDIDATE_SHA}"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with: {node-version-file: .node-version}
-      - name: Locked promotion tools and registry login
-        env: {REGISTRY_TOKEN: '${{ github.token }}'}
+      - name: Install locked promotion tools
         run: |
           python3 deploy/ci/tools.py flux cosign buildx kustomize kubeconform conftest
           npm ci --ignore-scripts --no-audit --no-fund
-          printf '%s' "${REGISTRY_TOKEN}" | docker login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
           mkdir -p .tmp/promotion
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with: {name: promotion-proof, path: .tmp/promotion}
@@ -130,15 +134,9 @@ jobs:
             const saved = JSON.parse(readFileSync(`${directory}/promotion-proof.json`));
             const proof = await collectPlatformProof(github, process.env.GITHUB_REPOSITORY, saved.run.id);
             if (proof.sha !== saved.sha || proof.run.run_attempt !== saved.run.run_attempt) throw new Error('PROMOTE_NOT_GREEN: platform attempt changed');
-            const {artifact, suites} = await publishEnvironment({github, proof, environment:process.env.PROMOTION_ENVIRONMENT, directory,
+            const result = await publishEnvironment({github, proof, environment:process.env.PROMOTION_ENVIRONMENT, directory,
+              registryUser:context.actor, registryToken:core.getInput('github-token', {required:true}),
               candidateRoot:`${process.env.GITHUB_WORKSPACE}/.tmp/candidate`,
               predicate:JSON.parse(readFileSync(`${directory}/console-gates.json`)),
-              runUrl:`${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/attempts/${process.env.GITHUB_RUN_ATTEMPT}`}).catch(async error => {
-                if (error.message?.startsWith('PROMOTE_SUITES:')) await core.summary.addRaw(error.message).write();
-                throw error;
-              });
-            const lines = [`${process.env.PROMOTION_ENVIRONMENT}: ${artifact}`,
-              'Verified promotion signature, gates attestation and identity negative controls.',
-              ...suites.map(({workflow, id, run_attempt, html_url}) =>
-                `- ${workflow}: [run ${id}, attempt ${run_attempt}](${html_url}/attempts/${run_attempt})`)];
-            await core.summary.addRaw(lines.join('\n') + '\n').write();
+              runUrl:`${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/attempts/${process.env.GITHUB_RUN_ATTEMPT}`});
+            await core.summary.addRaw(result.summary).write();

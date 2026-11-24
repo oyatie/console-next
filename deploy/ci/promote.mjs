@@ -4,6 +4,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { load } from 'js-yaml';
+import { attemptJobs, collectSuiteRuns } from './suite-runs.mjs';
 import gatesPolicy from '../gates.json' with {type:'json'};
 
 export function readEnvironment(environment, root = '.') {
@@ -21,7 +22,7 @@ export function readEnvironment(environment, root = '.') {
   return config;
 }
 
-export function discoverEnvironments(root = '.') {
+export function discoverEnvironments(root = '.', environment) {
   const channels = new Set();
   return readdirSync(join(root, 'deploy/clusters'), {withFileTypes:true})
     .filter(entry => entry.isDirectory()).map(entry => {
@@ -30,7 +31,8 @@ export function discoverEnvironments(root = '.') {
       assert.ok(!channels.has(channel), 'PROMOTE_ENVIRONMENT: channels must be unique');
       channels.add(channel);
       return {environment:entry.name, target, channel};
-    }).filter(Boolean).sort((a, b) => a.environment.localeCompare(b.environment));
+    }).filter(row => row && (!environment || row.environment === environment))
+    .sort((a, b) => a.environment.localeCompare(b.environment));
 }
 
 export function assertPromotion({sha, repository, run, jobs, gatesResult, currentRevision}, root = '.') {
@@ -110,8 +112,7 @@ export async function collectPlatformProof(github, repository, runId, root = '.'
   const {data:run} = await github.rest.actions.getWorkflowRun({owner, repo, run_id:runId});
   assert.ok(run.id === runId && Number.isSafeInteger(run.run_attempt) && run.run_attempt > 0,
     'PROMOTE_NOT_GREEN: require the selected run and a known attempt');
-  const jobs = await github.paginate('GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}/jobs',
-    {owner, repo, run_id:runId, attempt_number:run.run_attempt, per_page:100});
+  const jobs = await attemptJobs(github, {owner, repo, per_page:100}, runId, run.run_attempt);
   const proof = {sha:run.head_sha, repository, run, jobs, gatesResult:'pass', currentRevision:null};
   assertPromotion(proof, root);
   return proof;
@@ -122,14 +123,15 @@ const executeTool = (bin, args, options = {}) => execFileSync(bin, args, {
 });
 
 // Resolve mutable tags once, then verify and pull only that digest.
-export async function publishEnvironment({github, proof, environment, predicate, runUrl, directory, root = '.', candidateRoot = root}, execute = executeTool) {
+export async function publishEnvironment({github, proof, environment, predicate, runUrl, directory,
+  registryUser, registryToken, root = '.', candidateRoot = root}, execute = executeTool) {
   validatePredicate(predicate, proof.sha, runUrl);
   assertPromotion(proof, root);
   const {channel} = readEnvironment(environment, root);
   assert.ok(channel, 'PROMOTE_ENVIRONMENT: select a configured channel');
-  // The renderer also imports this module from deploy-only trees where the gate's .github policies are absent.
-  const {assertEnvironmentSuites} = await import('./gates.mjs');
-  const suites = await assertEnvironmentSuites(github, environment, proof);
+  const {runs:suiteRuns, refusals} = await collectSuiteRuns(github, environment, proof);
+  if (refusals.length) return {published:false, summary:`${environment} not published: ${refusals.join(', ')}`};
+  execute('docker', ['login', 'ghcr.io', '--username', registryUser, '--password-stdin'], {input:registryToken});
   const deploy = `ghcr.io/${proof.repository.toLowerCase()}/console-deploy`;
   const issuer = '--certificate-oidc-issuer=https://token.actions.githubusercontent.com';
   const identity = workflow => `--certificate-identity=https://github.com/${proof.repository}/.github/workflows/${workflow}.yml@refs/heads/dev`;
@@ -220,5 +222,10 @@ export async function publishEnvironment({github, proof, environment, predicate,
       'PROMOTE_GATES: attestation must belong to this repository');
   }
   execute('flux', ['tag', 'artifact', `oci://${artifact}`, `--tag=${channel}`]);
-  return {artifact, suites};
+  const summary = [`${environment}: ${artifact}`,
+    'Verified promotion signature, gates attestation and identity negative controls.',
+    ...suiteRuns.map(({workflow, id, run_attempt, html_url}) =>
+      `- ${workflow}: [run ${id}, attempt ${run_attempt}](${html_url}/attempts/${run_attempt})`),
+  ].join('\n');
+  return {published:true, artifact, summary};
 }

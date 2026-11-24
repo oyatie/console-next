@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from 'node:assert/strict';
+import { attemptJobs, devRuns, isCandidateRun } from './suite-runs.mjs';
 import { matchesGlob } from 'node:path';
 import policy from '../../.github/release-admission-policy.json' with {type:'json'};
 import gatesPolicy from '../gates.json' with {type:'json'};
@@ -41,66 +42,6 @@ export function buildPredicate({sha, gateChecks, changedPaths, longBakePaths, ru
       bake:classifyBake(changedPaths, longBakePaths),
     },
   };
-}
-
-function devRuns(github, params, workflow, sha, event) {
-  return github.paginate('GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}/runs',
-    {...params, workflow_id:workflow, head_sha:sha, branch:'dev', ...(event && {event})});
-}
-
-function isCandidateRun(run, workflow, sha) {
-  return run?.head_sha === sha && run.head_branch === 'dev' && run.path === `.github/workflows/${workflow}`;
-}
-
-function attemptJobs(github, params, runId, attempt) {
-  return github.paginate('GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}/jobs',
-    {...params, run_id:runId, attempt_number:attempt});
-}
-
-async function suiteEvidence(github, params, workflow, sha) {
-  const history = await devRuns(github, params, workflow, sha);
-  const runs = history.filter(run => isCandidateRun(run, workflow, sha) &&
-    run.head_repository?.full_name === `${params.owner}/${params.repo}` &&
-    ['push', 'schedule', 'workflow_dispatch'].includes(run.event));
-  if (!runs.length) return {refusal:'missing candidate run'};
-  for (const run of runs) {
-    if (run.status !== 'completed') return {refusal:run.status || 'unfinished run'};
-    if (run.conclusion !== 'success') return {refusal:run.conclusion || 'missing conclusion'};
-    if (!Number.isSafeInteger(run.id) || run.id < 1) return {refusal:'invalid run ID'};
-    if (run.run_attempt !== 1) return {refusal:'expected first attempt'};
-    const jobs = await attemptJobs(github, params, run.id, 1);
-    if (!jobs.length) return {refusal:'missing jobs'};
-    const names = new Set();
-    for (const job of jobs) {
-      if (job.run_id !== run.id || job.head_sha !== sha || job.run_attempt !== 1 ||
-        typeof job.name !== 'string' || !job.name) return {refusal:'job identity mismatch'};
-      if (names.has(job.name)) return {refusal:'ambiguous job name'};
-      names.add(job.name);
-      if (job.status !== 'completed' || job.conclusion !== 'success') {
-        const reason = job.status === 'completed' ? job.conclusion ?? 'missing conclusion' : job.status ?? 'unfinished';
-        return {refusal:`job ${job.name}: ${reason}`};
-      }
-    }
-  }
-  return {runs:runs.map(({id, run_attempt, html_url}) => ({workflow, id, run_attempt, html_url}))};
-}
-
-export async function assertEnvironmentSuites(github, environment, {sha, repository}) {
-  const suites = gatesPolicy.environmentSuites[environment];
-  assert.ok(Array.isArray(suites), `PROMOTE_SUITES: ${environment} has no suite policy`);
-  const [owner, repo] = repository.split('/');
-  const accepted = [];
-  const refusals = [];
-  for (const workflow of suites) {
-    const evidence = await suiteEvidence(github, {owner, repo, per_page:100}, workflow, sha).catch(error => {
-      if (!error?.status) throw error;
-      return {refusal:`evidence unavailable: HTTP ${error.status}`};
-    });
-    if (evidence.refusal) refusals.push(`${workflow} (${evidence.refusal})`);
-    else accepted.push(...evidence.runs);
-  }
-  assert.ok(!refusals.length, `PROMOTE_SUITES: ${environment} refused at ${sha}: ${refusals.join(', ')}`);
-  return accepted;
 }
 
 export async function collectChecks(github, sha) {

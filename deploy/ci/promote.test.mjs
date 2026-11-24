@@ -5,7 +5,7 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, 
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { suiteFixture } from './fixtures/suite-runs.mjs';
+import { suiteRunsFixture } from './fixtures/suite-runs.mjs';
 import { after, test } from 'node:test';
 import { runInNewContext } from 'node:vm';
 
@@ -37,6 +37,22 @@ function proof() {
       .map((name, index) => ({id:index + 1, name, run_id:42, head_sha:sha, status:'completed', conclusion:'success'})),
   };
 }
+
+test('manual promotion selects a one-entry matrix for the requested environment', async () => {
+  const {load} = await import('js-yaml');
+  const workflow = load(readFileSync(join(root, '.github/workflows/promote.yml'), 'utf8'));
+  const input = workflow.on.workflow_dispatch.inputs.environment;
+  const step = workflow.jobs.proof.steps.find(step => step.id === 'proof');
+  const {discoverEnvironments} = await api();
+  const environments = discoverEnvironments(root);
+  assert.equal(input.required, true);
+  assert.equal(input.type, 'choice');
+  assert.deepEqual(input.options.toSorted(), environments.map(row => row.environment));
+  assert.equal(step.env.PROMOTION_ENVIRONMENT, '${{ inputs.environment }}');
+  assert.match(step.with.script, /discoverEnvironments\('\.', process.env.PROMOTION_ENVIRONMENT\)/);
+  for (const row of environments) assert.deepEqual(discoverEnvironments(root, row.environment), [row]);
+  assert.deepEqual(discoverEnvironments(root, ''), environments);
+});
 
 test('discovers channel and target from environment configuration, without promoting templates', async () => {
   const {discoverEnvironments} = await api();
@@ -385,6 +401,10 @@ async function publishingFixture(options = {}) {
   writeFileSync(join(envConfig, 'platform.json'), JSON.stringify({target:'host', channel:environment}));
   const execute = (bin, args, toolOptions) => {
     calls.push([bin, ...args]);
+    if (bin === 'docker') {
+      assert.deepEqual(args, ['login', 'ghcr.io', '--username', 'fixture', '--password-stdin']);
+      assert.equal(toolOptions.input, 'fixture-token');
+    }
     if (bin === 'buildx') {
       const tag = args[2].split(':').at(-1);
       const kind = tag === `shadow-${sha}` || tag === 'shadow' ? 'shadow' : tag === environment ? 'current' : 'artifact';
@@ -462,7 +482,8 @@ async function publishingFixture(options = {}) {
     }
     return '';
   };
-  const input = {proof:{...proof(), currentRevision:null}, environment, github:options.github ?? suiteFixture(sha, repository).github,
+  const input = {proof:{...proof(), currentRevision:null}, environment, github:options.github ?? suiteRunsFixture(sha, repository).github,
+    registryUser:'fixture', registryToken:'fixture-token',
     predicate:options.missingPredicate ? undefined : predicate(), runUrl, root:historyRoot,
     candidateRoot:options.candidateRoot, directory};
   if (options.failedGate) input.predicate.gates[0].result = 'fail';
@@ -476,20 +497,42 @@ async function publishingFixture(options = {}) {
 }
 
 test('publisher refuses production before any registry call when a suite is missing', async () => {
-  const suites = suiteFixture(sha, repository);
+  const suites = suiteRunsFixture(sha, repository);
   suites.runs['route-load.yml'] = [];
   const fixture = await publishingFixture({github:suites.github});
   try {
-    await assert.rejects(fixture.publish, {message:/^PROMOTE_SUITES: .*route-load\.yml/});
+    assert.deepEqual(await fixture.publish(), {published:false,
+      summary:'production not published: route-load.yml (missing candidate run)'});
+    assert.deepEqual(fixture.calls, []);
+  } finally { rmSync(fixture.directory, {recursive:true, force:true}); }
+});
+
+test('publisher fails before registry access if the suite API fails after a refusal', async () => {
+  const error = Object.assign(new Error('actions unavailable', {cause:new Error('timeout')}), {status:500});
+  const github = {paginate:async (route, params) => {
+    if (params.workflow_id === 'db-tests.yml') return [];
+    throw error;
+  }};
+  const fixture = await publishingFixture({github});
+  try {
+    await assert.rejects(fixture.publish, actual => actual === error);
+    assert.deepEqual(fixture.calls, []);
+  } finally { rmSync(fixture.directory, {recursive:true, force:true}); }
+});
+
+test('publisher fails before registry access if the configured channel has no suite policy', async () => {
+  const fixture = await publishingFixture({environment:'candidate'});
+  try {
+    await assert.rejects(fixture.publish, {name:'AssertionError', message:'PROMOTE_ENVIRONMENT: candidate has no suite policy'});
     assert.deepEqual(fixture.calls, []);
   } finally { rmSync(fixture.directory, {recursive:true, force:true}); }
 });
 
 test('publisher moves preview without reading production suites', async () => {
-  const suites = suiteFixture(sha, repository);
+  const suites = suiteRunsFixture(sha, repository);
   const fixture = await publishingFixture({environment:'preview', github:suites.github});
   try {
-    assert.deepEqual((await fixture.publish()).suites, []);
+    assert.equal((await fixture.publish()).published, true);
     assert.equal(fixture.calls.at(-1).at(-1), '--tag=preview');
     assert.deepEqual(suites.requests, []);
   } finally { rmSync(fixture.directory, {recursive:true, force:true}); }
@@ -498,10 +541,13 @@ test('publisher moves preview without reading production suites', async () => {
 test('publisher moves production and returns the accepted suite runs', async () => {
   const fixture = await publishingFixture();
   try {
-    const {suites} = await fixture.publish();
-    assert.deepEqual(suites, ['db-tests.yml', 'e2e-live.yml', 'route-load.yml'].map((workflow, i) => ({
-      workflow, id:i + 1, run_attempt:1, html_url:`https://github.com/${repository}/actions/runs/${i + 1}`,
-    })));
+    const {published, artifact, summary} = await fixture.publish();
+    assert.equal(published, true);
+    assert.ok(summary.includes(`production: ${artifact}`));
+    for (const [index, workflow] of ['db-tests.yml', 'e2e-live.yml', 'route-load.yml'].entries()) {
+      const id = index + 1;
+      assert.ok(summary.includes(`${workflow}: [run ${id}, attempt 1](https://github.com/${repository}/actions/runs/${id}/attempts/1)`));
+    }
     assert.equal(fixture.calls.at(-1).at(-1), '--tag=production');
   } finally { rmSync(fixture.directory, {recursive:true, force:true}); }
 });
@@ -682,7 +728,6 @@ test('promotion workflow fails rather than succeeding when gates do not pass', a
 test('publish workflow executes promotion policy from dev and renders the separate candidate tree', async () => {
   const {load} = await import('js-yaml');
   const {jobs} = load(readFileSync(join(root, '.github/workflows/promote.yml'), 'utf8'));
-  assert.equal(jobs.publish.strategy['fail-fast'], false);
   const checkouts = jobs.publish.steps.filter(step => step.uses?.startsWith('actions/checkout@'));
   assert.equal(checkouts.length, 1);
   assert.equal(checkouts[0].with.ref, 'dev');
@@ -690,6 +735,9 @@ test('publish workflow executes promotion policy from dev and renders the separa
   assert.ok(checkouts.every(step => step.with['persist-credentials'] === false && step.with['fetch-depth'] === 0));
   const script = jobs.publish.steps.find(step => step.with?.script?.includes('publishEnvironment')).with.script;
   assert.match(script, /import\(`\$\{process.env.GITHUB_WORKSPACE\}\/deploy\/ci\/promote.mjs`\)/);
+  assert.match(script, /await core\.summary\.addRaw\(result\.summary\)\.write\(\)/);
+  assert.doesNotMatch(script, /\.catch\(|PROMOTE_SUITES/);
+  assert.ok(jobs.publish.steps.every(step => !step.run?.includes('docker login')));
   assert.match(script, /candidateRoot:`\$\{process.env.GITHUB_WORKSPACE\}\/\.tmp\/candidate`/);
 });
 
@@ -724,42 +772,6 @@ for (const candidate of ['ancestor', 'tip', 'unmerged', 'newer', 'unknown']) {
     } finally { rmSync(dir, {recursive:true, force:true}); }
   });
 }
-
-test('publish summary records suite refusals and links every accepted attempt', async () => {
-  const {load} = await import('js-yaml');
-  const {jobs} = load(readFileSync(join(root, '.github/workflows/promote.yml'), 'utf8'));
-  const script = jobs.publish.steps.find(step => step.with?.script?.includes('publishEnvironment')).with.script;
-  const workspace = mkdtempSync(join(tmpdir(), 'suite-summary-'));
-  try {
-    mkdirSync(join(workspace, 'deploy/ci'), {recursive:true});
-    writeFileSync(join(workspace, 'deploy/ci/promote.mjs'), `
-      export const collectPlatformProof = async () => ({sha:'candidate', run:{run_attempt:1}});
-      export const publishEnvironment = async ({github}) => { if (github.refusal) throw github.refusal; return github.result; };
-    `);
-    const directory = join(workspace, '.tmp/promotion');
-    mkdirSync(directory, {recursive:true});
-    writeFileSync(join(directory, 'promotion-proof.json'), JSON.stringify({sha:'candidate', run:{id:42, run_attempt:1}}));
-    writeFileSync(join(directory, 'console-gates.json'), '{}');
-    const refusal = new Error('PROMOTE_SUITES: production refused: db-tests.yml');
-    const lines = [];
-    const summary = {addRaw:line => ({write:async () => { lines.push(line); }})};
-    const AsyncFunction = (async () => {}).constructor;
-    const run = new AsyncFunction('process', 'github', 'core', 'context', script);
-    await assert.rejects(run({env:{GITHUB_WORKSPACE:workspace}}, {refusal}, {summary}, {repo:{}}), refusal);
-    assert.deepEqual(lines, [refusal.message]);
-    const suites = ['db-tests.yml', 'route-load.yml'].map((workflow, i) => ({
-      workflow, id:i + 7, run_attempt:1, html_url:`https://github.com/${repository}/actions/runs/${i + 7}`,
-    }));
-    await run({env:{GITHUB_WORKSPACE:workspace, PROMOTION_ENVIRONMENT:'production'}},
-      {result:{artifact:'verified-digest', suites}}, {summary}, {repo:{}});
-    const report = lines.slice(1).join('\n');
-    assert.match(report, /production: verified-digest/);
-    for (const suite of suites) {
-      assert.ok(report.includes(suite.workflow));
-      assert.ok(report.includes(`${suite.html_url}/attempts/${suite.run_attempt}`));
-    }
-  } finally { rmSync(workspace, {recursive:true, force:true}); }
-});
 
 test('platform publishes a SHA shadow and signs its digest before moving the mutable shadow tag', async () => {
   const {load} = await import('js-yaml');

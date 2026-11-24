@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-export function suiteFixture(sha, repository) {
-  const workflows = ['db-tests.yml', 'e2e-live.yml', 'route-load.yml'];
+export function suiteRunsFixture(sha, repository) {
+  const events = {'db-tests.yml':'push', 'e2e-live.yml':'schedule', 'route-load.yml':'workflow_dispatch'};
   const runs = {};
   const jobs = new Map();
   function addRun(workflow, event) {
@@ -13,11 +13,15 @@ export function suiteFixture(sha, repository) {
       status:'completed', conclusion:'success'})));
     return run;
   }
-  const [db, live, load] = workflows.map((file, i) => addRun(file, ['push', 'schedule', 'workflow_dispatch'][i]));
+  for (const [workflow, event] of Object.entries(events)) addRun(workflow, event);
   const requests = [];
   const github = {paginate:async (route, params) => {
     requests.push({route, params});
     return params.workflow_id ? runs[params.workflow_id] : jobs.get(params.run_id);
   }};
-  return {github, requests, runs, jobs, addRun, db, live, load};
+  const [database] = runs['db-tests.yml'];
+  const [liveBrowser] = runs['e2e-live.yml'];
+  const [routeLoad] = runs['route-load.yml'];
+  const testsJob = run => jobs.get(run.id).find(job => job.name === 'tests');
+  return {github, requests, runs, jobs, addRun, database, liveBrowser, routeLoad, testsJob};
 }
