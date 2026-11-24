@@ -1,4 +1,5 @@
-//! Materialise a payroll run's roster from the governed import ledger.
+//! Materialise a payroll run's roster: a pay-group run lists its group's members,
+//! an import run the people the governed import ledger declares for its period.
 //!
 //! `payroll_draft_lines` had no production writer at all. Its only writer was
 //! `scripts/stage_hanu_group_payroll_readiness.sql`, a hand-run operational
@@ -6,12 +7,13 @@
 //! roster — and after the close preflight learned to require `roster_total > 0`,
 //! could never close.
 //!
-//! # This is a PORT, not a new mapping
+//! # The import admission and line metrics are a PORT, not a new mapping
 //!
-//! Every column below is derived from that script, which is the existing
+//! Every metric column below is derived from that script, which is the existing
 //! encoding of how a roster is built. Inventing a second mapping alongside it is
-//! how the two drift, and it is the exact failure a previous bead was killed for.
-//! Four deliberate differences, each with a reason:
+//! how the two drift. Pay-group membership, VOID retraction and placement are
+//! not from the script; they reuse its metrics so the two paths cannot drift.
+//! Four deliberate differences from the script, each with a reason:
 //!
 //! 1. SCOPE IS THE DECLARED PAY PERIOD, BY EQUALITY. The script scoped with
 //!    a `source_filename LIKE` on the 2026 May folder (named in Korean) — one
@@ -28,7 +30,8 @@
 //! 3. NO RECONCILIATION DELETE. Migration 0222 revoked DELETE on
 //!    `payroll_draft_lines` from `console_rt` and asserts the revocation, so a
 //!    delete would raise 42501 at PLAN time and kill every `payroll.create_run`,
-//!    not just the re-stage. Retraction of a stale line is a separate design.
+//!    not just the re-stage. A pay-group run marks someone no longer on its
+//!    roster VOID instead; an import run's roster changes only by re-staging.
 //! 4. THE EMPLOYEE-DRIVEN GROUPING IS KEPT, deliberately.
 //!    `data_import_rows.source_key` is `filename:…|sheet:…|row:…` — per ROW.
 //!    Grouping on it would produce one roster line per spreadsheet row rather
@@ -39,11 +42,53 @@ use sqlx::{Postgres, Transaction};
 use time::Date;
 use uuid::Uuid;
 
+mod placement;
+
+/// Statuses a run may be closed from, and so the only ones whose lines may be
+/// written. The three 0074-era pre-close states are all admissible so real
+/// staged rows can enter the lifecycle.
+pub(crate) const CLOSEABLE: [&str; 3] = ["STAGED", "BLOCKED_LEGAL_GATE", "READY_FOR_REVIEW"];
+
 /// One `INSERT … SELECT … ON CONFLICT` — the roster is derived in the database,
 /// in the caller's transaction, so a run and its roster are created together or
 /// not at all.
 const MATERIALISE_ROSTER_SQL: &str = r#"
-WITH import_rows AS (
+WITH scope AS (
+    -- shortcut: membership is the whole legal entity while it has one pay group;
+    -- upgrade to per-employment pay-group terms and drop the single-group guard.
+    -- Off-cycle, correction and exit-settlement runs name their own people.
+    SELECT r.pay_group_id, g.legal_entity_id,
+           r.pay_group_id IS NOT NULL AND r.kind = 'REGULAR' AND NOT EXISTS (
+               SELECT 1 FROM pay_groups o
+               WHERE o.org_id = r.org_id AND o.legal_entity_id = g.legal_entity_id AND o.id <> g.id
+           ) AS roster_defined
+    FROM payroll_draft_runs r
+    LEFT JOIN pay_groups g ON g.org_id = r.org_id AND g.id = r.pay_group_id
+    WHERE r.org_id = $1 AND r.id = $2
+), members AS (
+    -- Employed at some point of the period and assigned to the group's legal entity.
+    -- A line is a work record that blocks voiding a registration, so someone not
+    -- started yet joins at close instead; a no-show can be voided until then.
+    SELECT m.id AS employee_id
+    FROM scope s
+    JOIN employees m ON m.org_id = $1
+    WHERE s.roster_defined
+      AND m.merged_into_employee_id IS NULL AND m.employment_status <> 'VOIDED'
+      AND (m.hire_on IS NULL OR m.hire_on <= LEAST($4, entity_today()))
+      AND (m.exit_on IS NULL OR m.exit_on >= $3)
+      -- Left on a day nobody recorded: no period is theirs.
+      AND NOT (m.employment_status = 'EXITED' AND m.exit_on IS NULL)
+      AND EXISTS (
+          SELECT 1 FROM employment_assignments a
+          WHERE a.org_id = m.org_id AND a.employee_id = m.id AND a.superseded_at IS NULL
+            AND a.legal_entity_id = s.legal_entity_id
+            AND a.valid_from <= $4 AND (a.valid_to IS NULL OR a.valid_to > $3)
+      )
+    -- A registration void locks the person FOR UPDATE and only then reads their
+    -- work records: it waits for this run and sees its line, or this run waits
+    -- for it and then leaves the voided person off.
+    FOR KEY SHARE OF m
+), import_rows AS (
     SELECT
         r.id,
         r.org_id,
@@ -131,7 +176,6 @@ WITH import_rows AS (
         e.id AS employee_id,
         COALESCE(NULLIF(e.source_key, ''), e.id::text) AS employee_source_key,
         e.name AS employee_display_name,
-        COALESCE(certificate.name, 'UNKNOWN_COMPANY') AS employee_company,
         e.leave_used,
         e.leave_remaining,
         COALESCE(epf.bank_account_registered, FALSE) AS bank_account_registered
@@ -139,24 +183,6 @@ WITH import_rows AS (
     FROM person_employees_current e
     LEFT JOIN employee_personal_facts epf
       ON epf.org_id = e.org_id AND epf.employee_id = e.id
-    LEFT JOIN LATERAL (
-        SELECT legal_entity_id FROM employment_assignments a
-        WHERE a.org_id = e.org_id AND a.employee_id = e.id AND a.valid_from <= $4 AND a.superseded_at IS NULL
-          AND (a.valid_to IS NULL OR a.valid_to > $4)
-        ORDER BY a.valid_from DESC LIMIT 1
-    ) assignment ON TRUE
-    LEFT JOIN legal_entities entity ON entity.org_id = e.org_id AND entity.id = assignment.legal_entity_id
-    LEFT JOIN LATERAL (
-        -- 법인명 has one stored source (the entity), shown once a non-voided 등록증 open on the date is confirmed; no imported label is evidence.
-        SELECT x.name FROM legal_entity_revisions x
-        WHERE x.org_id = e.org_id AND x.legal_entity_id = entity.id AND x.effective_from <= $4
-          AND EXISTS (
-              SELECT 1 FROM business_registrations h
-              WHERE h.org_id = e.org_id AND h.legal_entity_id = entity.id AND NOT h.needs_confirmation
-                AND h.voided_at IS NULL AND (h.closed_on IS NULL OR h.closed_on > $4)
-          )
-        ORDER BY x.effective_from DESC, x.version DESC LIMIT 1
-    ) certificate ON TRUE
     WHERE e.org_id = $1
 ), employee_metrics AS (
     SELECT
@@ -164,7 +190,6 @@ WITH import_rows AS (
         eb.employee_id,
         eb.employee_source_key,
         eb.employee_display_name,
-        eb.employee_company,
         eb.bank_account_registered,
         count(rm.id) FILTER (WHERE rm.is_payroll_source) AS payroll_source_row_count,
         count(rm.id) FILTER (WHERE rm.is_attendance_source) AS attendance_source_row_count,
@@ -185,9 +210,9 @@ WITH import_rows AS (
      AND rm.canonical_source_key = eb.employee_source_key
     GROUP BY
         eb.org_id, eb.employee_id, eb.employee_source_key,
-        eb.employee_display_name, eb.employee_company, eb.bank_account_registered,
+        eb.employee_display_name, eb.bank_account_registered,
         eb.leave_used, eb.leave_remaining
-)
+), upserted AS (
 INSERT INTO payroll_draft_lines (
     org_id, run_id, employee_id, employee_source_key, employee_display_name,
     employee_company, payroll_source_row_count, attendance_source_row_count,
@@ -197,8 +222,9 @@ INSERT INTO payroll_draft_lines (
     source_data_import_row_ids
 )
 SELECT
+    -- Placement writes the company in the same transaction.
     em.org_id, $2, em.employee_id, em.employee_source_key, em.employee_display_name,
-    em.employee_company, em.payroll_source_row_count::integer,
+    'UNKNOWN_COMPANY', em.payroll_source_row_count::integer,
     em.attendance_source_row_count::integer,
     -- No production writer sets attendance events yet; the script recorded 0 too.
     0,
@@ -215,15 +241,16 @@ SELECT
     ),
     em.source_data_import_row_ids
 FROM employee_metrics em
--- Admission: imported material only. The script also admitted anyone with
--- `leave_remaining > 0`; such a line carries no evidence and can only ever block
--- the close.
-WHERE em.payroll_source_row_count > 0
-   OR em.attendance_source_row_count > 0
+CROSS JOIN scope s
+-- Admission for an import run: imported material only. The script also admitted
+-- anyone with `leave_remaining > 0`; such a line carries no evidence and can only
+-- ever block the close. A pay-group run lists its members, imported or not.
+WHERE CASE WHEN s.pay_group_id IS NULL
+           THEN em.payroll_source_row_count > 0 OR em.attendance_source_row_count > 0
+           ELSE em.employee_id IN (SELECT employee_id FROM members) END
 ON CONFLICT (org_id, run_id, employee_source_key) DO UPDATE SET
     employee_id = EXCLUDED.employee_id,
     employee_display_name = EXCLUDED.employee_display_name,
-    employee_company = EXCLUDED.employee_company,
     payroll_source_row_count = EXCLUDED.payroll_source_row_count,
     attendance_source_row_count = EXCLUDED.attendance_source_row_count,
     attendance_event_count = EXCLUDED.attendance_event_count,
@@ -241,17 +268,29 @@ ON CONFLICT (org_id, run_id, employee_source_key) DO UPDATE SET
     calculation_status = 'BLOCKED_LEGAL_GATE',
     blockers = EXCLUDED.blockers,
     source_data_import_row_ids = EXCLUDED.source_data_import_row_ids
+RETURNING id
+), retracted AS (
+    -- Someone no longer a member; their line stays, as VOID, waiting on nothing.
+    UPDATE payroll_draft_lines x
+       SET calculation_status = 'VOID', blockers = '[]'::jsonb, updated_at = now()
+    FROM scope s
+    WHERE s.roster_defined AND x.org_id = $1 AND x.run_id = $2
+      AND x.calculation_status <> 'VOID' AND x.id NOT IN (SELECT id FROM upserted)
+)
+SELECT count(*) FROM upserted
 "#;
 
-/// Materialise the roster for `run_id` from import runs declared for exactly
-/// this pay period.
+/// Materialise the roster for `run_id`: a pay-group run's members, or an import
+/// run's people with material declared for exactly this pay period, each placed
+/// as of the period end.
 ///
 /// Returns the number of lines written. An EMPTY result is not an error: the
 /// caller stages runs from a workflow drain that leaves a failed event PENDING
 /// without incrementing its attempt count, so returning `Err` here would be an
 /// unbounded hot retry. The close preflight already refuses an empty roster
 /// legibly, with its "no payslip subjects (roster: 0 people)" blocker, which is
-/// where an operator should meet this problem.
+/// where an operator should meet this problem. For the same reason a run whose
+/// attendance is closed is left as it is and reported as 0 lines written.
 pub async fn materialise_roster_in_tx(
     tx: &mut Transaction<'_, Postgres>,
     org_id: Uuid,
@@ -259,12 +298,57 @@ pub async fn materialise_roster_in_tx(
     period_start: Date,
     period_end: Date,
 ) -> Result<u64, sqlx::Error> {
-    let done = sqlx::query(MATERIALISE_ROSTER_SQL)
+    // The lock serialises staging with close and calculate.
+    let status: Option<String> = sqlx::query_scalar(
+        "SELECT status FROM payroll_draft_runs WHERE org_id = $1 AND id = $2 FOR UPDATE",
+    )
+    .bind(org_id)
+    .bind(run_id)
+    .fetch_optional(tx.as_mut())
+    .await?;
+    if !status.is_some_and(|status| CLOSEABLE.contains(&status.as_str())) {
+        return Ok(0);
+    }
+    let written: i64 = sqlx::query_scalar(MATERIALISE_ROSTER_SQL)
         .bind(org_id)
         .bind(run_id)
         .bind(period_start)
         .bind(period_end)
-        .execute(tx.as_mut())
+        .fetch_one(tx.as_mut())
         .await?;
-    Ok(done.rows_affected())
+    placement::place_lines_in_tx(tx, org_id, run_id).await?;
+    Ok(u64::try_from(written).unwrap_or(0))
+}
+
+/// Brings an open run's lines up to date with People before its roster is
+/// judged: a pay-group run's members and their placement, an import run's
+/// placement only, since its roster changes only when it is re-staged and a
+/// re-stage resets each line's tax-row status.
+///
+/// shortcut: an open pay-group run follows People only at create, the close
+/// preflight (not saved) and close; add a roster-refresh command and a
+/// removed-from-roster status so the register shows changes before close.
+pub(crate) async fn refresh_in_tx(
+    tx: &mut Transaction<'_, Postgres>,
+    run_id: Uuid,
+) -> Result<(), sqlx::Error> {
+    let run: Option<(Uuid, Date, Date, bool, String)> = sqlx::query_as(
+        "SELECT org_id, period_start, period_end, pay_group_id IS NOT NULL, status \
+         FROM payroll_draft_runs WHERE id = $1 FOR UPDATE",
+    )
+    .bind(run_id)
+    .fetch_optional(tx.as_mut())
+    .await?;
+    let Some((org, start, end, of_group, status)) = run else {
+        return Ok(());
+    };
+    if !CLOSEABLE.contains(&status.as_str()) {
+        return Ok(());
+    }
+    if of_group {
+        materialise_roster_in_tx(tx, org, run_id, start, end).await?;
+    } else {
+        placement::place_lines_in_tx(tx, org, run_id).await?;
+    }
+    Ok(())
 }

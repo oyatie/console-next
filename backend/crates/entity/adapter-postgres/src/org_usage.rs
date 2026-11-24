@@ -53,7 +53,8 @@ pub(crate) async fn usage(tx: &mut Tx<'_>, root: Uuid) -> Result<Usage, PgEntity
                    AND attributes->>'parent_id' = ANY($2)) \
               + (SELECT count(*) FROM access_grants WHERE org_unit_id = ANY($1)) \
               + (SELECT count(*) FROM change_set_lines WHERE to_org_unit_id = ANY($1)) \
-              + (SELECT count(*) FROM job_positions WHERE org_unit_id = ANY($1))",
+              + (SELECT count(*) FROM job_positions WHERE org_unit_id = ANY($1)) \
+              + (SELECT count(*) FROM payroll_draft_lines WHERE org_unit_id = ANY($1))",
     )
     .bind(&units)
     .bind(&texts)

@@ -2,7 +2,7 @@
 use super::super::*;
 use super::run_preview_api::{refusal, setup, uri};
 
-async fn create(
+pub(super) async fn create(
     service: axum::Router,
     token: &str,
     group: Uuid,

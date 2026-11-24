@@ -5,6 +5,7 @@ use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use console_kernel_core::{AuditAction, AuditEvent, TraceContext};
 use console_payroll_adapter_postgres::{PayrollRunDetail, get_run_filtered_in_tx};
+use console_platform_authz::Feature;
 use console_platform_db::with_audits;
 use uuid::Uuid;
 
@@ -32,7 +33,7 @@ pub(crate) async fn get_run(
     let q = params.q;
     let detail = with_audits::<_, Option<PayrollRunDetail>, RestError>(&pool, org, move |tx| {
         Box::pin(async move {
-            access::require_run_read_in_tx(tx, org, actor).await?;
+            access::require_run_in_tx(tx, org, actor, Feature::PayrollRunRead, run_id).await?;
             let detail = get_run_filtered_in_tx(
                 tx,
                 run_id,
