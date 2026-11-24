@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import type { Ref } from "react";
 import { Link } from "@tanstack/react-router";
 import { ChevronDown } from "lucide-react";
 import { t } from "@console/i18n";
@@ -26,7 +27,9 @@ import { approvalRouteSteps, proposalDiffs, relatedApprovalLinks } from "../pres
 import { ApprovalFactsContent } from "./approval-viewer";
 import s from "./approvals-page.module.css";
 
-export function ConsoleApprovalsTable({ items, sel, onSelect, hasNext, loadingMore, onMore, emptyTitle }: {
+export function ConsoleApprovalsTable({ ref, items, sel, onSelect, hasNext, loadingMore, onMore, emptyTitle }: {
+  /** The box around the rows, drawn while there are any. */
+  ref?: Ref<HTMLDivElement>;
   items: ApprovalItem[];
   sel?: string;
   onSelect: (id: string) => void;
@@ -39,7 +42,7 @@ export function ConsoleApprovalsTable({ items, sel, onSelect, hasNext, loadingMo
     return <EmptyState title={emptyTitle} reason={t("approvals.empty.reason")} />;
   }
   return (
-    <div className={s.consoleTable}>
+    <div ref={ref} className={s.consoleTable}>
       <Table
         label={t("approvals.list")}
         density="compact"
