@@ -30,6 +30,7 @@ import { APPROVAL_BOXES, type ApprovalBox } from "../domain/inbox";
 import { ApprovalDecisionPanel, ApprovalDocumentView } from "./approval-viewer";
 import { ConsoleApprovalSideView, ConsoleApprovalsTable } from "./approvals-console";
 import { SourceViewerLink } from "./source-viewer-link";
+import { useDecisionOffered } from "./use-approval-decision";
 import { useApprovalsDesktop } from "./use-approvals-desktop";
 import s from "./approvals-page.module.css";
 
@@ -54,8 +55,9 @@ export function ApprovalInboxView({ items, sel, selected, record, onSelect, onCl
   onMore?: () => void;
   emptyTitle?: string;
 }) {
+  const rows = useRef<HTMLDivElement>(null);
   const list = <Card label={t("approvals.list")} flush>
-    {items.length ? <div className={s.list}>
+    {items.length ? <div ref={rows} className={s.list}>
       <Table label={t("approvals.list")} rows={items} rowId={item => item.id} selected={sel} onSelect={onSelect} columns={[
         { header: t("approvals.field.documentNo"), card: "fact", fit: true, cell: item => <code className={s.secondary} title={item.document_no ?? "—"}>{item.document_no ?? "—"}</code> },
         // The date the document takes effect reads with its title, so a row says what it is and when it applies.
@@ -81,7 +83,12 @@ export function ApprovalInboxView({ items, sel, selected, record, onSelect, onCl
   return <FlexibleColumns list={list} onSelect={onSelect} onFind={onFind} full={full} onFull={onFull} record={sel && {
     id: sel, label: t("approvals.document.title"), title: selected?.title ?? t("approvals.document.title"), crumb: selected?.document_no,
     expand: <SourceViewerLink viewer={selected?.viewer} />, onClose,
-    returnFocus: () => document.querySelector<HTMLElement>(`[data-id="${CSS.escape(sel)}"]`),
+    returnFocus: () => {
+      // A decided document leaves the pending list: focus then goes to the first row left, or to the find box of an empty list.
+      const row = document.querySelector<HTMLElement>(`[data-id="${CSS.escape(sel)}"]`) ?? rows.current?.querySelector<HTMLElement>("[data-id]");
+      if (!row) onFind?.();
+      return row;
+    },
     children: <>
       {selected && <div className={s.meta}><Chip>{selected.source.label}</Chip><Chip tone={selected.status.tone}>{selected.status.label}</Chip></div>}
       {record}
@@ -153,28 +160,21 @@ function ConsoleApprovalsPage() {
   const [dismissedKey, setDismissedKey] = useState<string | null>(null);
   const [blockedKey, setBlockedKey] = useState<string | null>(null);
   const [receiptState, setReceiptState] = useState<{ id: string; text: string }>();
-  const [decisionDocId, setDecisionDocId] = useState<string>();
+  const rows = useRef<HTMLDivElement>(null);
+  const findBox = useRef<HTMLDivElement>(null);
   const baseFilterKey = `${box}|${urlQuery}|${source ?? ""}`;
   const blockedOnly = blockedKey === baseFilterKey;
   const visibleItems = blockedOnly ? items.filter(item => Boolean(item.decision_refusal)) : items;
   const filterKey = `${baseFilterKey}|${blockedOnly ? "1" : "0"}`;
   const effectiveSel = sel ?? (isDesktop && dismissedKey !== filterKey ? visibleItems[0]?.id : undefined);
-  const [prevSel, setPrevSel] = useState(effectiveSel);
-  if (prevSel !== effectiveSel) {
-    setPrevSel(effectiveSel);
-    if (decisionDocId !== undefined) setDecisionDocId(undefined);
-  }
-  const activeDecisionDocId = decisionDocId === effectiveSel ? decisionDocId : undefined;
   // The document is read by its id, so selecting never re-reads the list and a shared or reloaded link needs no list row.
   const opened = useQuery({ ...approvalDocumentQuery(effectiveSel ?? ""), enabled: Boolean(effectiveSel), refetchOnMount: "always" });
   const openedDoc = opened.data?.id === effectiveSel ? opened.data : undefined;
   const selected = openedDoc ?? visibleItems.find(item => item.id === effectiveSel) ?? items.find(item => item.id === effectiveSel);
-  const showFooterDecision = Boolean(
-    openedDoc &&
-      ((openedDoc.my_actions.kind === "approve" && openedDoc.my_actions.reject) ||
-        activeDecisionDocId === openedDoc.id ||
-        receiptState?.id === openedDoc.id),
-  );
+  // The footer stays through the command, and to say so when a later read withdraws the decision; opening another
+  // document ends that. The receipt of the last decision made here is drawn again when its document is opened again.
+  const offered = useDecisionOffered(openedDoc);
+  const showFooterDecision = Boolean(openedDoc && (offered || receiptState?.id === openedDoc.id));
   const filtered = Boolean(urlQuery || source || blockedOnly);
   const reset = () => { setBlockedKey(null); setDismissedKey(null); setQuery(""); set({ q: undefined, source: undefined, ...CLOSED }); };
   const handleSelect = (id: string) => { setDismissedKey(null); select(id); };
@@ -243,7 +243,7 @@ function ConsoleApprovalsPage() {
       viewportLock
       tabs={tabs}
       head={{ title: t("approvals.title"), titleId: "approvals-title" }}
-      find={<div data-list-find=""><WorklistSearchField label={t("approvals.filters.search")} value={query} onChange={setQuery} /></div>}
+      find={<div ref={findBox} data-list-find=""><WorklistSearchField label={t("approvals.filters.search")} value={query} onChange={setQuery} /></div>}
       filters={<div ref={filters} className={s.consoleFilters} role="group" aria-label={t("approvals.filters.label")}>
         <SelectField hideLabel label={t("approvals.filters.source")} placeholder={t("approvals.filters.allSources")} options={sourceOptions} value={source ?? ALL_SOURCES} onChange={id => { setBlockedKey(null); setDismissedKey(null); set({ source: id === ALL_SOURCES ? undefined : id, ...CLOSED }); }} />
         {filtered && <Button variant="ghost" size="sm" onClick={reset}>{t("approvals.filters.reset")}</Button>}
@@ -251,6 +251,7 @@ function ConsoleApprovalsPage() {
       stats={statItems.length > 0 ? <StatRow items={statItems} label={t("approvals.console.kpiLabel")} phoneCols={statItems.length >= 6 ? 3 : undefined} /> : undefined}
       list={() => (
         <ConsoleApprovalsTable
+          ref={rows}
           items={visibleItems}
           sel={effectiveSel}
           onSelect={handleSelect}
@@ -275,14 +276,17 @@ function ConsoleApprovalsPage() {
           : t("approvals.document.title"),
         openInTab: { href: `/approvals/${encodeURIComponent(effectiveSel)}`, label: selected?.title ?? effectiveSel },
         onClose: handleClose,
-        returnFocus: () => document.querySelector<HTMLElement>(`[data-id="${CSS.escape(effectiveSel)}"]`),
+        // A decided document leaves the pending list: focus then goes to the first row left, or to the find box of an empty list.
+        returnFocus: () => document.querySelector<HTMLElement>(`[data-id="${CSS.escape(effectiveSel)}"]`)
+          ?? rows.current?.querySelector<HTMLElement>("[data-id]") ?? findBox.current?.querySelector("input"),
         footer: showFooterDecision && openedDoc ? (
           <ApprovalDecisionPanel
             key={openedDoc.id}
             document={openedDoc}
             receipt={receiptState?.id === openedDoc.id ? receiptState.text : undefined}
             onReceipt={text => setReceiptState({ id: openedDoc.id, text })}
-            onDecisionStart={() => setDecisionDocId(openedDoc.id)}
+            // A decided document leaves the pending list: one the inbox opened by itself is chosen, so it stays open with its receipt.
+            onDecisionStart={() => { if (!sel) select(openedDoc.id); }}
             docked
             compact
           />

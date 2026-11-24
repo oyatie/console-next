@@ -8,7 +8,7 @@ import type { PayrollRun } from "../api";
 import { AT, id } from "../../../../../../e2e/mock/fixtures";
 let browser: Browser;
 let page: Page;
-beforeAll(async () => { loadCatalog("ko"); browser = await chromium.launch(); page = await browser.newPage(); }, 60_000);
+beforeAll(async () => { await loadCatalog("ko"); browser = await chromium.launch(); page = await browser.newPage(); }, 60_000);
 afterAll(async () => { await browser?.close(); });
 
 test("the browser exposes six read-only stages, completed delivery and no current step for void runs", async () => {
