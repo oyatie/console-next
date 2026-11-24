@@ -203,6 +203,15 @@ export function buildTargets(metadata, index, count) {
     ...targets.filter((_, i) => i % total === shard - 1).flatMap(name => ["--test", name])];
 }
 
+export function defaultDatabaseTargets(tests) {
+  const targets = new Set(tests.map(([binary]) => binary.split("::")[1]));
+  return [...targets].flatMap(target => {
+    if (target === undefined) return ["--lib"];
+    if (target.startsWith("bin/")) return ["--bin", target.slice(4)];
+    return ["--test", target];
+  });
+}
+
 export function pruneTargetExecutables(targetDir) {
   if (!targetDir) return 0;
   const depsDir = path.join(targetDir, "debug", "deps");
@@ -278,7 +287,7 @@ function main() {
   const features = ["--features", command.database ? "test-postgres,console-app/full,console-app/e2e-test-support,console-app/dev-auth" : "console-app/full"];
   const metadata = cargoJSON(["metadata", "--locked", ...features, "--format-version", "1"]);
   const targets = command.database ? ["--workspace"] : buildTargets(metadata, env.NEXTEST_SHARD, env.NEXTEST_SHARDS);
-  const nextestArgs = (selectedFeatures = []) => [...targets, "--locked", ...selectedFeatures, "--profile", "ci", "--config-file", path.join(root, ".config/nextest.toml"), "--ignore-default-filter"];
+  const nextestArgs = (selectedFeatures = [], targetFilters = []) => [...targets, ...targetFilters, "--locked", ...selectedFeatures, "--profile", "ci", "--config-file", path.join(root, ".config/nextest.toml"), "--ignore-default-filter"];
   const defaultArgs = nextestArgs(command.database ? [] : features), featuredArgs = nextestArgs(features);
   const packageSources = metadata.packages.filter(pkg => metadata.workspace_members.includes(pkg.id)).map((pkg) => [pkg, sources(path.dirname(pkg.manifest_path))]);
   validateIgnoredTests(packageSources.flatMap(([, files]) => files));
@@ -314,9 +323,10 @@ function main() {
     const shard = plan.shards[command.shard - 1];
     expected = shard.tests;
     const selected = new Set(expected.map(identity));
+    const defaultTests = defaultOnly.filter(id => selected.has(identity(id)));
     runs = [
       { name: "featured", args: featuredArgs, tests: featured.filter((id) => selected.has(identity(id))) },
-      { name: "default", args: defaultArgs, tests: defaultOnly.filter((id) => selected.has(identity(id))) },
+      { name: "default", args: nextestArgs([], defaultDatabaseTargets(defaultTests)), tests: defaultTests },
     ].filter((run) => run.tests.length);
     label = "database";
     artifact = { ...inventory, databaseFeaturesEnabled: enabled, defaultOnlyDatabase: defaultOnly, featureOnlyNonDatabase: featureOnly };

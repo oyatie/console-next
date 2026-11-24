@@ -91,6 +91,14 @@ test("ignored cases are explicitly accounted for; missing inventories fail close
   assert.throws(() => classifyTests(listing(), new Map()), /zero/);
 });
 
+test("default database builds select each planned Cargo target once across the workspace", () => {
+  const tests = [
+    ["one::shared", "first"], ["two::shared", "second"], ["one::bin/shared", "third"],
+    ["one", "fourth"], ["two", "fifth"], ["one::shared", "sixth"],
+  ];
+  assert.deepEqual(backendTests.defaultDatabaseTargets(tests), ["--test", "shared", "--bin", "shared", "--lib"]);
+});
+
 test("database shards use measured durations and cover each selected identity once", () => {
   const ids = Array.from({ length: 8 }, (_, i) => ["example::db", `case_${i}`]);
   const timings = { tests: Object.fromEntries(ids.map((id, i) => [JSON.stringify(id), i + 1])) };
@@ -174,19 +182,22 @@ test("runner propagates failures, refuses stale/missing JUnit and runs without d
 const fs = require('node:fs'), path = require('node:path');
 const root = process.env.FIXTURE_ROOT, args = process.argv.slice(2);
 if (Boolean(process.env.DATABASE_URL || process.env.PGHOST) !== (process.env.EXPECT_DATABASE === '1')) process.exit(91);
+if (process.env.EXPECT_DATABASE === '1' && args[0] === 'nextest') {
+  const defaultRun = args[1] === 'run' && !args.includes('--features');
+  const targetFlags = ['--test', '--bin', '--bins', '--lib'];
+  if (!args.includes('--workspace') || args.includes('-p') || (!defaultRun && targetFlags.some(flag => args.includes(flag)))) process.exit(95);
+}
 if (args[0] === 'metadata') {
   const metadata = JSON.parse(fs.readFileSync(path.join(root, 'metadata.json')));
   metadata.resolve = { nodes: [{ id: 'example', features: args[args.indexOf('--features') + 1] === 'console-app/full' ? ['full'] : [] }] };
   process.stdout.write(JSON.stringify(metadata));
 }
 else if (args[1] === 'list') {
-  if (process.env.EXPECT_DATABASE === '1' && (!args.includes('--workspace') || ['--test', '--lib', '--bins'].some(flag => args.includes(flag)))) process.exit(95);
   fs.writeFileSync(path.join(root, 'list-args.json'), JSON.stringify(args));
   process.stdout.write(fs.readFileSync(path.join(root, process.env.EXPECT_DATABASE === '1' && args.includes('--features') ? 'list-db.json' : 'list.json')));
   if (process.env.MODE === 'spawn-error') fs.unlinkSync(__filename);
 }
 else {
-  if (process.env.EXPECT_DATABASE === '1' && (!args.includes('--workspace') || ['--test', '--lib', '--bins'].some(flag => args.includes(flag)))) process.exit(95);
   fs.writeFileSync(path.join(root, 'args.json'), JSON.stringify(args));
   const callsFile = path.join(root, 'calls.json');
   const calls = fs.existsSync(callsFile) ? JSON.parse(fs.readFileSync(callsFile)) : [];
@@ -240,6 +251,7 @@ else {
     const dbCalls = JSON.parse(readFileSync(path.join(root, "calls.json"), "utf8")).slice(-2);
     assert.equal(dbCalls.length, 2);
     const dbArgs = dbCalls[0], defaultArgs = dbCalls[1];
+    assert.deepEqual(defaultArgs.slice(2, 5), ["--workspace", "--test", "mixed"]);
     assert.ok(!defaultArgs.includes("--features"));
     assert.match(defaultArgs.at(-1), /test\(=default_database\)/);
     assert.equal(dbArgs[dbArgs.indexOf("--features") + 1], "test-postgres,console-app/full,console-app/e2e-test-support,console-app/dev-auth");

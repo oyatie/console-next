@@ -627,18 +627,19 @@ async fn employee_create_assigns_numbers_warns_on_same_name_and_masks_readers(po
     assert_eq!(first.status, StatusCode::CREATED, "{:?}", first.json);
     assert_eq!(first.json["employee"]["employee_number"], "E-000001");
     assert!(first.json.get("warnings").is_none(), "{:?}", first.json);
-    let first_id = first.json["employee"]["id"].clone();
+    let id = first.json["employee"]["id"].as_str().unwrap();
 
     // Same name in the same unit: created, with a warning naming the other.
     let second = create_body(branch, "  ", "number-key-0002", "010-1111-2223", "김동명");
     let second = post(service.clone(), EMPLOYEES_PATH, &token, second).await;
     assert_eq!(second.status, StatusCode::CREATED, "{:?}", second.json);
     assert_eq!(second.json["employee"]["employee_number"], "E-000002");
+    let matches = json!([{"id": id, "name": "김동명", "employee_number": "E-000001"}]);
     assert_eq!(
         second.json["warnings"],
         json!([
-            {"code": "same_name_in_unit", "employee_ids": [first_id.clone()]},
-            {"code": "same_name_same_hire_date", "employee_ids": [first_id.clone()]}
+            {"code": "same_name_in_unit", "employee_ids": [id], "matches": matches, "total_count": 1},
+            {"code": "same_name_same_hire_date", "employee_ids": [id], "matches": matches, "total_count": 1}
         ])
     );
 
@@ -676,7 +677,6 @@ async fn employee_create_assigns_numbers_warns_on_same_name_and_masks_readers(po
     let executive = UserId::new();
     seed_user_with_roles(&pool, org, executive, &["EXECUTIVE"]).await;
     let executive_token = bearer(&pool, &keys, org, executive, &["EXECUTIVE"]).await;
-    let id = first_id.as_str().unwrap();
     let read = get(
         service.clone(),
         &format!("{EMPLOYEES_PATH}/{id}"),

@@ -198,6 +198,16 @@ pub async fn load_employee_detail(
     })
 }
 
+pub(super) async fn detail_with_visible_warnings(
+    tx: &mut sqlx::Transaction<'_, Postgres>,
+    reader: &Principal,
+    employee_id: Uuid,
+) -> Result<EmployeeDetailResponse, HrError> {
+    let mut detail = load_employee_detail(tx, *reader.org_id.as_uuid(), employee_id).await?;
+    super::read_warnings::visible_warnings(tx, reader, &mut detail.warnings).await?;
+    Ok(detail)
+}
+
 impl HrService {
     pub async fn employee_detail(
         &self,
@@ -208,7 +218,6 @@ impl HrService {
         hr_reach_in(&principal, Feature::EmployeeDirectoryRead, Tier::Branch)?;
         record_hr_read("employee_detail");
         let org = principal.org_id;
-        let org_uuid = *org.as_uuid();
         let reader = principal.clone();
         let detail = with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
@@ -223,7 +232,7 @@ impl HrService {
                     Tier::Branch,
                 )
                 .await?;
-                let detail = load_employee_detail(tx, org_uuid, employee_id).await?;
+                let mut detail = detail_with_visible_warnings(tx, &reader, employee_id).await?;
                 let manager = hr_may_person_in(
                     tx,
                     &reader,
@@ -234,8 +243,6 @@ impl HrService {
                 .await?;
                 let me = actor_employee_id(tx, &reader).await?;
                 // people-self-33: nothing is recordable on one's own record.
-                let mut detail = detail;
-                super::read_warnings::visible_warnings(tx, &reader, &mut detail.warnings).await?;
                 let (org, actor) = (reader.org_id, reader.user_id);
                 let manage = Feature::EmployeeDirectoryManage;
                 if own_record_decision(tx, org, actor, employee_id, manage).await?
