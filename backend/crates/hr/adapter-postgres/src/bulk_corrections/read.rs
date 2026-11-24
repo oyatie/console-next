@@ -10,7 +10,7 @@ use serde_json::json;
 use sqlx::Row;
 use uuid::Uuid;
 
-use super::plan::{plan, preview};
+use super::plan::{CorrectionPlan, plan, preview};
 use super::select::{Targets, check_targets, resolve};
 use super::{
     BulkCorrectionCounts, BulkCorrectionJob, BulkCorrectionPreview, BulkCorrectionRequest,
@@ -22,6 +22,8 @@ use crate::requests::{note, reason_code};
 use crate::{HrError, HrService};
 
 pub(super) struct CheckedRequest {
+    pub preview_digest: Option<String>,
+    pub step_up: Option<console_platform_auth::MobilePasskeyStepUpEnvelope>,
     pub targets: Targets,
     pub reason: String,
     pub note: Option<String>,
@@ -32,6 +34,8 @@ pub(super) struct CheckedRequest {
 /// request's error, not a refusal repeated on every row).
 pub(super) fn check_request(body: BulkCorrectionRequest) -> Result<CheckedRequest, HrError> {
     Ok(CheckedRequest {
+        preview_digest: body.preview_digest,
+        step_up: body.step_up,
         targets: check_targets(body.selection, body.changes, body.rows)?,
         reason: reason_code(&body.reason_code, "reason_code")?,
         note: note(body.note.as_deref())?,
@@ -55,21 +59,25 @@ impl HrService {
     ) -> Result<BulkCorrectionPreview, HrError> {
         authorize_hr_org_wide(&principal, Feature::EmployeeDirectoryManage)?;
         let CheckedRequest {
-            targets,
+            mut targets,
             reason,
             note,
+            ..
         } = check_request(body)?;
         let org = principal.org_id;
         let org_uuid = *org.as_uuid();
         with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
-                let inputs = resolve(tx, &targets).await?;
-                let planned = plan(tx, org_uuid, &inputs, holders).await?;
-                let preview = preview(&planned, &reason, note.as_deref())?;
-                let shown: Vec<Uuid> = planned
+                let inputs = resolve(tx, &mut targets).await?;
+                let planned = plan(tx, org_uuid, inputs, holders).await?;
+                let CorrectionPlan { preview, records } =
+                    preview(planned, &reason, note.as_deref())?;
+                let shown: Vec<Uuid> = preview
+                    .rows
                     .iter()
-                    .filter(|p| p.head.is_some())
-                    .map(|p| p.row.employee_id)
+                    .zip(records)
+                    .filter(|(_, record)| record.head.is_some())
+                    .map(|(row, _)| row.employee_id)
                     .collect();
                 let fields: BTreeSet<&str> = preview
                     .rows
