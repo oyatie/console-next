@@ -34,9 +34,12 @@ beforeAll(async () => {
           h(RouterContextProvider,{router},h(UnplacedPage))));
       ` : undefined,
       configureServer: (vite) => { vite.middlewares.use((req, res, next) => {
-        if (req.url !== "/unplaced-test") return next();
+        if (req.url !== "/unplaced-test" && req.url !== "/unplaced-console-test") return next();
         res.setHeader("Content-Type", "text/html");
-        res.end('<html lang="ko"><title>Unplaced</title><div id="root"></div><script type="module" src="/unplaced-test.js"></script></html>');
+        // The Console shell's main is a scrolling flex column between 72px of bars above and the 24px status bar.
+        res.end(req.url === "/unplaced-test"
+          ? '<html lang="ko"><title>Unplaced</title><div id="root"></div><script type="module" src="/unplaced-test.js"></script></html>'
+          : '<html lang="ko" data-experience="console"><title>Unplaced</title><main id="root" style="position:fixed;inset:72px 0 24px;height:auto;display:flex;flex-direction:column;overflow:auto"></main><script type="module" src="/unplaced-test.js"></script></html>');
       }); },
     }],
   });
@@ -119,3 +122,35 @@ test.each([1440, 390])(
     }
   },
 );
+
+test("Console: every desk control stays reachable when the desk is shorter than its panes at 1280x720", async () => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.route("**/api/v1/**", async route => {
+    const path = new URL(route.request().url()).pathname;
+    const data = path.endsWith("/unplaced") ? { count: 1, items: [{ employee_id: "person", name: "Kim", company: "Hanbit", legal_entity_id: "entity", workplace_id: "workplace", reason: "unit_unknown", source_org_unit: "HR" }] }
+      : path.endsWith("/unmapped-companies") ? { items: [{ company_text: "OldSaeon", employees: 2 }] }
+      : path.endsWith("/legal-entities") ? { items: [{ id: "entity", name: "Hanbit", workplaces: [{ id: "workplace", current: { name: "HQ" }, is_primary: true }] }] }
+      : path.endsWith("/org-structure") ? { entities: [] }
+      : path.endsWith("/checklist") ? { phase: "OPERATING" }
+      : { items: [] };
+    await route.fulfill({ json: data });
+  });
+  try {
+    await page.goto(`${server.resolvedUrls!.local[0]}unplaced-console-test`);
+    await page.getByText(/OldSaeon/).waitFor();
+    const buttons = page.locator("main button:visible");
+    expect(await buttons.count()).toBeGreaterThan(0);
+    const covered: string[] = [];
+    for (const button of await buttons.all()) {
+      await button.scrollIntoViewIfNeeded();
+      const hit = await button.evaluate(el => {
+        const box = el.getBoundingClientRect();
+        return el.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2));
+      });
+      if (!hit) covered.push((await button.textContent()) ?? "");
+    }
+    expect(covered).toEqual([]);
+  } finally {
+    await page.unrouteAll({ behavior: "wait" });
+  }
+});
