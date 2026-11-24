@@ -47,14 +47,14 @@ test("a finished import tells a screen reader that every step is done, and draws
   expect(await steps("", t("import.steps"))).toEqual(IMPORT.map(key => ({ label: t(`import.step.${key}`), state: "done" })));
 });
 
-test("a complete payroll run reads every stage as done, and a void one reads every stage as waiting", async () => {
-  expect(await steps("?run=ISSUED", t("payroll.stages.title"))).toEqual(STAGES.map(key => ({ label: t(`payroll.stage.${key}`), state: "done" })));
-  expect(await steps("?run=VOID", t("payroll.stages.title"))).toEqual(STAGES.map(key => ({ label: t(`payroll.stage.${key}`), state: "waiting" })));
+test("a payroll line with every stage done reads each as done, and one with every stage waiting reads each as waiting", async () => {
+  expect(await steps(`?states=${STAGES.map(() => "done")}`, t("payroll.stages.title"))).toEqual(STAGES.map(key => ({ label: t(`payroll.stage.${key}`), state: "done" })));
+  expect(await steps(`?states=${STAGES.map(() => "waiting")}`, t("payroll.stages.title"))).toEqual(STAGES.map(key => ({ label: t(`payroll.stage.${key}`), state: "waiting" })));
 });
 
 test("a run in progress reads done, current and waiting stages apart, the boxes still draw a check or a number, and axe passes", async () => {
   const label = (key: typeof STAGES[number]) => t(`payroll.stage.${key}`);
-  expect(await steps("?run=CALCULATED", t("payroll.stages.title"))).toEqual([
+  expect(await steps("?states=done,done,current,waiting,waiting,waiting", t("payroll.stages.title"))).toEqual([
     { label: label("attendance"), state: "done" }, { label: label("calculate"), state: "done" },
     // The current stage is marked by aria-current alone: its text stays the label, and its box stays hidden.
     { label: label("exceptions"), current: true },
