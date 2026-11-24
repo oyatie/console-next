@@ -1,4 +1,5 @@
 import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { isImeKey } from "../../lib/pure/ime";
 import s from "./month-grid.module.css";
 
 const GRID = { role: "grid" } as const;
@@ -36,6 +37,8 @@ export function MonthGrid({ label, weeks, weekdays, inMonth, cell, tone, selecte
     grid.current?.querySelector<HTMLElement>(`[data-date="${d}"]`)?.focus();
   };
   const key = (e: KeyboardEvent, d: string) => {
+    // A key from a field the caller put in a cell reaches this handler too; mid-composition it is the input method's.
+    if (isImeKey(e)) return;
     const i = flat.indexOf(d);
     if (i < 0) return;
     const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[e.key];
