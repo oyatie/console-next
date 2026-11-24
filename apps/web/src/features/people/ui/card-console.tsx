@@ -40,7 +40,6 @@ export function CardConsole({
   baseline: () => React.ReactNode;
 }) {
   const { act, back, tab: requestedTab = "card" } = route.useSearch();
-  const navigate = route.useNavigate();
   const documents = useDocumentsServed();
   const access = useQuery(myAccessQuery);
   const canCerts = Boolean(access.data && accessRefusal(access.data, operationAccess["GET /api/v1/hr/certificates"]) === null);
@@ -55,19 +54,11 @@ export function CardConsole({
       ? { ...detail, error: latchedRefusal }
       : detail;
 
-  if (act === "print" && d && !coldWait) {
-    return (
-      <ConsolePrintHost
-        d={d}
-        onClose={() => void navigate({ search: p => ({ ...p, act: undefined, back: undefined }), replace: true })}
-      />
-    );
-  }
-
   return (
     <ConsoleCardShell
       d={d}
       q={patternQ}
+      printing={act === "print" && Boolean(d) && !coldWait}
       act={act}
       back={back}
       requestedTab={requestedTab}
@@ -90,6 +81,7 @@ function ConsolePrintHost({ d, onClose }: { d: Detail; onClose: () => void }) {
 function ConsoleCardShell({
   d,
   q,
+  printing,
   act,
   back,
   requestedTab,
@@ -99,6 +91,7 @@ function ConsoleCardShell({
 }: {
   d: Detail | undefined;
   q: ReadState;
+  printing: boolean;
   act?: string;
   back?: string;
   requestedTab: CardTab;
@@ -127,6 +120,9 @@ function ConsoleCardShell({
     setCurrent(secId);
     focusSoon(secId);
   };
+
+  // Below the card's state, as in Classic, so closing the print view finds the current section where it was.
+  if (printing && d) return <ConsolePrintHost d={d} onClose={close} />;
 
   if (!d) {
     return (

@@ -41,9 +41,9 @@ const links = () => page.getByRole("navigation", { name: t("uiRecord.sections"),
 const tab = (id: "card" | "ledger") => page.getByRole("navigation", { name: t("empCard.tabs"), exact: true }).getByRole("link", { name: t(`empCard.tab.${id}`), exact: true });
 // A jump lands two frames after its key; a key that must do nothing is given that long, and more, to do it.
 const settle = () => page.evaluate(() => new Promise<void>(done => { let n = 6; const tick = () => (--n ? requestAnimationFrame(tick) : done()); tick(); }));
-async function open(as: Partial<typeof reader> = {}) {
+async function open(as: Partial<typeof reader> = {}, look = "baseline") {
   Object.assign(reader, { manage: true, restricted: false }, as);
-  await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}card-sections-test?person=${moveDetail.employee.id}`, page.getByRole("heading", { level: 1, name: moveDetail.employee.name }));
+  await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}card-sections-test?person=${moveDetail.employee.id}&look=${look}`, page.getByRole("heading", { level: 1, name: moveDetail.employee.name }));
   await element(tab("card")).toHaveAttribute("aria-current", "page");
 }
 /** Every link's cap is the digit that opens its section and marks the link, and the number in the section's head. */
@@ -107,8 +107,8 @@ test("a reader's digits open the one section their record shows and nothing else
   await element(page.locator("#s2")).toBeFocused();
 }, 90_000);
 
-test("a digit or H pressed in the print view leaves the tab and the current section where they were", async () => {
-  await open();
+test.each(["baseline", "console"])("%s: a digit or H pressed in the print view leaves the tab and the current section where they were", async look => {
+  await open({}, look);
   const printing = page.getByRole("heading", { level: 1, name: t("empDoc.print.title"), exact: true });
   const print = async () => { await page.getByRole("button", { name: t("empCard.verb.print"), exact: true }).click(); await element(printing).toBeVisible(); };
   const close = () => page.getByRole("button", { name: t("composer.dismiss"), exact: true }).click();
