@@ -14,6 +14,9 @@ pub enum LifecycleError {
     InvalidState(String),
     #[error("{0} exceptions are still open")]
     ExceptionsOpen(i64),
+    /// Every line is blocked: there is no pay to approve, schedule or attest as paid.
+    #[error("no line of this run has a calculation, so there is nothing to submit")]
+    NothingCalculated,
     #[error("the decider must not be the submitter (separation of duties)")]
     SodViolation,
     #[error("payroll decisions require bound natural persons")]
@@ -56,6 +59,9 @@ impl LifecycleError {
                 KernelError::forbidden(message).with_code("payroll.refuse.identity_unbound")
             }
             Self::SodViolation => KernelError::conflict(message).with_code("sod_violation"),
+            Self::NothingCalculated => {
+                KernelError::conflict(message).with_code("nothing_calculated")
+            }
             Self::NotFound => KernelError::not_found("run not found"),
             Self::Validation(_) => KernelError::validation(message),
             Self::InvalidTransition(_) => KernelError::invalid_transition(message),
