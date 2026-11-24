@@ -3,12 +3,12 @@ import { createServer } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { connect } from "node:http2";
 import type { AddressInfo } from "node:net";
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 import { measure, observePaint } from "./measurement";
 import { startProxy } from "./proxy";
-import { launchHTTP1 } from "./transport";
+import { test } from "./transport";
 
-test("paired transports retain native protocol, waterfall, cookies and streamed bodies", { tag: "@perf" }, async ({ browser, request }) => {
+test("selected transports retain native protocol, waterfall, cookies and streamed bodies", { tag: "@perf" }, async ({ browser, request, transports }) => {
   const received: object[] = [];
   const upstream = createServer((request, response) => {
     if (request.url === "/api/v1/echo") {
@@ -31,10 +31,9 @@ test("paired transports retain native protocol, waterfall, cookies and streamed 
   await new Promise<void>(resolve => upstream.listen(0, "127.0.0.1", resolve));
   const direct = `http://127.0.0.1:${(upstream.address() as AddressInfo).port}`;
   const proxy = await startProxy(direct);
-  const h1 = await launchHTTP1(browser);
   try {
     expect((await request.get(proxy.origin, { ignoreHTTPSErrors: true })).status()).toBe(200);
-    for (const [engine, protocol] of [[h1, "http/1.1"], [browser, "h2"]] as const) {
+    for (const { browser: engine, protocol } of transports) {
       const origin = proxy.origin;
       const context = await engine.newContext({ ignoreHTTPSErrors: true, serviceWorkers: "block" });
       try {
@@ -60,7 +59,6 @@ test("paired transports retain native protocol, waterfall, cookies and streamed 
       expect((await page.goto(proxy.origin))?.status()).toBe(502);
     } finally { await context.close(); }
   } finally {
-    await h1.close();
     await proxy.close();
     upstream.closeAllConnections();
     upstream.close();
