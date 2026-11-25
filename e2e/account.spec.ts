@@ -6,7 +6,8 @@ import { acceptConsent, go, newContext, passkeyLogin, vendorPage } from "./flows
 import { inviteAccount } from "./access-flows";
 import { tenantWithExecutive } from "./setup-flows";
 import { openTenant } from "./helpers/tenant";
-import { accountEntry, openAccount } from "./shell";
+import { accountEntry, barControl, openAccount } from "./shell";
+import { bootEn } from "../packages/i18n/src/catalogs/boot";
 
 // My account: a second passkey (step-up with the first), sign-in with the new one, then removing the old one.
 test("my account: add a second passkey, sign in with it, remove the first", { tag: "@auth" }, async ({ browser }) => {
@@ -21,7 +22,7 @@ test("my account: add a second passkey, sign in with it, remove the first", { ta
   await expect(admin.getByRole("heading", { name: "My account", level: 1 })).toBeVisible();
   await expect(admin.getByRole("heading", { name: "Passkeys" })).toBeVisible();
   await expect(admin.getByRole("main").getByLabel("Language")).toBeFocused();
-  await admin.getByRole("banner").getByLabel("Language").selectOption("ko");
+  await (await barControl(admin, bar => bar.getByRole("combobox", { name: bootEn["shell.locale"], exact: true }))).selectOption("ko");
   await expect(admin.getByRole("heading", { name: "내 계정", level: 1 })).toBeVisible();
   await expect(admin.getByRole("banner").getByLabel("언어")).toBeFocused();
   const main = admin.getByRole("main");

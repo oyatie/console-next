@@ -57,10 +57,15 @@ export async function expectSignedIn(page: Page, options?: { timeout?: number })
   await expect(page.getByRole("dialog", { name: bootKo["idle.reauth.title"], exact: true })).toBeHidden();
 }
 
+/** A control of the bar in either style: Classic's bar shows it, Console's keeps it in the account menu, opened when it is not shown. */
+export async function barControl(page: Page, control: (bar: Locator) => Locator) {
+  const target = control(page.getByRole("banner"));
+  await expectSignedIn(page);
+  if (!(await target.isVisible())) await accountMenu(page).click();
+  return target;
+}
+
 /** Signs out from the bar: Classic offers the command there, Console inside the account menu. */
 export async function signOut(page: Page) {
-  const command = page.getByRole("banner").getByRole("button", signOutName);
-  await expectSignedIn(page);
-  if (!(await command.isVisible())) await accountControl(page).click();
-  await command.click();
+  await (await barControl(page, bar => bar.getByRole("button", signOutName))).click();
 }

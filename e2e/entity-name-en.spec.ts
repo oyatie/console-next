@@ -3,6 +3,8 @@ import { expectAccessible } from "./a11y";
 import { go, option } from "./flows";
 import { registerAt, setName } from "./helpers/entity";
 import { openTenant } from "./helpers/tenant";
+import { barControl } from "./shell";
+import { bootEn, bootKo } from "../packages/i18n/src/catalogs/boot";
 import { fillEntity, setupCompany } from "./setup-flows";
 
 // 0h (2026-10-14): with an 영문명 set, the English UI names the 법인 by it on every surface, through the one presentation
@@ -16,7 +18,9 @@ async function english(where: Locator) {
   await expect(where).toContainText(EN);
   await expect(where).not.toContainText("누리");
 }
-const language = (p: Page, l: "en" | "ko") => p.getByRole("banner").getByLabel(l === "en" ? "언어" : "Language").selectOption(l);
+/** Switches the language from the bar, by the language control's name in the language shown before the switch. */
+const language = async (p: Page, l: "en" | "ko") =>
+  (await barControl(p, bar => bar.getByRole("combobox", { name: (l === "en" ? bootKo : bootEn)["shell.locale"], exact: true }))).selectOption(l);
 
 test("the English UI names a 법인 by its English name on every surface, and Korean by its 법인명", { tag: ["@org", "@regression"] }, async ({ browser }) => {
   const p = await openTenant(browser, "name-en-surfaces", "표면검사");

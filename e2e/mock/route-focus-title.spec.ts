@@ -5,7 +5,8 @@ import { mockRoute } from "./route";
 import { screenAccess, user } from "./fixtures";
 import { screens } from "../states/registry";
 import { expectAxe } from "../a11y";
-import { shell } from "../shell";
+import { barControl, shell } from "../shell";
+import { bootKo } from "../../packages/i18n/src/catalogs/boot";
 import { routeReady } from "../flows";
 
 test("route navigation focuses h1 and announces the page title with the current tenant", { tag: "@webkit-pr" }, async ({ page, browserName }) => {
@@ -70,7 +71,7 @@ test("route chrome receives focus while its read is held, and locale changes ref
   // Page chrome stays available while the required data is held.
   const heading = page.getByRole("main").getByRole("heading", { level: 1 });
   await expect(heading).toBeFocused();
-  const locale = page.getByRole("combobox", { name: "언어" });
+  const locale = await barControl(page, bar => bar.getByRole("combobox", { name: bootKo["shell.locale"], exact: true }));
   await locale.selectOption("en");
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   await expect(page).toHaveTitle(new RegExp(` · ${user.tenant!.name} · Console$`));

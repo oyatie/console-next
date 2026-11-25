@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import type { components } from "@console/api";
 import { tenantBeforeSetup } from "../setup-flows";
+import { barControl } from "../shell";
 import { chooseWorkbook } from "../helpers/import";
 import ExcelJS from "exceljs";
 import { readFileSync } from "node:fs";
@@ -33,7 +34,7 @@ test("unconfirmed restricted and ordinary columns wait for a person's mapping @h
   await admin.setViewportSize({ width: 390, height: 900 });
   await admin.emulateMedia({ colorScheme: "dark" });
   if (await admin.locator("html").getAttribute("data-theme") !== "dark") {
-    await admin.getByRole("button", { name: t("shell.theme.toDark"), exact: true }).click();
+    await (await barControl(admin, bar => bar.getByRole("button", { name: t("shell.theme.toDark"), exact: true }))).click();
   }
   const preview = await upload(admin);
   await expect(admin.locator("html")).toHaveAttribute("data-theme", "dark");
