@@ -72,9 +72,9 @@
 .listError { margin: var(--space-2) var(--space-4); }
 .consoleTools { display: inline-flex; align-items: center; gap: var(--space-1-5); flex-wrap: nowrap; }
 .consoleTools > * { white-space: nowrap; flex-shrink: 0; }
-.consoleDesktopSort { display: inline-flex; align-items: center; flex-shrink: 0; }
+.consoleDesktopTools { display: inline-flex; align-items: center; gap: var(--space-2); flex-shrink: 0; }
 .consoleFind { flex: 1 1 auto; min-width: 0; max-width: 100%; }
-@media (max-width: 767px) { .consoleDesktopSort { display: none; } }
+@media (max-width: 767px) { .consoleDesktopTools { display: none; } }
 .peekConsole, .peekTabsWrap, .tabHost { min-width: 0; }
 .peekInlineRow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1-5); }
 .tabHost { flex: 1 1 0%; min-height: 0; }
