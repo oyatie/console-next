@@ -66,6 +66,9 @@ test("the search button is named by the shared search label and its visible word
   await element(search).toHaveAccessibleDescription(t("shell.jump"));
   // A label locator for a searchable thing (a registration number field, say) must not land on the search button.
   await element(page.getByLabel(t("shell.jump"))).toHaveCount(0);
+  // The shared label is heard, not shown: the box draws the search hint alone.
+  const label = await search.getByText(t("shell.jumpLabel"), { exact: true }).boundingBox();
+  expect(label!.width).toBeLessThanOrEqual(1);
 });
 
 test("the search button's / follows the single-key switch at once, in this tab and from another", async () => {
