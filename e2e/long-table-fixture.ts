@@ -18,6 +18,8 @@ export async function tableTest() {
       load: id => id === "\0long-table-test" ? `
         import React,{useState} from 'react'; import {createRoot} from 'react-dom/client'; import {flushSync} from 'react-dom';
         import {loadCatalog} from '@console/i18n';
+        // Static, so the load event page.goto waits for covers the catalog; loadCatalog then finds both modules loaded.
+        import '/packages/i18n/src/catalogs/boot-ko.ts'; import '/packages/i18n/src/catalogs/ko.ts';
         import {LongTable,TableControl} from '/apps/web/src/ui/long-table/long-table.tsx';
         import {Button} from '/apps/web/src/ui/button/button.tsx';
         import {TextInput} from '/apps/web/src/ui/field/field.tsx';

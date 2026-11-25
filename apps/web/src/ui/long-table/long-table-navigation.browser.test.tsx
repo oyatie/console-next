@@ -151,7 +151,7 @@ test.each(navigationMatrix)("grid navigation $key from $origin at $width px matc
     return [Number(active?.closest('[role="row"]')?.getAttribute("aria-rowindex")) || null, Number(cell?.getAttribute("aria-colindex")) || null];
   });
   const open = async (mode: string) => {
-    // A reload per case refetched the whole catalog after load, inside the 5 s check below.
+    // In place, not a reload: two page start-ups per case would sit inside the 15 s test budget.
     await navigationPage.evaluate(search => (window as unknown as { renderFixture: (search: string) => void }).renderFixture(search), `?navigation-${mode}`);
     await dom(navigationPage.getByRole("grid")).toHaveAttribute("data-layout", width === 390 ? "cards" : "rows");
     const row = navigationPage.getByRole("row").filter({ hasText: "Beta" });
