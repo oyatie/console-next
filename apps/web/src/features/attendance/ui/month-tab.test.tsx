@@ -33,9 +33,9 @@ vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to, className }: { children: ReactNode; to: string; className?: string }) => <span data-href={to} className={className}>{children}</span>,
 }));
 vi.mock("@tanstack/react-query", async original => ({ ...await original<typeof import("@tanstack/react-query")>(),
-  // The head's phase line reads the tenant; the refusal card's own reads stay pending.
-  useQuery: ({ queryKey }: { queryKey: readonly unknown[] }) => queryKey[0] === "/api/v1/users/me"
-    ? { isPending: false, error: null, data: { tenant: { phase: "OPERATING" } } }
+  // The head's phase line reads the access answer the page waits for; the other reads (the user's own among them) stay pending.
+  useQuery: ({ queryKey }: { queryKey: readonly unknown[] }) => queryKey[0] === "/api/v1/access/me"
+    ? { isPending: false, error: null, data: { phase: "OPERATING", is_ops: false, entries: [] } }
     : { isPending: true, error: null, data: undefined },
   useInfiniteQuery: () => ({
   isPending: state.load === "loading", isSuccess: state.load === "ready", isError: state.load === "error" || state.load === "refused",

@@ -127,8 +127,9 @@ vi.mock("@tanstack/react-query", async original => {
           },
         };
       }
-      if (path.includes("/api/v1/users/me")) {
-        return { isPending: false, error: null, refetch: vi.fn(), data: { tenant: { phase: "OPERATING" } } };
+      // The phase line reads the access answer the page waits for; the user read may still be in flight.
+      if (path === "/api/v1/access/me") {
+        return { isPending: false, error: null, refetch: vi.fn(), data: { phase: "OPERATING", is_ops: false, entries: [] } };
       }
       if (path.includes("/api/v1/attendance/days") && state.refuseDay) {
         return { isPending: false, error: new ApiError(403, "forbidden", "", [], "ref-day"), refetch: vi.fn(), data: undefined };
