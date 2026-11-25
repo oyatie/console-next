@@ -22,18 +22,19 @@ export default defineConfig({
       gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
       env: { NTS_FAKE_PORT: String(ntsPort) },
     },
-    ...(config.webServer ?? []).map((server) =>
-      server.command.includes("backend-dev.mjs")
-        ? {
-            ...server,
-            env: {
-              ...server.env,
-              NTS_BASE_URL: `${fakeUrl}/api/nts-businessman/v1/`,
-              NTS_BUSINESSMAN_API_KEY: "e2e-nts-fake-key",
-              NTS_BUSINESSMAN_API_KEY_EXPIRES_ON: "2099-12-31",
-            },
-          }
-        : server,
-    ),
+    ...(config.webServer ?? []).map((server) => {
+      if (!server.command.includes("backend-dev.mjs")) return server;
+      // A reused backend keeps the NTS endpoint and key it was started with.
+      if (server.reuseExistingServer) throw new Error("The NTS check starts its own backend on the loopback fake: run it without E2E_REUSE=1.");
+      return {
+        ...server,
+        env: {
+          ...server.env,
+          NTS_BASE_URL: `${fakeUrl}/api/nts-businessman/v1/`,
+          NTS_BUSINESSMAN_API_KEY: "e2e-nts-fake-key",
+          NTS_BUSINESSMAN_API_KEY_EXPIRES_ON: "2099-12-31",
+        },
+      };
+    }),
   ],
 });
