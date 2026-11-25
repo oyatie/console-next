@@ -171,7 +171,7 @@ async fn jwt_and_cedar_refusals_return_distinct_contract_codes() -> TestResult {
             ..Default::default()
         },
         &json!({"email": OPERATOR_EMAIL, "aud": AUD, "iss": ISSUER, "exp": OffsetDateTime::now_utc().unix_timestamp() + 300}),
-        &EncodingKey::from_secret(b"secret"),
+        &EncodingKey::from_secret(b"secret")?,
     )?;
     let alg_none = format!(
         "{}.{}.",
