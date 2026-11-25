@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { installFaultClock } from "./fault-clock";
 import { expect, test, type Page } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
 import { AT, failure, id } from "../mock/fixtures";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
 import { SEARCH_DEBOUNCE_MS } from "../../apps/web/src/lib/freshness";
 import { expectStable, recordShifts } from "../stability";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 async function searchFixture(page: Page) {
   const fixture = await mockScreen(page, screens[0], "empty");
@@ -153,7 +156,10 @@ test("access-log search survives reload and view changes and clears from the URL
     await expect.poll(() => new URL(page.url()).searchParams.get("search")).toBe("203.0.113.10");
     await page.reload();
     await expect(search).toHaveValue("203.0.113.10");
-    await page.getByRole("link", { name: /^확인 대상/ }).click();
+    // The view control that adds a history entry, for the back step below: Classic's view tab (its count follows the
+    // name), where Console draws only its summary toggle. First in page order, so Classic's tab wins over its toggle.
+    const flagged = new RegExp(`^${t("accessLog.flagged")}`);
+    await page.getByRole("link", { name: flagged }).or(page.getByRole("button", { name: t("accessLog.flagged"), exact: true })).first().click();
     await expect(search).toHaveValue("203.0.113.10");
     await expect.poll(() => Object.fromEntries(fixture.requests.at(-1)!)).toMatchObject({ search: "203.0.113.10", period: "2026-10", flagged: "true" });
     await search.fill("없음");

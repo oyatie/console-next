@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { setTimeout as delay } from "node:timers/promises";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator } from "@playwright/test";
 import { REALTIME } from "../../apps/web/src/lib/freshness";
 import type { components } from "@console/api";
 import { loadCatalog, t } from "@console/i18n";
@@ -11,8 +11,12 @@ import { AT, failure, id, modules, user } from "../mock/fixtures";
 import { mockPeopleImport } from "../mock/people-import";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
+import { openNav } from "../shell";
 import { screens } from "./registry";
 import { faultAttempts, installFaultClock } from "./fault-clock";
+
+// By href: Console's to-do link also shows its count.
+const hrefs = (nav: Locator) => nav.getByRole("link").evaluateAll(links => links.map(link => link.getAttribute("href")));
 
 const run: components["schemas"]["EmployeeImportRun"] = {
   id: id(4000), source_filename: "synthetic-roster.xlsx", status: "APPLIED", apply_job_state: "done",
@@ -44,22 +48,26 @@ for (const fault of ["503", "network"] as const) test(`cold modules ${fault}: in
   page.on("framenavigated", frame => { if (frame === page.mainFrame()) navigations++; });
   try {
     await page.goto("/org");
-    const rail = page.getByRole("navigation", { name: t("shell.nav"), includeHidden: true });
-    await expect(rail.getByRole("link")).toHaveText([t("shell.link.todo"), t("shell.link.requests")]);
-    await expect(page.getByRole("alert")).toHaveCount(1);
-    await expect(rail.getByRole("alert").getByRole("heading")).toHaveText(t("shell.nav.failed"));
+    // The menu's notice: in Classic's rail, beside Console's bar.
+    const alert = page.getByRole("alert");
+    await expect(alert).toHaveCount(1);
+    await expect.poll(async () => hrefs(await openNav(page))).toEqual(["/", "/people/requests"]);
+    await expect(alert.getByRole("heading")).toHaveText(t("shell.nav.failed"));
     await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
     await expectAxe(page, `cold-modules/${fault}`);
     for (const width of [1440, 390]) {
       await page.setViewportSize({ width, height: 900 });
-      if (width === 390) await page.getByRole("button", { name: t("shell.menu"), exact: true }).click();
+      if (width === 390) await openNav(page);
       await fits(page, `cold-modules/${fault}/${width}`);
     }
     const before = attempts, loads = navigations;
     failing = false;
-    await rail.getByRole("button", { name: t("common.retry"), exact: true }).click();
-    await expect(rail.getByRole("link", { name: t("shell.link.org"), exact: true })).toBeVisible();
-    await expect(rail.getByRole("link", { name: t("shell.link.people"), exact: true })).toHaveCount(0);
+    const retry = alert.getByRole("button", { name: t("common.retry"), exact: true });
+    await expect(retry).toBeVisible();
+    await retry.click();
+    const nav = await openNav(page);
+    await expect(nav.getByRole("link", { name: t("shell.link.org"), exact: true })).toBeVisible();
+    await expect(nav.getByRole("link", { name: t("shell.link.people"), exact: true })).toHaveCount(0);
     await expect(page.getByRole("alert")).toHaveCount(0);
     expect(attempts).toBe(before + 1);
     expect(navigations).toBe(loads);
@@ -91,8 +99,10 @@ for (const fault of ["503", "network"] as const) for (const reference of [false,
     const clockLead = await page.evaluate(() => Date.now()) - Date.now();
     expect(clockLead).toBeLessThan(REALTIME.heartbeatInterval * REALTIME.deadAfterHeartbeats);
     await expect(page.getByRole("alert", { includeHidden: true })).toHaveCount(1);
-    await expect(rail.getByRole("link")).toHaveText([t("shell.link.todo"), t("shell.link.requests")]);
-    await expect(rail.getByRole("status")).toHaveText(t("shell.nav.failed"));
+    await expect.poll(async () => hrefs(await openNav(page))).toEqual(["/", "/people/requests"]);
+    // The menu's notice: in Classic's rail, beside Console's bar.
+    const navFailed = page.getByRole("status", { includeHidden: true }).filter({ hasText: t("shell.nav.failed") });
+    await expect(navFailed).toHaveText(t("shell.nav.failed"));
     await expect(rail.getByRole("button", { name: t("common.retry"), includeHidden: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: t("common.retry"), includeHidden: true })).toHaveCount(1);
     await expect(main.locator("[data-support-reference]")).toHaveCount(fault === "503" && reference ? 1 : 0);
@@ -106,9 +116,9 @@ for (const fault of ["503", "network"] as const) for (const reference of [false,
     failing = false;
     await main.getByRole("button", { name: t("common.retry"), exact: true }).click();
     await expect(main.getByRole("alert")).toHaveCount(0);
-    await expect(rail.getByRole("link", { name: t("shell.link.org"), exact: true, includeHidden: true })).toHaveCount(1);
-    await expect(rail.getByRole("alert", { includeHidden: true })).toHaveCount(0);
-    await expect(rail.getByRole("status", { includeHidden: true })).toHaveCount(0);
+    await expect((await openNav(page)).getByRole("link", { name: t("shell.link.org"), exact: true })).toHaveCount(1);
+    await expect(page.getByRole("alert", { includeHidden: true })).toHaveCount(0);
+    await expect(navFailed).toHaveCount(0);
     expect(attempts).toEqual({ page: before.page + 1, modules: before.modules + 1 });
     expect(page.url()).toBe(url);
     expect(fixture.unexpected).toEqual([]);
@@ -129,7 +139,8 @@ for (const path of outageRoutes) for (const reference of [false, true]) {
       await page.goto("/org");
       const rail = page.getByRole("navigation", { name: t("shell.nav"), includeHidden: true });
       await expect(rail.getByRole("link", { name: t("shell.link.people"), exact: true })).toBeVisible();
-      const links = await rail.getByRole("link").allTextContents();
+      // The outage takes the to-do count away.
+      const links = await hrefs(rail);
       await page.route(url => url.pathname.startsWith("/api/"), route => route.request().method() !== "GET" ? route.fallback()
         : route.fulfill({ status: 503, headers: reference ? { support_reference: id(98) } : {}, json: {
           error: { code: "service_unavailable", message: "raw upstream detail", ...(reference ? { support_ref: id(98), support_ref_at: AT } : {}) },
@@ -144,12 +155,14 @@ for (const path of outageRoutes) for (const reference of [false, true]) {
         await expect(main.getByRole("alert")).toHaveCount(1);
         await expect(main.locator("[data-support-reference]")).toHaveCount(reference ? 1 : 0);
       } else await expect(main.getByRole("alert").first()).toBeVisible();
-      await expect(rail.getByRole("link")).toHaveText(links);
+      await expect.poll(() => hrefs(rail)).toEqual(links);
       await expect(main.locator('[data-placement="page"]')).toHaveCount(0);
       await expect(page.getByRole("region", { name: t("supportAccess.title"), exact: true })).toHaveCount(0);
       await expectAxe(page, `${path}/outage`);
       for (const width of [1440, 390]) {
         await page.setViewportSize({ width, height: 900 });
+        // Console swaps its desk bar for the phone bar a render after the resize, where Classic's CSS does at once.
+        if (width === 390) await expect(page.getByRole("banner").getByRole("navigation", { name: t("shell.nav"), exact: true })).toHaveCount(0);
         await fits(page, `${path}/outage/${width}`);
       }
       expect(fixture.unexpected).toEqual([]);

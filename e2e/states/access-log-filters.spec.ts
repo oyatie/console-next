@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { installFaultClock } from "./fault-clock";
 import { expect, test, type Page } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
 import { AT, id } from "../mock/fixtures";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
 import { expectStable, recordShifts } from "../stability";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 async function filtersFixture(page: Page) {
   const shell = await mockScreen(page, screens[0], "empty");
@@ -209,7 +212,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       await expect(actor).toHaveValue(id(101));
       await expect(page.getByLabel("종료일", { exact: true })).toHaveValue("2026. 10. 20.");
       await page.getByRole("button", { name: "닫기", exact: true }).click();
-      await page.getByRole("link", { name: /^확인 대상/ }).click();
+      await page.getByRole("button", { name: t("accessLog.flagged"), exact: true }).click();
       await expect.poll(() => fixture.requests.at(-1)!.get("flagged")).toBe("true");
       expect(fixture.requests.at(-1)!.get("action")).toBe("employee.export");
       await page.getByRole("button", { name: "필터 선택", exact: true }).click();

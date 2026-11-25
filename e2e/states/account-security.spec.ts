@@ -17,6 +17,8 @@ for (const screen of accountSecurityScreens) for (const state of Object.keys(scr
     try {
       await page.goto(screen.key === "login" ? `${screen.path}?enrolled=true` : screen.path);
       const main = page.getByRole("main");
+      // Whichever style draws it, the card that holds the code sign-in is marked busy while it waits.
+      const busy = main.locator('[aria-busy="true"]', { has: page.getByRole("button", { name: t("auth.login.submitCode"), exact: true }) });
       if (screen.key === "setup-passkey" && state === "refused") {
         await expect(page).toHaveURL(/\/login$/);
         await expect(main.getByRole("heading", { name: t("auth.login.title"), exact: true })).toBeVisible();
@@ -34,7 +36,7 @@ for (const screen of accountSecurityScreens) for (const state of Object.keys(scr
         await expect.poll(f.attempts).toBeGreaterThan(0);
         if (state === "pending") {
           await expect(page.getByRole("status").filter({ hasText: t("auth.login.pending") })).toHaveClass("sr-only");
-          await expect(main.locator(".auth__card")).toHaveAttribute("aria-busy", "true");
+          await expect(busy).toHaveCount(1);
           for (const control of await main.locator("button").all()) await expect(control).toBeDisabled();
           for (const input of await main.locator("input").all()) await expect(input).not.toBeEditable();
           await expect(codeField).toBeFocused();
@@ -46,7 +48,7 @@ for (const screen of accountSecurityScreens) for (const state of Object.keys(scr
         } else if (screen.key === "login") {
           await expect(main.getByRole("alert")).toHaveAttribute("data-tone", "danger");
           await expect(main.getByRole("alert")).toContainText(t("auth.login.codeRejected"));
-          await expect(main.locator(".auth__card")).not.toHaveAttribute("aria-busy", "true");
+          await expect(busy).toHaveCount(0);
           await expect(main.getByRole("button", { name: t("auth.login.submitCode"), exact: true })).toBeEnabled();
           await expect(codeField).toHaveValue("ABCDE-FGHJK");
           await expect(codeField).toBeFocused();
@@ -73,7 +75,7 @@ for (const screen of accountSecurityScreens) for (const state of Object.keys(scr
         f.release();
         await expect(main.getByRole("alert")).toBeVisible();
         if (state === "pending") {
-          await expect(main.locator(".auth__card")).not.toHaveAttribute("aria-busy", "true");
+          await expect(busy).toHaveCount(0);
           await expect(main.getByRole("textbox", { name: t("auth.login.code"), exact: true })).toBeFocused();
         }
       }
