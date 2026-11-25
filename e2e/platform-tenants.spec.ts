@@ -47,7 +47,8 @@ test("tenant facts drive lifecycle, account counts and disabled deletion; first-
   const otp = await takeCode(vendor);
 
   await go(vendor, "/platform");
-  await expect(vendor.getByRole("complementary", { name })).toHaveCount(0);
+  // A fresh load chooses no tenant; Console's desktop list still shows its first row's record beside it.
+  expect(new URL(vendor.url()).searchParams.has("sel")).toBe(false);
   const row = vendor.getByRole("row").filter({ hasText: slug });
   await expect(row).toContainText("코드 발급");
   await expect(row).not.toContainText("운영 중");
