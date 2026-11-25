@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeAll, expect, test, vi } from "vitest";
+import { beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { loadCatalog, t } from "@console/i18n";
 import { useRunConsole } from "./use-run-console";
 
 const ENTITY = "entity-a";
-const state = vi.hoisted(() => ({ runEntity: "entity-a" }));
+const state = vi.hoisted(() => ({ runEntity: "entity-a", groupsPending: false }));
 vi.mock("@tanstack/react-query", () => ({
   useQuery: ({ queryKey }: { queryKey: readonly unknown[] }) => {
     const path = String(queryKey[0]);
     if (path === "/api/v1/payroll/pay-groups") {
+      if (state.groupsPending) return { isPending: true, error: null, data: undefined };
       return {
         isPending: false, error: null, data: {
           legal_entities: [{ id: "entity-a", name: "Entity A" }, { id: "entity-b", name: "Entity B" }],
@@ -25,6 +26,7 @@ vi.mock("@tanstack/react-query", () => ({
 }));
 
 beforeAll(() => loadCatalog("ko"));
+beforeEach(() => { state.groupsPending = false; });
 function Probe() {
   return <output>{useRunConsole("run-1").groupLabel}</output>;
 }
@@ -37,4 +39,10 @@ test("a run names its own pay group, matched by id within the run's legal entity
 test("a group id that only matches in another legal entity is never borrowed", () => {
   state.runEntity = "entity-c";
   expect(renderToStaticMarkup(<Probe />)).toBe(`<output>${t("payroll.rule.unknown")}</output>`);
+});
+
+test("while the pay groups are still read, the run names no group rather than calling it unknown", () => {
+  state.runEntity = ENTITY;
+  state.groupsPending = true;
+  expect(renderToStaticMarkup(<Probe />)).toBe("<output></output>");
 });

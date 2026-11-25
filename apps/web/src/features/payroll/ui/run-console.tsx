@@ -99,7 +99,7 @@ function RunConsoleContent({ id, baseline }: { id: string; baseline: () => React
       head={{
         title: t("payroll.title"),
         titleId: "payroll-run-title",
-        meta: detailData ? <bdi>{groupLabel}</bdi> : undefined,
+        meta: groupLabel ? <bdi>{groupLabel}</bdi> : undefined,
         filters: detailData ? (
           <RunConsoleFilters
             activePeriod={activePeriod}

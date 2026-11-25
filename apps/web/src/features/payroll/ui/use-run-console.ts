@@ -87,7 +87,8 @@ export function useRunConsole(id: string) {
   const entityLabel = activeEntity?.name ?? t("payroll.entityUnnamed");
   // A group id is unique only within its legal entity: never name another entity's group.
   const group = run && groups.data?.items.find(g => g.id === run.pay_group_id && g.legal_entity_id === run.legal_entity_id);
-  const groupLabel = group?.name ?? t("payroll.rule.unknown");
+  // Unknown only once both reads answered: a run that lands before the groups names nothing yet.
+  const groupLabel = run && groups.data ? group?.name ?? t("payroll.rule.unknown") : undefined;
 
   const lines = detailData?.lines ?? [];
   const rates = useQuery({
