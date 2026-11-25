@@ -1,19 +1,21 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
+import { basename } from "node:path";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { browserEngine, type Browser, type Page } from "../../lib/browser-test";
+import { experienceFiles } from "../../../../../scripts/check-contrast.mjs";
 import { parseCss } from "../../../../../scripts/check-ds-refs.mjs";
 import { mediaQueries } from "../breakpoints";
 
 let browser: Browser;
 let page: Page;
-const experiences = readdirSync("packages/tokens/experiences").filter(file => file.endsWith(".css")).sort();
+const experiences = experienceFiles("packages/tokens/tokens.css");
 const sheets: Record<string, string> = {
   "packages/tokens/tokens.css": readFileSync("packages/tokens/tokens.css", "utf8"),
-  ...Object.fromEntries(experiences.map(file => [`packages/tokens/experiences/${file}`, readFileSync(`packages/tokens/experiences/${file}`, "utf8")])),
+  ...Object.fromEntries(experiences.map(file => [file, readFileSync(file, "utf8")])),
   "apps/web/src/app.css": readFileSync("apps/web/src/app.css", "utf8").replace(/@import[^;]+;/g, ""),
 };
-const styles = ["baseline", ...experiences.map(file => file.slice(0, -4))];
+const styles = ["baseline", ...experiences.map(file => basename(file, ".css"))];
 
 /** The chevron stroke of a select off the frame and one on it, in every style and theme: "none" where there is none. */
 const chevrons = (files: Record<string, string>) => page.evaluate(({ css, ids }) => {
