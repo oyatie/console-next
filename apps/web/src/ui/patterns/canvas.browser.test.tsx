@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { t } from "@console/i18n";
 import { tg } from "@console/i18n/gallery";
-import { afterAll, beforeAll, expect, test } from "vitest";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { expectFitsViewport, expectPatternMatrixClean, openPatternFixture, setConsoleViewport } from "./pattern-browser-helpers";
-import type { MountedGallery } from "../../lib/gallery-browser-test";
+import { mountBrowserModule, type MountedGallery } from "../../lib/gallery-browser-test";
 
 let mounted: MountedGallery;
 
@@ -117,3 +117,56 @@ test("Canvas pattern passes WCAG 2.2 AA matrix, fits 390px and 320px, zooms OrgC
   await setConsoleViewport(page, 390, 844);
   await check390Geometry();
 }, 45_000);
+
+describe("the toolbar after a failed read", () => {
+  let strip: MountedGallery;
+
+  beforeAll(async () => {
+    strip = await mountBrowserModule({
+      slug: "canvas-toolbar-failed-read",
+      readySelector: '[data-pattern="canvas"]',
+      viewport: { width: 1440, height: 900 },
+      moduleCode: `
+        import { createElement as h, useState } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { createMemoryHistory, createRootRoute, createRouter, RouterProvider } from '@tanstack/react-router';
+        import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+        import { ApiError } from '@console/api';
+        import { loadCatalog } from '@console/i18n';
+        import { CanvasPattern } from '/apps/web/src/ui/patterns/canvas.tsx';
+        import '/apps/web/src/app.css';
+        await loadCatalog('ko');
+        document.documentElement.dataset.experience = 'console';
+        const reads = {
+          pending: { isPending: true, error: null, data: undefined, refetch() {} },
+          failed: { isPending: false, error: new ApiError(503, 'service_unavailable', '', [], 'canvas-fail'), data: undefined, refetch() {} },
+        };
+        function Screen() {
+          const [read, setRead] = useState('pending');
+          window.setRead = setRead;
+          return h(CanvasPattern, { q: reads[read], head: { title: 'Canvas' }, toolbar: h('input', { id: 'as-of', 'aria-label': 'As of' }), canvas: h('div', null, 'stage') });
+        }
+        const router = createRouter({ routeTree: createRootRoute({ component: Screen }), history: createMemoryHistory({ initialEntries: ['/'] }) });
+        createRoot(document.getElementById('root')).render(
+          h(QueryClientProvider, { client: new QueryClient() }, h(RouterProvider, { router })));
+      `,
+    });
+  }, 60_000);
+  afterAll(async () => {
+    await strip?.close();
+  });
+
+  // The strip holds the way out of a failed read (the as-of date); the read it starts must not take it, or its focus, away.
+  test("stays, with its focus, through the read it starts and that read's failure", async () => {
+    const { page } = strip;
+    const field = page.locator("#as-of");
+    await expect.poll(() => field.count()).toBe(0);
+    await page.evaluate(() => (window as unknown as { setRead: (r: string) => void }).setRead("failed"));
+    await field.focus();
+    await page.evaluate(() => (window as unknown as { setRead: (r: string) => void }).setRead("pending"));
+    await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+    expect(await field.count()).toBe(1);
+    await page.evaluate(() => (window as unknown as { setRead: (r: string) => void }).setRead("failed"));
+    await expect.poll(() => page.evaluate(() => document.activeElement?.id)).toBe("as-of");
+  });
+});

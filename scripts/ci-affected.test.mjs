@@ -107,11 +107,13 @@ function fixture(t) {
   const base = commit();
   const run = (event = "pull_request", from = base, head = git("rev-parse", "HEAD")) => {
     const output = path.join(root, ".git", "output");
+    const summary = path.join(root, ".git", "summary");
+    writeFileSync(summary, "");
     writeFileSync(output, "");
     const result = spawnSync(process.execPath, [script, event, from, head], {
-      cwd: root, env: { ...env, GITHUB_OUTPUT: output }, encoding: "utf8",
+      cwd: root, env: { ...env, GITHUB_OUTPUT: output, GITHUB_STEP_SUMMARY: summary }, encoding: "utf8",
     });
-    return { ...result, output: readFileSync(output, "utf8") };
+    return { ...result, output: readFileSync(output, "utf8"), summary: readFileSync(summary, "utf8") };
   };
   return { root, git, write, commit, base, run };
 }
@@ -127,9 +129,36 @@ test("PR and merge queue classify the candidate against the merge base, excludin
   for (const event of ["pull_request", "merge_group"]) {
     const result = f.run(event, base, head);
     assert.equal(result.status, 0, result.stderr);
-    assert.equal(result.output, "backend=false\nweb=true\ndocs=none\n");
+    assert.equal(result.output, "backend=false\nweb=true\ndocs=none\nlockfile=false\n");
   }
 });
+
+for (const event of ["pull_request", "merge_group"]) {
+  test(`${event} requests signature verification only for changes to the root npm lockfile`, t => {
+    const f = fixture(t);
+    f.write("package-lock.json");
+    f.write("apps/web/package.json");
+    f.write("package.json");
+    const base = f.commit();
+    f.write("nested/package-lock.json");
+    f.write("package.json", "manifest only");
+    const unchanged = f.run(event, base, f.commit());
+    assert.equal(unchanged.status, 0, unchanged.stderr);
+    assert.match(unchanged.output, /^lockfile=false$/m);
+    const reason = `Skipping npm signature verification: package-lock.json unchanged against ${base}`;
+    assert.ok(unchanged.stdout.split("\n").includes(reason));
+    assert.equal(unchanged.summary, reason + "\n");
+
+    f.write("apps/web/package.json", "workspace dependency bump");
+    f.write("package-lock.json", "updated dependency");
+    f.write("package.json", "root dependency bump");
+    const changed = f.run(event, base, f.commit());
+    assert.equal(changed.status, 0, changed.stderr);
+    assert.match(changed.output, /^lockfile=true$/m);
+    assert.doesNotMatch(changed.stdout, /Skipping npm signature verification/);
+    assert.equal(changed.summary, "");
+  });
+}
 
 for (const [before, after] of [
   ["backend/renamed.rs", "apps/web/renamed.ts"],
@@ -146,7 +175,7 @@ for (const [before, after] of [
     assert.match(f.git("diff", "--name-status", "--find-renames", base, head), /^R100/);
     const result = f.run("pull_request", base, head);
     assert.equal(result.status, 0, result.stderr);
-    assert.equal(result.output, "backend=true\nweb=true\ndocs=none\n");
+    assert.equal(result.output, "backend=true\nweb=true\ndocs=none\nlockfile=false\n");
   });
 }
 
@@ -158,13 +187,13 @@ test("deleted paths and filenames containing tabs and newlines stay in the diff"
   f.write("apps/web/tab\tand\nnewline.ts");
   const result = f.run("merge_group", base, f.commit());
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(result.output, "backend=true\nweb=true\ndocs=none\n");
+  assert.equal(result.output, "backend=true\nweb=true\ndocs=none\nlockfile=false\n");
 });
 
 test("push always affects both classes without needing a base revision", (t) => {
   const result = fixture(t).run("push", "", "");
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(result.output, "backend=true\nweb=true\ndocs=none\n");
+  assert.equal(result.output, "backend=true\nweb=true\ndocs=none\nlockfile=true\n");
 });
 
 test("unsupported events fail without publishing outputs", (t) => {
@@ -196,8 +225,8 @@ test("the PR output distinguishes docs alone from docs mixed with application ch
   const f = fixture(t);
   f.write("docs/design-system/components/button.md");
   f.commit();
-  assert.equal(f.run().output, "backend=false\nweb=true\ndocs=only\n");
+  assert.equal(f.run().output, "backend=false\nweb=true\ndocs=only\nlockfile=false\n");
   f.write("apps/web/page.tsx");
   f.commit();
-  assert.equal(f.run().output, "backend=false\nweb=true\ndocs=mixed\n");
+  assert.equal(f.run().output, "backend=false\nweb=true\ndocs=mixed\nlockfile=false\n");
 });

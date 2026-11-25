@@ -58,6 +58,8 @@
   --chrome-danger-bg: var(--danger-bg); --chrome-danger-bd: var(--danger-bd); --chrome-danger-solid: var(--danger-solid); --chrome-on-danger: var(--on-danger);
   --chrome-warn-bg: var(--warn-bg); --chrome-warn-bd: var(--warn-bd);
   --chrome-scheme: light;
+  /* A select's chevron on the frame in light; in dark every select takes the dark chevron (app.css). */
+  --chrome-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2355616d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   --scrim: rgba(20, 26, 33, 0.32);
 
   --space-half: 2px; --space-1: 4px; --space-1-5: 6px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px; --space-6: 32px;
