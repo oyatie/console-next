@@ -132,7 +132,7 @@ export const enRegister = {
   "register.run.numberAuto": "auto",
   "register.run.typePick": "Choose",
   "register.run.carried": "carried",
-  "register.run.save": "Save and next",
+  "register.run.save": "Save and next · Register",
   "register.run.undo": "Undo",
   "register.run.undoOf": "Undo {name}",
   "register.run.undone": "undone",

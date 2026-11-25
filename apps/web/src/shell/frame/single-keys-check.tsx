@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 import { t } from "@console/i18n";
-import { SINGLE_KEYS_KEY, singleKeysOn } from "../../lib/prefs";
+import { setSingleKeys } from "../../lib/prefs";
+import { useSingleKeys } from "../../lib/react/use-single-keys";
 import { Check } from "../../ui/button/button";
 import css from "./single-keys-check.module.css";
 
@@ -12,21 +13,12 @@ import css from "./single-keys-check.module.css";
  */
 export function SingleKeysCheck() {
   const hint = useId();
-  const [on, setOn] = useState(singleKeysOn);
+  const on = useSingleKeys();
   const [failed, setFailed] = useState(false);
-  useEffect(() => {
-    const read = () => setOn(singleKeysOn());
-    window.addEventListener("storage", read);
-    return () => window.removeEventListener("storage", read);
-  }, []);
   return <div className={css.box}>
     <Check switch checked={on} aria-describedby={hint} onChange={next => {
-      try {
-        if (next) localStorage.removeItem(SINGLE_KEYS_KEY);
-        else localStorage.setItem(SINGLE_KEYS_KEY, "off");
-      } catch { setFailed(true); return; }
+      try { setSingleKeys(next); } catch { setFailed(true); return; }
       setFailed(false);
-      setOn(next);
     }}>{t("account.singleKeys")}</Check>
     <p id={hint} className="muted">{t("account.singleKeys.device")}</p>
     {failed && <span role="alert">{t("account.singleKeys.failed")}</span>}

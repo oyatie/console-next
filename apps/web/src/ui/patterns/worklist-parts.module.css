@@ -8,6 +8,7 @@
 .moreBar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: var(--space-1) var(--cell-px);
   background: var(--surface-2);
   border-block-start: 1px solid var(--border-soft);

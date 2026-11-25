@@ -30,7 +30,7 @@ import { approvalDocumentQuery, type ApprovalDocument } from "../api";
 import { approvalQueueContextFromPages, approvalRouteSteps, decisionRefusalText, proposalDiffs } from "../present";
 import { ApprovalDecisionPanel } from "./approval-decision-panel";
 export { ApprovalDecisionPanel };
-import { useApprovalDecisionCommand } from "./use-approval-decision";
+import { useApprovalDecisionCommand, useDecisionOffered } from "./use-approval-decision";
 import { SourceViewerLink } from "./source-viewer-link";
 
 const route = getRouteApi("/app/approvals/$approvalId");
@@ -79,9 +79,8 @@ export function ApprovalViewerPage() {
   const queueCtx = useApprovalQueueContext(approvalId);
   const d = q.data;
   const receipt = d && receiptState?.id === d.id ? receiptState.text : undefined;
-  const showDecision = Boolean(
-    d && ((d.my_actions.kind === "approve" && d.my_actions.reject) || receipt || decision.command.isPending || decision.command.error),
-  );
+  // The panel stays through the command and its receipt, and to say so when a later read withdraws the decision.
+  const showDecision = useDecisionOffered(d);
   const diffs = d ? proposalDiffs(d) : [];
   const nonProposalBody = d ? d.body.filter(item => !item.key.startsWith("proposal-")) : [];
   const hasSummary = Boolean(d?.summary && d.summary !== d.title);

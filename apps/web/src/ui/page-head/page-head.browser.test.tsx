@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { afterAll, beforeAll, expect, test } from "vitest";
+import { tg } from "@console/i18n/gallery";
 import { mountGalleryEntry, scanWcag22Matrix, type MountedGallery } from "../../lib/gallery-browser-test";
 
 let mounted: MountedGallery;
@@ -40,4 +41,21 @@ test("PageHead command strip passes WCAG 2.2 AA axe checks and sizes title and b
       expect(metrics.minHeight).toBe("40px");
     }
   }
+});
+
+test("Console: a title wider than the strip wraps inside the head, and a title that fits keeps one line", async () => {
+  const { page } = mounted;
+  await page.setViewportSize({ width: 1024, height: 900 });
+  await page.evaluate(() => { document.documentElement.dataset.experience = "console"; });
+  const header = page.locator("[data-page-head-demo='command'] header");
+  const title = header.locator("h1, h2");
+  const lines = () => title.evaluate(el => {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    return new Set([...range.getClientRects()].map(rect => Math.round(rect.top))).size;
+  });
+  expect(await lines()).toBe(1);
+  await title.evaluate((el, text) => { el.textContent = text; }, tg("sample.longName").repeat(4));
+  expect(await lines()).toBeGreaterThan(1);
+  expect(await header.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
 });

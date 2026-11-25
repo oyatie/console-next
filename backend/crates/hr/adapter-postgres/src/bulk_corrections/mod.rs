@@ -29,6 +29,8 @@ use serde_json::{Map, Value, json};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::HrError;
+
 pub use console_platform_db::idempotency::IDEMPOTENCY_KEY_HEADER;
 
 /// The rows one bulk correction may touch.
@@ -221,4 +223,16 @@ pub struct BulkCorrectionJob {
     pub created_by: Uuid,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
+}
+
+/// A client error belongs to a row or field. A server error aborts the plan.
+fn row_refusal(field: Option<&str>, error: HrError) -> Result<BulkCorrectionRefusal, HrError> {
+    if !error.status.is_client_error() {
+        return Err(error);
+    }
+    Ok(BulkCorrectionRefusal {
+        field: field.map(str::to_owned),
+        code: error.code,
+        message: error.message,
+    })
 }

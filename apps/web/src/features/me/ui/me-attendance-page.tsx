@@ -9,6 +9,8 @@ import { PageReadGate } from "../../../reference/authz/ui/access-gate";
 import { Card } from "../../../ui/card/card";
 import { PageHead } from "../../../ui/page-head/page-head";
 import { RecordPattern } from "../../../ui/patterns/record";
+import { useEmployeeLink } from "../../../reference/person/ui/use-employee-link";
+import { SelfServiceUnlinked } from "../../../reference/person/ui/self-service-unlinked";
 import { PeriodStepper } from "../../../ui/period-stepper";
 import {
   myAttendanceExceptionsQuery,
@@ -31,12 +33,13 @@ export function MeAttendancePage() {
   const month = search.month ?? today.slice(0, 7);
   const week = isoMondayOf(search.week ?? today);
 
-  const week52 = useQuery(myAttendanceWeek52Query(week));
-  const records = useQuery(myAttendanceRecordsQuery());
-  const exceptions = useQuery(myAttendanceExceptionsQuery(month));
-  const schedule = useQuery({ ...myAttendanceScheduleQuery(month), retry: false });
+  const { me, linked } = useEmployeeLink();
+  const week52 = useQuery({ ...myAttendanceWeek52Query(week), enabled: linked });
+  const records = useQuery({ ...myAttendanceRecordsQuery(), enabled: linked });
+  const exceptions = useQuery({ ...myAttendanceExceptionsQuery(month), enabled: linked });
+  const schedule = useQuery({ ...myAttendanceScheduleQuery(month), enabled: linked, retry: false });
 
-  const primary = readGroup([week52, records, exceptions]);
+  const primary = readGroup(linked ? [week52, records, exceptions] : [me]);
   const go = (patch: Partial<MeAttendanceSearch>) => void navigate({ search: prev => ({ ...prev, ...patch }) });
 
   const filters = (
@@ -52,13 +55,16 @@ export function MeAttendancePage() {
     </div>
   );
 
+  const head = {
+    title: t("me.attendance.title"),
+    titleId: "me-attendance-title",
+    crumbs: [<Link key="account" to="/account">{t("shell.profile")}</Link>],
+  };
+  if (me.data && !linked) return <SelfServiceUnlinked q={me} head={head} pattern="record" floorplan="P-02" queryLayout="record" />;
+
   const baseline = () => (
     <main className="page" data-floorplan="P-02">
-      <PageHead
-        title={t("me.attendance.title")}
-        crumbs={[<Link key="account" to="/account">{t("shell.profile")}</Link>]}
-        filters={filters}
-      />
+      <PageHead title={head.title} crumbs={head.crumbs} filters={filters} />
       <PageReadGate q={primary}>
         <QueryState q={primary} layout="record">
           {() => (
@@ -81,12 +87,7 @@ export function MeAttendancePage() {
   return (
     <RecordPattern
       q={primary}
-      head={{
-        title: t("me.attendance.title"),
-        titleId: "me-attendance-title",
-        crumbs: [<Link key="account" to="/account" className={s.plainLink}>{t("shell.profile")}</Link>],
-        filters,
-      }}
+      head={{ ...head, filters }}
       strip={<MeAttendanceStrip week52={week52.data} schedule={schedule} exceptions={exceptions.data?.items} />}
       sections={
         <MeAttendanceSections

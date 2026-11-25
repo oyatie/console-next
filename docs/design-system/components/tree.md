@@ -31,7 +31,7 @@ of attendance and the destination picker of a closing workplace.
 
 | Part | Element | Holds |
 |---|---|---|
-| Root | `<div role="treegrid">`, with the global `tree` class and the module's class | `id`, `aria-label` from `label`, `data-density` from `density`, and `data-state="error"` when `error` is given. |
+| Root | `<div role="treegrid">`, with the global `tree` class and the module's class | `id`, `aria-label` from `label`, `data-density` from `density`, `data-state="error"` when `error` is given, and `data-form-value` with `selected`, or an empty string when none is chosen: see [Sheet](sheet.md#dirty-and-how-a-sheet-closes). |
 | Row | `<div role="row" class="react-aria-TreeItem">`, one for each visible item | `data-id` with the item's `id`. Rows are siblings in the document whatever their depth: React Aria flattens the tree and gives each row its level. |
 | Cell | `<div role="gridcell">` with `display: contents` | The row layout. Every row has exactly one. |
 | Row layout | `<div class="tree__row">` | The chevron or its placeholder, then the row content. |
@@ -52,7 +52,19 @@ The state is the caller's too. Selection is `selected` with `onSelect`, and expa
 `onExpandedChange`. Both are controlled and there is no uncontrolled form: a caller that does not store what
 `onExpandedChange` gives it has a tree that cannot open or close. `disabled` is a set of ids.
 
+`onExpandedChange` is called with a copy of `expanded` in which one `id` has changed: that of the row that was
+opened or closed. An `id` the caller listed for a row with no children stays in the set. `TreeView` does not
+pass such an `id` on to React Aria as expanded, with one exception that is under Keyboard, so a caller may list
+every `id` and ArrowLeft still works on a leaf.
+
 `onSelect` is called with the `id` of the chosen row, or with `undefined` when the selection is cleared.
+
+`required` is for a caller that has no use for an empty selection. With it the tree never clears a chosen row
+and never calls `onSelect` with `undefined`: Escape does not clear the row, and neither does a press or Enter on
+it. The tree can still start with no row chosen; `required` only keeps a chosen row from being cleared. Three of
+the five callers pass it: the target tree, wherever it is shown, the destination picker of a closing workplace
+and the scope sheet of a grant. The move dialog of the structure page and the scope tree of attendance do not,
+and there a chosen row can be cleared. What Escape does in each kind of tree is under Keyboard.
 
 `TreeView` has no search box, no checkboxes, no drag and drop and no lazy loading of children. Callers put a
 search field above it and filter `roots` and `childrenOf`. Every visible row is in the document: nothing is
@@ -127,33 +139,77 @@ imports, not checked in a browser.
 
 ## Keyboard
 
-`TreeView` has no key handler. The keys are React Aria's.
+`TreeView` has one key handler of its own, for ArrowLeft on a closed row under a disabled parent: see below the
+table. Every other key is React Aria's.
 
 | Key | What it does |
 |---|---|
 | Tab, Shift+Tab | The tree is one tab stop. Focus first enters on the selected row; with none selected, on the first row, or on the last when it comes from after the tree. Later it returns to the row that had focus last. Tab leaves the tree. |
 | ArrowDown, ArrowUp | Moves focus to the next or the previous visible row. It does not wrap and does not select. A disabled row is skipped. |
 | ArrowRight | On a closed row with children, opens it. |
-| ArrowLeft | On an open row, closes it. On a closed row, or on a leaf whose `id` is not in `expanded`, moves focus to its parent, when the parent is not disabled. The cases where it does not are below the table. |
+| ArrowLeft | On an open row, closes it. On a closed row, or on a row with no children, moves focus to its parent. Under a disabled parent, focus stays on the row. The details, and what a top-level row does, are below the table. |
 | Home, End | Moves focus to the first or the last row that is not disabled. |
 | PageUp, PageDown | By the source, moves focus to the first or the last row that is not disabled, as Home and End do. React Aria moves by a page of rows only in a collection that scrolls, and the tree element never scrolls. No test was found that presses them in a tree. |
 | Typing | Moves focus to a row whose `textValue` starts with what was typed. |
-| Enter, Space | Selects the focused row. On the row that is already selected, clears the selection. |
-| Escape | With a row selected, clears the selection, and the tree keeps the key press to itself. With none selected, the tree does nothing and the key goes on to whatever encloses it. |
+| Enter, Space | Selects the focused row. On the row that is already selected, clears the selection, unless the tree has `required`: then the row stays selected. |
+| Escape | Without `required`: with a row selected, clears the selection, and the tree keeps the key press to itself; with none selected, the tree does nothing and the key goes on to whatever encloses it. With `required`: the tree never takes the key, so it always goes on to whatever encloses the tree. A dialog or a sheet there answers by its own rules: see [Dialog](dialog.md) and [Sheet](sheet.md). |
 
-By the source, ArrowLeft does not reach a parent in three cases. None was driven in a browser, and no test was
-found that presses ArrowLeft in a tree.
+`TreeView` does not pass `expanded` on to React Aria as it is. React Aria moves ArrowLeft to the parent only
+from a row it does not hold as expanded, and on a row with no children that it does hold as expanded the key
+does not reach the parent. So a row with children is passed on as expanded when its `id` is in `expanded`, and
+a row with no children is not passed on, whatever the caller lists. ArrowLeft on such a row moves focus to its
+parent. Callers do list such rows: the target tree, the destination picker of a closing workplace and the move
+dialog of the structure page start with every `id` in `expanded`, leaves included. The scope sheet of a grant
+and the scope tree of attendance pass every shown `id` while a search is on, and the scope tree of attendance
+starts with the selected row's own `id` in it.
+
+ArrowLeft does not reach a parent in two cases.
 
 - **A top-level row** has no parent. In `arrow` mode focus goes to the last focusable element inside the row, if
   there is one: on a closed branch whose content holds no control, that is its chevron. In `tab` mode nothing
-  happens.
-- **A leaf whose `id` is in `expanded`** takes the same path as a top-level row: React Aria moves to the parent
-  only from a row whose `id` is not in `expanded`. A leaf with no control in its content keeps focus. The target
-  tree, the destination picker of a closing workplace and the move dialog of the structure page start with every
-  `id` in `expanded`, leaves included. The scope sheet of a grant and the scope tree of attendance pass every
-  shown `id` while a search is on, and the scope tree of attendance starts with the selected row's own `id` in
-  it.
-- **A disabled parent** cannot take focus. This page did not work out where focus is left.
+  happens. This is read from the source: the browser tests press ArrowLeft only on rows below the top level.
+- **A row under a disabled parent.** A disabled row cannot take focus, and by the source React Aria's move to
+  one ends with no row focused. `TreeView` keeps focus on the row instead, in two ways:
+  - a row with no children under a disabled parent is passed on to React Aria as expanded, the one exception
+    to the rule above. It then takes the same path as a top-level row: with no control in its content, it keeps
+    focus. React Aria sets `aria-expanded` and `data-expanded` only on a row with children, so the row gets
+    neither;
+  - a closed row with children cannot be treated that way, because a row with children that is passed on as
+    expanded is open. `TreeView` stops its ArrowLeft in a capture handler on the tree grid, before the row
+    hears the key. Nothing happens: focus stays on the row and does not go to its chevron. An open row with
+    children closes first, as anywhere, and the next ArrowLeft is the one that is stopped.
+
+  Both were driven in a browser, in `arrow` mode and with rows whose content holds no control. What `tab` mode
+  does, and what a row with no children does when its content holds a control, is read from the source.
+
+`required` changes two keys. A caller that ignores `onSelect(undefined)` keeps its row selected, and a tree
+without `required` then takes every Escape pressed inside it, so Escape from the chosen row never closes a
+dialog or a sheet around the tree. `required` is for such a caller. With it:
+
+- **Escape** is never the tree's. From a chosen row it closes a dismissable dialog around the tree, and the row
+  stays chosen. In a sheet it does what Escape does anywhere else in that sheet: a clean sheet closes, and a
+  sheet that holds unsaved input shows its unsaved line on the first press and closes on the second. A pick is
+  unsaved input while the tree is shown: the tree carries the chosen row's id as `data-form-value` (empty when none
+  is chosen), so a sheet that works out its own dirty state warns before Escape throws the pick away. A tree that
+  closes on a pick takes its value with it. The destination trees of the dissolve sheet close on a pick, so its
+  members block keeps the plan, where everyone goes and each person sent elsewhere, as `data-form-value` on its
+  summary line: a destination or a person sent elsewhere there is unsaved input after its tree has closed. A
+  person whose destination is where everyone goes is left out of that value, since the plan is the same with or
+  without them. See [Sheet](sheet.md#dirty-and-how-a-sheet-closes). The closed tree takes the focused row with it
+  too, and "Same as everyone" goes away once pressed, so after either the members block puts focus back on the
+  button that opened the tree. It does so on the next frame: moved while the key that picked is still being
+  handled, focus would carry that Enter to the button and open the tree again. The tests check this for a pick
+  by Enter and for "Same as everyone" pressed by Enter or by the pointer.
+- **Enter or a press** on the chosen row leaves it chosen. By the source the same holds for Space; the tests
+  use Enter and the pointer only.
+
+The callers that pass `required` are named under Anatomy. The target tree passes it wherever it is shown: in
+the sheets where a department is merged or dissolved, on the bulk move page itself, where there is no overlay
+to close, and in the dialog of that page that adds departments.
+
+A tree without `required` keeps the Escape of the table: the first press clears the selection and the next one
+goes on. The move dialog of the structure page stores the cleared selection, so its second Escape closes the
+dialog. The scope tree of attendance ignores it: see the known gaps.
 
 A pointer press on a row does what Enter does. A press on the chevron opens or closes the item and does not
 select it.
@@ -170,10 +226,13 @@ focusable element inside the row, so by the source ArrowRight on an open row mov
 driven in a browser for this page.
 
 `apps/web/src/ui/timeline-lanes/collections.browser.test.tsx` presses ArrowDown, ArrowUp, End, Home and one
-letter in a browser and checks where focus lands. The component's own tests press no other key.
+letter in a browser and checks where focus lands. `apps/web/src/ui/tree/tree.browser.test.tsx` presses
+ArrowLeft, ArrowRight, ArrowDown, Enter, Escape, Tab and Shift+Tab, and types two letters. The component's own
+tests press no other key: not Space, PageUp or PageDown. Every one of these presses is in Chromium and in no
+other browser.
 
-The component checks no `isComposing` flag and no key code 229, and listens for no composition event. What React
-Aria does with a key the Korean input method owns differs by key:
+The component checks no `isComposing` flag and no key code 229, in its ArrowLeft handler or anywhere else, and
+listens for no composition event. What React Aria does with a key the Korean input method owns differs by key:
 
 - ArrowUp, ArrowDown, Home, End, PageUp, PageDown, Escape and Tab go through a handler that skips a key event
   whose `isComposing` flag is set.
@@ -182,7 +241,10 @@ Aria does with a key the Korean input method owns differs by key:
   or does not start with a Latin letter, and compares what was typed with the start of each row's `textValue`.
 
 A row is not a text field. No test in this repository presses a key in a tree with the Korean input method
-active, and this page did not work out which key events a browser sends to a row in that case.
+active, and this page did not work out which key events a browser sends to a row in that case. The nearest
+proof is in `apps/web/src/ui/tree/tree.browser.test.tsx`: it sends a row a made-up Escape keydown with
+`isComposing` set and key code 229, in a tree with `required` inside a dialog, and the dialog stays open. That
+says nothing about a real input method, and nothing about a tree that clears its selection on Escape.
 
 ## Accessibility contract
 
@@ -211,30 +273,27 @@ active, and this page did not work out which key events a browser sends to a row
 Known gaps:
 
 - A disabled row cannot take focus: the arrow keys skip it and Tab does not land on it. Its reason is in the row
-  and in its name, but a keyboard user moving through the tree is never taken to it.
+  and in its name, but a keyboard user moving through the tree is never taken to it. ArrowLeft from a row under
+  it stays on that row: see Keyboard.
 - A disabled row has no look of its own and keeps the pointer cursor.
 - A user can neither open nor close a disabled branch. The caller still can, through `expanded`, and must open it
   if its children are to be seen.
-- ArrowLeft on a leaf does not go to its parent while the caller keeps the leaf's `id` in `expanded`: see
-  Keyboard.
 - The tree grid is not marked busy while loading: see States.
 - An empty, loading or failed tree shows no focus look: see States.
-- While a row is selected, the tree takes Escape for itself: it clears the selection, stops the event and
-  prevents its default. `Dialog` closes on an Escape that reaches React Aria's overlay, so by the source, with
-  focus in a tree inside a dialog, the first Escape clears the selection and does not close the dialog. `Sheet`
-  closes a clean sheet through the same overlay, so by the source the same holds in a sheet. A caller that
-  ignores `onSelect(undefined)` keeps the row selected, and the tree then takes every Escape pressed inside it.
-  Four of the five callers ignore it; only the move dialog of the structure page stores it. Of the four:
-  - the destination picker of a closing workplace is shown in a dialog. A pick closes that dialog, so a row is
-    selected there only when it is opened with a destination already chosen;
-  - the target tree is shown in a sheet where a department is merged or dissolved, and on the bulk move page
-    itself, where there is no overlay to close. The bulk move page also shows it in a dialog, to add
-    departments. That dialog is not affected: its value is always `null` and a pick closes it, so no row is
-    ever selected there and Escape reaches the dialog;
-  - the scope tree of a grant is shown in a sheet;
-  - the scope tree of attendance is on a page, with no overlay to close.
+- A tree without `required` takes Escape for itself while a row is selected: it clears the selection, stops the
+  event and prevents its default. `Dialog` closes on an Escape that reaches React Aria's overlay, so with focus
+  in such a tree inside a dialog, the first Escape clears the selection and does not close the dialog. A caller
+  that ignores `onSelect(undefined)` keeps the row selected, and the tree then takes every Escape pressed inside
+  it. Four of the five callers ignore it. Three of them pass `required`, which ends this for them: see
+  Keyboard. Two callers render the tree without `required`:
+  - the move dialog of the structure page stores the cleared selection, so its first Escape clears the pick
+    and its second closes the dialog. `apps/web/src/ui/tree/tree.browser.test.tsx` drives a fixture of that
+    shape, a tree without `required` in a dialog, and not the move dialog itself;
+  - the scope tree of attendance ignores `onSelect(undefined)`, so its tree takes every Escape pressed inside
+    it while a row is selected. It is on a page, with no overlay to close. No test was found that presses
+    Escape in it.
 
-  No test in this repository covers this.
+  No caller shows a tree without `required` in a sheet, and none of the tests listed below renders one there.
 - The error text is `--danger-solid` at 13 px, which needs 4.5:1. The tree has no fill, so the pair depends on
   the surface behind it. Computed from the token values, in the light theme it is 4.83:1 on `--surface`, 4.38:1
   on `--canvas` and 4.19:1 on `--muted`, so it passes on `--surface` only. In the dark theme it is at least
@@ -259,19 +318,31 @@ The WCAG 2.2 criteria that apply:
 
 The gallery entry is `apps/web/src/ui/tree/tree.gallery.tsx`. It shows one tree with three levels open, a closed
 branch, a long name and a selected leaf, and one tree with no roots and no `empty` text. It does not show a
-disabled row, `loading`, `error`, an `empty` text, `density` or `keyboardNavigationBehavior`.
+disabled row, `loading`, `error`, an `empty` text, `density`, `required` or `keyboardNavigationBehavior`.
 
 Tests:
 
 | Test | What it checks |
 |---|---|
 | `apps/web/src/ui/tree/tree.test.tsx` | The static markup: the rows of open branches; the `status` block while loading; an empty tree that keeps its `aria-label`; the `alert` block with `data-state="error"`. |
-| `apps/web/src/ui/timeline-lanes/collections.browser.test.tsx` | In a browser: the keys named under Keyboard; an empty tree, found by its name, that shows its `empty` text; a failed tree that exposes an `alert`. |
+| `apps/web/src/ui/timeline-lanes/collections.browser.test.tsx` | In a browser: the keys named for it under Keyboard; an empty tree, found by its name, that shows its `empty` text; a failed tree that exposes an `alert`. |
+| `apps/web/src/ui/tree/tree.browser.test.tsx` | In a browser, a tree inside a `Dialog`, built by a fixture. With `required`: Escape from a chosen row closes the dialog and the row stays chosen, whether it was chosen from the start, by the pointer or by Enter; a press or Enter on the chosen row leaves it chosen. Without `required`: the first Escape clears the selection and the second closes the dialog. ArrowLeft on a row with no children moves focus to its parent though its `id` is in `expanded`, and an open row closes first. ArrowLeft stays on a row under a disabled parent, with no children or closed, and ArrowDown, Tab, Shift+Tab, ArrowRight and type-ahead still work afterwards. Closing and opening one row changes only its `id` in the caller's set. A made-up Escape flagged as composing leaves the dialog open. |
+| `apps/web/src/features/org/ui/target-tree.browser.test.tsx` | In a browser, the target tree in a `Sheet` and in a `Dialog`, built by a fixture and not on the screens that show it. With nothing chosen, Escape from a row or from Cancel closes the sheet. A pick alone is unsaved input: Escape from the chosen row shows the unsaved line first, then closes. In a sheet that is told it is dirty, the same holds from a chosen row with no children, from a chosen open row, and from an expanded disclosure button. In the dialog, where no row is ever chosen, Escape from a row closes it, and so does a pick. ArrowLeft moves to the parent department, and stays on a department, with no children or closed, under a workplace that cannot be chosen. |
+| `apps/web/src/features/entity/ui/close-target-picker.browser.test.tsx` | In a browser, the destination picker itself. Opened again with a destination chosen, Escape from that row closes the dialog, focus returns to the button and the destination is kept. ArrowLeft moves from a department to its parent department or to its workplace. On a closed workplace, whose parent is the disabled top row, ArrowLeft stays, and ArrowRight opens it again. |
+| `apps/web/src/ui/side-panel/side-panel.browser.test.tsx` | In a browser, a tree with `required` inside a `SidePanel`, built by a fixture: Escape from an open row closes the panel. |
+| `apps/web/src/ui/pane-grid/pane-grid-focus.browser.test.tsx` | In a browser, a tree with `required` in the record pane of a `PaneGrid`, built by a fixture: Escape from an open row closes the pane. |
+| `apps/web/src/features/access/ui/scope-picker.browser.test.tsx` | In a browser, the scope sheet of a grant itself, with the structure read answered by the test: after a row is picked by the pointer or by Enter, the first Escape shows the unsaved line and the second closes the sheet; with nothing picked, Escape closes it at once. |
+| `apps/web/src/features/org/ui/dept-dissolve-sheet.browser.test.tsx` | In a browser, the dissolve sheet itself, with its reads answered by the test. Escape is pressed where the gesture before it left focus. Untouched, the sheet closes at once. A new destination for everyone, or one person sent elsewhere, shows the unsaved line on the first Escape and closes on the second, and a person sent elsewhere still counts while another person's tree is open. A person put back with everyone, or everyone sent back to where one person was sent, leaves nothing unsaved. A destination picked by Enter, for everyone or for one person, moves focus to the button that opened its tree while Enter is still held, and the tree stays closed once it is let go. "Same as everyone", pressed by the pointer or by Enter, leaves focus on that person's "Send … elsewhere" button; after Enter no tree is open. |
 
-Those two are the component's own tests. They render no disabled row and press neither ArrowLeft, ArrowRight,
-Enter, Space nor Escape. Two unit tests of views, `features/org/ui/target-tree.test.tsx` and
-`features/attendance/ui/scope-tree.test.tsx`, replace `TreeView` with a stub. Journey specs reach a tree by its
-`treegrid` role, for example `e2e/structure-dept.spec.ts` and `e2e/access-roles.spec.ts`.
+The first three are the component's own tests. Every browser test in the table launches Chromium and no other
+browser, except the pane grid's, which launches the engine the run selects in `e2e/browser.ts`, Chromium by default. Between them they press neither Space, PageUp nor PageDown, press ArrowLeft only on rows below the top
+level, render no tree in `tab` mode and no row with a control in its content, and press Escape in a tree without
+`required` only inside a dialog. Escape from the target tree is driven in the fixture's sheet and dialog, not in
+the real sheets that merge or dissolve a department or on the bulk move page. The dissolve sheet's test presses
+Escape outside its trees. Two unit tests of views,
+`features/org/ui/target-tree.test.tsx` and `features/attendance/ui/scope-tree.test.tsx`, replace `TreeView`
+with a stub. Journey specs reach a tree by its `treegrid` role, for example `e2e/structure-dept.spec.ts` and
+`e2e/access-roles.spec.ts`.
 
 No workflow runs the accessibility scan of the gallery. `e2e/visual.spec.ts` runs axe with the WCAG 2.2 A and AA
 rules over the whole gallery, in the light and the dark theme, when it is run against a development stack. It
@@ -332,6 +403,7 @@ query. The global tree rules have one media query, `prefers-reduced-motion`, whi
 | `id` | no | `string` |  |  |
 | `keyboardNavigationBehavior` | no | `"arrow" \| "tab"` |  | Let Tab reach interactive content within a row. |
 | `loading` | no | `boolean` |  |  |
+| `required` | no | `boolean` |  | For a caller that drops an empty selection: a chosen row cannot be cleared, so Esc is left to what holds the tree (a dialog or a sheet closes). |
 | `selected` | no | `string` |  |  |
 
 <!-- /ds:props -->

@@ -47,10 +47,11 @@
   flex: none;
   display: inline-grid;
   place-items: center;
-  min-width: calc(var(--space-5) - 2px);
-  height: calc(var(--space-5) - 2px);
+  /* A key is a pointer target: at least the style's least target, 44px on a phone. Its edge is a control's. */
+  min-width: var(--target);
+  height: var(--target);
   padding: 0 var(--space-1);
-  border: 1px solid var(--border);
+  border: 1px solid var(--control-border);
   border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--ink);
@@ -125,7 +126,6 @@
   .letter {
     min-width: 0;
     width: 100%;
-    height: var(--space-5);
     padding: 0;
   }
 

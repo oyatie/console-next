@@ -3,6 +3,7 @@ import { readFileSync, realpathSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { expect as element } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { createServer, preprocessCSS, type ViteDevServer } from "vite";
 import { browserTestOptimizeDeps, chromium, type Browser, type Page } from "../../lib/browser-test";
 import { breakpoints } from "../../ui/breakpoints";
@@ -11,6 +12,7 @@ let server: ViteDevServer;
 let browser: Browser;
 let page: Page;
 beforeAll(async () => {
+  await loadCatalog("ko");
   server = await createServer({
     configFile: false, cacheDir: ".cache/top-bar-test", logLevel: "error",
     optimizeDeps: browserTestOptimizeDeps, resolve: { dedupe: ["react", "react-dom"] },
@@ -136,17 +138,17 @@ test.each(["dark", "light"])("theme radio selects %s on the document", async the
 test.each([1440, 390])("needs-me badge shows turn count, opens task panel with /inbox link, and closes on Escape at %spx", async width => {
   await page.setViewportSize({ width, height: 900 });
   await open();
-  const trigger = page.getByRole("button", { name: "업무함 3", exact: true });
+  const trigger = page.getByRole("button", { name: t("shell.needsMe.count", { count: 3 }), exact: true });
   await element(trigger).toBeVisible();
   await element(trigger.locator("[data-count]")).toHaveText("3");
-  await element(trigger).toHaveAccessibleDescription("업무함 3건");
-  await element(trigger.getByText("업무함", { exact: true })).toBeVisible({ visible: width > 640 });
+  await element(trigger).toHaveAccessibleDescription(t("shell.needsMe.countDescription", { count: 3 }));
+  await element(trigger.getByText(t("home.inbox.title"), { exact: true })).toBeVisible({ visible: width > 640 });
   expect(await page.evaluate(() => document.scrollingElement!.scrollWidth <= innerWidth)).toBe(true);
 
   await trigger.click();
   const panel = page.getByRole("dialog", { name: "대기 업무", exact: true });
   await element(panel).toBeVisible();
-  await element(panel.getByRole("link", { name: "업무함에서 모두 보기", exact: true })).toHaveAttribute("href", "/inbox");
+  await element(panel.getByRole("link", { name: t("home.inbox.viewInbox"), exact: true })).toHaveAttribute("href", "/inbox");
   await element(panel.getByRole("link", { name: /인사팀 신설 승인/ })).toHaveAttribute("href", "/org/changes/00000000-0000-4000-8000-000000000001");
   await page.keyboard.press("Escape");
   await element(panel).toHaveCount(0);
@@ -160,7 +162,7 @@ test("needs-me badge omits count pill when 0 items need action and renders empty
     body: JSON.stringify({ as_of: "2026-11-04T09:00:00Z", has_work: false, available_filters: [], counts: { turn: { total: 0, total_is_exact: true } }, unavailable: [], next_cursor: null, items: [] }),
   }));
   await open();
-  const trigger = page.getByRole("button", { name: "업무함", exact: true });
+  const trigger = page.getByRole("button", { name: t("home.inbox.title"), exact: true });
   await element(trigger).toBeVisible();
   await element(trigger.locator("[data-count]")).toHaveCount(0);
   await trigger.click();
@@ -173,7 +175,7 @@ test.each([500, 403])("needs-me keeps an unknown badge after a %s read, includin
   await element(page.locator("#test-needs-me [data-count]")).toHaveText("3");
   await page.route("**/api/v1/me/action-inbox**", route => route.fulfill({ status, json: { error: { code: status === 403 ? "forbidden" : "unavailable", message: "" } } }));
   await page.evaluate(() => window.dispatchEvent(new Event("refetch-inbox")));
-  const trigger = page.getByRole("button", { name: "업무함 · 확인 불가", exact: true });
+  const trigger = page.getByRole("button", { name: t("shell.needsMe.unknown"), exact: true });
   await element(trigger).toBeVisible();
   await element(trigger.locator("[data-count]")).toHaveCount(0);
   await trigger.click();

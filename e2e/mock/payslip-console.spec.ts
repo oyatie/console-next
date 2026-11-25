@@ -21,6 +21,9 @@ import {
 import { mockScreen } from "./screen";
 
 test.beforeAll(() => loadCatalog("ko"));
+const shellBottomBar = (page: Page, width: number) => width === 390
+  ? page.getByRole("navigation", { name: t("shell.nav"), exact: true })
+  : page.getByRole("contentinfo", { name: t("shell.status.label"), exact: true });
 
 async function setExperience(page: Page, experience: "console" | "baseline", theme: "light" | "dark" = "light") {
   await page.addInitScript(
@@ -166,15 +169,19 @@ for (const width of [1440, 390] as const) {
         await expect(stmt.getByRole("button", { name: t("payslip.action.savePdf"), exact: true })).toBeVisible();
         await expect(stmt.getByRole("button", { name: t("payslip.action.past"), exact: true })).toBeVisible();
 
+        const bottomBar = shellBottomBar(page, width);
+        await expect(bottomBar).toBeInViewport({ ratio: 1 });
+        const barBox = await bottomBar.boundingBox();
+        expect(barBox).not.toBeNull();
+        expect(Math.abs(barBox!.y + barBox!.height - height)).toBeLessThanOrEqual(1);
+
         if (width === 390) {
           const topBar = page.getByRole("banner");
           await expect(topBar).toContainText(t("shell.title.payslip"));
           await expect(topBar).toContainText(`${hero.employee_name} · ${hero.employee_number}`);
           await expect(topBar.locator("button")).toHaveCount(0);
 
-          const bottomNav = page.getByRole("navigation", { name: t("shell.nav"), exact: true });
-          await expect(bottomNav).toBeVisible();
-          const tabs = bottomNav.locator("a");
+          const tabs = bottomBar.locator("a");
           await expect(tabs).toHaveCount(5);
           await expect(tabs.nth(0)).toContainText(t("shell.link.home"));
           await expect(tabs.nth(1)).toContainText(t("shell.link.leave"));
@@ -182,16 +189,6 @@ for (const width of [1440, 390] as const) {
           await expect(tabs.nth(2)).toHaveAttribute("aria-current", "page");
           await expect(tabs.nth(3)).toContainText(t("shell.link.certificates"));
           await expect(tabs.nth(4)).toContainText(t("shell.link.profile"));
-
-          const navBox = await bottomNav.boundingBox();
-          expect(navBox).not.toBeNull();
-          expect(Math.round(navBox!.y + navBox!.height)).toBeGreaterThanOrEqual(843);
-        } else {
-          const statusBar = page.getByRole("contentinfo", { name: t("shell.status.label"), exact: true });
-          await expect(statusBar).toBeVisible();
-          const statusBox = await statusBar.boundingBox();
-          expect(statusBox).not.toBeNull();
-          expect(Math.round(statusBox!.y + statusBox!.height)).toBeGreaterThanOrEqual(899);
         }
 
         await page.evaluate(() => document.fonts.ready);
@@ -481,10 +478,7 @@ for (const width of [390, 1440] as const) {
       await expect(hero.locator('[data-bone="title"]')).toBeVisible();
       await expect(stmt.locator('[data-read-layout="record"]')).toHaveCount(0);
 
-      const bottomBoundary =
-        width === 390
-          ? await page.getByRole("navigation", { name: t("shell.nav"), exact: true }).boundingBox()
-          : await page.getByRole("contentinfo", { name: t("shell.status.label"), exact: true }).boundingBox();
+      const bottomBoundary = await shellBottomBar(page, width).boundingBox();
       expect(bottomBoundary).not.toBeNull();
 
       const loadingHeroBox = await hero.boundingBox();

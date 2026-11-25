@@ -362,7 +362,7 @@ async fn submitted_inbox_page_excludes_submitter_non_submitted_and_other_org(poo
     let for_submitter =
         console_platform_request_context::scope_org(OrgId::from_uuid(org_a), async {
             store
-                .list_submitted_action_inbox_page(submitter, as_of, None, 50)
+                .list_submitted_action_inbox_page(submitter, as_of, None, 50, &[])
                 .await
         })
         .await
@@ -373,7 +373,7 @@ async fn submitted_inbox_page_excludes_submitter_non_submitted_and_other_org(poo
     let for_approver =
         console_platform_request_context::scope_org(OrgId::from_uuid(org_a), async {
             store
-                .list_submitted_action_inbox_page(approver, as_of, None, 50)
+                .list_submitted_action_inbox_page(approver, as_of, None, 50, &[])
                 .await
         })
         .await
@@ -386,7 +386,7 @@ async fn submitted_inbox_page_excludes_submitter_non_submitted_and_other_org(poo
     let other_org_for_approver =
         console_platform_request_context::scope_org(OrgId::from_uuid(org_b), async {
             store
-                .list_submitted_action_inbox_page(approver, as_of, None, 50)
+                .list_submitted_action_inbox_page(approver, as_of, None, 50, &[])
                 .await
         })
         .await
@@ -398,7 +398,7 @@ async fn submitted_inbox_page_excludes_submitter_non_submitted_and_other_org(poo
     let other_org_for_submitter =
         console_platform_request_context::scope_org(OrgId::from_uuid(org_b), async {
             store
-                .list_submitted_action_inbox_page(outsider, as_of, None, 50)
+                .list_submitted_action_inbox_page(outsider, as_of, None, 50, &[])
                 .await
         })
         .await

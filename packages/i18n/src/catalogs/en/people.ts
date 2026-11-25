@@ -15,7 +15,7 @@ export const enPeople = {
   "people.label.accountCreated": "Account created {at}",
   "people.label.record": "Person record for {name}",
   "people.label.grant": "Grant access to {name}",
-  "people.title": "HR",
+  "people.title": "People",
   "people.tabs": "View",
   "people.tab.employees": "Employees",
   "people.tab.accounts": "Accounts",

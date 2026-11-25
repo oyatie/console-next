@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
 # Long PostgreSQL tests run on dev, nightly and gate-changing pull requests.
+# Run the full suite on a branch with `gh workflow run db-tests.yml --ref <branch>`. The result proves only the selected ref at the tested commit.
 # merge_group stays disabled until the database suite provides reliable proof before merge.
 name: Database tests
 on:
@@ -13,10 +14,14 @@ on:
     branches: [dev]
   schedule:
     - cron: '47 17 * * *'
+  workflow_dispatch:
 permissions: {}
 concurrency:
-  # A newer run replaces a pending one in its group, so the nightly has its own group and pushes cannot cancel it.
-  group: db-tests-${{ github.event_name == 'pull_request' && github.ref || github.event_name == 'schedule' && 'nightly' || 'trunk' }}
+  # Separate queues keep dispatches, pushes and nightly runs from replacing each other's pending proof.
+  group: >-
+    db-tests-${{ github.event_name == 'pull_request' && github.ref ||
+    github.event_name == 'schedule' && 'nightly' ||
+    github.event_name == 'workflow_dispatch' && format('dispatch-{0}', github.ref) || 'trunk' }}
   cancel-in-progress: false
 
 jobs:

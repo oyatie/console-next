@@ -33,7 +33,7 @@ export function RenewTable({ people, choices, onChoice, refused, months, tried, 
     return c === "leave" ? t("renew.next.leave") : "—";
   };
   return (
-    <section className={s.pane} aria-label={t("renew.crumb")}>
+    <section className={s.pane}>
       {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Horizontal scroll region needs keyboard access. */}
       <div className={s.tableWrap} tabIndex={0} role="region" aria-label={t("renew.crumb")}>
       <Table

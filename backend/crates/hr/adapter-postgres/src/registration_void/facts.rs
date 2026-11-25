@@ -62,6 +62,20 @@ pub(super) async fn lock(
     org: Uuid,
     employee_id: Uuid,
 ) -> Result<Locked, HrError> {
+    let not_found = || {
+        HrError::from_kernel(KernelError::not_found(
+            "employee was not found in this organization",
+        ))
+    };
+    // The lock is its own statement so that the read below takes its snapshot
+    // after any wait: a payroll roster holding the person commits its line first
+    // and is seen, where one statement would keep its pre-wait snapshot.
+    sqlx::query("SELECT 1 FROM employees WHERE org_id = $1 AND id = $2 FOR UPDATE")
+        .bind(org)
+        .bind(employee_id)
+        .fetch_optional(tx.as_mut())
+        .await?
+        .ok_or_else(not_found)?;
     sqlx::query_as(
         "SELECT e.employment_status AS status, \
                (e.created_at AT TIME ZONE 'Asia/Seoul')::date AS registered_on, \
@@ -75,17 +89,13 @@ pub(super) async fn lock(
                            WHERE a.org_id = e.org_id AND a.employee_id = e.id) \
                OR EXISTS (SELECT 1 FROM payroll_draft_lines p \
                            WHERE p.org_id = e.org_id AND p.employee_id = e.id) AS has_work_records \
-             FROM employees e WHERE e.org_id = $1 AND e.id = $2 FOR UPDATE OF e",
+             FROM employees e WHERE e.org_id = $1 AND e.id = $2",
     )
     .bind(org)
     .bind(employee_id)
     .fetch_optional(tx.as_mut())
     .await?
-    .ok_or_else(|| {
-        HrError::from_kernel(KernelError::not_found(
-            "employee was not found in this organization",
-        ))
-    })
+    .ok_or_else(not_found)
 }
 
 /// 409 when the record changed since the caller read it.

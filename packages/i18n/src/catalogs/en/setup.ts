@@ -158,7 +158,7 @@ export const enSetup = {
   "setup.receipt.recorded": "At the start of operations",
   "setup.receipt.unrecorded": "Counts at the start of operations were not recorded.",
   "setup.receipt.unsupported": "The counts in this record use a format that cannot be displayed yet.",
-  "setup.error.go_live_receipt_not_found": "No stored start record is available. Check the operating status on Home.",
+  "setup.error.go_live_receipt_not_found": "No stored start record is available. Check the operating status in To-dos.",
   "setup.receipt.liveDetails": "Current configuration",
   "setup.receipt.governed": "What changed after operations started",
   "setup.receipt.roles": "Currently effective roles",

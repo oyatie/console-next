@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { soloTenant } from "./chaos";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 // RETRY rows and route inventory in units/live-maturity-gap-89cf5ee.md. Each navigation gets a fresh QueryClient;
 // an in-app navigation alone could hide the defect behind a successful cached checklist.
@@ -27,7 +30,7 @@ for (const [index, path] of routes.entries()) {
     await page.waitForTimeout(15_000);
     expect(counts.size, "the failure fixture exercised data reads").toBeGreaterThan(0);
     for (const [key, count] of counts) expect(count, `${path}: ${key}`).toBeLessThanOrEqual(3);
-    const failed = (path === "/" ? page.getByRole("region", { name: "업무함", exact: true }) : page.getByRole("main")).getByRole("alert").filter({ hasText: reference }).first();
+    const failed = (path === "/" ? page.getByRole("region", { name: t("home.inbox.title"), exact: true }) : page.getByRole("main")).getByRole("alert").filter({ hasText: reference }).first();
     await expect(failed).toContainText(reference);
     await expect(failed).toContainText("불러오지 못했습니다");
     await expect(failed.getByRole("button", { name: "다시 불러오기", exact: true })).toBeVisible();

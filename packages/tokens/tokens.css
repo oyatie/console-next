@@ -8,6 +8,8 @@
   --signal: #f6b521; --signal-deep: #e2a30d; --teal: #0f766e;
   --danger-bg: #fef2f2; --danger-bd: #fca5a5; --danger-tx: #b91c1c; --danger-solid: #dc2626;
   --warn-bg: #fffbeb; --warn-bd: #fcd34d; --warn-tx: #92400e; --warn-solid: #b45309;
+  /* The edge of a warn tag or mark; a callout or banner keeps --warn-bd. */
+  --warn-mark: #fcd34d;
   --ok-bg: #ecfdf5; --ok-bd: #6ee7b7; --ok-tx: #065f46; --ok-solid: #059669;
   --info-bg: #eff6ff; --info-bd: #93c5fd; --info-tx: #1e40af;
   --accent-bg: #fffbeb; --accent-bd: #f6b521; --accent-tx: #78350f;
@@ -32,12 +34,16 @@
   --control-text: var(--text-body);
   --fw-body: 400; --fw-medium: 600; --fw-semibold: 600; --fw-strong: 700;
   --lh-base: 1.5; --lh-tight: 1.3; --tracking-label: 0.4px;
+  /* A signal tag's weight (warn, danger, info), the face of codes and masked values, and the masked tracking. */
+  --fw-tag-signal: var(--fw-medium); --font-code: var(--font-mono); --tracking-masked: 0.5px;
   --link-decoration: none;
 
   /* H1+ state colour grammar (design/h1plus/system.css). Role names, not hues; aliases follow the theme.
    *   due = LEGAL clock D-n ≤ 14 only, never plain dates · over = overdue legal item
    *   exception = 예외 처리 mark only · derived = 자동 value, editable only with a reason */
   --due-bg: var(--accent-bg); --due-bd: var(--accent-bd); --due-tx: var(--accent-tx);
+  /* The fill of the record a commit just added or changed. */
+  --highlight-bg: var(--info-bg);
   --over-bg: var(--danger-bg); --over-bd: var(--danger-bd); --over-tx: var(--danger-tx);
   --exception-bg: var(--purple-bg); --exception-bd: var(--purple-bd); --exception-tx: var(--purple-tx);
   --derived-bg: var(--muted); --derived-tx: var(--steel); --kbd-bg: var(--muted);
@@ -64,10 +70,18 @@
   --qrow-h: 64px; --queue-w: 400px; --card-w: 640px; --sheet-w: 560px;
   --dialog-w-sm: 400px; --dialog-w-md: 480px;
   --sheet-w-lg: calc(var(--sheet-w) * 1.3);
-  --z-rail: 10; --z-panel: 15; --z-sheet: 20;
+  /* --z-bar: a frame bar pinned over the page: above the page's own sticky layers, under the skip link, rail, panels and sheets. */
+  --z-bar: 8; --z-rail: 10; --z-panel: 15; --z-sheet: 20;
   --target: 32px; --target-touch: 44px; --chip-h: 22px; --kbd-h: 20px; --kbd-min-w: 24px;
-  /* Compact table rows (roster) and toolbar / page-head controls (tabs, 기준일, find box): design-language §2. */
-  --row-h-compact: 32px; --control-h-sm: 36px;
+  /* --target-cell: the least width and height of a control in a table cell, the selection checkbox included. */
+  --target-cell: var(--space-5);
+  /* Phone top bar and bottom-nav slot: the bars draw these heights, and content scrolled into view stops clear of them.
+     The nav's clearance adds its hairline and the home-indicator inset. */
+  --phone-top-h: calc(var(--space-6) + var(--space-5) - var(--space-1)); --phone-nav-h: calc(var(--target-touch) + var(--space-3));
+  --phone-nav-clear: calc(var(--phone-nav-h) + 1px + env(safe-area-inset-bottom, 0px));
+  /* Compact table rows (roster) and toolbar / page-head controls (tabs, 기준일, find box): design-language §2.
+     --row-h-sm: a line that is not a table row: a slip line, a before/after line, a pane's link or header line. */
+  --row-h-compact: 32px; --row-h-sm: 32px; --control-h-sm: 36px;
   /* Heights of their own, so a style can size its rows without moving what stands in or beside them.
      --control-h: a button, and any control in a toolbar. --control-h-lg: the approval card's decision buttons.
      --control-h-compact: a button inside a compact grid. --toolbar-h, --toolbar-py: a toolbar's least height and its
@@ -87,7 +101,7 @@
   --primary: #6d8bff; --primary-hover: #8aa2ff; --primary-soft: #1a2540; --primary-bd: #2f4694; --on-primary: #0b1020;
   --signal: #f6b521; --signal-deep: #ffc93d; --teal: #2dd4bf;
   --danger-bg: #3a1214; --danger-bd: #7f2b2b; --danger-tx: #fda4a4; --danger-solid: #f87171;
-  --warn-bg: #3a2606; --warn-bd: #92610a; --warn-tx: #fcd34d; --warn-solid: #fbbf24;
+  --warn-bg: #3a2606; --warn-bd: #92610a; --warn-tx: #fcd34d; --warn-solid: #fbbf24; --warn-mark: #92610a;
   --ok-bg: #062e22; --ok-bd: #0b6e51; --ok-tx: #6ee7b7; --ok-solid: #34d399;
   --info-bg: #14243f; --info-bd: #2d5eb8; --info-tx: #93c5fd;
   --accent-bg: #362605; --accent-bd: #a97b06; --accent-tx: #fcd34d;

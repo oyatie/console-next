@@ -49,9 +49,9 @@ export function BulkPeople({ kind, rows, pending = 0, units, unitId, position, t
     : r.employee?.employment_type === "CONTRACT" ? <Chip>{t("bulk.page.contractKeeps")}</Chip>
     : <span className={s.steel}>{"—"}</span>;
   return (
-    <section className={s.pane} aria-labelledby="bulk-people">
+    <section className={s.pane}>
       <div className={s.paneHead}>
-        <h2 id="bulk-people" className={s.paneTitle}>{t(kind === "PROMOTE" ? "bulk.page.peoplePromote" : "bulk.page.people", { n: rows.length })}</h2>
+        <h2 className={s.paneTitle}>{t(kind === "PROMOTE" ? "bulk.page.peoplePromote" : "bulk.page.people", { n: rows.length })}</h2>
         <small>{sub}</small>
         {/* Drawn with the promotion pick itself (the kinds wait for the title list): the head never grows under the pointer. */}
         {perPerson && <Button aria-disabled={offers.length === 0 || undefined} onClick={() => offers.forEach(([k, v]) => onPerRow?.(k, v))}>{t("bulk.promote.acceptAll", { n: offers.length })}</Button>}

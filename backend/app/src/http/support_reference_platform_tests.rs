@@ -6,9 +6,7 @@ use console_platform_authz::PlatformFeature;
 use std::{io::Write, sync::atomic::Ordering};
 use tracing::instrument::WithSubscriber;
 
-#[path = "../../tests/support/reference_logs.rs"]
-mod reference_logs;
-use reference_logs::Store;
+use crate::reference_logs::Store;
 
 const REFERENCE: &str = "0123456789abcdef0123456789abcdef";
 

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { readFileSync } from "node:fs";
-import { i18n, loadCatalog, LOCALES } from "@console/i18n";
+import { i18n, loadCatalog, LOCALES, t } from "@console/i18n";
 import { expect, test } from "vitest";
 import { koAttendanceRecords } from "../../../../../packages/i18n/src/catalogs/ko/attendance-records";
 import { enAttendanceRecords } from "../../../../../packages/i18n/src/catalogs/en/attendance-records";
 import type { DraftCode } from "./domain/grammar";
-import { refusalText } from "./present";
+import { dateText, dayPaneHead, refusalText } from "./present";
 
 test("every parser and cell refusal has its own copy in both locales", async () => {
   const parseCodes = {
@@ -36,4 +36,13 @@ test("every parser and cell refusal has its own copy in both locales", async () 
   } finally {
     i18n.set(previous);
   }
+});
+
+test("the person-day pane head names the mode and whose day it is", async () => {
+  await loadCatalog("ko");
+  const person = { name: "Person", employee_number: "E-1" };
+  const view = t("attendanceRecords.day.title", { date: dateText("2026-10-06") });
+  expect(dayPaneHead("view", "2026-10-06", person)).toEqual({ label: view, title: view, meta: "Person E-1" });
+  expect(dayPaneHead("correct", "2026-10-06", person)).toEqual({ label: t("attendanceRecords.correct.title"), title: t("attendanceRecords.correct.title"), meta: `Person · ${dateText("2026-10-06")}` });
+  expect(dayPaneHead("void", "2026-10-06")).toEqual({ label: t("attendanceRecords.void.title"), title: t("attendanceRecords.void.title"), meta: undefined });
 });

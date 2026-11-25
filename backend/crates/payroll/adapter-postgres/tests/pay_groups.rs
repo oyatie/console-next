@@ -12,6 +12,9 @@ use uuid::Uuid;
 #[path = "../../rest/tests/fixtures/pay_view.rs"]
 mod pay_access;
 
+#[path = "../../../../test-support/person_fixtures.rs"]
+mod person_fixtures;
+
 #[path = "support/sensitive_group_commands.rs"]
 mod sensitive_group_commands;
 
