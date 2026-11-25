@@ -16,7 +16,7 @@ import { HeldNotice } from "../../../ui/live/held-notice";
 import { Worklist } from "../../../ui/patterns/worklist";
 import { WorklistMoreBar, WorklistSearchField, WorklistSegmentBar } from "../../../ui/patterns/worklist-parts";
 import { SortControl } from "../../../ui/sort-control/sort-control";
-import { holdsSnoozed, isAttentionFilter, SNOOZED, type AttentionInboxItem, type AttentionInboxResponse, type InboxView } from "../domain/inbox-filter";
+import { isAttentionFilter, SNOOZED, type AttentionInboxItem, type AttentionInboxResponse, type InboxView } from "../domain/inbox-filter";
 import { ALL_OPTIONAL_WORKLIST_COLUMNS, hasDistinctTaskLead, isStatutoryDeadline, sortWorklistItems, worklistItemHref, type OptionalWorklistColumn, type WorklistSortField } from "../domain/inline-decide";
 import { reasonLines, taskTitleKey, type RowAction } from "./grouped-queue";
 import { DoneList, ReferenceList } from "./inbox-finished";
@@ -164,12 +164,9 @@ export function WorklistConsole({
   const columnsEnabled = !inSetup;
   const recordVisible = !loading && !meError && inbox.data !== undefined && ["ready", "stale", "offline"].includes(queryView(inbox));
   const showControls = !loading && !inSetup && !meError && !inbox.error && Boolean(first?.has_work || first?.available_filters.length);
-  // Home's only way to the other lanes and to rows it does not load, so it stands from first paint at every list length,
-  // and for a reader without work grants while anything waits in a view home does not draw.
-  const elsewhere = holdsSnoozed(first?.counts[SNOOZED]) || Boolean(first?.counts.notices?.total);
-  const inboxLink = mode === "home" && !loading && !inSetup && !meError && !inbox.error && (showControls || elsewhere)
-    ? <Link to="/inbox">{t("home.inbox.viewInbox")}</Link>
-    : undefined;
+  // Home's only way to the other lanes, the done list and rows it does not load: a steady way in once home has settled,
+  // whatever the list holds.
+  const inboxLink = mode === "home" && !loading && !inSetup && !meError && !inbox.error ? <Link to="/inbox">{t("home.inbox.viewInbox")}</Link> : undefined;
   const selectItem = (id: string) => { if (allItems.some(item => item.id === id)) select(id); };
   const focusRecord = () =>
     surfaceRef.current

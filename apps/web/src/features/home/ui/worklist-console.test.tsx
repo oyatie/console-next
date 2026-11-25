@@ -217,14 +217,12 @@ test("Console home links to the full to-do list at every list length, on later p
 
 const idle = (counts: AttentionInboxResponse["counts"]) =>
   [{ ...samplePage(), items: [], total: 0, has_work: false, available_filters: [], attention_filters: [], counts: { ...samplePage().counts, ...counts } }];
-test.each([["snoozed", 2, true], ["snoozed", 0, false], ["notices", 1, true]] as const)("Console home links a reader without work grants to what waits in %s (%i, exact %s)", (key, total, exact) => {
+test.each([["snoozed", 2, true], ["snoozed", 0, false], ["notices", 1, true], ["snoozed", 0, true]] as const)("Console home links a reader without work grants to the to-do list with %s at %i (exact %s)", (key, total, exact) => {
   state.inboxPages = idle({ [key]: { total, total_is_exact: exact } });
   expect(home()).toContain(inboxLink());
 });
 
-test("Console offers no to-do link when no lane holds anything, nor on /inbox itself", () => {
-  state.inboxPages = idle({ snoozed: { total: 0, total_is_exact: true } });
-  expect(home()).not.toContain(t("home.inbox.viewInbox"));
+test("Console /inbox does not link to itself", () => {
   state.inboxPages = [{ ...samplePage(), total: 2 }];
   expect(renderNode("/inbox", <InboxPage canOrgStructure={false} />)).not.toContain(t("home.inbox.viewInbox"));
 });
