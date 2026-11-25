@@ -21,15 +21,17 @@ export function shell(page: Page) {
 }
 
 const signOutName = { name: bootKo["shell.logout"], exact: true };
+// Any name but the module overflow's, which Console's bar also shows collapsed when its modules do not fit.
+const notOverflow = new RegExp(`^(?!${bootKo["shell.nav.more"].replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$)`);
 
 /**
  * The signed-in account control in either style: Classic's bar holds the sign-out command itself; Console's bar
  * holds the account menu, whose trigger is named after the person, so it is the collapsed button of a bar with no
- * sign-out. A signed-out page has no bar, and a modal over the shell hides it.
+ * sign-out, other than the module overflow. A signed-out page has no bar, and a modal over the shell hides it.
  */
 export function accountControl(page: Page) {
   const banner = page.getByRole("banner");
-  return banner.getByRole("button", signOutName).or(banner.filter({ hasNot: page.getByRole("button", signOutName) }).getByRole("button", { expanded: false }));
+  return banner.getByRole("button", signOutName).or(banner.filter({ hasNot: page.getByRole("button", signOutName) }).getByRole("button", { expanded: false, name: notOverflow }));
 }
 
 export const expectSignedIn = (page: Page, options?: { timeout?: number }) => expect(accountControl(page)).toBeVisible(options);
