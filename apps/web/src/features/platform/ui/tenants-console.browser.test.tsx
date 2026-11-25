@@ -133,7 +133,8 @@ test("offline with the list and an open record, the offline notice shows once an
 
 /** The record's sections by heading, in order, and where deletion starts below the overview (scrolling cannot change it). */
 const pane = (panel: Locator) => panel.evaluate((aside, { overview, remove }) => {
-  const sections = [...aside.querySelectorAll("section")].filter(section => section.checkVisibility({ visibilityProperty: true }));
+  // Record sections only: the regions inside them are sections too.
+  const sections = [...aside.querySelectorAll("section:has(> header > h3)")].filter(section => section.checkVisibility({ visibilityProperty: true }));
   const titled = (title: string) => sections.find(section => section.querySelector("h3")?.textContent === title)!;
   const deletion = titled(remove);
   const above = deletion.previousElementSibling!;
@@ -182,7 +183,7 @@ test.each((["ACTIVE", "SUSPENDED", "ARCHIVED"] as const).flatMap(status => [1440
     expect(settled.rule).toBe("1px");
     // The reserved room stays close to what a settled read draws.
     const dead = await panel.evaluate((aside, { recoveryTitle, removeTitle }) => {
-      const titled = (title: string) => [...aside.querySelectorAll("section")].find(section => section.querySelector("h3")?.textContent === title)!;
+      const titled = (title: string) => [...aside.querySelectorAll("section:has(> header > h3)")].find(section => section.querySelector("h3")?.textContent === title)!;
       const content = [...titled(recoveryTitle).querySelectorAll("button, p, span")].map(el => el.getBoundingClientRect().bottom);
       return titled(removeTitle).getBoundingClientRect().top - Math.max(...content);
     }, { recoveryTitle: t("opsRecovery.title"), removeTitle: t("tenants.section.remove") });
