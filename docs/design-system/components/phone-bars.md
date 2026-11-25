@@ -96,6 +96,7 @@ The Console shell pins both bars while the page scrolls (`position: sticky` at `
 | `--border` | `border-block-end`, `border-block-start` |
 | `--fw-medium` | `font-weight` |
 | `--fw-strong` | `font-weight` |
+| `--held` | `padding-inline-start` |
 | `--ink` | `color` |
 | `--muted` | `background` |
 | `--phone-nav-h` | `min-height` |

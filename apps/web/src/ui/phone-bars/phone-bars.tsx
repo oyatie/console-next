@@ -169,7 +169,7 @@ export function PhoneBottomNav({
     <nav aria-label={resolvedLabel} className={s.bottomNav}>
       <ul
         className={s.list}
-        style={reserve && reserve > items.length ? { paddingInlineStart: `${((reserve - items.length) / reserve) * 100}%` } : undefined}
+        ref={el => el?.style.setProperty("--held", reserve && reserve > items.length ? `${((reserve - items.length) / reserve) * 100}%` : "0%")}
       >
         {inlineItems.map((item, idx) => {
           const isCurrent = item.id === activeId;
