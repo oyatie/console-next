@@ -257,10 +257,10 @@ const registerNext = (page: Page) => page.getByRole("region", { name: t("entityR
   .getByRole("button", { name: t("entityRecord.corrections.next"), exact: true });
 const historyRegion = (page: Page) => page.getByRole("region", { name: t("entity.history.title"), exact: true });
 
-for (const experience of ["baseline", "console"] as const) test(`arriving on the history tab draws its revisions and the correction register under them at once in ${experience} @ui-state`, async ({ page }) => {
+for (const experience of ["baseline", "console"] as const) test(`arriving on the history tab draws its revisions and the correction register under them at once in ${experience} @ui-state${experience === "baseline" ? " @baseline" : ""}`, async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.addInitScript(recordShifts);
-  if (experience === "console") await page.addInitScript(key => localStorage.setItem(key, "console"), EXPERIENCE_KEY);
+  await page.addInitScript(([key, value]) => localStorage.setItem(key, value), [EXPERIENCE_KEY, experience] as const);
   const fixture = await mockEntityRecord(page, "populated");
   const { read: corrections } = await mockRegister(page, fixture.entity.id);
   const held = Promise.withResolvers<void>();

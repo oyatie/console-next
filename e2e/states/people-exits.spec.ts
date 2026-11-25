@@ -2,7 +2,7 @@
 import { installFaultClock } from "./fault-clock";
 import { mockNavigate } from "../mock/navigation";
 import { loadCatalog, t } from "@console/i18n";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { expectAxe, fits } from "../a11y";
 import { exitTrail, mockExitCase } from "../mock/people-exits";
 import { peopleExitScreens, type ExitCaseState } from "./people-exits";
@@ -10,8 +10,15 @@ import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
 import { mockRoute } from "../mock/route";
 import { guardRawIds } from "../raw-id-guard";
+import { EXIT_LEGS } from "../../apps/web/src/features/people/domain/exit-legs";
+import { EXPERIENCE_KEY } from "../../apps/web/src/lib/prefs";
 
 const exitCaseScreen = peopleExitScreens[0];
+/** A leg of the board: a named region in Classic, a ledger row headed by the leg's name in Console. */
+const leg = (page: Page, board: Locator, key: typeof EXIT_LEGS[number]) => {
+  const name = t(`exit.board.leg.${key}`);
+  return board.getByRole("region", { name, exact: true }).or(board.getByRole("row").filter({ has: page.getByRole("rowheader", { name: new RegExp(`^${name}`) }) }));
+};
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -27,9 +34,9 @@ for (const state of Object.keys(exitCaseScreen.states) as ExitCaseState[]) for (
       if (state === "missing") await expect(main.getByRole("heading", { name: t("common.read.notFound.title") })).toBeVisible();
       else if (state === "failed") await expect(main.getByRole("button", { name: t("common.retry"), exact: true })).toBeVisible();
       else {
-        const board = main.getByRole("region", { name: "단계별 업무", exact: true });
+        const board = main.getByRole("region", { name: t("exit.board.board"), exact: true });
         await expect(board).toBeVisible();
-        const legs = ["결재", "인수인계", "정산·급여", "접근·장비", "서류", "법정 신고"].map(name => board.getByRole("region", { name, exact: true }));
+        const legs = EXIT_LEGS.map(key => leg(page, board, key));
         for (const leg of legs) await expect(leg).toBeVisible();
         await expect(main.getByRole("region", { name: "사건 일정", exact: true }).getByText("오늘", { exact: true })).toBeVisible();
         await expect(legs[2]!).toContainText("D-3");
@@ -39,13 +46,33 @@ for (const state of Object.keys(exitCaseScreen.states) as ExitCaseState[]) for (
         for (const item of exitTrail().items.filter(item => item.kind !== "FIL")) await expect(board).toContainText(item.label);
         if (state === "closed") await expect(board.getByRole("button")).toHaveCount(0);
         else await expect(legs[2]!.getByRole("button", { name: "증빙 확인 완료", exact: true })).toHaveCount(4);
-        const boxes = await Promise.all(legs.map(leg => leg.boundingBox()));
-        if (width >= 1360) expect(new Set(boxes.map(box => box!.y)).size).toBe(1);
-        else if (width === 1200) expect(boxes[3]!.y).toBeGreaterThan(boxes[0]!.y);
-        else for (let i = 1; i < boxes.length; i++) expect(boxes[i]!.y).toBeGreaterThanOrEqual(boxes[i - 1]!.y + boxes[i - 1]!.height);
       }
       await fits(page, `exit-case/${state}/${width}`);
       await expectAxe(page, `exit-case/${state}/${width}`);
+      expect(fixture.unexpected).toEqual([]);
+    } finally { await page.close(); fixture.release(); }
+  });
+}
+
+// Where the legs sit is the style's. Classic sets them side by side and wraps them as the page narrows. Console lists
+// them as the rows of one ledger; no board draws the exit case, so that is the render's value, and at 390 it owes only
+// the invariants.
+for (const experience of ["baseline", "console"] as const) for (const state of Object.keys(exitCaseScreen.states).filter(state => state !== "missing" && state !== "failed") as ExitCaseState[]) for (const width of experience === "baseline" ? [1440, 1200, 390] : [1440, 1200]) {
+  test(`exit-case ${state} legs ${experience === "baseline" ? "sit side by side and wrap" : "stack as ledger rows"} at ${width}px in ${experience} @ui-state${experience === "baseline" ? " @baseline" : ""}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.addInitScript(([key, value]) => localStorage.setItem(key, value), [EXPERIENCE_KEY, experience] as const);
+    const fixture = await mockScreen(page, screens[1], "populated");
+    await mockExitCase(page, state);
+    try {
+      await page.goto(exitCaseScreen.path);
+      const board = page.getByRole("main").getByRole("region", { name: t("exit.board.board"), exact: true });
+      const legs = EXIT_LEGS.map(key => leg(page, board, key));
+      for (const leg of legs) await expect(leg).toBeVisible();
+      const boxes = (await Promise.all(legs.map(leg => leg.boundingBox()))).map(box => box!);
+      if (experience === "console") for (let i = 1; i < boxes.length; i++) expect(boxes[i]!.y).toBeGreaterThanOrEqual(boxes[i - 1]!.y + boxes[i - 1]!.height - 1);
+      else if (width >= 1360) expect(new Set(boxes.map(box => box.y)).size).toBe(1);
+      else if (width === 1200) expect(boxes[3]!.y).toBeGreaterThan(boxes[0]!.y);
+      else for (let i = 1; i < boxes.length; i++) expect(boxes[i]!.y).toBeGreaterThanOrEqual(boxes[i - 1]!.y + boxes[i - 1]!.height);
       expect(fixture.unexpected).toEqual([]);
     } finally { await page.close(); fixture.release(); }
   });
@@ -106,11 +133,11 @@ test("P1-3 header and countdown follow the tenant deadline window @ui-state", as
     for (const days of [2, 12]) {
       await settings(days);
       await page.goto(exitCaseScreen.path);
-      const leg = page.getByRole("region", { name: "정산·급여", exact: true });
-      const chip = leg.getByText("D-3", { exact: true });
+      const settlement = leg(page, page.getByRole("main"), "settlement");
+      const chip = settlement.getByText("D-3", { exact: true });
       await expect(chip).toBeVisible();
       await expect(chip).toHaveClass(new RegExp(days === 2 ? "far" : "due"));
-      await expect(leg.getByText("기한 임박", { exact: true })).toHaveCount(days === 2 ? 0 : 1);
+      await expect(settlement.getByText(t("exit.board.dueSoon"), { exact: true })).toHaveCount(days === 2 ? 0 : 1);
     }
   } finally { await page.close(); fixture.release(); }
 });

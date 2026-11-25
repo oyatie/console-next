@@ -6,6 +6,7 @@ import { employees, facets } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
+import { EXPERIENCE_KEY } from "../../apps/web/src/lib/prefs";
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -36,7 +37,8 @@ async function directory(page: Page, holdSort = false) {
 }
 
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
-  test(`directory filters replace server pages and stay removable ${width} ${theme} @ui-state`, async ({ page }) => {
+  // Classic's foot note, views and filter chips; Console's roster is covered by mock/people-console.spec.ts.
+  test(`directory filters replace server pages and stay removable ${width} ${theme} @ui-state @baseline`, async ({ page }) => {
     test.setTimeout(120_000);
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
@@ -113,7 +115,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     expect(fixture.unexpected).toEqual([]);
   });
 
-  test(`directory keeps rows during a sort read ${width} ${theme} @ui-state`, async ({ page }) => {
+  test(`directory keeps rows during a sort read ${width} ${theme} @ui-state @baseline`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const fixture = await directory(page, true);
@@ -144,3 +146,15 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     expect(fixture.unexpected).toEqual([]);
   });
 }
+
+// Console counts the rows read in the index bar's range readout, as d-people draws it at 1440, not in Classic's foot note.
+test("directory range readout counts the first server page at 1440 in console @ui-state", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript(([key, value]) => localStorage.setItem(key, value), [EXPERIENCE_KEY, "console"] as const);
+  const fixture = await directory(page);
+  await page.goto("/people");
+  await expect(page.getByRole("grid", { name: t("people.table"), exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: t("people.index.label"), exact: true })).toContainText(t("people.index.range", { start: 1, end: 100, total: fixture.count }));
+  await expect(page.getByRole("note", { name: t("roster.foot.label") })).toHaveCount(0);
+  expect(fixture.unexpected).toEqual([]);
+});
