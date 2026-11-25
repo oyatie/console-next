@@ -7,8 +7,11 @@ type ScreenStatusSegment = {
   tone?: "default" | "strong" | "attention";
 };
 
-let currentSegments: readonly ScreenStatusSegment[] | null = null;
-let currentOwner: object | null = null;
+// Segments and the trailing fact are owned apart: a screen may publish its trailing fact while its pattern publishes
+// the segments.
+type Slot<T> = { value: T | null; owner: object | null };
+const segmentsSlot: Slot<readonly ScreenStatusSegment[]> = { value: null, owner: null };
+const trailingSlot: Slot<ReactNode> = { value: null, owner: null };
 const listeners = new Set<() => void>();
 
 function notify() {
@@ -22,9 +25,8 @@ function subscribe(listener: () => void) {
   };
 }
 
-function getSnapshot() {
-  return currentSegments;
-}
+const segmentsSnapshot = () => segmentsSlot.value;
+const trailingSnapshot = () => trailingSlot.value;
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
@@ -65,41 +67,43 @@ function sameSegments(a: readonly ScreenStatusSegment[] | null, b: readonly Scre
   });
 }
 
-/** Publish contextual status-bar segments while the calling screen or pattern is mounted. */
-export function useScreenStatusBar(segments: readonly ScreenStatusSegment[] | null | undefined) {
+function release<T>(slot: Slot<T>, owner: object | null) {
+  if (slot.owner !== owner) return;
+  slot.value = null;
+  slot.owner = null;
+  notify();
+}
+
+function claim<T>(slot: Slot<T>, owner: object, value: T | null, same: (a: T | null, b: T | null) => boolean) {
+  if (value === null) return release(slot, owner);
+  if (slot.owner === owner && same(slot.value, value)) return;
+  slot.value = value;
+  slot.owner = owner;
+  notify();
+}
+
+/**
+ * Publish contextual status-bar segments, and an optional fact for the bar's right end, while the calling screen or
+ * pattern is mounted.
+ */
+export function useScreenStatusBar(segments: readonly ScreenStatusSegment[] | null | undefined, trailing?: ReactNode) {
   const ownerRef = useRef<object | null>(null);
   ownerRef.current ??= {};
 
-  useEffect(() => {
-    const owner = ownerRef.current!;
-    const next = segments && segments.length > 0 ? segments : null;
-    if (!next) {
-      if (currentOwner === owner) {
-        currentSegments = null;
-        currentOwner = null;
-        notify();
-      }
-      return;
-    }
-    if (currentOwner === owner && sameSegments(currentSegments, next)) return;
-    currentSegments = next;
-    currentOwner = owner;
-    notify();
-  }, [segments]);
-
-  useEffect(
-    () => () => {
-      if (currentOwner === ownerRef.current) {
-        currentSegments = null;
-        currentOwner = null;
-        notify();
-      }
-    },
-    [],
-  );
+  useEffect(() => claim(segmentsSlot, ownerRef.current!, segments && segments.length > 0 ? segments : null, sameSegments), [segments]);
+  useEffect(() => claim(trailingSlot, ownerRef.current!, trailing ?? null, sameContent), [trailing]);
+  useEffect(() => () => {
+    release(segmentsSlot, ownerRef.current);
+    release(trailingSlot, ownerRef.current);
+  }, []);
 }
 
 /** Subscribe to any active screen-published status-bar segments. */
 export function usePublishedStatusBar() {
-  return useSyncExternalStore(subscribe, getSnapshot, () => null);
+  return useSyncExternalStore(subscribe, segmentsSnapshot, () => null);
+}
+
+/** Subscribe to the fact the active screen publishes for the status bar's right end. */
+export function usePublishedStatusTrailing() {
+  return useSyncExternalStore(subscribe, trailingSnapshot, () => null);
 }

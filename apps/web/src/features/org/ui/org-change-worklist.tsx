@@ -11,7 +11,7 @@ import { shortMonthDay } from "../../../lib/pure/kst-day";
 import { unitsQuery } from "../../../reference/org/api";
 import { describeOp } from "../../../reference/org/present";
 import { ChangeRows } from "../../../ui/change-rows/change-rows";
-import { Chip } from "../../../ui/chip";
+import { TurnChip } from "../../../ui/chip";
 import { KeyValue } from "../../../ui/key-value/key-value";
 import { PaneHead } from "../../../ui/pane-grid/pane-grid";
 import {
@@ -129,7 +129,7 @@ export function OrgChangeWorklistBody({
               status={
                 pendingStep || dueLabel ? (
                   <>
-                    {pendingStep ? <Chip tone="info">{t("orgChange.turn", { role })}</Chip> : null}
+                    {pendingStep ? <TurnChip>{t("orgChange.turn", { role })}</TurnChip> : null}
                     {dueLabel}
                   </>
                 ) : undefined

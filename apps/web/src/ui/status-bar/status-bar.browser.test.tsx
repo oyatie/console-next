@@ -30,3 +30,14 @@ test("StatusBar passes WCAG 2.2 AA axe checks and renders 24px high on Console d
     .evaluate(el => Math.round(el.getBoundingClientRect().height));
   expect(height).toBe(24);
 });
+
+test("on Console the strong and attention segments are semibold", async () => {
+  const { page } = mounted;
+  await page.evaluate(() => {
+    document.documentElement.dataset.experience = "console";
+    document.documentElement.dataset.theme = "light";
+  });
+  const weights = await page.locator("footer[data-surface='chrome'] [data-tone]").evaluateAll(els =>
+    Object.fromEntries(els.map(el => [el.getAttribute("data-tone"), getComputedStyle(el).fontWeight])));
+  expect(weights).toEqual({ strong: "600", default: "400", attention: "600" });
+});
