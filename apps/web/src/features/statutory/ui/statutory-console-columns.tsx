@@ -125,7 +125,7 @@ export function buildFilingColumns(onInspect: (id: string) => void): LongColumn<
     },
     {
       id: "action",
-      header: <span className="sr-only">{t("statutory.openCol")}</span>,
+      header: <bdi className="sr-only">{t("statutory.openCol")}</bdi>,
       card: "action",
       minWidth: 72,
       cell: (r) => (

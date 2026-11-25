@@ -12,7 +12,7 @@ const task = { event_id: "evt-1", employee_id: "emp-1", name: "Filer One", kind:
 // The row opens its filing in the pane; a row button that says "record" but opens the pane names one action for another.
 test("the filing row's command opens the filing, named for the person and the filing it opens", () => {
   const action = buildFilingColumns(vi.fn()).find(c => c.id === "action")!;
-  expect(renderToStaticMarkup(<>{action.header}</>)).toBe(`<span class="sr-only">${t("statutory.openCol")}</span>`);
+  expect(renderToStaticMarkup(<>{action.header}</>)).toBe(`<bdi class="sr-only">${t("statutory.openCol")}</bdi>`);
   const button = renderToStaticMarkup(<>{action.cell(task)}</>);
   expect(button).toContain(`aria-label="${t("statutory.openRow", { name: "Filer One", insurer: t("statutory.NPS"), kind: t("statutory.ACQUIRE") })}"`);
   expect(button).toContain(`>${t("statutory.openCol")}</button>`);
