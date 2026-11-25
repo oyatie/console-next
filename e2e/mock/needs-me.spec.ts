@@ -122,6 +122,7 @@ test.describe("console bar", () => {
         expect(reads).toBe(1);
         await fits(page, `console bar ${state} ${path}`);
         expect(await shell(page).banner.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+        await expectAxe(page, `console bar ${state} ${path}`);
       }
       expect(mock.unexpected).toEqual([]);
     });
