@@ -12,6 +12,8 @@ export const INBOX_TABS = ["turn", "waiting", "reference", "done"] as const;
 export const TODO_CHIPS = ["scheduled", "failures"] as const;
 /** What I postponed: a chip inside to-do, read on its own so the tab counts stay those of my open list. */
 export const SNOOZED = "snoozed";
+/** Anything may be postponed: a lower bound of 0 may hide some. */
+export const holdsSnoozed = (count?: { total: number; total_is_exact: boolean }) => Boolean(count && (count.total || !count.total_is_exact));
 export const INBOX_VIEWS = [...INBOX_TABS, ...TODO_CHIPS, SNOOZED] as const;
 export type InboxView = typeof INBOX_VIEWS[number];
 // Older links (all, deadlines) land on to-do, whose buckets put overdue and due-soon first.
