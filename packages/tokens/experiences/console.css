@@ -29,8 +29,21 @@
   --danger-solid: #b3261e;
   --warn-tx: #8a4f00;
   --warn-bg: #fdf0d5;
+  --warn-mark: #c47a00;
   --ok-tx: #1c6b3f;
   --ok-bg: #e2f2e8;
+  /* The Console design has no info hue: an info tag is the plain outlined tag. */
+  --info-bg: var(--surface);
+  --info-bd: var(--steel);
+  --info-tx: var(--ink);
+  /* Today and the legal due marks are drawn in the warn roles. */
+  --due-bg: var(--warn-bg);
+  --due-bd: var(--warn-mark);
+  --due-tx: var(--warn-tx);
+  /* With no info hue, the record just recorded takes the selected fill so it still stands apart from its card. */
+  --highlight-bg: var(--surface-selected);
+  /* In the Console design signal tags are bold, and codes and masked values are set in the body face, untracked. */
+  --fw-tag-signal: var(--fw-strong); --font-code: var(--font-sans); --tracking-masked: 0px;
   --chrome: #15202b;
   --chrome-raised: #202d3a;
   --chrome-hover: #263646; /* Derived, not drawn. */
@@ -101,8 +114,12 @@
   --danger-solid: #f99b90; /* Derived, not drawn. */
   --warn-tx: #f5bd4f; /* Derived, not drawn. */
   --warn-bg: #3a2d13; /* Derived, not drawn. */
+  --warn-mark: #c47a00; /* Derived, not drawn. */
   --ok-tx: #94d9ad; /* Derived, not drawn. */
   --ok-bg: #183729; /* Derived, not drawn. */
+  --info-bg: var(--surface); /* Derived, not drawn. */
+  --info-bd: var(--steel); /* Derived, not drawn. */
+  --info-tx: var(--ink); /* Derived, not drawn. */
   --chrome: #0a1017; /* Derived, not drawn: one step darker than dark --canvas (#101820). */
   --chrome-raised: #131d27; /* Derived, not drawn. */
   --chrome-hover: #1b2835; /* Derived, not drawn. */

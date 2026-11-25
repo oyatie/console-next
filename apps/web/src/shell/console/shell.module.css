@@ -42,15 +42,11 @@
 }
 
 .brandMark {
-  display: inline-grid;
-  place-items: center;
   flex-shrink: 0;
-  width: calc(var(--space-4) + var(--space-half));
-  height: calc(var(--space-4) + var(--space-half));
-  border: 1px solid var(--chrome-border);
-  border-radius: var(--radius-sm);
-  background: var(--chrome-raised);
-  color: var(--chrome-accent);
+}
+
+.brandSquare {
+  fill: var(--chrome-attention);
 }
 
 .brandName,

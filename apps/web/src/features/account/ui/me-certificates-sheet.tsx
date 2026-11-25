@@ -33,13 +33,16 @@ const ITEM_KEYS: readonly SelfIssueCertificateRequest["items"][number][] = [
   "birth",
 ];
 
+// The certificate as printed keeps the locale date form whatever the screen style draws.
+const day = (v: unknown) => fmtDate(v, { style: "locale" });
+
 function CertificatePreview({ cert, onBack }: { cert: Certificate; onBack: () => void }) {
   const f = cert.snapshot;
   const values: Record<(typeof ITEM_KEYS)[number], string> = {
-    period: f.period ? t("empDoc.cert.periodValue", { from: fmtDate(f.period.from), to: fmtDate(f.period.to) }) : "—",
+    period: f.period ? t("empDoc.cert.periodValue", { from: day(f.period.from), to: day(f.period.to) }) : "—",
     duty: f.duty ?? "—",
     position: f.position ?? "—",
-    birth: fmtDate(f.birth),
+    birth: day(f.birth),
     wage: f.wage ? t("empDoc.certificate.wage", { won: f.wage.won, unit: label(PAY_UNIT, f.wage.unit) }) : "—",
   };
   const rows: PaperCell[] = [
@@ -60,7 +63,7 @@ function CertificatePreview({ cert, onBack }: { cert: Certificate; onBack: () =>
       <PaperGrid rows={rows} label={cert.certificate_no} />
       <div className="t-xs">{t("empDoc.certificate.attest")}</div>
       <div className="t-xs muted num">
-        {fmtDate(cert.issued_at)} · {f.issuer}
+        {day(cert.issued_at)} · {f.issuer}
       </div>
       {f.seal_png && <img width={80} height={80} src={f.seal_png} alt={t("empDoc.certificate.sealImage")} />}
       <div className="form__actions">
