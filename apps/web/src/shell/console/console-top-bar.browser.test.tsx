@@ -59,9 +59,18 @@ test("the brand is an 18px mark drawn on the bar itself, its strokes in the bar'
   expect(mark).toEqual({ size: [18, 18], tiles: [], strokes: ["rgb(238, 242, 246)"], fills: ["rgb(245, 189, 79)"] });
 });
 
+test("the search button is named by the shared search label and its visible words, and describes what it finds", async () => {
+  const { page } = mounted;
+  const search = page.getByRole("button", { name: t("shell.jumpLabel") });
+  await element(search).toHaveAccessibleName(`${t("shell.jumpLabel")} ${t("shell.searchHint")}`);
+  await element(search).toHaveAccessibleDescription(t("shell.jump"));
+  // A label locator for a searchable thing (a registration number field, say) must not land on the search button.
+  await element(page.getByLabel(t("shell.jump"))).toHaveCount(0);
+});
+
 test("the search button's / follows the single-key switch at once, in this tab and from another", async () => {
   const { page } = mounted;
-  const search = page.getByRole("button", { name: t("shell.jump"), exact: true });
+  const search = page.getByRole("button", { name: t("shell.jumpLabel") });
   const hint = search.locator("kbd");
   const toggle = page.getByRole("switch", { name: t("account.singleKeys") });
 
