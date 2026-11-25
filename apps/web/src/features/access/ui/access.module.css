@@ -71,8 +71,6 @@
 .info { color: var(--info-tx); }
 .actions { display: flex; flex-wrap: nowrap; gap: var(--space-1); }
 .nowrap { display: inline-flex; flex-wrap: nowrap; align-items: center; gap: var(--space-1); white-space: nowrap; }
-.plainLink { text-decoration: none; }
-.plainLink:hover, .plainLink:focus-visible { text-decoration: underline; }
 .phoneOnly { display: none; }
 .personCell { display: inline-flex; align-items: baseline; gap: var(--space-2); min-width: 0; max-width: 100%; }
 .personCell > a { min-width: 0; flex: 0 1 auto; }

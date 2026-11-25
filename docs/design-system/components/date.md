@@ -35,7 +35,7 @@ date is `""`.
 | Quick picks | `<div role="group">` | One `<button type="button" aria-pressed>` per entry of `presets`. Left out when there are none. |
 | Quick pick | `<button>` | The preset's `label`, then a `<span>` with the date it stands for, with its weekday, then the preset's `disabledReason`. |
 | Input and calendar | `DateInput` | See below. It follows the quick picks in the same wrapping row. |
-| Hint line | The hint `<p>` of `Field` | In this order, joined by middle dots: `echo` (only while a date is set), `basis`, the reason of `minFrom` when it sets the floor, the out-of-range sentence when a preset is outside the bounds and no `minFrom` reason is shown, and the unavailable-date sentence when `disabledDates` has entries. |
+| Hint line | The hint `<p>` of `Field` | In this order, joined by middle dots: `echo` (only while a date is set), `basis`, the reason of `minFrom` when it sets the floor, the out-of-range sentence when a preset is outside the bounds and no `minFrom` reason is shown, and the unavailable-date sentence when `disabledDates` has entries. Before a date, when none of these and no error is shown, the line holds `echo` unseen and unread (a held hint, see [Field](field.md#anatomy)). |
 | Error line | The error `<p>` of `Field` | `error`. Without it, for a set date that is outside the bounds or blocked: the caller's reason for that bound, or the family's own sentence. Then `remedy`, in a `<span>`. |
 | Weekend suggestion | `<p>` | Shown when `suggestWeekday` is set and the date is a Saturday or a Sunday. A sentence, then a `<button class="link">` that changes the date to the next Monday. The Monday is not checked against the bounds or the blocked dates, so the button can set a date that the error line then refuses. Only Saturday and Sunday count as non-working days. |
 
@@ -160,7 +160,7 @@ move onto a blocked day.
 
 | Part | Role | Accessible name | Also exposed |
 |---|---|---|---|
-| Input in a `DateField` | `textbox` | The label, through `<label for>`. The marker and `note` are inside the label, so they are part of the name. | The hint line, the error line and the problem line as its description. `aria-invalid`. `required`. |
+| Input in a `DateField` | `textbox` | The label, through `<label for>`. The marker and `note` are inside the label, so they are part of the name. | The hint line, the error line and the problem line as its description, less a held hint line. `aria-invalid`. `required`. |
 | `DateInput` alone | `textbox` | `label`, through `aria-label`. Inside a `Field`, the caller spreads the control attributes on it and the `Field` label names it. With neither, it has no name. | The caller's `aria-describedby`, then the problem line. `aria-invalid` when the caller passes it or a problem shows. |
 | Quick picks | `group` | Message `uiDate.presets`, which includes the field's label. | Nothing. |
 | Quick pick | `button` | Its text: the label, the date it stands for and the reason. | `aria-pressed`. When it cannot be used: `aria-disabled="true"`, the field's hint and error lines as its description, and `disabledReason` as its `title`. |
@@ -304,7 +304,7 @@ and no container query.
 | `disabled` | no | `boolean` |  |  |
 | `disabledDates` | no | `readonly string[]` |  |  |
 | `displayFormat` | no | `"default" \| "short-weekday"` | `"default"` |  |
-| `echo` | no | `ReactNode` |  |  |
+| `echo` | no | `ReactNode` |  | What the entered date means, shown once one is entered. Given before a date too (worded for the date the field will likely get), it holds its line unseen and unread at its wrapped height while no other detail or error uses that line, so the line appearing when a date commits moves nothing. |
 | `error` | no | `ReactNode` |  |  |
 | `inputRef` | no | `Ref<HTMLInputElement>` |  |  |
 | `max` | no | `string` |  |  |

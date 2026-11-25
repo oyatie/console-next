@@ -93,10 +93,24 @@ The WCAG 2.2 criteria that apply:
 
 Known gaps:
 
-- The key is not exposed to assistive technology in any way. The component cannot set `aria-keyshortcuts`, because
-  it is a child of the control, and no caller does it for it: a search of `apps/web/src` for `aria-keyshortcuts`
-  finds two controls, and neither holds a `Kbd` from this module.
+- The component does not expose the key to assistive technology. It cannot set `aria-keyshortcuts`, because it is
+  a child of the control; the control has to. One caller does: the Console top bar's search button sets
+  `aria-keyshortcuts` and holds a `Kbd` for `/`. Both follow the device's single-key setting through
+  `useSingleKeys`, so with single keys off the button neither announces nor shows `/`, and the change applies at
+  once, from the switch in this tab or from another tab. The other controls that set `aria-keyshortcuts` (the
+  Classic search button and the structure chart's help button) hold no `Kbd` from this module.
 - `keys` is not adapted to the platform. A caller that passes the Command glyph shows it on every system.
+  A caller can pick the text first with `modHint` (`lib/mod-hint`), which passes the page's navigator to `modChord`
+  (`lib/pure/keys`). It puts `⌘` before the rest of the chord on an Apple system and `Ctrl+` on any other, so `⇧↵`
+  reads `⌘⇧↵` or `Ctrl+⇧↵`. These callers do: the commit of `Composer`; under `features/people/ui`, the register
+  sheet's second commit and the register run's finish button, and in the Console look the register sheet's
+  register button (`register-console-footer.tsx`) and
+  the register run's finish and register buttons (`register-run-console.tsx`); under `features/attendance/ui`, the
+  month tab's save (`month-tab.tsx`, and `month-console-view.tsx` in the Console look); and the Console status bar's
+  search cap (`shell/console/shell.tsx`). `register-keys.browser.test.tsx` checks the register hints on Windows and
+  on a Mac in both looks, and that the wider caps stay inside their buttons at 390 px and 1440 px. The save button
+  in the register run's entry row does not pick its text: its column has no room for the wider text, so it shows
+  `⌘↵` on every system.
 - There are two components with this name. `ui/record/record-section.tsx` exports another `Kbd`, which takes `k`
   instead of `keys` and has its own, smaller look in `record.module.css`. Outside tests and gallery files,
   thirteen files import each of them. This page documents the one in `ui/kbd`.

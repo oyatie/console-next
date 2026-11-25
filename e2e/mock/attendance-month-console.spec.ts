@@ -163,7 +163,8 @@ for (const width of [1440, 390]) {
           expect(layoutCheck.maxBtnHeight).toBeLessThanOrEqual(36);
           expect(layoutCheck.gridOverflowX).toBeLessThanOrEqual(1);
           expect(layoutCheck.day31Visible).toBe(true);
-          expect(layoutCheck.nameDecoration).toBe("none");
+          // Links are underlined at rest in Console, as ruled.
+          expect(layoutCheck.nameDecoration).toBe("underline");
           expect(layoutCheck.activeRowText).toContain(saeonUniverse.hero.employeeNumber);
           expect(layoutCheck.statusText).toContain(saeonUniverse.hero.employeeNumber);
           expect(layoutCheck.statusText).toContain(t("attendance.monthConsole.status.issues", { count: 5 }));
@@ -286,7 +287,6 @@ test("Console /attendance Month supports Segmented filters, DayDock SidePane, an
     await cell.dblclick();
     await page.keyboard.type("9-18");
     await page.keyboard.press("Enter");
-    await grid.focus();
     await page.keyboard.press("ControlOrMeta+s");
     await expect(recordPane).toBeVisible();
     await expect(recordPane).toContainText(t("attendanceRecords.evidence.PAPER_SHEET"));

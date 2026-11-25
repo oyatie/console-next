@@ -142,9 +142,6 @@ test.each([
   ["term.미배치", "people.status", "소속 지점 미지정", "미배치"],
   ["term.대기", "home.tab.mine", "내 차례", "대기"],
   ["term.대기", "home.inbox.filter.turn", "내 차례", "대기"],
-  ["term.업무함", "attendance.panel.title", "할 일", "업무함"],
-  ["term.직원", "people.page.title", "구성원 관리", "직원 관리"],
-  ["term.직원", "orgUnit.tab.members", "구성원 {count, number}", "직원 {count, number}"],
   ["term.검색", "org.search.placeholder", "사람 찾기", "직원 검색"],
   ["verb.입력", "org.reason", "사유를 적지 않음", "사유 미입력"],
   ["verb.label", "org.reason", "범위를 정하고 진행합니다", "범위를 지정합니다"],
@@ -506,12 +503,12 @@ test.each(["test.rs", "tests.rs", "case_test.rs", "case_tests.rs"])("CLI exclude
 
 test("CLI refuses a rendered title assembled from two catalog values", () => {
   const { cli, dir } = runtimeCli();
-  const parts = { noun: "구성원", suffix: " 관리" };
+  const parts = { noun: "사람", suffix: " 찾기" };
   writeFileSync(path.join(dir, "output/title.txt"), `${parts.noun}${parts.suffix}`);
   const result = cli("output/title.txt");
   expect(result.status).toBe(1);
-  expect(result.stderr).toContain("term.직원");
-  writeFileSync(path.join(dir, "output/title.txt"), "직원 관리");
+  expect(result.stderr).toContain("term.검색");
+  writeFileSync(path.join(dir, "output/title.txt"), "사람 검색");
   expect(cli("output/title.txt").status).toBe(0);
 });
 
@@ -524,9 +521,9 @@ test("CLI refuses a standing keyboard hint in rendered walk text", () => {
 });
 
 test("catalog parsing covers single quotes, templates and multiline values", () => {
-  const entries = copyEntries("ko/test.ts", "export const ko = { 'org.title':\n `구성원 관리`, 'org.tab.history': '변경 내역' }; // 퇴사");
-  expect(entries.map((e) => e.id)).toEqual(["org.title", "org.tab.history"]);
-  expect(checkTerms(entries, []).map((p) => p.split(": ")[1])).toEqual(["term.직원", "term.이력"]);
+  const entries = copyEntries("ko/test.ts", "export const ko = { 'org.search':\n `사람 찾기`, 'org.tab.history': '변경 내역' }; // 퇴사");
+  expect(entries.map((e) => e.id)).toEqual(["org.search", "org.tab.history"]);
+  expect(checkTerms(entries, []).map((p) => p.split(": ")[1])).toEqual(["term.검색", "term.이력"]);
 });
 
 function debtFixture(englishRule = false) {

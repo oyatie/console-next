@@ -149,6 +149,14 @@ test("the find box takes the keys as soon as it is drawn: Enter acts with no cli
   await element(page.locator("#acted")).toHaveText("1");
 });
 
+test("dirty: an open combobox keeps its Escape, and an expanded disclosure button does not", async () => {
+  await open("dirty");
+  await page.getByRole("combobox", { name: "Pick" }).press("Escape");
+  await element(page.locator("#armed")).toHaveText("false");
+  await page.getByRole("button", { name: "More" }).press("Escape");
+  await element(page.locator("#armed")).toHaveText("true");
+});
+
 test.each(COMPOSING)("the find box stays open through an Escape pressed while composing %j, then closes on a plain Escape", async state => {
   await open("palette");
   const box = page.getByRole("searchbox", { name: "Find a person" });

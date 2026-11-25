@@ -15,7 +15,7 @@ import { User } from "lucide-react";
 import { LifecycleChanges } from "./lifecycle-changes";
 import { unitPath } from "../../../reference/org/present";
 import { orgStructureRef } from "../../../reference/entity/api";
-import { exitGuardsQuery, jobTitlesQuery, type LifecycleEvent } from "../api";
+import { exitGuardsQuery, fixedTermQuery, jobTitlesQuery, type LifecycleEvent } from "../api";
 import { appointmentMode, unitByName, type SheetVerb } from "../domain/lifecycle";
 import { moveKind } from "../domain/move";
 import { returnRequired } from "../domain/leave";
@@ -69,6 +69,9 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
   const appointMode = appointmentMode(act, seed?.from);
   const today = todayKst();
   const leaveRules = useQuery({ ...exitGuardsQuery(e.id, today, null), enabled: kind === "LEAVE_OF_ABSENCE" });
+  // The renewal's fixed-term rule and limit sit above its period and date fields: read with the sheet, not under them
+  // (until a first failure: the sheet never waits out a read's retries).
+  const fixedTerm = useQuery({ ...fixedTermQuery(e.id), enabled: kind === "CONTRACT_RENEWAL" });
   const from = seed?.from;
   const correcting = seed?.mode === "correct" ? from : undefined;
   const locked = seed?.mode === "edit" || Boolean(correcting);
@@ -235,7 +238,7 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
             {...b}
             basis={basis}
             presets={presets}
-            echo={when === "future" || when === "today" || when === "past" ? t(`lifecycle.when.${when}`) : undefined}
+            echo={t(`lifecycle.when.${when === "none" ? "today" : when}`)}
             error={show("date") && when === "none" ? t("lifecycle.date.missing") : undefined}
             showErrors={tried}
           />
@@ -251,7 +254,7 @@ export function LifecycleSheet({ d: detail, events, head, units, act, offer, see
       subtitle={here ? t("lifecycle.nowSince", { where: here, date: fmtDayShort(since) }) : t("lifecycle.now", { where: whoLine(e) })}
       onClose={onClose}
       pending={run.isSending}
-      loading={titles.isPending || (coded && reasons.isPending) || (kind === "LEAVE_OF_ABSENCE" && leaveRules.isPending)}
+      loading={titles.isPending || (coded && reasons.isPending) || (kind === "LEAVE_OF_ABSENCE" && leaveRules.isPending) || (kind === "CONTRACT_RENEWAL" && fixedTerm.isPending && fixedTerm.failureCount === 0)}
       locked={checking || noCatalog}
       blocked={!actionKind ? { reason: t("lifecycle.transfer.placementUnknown") } : undefined}
       notice={

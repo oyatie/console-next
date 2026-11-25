@@ -2,6 +2,7 @@
 // Screen-only copy loads with the locale catalog, after sign-in.
 import type { enCommon } from "../en/common";
 export const koCommon: Record<keyof typeof enCommon, string> = {
+  "common.failed.code.pay_group_roster_ambiguous": "이 법인에는 급여 그룹이 둘 이상이라 그룹별 대상자를 아직 정할 수 없습니다.",
   "common.failed.code.nationality_unknown": "국가 목록에 없는 코드입니다. 목록에서 국가를 선택하십시오. 영국의 국가 코드는 GB입니다.",
   "common.failed.code.bulk_register_facts_refused": "입력할 수 없는 명부 항목이 있어 아무것도 저장하지 않았습니다. 표시된 직원과 항목을 확인하고 다시 적용하십시오.",
   "common.failed.code.bulk_selection_changed": "선택한 직원 수가 달라져 처리하지 않았습니다. 목록을 다시 조회하고 대상을 확인하십시오.",

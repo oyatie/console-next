@@ -1,9 +1,12 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "./a11y";
 import { tenantOnboardSubmit, tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
 import { idleOnServer, psql, settled, sinceServerInput } from "./idle-fixture";
 import { tenantInSetup } from "./setup-flows";
 import { box, revealUnit } from "./structure-flows";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 // Idle sign-out (INF-03, decisions #8c, gate U17). The server's 30-minute minimum-5 timeout cannot be shortened
 // from a test, so each path is reached with a real lever: a session ended elsewhere for the in-place re-auth, refused
@@ -216,7 +219,7 @@ test("in use past the timeout the session slides: input moves the server's recor
   // 29 of 30 minutes pass for the server, then real input: the requests it causes carry it, and the record moves.
   await idleOnServer(page, slug, 29);
   const carried = page.waitForResponse((r) => r.url().includes("/api/v1/") && "x-last-interaction" in r.request().headers() && r.ok());
-  await page.getByRole("link", { name: "조직 구조" }).click();
+  await page.getByRole("navigation", { name: "주 메뉴" }).getByRole("link", { name: t("shell.link.org"), exact: true }).click();
   await carried;
   await expect(page).toHaveURL(/\/org$/);
   await expect.poll(() => sinceServerInput(slug), { message: "input slid the server's record" }).toBeLessThan(60);
@@ -256,7 +259,7 @@ test("idle past the timeout, a returning user signs in again at once, told why; 
   await dialog.getByRole("button", { name: "패스키로 다시 로그인" }).click();
   await expect(dialog).toBeHidden();
   const read = page.waitForResponse((r) => r.url().includes("/api/v1/") && r.ok());
-  await page.getByRole("link", { name: "조직 구조" }).click();
+  await page.getByRole("navigation", { name: "주 메뉴" }).getByRole("link", { name: t("shell.link.org"), exact: true }).click();
   await read;
 });
 

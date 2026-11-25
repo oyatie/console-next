@@ -69,6 +69,7 @@ function ScopeTree({ rules, value, onChange }: { rules: readonly KindRule[]; val
             </span>
           )}
           selected={selected}
+          required
           onSelect={(id) => {
             if (id === TENANT) return onChange({ kind: "TENANT", node_id: null, include_descendants: true });
             const n = id ? find(roots, id)?.node : undefined;

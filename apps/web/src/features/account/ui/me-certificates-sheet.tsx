@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
@@ -33,13 +33,16 @@ const ITEM_KEYS: readonly SelfIssueCertificateRequest["items"][number][] = [
   "birth",
 ];
 
+// The certificate as printed keeps the locale date form whatever the screen style draws.
+const day = (v: unknown) => fmtDate(v, { style: "locale" });
+
 function CertificatePreview({ cert, onBack }: { cert: Certificate; onBack: () => void }) {
   const f = cert.snapshot;
   const values: Record<(typeof ITEM_KEYS)[number], string> = {
-    period: f.period ? t("empDoc.cert.periodValue", { from: fmtDate(f.period.from), to: fmtDate(f.period.to) }) : "—",
+    period: f.period ? t("empDoc.cert.periodValue", { from: day(f.period.from), to: day(f.period.to) }) : "—",
     duty: f.duty ?? "—",
     position: f.position ?? "—",
-    birth: fmtDate(f.birth),
+    birth: day(f.birth),
     wage: f.wage ? t("empDoc.certificate.wage", { won: f.wage.won, unit: label(PAY_UNIT, f.wage.unit) }) : "—",
   };
   const rows: PaperCell[] = [
@@ -60,7 +63,7 @@ function CertificatePreview({ cert, onBack }: { cert: Certificate; onBack: () =>
       <PaperGrid rows={rows} label={cert.certificate_no} />
       <div className="t-xs">{t("empDoc.certificate.attest")}</div>
       <div className="t-xs muted num">
-        {fmtDate(cert.issued_at)} · {f.issuer}
+        {day(cert.issued_at)} · {f.issuer}
       </div>
       {f.seal_png && <img width={80} height={80} src={f.seal_png} alt={t("empDoc.certificate.sealImage")} />}
       <div className="form__actions">
@@ -92,6 +95,12 @@ export function MeCertificatesSheet({
   const [items, setItems] = useState<SelfIssueCertificateRequest["items"]>(["period", "position"]);
   const [purpose, setPurpose] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Back closes the sheet through the address, not through close(), so a closing by either way clears what it showed.
+  const [shownOpen, setShownOpen] = useState(open);
+  if (shownOpen !== open) {
+    setShownOpen(open);
+    if (!open) setSelectedId(null);
+  }
 
   const listQuery = useQuery({
     ...myCertificatesQuery(),
@@ -115,11 +124,14 @@ export function MeCertificatesSheet({
     announce: () => t("account.certificates.issuedSuccess"),
   });
 
+  // A failed issue's notice is gone when the sheet next opens; reset refuses while a sent issue's outcome is unknown.
+  const resetIssue = useEffectEvent(() => issue.reset());
+  useEffect(() => {
+    if (!open) resetIssue();
+  }, [open]);
+
   const close = () => {
-    if (issue.isSending) return;
-    setSelectedId(null);
-    issue.reset();
-    onClose();
+    if (!issue.isSending) onClose();
   };
 
   const toggleItem = (key: SelfIssueCertificateRequest["items"][number], checked: boolean) => {

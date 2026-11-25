@@ -11,7 +11,7 @@ import { REGISTRATION_FIXTURES, SETUP_DEPARTMENT, startOperations, tenantInSetup
 
 test.beforeAll(() => loadCatalog("ko"));
 
-const inbox = (page: Page) => page.getByRole("region", { name: "업무함", exact: true });
+const inbox = (page: Page) => page.getByRole("region", { name: t("home.inbox.title"), exact: true });
 const heldNotice = (page: Page) => page.getByRole("button", { name: /^새 항목 \d+건 · 새로 고침$/ });
 const register = (page: Page) => page.getByRole("region", { name: "번호 정정 · 사후 검토", exact: true });
 const detail = (page: Page) => page.getByRole("dialog", { name: "번호 정정 요청", exact: true });
@@ -117,7 +117,7 @@ test("identifier correction: a second person approves, requester applies, and a 
   await detail(admin).getByRole("button", { name: "돌아가기", exact: true }).click();
 
   await go(admin, "/");
-  await inbox(admin).getByRole("link", { name: "업무함에서 모두 보기", exact: true }).click();
+  await inbox(admin).getByRole("link", { name: t("home.inbox.viewInbox"), exact: true }).click();
   await inbox(admin).getByRole("link", { name: new RegExp(`^${t("home.inbox.tab.waiting")}`) }).click();
   const waiting = inbox(admin).getByRole("row").filter({ has: admin.locator(`a[href="/org/entities?correction=${requested.id}#identifier-corrections"]`) });
   await expect(waiting).toContainText("처리 상태: 승인 대기", { timeout: 20_000 });

@@ -22,12 +22,14 @@ import { SecRecords } from "./sec-records";
 import type { Card } from "./use-card";
 import type { Quick } from "./use-quick";
 import s from "./card.module.css";
+import { useSingleKeys } from "../../../lib/react/use-single-keys";
 
 const SECTIONS = ["personal", "job", "contract", "leave", "records", "family", "restricted", "docs"] as const;
 
 /** Section chips 1–8 and the legend (E2): held under the card head while the sections scroll. */
 export function CardBar({ c, current, onJump }: { c: Card; current: string; onJump: (id: string) => void }) {
   const documents = useDocumentsServed();
+  const singleKeys = useSingleKeys();
   const entries = c.records.data?.items.filter((x) => !x.voided) ?? [];
   const n = (...secs: string[]) => entries.filter((x) => secs.includes(x.section)).length;
   const counts: Partial<Record<(typeof SECTIONS)[number], number>> = {
@@ -38,7 +40,7 @@ export function CardBar({ c, current, onJump }: { c: Card; current: string; onJu
   return (
     <Band className={s.bar}>
       <SecNav items={cardSections(c.records.data?.sections, documents).map((no) => ({ id: `s${no}`, no, title: t(`empCard.sec.${SECTIONS[no - 1]!}`), count: counts[SECTIONS[no - 1]!] }))} current={current} onJump={onJump} />
-      <PopoverButton label={t("empCard.legend.open")} trigger={<><Info size={14} aria-hidden /> {t("empCard.legend.open")} <Kbd k="?" /></>} title={t("empCard.legend.title")}>
+      <PopoverButton label={t("empCard.legend.open")} trigger={<><Info size={14} aria-hidden /> {t("empCard.legend.open")} {singleKeys && <Kbd k="?" />}</>} title={t("empCard.legend.title")}>
         {() => (
           <dl className={s.legendList}>
             {(["rc", "cor", "corTwo", "first", "inline", "verb", "lock"] as const).map((k) => (

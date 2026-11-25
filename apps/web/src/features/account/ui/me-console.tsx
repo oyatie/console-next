@@ -8,6 +8,7 @@ import { t } from "@console/i18n";
 import { fmtMonth } from "@console/i18n/format";
 import type { ReadState } from "../../../lib/react/query-view";
 import { SupportLookup } from "../../../lib/react/support-lookup";
+import { useSidePanel } from "../../../lib/side-panel/use-side-panel";
 import { personName } from "../../../reference/person/present";
 import { myAccessQuery } from "../../../reference/authz/api";
 import { accessRefusal } from "../../../reference/authz/domain/access";
@@ -72,7 +73,8 @@ export function MeConsole({
   const isLinked = !vendor && u?.employee_link_status === "LINKED";
 
   const [payslipId, setPayslipId] = useState<string | null>(null);
-  const [certificatesOpen, setCertificatesOpen] = useState(false);
+  // The sheet lives in the address, so the phone nav and a shared link open it and Back closes it.
+  const sheet = useSidePanel("sheet");
   const access = useQuery({ ...myAccessQuery, enabled: !vendor });
   const meProfile = useQuery({ ...meProfileQuery, enabled: isLinked, retry: false });
   const leave = useQuery({ ...myLeaveSummaryQuery, enabled: isLinked, retry: false });
@@ -125,7 +127,7 @@ export function MeConsole({
           icon: <FileText size={20} aria-hidden="true" />,
           label: t("account.hub.certificates"),
           meta: t("account.hub.certificatesMeta"),
-          onPress: () => setCertificatesOpen(true),
+          onPress: () => sheet.select("certificates"),
         },
       ]
     : [];
@@ -232,9 +234,9 @@ export function MeConsole({
           <MePayslipSheet docId={payslipId} onClose={() => setPayslipId(null)} />
           {isLinked && (
             <MeCertificatesSheet
-              open={certificatesOpen}
+              open={sheet.selected === "certificates"}
               employmentStatus={u?.employee_employment_status ?? meProfile.data?.employment_status}
-              onClose={() => setCertificatesOpen(false)}
+              onClose={sheet.close}
             />
           )}
         </>

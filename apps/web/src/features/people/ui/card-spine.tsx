@@ -18,6 +18,7 @@ import { NextBox } from "./person-next";
 import { rowVerbs } from "./history-verbs";
 import type { Card } from "./use-card";
 import s from "./card.module.css";
+import { useSingleKeys } from "../../../lib/react/use-single-keys";
 
 type View = "all" | "acts" | "fixes";
 const tone = (x: LifecycleEvent): SpineItem["tone"] =>
@@ -30,6 +31,7 @@ const tone = (x: LifecycleEvent): SpineItem["tone"] =>
  */
 export function CardSpine({ c, onAct, onLedger, onHistory }: { c: Card; onAct: (act: string) => void; onLedger: () => void; onHistory: () => void }) {
   const [view, setView] = useState<View>("all");
+  const singleKeys = useSingleKeys();
   const { e, d } = c;
   const all = (c.events.data?.items ?? []).filter((x) => x.state !== "CANCELLED");
   const byId = (id: string) => all.find((x) => x.id === id);
@@ -72,7 +74,7 @@ export function CardSpine({ c, onAct, onLedger, onHistory }: { c: Card; onAct: (
       foot={
         c.events.isSuccess && <>
           {t("empCard.spine.foot", { acts: all.filter((x) => x.state === "APPLIED").length, planned: all.filter((x) => x.state === "SCHEDULED").length })}
-          <span>{"·"}</span> <Kbd k="H" /> {t("empCard.spine.keyH")} <span>{"·"}</span>
+          {singleKeys && <><span>{"·"}</span> <Kbd k="H" /> {t("empCard.spine.keyH")}</>} <span>{"·"}</span>
           <Button variant="link" onClick={onLedger}>{t("empCard.spine.ledger")}</Button>
         </>
       }

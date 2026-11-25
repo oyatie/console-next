@@ -42,15 +42,11 @@
 }
 
 .brandMark {
-  display: inline-grid;
-  place-items: center;
   flex-shrink: 0;
-  width: calc(var(--space-4) + var(--space-half));
-  height: calc(var(--space-4) + var(--space-half));
-  border: 1px solid var(--chrome-border);
-  border-radius: var(--radius-sm);
-  background: var(--chrome-raised);
-  color: var(--chrome-accent);
+}
+
+.brandSquare {
+  fill: var(--chrome-attention);
 }
 
 .brandName,
@@ -165,9 +161,11 @@
   max-inline-size: calc(var(--space-6) * 10);
 }
 
+/* Each row keeps its bar's room before the bar draws, so the page does not move when it does. */
 .tabsArea {
   grid-area: tabs;
   min-width: 0;
+  min-block-size: var(--tabbar-h);
 }
 
 .noticesArea {
@@ -178,18 +176,7 @@
 .statusArea {
   grid-area: status;
   min-width: 0;
-}
-
-.phoneTop {
-  grid-area: phoneTop;
-  min-width: 0;
-}
-
-.phoneNav {
-  grid-area: phoneNav;
-  min-width: 0;
-  position: relative;
-  z-index: 2;
+  min-block-size: var(--statusbar-h);
 }
 
 @media (--below-wide) {
@@ -208,9 +195,40 @@
 }
 
 @media (--phone) {
+  /* A column, not a grid: a grid item sticks only within its own row. The page itself still scrolls, so phone browsers can fold their bars. */
   .shell {
+    display: flex;
+    flex-direction: column;
     height: auto;
-    grid-template: "phoneTop" auto "notices" auto "main" 1fr "phoneNav" auto / minmax(0, 1fr);
+  }
+
+  .shell > :global(.main) {
+    flex: 1 0 auto;
+  }
+
+  .phoneTop {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: var(--z-bar);
+  }
+
+  .phoneNav {
+    position: sticky;
+    inset-block-end: 0;
+    z-index: var(--z-bar);
+  }
+
+  /* Each bar's room, drawn as the empty bar until the bar itself draws, so the page neither moves nor shows through
+     a strip that takes no taps. The top one takes the chrome surface from its data-surface. */
+  .phoneTopHold {
+    block-size: var(--phone-top-h);
+    border-block-end: 1px solid var(--border);
+  }
+
+  .phoneNavHold {
+    block-size: var(--phone-nav-clear);
+    background: var(--surface);
+    border-block-start: 1px solid var(--border);
   }
 }
 
