@@ -115,12 +115,7 @@ export async function assertPatternLifecycle({
 
   for (const state of ["loading", "failed"] as const) {
     const html = await renderPatternMarkup(
-      render({
-        ...readyRead,
-        isPending: state === "loading",
-        data: undefined,
-        error: state === "failed" ? new ApiError(503, "service_unavailable", "", [], `${pattern}-fail`) : null,
-      }),
+      render(state === "failed" ? failedRead(`${pattern}-fail`) : { ...readyRead, isPending: true, data: undefined }),
     );
     expect(html).toContain('data-contract-region="tabs"');
     expect(html).toContain('data-contract-region="overlays"');
