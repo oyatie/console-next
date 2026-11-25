@@ -25,6 +25,7 @@ commit('candidate');
 const sha = git('rev-parse', 'HEAD');
 const image = `example.invalid/console@sha256:${'a'.repeat(64)}`;
 const repository = 'example/console';
+const signatureAudit = 'Verify npm registry signatures and provenance';
 const exitNames = ['ubuntu-24.04', 'ubuntu-24.04-arm'].flatMap(runner =>
   [1, 2].map(repetition => `Platform recovery · ${runner} · repetition ${repetition}`));
 
@@ -32,7 +33,7 @@ function proof() {
   return {sha, repository, currentRevision:previous, gatesResult:'pass',
     run:{id:42, path:'.github/workflows/platform.yml', event:'push', head_branch:'dev',
       head_repository:{full_name:repository}, head_sha:sha, status:'completed', conclusion:'success'},
-    jobs:['Platform contracts and admission', 'Native image smoke test · amd64', 'Native image smoke test · arm64', 'Publish signed platform artifacts', 'Image vulnerability scan', 'Artifact signature rejection / Sign rejection fixture', 'Maintain image build cache', ...exitNames]
+    jobs:['Platform contracts and admission', 'Native image smoke test · amd64', 'Native image smoke test · arm64', 'Publish signed platform artifacts', 'Image vulnerability scan', 'Artifact signature rejection / Sign rejection fixture', 'Maintain image build cache', signatureAudit, ...exitNames]
       .map((name, index) => ({id:index + 1, name, run_id:42, head_sha:sha, status:'completed', conclusion:'success'})),
   };
 }
@@ -180,6 +181,7 @@ for (const [reason, change] of [
   ['red run', input => { input.run.conclusion = 'failure'; }],
   ['pending run', input => { input.run.status = 'in_progress'; }],
   ['empty jobs', input => { input.jobs = []; }],
+  ['missing npm signature audit', input => { input.jobs = input.jobs.filter(job => job.name !== signatureAudit); }],
   ['missing publish job', input => { input.jobs = input.jobs.filter(job => job.name !== 'Publish signed platform artifacts'); }],
   ['legacy display name', input => { input.jobs[0].name = 'validate'; }],
   ['duplicate display name', input => { input.jobs.push({...input.jobs[0], id:100}); }],

@@ -66,6 +66,7 @@ export const enAccessLog = {
   "accessLog.filters": "Access-log filters",
   "accessLog.appliedFilters": "Applied filters",
   "accessLog.filterInvalid": "Check the filters",
+  "accessLog.actorNameUnconfirmed": "Name unconfirmed",
   "accessLog.actorUnavailable": "Unavailable actor",
   "accessLog.filtersUnavailable": "Filters are unavailable",
   "accessLog.filtersUnavailableReason": "Use actor or IP address search to find records.",
