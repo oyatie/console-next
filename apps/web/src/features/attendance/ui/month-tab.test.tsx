@@ -2,13 +2,15 @@
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, beforeEach, expect, test, vi } from "vitest";
+import { ApiError } from "@console/api";
 import { loadCatalog, t } from "@console/i18n";
+import { refusalText } from "../present";
 import type { Drafts } from "../domain/grid";
 import { MonthTab } from "./month-tab";
 
 const state = vi.hoisted(() => ({
   cursor: 0, people: 1, drafts: {} as Drafts, receipt: false, saveDock: false,
-  load: "ready" as "ready" | "loading" | "error",
+  load: "ready" as "ready" | "loading" | "error" | "refused",
   experience: "baseline" as "baseline" | "console",
   blocking: 0,
 }));
@@ -29,9 +31,14 @@ vi.mock("@tanstack/react-router", () => ({
   getRouteApi: () => ({ useSearch: () => ({ month: "2026-10" }), useNavigate: () => vi.fn() }),
   Link: ({ children, to, className }: { children: ReactNode; to: string; className?: string }) => <span data-href={to} className={className}>{children}</span>,
 }));
-vi.mock("@tanstack/react-query", async original => ({ ...await original<typeof import("@tanstack/react-query")>(), useInfiniteQuery: () => ({
-  isPending: state.load === "loading", isSuccess: state.load === "ready", isError: state.load === "error",
-  error: state.load === "error" ? new Error("unavailable") : null,
+vi.mock("@tanstack/react-query", async original => ({ ...await original<typeof import("@tanstack/react-query")>(),
+  // The head's phase line reads the tenant; the refusal card's own reads stay pending.
+  useQuery: ({ queryKey }: { queryKey: readonly unknown[] }) => queryKey[0] === "/api/v1/users/me"
+    ? { isPending: false, error: null, data: { tenant: { phase: "OPERATING" } } }
+    : { isPending: true, error: null, data: undefined },
+  useInfiniteQuery: () => ({
+  isPending: state.load === "loading", isSuccess: state.load === "ready", isError: state.load === "error" || state.load === "refused",
+  error: state.load === "error" ? new Error("unavailable") : state.load === "refused" ? new ApiError(403, "forbidden", "", [], "ref-month") : null,
   data: state.load === "ready" ? { pages: [{ people_total: state.people, rows: state.people ? [
     {
       employee_id: "person",
@@ -156,4 +163,22 @@ test.each((["baseline", "console"] as const).flatMap(look => [[look, "Win32", "C
   } finally {
     vi.unstubAllGlobals();
   }
+});
+
+test("Console month keeps the jump back to this month beside its month stepper", () => {
+  state.experience = "console";
+  expect(render()).toContain(`>${t("attendance.period.thisMonth")}</button>`);
+});
+
+test("Console month keeps the tenant phase line Classic draws beside the title", () => {
+  state.experience = "console";
+  expect(render()).toContain(t("attendance.phase.operating"));
+});
+
+test("a refused Console month names the server's refusal inside its disclosure", () => {
+  state.experience = "console";
+  state.load = "refused";
+  const html = render();
+  expect(html).toContain(t("common.denied.title.plain"));
+  expect(html).toContain(refusalText("forbidden")!);
 });

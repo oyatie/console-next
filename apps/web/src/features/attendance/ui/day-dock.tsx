@@ -4,6 +4,7 @@ import { t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
 import { ATTENDANCE_EVIDENCE, label } from "../../../lib/labels";
 import { useLiveHold } from "../../../lib/live/hold";
+import { Denied } from "../../../lib/react/denied";
 import { QueryState } from "../../../lib/react/query-state";
 import { Button } from "../../../ui/button/button";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
@@ -14,7 +15,7 @@ import { Table } from "../../../ui/table";
 import { KeyValue } from "../../../ui/key-value/key-value";
 import { MonthGridPaneBody } from "../../../ui/patterns/month-grid-parts";
 import { Tabs } from "../../../ui/tabs/tabs";
-import { personMonthQuery, type Day, type Entry } from "../api";
+import { personMonthQuery, refusalCode, type Day, type Entry } from "../api";
 import { duration } from "../domain/minutes";
 import { closed } from "../domain/month-state";
 import { clockText, dateText, entryText, shiftText, refusalText, type DayDockMode } from "../present";
@@ -49,6 +50,7 @@ export function DayDock({ employeeId, date, own, variant = "dock", mode: control
     if (onModeChange) onModeChange(next);
     else setUncontrolledMode(next);
   };
+  const refused = refusalCode(month.error);
   const day = month.data?.days.find((d) => d.date === date);
   const history = (month.data?.history ?? []).filter((h) => h.date === date);
   const entry = day?.entry ?? null;
@@ -70,7 +72,8 @@ export function DayDock({ employeeId, date, own, variant = "dock", mode: control
     </div>
   );
   const body = (
-    <QueryState q={month} own={refusalText}>
+    // The person's month is the whole pane, so its refusal says who can grant and offers the request, as a page does.
+    <QueryState q={month} own={refusalText} denied={<Denied error={month.error} reason={refused && refusalText(refused)} />}>
       {() => (
         <Tabs
           label={t("attendanceRecords.day.tabs")}

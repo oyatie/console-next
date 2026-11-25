@@ -197,7 +197,6 @@ export const enAttendance = {
   "attendance.close.amendedDone": "Recorded close amendment",
   "attendance.close.handoffTitle": "Two-person period unlock",
   "attendance.close.handoffSummary": "Reopening this closed month requires a second authority passkey confirmation.",
-  "attendance.close.openRow": "Open",
   "attendance.close.statusRatio": "Closed {closed, number}/{total, number}",
   "attendance.issues.noun": "Attendance exception",
   "attendance.issues.raiseButton": "Raise exception",

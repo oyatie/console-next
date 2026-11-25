@@ -149,8 +149,8 @@ export function PersonCard({ id, month, head }: { id: string; month?: string; he
                 />
               </DayBars>
             </RecordSection>
-            {p.history.length > 0 ? (
-              <RecordSection id="att-person-history" no={2} title={t("attendanceRecords.card.historyTitle")}>
+            <RecordSection id="att-person-history" no={2} title={t("attendanceRecords.card.historyTitle")}>
+              {p.history.length ? (
                 <ItemList
                   label={t("attendanceRecords.card.historyTitle")}
                   items={p.history.map(h => ({
@@ -170,8 +170,10 @@ export function PersonCard({ id, month, head }: { id: string; month?: string; he
                     end: <bdi className="muted">{h.entry.created_by_name}</bdi>,
                   }))}
                 />
-              </RecordSection>
-            ) : null}
+              ) : (
+                <p className="muted">{t("attendanceRecords.day.noHistory")}</p>
+              )}
+            </RecordSection>
           </>
         ) : null
       }

@@ -26,14 +26,13 @@ export function AttendanceTabNav({ tab }: { tab: Tab }) {
   );
 }
 
+/** The head's phase line: what the tenant's phase means for attendance schedules, or nothing until the tenant is read. */
+export function useAttendancePhaseLine() {
+  const phase = useQuery(get("/api/v1/users/me")).data?.tenant?.phase;
+  return phase ? <PhaseLine phase={phase === "OPERATING" ? "operating" : "setup"}>{t(phase === "OPERATING" ? "attendance.phase.operating" : "attendance.phase.setup")}</PhaseLine> : null;
+}
+
 export function AttendanceHead({ tab }: { tab: Tab }) {
-  const me = useQuery(get("/api/v1/users/me"));
-  const phase = me.data?.tenant?.phase;
-  return (
-    <PageHead
-      title={t("attendance.title")}
-      meta={phase && <PhaseLine phase={phase === "OPERATING" ? "operating" : "setup"}>{t(phase === "OPERATING" ? "attendance.phase.operating" : "attendance.phase.setup")}</PhaseLine>}
-      tabs={<AttendanceTabNav tab={tab} />}
-    />
-  );
+  const phaseLine = useAttendancePhaseLine();
+  return <PageHead title={t("attendance.title")} meta={phaseLine} tabs={<AttendanceTabNav tab={tab} />} />;
 }

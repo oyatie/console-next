@@ -9,7 +9,7 @@ import { RecordBannerBand } from "../../../ui/patterns/record-banner-band";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { patternsQuery, treeQuery, type Layer } from "../api";
 import { AssignSheet, type AssignTarget } from "./assign-sheet";
-import { AttendanceTabNav } from "./attendance-head";
+import { AttendanceTabNav, useAttendancePhaseLine } from "./attendance-head";
 import type { AttendanceSearch, View } from "./attendance-page";
 import { CalendarView } from "./calendar-view";
 import { CancelLayerSheet } from "./cancel-layer-sheet";
@@ -42,6 +42,7 @@ export function ScheduleConsoleView({ baseline }: { baseline: () => ReactNode })
 
   const tr = tree.data;
 
+  const phaseLine = useAttendancePhaseLine();
   return (
     <SettingsPattern
       q={tree}
@@ -49,6 +50,7 @@ export function ScheduleConsoleView({ baseline }: { baseline: () => ReactNode })
       head={{
         title: t("attendance.title"),
         titleId: "attendance-schedule-title",
+        meta: phaseLine,
       }}
       views={
         <nav aria-label={t("attendance.views")} className={s.scheduleRail}>

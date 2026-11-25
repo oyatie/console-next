@@ -15,7 +15,7 @@ import { ListRecord } from "../../../ui/patterns/list-record";
 import { RecordIdentityBar, RecordPaneSection } from "../../../ui/patterns/list-record-parts";
 import { exceptionDetailQuery, exceptionsQuery } from "../api";
 import { dateText } from "../present";
-import { AttendanceTabNav } from "./attendance-head";
+import { AttendanceTabNav, useAttendancePhaseLine } from "./attendance-head";
 import { PeriodStepper } from "./period-stepper";
 import { ScopePicker } from "./scope-picker";
 import s from "./attendance-console.module.css";
@@ -41,6 +41,7 @@ export function IssuesConsoleView({ baseline }: { baseline: () => React.ReactNod
   const countKind = (kind: "LATE" | "NO_SHOW" | "UNAPPROVED_OVERTIME" | "EARLY_LEAVE") =>
     rows.filter(r => r.kind === kind).length;
 
+  const phaseLine = useAttendancePhaseLine();
   return (
     <ListRecord
       q={query}
@@ -48,6 +49,7 @@ export function IssuesConsoleView({ baseline }: { baseline: () => React.ReactNod
       head={{
         title: t("attendance.title"),
         titleId: "attendance-issues-title",
+        meta: phaseLine,
         actions: (
           <Button size="sm" variant="primary" className={s.nowrap} onClick={() => setSheet("raise")}>
             {t("attendance.issues.raiseButton")}
@@ -56,7 +58,7 @@ export function IssuesConsoleView({ baseline }: { baseline: () => React.ReactNod
       }}
       filters={
         <div className={s.filterPair}>
-          <PeriodStepper unit="month" variant="boxed" showCurrent={false} value={month} onChange={nextMonth => go({ month: nextMonth })} />
+          <PeriodStepper unit="month" variant="boxed" value={month} onChange={nextMonth => go({ month: nextMonth })} />
           <ScopePicker compact value={search.wp} onChange={wp => go({ wp, unit: undefined })} />
         </div>
       }

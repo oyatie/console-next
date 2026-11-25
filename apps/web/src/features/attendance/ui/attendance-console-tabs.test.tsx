@@ -3,17 +3,23 @@ import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, beforeEach, expect, test, vi } from "vitest";
+import { ApiError } from "@console/api";
 import { loadCatalog, t } from "@console/i18n";
+import { refusalText } from "../present";
+import { CalendarView } from "./calendar-view";
 import { CloseConsoleView } from "./close-console-view";
 import { DayConsoleView } from "./day-console-view";
+import { HolidaysView } from "./holidays-view";
 import { IssuesConsoleView } from "./issues-console-view";
 import { OvertimeConsoleView } from "./overtime-console-view";
 import { PersonCard } from "./person-card";
+import { PublicHolidaysView } from "./public-holidays-view";
 import { ScheduleConsoleView } from "./schedule-console-view";
 
 const state = vi.hoisted(() => ({
   search: { date: "2026-11-16", month: "2026-11", person: "e1" } as Record<string, unknown>,
   experience: "console" as "baseline" | "console",
+  refuseDay: false,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -103,7 +109,7 @@ vi.mock("@tanstack/react-query", async original => {
           },
         };
       }
-      if (path.includes("/api/v1/attendance/month-closes")) {
+      if (path.includes("/api/v1/attendance/closes")) {
         return {
           isPending: false,
           error: null,
@@ -119,6 +125,15 @@ vi.mock("@tanstack/react-query", async original => {
             ],
           },
         };
+      }
+      if (path.includes("/api/v1/users/me")) {
+        return { isPending: false, error: null, refetch: vi.fn(), data: { tenant: { phase: "OPERATING" } } };
+      }
+      if (path.includes("/api/v1/attendance/days") && state.refuseDay) {
+        return { isPending: false, error: new ApiError(403, "forbidden", "", [], "ref-day"), refetch: vi.fn(), data: undefined };
+      }
+      if (path.includes("/api/v1/attendance/holidays")) {
+        return { isPending: false, error: null, refetch: vi.fn(), data: { year: 2026, loaded: true, public: [], contractual: [] } };
       }
       if (path.includes("/api/v1/attendance/days")) {
         return {
@@ -173,10 +188,15 @@ vi.mock("@tanstack/react-query", async original => {
         return { isPending: false, error: null, refetch: vi.fn(), data: { items: [{ id: "pat-1", status: "ACTIVE" }] } };
       }
       if (path.includes("/api/v1/attendance/schedule/layers")) {
-        return { isPending: false, error: null, refetch: vi.fn(), data: { layers: [] } };
+        return { isPending: false, isFetched: true, error: null, refetch: vi.fn(), data: { items: [] } };
       }
       if (path.includes("/api/v1/attendance/schedule/calendar")) {
-        return { isPending: false, error: null, refetch: vi.fn(), data: { month: "2026-11", days: [] } };
+        return {
+          isPending: false,
+          error: null,
+          refetch: vi.fn(),
+          data: { month: "2026-11", scope_kind: "WORKPLACE", scope_id: "wp-1", scope_name: "Plant", stack: [], upcoming: [], days: [], holidays_loaded: true },
+        };
       }
       if (path.includes("/api/v1/attendance/people/")) {
         return {
@@ -195,6 +215,7 @@ vi.mock("@tanstack/react-query", async original => {
           },
         };
       }
+      if (path.startsWith("/api/v1/access/")) return { isPending: true, error: null, refetch: vi.fn(), data: undefined };
       return { isPending: false, error: null, refetch: vi.fn(), data: [] };
     },
   };
@@ -204,6 +225,7 @@ beforeAll(() => loadCatalog("ko"));
 beforeEach(() => {
   state.search = { date: "2026-11-16", month: "2026-11", person: "e1" };
   state.experience = "console";
+  state.refuseDay = false;
 });
 
 function render(node: ReactNode) {
@@ -232,4 +254,58 @@ test("person card falls back cleanly to baseline when baseline experience is act
   const html = render(<PersonCard id="e1" month="2026-11" head={null} />);
   expect(html).toContain("Hajun Yun");
   expect(html).toContain(t("attendanceRecords.card.daysTitle"));
+});
+
+const tree = { date: "2026-11-16", people_total: 12, people_unscheduled: 0, holidays_loaded: true, nodes: [{ id: "wp-1", kind: "WORKPLACE", name: "Plant", people: 12, unscheduled: 0 }] } as never;
+const jump = (key: Parameters<typeof t>[0]) => `>${t(key)}</button>`;
+
+// A style never drops behaviour: Classic's steppers carry the jump back to the current period.
+test.each([
+  ["issues", () => <IssuesConsoleView baseline={() => null} />, "attendance.period.thisMonth"],
+  ["close", () => <CloseConsoleView baseline={() => null} />, "attendance.period.thisMonth"],
+  ["day", () => <DayConsoleView baseline={() => null} />, "uiDate.today"],
+  ["overtime", () => <OvertimeConsoleView baseline={() => null} />, "attendance.period.thisWeek"],
+  ["calendar", () => <CalendarView consoleMode tree={tree} search={{ month: "2026-11" }} onScope={vi.fn()} onMonth={vi.fn()} onAssign={vi.fn()} onCancel={vi.fn()} onAddPattern={vi.fn()} />, "attendance.period.thisMonth"],
+  ["company holidays", () => <HolidaysView consoleMode tree={tree} onDone={vi.fn()} />, "attendance.period.thisYear"],
+  ["public holidays", () => <PublicHolidaysView consoleMode />, "attendance.period.thisYear"],
+] as const)("the Console %s stepper keeps the jump to the current period", (_, view, key) => {
+  expect(render(view())).toContain(jump(key));
+});
+
+test("the Console month close grid opens a scope from its row, with no 작업 column or row button", () => {
+  const html = render(<CloseConsoleView baseline={() => null} />);
+  expect(html).toContain("wp-1");
+  expect(html).not.toContain(t("settingsHub.reasons.actionsCol"));
+  const grid = html.slice(html.indexOf('role="grid"'));
+  expect(grid).toContain("wp-1");
+  expect(grid).not.toContain("<button");
+});
+
+test("a refused Console day board names the server's refusal inside its disclosure", () => {
+  state.refuseDay = true;
+  const html = render(<DayConsoleView baseline={() => null} />);
+  expect(html).toContain(t("common.denied.title.plain"));
+  expect(html).toContain(refusalText("forbidden")!);
+});
+
+test("the Console person card says when the month has no record history", () => {
+  expect(render(<PersonCard id="e1" month="2026-11" head={null} />)).toContain(t("attendanceRecords.day.noHistory"));
+});
+
+test.each([
+  ["issues", () => <IssuesConsoleView baseline={() => null} />],
+  ["close", () => <CloseConsoleView baseline={() => null} />],
+  ["day", () => <DayConsoleView baseline={() => null} />],
+  ["overtime", () => <OvertimeConsoleView baseline={() => null} />],
+  ["schedule", () => <ScheduleConsoleView baseline={() => null} />],
+] as const)("the Console %s head keeps the tenant phase line Classic draws beside the title", (_, view) => {
+  expect(render(view())).toContain(t("attendance.phase.operating"));
+});
+
+test("the Console calendar puts its assign command in the stepper row, above the month and its history", () => {
+  const html = render(<CalendarView consoleMode tree={tree} search={{ month: "2026-11" }} onScope={vi.fn()} onMonth={vi.fn()} onAssign={vi.fn()} onCancel={vi.fn()} onAddPattern={vi.fn()} />);
+  const assign = html.indexOf(t("attendanceSchedule.assign.open"));
+  expect(assign).toBeGreaterThan(-1);
+  expect(assign).toBeLessThan(html.indexOf("<table"));
+  expect(assign).toBeLessThan(html.indexOf(t("attendanceSchedule.history.title")));
 });
