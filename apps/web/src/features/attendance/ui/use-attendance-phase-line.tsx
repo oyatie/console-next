@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
 import { myAccessQuery } from "../../../reference/authz/api";
