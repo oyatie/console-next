@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { lazy, Suspense, type ReactNode } from "react";
+import { lazy, Suspense, useId, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { Search } from "lucide-react";
 import { i18n, t } from "@console/i18n";
@@ -90,6 +90,7 @@ export function ConsoleTopBar({
   onSearch: () => void;
 }) {
   const singleKeys = useSingleKeys();
+  const searchScopeId = useId();
   return (
     <header className={s.top} data-surface="chrome" aria-busy={restoring || undefined}>
       {!restoring ? (
@@ -139,17 +140,22 @@ export function ConsoleTopBar({
           </div>
 
           {!platform ? (
-            <button
-              type="button"
-              className={s.searchField}
-              onClick={onSearch}
-              aria-label={t("shell.jump")}
-              aria-keyshortcuts={singleKeys ? "Meta+K Control+K /" : "Meta+K Control+K"}
-            >
-              <Search size={14} aria-hidden="true" />
-              <bdi className={s.searchText}>{t("shell.searchHint")}</bdi>
-              {singleKeys && <Kbd keys="/" />}
-            </button>
+            <>
+              {/* Named from its words, not aria-label, so a label locator for a searchable thing never lands here. */}
+              <button
+                type="button"
+                className={s.searchField}
+                onClick={onSearch}
+                aria-describedby={searchScopeId}
+                aria-keyshortcuts={singleKeys ? "Meta+K Control+K /" : "Meta+K Control+K"}
+              >
+                <Search size={14} aria-hidden="true" />
+                <span className="sr-only">{t("shell.jumpLabel")}</span>
+                <bdi className={s.searchText}>{t("shell.searchHint")}</bdi>
+                {singleKeys && <Kbd keys="/" />}
+              </button>
+              <span id={searchScopeId} hidden>{t("shell.jump")}</span>
+            </>
           ) : null}
 
           <div className={s.metaCluster}>
