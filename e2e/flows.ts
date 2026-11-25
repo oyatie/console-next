@@ -58,7 +58,7 @@ export async function newContext(browser: Browser, contextOptions: Pick<BrowserC
  * The tenant-opening modal. Its fields are found inside it: the platform list beside it names rows, checkboxes and an
  * open record after the tenants other tests made, and any of those names may contain a field's label.
  */
-export const tenantOnboardDialog = (page: Page) => page.getByRole("dialog", { name: ko["tenants.create"], exact: true });
+const tenantOnboardDialog = (page: Page) => page.getByRole("dialog", { name: ko["tenants.create"], exact: true });
 export const tenantNameField = (page: Page) => tenantOnboardDialog(page).getByRole("textbox", { name: ko["tenants.form.name"] });
 /** The company domain in the tenant-opening modal, or in `scope` (the domain rename dialog). A Locator has page(). */
 export const tenantSlugField = (scope: Page | Locator) => ("page" in scope ? scope : tenantOnboardDialog(scope)).getByRole("textbox", { name: ko["tenants.form.slug"] });
