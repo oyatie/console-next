@@ -59,8 +59,7 @@ for (const width of [1440, 390]) {
   });
 }
 
-// Home previews the queue's first rows: five in Classic; up to ten in Console (HOME_CONSOLE_ROWS), which no board fixes,
-// so the Console value is the render's.
+// Home previews the queue's first rows: five in Classic; ten in Console, as d-home draws them before its more button.
 async function openHome(page: Page) {
   await mockScreen(page, screens[0], "populated");
   await mockRoute(page, "get", "/api/v1/me/action-inbox", { status: 200, json: inbox(12) });
