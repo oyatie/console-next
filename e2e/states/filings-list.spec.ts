@@ -10,7 +10,7 @@ import { filingTask, mockFilings } from "../mock/filings";
 import { id } from "../mock/fixtures";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
-import { EXPERIENCE_KEY } from "../../apps/web/src/lib/prefs";
+import { experienceState } from "../experience";
 
 // Classic draws the filings as a table of cells, Console as a grid of gridcells.
 const filings = (scope: Page | Locator) => scope.getByRole("table", { name: t("statutory.insurance"), exact: true }).or(scope.getByRole("grid", { name: t("statutory.insurance"), exact: true }));
@@ -62,37 +62,39 @@ async function filingRow(page: Page, insurer: string, kind: string, employee: st
 // How the list lays out is the style's. Classic keeps table rows at desk width and reflows them into labelled cards at
 // 390 with no sideways scroll. Console keeps its grid's columns inside the region at desk width; no board draws the
 // filings, so that is the render's value, and at 390 the screen owes only the invariants, checked below.
-for (const experience of ["baseline", "console"] as const) for (const width of experience === "baseline" ? [1440, 390] : [1440]) {
-  test(`filing ${width === 390 ? "facts reflow into labelled cards" : "rows keep their columns"} at ${width}px in ${experience} @ui-state${experience === "baseline" ? " @baseline" : ""}`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 1000 });
-    await page.addInitScript(([key, value]) => localStorage.setItem(key, value), [EXPERIENCE_KEY, experience] as const);
-    const fixture = await mockScreen(page, screens[2], "populated");
-    await mockFilings(page, { ...filingTask, lifecycle_case_id: id(8300) });
-    try {
-      await page.goto("/statutory");
-      await expect(page.getByText(filingTask.name, { exact: true })).toBeVisible();
-      const region = page.getByRole("region", { name: t("statutory.insurance"), exact: true });
-      if (experience === "console") expect(await region.evaluate(element => element.scrollWidth - element.clientWidth)).toBe(0);
-      else {
-        const grid = page.getByRole("table", { name: t("statutory.insurance"), exact: true });
-        await expect(grid).toHaveCSS("--table-cards", width === 390 ? "1" : "0");
-        if (width === 390) {
-          expect(await region.evaluate(element => element.scrollWidth - element.clientWidth)).toBe(0);
-          const row = grid.getByRole("row").filter({ hasText: filingTask.name });
-          const title = row.locator('[data-card="title"]');
-          await expect(title).toHaveAttribute("data-label", t("statutory.employee"));
-          await expect(title).toContainText(filingTask.name);
-          for (const key of ["statutory.workplace", "statutory.event", "statutory.date", "statutory.deadline", "statutory.evidence"] as const) {
-            const cell = row.locator(`[data-card="fact"][data-label="${t(key)}"]`);
-            await expect(cell).toBeVisible();
-            expect(await cell.evaluate(element => getComputedStyle(element, "::before").content)).toBe(JSON.stringify(t(key)));
+for (const experience of ["baseline", "console"] as const) test.describe(() => {
+  test.use({ storageState: experienceState(experience) });
+  for (const width of experience === "baseline" ? [1440, 390] : [1440]) {
+    test(`filing ${width === 390 ? "facts reflow into labelled cards" : "rows keep their columns"} at ${width}px in ${experience} @ui-state${experience === "baseline" ? " @baseline" : ""}`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 1000 });
+      const fixture = await mockScreen(page, screens[2], "populated");
+      await mockFilings(page, { ...filingTask, lifecycle_case_id: id(8300) });
+      try {
+        await page.goto("/statutory");
+        await expect(page.getByText(filingTask.name, { exact: true })).toBeVisible();
+        const region = page.getByRole("region", { name: t("statutory.insurance"), exact: true });
+        if (experience === "console") expect(await region.evaluate(element => element.scrollWidth - element.clientWidth)).toBe(0);
+        else {
+          const grid = page.getByRole("table", { name: t("statutory.insurance"), exact: true });
+          await expect(grid).toHaveCSS("--table-cards", width === 390 ? "1" : "0");
+          if (width === 390) {
+            expect(await region.evaluate(element => element.scrollWidth - element.clientWidth)).toBe(0);
+            const row = grid.getByRole("row").filter({ hasText: filingTask.name });
+            const title = row.locator('[data-card="title"]');
+            await expect(title).toHaveAttribute("data-label", t("statutory.employee"));
+            await expect(title).toContainText(filingTask.name);
+            for (const key of ["statutory.workplace", "statutory.event", "statutory.date", "statutory.deadline", "statutory.evidence"] as const) {
+              const cell = row.locator(`[data-card="fact"][data-label="${t(key)}"]`);
+              await expect(cell).toBeVisible();
+              expect(await cell.evaluate(element => getComputedStyle(element, "::before").content)).toBe(JSON.stringify(t(key)));
+            }
           }
         }
-      }
-      expect(fixture.unexpected).toEqual([]);
-    } finally { await page.close(); fixture.release(); }
-  });
-}
+        expect(fixture.unexpected).toEqual([]);
+      } finally { await page.close(); fixture.release(); }
+    });
+  }
+});
 
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
   test(`filing facts and actions are reachable at ${width}px in ${theme} @ui-state`, async ({ page }, info) => {
@@ -385,43 +387,45 @@ for (const sameEmployee of [false, true]) test(`filing actions remain reachable 
 
 // Console keeps the basis in the record pane, so opening and closing it leaves the rows where they are; no board draws
 // the filings, so that is the render's value. Its 390 screen owes only the invariants, held by the facts test above.
-for (const theme of ["light", "dark"]) test(`filing basis opens in the record pane and keeps the disclosure marker at 1440px in ${theme} in console @ui-state`, async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.addInitScript(([key, value]) => localStorage.setItem(key, value), [EXPERIENCE_KEY, "console"] as const);
-  await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
-  const fixture = await mockScreen(page, screens[2], "populated");
-  await mockFilings(page);
-  await mockRoute(page, "get", "/api/v1/statutory/insurance-filings", {
-    status: 200, json: { items: [filingTask, { ...filingTask, event_id: id(8600), name: "Next Filer" }], total: 2, pending: 2, next: null },
-  });
-  try {
-    await page.goto("/statutory");
-    const grid = filings(page);
-    const next = grid.getByRole("row").filter({ hasText: "Next Filer" });
-    await expect(next).toBeVisible();
-    await openRecord(grid.getByRole("row").filter({ hasText: filingTask.name }), `${t("statutory.NPS")} · ${t("statutory.ACQUIRE")}`);
-    const pane = recordPane(page);
-    const basis = pane.locator("summary");
-    await expect(basis).toHaveText(t("statutory.basis"));
-    await page.evaluate(async () => { await document.fonts.ready; });
-    const top = () => next.evaluate(el => el.getBoundingClientRect().top + window.scrollY);
-    const before = await top();
-    const marker = () => basis.evaluate(element => {
-      const style = getComputedStyle(element);
-      return { display: style.display, type: style.listStyleType };
+test.describe(() => {
+  test.use({ storageState: experienceState("console") });
+  for (const theme of ["light", "dark"]) test(`filing basis opens in the record pane and keeps the disclosure marker at 1440px in ${theme} in console @ui-state`, async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
+    const fixture = await mockScreen(page, screens[2], "populated");
+    await mockFilings(page);
+    await mockRoute(page, "get", "/api/v1/statutory/insurance-filings", {
+      status: 200, json: { items: [filingTask, { ...filingTask, event_id: id(8600), name: "Next Filer" }], total: 2, pending: 2, next: null },
     });
-    expect(await marker()).toEqual({ display: "list-item", type: "disclosure-closed" });
-    await basis.click();
-    await expect(pane.getByText(t("statutory.hold"), { exact: true })).toBeVisible();
-    expect(await marker()).toEqual({ display: "list-item", type: "disclosure-open" });
-    expect(await top()).toBeCloseTo(before, 0);
-    await fits(page, `filing basis pane ${theme}`);
-    await expectAxe(page, `filing basis pane ${theme}`);
-    await basis.click();
-    await expect(pane.getByText(t("statutory.hold"), { exact: true })).not.toBeVisible();
-    expect(await top()).toBeCloseTo(before, 0);
-    expect(fixture.unexpected).toEqual([]);
-  } finally { await page.close(); fixture.release(); }
+    try {
+      await page.goto("/statutory");
+      const grid = filings(page);
+      const next = grid.getByRole("row").filter({ hasText: "Next Filer" });
+      await expect(next).toBeVisible();
+      await openRecord(grid.getByRole("row").filter({ hasText: filingTask.name }), `${t("statutory.NPS")} · ${t("statutory.ACQUIRE")}`);
+      const pane = recordPane(page);
+      const basis = pane.locator("summary");
+      await expect(basis).toHaveText(t("statutory.basis"));
+      await page.evaluate(async () => { await document.fonts.ready; });
+      const top = () => next.evaluate(el => el.getBoundingClientRect().top + window.scrollY);
+      const before = await top();
+      const marker = () => basis.evaluate(element => {
+        const style = getComputedStyle(element);
+        return { display: style.display, type: style.listStyleType };
+      });
+      expect(await marker()).toEqual({ display: "list-item", type: "disclosure-closed" });
+      await basis.click();
+      await expect(pane.getByText(t("statutory.hold"), { exact: true })).toBeVisible();
+      expect(await marker()).toEqual({ display: "list-item", type: "disclosure-open" });
+      expect(await top()).toBeCloseTo(before, 0);
+      await fits(page, `filing basis pane ${theme}`);
+      await expectAxe(page, `filing basis pane ${theme}`);
+      await basis.click();
+      await expect(pane.getByText(t("statutory.hold"), { exact: true })).not.toBeVisible();
+      expect(await top()).toBeCloseTo(before, 0);
+      expect(fixture.unexpected).toEqual([]);
+    } finally { await page.close(); fixture.release(); }
+  });
 });
 
 for (const width of [1280, 1440]) test(`closing filing basis restores the next row at ${width}px @ui-state @baseline`, async ({ page }) => {

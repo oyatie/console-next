@@ -8,7 +8,7 @@ import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
 import { failure, id } from "../mock/fixtures";
-import { EXPERIENCE_KEY } from "../../apps/web/src/lib/prefs";
+import { experienceState } from "../experience";
 
 const { minimum, maximum } = jobTitleSchemas.update.properties.grade_rank;
 const labelMax = jobTitleSchemas.update.properties.label.maxLength;
@@ -106,23 +106,25 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
 
 // Where the edit form opens is the style's: Classic opens it in the row's action card, Console in the record pane. No
 // board draws the job titles, so the Console value is the render's, and at 390 it owes only the invariants.
-for (const experience of ["baseline", "console"] as const) for (const width of experience === "baseline" ? [1440, 390] : [1440]) {
-  test(`job title edit opens ${experience === "baseline" ? "in the row's action card" : "in the record pane"} at ${width}px in ${experience} @ui-state${experience === "baseline" ? " @baseline" : ""}`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 900 });
-    await page.addInitScript(([key, value]) => localStorage.setItem(key, value), [EXPERIENCE_KEY, experience] as const);
-    const fixture = await mockScreen(page, screens.find(s => s.key === "people")!, "populated");
-    const entry = { id: id(101), kind: "JOB" as const, label: "Developer", grade_rank: null, active: true };
-    await mockRoute(page, "get", "/api/v1/job-titles", { status: 200, json: { can_manage: true, items: [entry] } });
-    try {
-      await page.goto("/people/job-titles");
-      await page.getByRole("button", { name: t("titles.edit", { label: entry.label }), exact: true }).click();
-      const form = page.getByRole("form", { name: t("titles.edit.title", { label: entry.label }), exact: true });
-      if (experience === "baseline") await expect(form.locator("..")).toHaveAttribute("data-card", "action");
-      else await expect(page.getByRole("complementary", { name: t("titles.edit.title", { label: entry.label }), exact: true }).getByRole("form")).toBeVisible();
-      expect(fixture.unexpected).toEqual([]);
-    } finally { await page.close(); fixture.release(); }
-  });
-}
+for (const experience of ["baseline", "console"] as const) test.describe(() => {
+  test.use({ storageState: experienceState(experience) });
+  for (const width of experience === "baseline" ? [1440, 390] : [1440]) {
+    test(`job title edit opens ${experience === "baseline" ? "in the row's action card" : "in the record pane"} at ${width}px in ${experience} @ui-state${experience === "baseline" ? " @baseline" : ""}`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      const fixture = await mockScreen(page, screens.find(s => s.key === "people")!, "populated");
+      const entry = { id: id(101), kind: "JOB" as const, label: "Developer", grade_rank: null, active: true };
+      await mockRoute(page, "get", "/api/v1/job-titles", { status: 200, json: { can_manage: true, items: [entry] } });
+      try {
+        await page.goto("/people/job-titles");
+        await page.getByRole("button", { name: t("titles.edit", { label: entry.label }), exact: true }).click();
+        const form = page.getByRole("form", { name: t("titles.edit.title", { label: entry.label }), exact: true });
+        if (experience === "baseline") await expect(form.locator("..")).toHaveAttribute("data-card", "action");
+        else await expect(page.getByRole("complementary", { name: t("titles.edit.title", { label: entry.label }), exact: true }).getByRole("form")).toBeVisible();
+        expect(fixture.unexpected).toEqual([]);
+      } finally { await page.close(); fixture.release(); }
+    });
+  }
+});
 
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
   test(`job title edit refuses ranks outside the contract ${width} ${theme} @ui-state`, async ({ page }, info) => {

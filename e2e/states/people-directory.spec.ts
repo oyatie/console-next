@@ -6,7 +6,7 @@ import { employees, facets } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
-import { EXPERIENCE_KEY } from "../../apps/web/src/lib/prefs";
+import { experienceState } from "../experience";
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -182,13 +182,15 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
 }
 
 // Console counts the rows read in the index bar's range readout, as d-people draws it at 1440, not in Classic's foot note.
-test("directory range readout counts the first server page at 1440 in console @ui-state", async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.addInitScript(([key, value]) => localStorage.setItem(key, value), [EXPERIENCE_KEY, "console"] as const);
-  const fixture = await directory(page);
-  await page.goto("/people");
-  await expect(page.getByRole("grid", { name: t("people.table"), exact: true })).toBeVisible();
-  await expect(page.getByRole("region", { name: t("people.index.label"), exact: true })).toContainText(t("people.index.range", { start: 1, end: 100, total: fixture.count }));
-  await expect(page.getByRole("note", { name: t("roster.foot.label") })).toHaveCount(0);
-  expect(fixture.unexpected).toEqual([]);
+test.describe(() => {
+  test.use({ storageState: experienceState("console") });
+  test("directory range readout counts the first server page at 1440 in console @ui-state", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const fixture = await directory(page);
+    await page.goto("/people");
+    await expect(page.getByRole("grid", { name: t("people.table"), exact: true })).toBeVisible();
+    await expect(page.getByRole("region", { name: t("people.index.label"), exact: true })).toContainText(t("people.index.range", { start: 1, end: 100, total: fixture.count }));
+    await expect(page.getByRole("note", { name: t("roster.foot.label") })).toHaveCount(0);
+    expect(fixture.unexpected).toEqual([]);
+  });
 });

@@ -13,7 +13,7 @@ import { contractWindowSettings } from "../mock/directory";
 import { addDays } from "../../apps/web/src/features/people/domain/roster";
 import { todayKst } from "../../apps/web/src/lib/pure/today";
 import { clearShifts, expectStable, recordShifts } from "../stability";
-import { EXPERIENCE_KEY } from "../../apps/web/src/lib/prefs";
+import { experienceState } from "../experience";
 
 test.beforeAll(() => loadCatalog("ko"));
 /** Console's roster filters on its rail; the contract item is the board's word (d-people), with no window in it. */
@@ -92,57 +92,59 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
   // The employee roster's status count and contract view are Classic's words; Console's are the board's (d-people): the
   // count beside the status, the contract item on the rail. At 390, where no board draws the roster, the shared leg
   // holds the behaviour and the invariants only. The unplaced roster reads alike in both.
-  for (const placement of ["", "unplaced"]) for (const experience of placement ? [undefined] : width > 390 ? ["baseline", "console"] as const : ["baseline", undefined] as const) test(`settings outage keeps the ${placement || "employee"} roster ${width} ${theme}${experience ? ` in ${experience}` : ""} @ui-state${experience === "baseline" ? " @baseline" : ""}`, async ({ page }) => {
-    await installFaultClock(page);
-    if (experience) await page.addInitScript(([key, value]) => localStorage.setItem(key, value), [EXPERIENCE_KEY, experience] as const);
-    await page.setViewportSize({ width, height: 900 });
-    await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
-    const fixture = await mockScreen(page, screens[1], "populated");
-    await mockRoute(page, "get", "/api/v1/settings", { status: 503, json: failure("service_unavailable") });
-    if (placement) await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: {
-      ...screenAccess("/people"), entries: [...screenAccess("/people").entries, ...screenAccess("/people/unplaced").entries],
-    } });
-    await mockRoute(page, "get", "/api/v1/employees/facets", request => {
-      const result = facets(3);
-      return { status: 200, json: { ...result, review: { ...result.review,
-        contract_ending_before: new URL(request.url()).searchParams.has("contract_ending_before") ? 0 : null,
-      } } };
+  for (const placement of ["", "unplaced"]) for (const experience of placement ? [undefined] : width > 390 ? ["baseline", "console"] as const : ["baseline", undefined] as const) test.describe(() => {
+    if (experience) test.use({ storageState: experienceState(experience) });
+    test(`settings outage keeps the ${placement || "employee"} roster ${width} ${theme}${experience ? ` in ${experience}` : ""} @ui-state${experience === "baseline" ? " @baseline" : ""}`, async ({ page }) => {
+      await installFaultClock(page);
+      await page.setViewportSize({ width, height: 900 });
+      await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
+      const fixture = await mockScreen(page, screens[1], "populated");
+      await mockRoute(page, "get", "/api/v1/settings", { status: 503, json: failure("service_unavailable") });
+      if (placement) await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: {
+        ...screenAccess("/people"), entries: [...screenAccess("/people").entries, ...screenAccess("/people/unplaced").entries],
+      } });
+      await mockRoute(page, "get", "/api/v1/employees/facets", request => {
+        const result = facets(3);
+        return { status: 200, json: { ...result, review: { ...result.review,
+          contract_ending_before: new URL(request.url()).searchParams.has("contract_ending_before") ? 0 : null,
+        } } };
+      });
+      await mockRoute(page, "get", "/api/v1/employees/import/unplaced", { status: 200, json: { count: 1, items: [{
+        employee_id: id(100), name: "검증직원 1", company: "화면 검증 회사", reason: "no_place", employee_number: "UI-0001", employment_type: "REGULAR", hire_date: "2026-01-01",
+      }] } });
+      const requests: URLSearchParams[] = [];
+      await mockRoute(page, "get", "/api/v1/employees", request => {
+        requests.push(new URL(request.url()).searchParams);
+        return { status: 200, json: { items: employees(3), total: 3, offset: 0, limit: 100, next_cursor: null } };
+      });
+      await page.goto(`/people?review=contractSoon,identity${placement ? `&placement=${placement}` : ""}`);
+      await expect(page.getByRole("status").filter({ hasText: t("common.read.failedReason") })).toHaveCount(1);
+      const grid = page.getByRole("grid", { name: t("people.table"), exact: true });
+      await expect(grid).toBeVisible();
+      await expect(grid.getByText("UI-0001", { exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: t("directoryViews.contractSoon", { days: "—" }), exact: true })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: new RegExp(t("roster.review.contractSoon", { days: "—" })) })).toHaveCount(0);
+      if (!placement) {
+        if (experience === "console") {
+          await expect(contractRail(page)).toHaveCount(0);
+          const active = page.getByRole("term").filter({ has: page.getByRole("button", { name: t("roster.status.ACTIVE") }) });
+          await expect(active.locator("xpath=following-sibling::*[1]")).toHaveText("3");
+        } else if (experience === "baseline") await expect(page.getByRole("button", { name: new RegExp(`^${t("roster.status.ACTIVE")} 3$`) })).toBeVisible();
+        expect(requests.length).toBeGreaterThan(0);
+        expect(requests.every(query => !query.has("contract_ending_before") && query.get("identity_review_required") === "true")).toBe(true);
+      }
+      await fits(page, `settings outage ${placement} ${width} ${theme}`);
+      await expectAxe(page, `settings outage ${placement} ${width} ${theme}`);
+      await test.info().attach("settings-outage", { body: await page.screenshot({ path: test.info().outputPath("settings-outage.png"), fullPage: true }), contentType: "image/png" });
+      await mockRoute(page, "get", "/api/v1/settings", { status: 200, json: contractWindowSettings(21) });
+      await page.getByRole("button", { name: t("common.retry"), exact: true }).click();
+      await expect(page.getByRole("status").filter({ hasText: t("common.read.failedReason") })).toHaveCount(0);
+      if (experience === "console") await expect(contractRail(page)).toBeVisible();
+      else if (experience === "baseline" || placement) await expect(page.getByRole("button", { name: t("directoryViews.contractSoon", { days: 21 }), exact: true })).toBeVisible();
+      await expect(grid.getByText("UI-0001", { exact: true })).toBeVisible();
+      if (placement) expect(requests).toHaveLength(0);
+      expect(fixture.unexpected).toEqual([]);
     });
-    await mockRoute(page, "get", "/api/v1/employees/import/unplaced", { status: 200, json: { count: 1, items: [{
-      employee_id: id(100), name: "검증직원 1", company: "화면 검증 회사", reason: "no_place", employee_number: "UI-0001", employment_type: "REGULAR", hire_date: "2026-01-01",
-    }] } });
-    const requests: URLSearchParams[] = [];
-    await mockRoute(page, "get", "/api/v1/employees", request => {
-      requests.push(new URL(request.url()).searchParams);
-      return { status: 200, json: { items: employees(3), total: 3, offset: 0, limit: 100, next_cursor: null } };
-    });
-    await page.goto(`/people?review=contractSoon,identity${placement ? `&placement=${placement}` : ""}`);
-    await expect(page.getByRole("status").filter({ hasText: t("common.read.failedReason") })).toHaveCount(1);
-    const grid = page.getByRole("grid", { name: t("people.table"), exact: true });
-    await expect(grid).toBeVisible();
-    await expect(grid.getByText("UI-0001", { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: t("directoryViews.contractSoon", { days: "—" }), exact: true })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: new RegExp(t("roster.review.contractSoon", { days: "—" })) })).toHaveCount(0);
-    if (!placement) {
-      if (experience === "console") {
-        await expect(contractRail(page)).toHaveCount(0);
-        const active = page.getByRole("term").filter({ has: page.getByRole("button", { name: t("roster.status.ACTIVE") }) });
-        await expect(active.locator("xpath=following-sibling::*[1]")).toHaveText("3");
-      } else if (experience === "baseline") await expect(page.getByRole("button", { name: new RegExp(`^${t("roster.status.ACTIVE")} 3$`) })).toBeVisible();
-      expect(requests.length).toBeGreaterThan(0);
-      expect(requests.every(query => !query.has("contract_ending_before") && query.get("identity_review_required") === "true")).toBe(true);
-    }
-    await fits(page, `settings outage ${placement} ${width} ${theme}`);
-    await expectAxe(page, `settings outage ${placement} ${width} ${theme}`);
-    await test.info().attach("settings-outage", { body: await page.screenshot({ path: test.info().outputPath("settings-outage.png"), fullPage: true }), contentType: "image/png" });
-    await mockRoute(page, "get", "/api/v1/settings", { status: 200, json: contractWindowSettings(21) });
-    await page.getByRole("button", { name: t("common.retry"), exact: true }).click();
-    await expect(page.getByRole("status").filter({ hasText: t("common.read.failedReason") })).toHaveCount(0);
-    if (experience === "console") await expect(contractRail(page)).toBeVisible();
-    else if (experience === "baseline" || placement) await expect(page.getByRole("button", { name: t("directoryViews.contractSoon", { days: 21 }), exact: true })).toBeVisible();
-    await expect(grid.getByText("UI-0001", { exact: true })).toBeVisible();
-    if (placement) expect(requests).toHaveLength(0);
-    expect(fixture.unexpected).toEqual([]);
   });
 
   test(`accounts continues by cursor and resets server filters ${width} ${theme} @ui-state`, async ({ page }) => {
@@ -199,54 +201,56 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
   // Classic heads the roster with its page word and offers the window as a view; Console heads it with the module word,
   // marks the roster tab current and offers the contract item on the rail (d-people). At 390, where no board draws the
   // roster, the shared leg holds the behaviour and the invariants only.
-  for (const experience of width > 390 ? ["baseline", "console"] as const : ["baseline", undefined] as const) test(`directory uses the effective contract window and shows the company ${width} ${theme}${experience ? ` in ${experience}` : ""} @ui-state${experience === "baseline" ? " @baseline" : ""}`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 900 });
-    if (experience) await page.addInitScript(([key, value]) => localStorage.setItem(key, value), [EXPERIENCE_KEY, experience] as const);
-    await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
-    const fixture = await mockScreen(page, screens[1], "large");
-    let release!: () => void;
-    const held = new Promise<void>(resolve => { release = resolve; });
-    await mockRoute(page, "get", "/api/v1/settings", async () => {
-      await held;
-      return { status: 200, json: contractWindowSettings(21) };
+  for (const experience of width > 390 ? ["baseline", "console"] as const : ["baseline", undefined] as const) test.describe(() => {
+    if (experience) test.use({ storageState: experienceState(experience) });
+    test(`directory uses the effective contract window and shows the company ${width} ${theme}${experience ? ` in ${experience}` : ""} @ui-state${experience === "baseline" ? " @baseline" : ""}`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
+      const fixture = await mockScreen(page, screens[1], "large");
+      let release!: () => void;
+      const held = new Promise<void>(resolve => { release = resolve; });
+      await mockRoute(page, "get", "/api/v1/settings", async () => {
+        await held;
+        return { status: 200, json: contractWindowSettings(21) };
+      });
+      const requests: URLSearchParams[] = [];
+      await mockRoute(page, "get", "/api/v1/employees", request => {
+        const query = new URL(request.url()).searchParams;
+        requests.push(query);
+        return { status: 200, json: { items: employees(100), total: fixture.count, offset: 0, limit: 100, next_cursor: null } };
+      });
+      await page.goto("/people?review=contractSoon,identity");
+      const main = page.getByRole("main");
+      const views = page.getByRole("group", { name: t("roster.view.label"), exact: true });
+      if (experience === "console") {
+        await expect(main.getByRole("heading", { level: 1, name: t("roster.head.title"), exact: true })).toBeVisible();
+        await expect(main.getByRole("link", { name: t("roster.page.roster"), exact: true })).toHaveAttribute("aria-current", "page");
+        await expect(contractRail(page)).toHaveCount(0);
+      } else if (experience === "baseline") {
+        await expect(page.getByRole("heading", { name: t("roster.page.roster"), exact: true })).toBeVisible();
+        await expect(views.getByRole("button", { name: t("directoryViews.contractSoon", { days: "—" }), exact: true })).toHaveCount(0);
+      }
+      expect(requests).toHaveLength(0);
+      release();
+      const grid = page.getByRole("grid", { name: t("people.table"), exact: true });
+      await expect(grid).toBeVisible();
+      if (experience === "console") await expect(contractRail(page)).toBeChecked();
+      else if (experience === "baseline") {
+        const chip = page.getByRole("group", { name: t("people.filter.label"), exact: true }).getByRole("button", { name: new RegExp(t("roster.review.contractSoon", { days: 21 })) });
+        await expect(chip).toHaveAttribute("aria-pressed", "true");
+        await expect(views.getByRole("button", { name: t("directoryViews.contractSoon", { days: 21 }), exact: true })).toBeVisible();
+      }
+      expect(requests.at(-1)!.get("contract_ending_before")).toBe(addDays(todayKst(), 22));
+      if (width === 1440) {
+        const company = grid.getByRole("gridcell").filter({ hasText: "화면 검증 회사" }).first();
+        await expect(company).toBeVisible();
+        expect(await company.evaluate(cell => cell.scrollWidth <= cell.clientWidth)).toBe(true);
+      }
+      await fits(page, `configured directory ${width} ${theme}`);
+      await expectAxe(page, `configured directory ${width} ${theme}`);
+      await test.info().attach("configured-directory", { body: await page.screenshot({ path: test.info().outputPath("configured-directory.png"), fullPage: true }), contentType: "image/png" });
+      expect(fixture.unexpected).toEqual([]);
     });
-    const requests: URLSearchParams[] = [];
-    await mockRoute(page, "get", "/api/v1/employees", request => {
-      const query = new URL(request.url()).searchParams;
-      requests.push(query);
-      return { status: 200, json: { items: employees(100), total: fixture.count, offset: 0, limit: 100, next_cursor: null } };
-    });
-    await page.goto("/people?review=contractSoon,identity");
-    const main = page.getByRole("main");
-    const views = page.getByRole("group", { name: t("roster.view.label"), exact: true });
-    if (experience === "console") {
-      await expect(main.getByRole("heading", { level: 1, name: t("roster.head.title"), exact: true })).toBeVisible();
-      await expect(main.getByRole("link", { name: t("roster.page.roster"), exact: true })).toHaveAttribute("aria-current", "page");
-      await expect(contractRail(page)).toHaveCount(0);
-    } else if (experience === "baseline") {
-      await expect(page.getByRole("heading", { name: t("roster.page.roster"), exact: true })).toBeVisible();
-      await expect(views.getByRole("button", { name: t("directoryViews.contractSoon", { days: "—" }), exact: true })).toHaveCount(0);
-    }
-    expect(requests).toHaveLength(0);
-    release();
-    const grid = page.getByRole("grid", { name: t("people.table"), exact: true });
-    await expect(grid).toBeVisible();
-    if (experience === "console") await expect(contractRail(page)).toBeChecked();
-    else if (experience === "baseline") {
-      const chip = page.getByRole("group", { name: t("people.filter.label"), exact: true }).getByRole("button", { name: new RegExp(t("roster.review.contractSoon", { days: 21 })) });
-      await expect(chip).toHaveAttribute("aria-pressed", "true");
-      await expect(views.getByRole("button", { name: t("directoryViews.contractSoon", { days: 21 }), exact: true })).toBeVisible();
-    }
-    expect(requests.at(-1)!.get("contract_ending_before")).toBe(addDays(todayKst(), 22));
-    if (width === 1440) {
-      const company = grid.getByRole("gridcell").filter({ hasText: "화면 검증 회사" }).first();
-      await expect(company).toBeVisible();
-      expect(await company.evaluate(cell => cell.scrollWidth <= cell.clientWidth)).toBe(true);
-    }
-    await fits(page, `configured directory ${width} ${theme}`);
-    await expectAxe(page, `configured directory ${width} ${theme}`);
-    await test.info().attach("configured-directory", { body: await page.screenshot({ path: test.info().outputPath("configured-directory.png"), fullPage: true }), contentType: "image/png" });
-    expect(fixture.unexpected).toEqual([]);
   });
 
   test(`personal directory views survive reload and replace server filters ${width} ${theme} @ui-state`, async ({ page }) => {

@@ -11,7 +11,7 @@ import { screens } from "./registry";
 import { mockRoute } from "../mock/route";
 import { guardRawIds } from "../raw-id-guard";
 import { EXIT_LEGS } from "../../apps/web/src/features/people/domain/exit-legs";
-import { EXPERIENCE_KEY } from "../../apps/web/src/lib/prefs";
+import { experienceState } from "../experience";
 
 const exitCaseScreen = peopleExitScreens[0];
 /** A leg of the board: a named region in Classic, a ledger row headed by the leg's name in Console. */
@@ -57,26 +57,28 @@ for (const state of Object.keys(exitCaseScreen.states) as ExitCaseState[]) for (
 // Where the legs sit is the style's. Classic sets them side by side and wraps them as the page narrows. Console lists
 // them as the rows of one ledger; no board draws the exit case, so that is the render's value, and at 390 it owes only
 // the invariants.
-for (const experience of ["baseline", "console"] as const) for (const state of Object.keys(exitCaseScreen.states).filter(state => state !== "missing" && state !== "failed") as ExitCaseState[]) for (const width of experience === "baseline" ? [1440, 1200, 390] : [1440, 1200]) {
-  test(`exit-case ${state} legs ${experience === "baseline" ? "sit side by side and wrap" : "stack as ledger rows"} at ${width}px in ${experience} @ui-state${experience === "baseline" ? " @baseline" : ""}`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 1000 });
-    await page.addInitScript(([key, value]) => localStorage.setItem(key, value), [EXPERIENCE_KEY, experience] as const);
-    const fixture = await mockScreen(page, screens[1], "populated");
-    await mockExitCase(page, state);
-    try {
-      await page.goto(exitCaseScreen.path);
-      const board = page.getByRole("main").getByRole("region", { name: t("exit.board.board"), exact: true });
-      const legs = EXIT_LEGS.map(key => leg(page, board, key));
-      for (const leg of legs) await expect(leg).toBeVisible();
-      const boxes = (await Promise.all(legs.map(leg => leg.boundingBox()))).map(box => box!);
-      if (experience === "console") for (let i = 1; i < boxes.length; i++) expect(boxes[i]!.y).toBeGreaterThanOrEqual(boxes[i - 1]!.y + boxes[i - 1]!.height - 1);
-      else if (width >= 1360) expect(new Set(boxes.map(box => box.y)).size).toBe(1);
-      else if (width === 1200) expect(boxes[3]!.y).toBeGreaterThan(boxes[0]!.y);
-      else for (let i = 1; i < boxes.length; i++) expect(boxes[i]!.y).toBeGreaterThanOrEqual(boxes[i - 1]!.y + boxes[i - 1]!.height);
-      expect(fixture.unexpected).toEqual([]);
-    } finally { await page.close(); fixture.release(); }
-  });
-}
+for (const experience of ["baseline", "console"] as const) test.describe(() => {
+  test.use({ storageState: experienceState(experience) });
+  for (const state of Object.keys(exitCaseScreen.states).filter(state => state !== "missing" && state !== "failed") as ExitCaseState[]) for (const width of experience === "baseline" ? [1440, 1200, 390] : [1440, 1200]) {
+    test(`exit-case ${state} legs ${experience === "baseline" ? "sit side by side and wrap" : "stack as ledger rows"} at ${width}px in ${experience} @ui-state${experience === "baseline" ? " @baseline" : ""}`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 1000 });
+      const fixture = await mockScreen(page, screens[1], "populated");
+      await mockExitCase(page, state);
+      try {
+        await page.goto(exitCaseScreen.path);
+        const board = page.getByRole("main").getByRole("region", { name: t("exit.board.board"), exact: true });
+        const legs = EXIT_LEGS.map(key => leg(page, board, key));
+        for (const leg of legs) await expect(leg).toBeVisible();
+        const boxes = (await Promise.all(legs.map(leg => leg.boundingBox()))).map(box => box!);
+        if (experience === "console") for (let i = 1; i < boxes.length; i++) expect(boxes[i]!.y).toBeGreaterThanOrEqual(boxes[i - 1]!.y + boxes[i - 1]!.height - 1);
+        else if (width >= 1360) expect(new Set(boxes.map(box => box.y)).size).toBe(1);
+        else if (width === 1200) expect(boxes[3]!.y).toBeGreaterThan(boxes[0]!.y);
+        else for (let i = 1; i < boxes.length; i++) expect(boxes[i]!.y).toBeGreaterThanOrEqual(boxes[i - 1]!.y + boxes[i - 1]!.height);
+        expect(fixture.unexpected).toEqual([]);
+      } finally { await page.close(); fixture.release(); }
+    });
+  }
+});
 
 test("exit board is discoverable in /_gallery @ui-state", async ({ page }) => {
   const fixture = await mockScreen(page, screens[1], "populated");
