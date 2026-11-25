@@ -25,7 +25,8 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await mockRoute(page, "get", "/api/v1/me/action-inbox", { status: 200, json: inbox(3) });
     await mockRoute(page, "get", "/api/v1/me/action-inbox/done", { status: 200, json: { items: DONE, next_cursor: null } });
     await page.goto("/inbox?tab=done");
-    const list = page.getByRole("region", { name: t("home.inbox.title"), exact: true }).getByRole("listitem");
+    // Classic sets the list in the queue's card; Console sets it straight in the page.
+    const list = page.getByRole("main").getByRole("listitem");
     await expect(list).toHaveCount(3);
     await expect(page.getByRole("navigation", { name: t("home.lanes"), exact: true }).getByRole("link", { name: t("home.inbox.tab.done"), exact: true })).toHaveAttribute("aria-current", "page");
     for (const [row, outcome] of [[0, "APPLIED"], [1, "APPROVED"], [2, "DECLINED"]] as const) await expect(list.nth(row)).toContainText(t(`home.inbox.outcome.${outcome}`));
@@ -79,7 +80,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     });
     await page.goto("/");
     const grantNotice = await openGrantNotice(page, "full");
-    const list = page.getByRole("region", { name: t("home.inbox.title"), exact: true }).getByRole("listitem");
+    const list = page.getByRole("main").getByRole("listitem");
     await expect(list).toHaveCount(5);
     const tab = page.getByRole("link", { name: new RegExp(`^${t("home.inbox.tab.reference")}`) });
     await expect(tab).toHaveText(`${t("home.inbox.tab.reference")} 1`);
