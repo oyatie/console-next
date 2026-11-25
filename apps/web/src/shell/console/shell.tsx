@@ -1,21 +1,21 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { lazy, Suspense, useCallback, useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { session } from "@console/api";
 import { i18n, t } from "@console/i18n";
+import { meQuery } from "../../features/account/api";
 import { healthStatus, pickLocalized, STATUS_PAGE_URL } from "../../features/health/api/active-status";
 import { chunk } from "../../lib/chunk-guard";
 import { useKeys } from "../../lib/react/use-keys";
 import { personName } from "../../reference/person/present";
-import { Kbd } from "../../ui/kbd/kbd";
 import type { ModuleNavItem } from "../../ui/module-nav/module-nav";
 import { PagePhoneHeader } from "../../ui/page/page-scope";
-import { StatusBar } from "../../ui/status-bar/status-bar";
-import { usePublishedStatusBar } from "../../ui/status-bar/status-bar-store";
 import { openWorkspaceTab, resolveAppHref } from "../../ui/workspace-tabs/open-tab";
 import { WorkspaceTabs } from "../../ui/workspace-tabs/workspace-tabs";
 import { ShellFrame, type ShellLayoutProps } from "../frame/shell-frame";
-import { activeLink, type NavLink } from "../nav";
+import { activeLink, PLATFORM_NAV, TENANT_NAV, type NavLink } from "../nav";
+import { ConsoleStatusBar } from "./console-status-bar";
 import { ConsoleTopBar } from "./console-top-bar";
 import { tabIconForHref } from "./tab-icon";
 import { useResolvedTabTitle } from "./tab-titles";
@@ -73,6 +73,8 @@ function ConsoleLayout({
   const showOutage = noticesActive && notices.outage !== null;
   const showStale = noticesActive && notices.stale;
   const { inboxCount, inboxExact, approvalsCount } = useConsoleCounts(noticesActive);
+  // Watches the frame's own read of the reader without sending it again.
+  const profileRead = useQuery({ ...meQuery, enabled: false });
 
   const allLinks: readonly NavLink[] = useMemo(() => menu?.flatMap(group => group.links) ?? [], [menu]);
   const currentModuleTo = useMemo(
@@ -99,7 +101,7 @@ function ConsoleLayout({
   });
 
   const defaultHref = platform ? "/platform" : "/";
-  const defaultLabel = platform ? t("shell.link.tenants") : t("shell.link.home");
+  const defaultLabel = platform ? t("shell.link.tenants") : t("shell.link.todo");
   const navigateToHref = useCallback(
     (href: string) => {
       const resolved = resolveAppHref(href, pathname);
@@ -119,14 +121,11 @@ function ConsoleLayout({
     onNavigate: navigateToHref,
   });
 
-  const tabsWithIcons = useMemo(
-    () =>
-      workspaceTabs.tabs.map(tab => ({
-        ...tab,
-        icon: tabIconForHref(tab.href, allLinks),
-      })),
-    [workspaceTabs.tabs, allLinks],
-  );
+  // A tab's icon comes from the nav table, not the reader's menu, so the tab keeps its width when the menu lands.
+  const tabsWithIcons = useMemo(() => {
+    const iconLinks = (platform ? PLATFORM_NAV : TENANT_NAV).flatMap(group => group.links);
+    return workspaceTabs.tabs.map(tab => ({ ...tab, icon: tabIconForHref(tab.href, iconLinks) }));
+  }, [workspaceTabs.tabs, platform]);
 
   useKeys(
     platform
@@ -164,6 +163,13 @@ function ConsoleLayout({
         : currentModuleTo;
   const shellOwnsH1 = isPhone && Boolean(phoneHeader?.shellOwnsH1);
   const phoneHeaderValue = useMemo(() => ({ shellOwnsH1 }), [shellOwnsH1]);
+  // An empty bar holds each bar's room while the session restores and while the bars' code loads, so the page does not
+  // move when they draw.
+  const topHold = <div className={s.phoneTopHold} data-surface="chrome" />;
+  const navHold = <div className={s.phoneNavHold} />;
+  // With a session, a desktop bar draws once the reader's own read has settled too: the tenant's name sets the brand's
+  // width, and the scope chip, the nav and the status segments sit after it.
+  const holding = restoring || (!platform && Boolean(session.token) && profileRead.isPending);
 
   return (
     <PagePhoneHeader value={phoneHeaderValue}>
@@ -172,7 +178,7 @@ function ConsoleLayout({
           <>
             <ConsoleTopBar
               platform={platform}
-              restoring={restoring}
+              restoring={holding}
               defaultHref={defaultHref}
               tenantName={tenantName}
               tenantPhase={tenantPhase}
@@ -184,8 +190,9 @@ function ConsoleLayout({
               onNavigate={navigateToHref}
               onSearch={onSearch}
             />
-            {!restoring ? (
-              <div className={s.tabsArea}>
+            <div className={s.tabsArea}>
+              {/* Tabs need nothing from the reader's own read, so they wait only for the session. */}
+              {!restoring ? (
                 <WorkspaceTabs
                   tabs={tabsWithIcons}
                   activeId={workspaceTabs.activeId}
@@ -213,12 +220,14 @@ function ConsoleLayout({
                     </Link>
                   )}
                 />
-              </div>
-            ) : null}
+              ) : null}
+            </div>
           </>
-        ) : !restoring ? (
+        ) : restoring ? (
+          <div className={s.phoneTop} data-pinned-bar>{topHold}</div>
+        ) : (
           <div className={s.phoneTop} data-pinned-bar>
-            <Suspense fallback={null}>
+            <Suspense fallback={topHold}>
               <ConsolePhoneTop
                 title={phoneHeader?.title ?? currentTitle}
                 shellOwnsH1={phoneHeader?.shellOwnsH1}
@@ -231,7 +240,7 @@ function ConsoleLayout({
               />
             </Suspense>
           </div>
-        ) : null}
+        )}
 
         {showOutage || showStale ? (
           <section aria-label={t("live.noticesLabel")} className={s.noticesArea}>
@@ -246,7 +255,7 @@ function ConsoleLayout({
 
         {!isPhone ? (
           <div className={s.statusArea}>
-            {!restoring ? (
+            {!holding ? (
               <ConsoleStatusBar
                 platform={platform}
                 tenantName={tenantName}
@@ -256,9 +265,11 @@ function ConsoleLayout({
               />
             ) : null}
           </div>
-        ) : !restoring ? (
+        ) : restoring ? (
+          <div className={s.phoneNav} data-pinned-bar>{navHold}</div>
+        ) : (
           <div className={s.phoneNav} data-pinned-bar>
-            <Suspense fallback={null}>
+            <Suspense fallback={navHold}>
               <ConsolePhoneBottom
                 links={allLinks}
                 inboxCount={inboxCount}
@@ -271,45 +282,8 @@ function ConsoleLayout({
               />
             </Suspense>
           </div>
-        ) : null}
+        )}
       </div>
     </PagePhoneHeader>
-  );
-}
-
-function ConsoleStatusBar({ platform, tenantName, currentTitle, inboxCount, inboxExact }: {
-  platform?: boolean; tenantName?: string; currentTitle: string; inboxCount?: number; inboxExact: boolean;
-}) {
-  const publishedSegments = usePublishedStatusBar();
-  const statusSegments = useMemo(() => {
-    if (publishedSegments && publishedSegments.length > 0) {
-      return publishedSegments;
-    }
-    const segments: { id: string; content: ReactNode; tone?: "default" | "strong" | "attention" }[] = [
-      { id: "scope", content: platform ? t("shell.hub.platform") : tenantName ?? t("app.name"), tone: "strong" },
-      { id: "module", content: currentTitle },
-    ];
-    if (!platform && inboxCount !== undefined && inboxCount > 0) {
-      segments.push({
-        id: "inbox",
-        content: t(inboxExact ? "shell.needsMe.count" : "shell.needsMe.countMore", { count: inboxCount }),
-        tone: "attention",
-      });
-    }
-    return segments;
-  }, [publishedSegments, platform, tenantName, currentTitle, inboxCount, inboxExact]);
-
-  return (
-    <StatusBar
-      segments={statusSegments}
-      trailing={
-        !platform ? (
-          <>
-            <bdi>{t("shell.jumpLabel")}</bdi>
-            <Kbd keys={t("shell.jumpKey")} />
-          </>
-        ) : undefined
-      }
-    />
   );
 }

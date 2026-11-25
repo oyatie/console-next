@@ -7,7 +7,7 @@
 .group { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
 .groupTitle { margin: 0; font-size: var(--text-sm); font-weight: var(--fw-medium); color: var(--steel); }
 .item { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
-.tag { display: inline-flex; align-items: center; padding: 0 var(--space-1); border: 1px solid var(--warn-bd); border-radius: var(--radius-sm); background: var(--warn-bg); color: var(--warn-tx); font-size: var(--text-xs); }
+.tag { display: inline-flex; align-items: center; padding: 0 var(--space-1); border: 1px solid var(--warn-mark); border-radius: var(--radius-sm); background: var(--warn-bg); color: var(--warn-tx); font-size: var(--text-xs); }
 .tag[data-cls="second"] { border-color: var(--info-bd); background: var(--info-bg); color: var(--info-tx); }
 .routed { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; list-style: none; font-size: var(--text-sm); }
 .routed li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-2); }

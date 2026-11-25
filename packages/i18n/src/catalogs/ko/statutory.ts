@@ -1,7 +1,7 @@
 import type { enStatutory } from "../en/statutory";
 export const koStatutory: Record<keyof typeof enStatutory, string> = {
   "statutory.CHANGE": "사업장 변경 신고",
-  "statutory.title": "법정 신고·서류",
+  "statutory.title": "신고",
   "statutory.codeHold": "법령 검토 대기",
   "statutory.latest": "최신 목록 확인",
   "statutory.insurance": "4대보험 신고",
@@ -18,8 +18,8 @@ export const koStatutory: Record<keyof typeof enStatutory, string> = {
   "statutory.people": "{count, number}명",
   "statutory.more": "더보기",
   "statutory.empty": "신고할 항목이 없습니다",
-  "statutory.emptyReason": "직원에서 입사·퇴직·휴직·복직 기록을 확인하십시오.",
-  "statutory.openPeople": "직원 열기",
+  "statutory.emptyReason": "구성원에서 입사·퇴직·휴직·복직 기록을 확인하십시오.",
+  "statutory.openPeople": "구성원 열기",
   "statutory.noWorkers": "이 기준일의 근로자 명부가 없습니다",
   "statutory.noWorkersReason": "사업장과 기준일을 확인하거나 직원을 등록하십시오.",
   "statutory.noSite": "사업장을 선택하십시오",
@@ -54,7 +54,7 @@ export const koStatutory: Record<keyof typeof enStatutory, string> = {
   "statutory.codeUnknown": "상실 코드 미확인",
   "statutory.detail": "구체적 상실 사유",
   "statutory.preview": "미리보기",
-  "statutory.consequence": "{name}님의 {insurer} {kind} 1건을 {date}에 신고한 것으로 기록합니다. 업무함과 홈에서 완료로 표시되며, 되돌리면 해야 함으로 돌아갑니다.",
+  "statutory.consequence": "{name}님의 {insurer} {kind} 1건을 {date}에 신고한 것으로 기록합니다. 할 일에서 완료로 표시되며, 되돌리면 해야 함으로 돌아갑니다.",
   "statutory.saved": "{name}님의 {insurer} {kind} 완료를 기록했습니다.",
   "statutory.undone": "완료 기록을 되돌렸습니다. 원래 증빙은 감사 기록에 보관됩니다.",
   "statutory.edit": "수정",

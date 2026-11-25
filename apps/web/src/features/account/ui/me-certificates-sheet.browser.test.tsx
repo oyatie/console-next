@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { resolve } from "node:path";
-import { afterAll, beforeAll, test } from "vitest";
+import { afterAll, beforeAll, expect, test } from "vitest";
 import { createServer, type ViteDevServer } from "vite";
 import { expect as dom } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { chromium, browserTestOptimizeDeps, openBrowserTestPage, type Browser, type Page } from "../../../lib/browser-test";
 
 const CERT = {
-  id: "00000000-0000-4000-8900-000000000001", certificate_no: "CERT-2026-0001", kind: "EMPLOYMENT", items: ["position"],
+  id: "00000000-0000-4000-8900-000000000001", certificate_no: "CERT-2026-0001", kind: "EMPLOYMENT", items: ["position", "period", "birth"],
   purpose: "Bank", issued_at: "2026-11-02T09:00:00+09:00", voided_at: null,
-  snapshot: { name: "Test Person", position: "Lead", duty: null, period: null, birth: "1990-01-01", wage: null, issuer: "Test Co", seal_png: null },
+  snapshot: { name: "Test Person", position: "Lead", duty: null, period: { from: "2020-01-02", to: "2026-10-31" }, birth: "1990-01-01", wage: null, issuer: "Test Co", seal_png: null },
 };
 let server: ViteDevServer;
 let browser: Browser;
@@ -30,9 +30,11 @@ beforeAll(async () => {
         import { createRoot } from 'react-dom/client';
         import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
         import { configure } from '@console/api';
-        import { loadCatalog } from '@console/i18n';
+        import { i18n, loadCatalog } from '@console/i18n';
         import { MeCertificatesSheet } from '/apps/web/src/features/account/ui/me-certificates-sheet.tsx';
         await loadCatalog('ko');
+        // "#iso" draws the screen in the ISO day style, as the Console style does.
+        if (location.hash === '#iso') i18n.dateStyle = () => 'iso';
         configure({baseUrl:location.origin,refresh:{kind:'cookie'},passkeys:{get:async()=>null,create:async()=>null}});
         function Harness() {
           const [open, setOpen] = useState(true);
@@ -69,4 +71,17 @@ test("a sheet closed by Back opens again on its list, not on the certificate it 
   await page.locator("#address-open").evaluate((button: HTMLButtonElement) => button.click());
   await dom(sheet.getByRole("button", { name: t("account.certificates.openPreview") })).toBeVisible();
   await dom(sheet.getByRole("button", { name: t("account.certificates.backToList") })).toHaveCount(0);
+});
+
+test("the certificate as printed keeps the locale date form while the screen draws ISO days", async () => {
+  await page.goto("about:blank");
+  await page.goto(`${server.resolvedUrls!.local[0]}sheet-test#iso`);
+  const sheet = page.getByRole("dialog", { name: t("account.certificates.title") });
+  // The list of issued certificates is a screen, so it follows the screen style.
+  await dom(sheet.getByText(`${CERT.certificate_no} · 2026-11-02`)).toBeVisible();
+  await sheet.getByRole("button", { name: t("account.certificates.openPreview") }).click();
+  await dom(sheet.getByRole("table", { name: CERT.certificate_no })).toContainText(t("empDoc.cert.periodValue", { from: "2020. 01. 02.", to: "2026. 10. 31." }));
+  await dom(sheet.getByRole("table", { name: CERT.certificate_no })).toContainText("1990. 01. 01.");
+  await dom(sheet.getByText(`2026. 11. 02. · ${CERT.snapshot.issuer}`)).toBeVisible();
+  expect(await sheet.innerText()).not.toMatch(/\d{4}-\d{2}-\d{2}/);
 });

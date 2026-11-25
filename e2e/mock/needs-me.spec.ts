@@ -2,12 +2,15 @@
 import { shell } from "../shell";
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
+import { fmtNumber } from "@console/i18n/format";
 import { expectAxe, fits } from "../a11y";
-import { expectStable, recordShifts } from "../stability";
+import { clearShifts, expectStable, recordShifts } from "../stability";
+import { go } from "../flows";
 import { screens } from "../states/registry";
 import { failure, inbox, screenAccess, token } from "./fixtures";
 import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
+import { EXPERIENCE_KEY } from "../../apps/web/src/lib/prefs";
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -35,7 +38,7 @@ for (const width of [1440, 1024, 390]) for (const theme of ["light", "dark"]) {
         const surface = path === "/" ? "home" : path.slice(1);
         await page.screenshot({ path: info.outputPath(`${surface}-arrival-${width}-${theme}.png`), fullPage: true });
         const unknown = state === "failed" || state === "refused";
-        const label = unknown ? "업무함 · 확인 불가" : state === "zero" ? t("home.inbox.title") : t(state === "inexact" ? "shell.needsMe.countMore" : "shell.needsMe.count", { count: state === "inexact" ? 12 : 3 });
+        const label = unknown ? t("shell.needsMe.unknown") : state === "zero" ? t("home.inbox.title") : t(state === "inexact" ? "shell.needsMe.countMore" : "shell.needsMe.count", { count: state === "inexact" ? 12 : 3 });
         const header = shell(page).banner;
         const trigger = header.getByRole("button", { name: label, exact: true });
         await expect(trigger).toBeVisible({ timeout: 20_000 });
@@ -59,7 +62,7 @@ for (const width of [1440, 1024, 390]) for (const theme of ["light", "dark"]) {
         if (unknown) {
           await expect(panel.getByText(t("home.inbox.empty.title"), { exact: true })).toHaveCount(0);
           if (state === "refused") {
-            await expect(panel.getByRole("status")).toHaveText("업무함에 접근 권한이 없습니다");
+            await expect(panel.getByRole("status")).toHaveText(t("shell.needsMe.denied"));
             await expect(panel.getByText(t("common.denied.title.plain"), { exact: true })).toHaveCount(0);
             await expect(panel.getByRole("link")).toHaveCount(1);
           } else await expect(panel.getByRole("heading", { name: t("common.loadFailed.title"), exact: true })).toBeVisible({ timeout: 20_000 });
@@ -142,6 +145,62 @@ test("Home shares its arrival read and refreshes held work after attention chang
   await page.evaluate(() => window.dispatchEvent(new Event("inbox-arrival")));
   await page.getByRole("button", { name: t("live.list.new_rows", { count: 1 }), exact: true }).click();
   await expect(trigger).toHaveAccessibleName(t("shell.needsMe.count", { count: 7 }));
+  expect(mock.unexpected).toEqual([]);
+});
+
+for (const experience of ["baseline", "console"] as const) test(`the task count never steps back to an older copy while a page re-reads it in ${experience}`, async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript(recordShifts);
+  if (experience === "console") await page.addInitScript(key => localStorage.setItem(key, "console"), EXPERIENCE_KEY);
+  const mock = await mockScreen(page, screens[0], "populated");
+  await page.addInitScript(() => {
+    const fetch = window.fetch;
+    window.fetch = (input, init) => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      if (new URL(request.url).pathname !== "/api/v1/events") return fetch(input, init);
+      return Promise.resolve(new Response(new ReadableStream({ start(controller) {
+        const emit = () => controller.enqueue(new TextEncoder().encode('event: change\ndata: {"type":"inbox","id":null}\n\n'));
+        controller.enqueue(new TextEncoder().encode(": connected\n\n"));
+        window.addEventListener("inbox-arrival", emit);
+        request.signal.addEventListener("abort", () => { window.removeEventListener("inbox-arrival", emit); controller.close(); }, { once: true });
+      } }), { headers: { "content-type": "text/event-stream" } }));
+    };
+  });
+  let turn = 5;
+  let hold: Promise<void> | undefined;
+  await mockRoute(page, "get", "/api/v1/me/action-inbox", async () => {
+    await hold;
+    const queue = inbox(3);
+    queue.counts.turn = { total: turn, total_is_exact: turn < 100 };
+    return { status: 200, json: queue };
+  });
+  const nav = page.getByRole("navigation", { name: t("shell.nav"), exact: true });
+  // Baseline shows the count on the header's task button; the console on the rail's Home link.
+  const trigger = page.locator("#top-needs-me");
+  const shows = (count: number, options?: { timeout: number }) => experience === "baseline"
+    ? expect(trigger).toHaveAccessibleName(t(count < 100 ? "shell.needsMe.count" : "shell.needsMe.countMore", { count }), options)
+    : expect(nav.getByRole("link", { name: t("shell.link.todo") }).getByText(fmtNumber(count), { exact: true })).toBeVisible(options);
+  await page.goto("/people");
+  await shows(5, { timeout: 20_000 });
+  turn = 125;
+  await go(page, "/");
+  await shows(125);
+  // A change arrives on Home: the roster's own copy of the count is marked stale there, not re-read (nothing shows it).
+  await page.evaluate(() => window.dispatchEvent(new Event("inbox-arrival")));
+  await page.getByRole("button", { name: t("live.list.new_rows", { count: 1 }), exact: true }).click();
+  await shows(125);
+  const held = Promise.withResolvers<void>();
+  hold = held.promise;
+  await page.evaluate(clearShifts);
+  try {
+    await nav.getByRole("link", { name: t("shell.link.people"), exact: true }).click();
+    await expect(page).toHaveURL(/\/people$/);
+    await expect(page.getByRole("main").locator("h1").first()).toBeVisible();
+    // Arriving re-reads that stale copy: the count keeps the newer one it showed meanwhile.
+    await shows(125);
+  } finally { held.resolve(); }
+  await shows(125);
+  await expectStable(page, "task count re-read on arrival");
   expect(mock.unexpected).toEqual([]);
 });
 
@@ -270,7 +329,7 @@ for (const width of [1440, 1024, 390]) for (const theme of ["light", "dark"]) {
     await page.goto("/people");
     const trigger = page.locator("#top-needs-me");
     try {
-      await expect(trigger).toHaveAccessibleName("업무함 · 불러오는 중…", { timeout: 20_000 });
+      await expect(trigger).toHaveAccessibleName(t("shell.needsMe.loading"), { timeout: 20_000 });
       await expect(trigger.locator("[data-count]")).toHaveCount(0);
       await trigger.click();
       const panel = page.getByRole("dialog", { name: t("shell.needsMe"), exact: true });

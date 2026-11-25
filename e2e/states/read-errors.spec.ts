@@ -45,7 +45,7 @@ for (const fault of ["503", "network"] as const) test(`cold modules ${fault}: in
   try {
     await page.goto("/org");
     const rail = page.getByRole("navigation", { name: t("shell.nav"), includeHidden: true });
-    await expect(rail.getByRole("link")).toHaveText([t("shell.link.home"), t("shell.link.requests")]);
+    await expect(rail.getByRole("link")).toHaveText([t("shell.link.todo"), t("shell.link.requests")]);
     await expect(page.getByRole("alert")).toHaveCount(1);
     await expect(rail.getByRole("alert").getByRole("heading")).toHaveText(t("shell.nav.failed"));
     await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
@@ -91,7 +91,7 @@ for (const fault of ["503", "network"] as const) for (const reference of [false,
     const clockLead = await page.evaluate(() => Date.now()) - Date.now();
     expect(clockLead).toBeLessThan(REALTIME.heartbeatInterval * REALTIME.deadAfterHeartbeats);
     await expect(page.getByRole("alert", { includeHidden: true })).toHaveCount(1);
-    await expect(rail.getByRole("link")).toHaveText([t("shell.link.home"), t("shell.link.requests")]);
+    await expect(rail.getByRole("link")).toHaveText([t("shell.link.todo"), t("shell.link.requests")]);
     await expect(rail.getByRole("status")).toHaveText(t("shell.nav.failed"));
     await expect(rail.getByRole("button", { name: t("common.retry"), includeHidden: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: t("common.retry"), includeHidden: true })).toHaveCount(1);

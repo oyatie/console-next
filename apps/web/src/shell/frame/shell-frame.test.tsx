@@ -122,10 +122,10 @@ test("ConsoleShell renders distinct sub-route tab titles for /people/exits while
     await client.fetchQuery({ ...modulesQuery, queryFn: async () => modules.ready });
     await client.fetchQuery({ ...activeSupportQuery, queryFn: async () => ({ can_approve: false }) });
     await client.fetchQuery({ ...checklistQuery, queryFn: async () => ({ steps: [] }) });
-    await client.fetchQuery({
-      ...navigationRead(meQuery),
-      queryFn: async () => ({ display_name: "Seoyeon Moon", tenant: { name: "Saeon Group", phase: "OPERATING" } }),
-    });
+    // The rail's read of the reader fills the shell's own, as the app's does.
+    for (const read of [navigationRead(meQuery), meQuery]) {
+      await client.fetchQuery({ ...read, queryFn: async () => ({ display_name: "Seoyeon Moon", tenant: { name: "Saeon Group", phase: "OPERATING" } }) });
+    }
 
     vi.stubGlobal("document", { documentElement: { dataset: { experience: "console" } } });
     const ConsolePack = (await loadPack()).default;

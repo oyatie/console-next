@@ -57,8 +57,8 @@ Run `node scripts/backend-tests.mjs --db` with `DATABASE_URL` for the database s
 enables the workspace `test-postgres` features and the app's full, E2E-fixture and development-auth
 test surfaces, then selects SQLx tests and ordinary tests absent from the default-feature inventory;
 there is no checked-in test list.
-The `db-tests` workflow runs for gate-changing pull requests, dev pushes and nightly
-against the pinned PostgreSQL service image. It provisions the repository’s role topology with
+The `db-tests` workflow runs against the pinned PostgreSQL service image on gate-changing pull requests,
+dev pushes, the nightly schedule and manual dispatches. It provisions the repository’s role topology with
 `deploy/dev/postgres-init.sh`, rotates the bootstrap password, and supplies random role credentials
 to the shared fixtures. The migration connection uses `console_buck_admin` on a `_contract` database
 with the explicit SQLx bootstrap startup option. Four jobs are packed from

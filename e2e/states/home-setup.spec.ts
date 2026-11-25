@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { mockNavigate } from "../mock/navigation";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
+import { clearShifts, expectStable, recordShifts } from "../stability";
 import { checklist as operatingChecklist, failure, id, inbox, LONG_NAME, screenAccess, user } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
@@ -150,9 +151,11 @@ for (const width of [1440, 390]) test(`setup rail gallery at ${width}px`, async 
   fixture.release();
 });
 
-for (const width of [1440, 390]) test(`home post-go-live receipt link at ${width}px @ui-state`, async ({ page }) => {
-  await page.setViewportSize({ width, height: 900 });
-  const fixture = await mockScreen(page, homeSetupScreen, "empty");
+/**
+ * A tenant that went live just now, inside the receipt window, with nothing in its inbox; `held` delays the receipt and
+ * `phase` the checklist.
+ */
+async function mockReceiptHome(page: Page, held?: Promise<void>, phase?: Promise<void>) {
   const startedAt = new Date().toISOString();
   await mockRoute(page, "get", "/api/v1/users/me", {
     status: 200,
@@ -170,14 +173,23 @@ for (const width of [1440, 390]) test(`home post-go-live receipt link at ${width
       }],
     },
   });
-  await mockRoute(page, "get", "/api/v1/onboarding/checklist", {
-    status: 200,
-    json: { ...operatingChecklist, steps: homeSetupChecklist("ready").steps, phase: "OPERATING", go_live_at: startedAt, done: 9, total: 9 },
+  await mockRoute(page, "get", "/api/v1/onboarding/checklist", async () => {
+    await phase;
+    return { status: 200, json: { ...operatingChecklist, steps: homeSetupChecklist("ready").steps, phase: "OPERATING" as const, go_live_at: startedAt, done: 9, total: 9 } };
   });
-  await mockRoute(page, "get", "/api/v1/onboarding/go-live/receipt", { status: 200, json: {
-    go_live_at: startedAt, go_live_by: id(1), preview_digest: "a".repeat(64), facts_snapshot: { ...previewData("ready").facts, employees: 0 }, facts_snapshot_version: 1,
-  } });
+  await mockRoute(page, "get", "/api/v1/onboarding/go-live/receipt", async () => {
+    await held;
+    return { status: 200, json: {
+      go_live_at: startedAt, go_live_by: id(1), preview_digest: "a".repeat(64), facts_snapshot: { ...previewData("ready").facts, employees: 0 }, facts_snapshot_version: 1,
+    } };
+  });
   await mockRoute(page, "get", "/api/v1/me/action-inbox", { status: 200, json: inbox(0) });
+}
+
+for (const width of [1440, 390]) test(`home post-go-live receipt link at ${width}px @ui-state`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  const fixture = await mockScreen(page, homeSetupScreen, "empty");
+  await mockReceiptHome(page);
   try {
     await page.goto("/");
     const main = page.getByRole("main");
@@ -195,6 +207,38 @@ for (const width of [1440, 390]) test(`home post-go-live receipt link at ${width
     }
     expect(fixture.unexpected).toEqual([]);
   } finally {
+    await page.close();
+    fixture.release();
+  }
+});
+
+for (const late of ["receipt", "phase and receipt"] as const) test(`home post-go-live receipt arrives with Home, never under the queue it sits above (late ${late}) @ui-state`, async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.addInitScript(recordShifts);
+  const fixture = await mockScreen(page, homeSetupScreen, "empty");
+  const held = Promise.withResolvers<void>();
+  const phase = Promise.withResolvers<void>();
+  if (late === "receipt") phase.resolve();
+  const requested = page.waitForRequest(request => new URL(request.url()).pathname === "/api/v1/onboarding/go-live/receipt");
+  await mockReceiptHome(page, held.promise, phase.promise);
+  try {
+    await page.goto("/");
+    if (late === "phase and receipt") {
+      // Home lays out under the phase band's hold before the phase says a receipt is due.
+      await page.locator("[data-phase-pending] #home-title").waitFor({ state: "attached" });
+      phase.resolve();
+    }
+    await requested;
+    await page.evaluate(() => document.fonts.ready);
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    await page.evaluate(clearShifts);
+    held.resolve();
+    await expect(page.getByRole("main").locator("[data-setup-receipt]").getByRole("link", { name: t("setup.action.employees"), exact: true })).toBeVisible();
+    await expectStable(page, "home receipt arrival");
+    expect(fixture.unexpected).toEqual([]);
+  } finally {
+    held.resolve();
+    phase.resolve();
     await page.close();
     fixture.release();
   }

@@ -49,6 +49,7 @@ export function payrollErrorMessageKey(code: string): string | null {
     case "sod_violation":
     case "legal_gate":
     case "exceptions_open":
+    case "nothing_calculated":
     case "preflight_blocked":
     case "payroll.refuse.identity_unbound":
       return `payrollRun.error.${code}`;

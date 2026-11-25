@@ -238,8 +238,9 @@ chord commits once the composition has ended.
 A plain Enter has no such check in the composer, because the composer does not handle it. Whether an Enter that
 ends a composition also submits the form is the browser's to decide.
 
-The hint in the commit uses `modChord("↵")` from `apps/web/src/lib/pure/keys.ts`: it renders `⌘↵` on Apple
-platforms (Mac, iPhone, iPad, iPod, iOS) and `Ctrl+↵` on Windows, Linux, and during SSR. The blocked commit has no
+The hint in the commit uses `modHint("↵")` from `apps/web/src/lib/mod-hint.ts`, which passes the page's navigator
+to `modChord` in `apps/web/src/lib/pure/keys.ts`: it renders `⌘↵` on Apple platforms (Mac, iPhone, iPad, iPod,
+iOS) and `Ctrl+↵` on Windows, Linux, and outside a page. The blocked commit has no
 hint although the chord still reaches it.
 
 ## Accessibility contract
@@ -390,7 +391,7 @@ Message ids the module uses for its own text:
 Two more ids start with `composer.` and are used elsewhere: `composer.unsaved` by the sheet, and
 `composer.reason` by callers that label a reason field with a verb.
 
-The text of the key hint is formatted by `modChord("↵")` in `apps/web/src/lib/pure/keys.ts` (`⌘↵` or `Ctrl+↵`), not a catalog message.
+The text of the key hint is formatted by `modHint("↵")` in `apps/web/src/lib/mod-hint.ts` (`⌘↵` or `Ctrl+↵`), not a catalog message.
 
 ## Props
 

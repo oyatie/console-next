@@ -132,7 +132,7 @@ export function RehireSheet({ d, onClose, onDone }: { d: Detail; onClose: () => 
           {tried && !f.unit && <span className={s.err}>{t("register.err.unit")}</span>}
         </div>
         <div className={s.termsRow}>
-          <DateField label={t("register.hire")} required today={today} min={minHire} presets={datePresets(today, ["nextMonday", "nextMonthFirst"])} value={f.hire} onChange={(v) => set("hire", v)} echo={f.hire ? t(f.hire > today ? "register.hire.future" : "register.hire.past") : undefined} error={tried && !f.hire ? t("register.err.hire") : tried && minHire && f.hire < minHire ? dateRefusal : undefined} showErrors={tried} />
+          <DateField label={t("register.hire")} required today={today} min={minHire} presets={datePresets(today, ["nextMonday", "nextMonthFirst"])} value={f.hire} onChange={(v) => set("hire", v)} echo={t(f.hire > today ? "register.hire.future" : "register.hire.past")} error={tried && !f.hire ? t("register.err.hire") : tried && minHire && f.hire < minHire ? dateRefusal : undefined} showErrors={tried} />
           <ChoiceField label={t("register.type")} required look="chips" options={EMPLOYMENT_TYPES.map((v) => ({ value: v, label: label(TYPE, v) }))} value={f.type} onChange={(v) => set("type", v as EmploymentType)} error={tried && !f.type ? t("register.err.type") : undefined} />
         </div>
         {f.type === "CONTRACT" && <DateField label={t("register.contractEnd")} required today={today} min={f.hire || undefined} value={f.end} onChange={(v) => set("end", v)} error={tried && !f.end ? t("register.err.contractEnd") : undefined} />}

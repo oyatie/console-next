@@ -90,8 +90,39 @@ test("no screen name, crumb or terms line names the tenancy a 회사 (ko) or a c
     expect(bootKo[id], id).not.toMatch(/회사/);
     expect(bootEn[id], id).not.toMatch(/company/i);
   }
-  expect(bootKo["shell.link.org"]).toBe("조직 구조");
   expect(ko["setup.terms.accept"]).toContain("고객 계정");
+});
+
+// Each row starts with a bar word; every other id names the place that entry opens or already reads its word.
+const SAME_WORD = [
+  ["shell.link.todo", "home.inbox.title", "home.title", "shellRoutes.inbox"],
+  ["shell.link.people", "roster.head.title", "people.title", "empCard.crumb", "shellRoutes.peopleRoster"],
+  ["shell.link.approvals", "approvals.title", "home.attention.approvals"],
+  ["shell.link.statutory", "statutory.title"],
+  ["shell.link.org", "accessCodes.domain.org"],
+  ["shell.link.profile", "shell.profile"],
+] as const;
+// Headings that narrow a destination begin with its bar word.
+const NARROWS = [
+  ["shell.link.org", "structure.title", "orgStructure.title", "orgBulk.crumb", "entityCreate.crumbRoot"],
+  ["shell.link.certificates", "empDoc.certificate.register", "shellRoutes.peopleCertificates"],
+] as const;
+
+test("each navigation word names its destination", () => {
+  const astray = (["ko", "en"] as const).flatMap(locale => {
+    const word: Record<string, string | undefined> = locale === "ko" ? { ...bootKo, ...ko } : { ...bootEn, ...en };
+    return [
+      ...SAME_WORD.flatMap(([bar, ...ids]) => ids.filter(id => word[id] !== word[bar]).map(id => `${locale} ${id} "${word[id]}" is not ${bar} "${word[bar]}"`)),
+      ...NARROWS.flatMap(([bar, ...ids]) => ids.filter(id => !word[id]!.startsWith(word[bar]!)).map(id => `${locale} ${id} "${word[id]}" does not begin with ${bar} "${word[bar]}"`)),
+    ];
+  });
+  expect.soft(astray).toEqual([]);
+  expect.soft(bootEn["shell.link.statutory"]).toBe("Filings");
+});
+
+test("no copy names a renamed destination by its old word", () => {
+  const old = /업무함|결재함|법정 신고·서류/;
+  expect(Object.entries({ ...bootKo, ...ko }).filter(([, text]) => old.test(text)).map(([id]) => id)).toEqual([]);
 });
 
 // CX-grade-fix: a catalog's numerical rank is not the GRADE classification.

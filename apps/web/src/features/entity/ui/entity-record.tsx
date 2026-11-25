@@ -31,6 +31,7 @@ import { lockOf, RecordLockProvider } from "./use-record-lock";
 import { FoundingCard } from "./record-founding";
 import { DocumentsTab } from "./documents-tab";
 import { HistoryTab } from "./history-tab";
+import { useHistoryReads } from "./use-history-reads";
 import { VoidEntity } from "./void-entity";
 import { OriginalSheet } from "./record-original-sheet";
 import { WorkplacesTab } from "./workplaces-tab";
@@ -59,6 +60,15 @@ export function EntityScreen() {
   const { id } = route.useParams();
   const { wp } = route.useSearch();
   return <EntityRecord key={`${id}:${wp ?? ""}`} id={id} workplace={wp} />;
+}
+
+/**
+ * The correction register under the tabs reads at once. Arriving on the history tab, it shows with that tab's first
+ * answers, never above them. Elsewhere it shows once it has read: the hold covers the history tab's own sections only,
+ * not the overview aside's latest history, which reads the same history in its own column.
+ */
+function HeldRegister({ e, tab }: { e: LegalEntity; tab: Tab }) {
+  return <CorrectionRegister entityId={e.id} hidden={useHistoryReads(e, tab === "history").arriving} />;
 }
 
 const countDepts = (n: OrgStructureNode | undefined): number => (n ? n.children.reduce((a, x) => a + (x.kind === "DEPARTMENT" ? 1 : 0) + countDepts(x), 0) : 0);
@@ -225,7 +235,7 @@ export function EntityRecord({ id, workplace }: { id: string; workplace?: string
                 </div>
               )}
             </Tabs>
-            {!readOnly && <CorrectionRegister entityId={e.id} />}
+            {!readOnly && <HeldRegister e={e} tab={tab} />}
             {overlays}
           </>
           </RecordLockProvider>
@@ -269,7 +279,7 @@ export function EntityRecord({ id, workplace }: { id: string; workplace?: string
                   notes={notes}
                   sections={panels}
                   spine={tab === "overview" ? <RecordAside e={e} phase={phase} depts={depts} docs={docs} act={act} onTab={setTab} flat /> : undefined}
-                  foot={!readOnly ? <CorrectionRegister entityId={e.id} /> : undefined}
+                  foot={!readOnly ? <HeldRegister e={e} tab={tab} /> : undefined}
                   overlays={overlays}
                   statusSegments={[
                     { id: "entity", tone: "strong", content: entityName(e) },

@@ -31,7 +31,7 @@ test("parity 1012: statutory empty, filing validation, receipt, undo and stale r
   await dialog.getByRole("textbox", { name: /^신고일/ }).fill(kstDate());
   await dialog.getByLabel(/^접수번호/).fill("parity-1012");
   await dialog.getByRole("button", { name: "미리보기" }).click();
-  await expect(dialog).toContainText("업무함과 홈에서 완료로 표시");
+  await expect(dialog).toContainText("할 일에서 완료로 표시");
   await capture(a, "people", ["L3-attest"], "Actual 국민연금 취득 completion preview with date and receipt number; ancestor of 건강보험 상실 L3, not its exact insurer/event/evidence fixture.");
   await inspect(a, "statutory", "complete-preview-1012");
   await dialog.getByRole("button", { name: "완료 기록", exact: true }).click();
