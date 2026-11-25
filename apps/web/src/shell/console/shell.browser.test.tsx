@@ -176,11 +176,22 @@ test("ConsoleAccountMenu holds the shared language, theme and sign-out controls 
   await group.getByRole("button", { name: t("shell.theme.toLight"), exact: true }).click();
   await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe("light");
 
+  // Escape closes the menu from its trigger or from any control in it, and is the menu's alone: no listener above hears it.
+  await page.evaluate(() => {
+    const seen = window as unknown as { escapes: number };
+    seen.escapes = 0;
+    document.addEventListener("keydown", event => { if (event.key === "Escape") seen.escapes++; });
+  });
+  await trigger.click();
+  await trigger.focus();
+  await page.keyboard.press("Escape");
+  await expect.poll(async () => await group.count()).toBe(0);
   await trigger.click();
   await language.focus();
   await page.keyboard.press("Escape");
   await expect.poll(async () => await group.count()).toBe(0);
   await expect.poll(() => page.evaluate(() => document.activeElement?.id)).toBe("console-top-account");
+  expect(await page.evaluate(() => (window as unknown as { escapes: number }).escapes)).toBe(0);
 });
 
 test("openWorkspaceTab resolves query-only href against current pathname and rejects external/protocol-relative URLs", async () => {
