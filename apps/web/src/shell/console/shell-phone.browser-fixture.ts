@@ -15,7 +15,7 @@ const TOKEN = {
 const OPERATOR = { ...TOKEN, access_token: `h.${Buffer.from(JSON.stringify({ sub: "operator", org: "platform", platform: true })).toString("base64url")}.s` };
 
 export type Held = { asked: () => void; done: Promise<void> };
-type PhoneShellOptions ={ restore?: Held; held?: Held & { path: string }; refused?: string; width?: number; operator?: boolean; inbox?: { total: number; exact: boolean } };
+type PhoneShellOptions = { restore?: Held; held?: Held & { path: string }; refused?: string; width?: number; operator?: boolean; inbox?: { total: number; exact: boolean } };
 
 /** Serves the Console shell over a stub screen and opens it in one browser page, which every test of a file shares. */
 export async function phoneShellFixture() {
