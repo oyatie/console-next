@@ -237,7 +237,9 @@ test("on a phone My profile stays reachable while the menu loads, in the last of
   const nav = await opened;
   await element(nav.locator('a[href="/"]')).toBeVisible();
   await frames(page);
-  // The menu here lands with two places; the last of any menu up to five still covers the held place.
+  // The menu here lands with two places, which take the whole bar back; the last of any menu up to five still covers
+  // the held place.
+  expect(await nav.locator('a[href="/"]').boundingBox()).toMatchObject({ x: 0, width: 195 });
   expect(await hitIn(held.x + held.width / 2, held.y + held.height / 2, 'nav a[href="/account"]')).toBe(true);
 }, 30_000);
 
