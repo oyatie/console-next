@@ -190,6 +190,26 @@ test.each((["ACTIVE", "SUSPENDED", "ARCHIVED"] as const).flatMap(status => [1440
     expect(dead).toBeLessThan(80);
   }, 60_000);
 
+test("a recovery read refused after it answered replaces the code and recovery controls, and deletion stays put", async () => {
+  await page.setViewportSize({ width: 1440, height: 1600 });
+  await page.route("**/api/platform/orgs/*/erase", route => route.fulfill({ json: erased("ACTIVE") }));
+  let refused = false;
+  await page.route("**/api/platform/orgs/*/ops-recovery", route => route.fulfill(refused ? { status: 403, json: failure("forbidden") } : { json: RECOVERY }));
+  const list = await platform(() => ({ json: [org("ACTIVE")] }));
+  list.hold.resolve();
+  const panel = page.getByRole("complementary", { name: "Synthetic customer", exact: true });
+  await element(panel.getByRole("button", { name: t("tenants.reissue"), exact: true })).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+  const settled = await pane(panel);
+  refused = true;
+  // The page coming back into view refetches its reads, as a person returning to the tab would.
+  await page.evaluate(() => dispatchEvent(new Event("visibilitychange")));
+  await element(panel.getByRole("heading", { name: t("common.denied.panel"), exact: true })).toBeVisible();
+  await element(panel.getByRole("button", { name: t("tenants.reissue"), exact: true })).toHaveCount(0);
+  await element(panel.getByRole("button", { name: t("opsRecovery.open"), exact: true })).toHaveCount(0);
+  expect((await pane(panel)).deletion).toBe(settled.deletion);
+}, 60_000);
+
 test.each([{ first: "recovery", removable: true }, { first: "erase", removable: false }] as const)(
   "record buttons stay still when the $first read lands first (removable $removable)",
   async ({ first, removable }) => {
