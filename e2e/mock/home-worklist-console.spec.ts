@@ -189,7 +189,7 @@ for (const width of [1440, 390]) {
             "placeholder",
             t("home.worklist.find"),
           );
-          await expect(worklist.getByRole("link", { name: t("home.inbox.viewInbox"), exact: true })).toHaveCount(0);
+          await expect(worklist.getByRole("link", { name: t("home.inbox.viewInbox"), exact: true })).toHaveAttribute("href", "/inbox");
           const orgRow = queueTable.locator('tbody tr[data-id="OC-2026-0418"]');
           const leaveRow = queueTable.locator('tbody tr[data-id="leave-app-1"]');
           await expect(orgRow.getByRole("button", { name: t("uiWorklist.reject"), exact: true })).toBeVisible();

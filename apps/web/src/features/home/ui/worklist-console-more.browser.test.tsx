@@ -97,11 +97,11 @@ test("the to-do link stays beside the more bar while a long home list unfolds", 
   await expect.poll(() => mounted.page.locator('[data-pattern="worklist"] tbody tr[data-id]').count()).toBe(31);
 });
 
-test("a short home list unfolds in place and offers the to-do link once every row is shown", async () => {
+test("a short home list unfolds in place with the to-do link beside the more bar throughout", async () => {
   await mountHome(23);
-  await expect.poll(() => inboxLink().count()).toBe(0);
+  await expect.poll(() => inboxLink().count()).toBe(1);
   await showMore(13);
-  await expect.poll(() => inboxLink().count()).toBe(0);
+  await expect.poll(() => inboxLink().count()).toBe(1);
   await showMore(3);
   await expect.poll(() => inboxLink().count()).toBe(1);
 });
