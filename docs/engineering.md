@@ -30,7 +30,9 @@ test tiers in [testing/README.md](testing/README.md) and the browser-test strate
 
 Green checks leave two kinds of test unrun. Database-backed backend tests run on pushes to `dev` and
 nightly; `.github/workflows/db-tests.yml` runs on a pull request only when the pull request changes that
-workflow or the test tooling it names. Releases currently ship without proof from the database tests: neither
+workflow or the test tooling it names. After merging `dev` into your branch, run the full database suite with
+`gh workflow run db-tests.yml --ref <branch>`. The result proves only that ref at the tested commit.
+Releases currently ship without proof from the database tests: neither
 merge admission nor release promotion waits for this workflow. Of the journey specs, a pull request runs one
 (`e2e/performance/home-inbox.spec.ts`) and the merge queue adds three (`e2e/first-run-solo.spec.ts`,
 `e2e/authz/write-refusals.spec.ts`, `e2e/error-beacon.spec.ts`); the rest run nightly

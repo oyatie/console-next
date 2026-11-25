@@ -124,3 +124,18 @@ pub fn route_or_refuse(field: &str) -> Result<CorrectionRoute, HrError> {
         route => Ok(route),
     }
 }
+
+/// The normalized field value and its route before the employee record is read.
+pub(crate) struct CheckedChange {
+    pub value: FieldValue,
+    pub route: CorrectionRoute,
+}
+
+pub(crate) fn check_change(field: &str, value: &Value) -> Result<CheckedChange, HrError> {
+    // Route first: a field that cannot be corrected is 409, not a shape error.
+    let route = route_or_refuse(field)?;
+    Ok(CheckedChange {
+        value: (field.to_owned(), normalize_value(field, value)?),
+        route,
+    })
+}
