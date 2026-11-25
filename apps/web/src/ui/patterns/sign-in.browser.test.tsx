@@ -45,3 +45,14 @@ test.each([[1280, 800], [390, 844]])("the Console panel keeps its top edge while
     await page.evaluate(() => document.querySelector("[data-grow]")?.remove());
   }
 });
+
+// The boards hold that edge at 200 px. A short window (a laptop zoomed to 150 %) cannot keep it there and still show
+// the panel's actions, so the edge comes up with the window instead of pushing them below the fold.
+test("the Console panel keeps the board's top edge and comes up on a short window", async () => {
+  const { page } = mounted;
+  const card = page.locator('[data-pattern="sign-in"] > div').first();
+  await setConsoleViewport(page, 1440, 900);
+  expect(await card.evaluate(el => el.getBoundingClientRect().top)).toBe(200);
+  await setConsoleViewport(page, 1024, 520);
+  expect(await card.evaluate(el => el.getBoundingClientRect().bottom)).toBeLessThanOrEqual(520);
+});
