@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use super::*;
 
-async fn pending_leave(pool: &PgPool, admin: &Ctx, person: &str) {
+async fn pending_leave(pool: &PgPool, admin: &Ctx, person: &str) -> Result<(), sqlx::Error> {
     let requester = support::add_user(pool, admin.org, &["MEMBER"]).await;
     sqlx::query("UPDATE users SET employee_id=$1 WHERE id=$2")
         .bind(Uuid::parse_str(person).unwrap())
@@ -12,7 +12,8 @@ async fn pending_leave(pool: &PgPool, admin: &Ctx, person: &str) {
     let command = support::role_pool(pool, "console_leave_cmd", None).await;
     sqlx::query("SELECT * FROM leave_api.create_request($1,$2,$3,'annual',DATE '2026-10-06',DATE '2026-10-06',NULL,ARRAY['missing_calendar']::text[],NULL,NULL,NULL,NULL,NULL,$4,repeat('a',32),repeat('b',16))")
         .bind(admin.org).bind(Uuid::new_v4()).bind(requester.as_uuid())
-        .bind(Uuid::new_v4()).execute(&command).await.unwrap();
+        .bind(Uuid::new_v4()).execute(&command).await?;
+    Ok(())
 }
 
 async fn snapshot(pool: PgPool, workplace: bool, filtered: bool) {
@@ -30,7 +31,7 @@ async fn snapshot(pool: PgPool, workplace: bool, filtered: bool) {
             .map(|id| format!("&branch_id={id}"))
             .unwrap_or_default()
     );
-    pending_leave(&pool, &admin, &people[0]).await;
+    pending_leave(&pool, &admin, &people[0]).await.unwrap();
     let (status, receipt) = admin
         .call(
             "POST",
@@ -57,8 +58,12 @@ async fn snapshot(pool: PgPool, workplace: bool, filtered: bool) {
     assert_eq!(row["close"], receipt);
     assert_eq!(access_count(&pool, admin.org).await, before + 1);
 
-    // Simulate later source changes without rewriting the immutable close receipt.
-    pending_leave(&pool, &admin, &people[1]).await;
+    let refused = pending_leave(&pool, &admin, &people[1]).await.unwrap_err();
+    assert_eq!(
+        refused.as_database_error().map(|error| error.message()),
+        Some("leave_create.period_closed"),
+        "{refused}"
+    );
     let (status, exception) = admin
         .call(
             "POST",
@@ -80,7 +85,7 @@ async fn snapshot(pool: PgPool, workplace: bool, filtered: bool) {
         )
         .await;
     assert_eq!(status, StatusCode::OK, "{live}");
-    for (key, count) in [("open_exceptions", "1"), ("pending_leave", "2")] {
+    for (key, count) in [("open_exceptions", "1"), ("pending_leave", "1")] {
         let check = live["checks"]
             .as_array()
             .unwrap()

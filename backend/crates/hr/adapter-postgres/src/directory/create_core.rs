@@ -18,7 +18,7 @@ use crate::directory::create_onboard::{
 use crate::directory::create_prepare::{
     PreparedRegistration, RegistrationInput, prepare_registrations,
 };
-use crate::directory::read_detail::load_employee_detail;
+use crate::directory::read_detail::load_employee_detail_unfiltered;
 use crate::directory::types::{EmployeeDetailResponse, NormalizedCreateEmployeeRequest};
 
 /// The transactional core of employee creation — the ONLY write path into
@@ -53,6 +53,7 @@ pub async fn create_employee_core(
 }
 
 /// Multi-registration core, in input order, sharing the single registration's write owners.
+/// Results omit warnings because only the caller has the reader's directory scope.
 /// Callers must normalize requests, authorize, admit duplicates, place, audit and roll back
 /// on error, exactly as for `create_employee_core`; this is not an authorization boundary.
 pub async fn create_employees_core(
@@ -65,7 +66,7 @@ pub async fn create_employees_core(
     let mut results = Vec::with_capacity(prepared.len());
     for row in prepared {
         results.push((
-            load_employee_detail(tx, org_uuid, row.employee_id).await?,
+            load_employee_detail_unfiltered(tx, org_uuid, row.employee_id).await?,
             row.replayed,
         ));
     }
@@ -73,7 +74,7 @@ pub async fn create_employees_core(
 }
 
 /// Register a batch without reading full directory details for each result.
-/// Bulk callers consume identities; single-person callers retain detail and warning reads.
+/// Bulk callers consume identities while single-person callers need employee detail.
 /// Callers own authorization, duplicate admission, placement, audit and rollback on error.
 pub async fn write_registrations_core(
     tx: &mut sqlx::Transaction<'_, Postgres>,
