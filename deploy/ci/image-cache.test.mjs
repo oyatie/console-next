@@ -26,7 +26,7 @@ test('cache pruning runs alongside release jobs without bypassing failed release
   const dependencies = name => [workflow.jobs[name].needs ?? []].flat();
   const ancestors = name => dependencies(name).flatMap(id => [id, ...ancestors(id)]);
   const github = {event_name: 'push', ref: 'refs/heads/dev'};
-  const results = {'prune-image-cache': 'failure', validate: 'success', build: 'success', publish: 'success'};
+  const results = {'prune-image-cache': 'failure', validate: 'success', 'npm-signatures': 'success', build: 'success', publish: 'success'};
   const runs = (name, outcomes = results, event = github, isCancelled = false) => {
     const expression = workflow.jobs[name].if ?? 'true';
     const success = () => !isCancelled && ancestors(name).every(id => outcomes[id] === 'success');
@@ -48,9 +48,11 @@ test('cache pruning runs alongside release jobs without bypassing failed release
   for (const name of ['build', 'publish', 'negative-signer']) {
     assert.ok(!ancestors(name).includes('prune-image-cache'), `${name} must not wait for cache cleanup`);
   }
-  assert.deepEqual(dependencies('publish').sort(), ['build', 'validate']);
+  for (const name of ['validate', 'build']) {
+    assert.equal(runs(name, {...results, 'npm-signatures': 'failure'}), true, name);
+  }
   assert.deepEqual(dependencies('negative-signer'), ['publish']);
-  for (const name of ['validate', 'build', 'publish']) for (const result of ['failure', 'skipped', 'cancelled']) {
+  for (const name of ['validate', 'build', 'npm-signatures', 'publish']) for (const result of ['failure', 'skipped', 'cancelled']) {
     const outcomes = {...results, [name]: result};
     if (name !== 'publish') {
       assert.equal(runs('publish', outcomes), false, `publish: ${name} ${result}`);
