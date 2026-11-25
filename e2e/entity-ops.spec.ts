@@ -4,7 +4,7 @@ import { expectAccessible } from "./a11y";
 import { go, kstDate, koDate, option } from "./flows";
 import { openTenant } from "./helpers/tenant";
 import { expectFieldChange } from "./helpers/entity";
-import { registerEntity, registerWorkplace, typeAddress } from "./setup-flows";
+import { wizardBrn, registerEntity, registerWorkplace, typeAddress } from "./setup-flows";
 
 // UX-R1 ENTITY, from an empty tenant through the UI; each failed on the parent FE (no such verb or no such hold):
 // company-06 휴업·재개, company-07 이전 with its date, company-11 every 사업장 fact, worst-case-25 the check digit,
@@ -107,7 +107,7 @@ test("a wrong check digit is held until confirmed, and a 법인 is recorded whil
   await a.getByLabel("법인명(단체명)").fill("주식회사 새온정밀");
   await a.getByRole("button", { name: "다음", exact: true }).click();
   // worst-case-25: 000-81-62516 (the right one ends 5) is never shown with a ✓, and the next step waits.
-  await a.getByLabel("사업자등록번호").fill("0008162516");
+  await wizardBrn(a).fill("0008162516");
   await expect(a.getByText(/검증 숫자가 맞지 않습니다/).first()).toBeVisible();
   await expect(a.getByText(/다른 등록증과 겹치지 않습니다/)).toHaveCount(0);
   await expect(a.getByRole("button", { name: /^다음/ })).toHaveAttribute("aria-disabled", "true");
@@ -118,7 +118,7 @@ test("a wrong check digit is held until confirmed, and a 법인 is recorded whil
   await expect(a.getByRole("heading", { name: "기본", level: 2 })).toBeVisible();
   await a.reload();
   await a.goForward();
-  await expect(a.getByLabel("사업자등록번호")).toHaveValue("000-81-62516");
+  await expect(wizardBrn(a)).toHaveValue("000-81-62516");
 
   // company-08: 설립 중 skips the certificate; the 법인 is created with no number and says what it waits for.
   await a.goBack();

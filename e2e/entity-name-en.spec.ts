@@ -3,6 +3,7 @@ import { expectAccessible } from "./a11y";
 import { go, option } from "./flows";
 import { registerAt, setName } from "./helpers/entity";
 import { openTenant } from "./helpers/tenant";
+import { setLocale } from "./shell";
 import { fillEntity, setupCompany } from "./setup-flows";
 
 // 0h (2026-10-14): with an 영문명 set, the English UI names the 법인 by it on every surface, through the one presentation
@@ -16,7 +17,6 @@ async function english(where: Locator) {
   await expect(where).toContainText(EN);
   await expect(where).not.toContainText("누리");
 }
-const language = (p: Page, l: "en" | "ko") => p.getByRole("banner").getByLabel(l === "en" ? "언어" : "Language").selectOption(l);
 
 test("the English UI names a 법인 by its English name on every surface, and Korean by its 법인명", { tag: ["@org", "@regression"] }, async ({ browser }) => {
   const p = await openTenant(browser, "name-en-surfaces", "표면검사");
@@ -24,7 +24,7 @@ test("the English UI names a 법인 by its English name on every surface, and Ko
   const record = new URL(p.url()).pathname;
   await setName(p, "영문명", EN);
   // The record's header, crumb and delete sheet (offered while nobody is placed in the 법인).
-  await language(p, "en");
+  await setLocale(p,"en");
   await expect(p.getByRole("heading", { level: 1 })).toHaveText(EN);
   await english(p.getByRole("navigation", { name: "Location" }));
   await p.getByRole("button", { name: "Preview deleting the entity" }).click();
@@ -34,10 +34,10 @@ test("the English UI names a 법인 by its English name on every surface, and Ko
   await expectAccessible(p, "delete entity sheet, English name");
   await p.keyboard.press("Escape");
   await expect(remove).toBeHidden();
-  await language(p, "ko");
+  await setLocale(p,"ko");
   await registerAt(p, "김영문", "누리", "본점");
 
-  await language(p, "en");
+  await setLocale(p,"en");
   // The person's record: the head's company link and the job section's company row.
   // registerAt already opened this same record and verified its heading; avoid pushing the same route again.
   await expect(p.getByRole("heading", { name: /김영문/, level: 1 })).toBeVisible();
@@ -67,7 +67,7 @@ test("the English UI names a 법인 by its English name on every surface, and Ko
   await english(p.getByRole("table", { name: "Choose the workplaces to change" }));
 
   // Korean is unchanged: the 법인명 leads and the English name is secondary.
-  await language(p, "ko");
+  await setLocale(p,"ko");
   await go(p, record);
   await expect(p.getByRole("heading", { level: 1 })).toHaveText(`${LEGAL} · ${EN}`);
   await expect(p.getByRole("navigation", { name: "위치" })).toContainText(LEGAL);
@@ -84,7 +84,7 @@ const announced = (p: Page, text: string) => p.getByRole("status").filter({ hasT
 test("in English, adding a 법인 names it by its English name in the receipt and every announcement", { tag: ["@org", "@regression"] }, async ({ browser }) => {
   const p = await openTenant(browser, "name-en-create", "표면생성");
   await go(p, "/org/entities");
-  await language(p, "en");
+  await setLocale(p,"en");
   await go(p, "/org/entities?add=true");
   const s = p.getByRole("dialog", { name: "Add legal entity" });
   await option(p, "Business type", "Sole proprietor").click();
@@ -107,13 +107,13 @@ test("in English, adding a 법인 names it by its English name in the receipt an
   await expect(p.getByRole("row", { name: /Nuri Trading/ })).toBeHidden();
 
   // The certificate wizard: filled in Korean, its English name set on the registry step, saved in English.
-  await language(p, "ko");
+  await setLocale(p,"ko");
   await go(p, "/org/entities/new");
   await fillEntity(p, "누리");
   await p.getByRole("button", { name: "이전", exact: true }).click();
   await p.getByLabel("영문명").fill(EN);
   await p.getByRole("button", { name: "다음", exact: true }).click();
-  await language(p, "en");
+  await setLocale(p,"en");
   const created = p.waitForResponse((r) => r.request().method() === "POST" && new URL(r.url()).pathname === "/api/v1/legal-entities");
   const registered = p.waitForResponse((r) => r.request().method() === "POST" && /^\/api\/v1\/legal-entities\/[0-9a-f-]{36}\/registrations$/.test(new URL(r.url()).pathname));
   const read = p.waitForResponse((r) => r.request().method() === "GET" && /^\/api\/v1\/legal-entities\/[0-9a-f-]{36}$/.test(new URL(r.url()).pathname));

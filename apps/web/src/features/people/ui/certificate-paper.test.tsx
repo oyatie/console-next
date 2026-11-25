@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { beforeAll, describe, expect, it } from "vitest";
-import { loadCatalog } from "@console/i18n";
+import { i18n, loadCatalog } from "@console/i18n";
+import { fmtDate } from "@console/i18n/format";
 import { renderToStaticMarkup } from "react-dom/server";
 import { CertificatePaper } from "./certificate-paper";
 import type { Certificate } from "../api/certificates";
@@ -35,4 +36,17 @@ it("uses the paper's printable seal and void slots without standing instructions
   expect(html).toContain("data-paper-seal");
   expect(html).toContain("data-paper-void");
   expect(html).not.toContain("발급 당시");
+});
+
+it("keeps the locale date form on the paper whatever day style the screen draws", () => {
+  const screenStyle = i18n.dateStyle;
+  i18n.dateStyle = () => "iso";
+  try {
+    expect(fmtDate("2026-10-21")).toBe("2026-10-21");
+    const html = renderToStaticMarkup(<CertificatePaper certificate={{ ...certificate, items: ["period", "birth"] }} />);
+    for (const day of ["2020. 01. 02.", "2026. 10. 21.", "1990. 06. 01."]) expect(html).toContain(day);
+    expect(html).not.toMatch(/\d{4}-\d{2}-\d{2}/);
+  } finally {
+    i18n.dateStyle = screenStyle;
+  }
 });

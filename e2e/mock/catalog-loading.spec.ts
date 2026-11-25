@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { fits } from "../a11y";
 import { routeReady } from "../flows";
-import { accountMenu } from "../shell";
+import { barControl } from "../shell";
 import { screens } from "../states/registry";
 import { mockScreen } from "./screen";
 import { mockRoute } from "./route";
@@ -58,9 +58,8 @@ for (const path of ["/login", "/setup-passkey", "/people"]) for (const width of 
         await expect(page.locator("body")).not.toContainText("uiField.");
       } else {
         // The theme control in the catalog's words: Classic's toggle in the bar, Console's pair in the account menu.
-        const controls = await accountMenu(page);
-        await expect(controls.getByRole("button", { name: t(theme === "dark" ? "shell.theme.toLight" : "shell.theme.toDark"), exact: true })
-          .or(controls.getByRole("button", { name: t(theme === "dark" ? "shell.theme.dark" : "shell.theme.light"), exact: true }))).toBeVisible();
+        await expect(await barControl(page, bar => bar.getByRole("button", { name: t(theme === "dark" ? "shell.theme.toLight" : "shell.theme.toDark"), exact: true })
+          .or(bar.getByRole("button", { name: t(theme === "dark" ? "shell.theme.dark" : "shell.theme.light"), exact: true })))).toBeVisible();
         await page.keyboard.press("Escape");
       }
       await expect(page.locator("html")).toHaveAttribute("data-theme", theme);

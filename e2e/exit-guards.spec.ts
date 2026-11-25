@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Locator } from "@playwright/test";
-import { tenantOnboardSubmit, firstSignIn, go, kstDate, registerEmployee, takeCode, tenantSlugField, unique, vendorPage } from "./flows";
+import { tenantNameField, tenantOnboardSubmit, firstSignIn, go, kstDate, registerEmployee, takeCode, tenantSlugField, unique, vendorPage } from "./flows";
 import { setupCompany, startOperations } from "./setup-flows";
 import { fillDate, reasonBox, signOff, todayPreset } from "./sheet";
 import { hrAct, openCard, openHistory } from "./record";
@@ -14,7 +14,7 @@ test("solo HR: work-injury protection refuses dismissal, voluntary reporting sur
   const vendor = await vendorPage(browser);
   await go(vendor, "/platform");
   await vendor.getByRole("button", { name: "고객 계정 개설" }).click();
-  await vendor.getByLabel("고객 이름").fill("퇴직보호상사");
+  await tenantNameField(vendor).fill("퇴직보호상사");
   await tenantSlugField(vendor).fill(unique("exitguard"));
   await tenantOnboardSubmit(vendor).click();
   const admin = await firstSignIn(browser, await takeCode(vendor));

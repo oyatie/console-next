@@ -2,7 +2,7 @@
 import { expect, test } from "@playwright/test";
 import { bootEn, bootKo } from "../../packages/i18n/src/catalogs/boot";
 import { experienceState } from "../experience";
-import { accountMenu, needsMe, openNav, scroller, setLocale, setTheme, shellSelectors } from "../shell";
+import { barControl, needsMe, openNav, scroller, setLocale, setTheme, shellSelectors } from "../shell";
 import { screens } from "../states/registry";
 import { mockScreen } from "./screen";
 
@@ -27,7 +27,7 @@ for (const style of ["baseline", "console"] as const) test.describe(`${style} ch
     await page.keyboard.press("Escape");
 
     for (const theme of ["dark", "light"] as const) await setTheme(page, theme);
-    await expect((await accountMenu(page)).getByRole("button", { name: bootKo["shell.logout"], exact: true })).toBeVisible();
+    await expect(await barControl(page, bar => bar.getByRole("button", { name: bootKo["shell.logout"], exact: true }))).toBeVisible();
     await page.keyboard.press("Escape");
     await setLocale(page, "en");
     await expect(await openNav(page)).toHaveAccessibleName(bootEn["shell.nav"]);

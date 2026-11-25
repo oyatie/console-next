@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { expectAccessible } from "./a11y";
-import { tenantOnboardSubmit, tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
+import { tenantNameField, tenantOnboardSubmit, tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
 import { registerEntity, registerWorkplace, SECOND } from "./setup-flows";
 import { box, leaveScreen } from "./structure-flows";
 
@@ -42,7 +42,7 @@ test("the account's name is never a company node: the 법인 are the top of the 
   // The vendor names a customer account, not a company: the hint says where 법인 names come from.
   await expect(v.getByRole("textbox", { name: /^고객 이름/ })).toBeVisible();
   await expect(v.getByText("회사 이름이 아닙니다", { exact: false })).toHaveCount(0);
-  await v.getByLabel("고객 이름").fill(TENANT);
+  await tenantNameField(v).fill(TENANT);
   await tenantSlugField(v).fill(unique("group"));
   await tenantOnboardSubmit(v).click();
   const admin = await firstSignIn(browser, await takeCode(v));

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { go, option } from "./flows";
+import { wizardBrn } from "./setup-flows";
 import { openTenant } from "./helpers/tenant";
 
 test("empty screens offer one working entry and forms retain format hints and refusals", { tag: ["@regression", "@org", "@hr"] }, async ({ browser }) => {
@@ -32,7 +33,7 @@ test("empty screens offer one working entry and forms retain format hints and re
   await admin.getByLabel("법인명(단체명)").fill("주식회사 명확");
   await expect(admin.getByLabel("약칭")).toBeVisible();
   await admin.getByRole("button", { name: "다음", exact: true }).click();
-  const number = admin.getByLabel("사업자등록번호", { exact: false });
+  const number = wizardBrn(admin);
   await expect(number).toHaveAccessibleDescription("숫자 10자리");
   await expect(main.getByText("진위 미확인", { exact: true })).toBeVisible();
   await number.fill("123");

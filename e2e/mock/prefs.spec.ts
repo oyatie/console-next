@@ -9,7 +9,7 @@ import { fits, expectAxe } from "../a11y";
 import { screens } from "../states/registry";
 import { floorOf } from "../../apps/web/src/ui/experience-floors";
 import { resolveExperience } from "../../apps/web/src/experience/table";
-import { accountMenu, setTheme } from "../shell";
+import { barControl, setTheme } from "../shell";
 
 test.beforeAll(() => loadCatalog("ko"));
 // First-paint cases own their preferences, independently of the selected test pack.
@@ -97,8 +97,7 @@ for (const from of ["a stored theme", "the system"] as const) test(`the shell ke
   await page.goto("/people");
   // The shell's own switch: it has mounted, and it holds the theme the page began with. Classic's toggle is in the bar,
   // Console's pair in the account menu.
-  const controls = await accountMenu(page);
-  await expect(controls.getByRole("button", { name: t("shell.theme.toLight"), exact: true }).or(controls.getByRole("button", { name: t("shell.theme.dark"), exact: true }))).toBeVisible();
+  await expect(await barControl(page, bar => bar.getByRole("button", { name: t("shell.theme.toLight"), exact: true }).or(bar.getByRole("button", { name: t("shell.theme.dark"), exact: true })))).toBeVisible();
   const html = page.locator("html");
   await expect(html).toHaveAttribute("data-theme", "dark");
   expect(await writes()).toEqual(["dark"]);

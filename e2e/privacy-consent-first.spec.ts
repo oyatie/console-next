@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
-import { tenantOnboardSubmit, acceptConsent, firstSignIn, newContext, openCodeSignIn, takeCode, tenantSlugField, unique, vendorPage, go } from "./flows";
+import { tenantNameField, tenantOnboardSubmit, acceptConsent, firstSignIn, newContext, openCodeSignIn, takeCode, tenantSlugField, unique, vendorPage, go } from "./flows";
 import { virtualAuthenticator } from "./auth";
 import { expectSignedIn } from "./shell";
 
@@ -13,7 +13,7 @@ test("on /setup-passkey no personal-data input exists until notice acknowledged 
   const v = await vendorPage(browser);
   await go(v, "/platform");
   await v.getByRole("button", { name: "고객 계정 개설" }).click();
-  await v.getByLabel("고객 이름").fill("개인정보테스트");
+  await tenantNameField(v).fill("개인정보테스트");
   await tenantSlugField(v).fill(companyDomain);
   await tenantOnboardSubmit(v).click();
   const code = await takeCode(v);
@@ -163,7 +163,7 @@ test("unpublished consent documents show operator action and allow sign out", { 
   const v = await vendorPage(browser);
   await go(v, "/platform");
   await v.getByRole("button", { name: "고객 계정 개설" }).click();
-  await v.getByLabel("고객 이름").fill("개인정보미공개테스트");
+  await tenantNameField(v).fill("개인정보미공개테스트");
   await tenantSlugField(v).fill(unique("pvunpublished"));
   await tenantOnboardSubmit(v).click();
   const page = await firstSignIn(browser, await takeCode(v));
@@ -194,7 +194,7 @@ test("ten in-app navigations make no consent requests after first sign-in", { ta
   const vendor = await vendorPage(browser);
   await go(vendor, "/platform");
   await vendor.getByRole("button", { name: "고객 계정 개설" }).click();
-  await vendor.getByLabel("고객 이름").fill("동의 세션 테스트");
+  await tenantNameField(vendor).fill("동의 세션 테스트");
   await tenantSlugField(vendor).fill(unique("pvsession"));
   await tenantOnboardSubmit(vendor).click();
   const page = await firstSignIn(browser, await takeCode(vendor));

@@ -2,7 +2,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { fits } from "../a11y";
-import { accountMenu } from "../shell";
+import { openAccount } from "../shell";
 import { authz, checklist, failure, id, inbox, screenAccess } from "./fixtures";
 import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
@@ -275,7 +275,7 @@ for (const read of ["/api/v1/access/me", "/api/v1/me/authz", "/api/v1/onboarding
       await expect(heading).toBeVisible();
       await expect(main.locator("[data-phase-band]")).toHaveCount(0);
       if (read === "/api/v1/onboarding/checklist") {
-        await (await accountMenu(page)).locator('a[href="/account"]').first().click();
+        await openAccount(page);
         await advanceUntil(page, main.getByRole("heading", { level: 1, name: t("account.title"), exact: true }).waitFor({ state: "visible" }));
         await expect(main.locator("[data-phase-pending]")).toHaveCount(0);
       }

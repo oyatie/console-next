@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { expectAccessible } from "./a11y";
-import { tenantOnboardSubmit, tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
+import { tenantNameField, tenantOnboardSubmit, tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
 import { setupCompany } from "./setup-flows";
 import { addDepartments, box, findBox, leaveScreen, receipt } from "./structure-flows";
 
@@ -9,7 +9,7 @@ for (const viewport of [{ width: 1280, height: 720 }, { width: 1920, height: 108
     const v = await vendorPage(browser);
     await go(v, "/platform");
     await v.getByRole("button", { name: "고객 계정 개설" }).click();
-    await v.getByLabel("고객 이름").fill("캔버스그룹");
+    await tenantNameField(v).fill("캔버스그룹");
     await tenantSlugField(v).fill(unique(`canvas-${viewport.width}`));
     await tenantOnboardSubmit(v).click();
     const admin = await firstSignIn(browser, await takeCode(v));

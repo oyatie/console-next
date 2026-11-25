@@ -4,7 +4,7 @@ import { go, option } from "./flows";
 import { openTenant } from "./helpers/tenant";
 import { editName, setName } from "./helpers/entity";
 import { registerSheet } from "./helpers/register";
-import { brnDisplay, fillEntity, REGISTRATION_FIXTURES, setupCompany } from "./setup-flows";
+import { wizardBrn, brnDisplay, fillEntity, REGISTRATION_FIXTURES, setupCompany } from "./setup-flows";
 
 test("one 법인명: ① edits the name every surface shows, and the 약칭 and 영문명 stay secondary", { tag: ["@org", "@regression"] }, async ({ browser }) => {
   const p = await openTenant(browser, "name-source", "법인명 단일 출처");
@@ -95,7 +95,7 @@ test("a branch primary is refused until its explicit certificate reason is recor
   await expectAccessible(p, "primary branch classification refusal");
   await p.getByRole("button", { name: "이전", exact: true }).click();
   await p.getByRole("button", { name: "이전", exact: true }).click();
-  await expect(p.getByLabel("사업자등록번호")).toHaveValue(brnDisplay(REGISTRATION_FIXTURES.branch_primary.brn));
+  await expect(wizardBrn(p)).toHaveValue(brnDisplay(REGISTRATION_FIXTURES.branch_primary.brn));
   await p.getByLabel("등록번호 구분 예외 사유").fill("본점 등록증을 요청했고 지점임을 확인했습니다");
   await p.getByRole("button", { name: "다음: 등기·대표자" }).click();
   await p.getByRole("button", { name: "다음", exact: true }).click();

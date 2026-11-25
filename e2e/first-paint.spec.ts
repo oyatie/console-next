@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
-import { go, routeReady, takeCode, tenantOnboardSubmit, tenantSlugField, unique, vendorPage } from "./flows";
+import { tenantNameField, go, routeReady, takeCode, tenantOnboardSubmit, tenantSlugField, unique, vendorPage } from "./flows";
 import { tenantBeforeSetup } from "./setup-flows";
 import { clearShifts, expectStable } from "./stability";
 import { openCard, soloWorld } from "./record-actions/world";
@@ -73,7 +73,7 @@ test("platform first paint shares one read and late fonts leave controls and hea
   const page = await vendorPage(browser);
   await go(page, "/platform");
   await page.getByRole("button", { name: "고객 계정 개설" }).click();
-  await page.getByLabel("고객 이름").fill("첫 화면 글꼴 검증");
+  await tenantNameField(page).fill("첫 화면 글꼴 검증");
   await tenantSlugField(page).fill(unique("firstpaint-fonts"));
   await tenantOnboardSubmit(page).click();
   await takeCode(page);

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, type Page } from "@playwright/test";
-import { bootEn, bootKo } from "../packages/i18n/src/catalogs/boot";
+import { expect, type Locator, type Page } from "@playwright/test";
+import { bootEn, bootKo, type BootMessageId } from "../packages/i18n/src/catalogs/boot";
 
 type ShellSelectors = Record<"banner" | "account" | "accountText" | "search" | "searchText" | "spacer", string>;
 // Console's classes are hashed, so its chrome is found by ids and attributes: the bar is the header that draws the
@@ -30,9 +30,13 @@ export function shell(page: Page) {
   };
 }
 
-const signOutName = { name: bootKo["shell.logout"], exact: true };
+// A bar name in either language, whole: a session may switch the screen to English, and an English bar must not fall
+// through to another collapsed button there (Classic's to-do list, Console's module overflow).
+const eitherLanguage = (id: BootMessageId) => `(?:${[bootKo[id], bootEn[id]].map(name => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`;
+const whole = (id: BootMessageId) => new RegExp(`^${eitherLanguage(id)}$`);
+const signOutName = { name: whole("shell.logout") };
 // Any name but the module overflow's, which Console's bar also shows collapsed when its modules do not fit.
-const notOverflow = new RegExp(`^(?!${bootKo["shell.nav.more"].replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$)`);
+const notOverflow = new RegExp(`^(?!${eitherLanguage("shell.nav.more")}$)`);
 
 /**
  * The signed-in account control in either style: Classic's bar holds the sign-out command itself; Console's bar
@@ -40,22 +44,43 @@ const notOverflow = new RegExp(`^(?!${bootKo["shell.nav.more"].replace(/[.*+?^${
  * sign-out, other than the module overflow. A signed-out page has no bar.
  */
 export function accountControl(page: Page) {
-  const banner = page.getByRole("banner");
-  return banner.getByRole("button", signOutName).or(banner.filter({ hasNot: page.getByRole("button", signOutName) }).getByRole("button", { expanded: false, name: notOverflow }));
+  return page.getByRole("banner").getByRole("button", signOutName).or(accountMenuTrigger(page));
+}
+
+/** Console's account menu trigger, named after the person: the collapsed button of a bar with no sign-out, other than the module overflow. */
+const accountMenuTrigger = (page: Page) =>
+  page.getByRole("banner").filter({ hasNot: page.getByRole("button", signOutName) }).getByRole("button", { expanded: false, name: notOverflow });
+
+/** The bar's entry named after the signed-in person: Classic's link to My account, or Console's account menu trigger. */
+export const accountEntry = (page: Page) => page.getByRole("banner").locator('a[href="/account"]').or(accountMenuTrigger(page));
+
+/** Opens My account from the bar: Classic's link does it in one press, Console's account menu and its link in two. */
+export async function openAccount(page: Page, click: (target: Locator) => Promise<void> = target => target.click()) {
+  const onAccount = () => new URL(page.url()).pathname === "/account";
+  const menuLink = page.getByRole("banner").getByRole("link", { name: whole("shell.account") });
+  await click(accountEntry(page));
+  await expect.poll(async () => onAccount() || await menuLink.isVisible()).toBe(true);
+  if (!onAccount()) await click(menuLink);
+  await expect(page).toHaveURL(/\/account$/);
 }
 
 /** A session that ends in use keeps its screen, bar included, under the sign-in-again dialog, which only makes it inert. */
 export async function expectSignedIn(page: Page, options?: { timeout?: number }) {
   await expect(accountControl(page)).toBeVisible(options);
-  await expect(page.getByRole("dialog", { name: bootKo["idle.reauth.title"], exact: true })).toBeHidden();
+  await expect(page.getByRole("dialog", { name: whole("idle.reauth.title") })).toBeHidden();
+}
+
+/** A control of the bar in either style: Classic's bar shows it, Console's keeps it in the account menu, opened when it is not shown. */
+export async function barControl(page: Page, control: (bar: Locator) => Locator) {
+  const target = control(page.getByRole("banner"));
+  await expectSignedIn(page);
+  if (!(await target.isVisible())) await accountMenuTrigger(page).click();
+  return target;
 }
 
 /** Signs out from the bar: Classic offers the command there, Console inside the account menu. */
 export async function signOut(page: Page) {
-  const command = page.getByRole("banner").getByRole("button", signOutName);
-  await expectSignedIn(page);
-  if (!(await command.isVisible())) await accountControl(page).click();
-  await command.click();
+  await (await barControl(page, bar => bar.getByRole("button", signOutName))).click();
 }
 
 /**
@@ -94,27 +119,13 @@ export async function openNav(page: Page) {
   return nav;
 }
 
-/** The account controls: Classic draws them in the bar, which is returned; Console's account menu is opened and returned. */
-export async function accountMenu(page: Page) {
-  const { console, words } = await chrome(page);
-  const banner = page.getByRole("banner");
-  if (!console) return banner;
-  // By id: until its code loads, the trigger is a link of the same name to the account page.
-  const trigger = banner.locator("#console-top-account, #console-phone-account");
-  if ((await trigger.getAttribute("aria-expanded")) !== "true") await trigger.click();
-  const menu = banner.getByRole("group", { name: words["shell.account"], exact: true });
-  await expect(menu).toBeVisible();
-  return menu;
-}
-
 /** Sets the colour theme from the chrome: Classic's toggle, named for the theme it turns to; Console's account menu. */
 export async function setTheme(page: Page, theme: "light" | "dark") {
   const html = page.locator("html");
   const { console, words } = await chrome(page);
   if ((await html.getAttribute("data-theme")) !== theme) {
-    await (console
-      ? (await accountMenu(page)).getByRole("button", { name: words[`shell.theme.${theme}`], exact: true })
-      : page.getByRole("banner").getByRole("button", { name: words[theme === "dark" ? "shell.theme.toDark" : "shell.theme.toLight"], exact: true })).click();
+    const name = words[console ? `shell.theme.${theme}` as const : theme === "dark" ? "shell.theme.toDark" : "shell.theme.toLight"];
+    await (await barControl(page, bar => bar.getByRole("button", { name, exact: true }))).click();
   }
   await expect(html).toHaveAttribute("data-theme", theme);
 }
@@ -124,8 +135,8 @@ export async function setLocale(page: Page, locale: "ko" | "en") {
   const html = page.locator("html");
   const { console, words } = await chrome(page);
   if ((await html.getAttribute("lang")) !== locale) {
-    if (console) await (await accountMenu(page)).getByRole("button", { name: words[`shell.locale.${locale}`], exact: true }).click();
-    else await page.getByRole("banner").getByRole("combobox", { name: words["shell.locale"], exact: true }).selectOption(locale);
+    if (console) await (await barControl(page, bar => bar.getByRole("button", { name: words[`shell.locale.${locale}`], exact: true }))).click();
+    else await (await barControl(page, bar => bar.getByRole("combobox", { name: words["shell.locale"], exact: true }))).selectOption(locale);
   }
   await expect(html).toHaveAttribute("lang", locale);
 }

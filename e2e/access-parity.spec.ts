@@ -3,7 +3,7 @@ import { expect, test, type Browser, type Locator, type Page } from "@playwright
 import { expectAccessible } from "./a11y";
 import { clickCounter } from "./clicks";
 import { registerAt } from "./helpers/entity";
-import { tenantOnboardSubmit, tenantSlugField, chooseRadio, firstSignIn, go, kstDate, stepUp, takeCode, unique, vendorPage } from "./flows";
+import { tenantNameField, tenantOnboardSubmit, tenantSlugField, chooseRadio, firstSignIn, go, kstDate, stepUp, takeCode, unique, vendorPage } from "./flows";
 import { registerEntity, registerWorkplace, SECOND, setupRail } from "./setup-flows";
 
 // Mockup parity capture for the pilot roles screens (roles-ux M1–M6): every frame is reached through the UI from an empty
@@ -75,7 +75,7 @@ test("roles parity capture: M1–M6 from an empty database", { tag: "@parity" },
   const v = await vendorPage(browser);
   await go(v, "/platform");
   await v.getByRole("button", { name: "고객 계정 개설" }).click();
-  await v.getByLabel("고객 이름").fill("새온그룹");
+  await tenantNameField(v).fill("새온그룹");
   await tenantSlugField(v).fill(unique("saeon-roles"));
   await tenantOnboardSubmit(v).click();
   const admin = await firstSignIn(browser, await takeCode(v));

@@ -47,12 +47,14 @@ test("tenant facts drive lifecycle, account counts and disabled deletion; first-
   const otp = await takeCode(vendor);
 
   await go(vendor, "/platform");
-  await expect(vendor.getByRole("complementary", { name })).toHaveCount(0);
+  // A fresh load chooses no tenant; Console's desktop list still shows its first row's record beside it.
+  expect(new URL(vendor.url()).searchParams.has("sel")).toBe(false);
   const row = vendor.getByRole("row").filter({ hasText: slug });
   await expect(row).toContainText("코드 발급");
   await expect(row).not.toContainText("운영 중");
   await expect(row).toContainText("패스키 등록 0");
   await row.click();
+  await expect.poll(() => new URL(vendor.url()).searchParams.get("sel")).toBe(issued.org.id);
   await expect(vendor.getByRole("complementary", { name })).toContainText("활성 0명");
 
   const listPath = "**/api/platform/orgs";
