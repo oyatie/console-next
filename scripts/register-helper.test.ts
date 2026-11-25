@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import type { Page } from "@playwright/test";
 import { afterEach, expect, test, vi } from "vitest";
+import { ko } from "../packages/i18n/src/catalogs/ko";
 import { fillRegister } from "../e2e/helpers/register";
 
 class SelectStub {}
@@ -43,10 +44,12 @@ test("registration fills and commits visible dates without the retired manual-en
 });
 
 test("registration picks the employment type as a chip in Classic and from the select in Console", async () => {
+  // A contract end date makes the helper pick the contract type.
+  const contract = ko["enum.employmentType.CONTRACT"];
   const classic = await fill("classic");
-  expect(classic.clicked).toContain("계약직");
+  expect(classic.clicked).toContain(contract);
   expect(classic.selected).toEqual([]);
   const console = await fill("console");
-  expect(console.selected).toEqual(["계약직"]);
-  expect(console.clicked).not.toContain("계약직");
+  expect(console.selected).toEqual([contract]);
+  expect(console.clicked).not.toContain(contract);
 });
