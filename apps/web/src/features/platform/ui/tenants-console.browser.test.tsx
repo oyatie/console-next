@@ -179,6 +179,8 @@ test.each((["ACTIVE", "SUSPENDED", "ARCHIVED"] as const).flatMap(status => [1440
     await page.evaluate(() => document.fonts.ready);
     const loading = await pane(panel);
     expect(loading.titles.at(-1)).toBe(t("tenants.section.remove"));
+    // The copy that holds the room stays out of sight.
+    expect(loading.titles).not.toContain(t("opsRecovery.title"));
     expect(loading.rule).toBe("1px");
     recovery.hold.resolve();
     const failed = panel.getByRole("alert").filter({ has: page.getByRole("heading", { name: t("tenants.recoveryFailed"), exact: true }) });
@@ -245,6 +247,30 @@ test("a recovery read refused after it answered replaces the code and recovery c
   await element(panel.getByRole("heading", { name: t("common.denied.panel"), exact: true })).toBeVisible();
   await element(panel.getByRole("button", { name: t("tenants.reissue"), exact: true })).toHaveCount(0);
   await element(panel.getByRole("button", { name: t("opsRecovery.open"), exact: true })).toHaveCount(0);
+  expect((await pane(panel)).deletion).toBe(settled.deletion);
+}, 60_000);
+
+test("a failed refresh after the recovery read answered keeps the code and recovery controls, and its notice leaves no gap", async () => {
+  await page.setViewportSize({ width: 1440, height: 1600 });
+  await page.route("**/api/platform/orgs/*/erase", route => route.fulfill({ json: erased("ACTIVE") }));
+  let down = false;
+  await page.route("**/api/platform/orgs/*/ops-recovery", route => route.fulfill(down ? unavailable : { json: RECOVERY }));
+  const list = await platform(() => ({ json: [org("ACTIVE")] }));
+  list.hold.resolve();
+  const panel = page.getByRole("complementary", { name: "Synthetic customer", exact: true });
+  await element(panel.getByRole("button", { name: t("tenants.reissue"), exact: true })).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+  const settled = await pane(panel);
+  down = true;
+  await page.evaluate(() => dispatchEvent(new Event("visibilitychange")));
+  const retry = panel.getByRole("button", { name: t("common.retry"), exact: true });
+  await element(retry).toHaveCount(1);
+  await element(panel.getByRole("button", { name: t("tenants.reissue"), exact: true })).toBeVisible();
+  await element(panel.getByRole("button", { name: t("opsRecovery.open"), exact: true })).toBeVisible();
+  // Once a refresh answers again, the notice goes and the sections close up: the held room is not kept after an answer.
+  down = false;
+  await retry.click();
+  await element(retry).toHaveCount(0);
   expect((await pane(panel)).deletion).toBe(settled.deletion);
 }, 60_000);
 
