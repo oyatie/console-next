@@ -11,7 +11,8 @@ import { todayKst } from "../../../lib/pure/today";
 import { announce } from "../../../lib/react/announce";
 import { SEARCH_DEBOUNCE_MS } from "../../../lib/freshness";
 import { useIsDesktop } from "../../../lib/react/use-desktop";
-import { Button } from "../../../ui/button/button";
+import { Button, type ButtonSize } from "../../../ui/button/button";
+import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { Chip } from "../../../ui/chip";
 import { EmptyState } from "../../../ui/empty-state";
 import { KeyValue, StatRow } from "../../../ui/key-value/key-value";
@@ -69,8 +70,14 @@ export function AccessLogPage() {
   // Until choices have their own endpoint, recover with the smallest authorized log read.
   const choices = useInfiniteQuery({ ...accessLogPages(search.period, false, undefined, {}, 1), enabled: filterInvalid && !first?.filter_options });
   const source = first ?? (filterInvalid ? choices.data?.pages[0] : undefined);
-  const appliedFilters = [
-    { key: "actor", label: t("accessLog.actor"), value: actor && source?.filter_options && (source.filter_options.actors.find(choice => choice.id === actor)?.label ?? t("accessLog.actorUnavailable")) },
+  // Show the rows together on the initial read so the actor name cannot push the other filters down.
+  const actorLabelPending = Boolean(actor) && !source && q.isPending;
+  // A recovery alert may contain a copy button. Reserve the actor row above it while choices resolve.
+  const actorLabel = actor && (source?.filter_options
+    ? source.filter_options.actors.find(choice => choice.id === actor)?.label ?? t("accessLog.actorUnavailable")
+    : filterInvalid ? t("accessLog.actorNameUnconfirmed") : undefined);
+  const appliedFilters = actorLabelPending ? [] : [
+    { key: "actor", label: t("accessLog.actor"), value: actorLabel },
     { key: "action", label: t("accessLog.action"), value: action && codeText(`accessLog.action.${action}`, action) },
     { key: "target_type", label: t("accessLog.targetType"), value: target_type && codeText(`accessLog.target.${target_type}`, target_type) },
     { key: "from", label: t("accessLog.from"), value: from && fmtDate(from) },
@@ -82,15 +89,31 @@ export function AccessLogPage() {
   }, [filtered, count, q.isSuccess, q.isPlaceholderData, q.isFetching]);
   const period = search.period ?? source?.period.from.slice(0, 7) ?? "";
   const consoleRows = q.data?.pages.flatMap(p => p.items) ?? [];
-  const consoleFirst = q.data?.pages[0];
   const effectiveSelected =
     selected ?? (isDesktop && !dismissedAuto ? (consoleRows[0] ?? null) : null);
 
+  const openReview = (eventId: string | null) => { setReviewEventId(eventId); setReviewOpen(true); };
+  const filtersDisabled = !first && !filterInvalid;
+  const reviewDisabled = !period || filtersDisabled;
+  const reviewError = filterInvalid ? choices.error : q.error;
+  const reviewReason = reviewDisabled && reviewError ? readFailureText(reviewError) : undefined;
+  const filterAlert = filterInvalid && <EmptyState alert title={t("accessLog.filterInvalid")}
+    reason={[readFailureText(q.error), reviewReason].filter(Boolean).join(" ")}
+    meta={<ReadReference error={q.error} />}
+  />;
+  const renderReviewButton = (size?: ButtonSize) => {
+    const label = t("accessLog.review.open");
+    return reviewReason
+      ? <DisabledReason reason={reviewReason} control={props => <Button size={size} title={reviewReason} {...props}>{label}</Button>}>
+          {({ control, reason }) => <>{control}<div className="sr-only">{reason}</div></>}
+        </DisabledReason>
+      : <Button size={size} disabled={reviewDisabled} onClick={() => openReview(null)}>{label}</Button>;
+  };
   const renderBaseline = () => (
     <AccessLogBaselineView
       q={q}
       first={first}
-      filterInvalid={filterInvalid}
+      filterAlert={filterAlert}
       filtered={filtered}
       all={all}
       period={period}
@@ -102,8 +125,9 @@ export function AccessLogPage() {
       onCompositionStart={() => setComposing(true)}
       onCompositionEnd={() => setComposing(false)}
       onNavigate={patch => void navigate({ search: s => ({ ...s, ...patch }), replace: true })}
-      onOpenFilter={() => setFilterOpen(true)}
-      onOpenReview={eventId => { setReviewEventId(eventId); setReviewOpen(true); }}
+      onOpenFilter={filtersDisabled ? undefined : () => setFilterOpen(true)}
+      reviewButton={renderReviewButton()}
+      onOpenReview={openReview}
       onClear={clear}
       onSelect={setSelected}
       sheetNode={
@@ -143,14 +167,10 @@ export function AccessLogPage() {
         titleId: "audit-access-log-title",
         actions: (
           <>
-            <Button size="sm" variant="secondary" disabled={!first && !filterInvalid} onClick={() => setFilterOpen(true)}>
+            <Button size="sm" variant="secondary" disabled={filtersDisabled} onClick={() => setFilterOpen(true)}>
               {t("accessLog.chooseFilters")}
             </Button>
-            {Boolean(first && period) && (
-              <Button size="sm" variant="secondary" onClick={() => { setReviewEventId(null); setReviewOpen(true); }}>
-                {t("accessLog.review.open")}
-              </Button>
-            )}
+            {renderReviewButton("sm")}
             {filtered && (
               <Button size="sm" variant="ghost" onClick={clear}>
                 {t("accessLog.clearSearch")}
@@ -179,26 +199,19 @@ export function AccessLogPage() {
         </div>
       }
       stats={
-        !filterInvalid && consoleFirst && consoleRows.length > 0 ? (
+        !filterInvalid && first && consoleRows.length > 0 ? (
           <StatRow
             label={t("accessLog.summary")}
             items={[
-              { key: "events", label: t("accessLog.all"), value: fmtNumber(consoleFirst.totals.events), active: all, onPress: () => void navigate({ search: s => ({ ...s, view: "all" }), replace: true }) },
-              { key: "flagged", label: t("accessLog.flagged"), value: fmtNumber(consoleFirst.totals.flagged), active: !all, onPress: () => void navigate({ search: s => ({ ...s, view: undefined }), replace: true }) },
+              { key: "events", label: t("accessLog.all"), value: fmtNumber(first.totals.events), active: all, onPress: () => void navigate({ search: s => ({ ...s, view: "all" }), replace: true }) },
+              { key: "flagged", label: t("accessLog.flagged"), value: fmtNumber(first.totals.flagged), active: !all, onPress: () => void navigate({ search: s => ({ ...s, view: undefined }), replace: true }) },
             ]}
           />
         ) : undefined
       }
       notes={appliedFilters.length ? <KeyValue label={t("accessLog.appliedFilters")} items={appliedFilters} readOnly /> : undefined}
       list={
-        filterInvalid ? (
-          <EmptyState
-            alert
-            title={t("accessLog.filterInvalid")}
-            reason={readFailureText(q.error)}
-            meta={<ReadReference error={q.error} />}
-          />
-        ) : !consoleRows.length ? (
+        filterAlert || (!consoleRows.length ? (
           <EmptyState
             title={t(filtered ? "accessLog.noResults" : "accessLog.empty")}
             reason={t(filtered ? "accessLog.noResultsReason" : "accessLog.emptyReason")}
@@ -209,7 +222,7 @@ export function AccessLogPage() {
             rows={consoleRows}
             rowId={row => row.event_id}
             activeRowId={effectiveSelected?.event_id}
-            total={all ? (consoleFirst?.totals.events ?? consoleRows.length) : (consoleFirst?.totals.flagged ?? consoleRows.length)}
+            total={all ? (first?.totals.events ?? consoleRows.length) : (first?.totals.flagged ?? consoleRows.length)}
             hasMore={q.hasNextPage}
             loadingMore={q.isFetchingNextPage}
             onLoadMore={() => void q.fetchNextPage()}
@@ -229,7 +242,7 @@ export function AccessLogPage() {
               { id: "at", header: t("accessLog.at"), card: "fact", type: "date", width: 200, cell: row => fmtDateTime(row.occurred_at) },
             ]}
           />
-        )
+        ))
       }
       onSelect={id => {
         setDismissedAuto(false);
