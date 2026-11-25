@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeAll, expect, test, vi } from "vitest";
 import { loadCatalog, t } from "@console/i18n";
 import type { ListRecordProps } from "../../../ui/patterns/list-record-contract";
+import { employeeViewsQuery } from "../api/roster";
 import { NO_SELECTION } from "../../../ui/long-table/selection";
 import { RosterConsole } from "./roster-console";
 import type { useRosterScreen } from "./use-roster-screen";
@@ -38,15 +39,20 @@ function screen(listFailed: boolean) {
   } as unknown as ReturnType<typeof useRosterScreen>;
 }
 
-const render = (listFailed: boolean) => renderToStaticMarkup(
-  <QueryClientProvider client={new QueryClient()}><RosterConsole manage screen={screen(listFailed)} /></QueryClientProvider>,
-);
+function render(listFailed: boolean, viewsRead: boolean) {
+  const client = new QueryClient();
+  if (viewsRead) client.setQueryData(employeeViewsQuery.queryKey, { items: [] });
+  return renderToStaticMarkup(<QueryClientProvider client={client}><RosterConsole manage screen={screen(listFailed)} /></QueryClientProvider>);
+}
 
 // Saved views are the same control in both styles: one button in the roster's head, kept in place while its read is
-// pending and while the roster's own read has failed.
-test.each([false, true])("the roster head offers saved views (roster read failed: %s)", listFailed => {
-  const html = render(listFailed);
-  const views = html.match(new RegExp(`<button[^>]*>${t("directoryViews.open")}</button>`, "g")) ?? [];
+// pending and while the roster's own read has failed, and offered once both the views and the roster they filter are read.
+test.each([
+  { listFailed: false, viewsRead: false, offered: false },
+  { listFailed: true, viewsRead: true, offered: false },
+  { listFailed: false, viewsRead: true, offered: true },
+])("the roster head holds one saved-views button (%o)", ({ listFailed, viewsRead, offered }) => {
+  const views = render(listFailed, viewsRead).match(new RegExp(`<button[^>]*>${t("directoryViews.open")}</button>`, "g")) ?? [];
   expect(views).toHaveLength(1);
-  expect(views[0]).toContain("disabled");
+  expect(views[0]!.includes("disabled")).toBe(!offered);
 });
