@@ -6,10 +6,12 @@ import { chromium, openBrowserTestPage, waitForBrowserTestPage, type Browser, ty
 let browser: Browser;
 let navigationPage: Page;
 let reloadPage: Page;
+let fontPage: Page;
 beforeAll(async () => {
   browser = await chromium.launch();
   navigationPage = await browser.newPage();
   reloadPage = await browser.newPage();
+  fontPage = await browser.newPage();
   // Deliberately shorter than fixture loading: readiness belongs to the enclosing hook/test budget.
   for (const page of [navigationPage, reloadPage]) page.setDefaultTimeout(500);
 }, 60_000);
@@ -83,7 +85,7 @@ test("fixture reload waits for its render signal without waiting for unrelated r
 });
 
 test("fixture readiness settles every font face, including one no drawn text has asked for yet and one that fails", async () => {
-  const page = await browser.newPage();
+  const page = fontPage;
   const face = resolve("node_modules/pretendard/dist/web/variable/woff2-dynamic-subset/PretendardVariable.subset.0.woff2");
   const requested = Promise.withResolvers<void>();
   const held = Promise.withResolvers<void>();
@@ -104,6 +106,6 @@ test("fixture readiness settles every font face, including one no drawn text has
     expect(await page.evaluate(() => [...document.fonts].map(f => `${f.family}:${f.status}`))).toEqual(["Drawn:loaded", "Later:loaded", "Broken:error"]);
   } finally {
     held.resolve();
-    await page.close();
+    await page.unrouteAll({ behavior: "wait" });
   }
 });
