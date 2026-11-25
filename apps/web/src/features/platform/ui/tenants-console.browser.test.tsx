@@ -208,6 +208,26 @@ test.each((["ACTIVE", "SUSPENDED", "ARCHIVED"] as const).flatMap(status => [1440
     expect(dead).toBeLessThan(80);
   }, 60_000);
 
+// An established tenant: its first admin has a passkey, so its answer is shorter than the held room.
+const ENROLLED: OpsRecoveryRead = { ...RECOVERY, ops_enrolled: true, ops_has_passkey: true, recovery_available: true };
+
+test.each([1440, 390])("an established tenant's shorter recovery answer leaves deletion where the held read had it at %i px", async width => {
+  await page.setViewportSize({ width, height: 1600 });
+  await page.route("**/api/platform/orgs/*/erase", route => route.fulfill({ json: erased("ACTIVE") }));
+  const recovery = await held("**/api/platform/orgs/*/ops-recovery", () => ({ json: ENROLLED }));
+  const list = await platform(() => ({ json: [org("ACTIVE")] }));
+  list.hold.resolve();
+  await page.getByRole("gridcell", { name: "Synthetic customer", exact: true }).click();
+  const panel = page.getByRole("complementary", { name: "Synthetic customer", exact: true });
+  await element(panel.getByRole("button", { name: t("tenants.remove", { org: "Synthetic customer" }), exact: true })).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+  const loading = await pane(panel);
+  recovery.hold.resolve();
+  await element(panel.getByRole("button", { name: t("opsRecovery.open"), exact: true })).toBeEnabled();
+  await element(panel.getByRole("button", { name: t("tenants.reissue"), exact: true })).toHaveAccessibleDescription(t("tenants.reissue.enrolled", { org: "Synthetic customer" }));
+  expect((await pane(panel)).deletion).toBe(loading.deletion);
+}, 60_000);
+
 test("a recovery read refused after it answered replaces the code and recovery controls, and deletion stays put", async () => {
   await page.setViewportSize({ width: 1440, height: 1600 });
   await page.route("**/api/platform/orgs/*/erase", route => route.fulfill({ json: erased("ACTIVE") }));

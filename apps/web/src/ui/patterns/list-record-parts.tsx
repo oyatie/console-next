@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import type { ReactNode } from "react";
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 import s from "./list-record-parts.module.css";
 
 /** Compact bottom summary footer beneath a Console `ListRecord` table. */
@@ -48,9 +48,20 @@ export function RecordPaneSection({
   );
 }
 
-/** Record sections kept together in one box (one read fills them): it carries the rule its last section would end on. */
-export function RecordPaneGroup({ className, children }: { className?: string; children: ReactNode }) {
-  return <div className={className ? `${s.paneGroup} ${className}` : s.paneGroup}>{children}</div>;
+/**
+ * Record sections kept together in one box (one read fills them): it carries the rule its last section would end on.
+ * While `held` (its read is out), it keeps the tallest height it has drawn as its minimum, so a shorter answer leaves the
+ * sections below it where they were.
+ */
+export function RecordPaneGroup({ className, held, children }: { className?: string; held?: boolean; children: ReactNode }) {
+  const box = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const group = box.current;
+    if (!held || !group) return;
+    const height = group.getBoundingClientRect().height;
+    if (height > (parseFloat(group.style.minBlockSize) || 0)) group.style.minBlockSize = `${height}px`;
+  });
+  return <div ref={box} className={className ? `${s.paneGroup} ${className}` : s.paneGroup}>{children}</div>;
 }
 
 /** Rule-separated subject identity header at the top of a Console side record pane. */

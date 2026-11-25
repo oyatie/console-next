@@ -69,8 +69,8 @@
   min-width: 0;
 }
 
-/* The floor fits a failed recovery read (title, reason, then retry beside its two-line reference), so a failure that
-   settles into a short answer never moves deletion. */
+/* The floor fits a failed recovery read whose reason takes one line (title, reason, then retry beside its two-line
+   reference), so such a failure above a short answer does not move deletion. */
 .readSlot {
   min-block-size: calc(4lh + var(--target) + var(--space-2) * 5);
 }

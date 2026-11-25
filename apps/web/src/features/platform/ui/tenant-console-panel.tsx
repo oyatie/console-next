@@ -141,9 +141,10 @@ export function TenantConsolePanel({
         <KeyValue density="dense" items={overviewItems} />
       </RecordPaneSection>
 
-      {/* One read fills both sections: until it answers, its loading or failure shows once over room held for a typical answer,
-          so deletion never moves. Offline, the page's own notice already says so. */}
-      <RecordPaneGroup className={s.readSlot}>
+      {/* One read fills both sections: until it answers, its loading or failure shows once over room held for a new tenant's
+          answer, and that room stays (an established tenant's answer is shorter), so deletion moves only for a taller answer
+          or refusal. Offline, the page's own notice says so. */}
+      <RecordPaneGroup held={!answered} className={s.readSlot}>
         {answered && recovery.data ? <>
           <div className={s.readState}>{online ? recoveryState : null}</div>
           {recoverySections(recovery.data)}
