@@ -19,8 +19,8 @@ use serde_json::{Map, Value, json};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::plan::{PlannedRow, plan, preview};
-use super::read::check_request;
+use super::plan::{CorrectionPlan, PlannedWrites, plan, preview};
+use super::read::{CheckedRequest, check_request};
 use super::select::resolve;
 use super::{BulkCorrectionRequest, BulkCorrectionResult, BulkCorrectionResultRow};
 use crate::authz::authorize_hr_org_wide;
@@ -66,7 +66,7 @@ fn binding(preview_id: Uuid, digest: &str) -> MobilePasskeyStepUpBinding {
 }
 
 /// Field names of `writes` taking `path` (or any path but SECOND_PERSON).
-fn names(row: &PlannedRow, now: bool) -> Vec<String> {
+fn names(row: &PlannedWrites, now: bool) -> Vec<String> {
     row.writes
         .iter()
         .filter(|(_, path)| (*path == FieldPath::SecondPerson) != now)
@@ -87,12 +87,16 @@ impl HrService {
         authorize_hr_org_wide(&principal, Feature::EmployeeDirectoryManage)?;
         let key =
             validate_idempotency_key(idempotency_key.as_deref()).map_err(HrError::validation)?;
-        let (reason, note) = check_request(&body)?;
-        let expected = body
-            .preview_digest
-            .clone()
-            .ok_or_else(|| HrError::validation("preview_digest is required; preview first"))?;
         let fingerprint = body.fingerprint();
+        let CheckedRequest {
+            mut targets,
+            preview_digest,
+            step_up,
+            reason,
+            note,
+        } = check_request(body)?;
+        let expected = preview_digest
+            .ok_or_else(|| HrError::validation("preview_digest is required; preview first"))?;
         let passkeys = passkeys.clone();
         let (org, actor) = (principal.org_id, principal.user_id);
         let (org_uuid, me) = (*org.as_uuid(), *actor.as_uuid());
@@ -103,7 +107,7 @@ impl HrService {
                     IdempotencyClaim::Mismatch => return Err(idempotency_key_reused()),
                     IdempotencyClaim::Fresh => {}
                 }
-                let inputs = resolve(tx, &body).await?;
+                let inputs = resolve(tx, &mut targets).await?;
                 let ids: Vec<Uuid> = inputs.iter().map(|input| input.employee_id).collect();
                 // Id order: the lock order of the bulk lifecycle path and change sets.
                 sqlx::query("SELECT id FROM employees WHERE org_id = $1 AND id = ANY($2) ORDER BY id FOR UPDATE")
@@ -111,17 +115,19 @@ impl HrService {
                     .bind(&ids)
                     .execute(tx.as_mut())
                     .await?;
-                let planned = plan(tx, org_uuid, &inputs, holders).await?;
-                let fresh = preview(&planned, &reason, note.as_deref())?;
+                let planned = plan(tx, org_uuid, inputs, holders).await?;
+                let CorrectionPlan { preview: fresh, records } =
+                    preview(planned, &reason, note.as_deref())?;
                 if fresh.preview_digest != expected {
+                    let rows = fresh.rows.into_iter().map(serde_json::to_value)
+                        .collect::<Result<Vec<_>, _>>()
+                        .map_err(|error| HrError::internal(format!("cannot serialize stale correction preview: {error}")))?;
                     return Err(HrError {
                         errors: None,
                         status: StatusCode::CONFLICT,
                         code: "rows_changed_since_preview",
                         message: "the employees changed since the preview; nothing was written. Preview again".to_owned(),
-                        // Every row as it stands now (outcome, values, code); the
-                        // client previews again for a new digest.
-                        refusals: Some(Box::new(serde_json::to_value(&fresh.rows).map_err(|_| HrError::internal("preview serialization failed"))?)),
+                        refusals: Some(Box::new(Value::Array(rows))),
                     });
                 }
                 if fresh.counts.change + fresh.counts.pending == 0 {
@@ -130,7 +136,7 @@ impl HrService {
                 let sole = fresh.step_up_required;
                 let mut assertion = None;
                 if sole {
-                    let envelope = body.step_up.ok_or_else(|| {
+                    let envelope = step_up.ok_or_else(|| {
                         refusal(StatusCode::UNAUTHORIZED, "step_up_required", "a sole holder's correction of these fields needs a passkey step-up")
                     })?;
                     assertion = Some(
@@ -141,7 +147,9 @@ impl HrService {
                     );
                 }
                 let job = fresh.preview_id;
-                let mut fields: Vec<String> = planned.iter().flat_map(|p| p.writes.iter().map(|((f, _), _)| f.clone())).collect();
+                let mut fields: Vec<String> = records.iter()
+                    .flat_map(|record| record.writes.iter().map(|((field, _), _)| field.clone()))
+                    .collect();
                 fields.sort();
                 fields.dedup();
                 let c = &fresh.counts;
@@ -160,37 +168,50 @@ impl HrService {
                 if inserted == 0 {
                     return Err(refusal(StatusCode::CONFLICT, "bulk_correction_committed", "this preview was already committed; preview again"));
                 }
-                let mut rows = Vec::with_capacity(planned.len());
+                let mut rows = Vec::with_capacity(records.len());
                 let mut audits = Vec::new();
-                for p in &planned {
+                for (row, record) in fresh.rows.into_iter().zip(records) {
                     let mut result = BulkCorrectionResultRow {
-                        employee_id: p.row.employee_id,
-                        outcome: p.row.outcome,
-                        applied: names(p, true),
+                        employee_id: row.employee_id,
+                        outcome: row.outcome,
+                        applied: names(&record, true),
                         pending_request_id: None,
-                        code: p.row.code,
+                        code: row.code,
                     };
-                    let Some(head) = p.head.as_ref().filter(|_| !p.writes.is_empty()) else {
+                    let Some(head) = record.head.as_ref().filter(|_| !record.writes.is_empty()) else {
                         rows.push(result);
                         continue;
                     };
-                    let review = p.writes.iter().any(|(_, path)| *path == FieldPath::SoleHolderReview);
+                    let review = record.writes.iter().any(|(_, path)| *path == FieldPath::SoleHolderReview);
                     if review {
-                        sole_holder_cedar(&principal, p.row.employee_id, holders)?;
+                        sole_holder_cedar(&principal, row.employee_id, holders)?;
                     }
-                    let now: Vec<_> = p.writes.iter().filter(|(_, path)| *path != FieldPath::SecondPerson).map(|(pair, _)| pair.clone()).collect();
+                    let now: Vec<_> = record.writes.iter()
+                        .filter(|(_, path)| *path != FieldPath::SecondPerson)
+                        .map(|&(pair, _)| pair.clone())
+                        .collect();
                     if !now.is_empty() {
                         let meta = LedgerMeta {
-                        import_run_id: None, reason_code: &reason, note: note.as_deref(), corrected_by: me, change_request_id: None, review_required: review, batch_id: Some(job) };
-                        apply_fields_in_tx(tx, org_uuid, p.row.employee_id, head, &now, &meta).await?;
+                            import_run_id: None,
+                            reason_code: &reason,
+                            note: note.as_deref(),
+                            corrected_by: me,
+                            change_request_id: None,
+                            review_required: review,
+                            batch_id: Some(job),
+                        };
+                        apply_fields_in_tx(tx, org_uuid, row.employee_id, head, &now, &meta).await?;
                     }
-                    let later: Map<String, Value> = p.writes.iter().filter(|(_, path)| *path == FieldPath::SecondPerson).map(|((f, v), _)| (f.clone(), json!(v))).collect();
+                    let later: Map<String, Value> = record.writes.iter()
+                        .filter(|(_, path)| *path == FieldPath::SecondPerson)
+                        .map(|((field, value), _)| (field.clone(), json!(value)))
+                        .collect();
                     if !later.is_empty() {
                         let request = insert_change_request_in_tx(tx, NewChangeRequest {
                             org: org_uuid,
                             kind: ChangeRequestKind::ProfileCorrection,
                             subject_type: "EMPLOYEE",
-                            subject_id: p.row.employee_id,
+                            subject_id: row.employee_id,
                             // one request per employee; one batch request kind
                             // (design C18, decided once) when second persons need it.
                             payload: &json!({ "changes": later, "bulk_correction_id": job }),
@@ -201,9 +222,9 @@ impl HrService {
                         }).await?;
                         result.pending_request_id = Some(request.id);
                     }
-                    audits.push(audit(org, actor, "employee.correct", "employee", p.row.employee_id, json!({
+                    audits.push(audit(org, actor, "employee.correct", "employee", row.employee_id, json!({
                         "applied": &result.applied,
-                        "pending": names(p, false),
+                        "pending": names(&record, false),
                         "review_required": review,
                         "bulk_correction_id": job,
                         "reason_code": &reason,

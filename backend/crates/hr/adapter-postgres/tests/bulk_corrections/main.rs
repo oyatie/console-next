@@ -187,6 +187,27 @@ async fn a_selection_previews_exact_counts_and_commits_one_job(pool: PgPool) {
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn a_committed_key_refuses_a_different_preview_digest(pool: PgPool) {
+    let w = world(&pool).await;
+    let body = selection(json!({ "job": "engineer" }), &[]);
+    let original = preview(&w, &body, SECOND).await;
+    let other = preview(&w, &selection(json!({ "job": "manager" }), &[]), SECOND).await;
+    assert_ne!(original.preview_digest, other.preview_digest);
+
+    commit(&w, &body, &original.preview_digest, "k-1", SECOND)
+        .await
+        .unwrap();
+    let error = commit(&w, &body, &other.preview_digest, "k-1", SECOND)
+        .await
+        .unwrap_err();
+    assert_eq!(error.status, StatusCode::CONFLICT);
+    assert_eq!(
+        error.message,
+        console_platform_db::idempotency::IDEMPOTENCY_KEY_REUSED
+    );
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn exclusions_and_filters_narrow_the_server_selection(pool: PgPool) {
     let w = world(&pool).await;
     let body = selection(json!({ "work_email": "team@corp.example" }), &[w.in_b]);
