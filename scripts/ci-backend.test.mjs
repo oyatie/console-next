@@ -393,21 +393,30 @@ test("web and state jobs run only for affected candidates, never dev pushes", ()
 test("push proof accepts only a successful trusted queue run with the same tree and base ancestry", async () => {
   const { source } = await import("../.github/ci-proof.cjs");
   const context = { repo: { owner: "sample", repo: "console" }, sha: "merged", payload: { before: "base", repository: { id: 42 } } };
-  const good = { id: 10, path: ".github/workflows/ci.yml", event: "merge_group", status: "completed", conclusion: "success", head_branch: "gh-readonly-queue/dev/pr-1", head_sha: "queue", repository: { id: 42 }, head_repository: { id: 42 } };
+  const good = { id: 10, path: ".github/workflows/ci.yml", event: "merge_group", status: "completed", conclusion: "success", head_branch: "gh-readonly-queue/dev/pr-1", head_sha: context.sha, repository: { id: 42 }, head_repository: { id: 42 } };
   const api = (runs, tree = "tree", ancestor = "base") => ({
     paginate: Object.assign(async () => [{ name: "cargo-security-Linux-X64-deny-1-audit-1" }], {
-      iterator: async function* (route, args) { assert.equal(args.event, "merge_group"); assert.equal(args.head_sha, context.sha); yield { data: runs }; },
+      iterator: async function* (route, args) {
+        assert.equal(args.event, "merge_group");
+        assert.equal(args.head_sha, context.sha);
+        yield { data: Object.hasOwn(args, "status") ? [] : runs };
+      },
     }),
     rest: { repos: {
-      getCommit: async ({ ref }) => ({ data: { commit: { tree: { sha: ref === "merged" ? "tree" : tree } } } }),
+      getCommit: async ({ ref }) => ({ data: { commit: { tree: { sha: ref === context.sha ? "tree" : tree } } } }),
       compareCommits: async () => ({ data: { merge_base_commit: { sha: ancestor } } }),
     } },
   });
-  assert.deepEqual(await source(api([good]), context), { id: 10, sha: "queue", tools: "cargo-security-Linux-X64-deny-1-audit-1" });
-  for (const patch of [{ event: "push" }, { status: "in_progress" }, { conclusion: "failure" }, { head_branch: "feature" }, { path: "other.yml" }, { repository: { id: 99 } }, { head_repository: { id: 99 } }]) {
+  const failed = { ...good, conclusion: "failure" };
+  await assert.rejects(source(api([failed]), context), /CI_PROOF_MISSING/, "a failed run cannot prove the pushed commit");
+  assert.deepEqual(await source(api([failed, good]), context), { id: good.id, sha: good.head_sha, tools: "cargo-security-Linux-X64-deny-1-audit-1" });
+  for (const head_sha of [context.sha, "queue"]) {
+    assert.deepEqual(await source(api([{ ...good, head_sha }]), context), { id: good.id, sha: head_sha, tools: "cargo-security-Linux-X64-deny-1-audit-1" });
+  }
+  for (const patch of [{ event: "push" }, { status: "in_progress", conclusion: null }, { conclusion: "cancelled" }, { head_branch: "feature" }, { head_branch: "gh-readonly-queue/main/pr-1" }, { path: "other.yml" }, { repository: { id: 99 } }, { head_repository: { id: 99 } }]) {
     await assert.rejects(source(api([{ ...good, ...patch }]), context), /CI_PROOF_MISSING/);
   }
-  await assert.rejects(source(api([good], "wrong"), context), /CI_PROOF_MISSING/);
+  await assert.rejects(source(api([{ ...good, head_sha: "queue" }], "wrong"), context), /CI_PROOF_MISSING/);
   await assert.rejects(source(api([good], "tree", "other-base"), context), /CI_PROOF_MISSING/);
   await assert.rejects(source(api([]), context), /CI_PROOF_MISSING/);
   const expired = api([good]);

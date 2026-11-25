@@ -6,8 +6,9 @@ const succeeded = (run, workflow, repositoryId) => completed(run, workflow, repo
 async function source(github, context) {
   const params = { ...context.repo, per_page: 100 };
   const { data: candidate } = await github.rest.repos.getCommit({ ...context.repo, ref: context.sha });
+  // The listing's status filter can omit a finished run.
   for await (const { data: runs } of github.paginate.iterator('GET /repos/{owner}/{repo}/actions/workflows/ci.yml/runs',
-    { ...params, event: 'merge_group', status: 'success', head_sha: context.sha })) {
+    { ...params, event: 'merge_group', head_sha: context.sha })) {
     for (const run of runs) {
       if (run.event !== 'merge_group' || !run.head_branch?.startsWith('gh-readonly-queue/dev/') ||
           !succeeded(run, 'ci.yml', context.payload.repository.id)) continue;
