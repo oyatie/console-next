@@ -18,13 +18,16 @@ export async function tableTest() {
       load: id => id === "\0long-table-test" ? `
         import React,{useState} from 'react'; import {createRoot} from 'react-dom/client'; import {flushSync} from 'react-dom';
         import {loadCatalog} from '@console/i18n';
+        // Static, so the load event page.goto waits for covers the catalog; loadCatalog then finds both modules loaded.
+        import '/packages/i18n/src/catalogs/boot-ko.ts'; import '/packages/i18n/src/catalogs/ko.ts';
         import {LongTable,TableControl} from '/apps/web/src/ui/long-table/long-table.tsx';
         import {Button} from '/apps/web/src/ui/button/button.tsx';
         import {TextInput} from '/apps/web/src/ui/field/field.tsx';
         import {NO_SELECTION} from '/apps/web/src/ui/long-table/selection.ts';
         import '/apps/web/src/app.css';
         await loadCatalog('ko');
-        function Fixture(){
+        // The mode is the page's search, or the stand-in location renderFixture passes.
+        function Fixture({location=window.location}){
           if(location.search==='?find') return React.createElement(LongTable,{
             label:'Rows',rows:[{id:'a',name:'Alpha'}],rowId:r=>r.id,empty:null,hasMore:false,onLoadMore:()=>{},
             columns:[{id:'name',header:'Name',rowHeader:true,card:'title',cell:r=>r.name}],
@@ -76,7 +79,15 @@ export async function tableTest() {
               {id:'fixed',header:'고정',type:targets?'action':undefined,width:targets?160:undefined,cell:()=>targets ? (location.search.startsWith('?targets-wrapped') ? React.createElement('span',null,action) : action) : '-'}]
           });
         }
-        createRoot(document.getElementById('root')).render(React.createElement(Fixture));
+        const root=createRoot(document.getElementById('root'));
+        let revision=0;
+        // Tests may switch modes in place: a fresh Fixture and empty body data, without reloading the module graph and catalog.
+        // The search is passed, not written to history: browsers throttle or refuse rapid replaceState calls.
+        window.renderFixture=search=>{
+          for(const key of Object.keys(document.body.dataset)) delete document.body.dataset[key];
+          flushSync(()=>root.render(React.createElement(Fixture,{key:++revision,location:{search}})));
+        };
+        root.render(React.createElement(Fixture));
       ` : undefined,
       configureServer: vite => { vite.middlewares.use((req, res, next) => {
         if (req.url?.split("?")[0] !== "/long-table-test") return next();

@@ -90,7 +90,7 @@ export function ConsoleTopBar({
   onSearch: () => void;
 }) {
   const singleKeys = useSingleKeys();
-  const searchId = useId();
+  const searchScopeId = useId();
   return (
     <header className={s.top} data-surface="chrome" aria-busy={restoring || undefined}>
       {!restoring ? (
@@ -142,20 +142,23 @@ export function ConsoleTopBar({
           </div>
 
           {!platform ? (
-            // Named as the phone bar and the palette name it, then by the hint it shows, so a spoken hint reaches it.
-            <button
-              type="button"
-              className={s.searchField}
-              onClick={onSearch}
-              aria-labelledby={`${searchId}-name ${searchId}-hint`}
-              aria-haspopup="dialog"
-              aria-keyshortcuts={singleKeys ? "Meta+K Control+K /" : "Meta+K Control+K"}
-            >
-              <Search size={14} aria-hidden="true" />
-              <span id={`${searchId}-name`} className="sr-only">{t("shell.jumpLabel")}</span>
-              <bdi id={`${searchId}-hint`} className={s.searchText}>{t("shell.searchHint")}</bdi>
-              {singleKeys && <Kbd keys="/" />}
-            </button>
+            <>
+              {/* Named from its words, not aria-label, so a label locator for a searchable thing never lands here. */}
+              <button
+                type="button"
+                className={s.searchField}
+                onClick={onSearch}
+                aria-describedby={searchScopeId}
+                aria-haspopup="dialog"
+                aria-keyshortcuts={singleKeys ? "Meta+K Control+K /" : "Meta+K Control+K"}
+              >
+                <Search size={14} aria-hidden="true" />
+                <span className="sr-only">{t("shell.jumpLabel")}</span>
+                <bdi className={s.searchText}>{t("shell.searchHint")}</bdi>
+                {singleKeys && <Kbd keys="/" />}
+              </button>
+              <span id={searchScopeId} hidden>{t("shell.jump")}</span>
+            </>
           ) : null}
 
           <div className={s.metaCluster}>

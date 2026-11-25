@@ -60,9 +60,21 @@ test("the brand is an 18px mark drawn on the bar itself, its strokes in the bar'
   expect(mark).toEqual({ size: [18, 18], tiles: [], strokes: ["rgb(238, 242, 246)"], fills: ["rgb(245, 189, 79)"] });
 });
 
+test("the search button is named by the shared search label and its visible words, and describes what it finds", async () => {
+  const { page } = mounted;
+  const search = page.getByRole("button", { name: t("shell.jumpLabel") });
+  await element(search).toHaveAccessibleName(`${t("shell.jumpLabel")} ${t("shell.searchHint")}`);
+  await element(search).toHaveAccessibleDescription(t("shell.jump"));
+  // A label locator for a searchable thing (a registration number field, say) must not land on the search button.
+  await element(page.getByLabel(t("shell.jump"))).toHaveCount(0);
+  // The shared label is heard, not shown: the box draws the search hint alone.
+  const label = await search.getByText(t("shell.jumpLabel"), { exact: true }).boundingBox();
+  expect(label!.width).toBeLessThanOrEqual(1);
+});
+
 test("the search button's / follows the single-key switch at once, in this tab and from another", async () => {
   const { page } = mounted;
-  const search = page.getByRole("banner").getByRole("button", { name: t("shell.searchHint") });
+  const search = page.getByRole("button", { name: `${t("shell.jumpLabel")} ${t("shell.searchHint")}`, exact: true });
   const hint = search.locator("kbd");
   const toggle = page.getByRole("switch", { name: t("account.singleKeys") });
 
@@ -94,9 +106,7 @@ test("every bar control named apart from its text still says its visible text, s
     const scan = await new AxeBuilder({ page }).include('header[data-surface="chrome"]').withRules(["label-content-name-mismatch", "button-name", "link-name"]).analyze();
     expect(scan.violations.map(v => `${v.id}: ${v.nodes.map(n => n.html).join(" | ")}`), theme).toEqual([]);
   }
-  // The search keeps the name the phone bar and the palette give it, followed by the hint it shows.
-  const search = page.getByRole("banner").getByRole("button", { name: t("shell.searchHint") });
-  await element(search).toHaveAccessibleName(`${t("shell.jumpLabel")} ${t("shell.searchHint")}`);
-  await element(search).toHaveAttribute("aria-haspopup", "dialog");
+  // The search opens the palette, a dialog.
+  await element(page.getByRole("button", { name: t("shell.jumpLabel") })).toHaveAttribute("aria-haspopup", "dialog");
   await element(page.locator("#console-top-account")).toHaveAccessibleName("Dana Kim · HR Manager");
 });

@@ -242,6 +242,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 :root[data-theme="dark"]:where([data-experience]:not([data-experience="baseline"])) select.field__input {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23c3cdd8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
+/* In light a select on the frame takes the frame's chevron; the dark rule above outranks this one. */
+:where([data-experience]:not([data-experience="baseline"])) [data-surface="chrome"] select.field__input { background-image: var(--chrome-chevron); }
 /* In a toolbar a field has a height of its own, so a style can draw it level with the controls beside it. The toolbar
    adds no weight to the selector: every rule that outranks a field's height today outranks this one as well. */
 :where(.toolbar) .field__input { height: var(--field-h-toolbar); }
