@@ -7,6 +7,7 @@ import { beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { i18n, loadCatalog, t } from "@console/i18n";
 import type { Day } from "../api";
 import { SidePanelReadContext } from "../../../ui/side-panel/read-context";
+import { queryPath } from "../../../lib/query";
 import { refusalText } from "../present";
 import { DayOpenPaneBody } from "./day-console-rail";
 import { DayDock } from "./day-dock";
@@ -16,7 +17,7 @@ const day: Day = {
   date: "2026-10-06", plan: { kind: "REST_DAY", holiday_work: false }, marks: [],
   recognition: { recorded: 0, recognised: 0, regular: 0, approved: 0, early_unrecognised: 0, late_unrecognised: 0, late_in: 0, early_out: 0, away: 0, approval_unused: 0 },
 };
-vi.mock("@tanstack/react-query", () => ({ useQuery: ({ queryKey }: { queryKey: readonly unknown[] }) => String(queryKey[0]).startsWith("/api/v1/access/") ? { isPending: true, error: null, data: undefined } : {
+vi.mock("@tanstack/react-query", () => ({ useQuery: (q: Parameters<typeof queryPath>[0]) => queryPath(q).startsWith("/api/v1/access/") ? { isPending: true, error: null, data: undefined } : {
   isPending: state.load === "loading", error: state.load === "error" ? new Error("unavailable") : state.load === "refused" ? new ApiError(403, "forbidden", "", [], "day-ref") : null,
   data: state.load === "ready" ? { name: "Person", days: state.missingDay ? [] : [day], history: [], month_state: { state: "OPEN" } } : undefined,
 } }));

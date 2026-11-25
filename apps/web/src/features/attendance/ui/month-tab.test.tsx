@@ -5,6 +5,7 @@ import { beforeAll, beforeEach, expect, test, vi } from "vitest";
 // oxlint-disable-next-line no-restricted-imports -- A refused month read is a transport refusal.
 import { ApiError } from "@console/api";
 import { loadCatalog, t } from "@console/i18n";
+import { queryPath } from "../../../lib/query";
 import { refusalText } from "../present";
 import type { Drafts } from "../domain/grid";
 import { MonthTab } from "./month-tab";
@@ -34,7 +35,7 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 vi.mock("@tanstack/react-query", async original => ({ ...await original<typeof import("@tanstack/react-query")>(),
   // The head's phase line reads the access answer the page waits for; the other reads (the user's own among them) stay pending.
-  useQuery: ({ queryKey }: { queryKey: readonly unknown[] }) => queryKey[0] === "/api/v1/access/me"
+  useQuery: (q: Parameters<typeof queryPath>[0]) => queryPath(q) === "/api/v1/access/me"
     ? { isPending: false, error: null, data: { phase: "OPERATING", is_ops: false, entries: [] } }
     : { isPending: true, error: null, data: undefined },
   useInfiniteQuery: () => ({

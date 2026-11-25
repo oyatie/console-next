@@ -6,6 +6,7 @@ import { beforeAll, beforeEach, expect, test, vi } from "vitest";
 // oxlint-disable-next-line no-restricted-imports -- A refused draft read is a transport refusal.
 import { ApiError } from "@console/api";
 import { loadCatalog, t } from "@console/i18n";
+import { queryPath } from "../../../lib/query";
 import { EmployeePayConsole } from "./employee-pay-console";
 
 const state = vi.hoisted(() => ({ refused: false }));
@@ -27,7 +28,7 @@ vi.mock("../../../ui/patterns/pattern-shell", async original => ({
 vi.mock("../../../experience/dom", () => ({ useActiveExperienceId: () => "console" }));
 vi.mock("@tanstack/react-query", async original => ({
   ...await original<typeof import("@tanstack/react-query")>(),
-  useQuery: ({ queryKey }: { queryKey: readonly unknown[] }) => String(queryKey[0]).includes("payslip-draft")
+  useQuery: (q: Parameters<typeof queryPath>[0]) => queryPath(q).includes("payslip-draft")
     ? state.refused
       ? { isPending: false, error: new ApiError(403, "forbidden", "", [], "pay-ref"), data: undefined, refetch: vi.fn() }
       : { isPending: false, error: null, data: draft, refetch: vi.fn() }

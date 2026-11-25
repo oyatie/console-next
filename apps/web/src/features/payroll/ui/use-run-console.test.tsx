@@ -2,13 +2,14 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { loadCatalog, t } from "@console/i18n";
+import { queryPath } from "../../../lib/query";
 import { useRunConsole } from "./use-run-console";
 
 const ENTITY = "entity-a";
 const state = vi.hoisted(() => ({ runEntity: "entity-a", groupsPending: false }));
 vi.mock("@tanstack/react-query", () => ({
-  useQuery: ({ queryKey }: { queryKey: readonly unknown[] }) => {
-    const path = String(queryKey[0]);
+  useQuery: (q: Parameters<typeof queryPath>[0]) => {
+    const path = queryPath(q);
     if (path === "/api/v1/payroll/pay-groups") {
       if (state.groupsPending) return { isPending: true, error: null, data: undefined };
       return {
