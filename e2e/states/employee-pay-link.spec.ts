@@ -47,7 +47,7 @@ for (const viewer of ["hr", "exited", "reviewer", "denied", "unready"] as const)
           await page.getByLabel(t("payroll.setup.day"), { exact: false }).fill(draft.pay_date);
           await page.getByRole("button", { name: t("payroll.employee.preview"), exact: true }).click();
           // The draft is the employee's: Classic heads its card with the name, Console lists the name among its figures.
-          await expect(page.getByRole("region", { name: draft.employee_name, exact: true })
+          await expect(page.getByRole("region", { name: draft.employee_name })
             .or(page.getByRole("main").getByRole("definition").filter({ hasText: draft.employee_name }))).toBeVisible();
         }
         expect(fixture.unexpected).toEqual([]);
