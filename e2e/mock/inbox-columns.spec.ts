@@ -23,20 +23,6 @@ const rows = () => {
 const queueRows = (page: Page) => page.locator("[data-flexible-columns] [data-id]")
   .or(page.getByRole("grid", { name: t("home.inbox.title"), exact: true }).locator("[data-id]"));
 
-/** The queue on `path` at a desk width with its first item's record open and its first row focused. */
-async function focusQueue(page: Page, path: string) {
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await mockScreen(page, screens[0], "populated");
-  const data = rows();
-  await mockRoute(page, "get", "/api/v1/me/action-inbox", { status: 200, json: data });
-  await page.goto(`${path}?sel=${encodeURIComponent(data.items[0]!.id)}`);
-  await expect(page.getByRole("complementary", { name: t("home.inbox.record.title"), exact: true })).toContainText(data.items[0]!.title);
-  const row = queueRows(page).first();
-  await row.focus();
-  await expect(row).toBeFocused();
-  return row;
-}
-
 for (const path of ["/", "/inbox"]) {
   test(`columns follow keyboard selection and survive reload on ${path}`, async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -58,7 +44,7 @@ for (const path of ["/", "/inbox"]) {
     expect(await page.evaluate(() => window.history.length)).toBe(history);
     // 해야 할 일 is the inbox's first tab, so its address carries no tab.
     if (path === "/inbox") expect(new URL(page.url()).searchParams.get("tab")).toBeNull();
-    // What a slash does on the queue is each style's own (pinned below).
+    await page.keyboard.press("/");
     await expect(listRows.first()).toBeFocused();
     await page.keyboard.press("Enter");
     await expect.poll(() => pane.evaluate(el => el.contains(document.activeElement))).toBe(true);
@@ -78,14 +64,6 @@ for (const path of ["/", "/inbox"]) {
     await page.mouse.up();
     await expect.poll(async () => (await pane.boundingBox())!.width).toBeGreaterThan(before);
     expect(mock.unexpected).toEqual([]);
-  });
-
-  // Classic's queue has no find field, so a slash leaves focus on its row. Console's slash goes to the queue's own find,
-  // while the home board marks the slash on the top bar's search, so Console's is not pinned.
-  test(`Classic leaves a slash on the queue to its row on ${path}`, { tag: "@baseline" }, async ({ page }) => {
-    const row = await focusQueue(page, path);
-    await page.keyboard.press("/");
-    await expect(row).toBeFocused();
   });
 
   for (const width of [1440, 390]) for (const state of ["populated", "selected", "missing", "missing-empty", "empty", "failed", "refused", "loading"] as const) {
