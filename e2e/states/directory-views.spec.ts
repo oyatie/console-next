@@ -18,7 +18,7 @@ import { EXPERIENCE_KEY } from "../../apps/web/src/lib/prefs";
 test.beforeAll(() => loadCatalog("ko"));
 /** Console's roster filters on its rail; the contract item is the board's word (d-people), with no window in it. */
 const contractRail = (page: Page) => page.getByRole("navigation", { name: t("people.filter.label"), exact: true })
-  .getByRole("checkbox", { name: new RegExp(`^${t("people.rail.contractEnding")}`) });
+  .getByRole("checkbox", { name: t("people.rail.contractEnding") });
 
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
   for (const status of [200, 403]) test(`delayed saved views ${status} keep the toolbar stable ${width} ${theme} @ui-state`, async ({ page }) => {
@@ -126,7 +126,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     if (!placement) {
       if (experience === "console") {
         await expect(contractRail(page)).toHaveCount(0);
-        const active = page.getByRole("term").filter({ has: page.getByRole("button", { name: new RegExp(`^${t("roster.status.ACTIVE")}`) }) });
+        const active = page.getByRole("term").filter({ has: page.getByRole("button", { name: t("roster.status.ACTIVE") }) });
         await expect(active.locator("xpath=following-sibling::*[1]")).toHaveText("3");
       } else if (experience === "baseline") await expect(page.getByRole("button", { name: new RegExp(`^${t("roster.status.ACTIVE")} 3$`) })).toBeVisible();
       expect(requests.length).toBeGreaterThan(0);

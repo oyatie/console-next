@@ -158,8 +158,7 @@ test("access-log search survives reload and view changes and clears from the URL
     await expect(search).toHaveValue("203.0.113.10");
     // The view control that adds a history entry, for the back step below: Classic's view tab (its count follows the
     // name), where Console draws only its summary toggle. First in page order, so Classic's tab wins over its toggle.
-    const flagged = new RegExp(`^${t("accessLog.flagged")}`);
-    await page.getByRole("link", { name: flagged }).or(page.getByRole("button", { name: t("accessLog.flagged"), exact: true })).first().click();
+    await page.getByRole("link", { name: t("accessLog.flagged") }).or(page.getByRole("button", { name: t("accessLog.flagged"), exact: true })).first().click();
     await expect(search).toHaveValue("203.0.113.10");
     await expect.poll(() => Object.fromEntries(fixture.requests.at(-1)!)).toMatchObject({ search: "203.0.113.10", period: "2026-10", flagged: "true" });
     await search.fill("없음");

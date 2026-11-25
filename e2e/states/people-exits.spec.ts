@@ -17,7 +17,7 @@ const exitCaseScreen = peopleExitScreens[0];
 /** A leg of the board: a named region in Classic, a ledger row headed by the leg's name in Console. */
 const leg = (page: Page, board: Locator, key: typeof EXIT_LEGS[number]) => {
   const name = t(`exit.board.leg.${key}`);
-  return board.getByRole("region", { name, exact: true }).or(board.getByRole("row").filter({ has: page.getByRole("rowheader", { name: new RegExp(`^${name}`) }) }));
+  return board.getByRole("region", { name, exact: true }).or(board.getByRole("row").filter({ has: page.getByRole("rowheader", { name }) }));
 };
 
 test.beforeAll(() => loadCatalog("ko"));

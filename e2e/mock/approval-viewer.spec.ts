@@ -139,7 +139,7 @@ test.describe("console look", () => {
     await expect(page.getByRole("heading", { level: 2, name: document.title, exact: true })).toBeVisible();
     // The board draws a desk; a phone's approval page has none, so only the titles are pinned there.
     if (width === 1440) {
-      await expect(page.getByRole("textbox", { name: new RegExp(`^${t("approvals.viewer.opinion")}`) })).toBeVisible();
+      await expect(page.getByRole("textbox", { name: t("approvals.viewer.opinion") })).toBeVisible();
       await expect(page.getByText(t("approvals.viewer.opinionHint"), { exact: true })).toHaveCount(0);
       const route = (await page.getByRole("region", { name: t("approvals.preview.route"), exact: true }).boundingBox())!;
       const body = (await page.getByRole("region", { name: t("approvals.viewer.body"), exact: true }).boundingBox())!;

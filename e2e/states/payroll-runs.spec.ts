@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page, type PlaywrightTestOptions } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { payGroups } from "../mock/payroll";
@@ -7,7 +7,7 @@ import { AT, failure, id, screenAccess } from "../mock/fixtures";
 import { mockScreen } from "../mock/screen";
 import { payrollRunCreateScreen, payrollScreens } from "./payroll";
 import { expectAxe, fits } from "../a11y";
-import { experienceState } from "../experience";
+import { experienceState, seededExperience } from "../experience";
 import type { PayrollRunDetail } from "@console/api/pending";
 
 test.beforeAll(() => loadCatalog("ko"));
@@ -43,15 +43,20 @@ async function serveRun(page: Page, state: "loading" | "failed" | "refused" | "m
   return release;
 }
 
-/** A pay group's choice, named by the group then its entity; Console's name goes on to the pay-date rule. */
-function groupChoice(page: Page, group: PayGroup) {
+/**
+ * A pay group's choice, in the style the test seeded. Classic names it "group · entity", matched exactly: one entity's
+ * name starts the other's, so a contained name would match a same-named group's choice in the other entity. Console
+ * names it by the group, then "entity · pay-date rule".
+ */
+function groupChoice(page: Page, group: PayGroup, storageState: PlaywrightTestOptions["storageState"]) {
   const entity = payGroups.legal_entities.find(candidate => candidate.id === group.legal_entity_id)!.name!;
-  const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return page.getByRole("radio", { name: new RegExp(`^${escape(group.name)}(?: ·)? ${escape(entity)}(?:$| · )`) });
+  return seededExperience(storageState) === "console"
+    ? page.getByRole("radio", { name: group.name }).and(page.getByRole("radio", { name: `${entity} ·` }))
+    : page.getByRole("radio", { name: `${group.name} · ${entity}`, exact: true });
 }
 
-async function chooseRegular(page: Page) {
-  await groupChoice(page, payGroups.items[0]!).locator("xpath=ancestor::label[1]").click();
+async function chooseRegular(page: Page, storageState: PlaywrightTestOptions["storageState"]) {
+  await groupChoice(page, payGroups.items[0]!, storageState).locator("xpath=ancestor::label[1]").click();
   await page.getByRole("radio", { name: t("payroll.create.kind.REGULAR"), exact: true }).locator("xpath=ancestor::label[1]").click();
   await expect(page.getByRole("main")).toContainText(preview.attribution_month);
   await expect(page.getByRole("main")).toContainText(fmtDate(preview.pay_date));
@@ -140,7 +145,7 @@ for (const state of ["empty", "populated"] as const) test(`home offers run creat
   } finally { await page.close(); fixture.release(); }
 });
 
-for (const [width, colorScheme] of [[1440, "light"], [390, "dark"]] as const) test(`run creation previews derived facts and submits at ${width}px ${colorScheme}`, async ({ page }) => {
+for (const [width, colorScheme] of [[1440, "light"], [390, "dark"]] as const) test(`run creation previews derived facts and submits at ${width}px ${colorScheme}`, async ({ page, storageState }) => {
   await page.setViewportSize({ width, height: 900 });
   await page.emulateMedia({ colorScheme });
   const fixture = await mockScreen(page, payrollRunCreateScreen, "populated");
@@ -155,7 +160,7 @@ for (const [width, colorScheme] of [[1440, "light"], [390, "dark"]] as const) te
   await page.route(`**/api/v1/payroll/runs/${created.id}`, route => route.fulfill({ json: { ...detail, run: created } }));
   try {
     await page.goto("/payroll/runs/new");
-    await chooseRegular(page);
+    await chooseRegular(page, storageState);
     await fits(page, `payroll-run-create/${width}`);
     await expectAxe(page, `payroll-run-create/${width}`);
     await page.screenshot({ path: test.info().outputPath(`create-${width}.png`) });
@@ -166,7 +171,7 @@ for (const [width, colorScheme] of [[1440, "light"], [390, "dark"]] as const) te
   } finally { await page.close(); fixture.release(); }
 });
 
-for (const [status, code] of [[409, "regular_run_exists"], [409, "idempotency_key_reused"], [403, "forbidden"], [422, "validation"], [422, "run_kind_unsupported"], [409, "phase_not_operating"], [500, "internal_error"]] as const) test(`run creation shows ${code} without retry wording @ui-state`, async ({ page }) => {
+for (const [status, code] of [[409, "regular_run_exists"], [409, "idempotency_key_reused"], [403, "forbidden"], [422, "validation"], [422, "run_kind_unsupported"], [409, "phase_not_operating"], [500, "internal_error"]] as const) test(`run creation shows ${code} without retry wording @ui-state`, async ({ page, storageState }) => {
   await page.setViewportSize({ width: 390, height: 900 });
   await page.emulateMedia({ colorScheme: "dark" });
   const fixture = await mockScreen(page, payrollRunCreateScreen, "populated");
@@ -175,7 +180,7 @@ for (const [status, code] of [[409, "regular_run_exists"], [409, "idempotency_ke
     ? route.fulfill({ status, json: failure(code) }) : route.fallback());
   try {
     await page.goto("/payroll/runs/new");
-    await chooseRegular(page);
+    await chooseRegular(page, storageState);
     await page.getByRole("button", { name: t("payroll.create.submit"), exact: true }).click();
     const message = page.getByRole("main").getByRole(status >= 500 ? "status" : "alert");
     await expect(message).toBeVisible();
@@ -207,13 +212,13 @@ test("a run never borrows a matching group id from a different legal entity", as
   } finally { await page.close(); fixture.release(); }
 });
 
-test("creation offers only regular runs and distinguishes same-named groups by legal entity", async ({ page }) => {
+test("creation offers only regular runs and distinguishes same-named groups by legal entity", async ({ page, storageState }) => {
   const fixture = await mockScreen(page, payrollRunCreateScreen, "populated");
   const items = [payGroups.items[0]!, { ...payGroups.items[2]!, name: payGroups.items[0]!.name }];
   await page.route("**/api/v1/payroll/pay-groups", route => route.fulfill({ json: { ...payGroups, items } }));
   try {
     await page.goto("/payroll/runs/new");
-    for (const group of items) await expect(groupChoice(page, group)).toBeVisible();
+    for (const group of items) await expect(groupChoice(page, group, storageState)).toBeVisible();
     await expect(page.getByRole("radio", { name: t("payroll.create.kind.REGULAR"), exact: true })).toHaveCount(1);
     for (const kind of ["OFF_CYCLE", "CORRECTION", "EXIT_SETTLEMENT"] as const)
       await expect(page.getByRole("radio", { name: t(`payroll.create.kind.${kind}`), exact: true })).toHaveCount(0);

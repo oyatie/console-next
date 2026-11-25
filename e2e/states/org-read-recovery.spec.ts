@@ -53,7 +53,7 @@ for (const width of [1440, 390]) test(`org: a failed dated read keeps the last s
     const tree = main.getByRole("tree");
     const kept = main.getByRole("tree").or(main.getByRole("grid")).first();
     if (width === 390) await expect(kept).toBeVisible();
-    else await expect(main.getByRole("tree", { name: new RegExp(`${t("structure.chart.label")}$`) })).toBeVisible();
+    else await expect(main.getByRole("tree", { name: t("structure.chart.label") })).toBeVisible();
     const canvas = tree.locator("xpath=ancestor::section[1]");
     const frame = () => canvas.evaluate((el) => {
       const style = getComputedStyle(el);

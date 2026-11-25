@@ -47,9 +47,8 @@ for (const viewer of ["hr", "exited", "reviewer", "denied", "unready"] as const)
           await page.getByLabel(t("payroll.setup.day"), { exact: false }).fill(draft.pay_date);
           await page.getByRole("button", { name: t("payroll.employee.preview"), exact: true }).click();
           // The draft is the employee's: Classic heads its card with the name, Console lists the name among its figures.
-          const named = new RegExp(`^${draft.employee_name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`);
           await expect(page.getByRole("region", { name: draft.employee_name, exact: true })
-            .or(page.getByRole("main").getByRole("definition").filter({ hasText: named }))).toBeVisible();
+            .or(page.getByRole("main").getByRole("definition").filter({ hasText: draft.employee_name }))).toBeVisible();
         }
         expect(fixture.unexpected).toEqual([]);
       } finally { await page.close(); fixture.release(); }

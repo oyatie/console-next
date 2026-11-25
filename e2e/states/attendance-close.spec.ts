@@ -15,7 +15,7 @@ test.beforeAll(() => loadCatalog("ko"));
 const screen = attendanceScreens.find(candidate => candidate.key === "attendance-close")!;
 // The unit control: Classic's select is named by its label; Console's select button names its value, then the label.
 const scope = (page: Page) => page.getByRole("combobox", { name: t("attendanceRecords.scope.label"), exact: true })
-  .or(page.getByRole("button", { name: new RegExp(`${t("attendanceRecords.scope.label").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`) }));
+  .or(page.getByRole("button", { name: t("attendanceRecords.scope.label") }));
 
 for (const state of Object.keys(screen.states) as AttendanceState[]) for (const width of [1440, 390]) {
   test(`${screen.key}: ${state} at ${width}px @ui-state`, async ({ page }) => {

@@ -177,7 +177,7 @@ test("Home shares its arrival read and refreshes held work after attention chang
   const trigger = needsMe(page);
   await expect(trigger).toHaveAccessibleName(t("shell.needsMe.count", { count: 3 }));
   expect(reads).toBe(1);
-  await page.getByRole("group", { name: t("home.attention.label"), exact: true }).getByRole("button", { name: new RegExp(`^${t("home.attention.approvals")}`) }).click();
+  await page.getByRole("group", { name: t("home.attention.label"), exact: true }).getByRole("button", { name: t("home.attention.approvals") }).click();
   await expect.poll(() => reads).toBe(2);
   queue.counts.turn = { total: 7, total_is_exact: true };
   await page.evaluate(() => window.dispatchEvent(new Event("inbox-arrival")));
