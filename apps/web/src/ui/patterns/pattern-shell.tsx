@@ -67,6 +67,7 @@ export function PatternShell({
   q,
   head,
   tabs,
+  toolbar,
   overlays,
   queryLayout,
   detailActive = false,
@@ -84,6 +85,9 @@ export function PatternShell({
   q: ReadState;
   head: PatternHead;
   tabs?: ReactNode;
+  /** A strip under the head that waits for the first answer, then stays through a failed read (its controls may be the
+   * way out, such as an as-of date). A refusal removes it with the rest of the page. */
+  toolbar?: ReactNode;
   overlays?: ReactNode;
   queryLayout: ReadLayout;
   detailActive?: boolean;
@@ -185,6 +189,7 @@ export function PatternShell({
           }}
         >
           {overlays}
+          {view === "loading" ? null : toolbar}
           <PageHeadingLevel value={2}>
             <QueryState q={q} layout={queryLayout} keepOnLoss={keepOnLoss} back={back} own={own} removed={removed}>
               {children}
