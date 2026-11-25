@@ -158,16 +158,26 @@ test("slash shortcut opens search, yields to in-page find, and respects singleKe
   await expect.poll(async () => await page.locator("[data-opens]").textContent()).toBe("1");
 });
 
-test("ConsoleAccountMenu renders locale, theme, and logout controls when opened and closes on Escape", async () => {
+test("ConsoleAccountMenu holds the shared language, theme and sign-out controls by their shared names and closes on Escape", async () => {
+  await page.evaluate(() => localStorage.setItem("console.theme", "light"));
   const trigger = page.getByRole("button", { name: "Console Operator", exact: true });
   await trigger.click();
 
   const group = page.getByRole("group", { name: t("shell.account"), exact: true });
   await group.waitFor();
-  for (const key of ["shell.locale.ko", "shell.locale.en", "shell.theme.light", "shell.theme.dark", "shell.logout"] as const) {
-    expect(await group.getByRole("button", { name: t(key), exact: true }).isVisible()).toBe(true);
-  }
+  const language = group.getByRole("combobox", { name: t("shell.locale"), exact: true });
+  await expect.poll(() => language.locator("option").allTextContents()).toEqual([t("shell.locale.ko"), t("shell.locale.en")]);
+  expect(await group.getByRole("button", { name: t("shell.logout"), exact: true }).isVisible()).toBe(true);
 
+  // The theme control is the one Classic's bar has, named for the theme it turns to.
+  await group.getByRole("button", { name: t("shell.theme.toDark"), exact: true }).click();
+  await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe("dark");
+  await trigger.click();
+  await group.getByRole("button", { name: t("shell.theme.toLight"), exact: true }).click();
+  await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe("light");
+
+  await trigger.click();
+  await language.focus();
   await page.keyboard.press("Escape");
   await expect.poll(async () => await group.count()).toBe(0);
   await expect.poll(() => page.evaluate(() => document.activeElement?.id)).toBe("console-top-account");

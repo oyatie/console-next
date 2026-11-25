@@ -189,7 +189,8 @@ for (const [experience, light, dark, primaryLight, primaryDark] of experiences) 
         await accountBtn.click();
         const accountMenu = page.getByRole("group", { name: t("shell.account"), exact: true });
         await expect(accountMenu).toBeVisible();
-        for (const key of ["shell.locale.ko", "shell.locale.en", "shell.theme.light", "shell.theme.dark", "shell.logout"] as const) {
+        await expect(accountMenu.getByRole("combobox", { name: t("shell.locale"), exact: true })).toBeVisible();
+        for (const key of [theme === "dark" ? "shell.theme.toLight" : "shell.theme.toDark", "shell.logout"] as const) {
           await expect(accountMenu.getByRole("button", { name: t(key), exact: true })).toBeVisible();
         }
         await page.keyboard.press("Escape");
