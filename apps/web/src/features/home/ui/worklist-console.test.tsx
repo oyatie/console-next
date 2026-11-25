@@ -219,10 +219,10 @@ test("Console home links to the full to-do list beside the more bar when the lis
   expect(home()).toContain(inboxLink());
 });
 
-test("Console home keeps the drawn more bar without the link while a short remainder is loaded", () => {
+test("Console home links to the full to-do list beside the more bar while a short remainder is loaded", () => {
   state.inboxPages = [{ ...samplePage(), items: rows(23), total: 23 }];
   expect(home()).toContain(t("home.worklist.moreCount", { count: 13 }));
-  expect(home()).not.toContain(t("home.inbox.viewInbox"));
+  expect(home()).toContain(inboxLink());
 });
 
 test("Console offers no to-do link when no lane holds anything, nor on /inbox itself", () => {
@@ -296,7 +296,7 @@ test("Console WorklistLower renders headcount (ON_LEAVE/LEAVE fallback and PRE_H
   expect(state.reads).toContain("/api/v1/employees/facets");
   expect(state.reads).toContain("/api/v1/org-structure");
   expect(markup).toMatch(new RegExp(`<h1\\b[^>]*id="home-title"[^>]*>${t("home.inbox.title")}</h1>`));
-  expect(markup).not.toContain(t("home.inbox.viewInbox"));
+  expect(markup).toContain(inboxLink());
   expect(markup).toContain(t("home.worklist.headcount"));
   expect(markup).toContain(t("home.asOf", { time: "2026-11-10" }));
   expect(markup).toContain(t("home.worklist.contractEnding"));
