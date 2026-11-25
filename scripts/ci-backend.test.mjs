@@ -409,10 +409,11 @@ test("push proof accepts only a successful trusted queue run with the same tree 
   });
   const failed = { ...good, conclusion: "failure" };
   await assert.rejects(source(api([failed]), context), /CI_PROOF_MISSING/, "a failed run cannot prove the pushed commit");
+  assert.deepEqual(await source(api([failed, good]), context), { id: good.id, sha: good.head_sha, tools: "cargo-security-Linux-X64-deny-1-audit-1" });
   for (const head_sha of [context.sha, "queue"]) {
     assert.deepEqual(await source(api([{ ...good, head_sha }]), context), { id: good.id, sha: head_sha, tools: "cargo-security-Linux-X64-deny-1-audit-1" });
   }
-  for (const patch of [{ event: "push" }, { status: "in_progress" }, { head_branch: "feature" }, { path: "other.yml" }, { repository: { id: 99 } }, { head_repository: { id: 99 } }]) {
+  for (const patch of [{ event: "push" }, { status: "in_progress", conclusion: null }, { conclusion: "cancelled" }, { head_branch: "feature" }, { head_branch: "gh-readonly-queue/main/pr-1" }, { path: "other.yml" }, { repository: { id: 99 } }, { head_repository: { id: 99 } }]) {
     await assert.rejects(source(api([{ ...good, ...patch }]), context), /CI_PROOF_MISSING/);
   }
   await assert.rejects(source(api([{ ...good, head_sha: "queue" }], "wrong"), context), /CI_PROOF_MISSING/);
