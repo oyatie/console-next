@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 import { bootKo } from "../packages/i18n/src/catalogs/boot";
+import { ko } from "../packages/i18n/src/catalogs/ko";
 
 const shells = {
   baseline: { banner: ".top", account: ".top__name", accountText: ".top__name span", search: ".top__jump", searchText: ".top__jumpText", spacer: ".top__spacer" },
@@ -30,8 +31,24 @@ const notOverflow = new RegExp(`^(?!${bootKo["shell.nav.more"].replace(/[.*+?^${
  * sign-out, other than the module overflow. A signed-out page has no bar.
  */
 export function accountControl(page: Page) {
-  const banner = page.getByRole("banner");
-  return banner.getByRole("button", signOutName).or(banner.filter({ hasNot: page.getByRole("button", signOutName) }).getByRole("button", { expanded: false, name: notOverflow }));
+  return page.getByRole("banner").getByRole("button", signOutName).or(accountMenu(page));
+}
+
+/** Console's account menu trigger, named after the person: the collapsed button of a bar with no sign-out, other than the module overflow. */
+const accountMenu = (page: Page) =>
+  page.getByRole("banner").filter({ hasNot: page.getByRole("button", signOutName) }).getByRole("button", { expanded: false, name: notOverflow });
+
+/** The bar's entry named after the signed-in person: Classic's link to My account, or Console's account menu trigger. */
+export const accountEntry = (page: Page) => page.getByRole("banner").locator('a[href="/account"]').or(accountMenu(page));
+
+/** Opens My account from the bar: Classic's link does it in one press, Console's account menu and its link in two. */
+export async function openAccount(page: Page, click: (target: Locator) => Promise<void> = target => target.click()) {
+  await click(accountEntry(page));
+  const menuLink = page.getByRole("banner").getByRole("link", { name: bootKo["shell.account"], exact: true });
+  const heading = page.getByRole("heading", { name: ko["account.title"], exact: true, level: 1 });
+  await expect(heading.or(menuLink)).toBeVisible();
+  if (await menuLink.isVisible()) await click(menuLink);
+  await expect(heading).toBeVisible();
 }
 
 /** A session that ends in use keeps its screen, bar included, under the sign-in-again dialog, which only makes it inert. */
