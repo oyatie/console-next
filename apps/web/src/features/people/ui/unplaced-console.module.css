@@ -3,7 +3,7 @@
 .page { display: flex; flex-direction: column; min-height: 100%; min-width: 0; }
 .tabs { display: flex; flex-wrap: wrap; gap: var(--space-1); }
 .count { composes: muted num from global; }
-.panes { display: grid; grid-template-columns: calc(var(--space-6) * 6.5) minmax(0, 1fr) calc(var(--space-6) * 10.5); flex: 1; min-height: 0; }
+.panes { display: grid; grid-template-columns: calc(var(--space-6) * 6.5) minmax(0, 1fr) calc(var(--space-6) * 10.5); flex: 1; }
 .mappings { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
 .mappingBody { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
 .mappingFields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }

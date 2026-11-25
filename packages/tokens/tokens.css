@@ -73,6 +73,8 @@
   /* --z-bar: a frame bar pinned over the page: above the page's own sticky layers, under the skip link, rail, panels and sheets. */
   --z-bar: 8; --z-rail: 10; --z-panel: 15; --z-sheet: 20;
   --target: 32px; --target-touch: 44px; --chip-h: 22px; --kbd-h: 20px; --kbd-min-w: 24px;
+  /* --target-cell: the least width and height of a control in a table cell, the selection checkbox included. */
+  --target-cell: var(--space-5);
   /* Phone top bar and bottom-nav slot: the bars draw these heights, and content scrolled into view stops clear of them.
      The nav's clearance adds its hairline and the home-indicator inset. */
   --phone-top-h: calc(var(--space-6) + var(--space-5) - var(--space-1)); --phone-nav-h: calc(var(--target-touch) + var(--space-3));
