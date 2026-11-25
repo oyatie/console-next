@@ -16,9 +16,9 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::{
-    CorrectEmployeeRequest, CorrectionOutcome, FieldValue, LedgerMeta, LockedEmployee,
-    SecondPersonContext, apply_fields_in_tx, check_against_record, lock_employee, normalize_value,
-    refusal, route_or_refuse,
+    CheckedChange, CorrectEmployeeRequest, CorrectionOutcome, FieldValue, LedgerMeta,
+    LockedEmployee, SecondPersonContext, apply_fields_in_tx, check_against_record, check_change,
+    lock_employee, refusal,
 };
 use crate::authz::{authorize_hr_person, hr_reach};
 use crate::digest::sha256_hex;
@@ -28,28 +28,21 @@ use crate::requests::create::{NewChangeRequest, insert_change_request_in_tx};
 use crate::requests::{note, reason_code};
 use crate::{HrError, HrService};
 
-/// Every changed field, normalized, with its route before the record is read.
-type Checked = Vec<(FieldValue, CorrectionRoute)>;
-
-fn check_changes(changes: &Map<String, Value>) -> Result<Checked, HrError> {
+fn check_changes(changes: &Map<String, Value>) -> Result<Vec<CheckedChange>, HrError> {
     if changes.is_empty() {
         return Err(HrError::validation("changes must name at least one field"));
     }
     changes
         .iter()
-        .map(|(field, value)| {
-            // Route first: a field that cannot be corrected is 409, not a shape error.
-            let route = route_or_refuse(field)?;
-            Ok(((field.clone(), normalize_value(field, value)?), route))
-        })
+        .map(|(field, value)| check_change(field, value))
         .collect()
 }
 
 /// Low-risk and high-risk pairs once the record is known: a field recorded
 /// for the first time is low-risk (`route_for_current`).
-fn split(checked: Checked, head: &LockedEmployee) -> (Vec<FieldValue>, Vec<FieldValue>) {
+fn split(checked: Vec<CheckedChange>, head: &LockedEmployee) -> (Vec<FieldValue>, Vec<FieldValue>) {
     let (mut low, mut high) = (Vec::new(), Vec::new());
-    for (pair, route) in checked {
+    for CheckedChange { value: pair, route } in checked {
         let recorded = head.current(&pair.0).is_some();
         match route_for_current(route, recorded) {
             CorrectionRoute::Low => low.push(pair),

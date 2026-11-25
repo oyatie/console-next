@@ -21,6 +21,7 @@ properties:
     type:
     - string
     - 'null'
+    description: On attendance_material, pay_group_roster_ambiguous when the run's legal entity has more than one pay group, so its roster is not known and the run cannot close.
   blocking_refs:
     type: array
     description: Up to 50 fix-link ids (draft lines missing attendance material, or pending leave requests); the note carries the full count.

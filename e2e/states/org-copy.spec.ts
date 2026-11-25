@@ -40,8 +40,10 @@ for (const width of [1440, 390]) for (const empty of [false, true]) {
       } else {
         await expect(main.getByRole("tree")).toBeVisible();
         await expect(main.getByText(/기준 구조입니다|고용형태와 관계없이|Shift 클릭/)).toHaveCount(0);
-        const basis = main.getByRole("button", { name: t("structure.headcount.explain"), exact: true });
-        await expect(basis).toContainText(t("structure.headcount.total", { count: tree.entities.reduce((n, e) => n + e.headcount, 0) }));
+        // The explainer is named by the text it shows, so speech input can press it by what is on it.
+        const total = t("structure.headcount.total", { count: tree.entities.reduce((n, e) => n + e.headcount, 0) });
+        const basis = main.getByRole("button", { name: `${total} · ${t("uiBlocker.reason")}`, exact: true });
+        await expect(basis).toContainText(total);
         await expect(page.getByText(t("structure.headcount.basis"), { exact: true })).toHaveCount(0);
         await basis.click();
         await expect(page.getByRole("dialog", { name: t("structure.headcount.label"), exact: true }).getByText(t("structure.headcount.basis"), { exact: true })).toBeVisible();

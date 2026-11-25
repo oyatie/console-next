@@ -20,7 +20,7 @@ import { RecordBannerBand } from "../../../ui/patterns/record-banner-band";
 import { dayBoardQuery } from "../api";
 import { baseOf, ledgerParts } from "../domain/grid";
 import { pageState } from "../domain/month-state";
-import { dateText } from "../present";
+import { dateText, dayPaneHead, monthText, type DayDockMode } from "../present";
 import type { AssignTarget } from "./assign-sheet";
 import { AttendanceTabNav } from "./attendance-head";
 import { DayBars } from "./day-bar";
@@ -53,7 +53,7 @@ export function DayConsoleView({ baseline }: { baseline: () => React.ReactNode }
   const store = useDrafts(`day:${date}`, rows);
   const online = useOnline();
   const [save, setSave] = useState(false);
-  const [open, setOpen] = useState<{ id: string; own: boolean } | null>(null);
+  const [open, setOpen] = useState<{ id: string; own: boolean; mode: DayDockMode } | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [assign, setAssign] = useState<AssignTarget | null>(null);
   const [subsOpen, setSubsOpen] = useState(false);
@@ -234,7 +234,7 @@ export function DayConsoleView({ baseline }: { baseline: () => React.ReactNode }
                           store.put(key, value ? { value, base: baseOf(store.drafts, key, entryId) } : null)
                         }
                         onExpandUnit={unit => go({ unit })}
-                        onOpenRow={r => setOpen({ id: r.employee_id, own: r.own })}
+                        onOpenRow={r => setOpen({ id: r.employee_id, own: r.own, mode: "view" })}
                         onAssignRow={r => setAssign({ kind: "PERSON", id: r.employee_id, name: r.name })}
                       />
                     </DayBars>
@@ -259,6 +259,7 @@ export function DayConsoleView({ baseline }: { baseline: () => React.ReactNode }
                       id: "day-save",
                       label: t("attendanceRecords.save.title", { count: drafts }),
                       title: t("attendanceRecords.save.title", { count: drafts }),
+                      meta: monthText(date.slice(0, 7)),
                       onClose: () => setSave(false),
                       children: (
                         <DaySavePaneBody
@@ -278,14 +279,15 @@ export function DayConsoleView({ baseline }: { baseline: () => React.ReactNode }
                   : open
                     ? {
                         id: open.id,
-                        label: t("attendanceRecords.day.title", { date: dateText(date) }),
-                        title: t("attendanceRecords.day.title", { date: dateText(date) }),
+                        ...dayPaneHead(open.mode, date, rows.find(r => r.employee_id === open.id)),
                         onClose: () => setOpen(null),
                         children: (
                           <DayOpenPaneBody
                             employeeId={open.id}
                             date={date}
                             own={open.own}
+                            mode={open.mode}
+                            onModeChange={mode => setOpen(o => o && { ...o, mode })}
                             onClose={() => setOpen(null)}
                             onSetNote={setNote}
                           />

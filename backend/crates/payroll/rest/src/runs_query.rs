@@ -7,6 +7,7 @@ use axum::http::HeaderMap;
 use axum::response::{IntoResponse, Response};
 use console_kernel_core::{AuditAction, AuditEvent, TraceContext};
 use console_payroll_adapter_postgres::{PayrollRunPage, list_runs_filtered_in_tx};
+use console_platform_authz::Feature;
 use console_platform_db::with_audits;
 use serde::Deserialize;
 use uuid::Uuid;
@@ -45,13 +46,16 @@ pub(crate) async fn list_runs_page(
     let pool = state.store.pool().clone();
     with_audits::<_, PayrollRunPage, RestError>(&pool, org, move |tx| {
         Box::pin(async move {
-            access::require_run_read_in_tx(tx, org, actor).await?;
+            let read = Feature::PayrollRunRead;
+            let facts = access::require_pay_action_in_tx(tx, org, actor, read).await?;
+            let visible = access::visible_pay_groups(tx, &facts, read).await?;
             let page = list_runs_filtered_in_tx(
                 tx,
                 params.limit,
                 params.offset,
                 params.pay_group_id,
                 params.legal_entity_id,
+                &visible,
             )
             .await
             .map_err(RestError::from_store)?;

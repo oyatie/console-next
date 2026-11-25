@@ -2,6 +2,8 @@
 use super::*;
 #[path = "../../../crates/payroll/rest/tests/fixtures/pay_view.rs"]
 mod pay_view;
+#[path = "payroll_sensitive.rs"]
+mod payroll_sensitive;
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn action_inbox_payroll_source_enforces_sod_and_org_wide_manage(pool: PgPool) {

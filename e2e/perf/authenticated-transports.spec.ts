@@ -1,22 +1,21 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 import { vendorPage } from "../flows";
 import { budget } from "./budget";
 import { measure, observePaint, summarize, type Sample } from "./measurement";
-import { launchHTTP1 } from "./transport";
+import { test } from "./transport";
 
-test("both HTTPS transports refresh authentication and return complete rows", { tag: "@perf" }, async ({ browser, baseURL }, info) => {
+test("selected HTTPS transports refresh authentication and return complete rows", { tag: "@perf" }, async ({ browser, baseURL, transports }, info) => {
   test.setTimeout(300_000);
   expect(new URL(baseURL!).protocol).toBe("https:");
   const vendor = await vendorPage(browser);
   // Stop setup-page refreshes while the measured contexts rotate this session's cookie.
   await vendor.goto("about:blank");
   let state = await vendor.context().storageState();
-  const h1 = await launchHTTP1(browser);
   const rows = [];
   let lastNavigation = 0;
   try {
-    for (const [engine, protocol] of [[h1, "http/1.1"], [browser, "h2"]] as const) {
+    for (const { browser: engine, protocol } of transports) {
       const samples: Record<"cold" | "warm", Sample[]> = { cold: [], warm: [] };
       for (let n = 0; n < budget.samples; n++) {
         const context = await engine.newContext({ baseURL, storageState: state, ignoreHTTPSErrors: true, serviceWorkers: "block" });
@@ -41,7 +40,6 @@ test("both HTTPS transports refresh authentication and return complete rows", { 
       }
     }
   } finally {
-    await h1.close();
     await vendor.context().addCookies(state.cookies);
     await info.attach("transport-completeness.json", { body: JSON.stringify(rows), contentType: "application/json" });
   }

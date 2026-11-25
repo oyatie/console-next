@@ -1,14 +1,25 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { renderToStaticMarkup } from "react-dom/server";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { beforeAll, expect, test } from "vitest";
+import { afterEach, beforeAll, expect, test, vi } from "vitest";
+import type { ReactElement } from "react";
 import { i18n, loadCatalog, t } from "@console/i18n";
-import { fmtMonth } from "@console/i18n/format";
-import { Home, Users } from "lucide-react";
+import { Banknote, CalendarDays, FileText, Home, Users } from "lucide-react";
 import { get, read } from "../../lib/query";
 import { saeonUniverse } from "../../../../../e2e/mock/saeon";
-import type { NavLink } from "../nav";
+import { TENANT_NAV, type NavLink } from "../nav";
+import { tabIconForHref } from "./tab-icon";
 import { canonicalTabTarget, resolveRouteTabMeta, useResolvedTabTitle } from "./tab-titles";
+
+// The month alone, as the app language names it.
+const monthName = (month: number) => new Intl.DateTimeFormat(i18n.locale, { month: "long", timeZone: "UTC" }).format(Date.UTC(2026, month - 1, 15));
+const october = () => monthName(10);
+// The attendance month screen without ?month shows the current business month: November in Korea while it is still October in UTC.
+const pinClock = () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-31T16:00:00Z"));
+};
+afterEach(() => vi.useRealTimers());
 
 const SAMPLE_LINKS: readonly NavLink[] = [
   { to: "/", label: "shell.link.todo", icon: Home },
@@ -37,6 +48,7 @@ test("canonicalTabTarget normalizes paths and preserves only view-distinguishing
 });
 
 test("resolveRouteTabMeta returns distinct sub-route titles in Korean and English", () => {
+  pinClock();
   for (const locale of ["ko", "en"] as const) {
     i18n.set(locale);
     const cases: Array<[string, string | undefined, string]> = [
@@ -54,8 +66,11 @@ test("resolveRouteTabMeta returns distinct sub-route titles in Korean and Englis
       ["/org", "?tab=entities", t("shellRoutes.orgEntities")],
       ["/org", "?tab=changes", t("shellRoutes.orgChanges")],
       ["/org", "?tab=changes&filter=history", t("shellRoutes.orgHistory")],
-      ["/attendance", undefined, t("shellRoutes.attendanceMonth")],
+      ["/attendance", undefined, t("shellRoutes.attendanceMonthOf", { month: monthName(11) })],
       ["/attendance", "?tab=close", t("shellRoutes.attendanceClose")],
+      ["/attendance", "?tab=month&month=2026-10", t("shellRoutes.attendanceMonthOf", { month: october() })],
+      ["/attendance", "?month=2026-10", t("shellRoutes.attendanceMonthOf", { month: october() })],
+      ["/attendance", "?month=2026-13", t("shellRoutes.attendanceMonth")],
       ["/payroll/runs/new", undefined, t("shellRoutes.payrollRunNew")],
       ["/access/roles", undefined, t("shellRoutes.accessRoles")],
       ["/access/grants/bulk", undefined, t("shellRoutes.accessGrantsBulk")],
@@ -92,7 +107,8 @@ test("useResolvedTabTitle enriches record routes from passive QueryClient cache 
   const peerName = saeonUniverse.rosterWindow[1]!.name;
   const entityName = saeonUniverse.entities[0]!.name;
   const adminName = saeonUniverse.adminActor.name;
-  const orgChangeTitle = t("shellRoutes.orgChanges");
+  // The document's own title is long; the tab names the kind of document instead.
+  const proposalTitle = "Merge the third production team into the second";
   const noticeTitle = "AN-2026-009 Appointment Notice";
   const roleKo = "HR Admin Role";
   try {
@@ -116,7 +132,7 @@ test("useResolvedTabTitle enriches record routes from passive QueryClient cache 
       queryFn: async () => ({ id: "chg-1", code: "OC-2026-0418" }) as never,
     });
     await qc.fetchQuery(
-      read("/api/v1/approvals/{id}", async () => ({ id: "ap-1", document_no: "OC-2026-0418", title: orgChangeTitle }), { id: "ap-1" }),
+      read("/api/v1/approvals/{id}", async () => ({ id: "ap-1", document_no: "OC-2026-0418", title: proposalTitle, source: { key: "org_change", label: t("approvals.source.orgChange") } }), { id: "ap-1" }),
     );
     await qc.fetchQuery({
       ...get("/api/v1/payroll/runs/{id}", { params: { path: { id: "run-1" } } }),
@@ -149,8 +165,8 @@ test("useResolvedTabTitle enriches record routes from passive QueryClient cache 
       ["/payroll/employees/emp-1", t("shellRoutes.employeePay", { name: heroName })],
       ["/people/exits/exit-1", t("shellRoutes.exitCase", { name: peerName })],
       ["/org/changes/chg-1", t("shellRoutes.orgChange", { code: "OC-2026-0418" })],
-      ["/approvals/ap-1", `OC-2026-0418 ${orgChangeTitle}`],
-      ["/payroll/runs/run-1", t("shellRoutes.payrollRunMonth", { month: fmtMonth("2026-10") })],
+      ["/approvals/ap-1", `OC-2026-0418 ${t("approvals.source.orgChange")}`],
+      ["/payroll/runs/run-1", t("shellRoutes.payrollRunMonth", { month: october() })],
       ["/org/entities/ent-1", entityName],
       ["/people/certificates/cert-1", t("shellRoutes.pair", { primary: "HR-2026-0119", secondary: heroName })],
       ["/people/notices/not-1", noticeTitle],
@@ -169,4 +185,43 @@ test("useResolvedTabTitle enriches record routes from passive QueryClient cache 
   } finally {
     qc.clear();
   }
+});
+
+test("the attendance month tab names its month and, once the scope tree is cached, the scope it shows", async () => {
+  pinClock();
+  i18n.set("ko");
+  const qc = new QueryClient({ defaultOptions: { queries: { enabled: false } } });
+  const site = saeonUniverse.entities[0]!.workplaces[0]!;
+  const team = site.departments[0]!;
+  const monthTitle = t("shellRoutes.attendanceMonthOf", { month: october() });
+  const title = (searchStr: string) => renderToStaticMarkup(
+    <QueryClientProvider client={qc}>
+      <Probe pathname="/attendance" searchStr={searchStr} />
+    </QueryClientProvider>,
+  );
+  try {
+    expect(title("?month=2026-10&unit=team-1")).toContain(`data-fallback="false">${monthTitle}</output>`);
+    await qc.fetchQuery({
+      ...get("/api/v1/attendance/schedule/tree", { params: { query: {} } }),
+      queryFn: async () => ({ nodes: [{ id: "wp-1", kind: "WORKPLACE", name: site.name }, { id: "team-1", kind: "DEPARTMENT", name: team }] }) as never,
+    });
+    expect(title("?tab=month&month=2026-10&unit=team-1")).toContain(`>${t("shellRoutes.pair", { primary: monthTitle, secondary: team })}</output>`);
+    expect(title("?month=2026-10&wp=wp-1")).toContain(`>${t("shellRoutes.pair", { primary: monthTitle, secondary: site.name })}</output>`);
+    expect(title("?wp=wp-1&unit=team-1")).toContain(`>${t("shellRoutes.pair", { primary: t("shellRoutes.attendanceMonthOf", { month: monthName(11) }), secondary: team })}</output>`);
+    expect(title("?month=2026-10&unit=gone")).toContain(`data-fallback="false">${monthTitle}</output>`);
+    expect(title("?tab=day&unit=team-1")).toContain(`>${t("shellRoutes.attendanceDay")}</output>`);
+  } finally {
+    qc.clear();
+  }
+});
+
+test("record tabs for an approval, the attendance month and payroll carry their own icons", () => {
+  const links = TENANT_NAV.flatMap(hub => hub.links);
+  const icon = (href: string) => (tabIconForHref(href, links) as ReactElement).type;
+  expect(icon("/approvals/ap-1")).toBe(FileText);
+  expect(icon("/attendance?tab=month&month=2026-10")).toBe(CalendarDays);
+  expect(icon("/payroll")).toBe(Banknote);
+  expect(icon("/payroll/runs/run-1")).toBe(Banknote);
+  // The queue keeps its module icon; only a document tab reads as a document.
+  expect(icon("/approvals")).not.toBe(FileText);
 });

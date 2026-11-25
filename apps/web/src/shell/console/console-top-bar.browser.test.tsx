@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { afterAll, beforeAll, test } from "vitest";
+import { afterAll, beforeAll, expect, test } from "vitest";
 import { expect as element } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { mountBrowserModule, type MountedGallery } from "../../lib/gallery-browser-test";
@@ -37,6 +37,26 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await mounted?.close();
+});
+
+test("the brand is an 18px mark drawn on the bar itself, its strokes in the bar's ink and its square in amber", async () => {
+  const { page } = mounted;
+  await page.evaluate(() => { document.documentElement.dataset.theme = "light"; });
+  const mark = await page.locator('header[data-surface="chrome"] a[href="/"] svg').evaluate(svg => {
+    const tiles: string[] = [];
+    for (let el: Element | null = svg; el && el.tagName !== "HEADER"; el = el.parentElement) {
+      const s = getComputedStyle(el);
+      if (s.backgroundColor !== "rgba(0, 0, 0, 0)" || s.borderTopWidth !== "0px" || s.outlineStyle !== "none") tiles.push(el.tagName);
+    }
+    const box = svg.getBoundingClientRect();
+    const shapes = [...svg.querySelectorAll("rect, path")].map(shape => getComputedStyle(shape));
+    return {
+      size: [box.width, box.height], tiles,
+      strokes: [...new Set(shapes.filter(s => s.stroke !== "none").map(s => s.stroke))],
+      fills: [...new Set(shapes.filter(s => s.fill !== "none").map(s => s.fill))],
+    };
+  });
+  expect(mark).toEqual({ size: [18, 18], tiles: [], strokes: ["rgb(238, 242, 246)"], fills: ["rgb(245, 189, 79)"] });
 });
 
 test("the search button's / follows the single-key switch at once, in this tab and from another", async () => {

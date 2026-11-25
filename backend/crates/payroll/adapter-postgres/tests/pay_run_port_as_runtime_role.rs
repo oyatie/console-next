@@ -61,8 +61,8 @@ use time::macros::date;
 use time::{OffsetDateTime, Time};
 use uuid::Uuid;
 
-#[path = "../../../../test-support/person_fixtures.rs"]
-mod person_fixtures;
+#[path = "support/pay_run_actors.rs"]
+mod pay_run_actors;
 
 const ORG: Uuid = Uuid::from_u128(0xe3b0_0000_0000_0000_0000_0000_0000_0011);
 const FOREIGN_ORG: Uuid = Uuid::from_u128(0xe3b0_0000_0000_0000_0000_0000_0000_0012);
@@ -85,7 +85,7 @@ async fn seed_org_and_user(owner_pool: &PgPool, org: Uuid, tag: &str) -> UserId 
     .await
     .unwrap();
     let user_id = seed_active_user(owner_pool, org, "SUPER_ADMIN", tag).await;
-    person_fixtures::bind_user_to_distinct_person(owner_pool, user_id).await;
+    pay_run_actors::bind_pay_editor(owner_pool, OrgId::from_uuid(org), user_id).await;
     user_id
 }
 
@@ -152,12 +152,12 @@ async fn count(owner_pool: &PgPool, sql: &'static str, org: Uuid) -> i64 {
 
 const COUNT_RUNS: &str = "SELECT count(*)::bigint FROM payroll_draft_runs WHERE org_id = $1";
 
-/// Move a staged run to `CALCULATED` as the table owner. Submitting requires it,
-/// and the port deliberately does NOT own a "calculate" target — `calculate_run_in_tx`
-/// already exists in this crate and is not one of the contract's three PayRun
-/// dispatch targets.
+/// Move a staged run to `CALCULATED`, with one calculated line, as the table
+/// owner. Submitting requires both, and the port deliberately does NOT own a
+/// "calculate" target — `calculate_run_in_tx` already exists in this crate and is
+/// not one of the contract's three PayRun dispatch targets.
 async fn mark_calculated(owner_pool: &PgPool, id: Uuid) {
-    sqlx::query("UPDATE payroll_draft_runs SET status = 'CALCULATED' WHERE id = $1")
+    sqlx::query("WITH run AS (UPDATE payroll_draft_runs SET status = 'CALCULATED' WHERE id = $1 RETURNING org_id, id), line AS (INSERT INTO payroll_draft_lines (org_id, run_id, employee_source_key, employee_display_name, employee_company) SELECT org_id, id, 'calculated', 'Calculated', 'SAE' FROM run RETURNING org_id, run_id, id) INSERT INTO payroll_line_calculations (org_id, run_id, line_id, version, gross_won, deductions, total_deductions_won, net_won, tax_table_version) SELECT org_id, run_id, id, 1, 0, '[]', 0, 0, 'fixture' FROM line")
         .bind(id)
         .execute(owner_pool)
         .await

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useSyncExternalStore } from "react";
+import { i18n } from "@console/i18n";
 import { hasUnsavedInput, installDirtyTracker } from "./dirty-guard";
 import { experiences, resolveExperience } from "./table";
 
@@ -111,8 +112,11 @@ export function resolveEffectiveExperience({
 }
 
 export function readDomExperienceId(): ExperienceId {
-  return resolveExperience(typeof document === "undefined" ? undefined : document.documentElement.dataset.experience).id;
+  return resolveExperience(typeof document === "undefined" ? undefined : document.documentElement?.dataset.experience).id;
 }
+
+// Read at each call, so a date drawn after a style switch takes the new style.
+i18n.dateStyle = () => (readDomExperienceId() === "console" ? "iso" : "locale");
 
 export function applyDomExperience(id: ExperienceId, source: ExperienceSource): void {
   if (typeof document === "undefined") return;
