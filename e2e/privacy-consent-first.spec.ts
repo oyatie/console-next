@@ -2,6 +2,7 @@
 import { expect, test } from "@playwright/test";
 import { tenantOnboardSubmit, acceptConsent, firstSignIn, newContext, openCodeSignIn, takeCode, tenantSlugField, unique, vendorPage, go } from "./flows";
 import { virtualAuthenticator } from "./auth";
+import { expectSignedIn } from "./shell";
 
 // PV1: Privacy notice and consent before the first personal-data field (P0)
 // On first sign-in the privacy notice is shown and acknowledged before any personal-data field renders.
@@ -136,7 +137,7 @@ test("on /setup-passkey no personal-data input exists until notice acknowledged 
   const accepted = page.waitForResponse((response) => response.url().endsWith("/api/v1/auth/privacy-consent/accept") && response.status() === 200);
   await commit.click();
   await accepted;
-  await expect(page.getByRole("button", { name: "로그아웃" })).toBeVisible();
+  await expectSignedIn(page);
 });
 
 test("fresh sign-in shows no false error on first visit (issue #44 regression)", { tag: "@privacy" }, async ({ browser }) => {

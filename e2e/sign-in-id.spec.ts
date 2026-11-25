@@ -5,6 +5,7 @@ import { OTP_LENGTH } from "@console/api";
 import { authenticatorOf, virtualAuthenticator } from "./auth";
 import { tenantOnboardSubmit, acceptConsent, tenantSlugField, firstSignIn, go, newContext, option, stepUp, takeCode, unique, vendorPage, vendorStepUp } from "./flows";
 import { forgetResize } from "./stability";
+import { expectSignedIn, signOut as signOutOfShell } from "./shell";
 
 // AUTH-ID (decisions #33; docs/design/sign-in-identifier.md): the sign-in ID 아이디@도메인. It is handed over with the
 // one-time code; identifier-first sign-in names the account's passkeys (a security key without a resident credential
@@ -12,8 +13,8 @@ import { forgetResize } from "./stability";
 // unknown ID reads exactly like "no passkey here"; a rename keeps the old ID signing in, and the history shows both.
 
 const NO_PASSKEY = "이 기기에서 쓸 수 있는 패스키가 없습니다";
-const signedIn = (page: Page) => expect(page.getByRole("button", { name: "로그아웃" }).first()).toBeVisible();
-const signOut = async (page: Page) => (await page.getByRole("button", { name: "로그아웃" }).first().click(), expect(page).toHaveURL(/\/login$/));
+const signedIn = (page: Page) => expectSignedIn(page);
+const signOut = async (page: Page) => (await signOutOfShell(page), expect(page).toHaveURL(/\/login$/));
 const idField = (page: Page) => page.getByRole("textbox", { name: "아이디" });
 
 /** A fresh tenant and its admin; the domain is its slug. */

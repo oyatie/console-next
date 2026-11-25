@@ -3,6 +3,7 @@ import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "./a11y";
 import { go, passkeyLogin, routeReady, stepUp } from "./flows";
 import { tenantWithExecutive } from "./setup-flows";
+import { signOut } from "./shell";
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -40,7 +41,7 @@ test("onboarding creates every account through the product", { tag: "@smoke" }, 
   await expect(admin.getByText("아직 직원이 없습니다")).toBeVisible();
 
   // Passkey sign-in after sign-out (usernameless, discoverable credential).
-  await admin.getByRole("button", { name: "로그아웃" }).click();
+  await signOut(admin);
   await expect(admin).toHaveURL(/\/login(?:\?|$)/);
   await passkeyLogin(admin);
 
