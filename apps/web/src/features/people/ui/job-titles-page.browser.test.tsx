@@ -24,7 +24,7 @@ beforeAll(async () => {
       document.documentElement.dataset.experience = 'console';
       const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
       const label = 'W'.repeat(jobTitleSchemas.update.properties.label.maxLength);
-      client.setQueryData(jobTitlesQuery.queryKey, { can_manage: true, items: [{ id: 'jt-1', kind: 'TITLE', label, grade_rank: 10, active: true }] });
+      await client.fetchQuery({ ...jobTitlesQuery, queryFn: async () => ({ can_manage: true, items: [{ id: 'jt-1', kind: 'TITLE', label, grade_rank: 10, active: true }] }) });
       const root = createRootRoute({ component: JobTitlesPage });
       const router = createRouter({ routeTree: root.addChildren([createRoute({ getParentRoute: () => root, path: '/people' })]) });
       await router.load();

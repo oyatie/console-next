@@ -25,9 +25,9 @@ const certificate = { id: "cert-1", certificate_no: "C-2026-0001", name: "Synthe
 
 // The person card reads one person's certificates as a plain list; the register pages the same list, so a shared
 // cache entry would hand the register a page it cannot read.
-test("the register opens after the person card has read the same person's certificates", () => {
+test("the register opens after the person card has read the same person's certificates", async () => {
   const client = new QueryClient();
-  client.setQueryData(certificatesQuery("emp-1").queryKey, { items: [certificate], next_cursor: null });
+  await client.fetchQuery({ ...certificatesQuery("emp-1"), queryFn: async () => ({ items: [certificate], next_cursor: null }) });
   const html = renderToStaticMarkup(<QueryClientProvider client={client}><CertificatesPage /></QueryClientProvider>);
   expect(html).toContain(t("empDoc.certificate.register"));
 });

@@ -39,9 +39,9 @@ function screen(listFailed: boolean) {
   } as unknown as ReturnType<typeof useRosterScreen>;
 }
 
-function render(listFailed: boolean, viewsRead: boolean) {
+async function render(listFailed: boolean, viewsRead: boolean) {
   const client = new QueryClient();
-  if (viewsRead) client.setQueryData(employeeViewsQuery.queryKey, { items: [] });
+  if (viewsRead) await client.fetchQuery({ ...employeeViewsQuery, queryFn: async () => ({ items: [] }) });
   return renderToStaticMarkup(<QueryClientProvider client={client}><RosterConsole manage screen={screen(listFailed)} /></QueryClientProvider>);
 }
 
@@ -51,8 +51,8 @@ test.each([
   { listFailed: false, viewsRead: false, offered: false },
   { listFailed: true, viewsRead: true, offered: false },
   { listFailed: false, viewsRead: true, offered: true },
-])("the roster head holds one saved-views button (%o)", ({ listFailed, viewsRead, offered }) => {
-  const views = render(listFailed, viewsRead).match(new RegExp(`<button[^>]*>${t("directoryViews.open")}</button>`, "g")) ?? [];
+])("the roster head holds one saved-views button (%o)", async ({ listFailed, viewsRead, offered }) => {
+  const views = (await render(listFailed, viewsRead)).match(new RegExp(`<button[^>]*>${t("directoryViews.open")}</button>`, "g")) ?? [];
   expect(views).toHaveLength(1);
   expect(views[0]!.includes("disabled")).toBe(!offered);
 });

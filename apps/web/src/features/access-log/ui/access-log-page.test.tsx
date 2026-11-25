@@ -44,9 +44,9 @@ test("the review action holds its place while the month loads", () => {
 });
 
 // Choosing all records or the ones to review is a step Back undoes, as the Classic links are.
-test("changing the view adds a history entry", () => {
+test("changing the view adds a history entry", async () => {
   const client = new QueryClient();
-  client.setQueryData(accessLogPages("2026-10", true, undefined, {}).queryKey, { pages: [page], pageParams: [undefined] });
+  await client.fetchInfiniteQuery({ ...accessLogPages("2026-10", true, undefined, {}), queryFn: async () => page });
   expect(reviewButton(render(client))).not.toContain("disabled");
   expect(stats.map(item => item.key)).toEqual(["events", "flagged"]);
   for (const item of stats) item.onPress!();

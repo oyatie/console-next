@@ -21,10 +21,10 @@ vi.mock("../../../experience/dom", async original => ({
 beforeAll(() => loadCatalog("ko"));
 
 // An account no controller is linked to can file nothing; the page says so instead of dropping the filing section.
-test("an unlinked account is told it has no right to file here", () => {
+test("an unlinked account is told it has no right to file here", async () => {
   const client = new QueryClient();
-  client.setQueryData(privacyRequestPages.queryKey, { pages: [{ items: [], next_cursor: null, as_of: "2026-10-26" }], pageParams: [undefined] });
-  client.setQueryData(privacyFilingOptionsQuery.queryKey, { subject_user_id: "user-1", controllers: [], kinds: [], detail_max_length: 2000, reply_email_masked: null, as_of: "2026-10-26" });
+  await client.fetchInfiniteQuery({ ...privacyRequestPages, queryFn: async () => ({ items: [], next_cursor: null, as_of: "2026-10-26" }) });
+  await client.fetchQuery({ ...privacyFilingOptionsQuery, queryFn: async () => ({ subject_user_id: "user-1", controllers: [], kinds: [], detail_max_length: 2000, reply_email_masked: null, as_of: "2026-10-26" }) });
   const html = renderToStaticMarkup(<QueryClientProvider client={client}><PrivacyRequests /></QueryClientProvider>);
   expect(html).toContain(t("account.privacy.file"));
   expect(html).toContain(t("account.privacy.unavailable"));
