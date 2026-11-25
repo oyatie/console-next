@@ -28,14 +28,27 @@ export function ConsoleAccountMenu({
 
   useEffect(() => {
     if (!open) return;
-    panelRef.current?.querySelector<HTMLElement>("a, button")?.focus();
+    const panel = panelRef.current;
+    panel?.querySelector<HTMLElement>("a, button")?.focus();
     const onPointerDown = (event: PointerEvent) => {
       if (wrapRef.current && event.target instanceof Node && !wrapRef.current.contains(event.target)) {
         setOpen(false);
       }
     };
+    // Escape from any control in the menu, the language select included, closes it back to its trigger.
+    const onPanelKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "Escape" || isImeKey(event)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setOpen(false);
+      btnRef.current?.focus();
+    };
     document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
+    panel?.addEventListener("keydown", onPanelKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      panel?.removeEventListener("keydown", onPanelKey);
+    };
   }, [open]);
 
   const onEscape = (event: KeyboardEvent<HTMLElement>) => {
@@ -68,7 +81,7 @@ export function ConsoleAccountMenu({
         {!compact ? <bdi className={m.accountName}>{name}</bdi> : null}
       </button>
       {open ? (
-        <div ref={panelRef} className={m.accountPop} role="group" aria-label={t("shell.account")} onKeyDown={onEscape}>
+        <div ref={panelRef} className={m.accountPop} role="group" aria-label={t("shell.account")}>
           <Link to="/account" className={m.accountItem} onClick={() => setOpen(false)}>
             {t("shell.account")}
           </Link>
