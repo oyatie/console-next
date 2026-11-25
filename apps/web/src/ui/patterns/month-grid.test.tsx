@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+// oxlint-disable-next-line no-restricted-imports -- Exercise the shared read boundary with a transport refusal.
 import { ApiError } from "@console/api";
 import { loadCatalog } from "@console/i18n";
 import { beforeAll, expect, test } from "vitest";

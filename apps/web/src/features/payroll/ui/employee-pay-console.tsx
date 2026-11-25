@@ -52,10 +52,7 @@ function EmployeePayConsoleContent({ baseline }: { baseline: () => ReactNode }) 
   const [activeSection, setActiveSection] = useState("emp-pay-contract");
 
   const hasQuery = Boolean(search.period && search.pay_date);
-  const draft = useQuery({
-    ...payslipDraftQuery(employeeId, search.period ?? "", search.pay_date ?? ""),
-    enabled: hasQuery,
-  });
+  const draft = useQuery({ ...payslipDraftQuery(employeeId, search.period ?? "", search.pay_date ?? ""), enabled: hasQuery });
 
   const data: PayslipDraft | undefined = hasQuery ? draft.data : undefined;
   const contract = data?.contract;

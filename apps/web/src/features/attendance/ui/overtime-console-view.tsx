@@ -13,7 +13,8 @@ import { RecordIdentityBar, RecordPaneSection } from "../../../ui/patterns/list-
 import { RecordBannerBand } from "../../../ui/patterns/record-banner-band";
 import { acknowledgeWeek52, week52Query, type Week52Row } from "../api";
 import { dateText } from "../present";
-import { AttendanceTabNav, useAttendancePhaseLine } from "./attendance-head";
+import { AttendanceTabNav } from "./attendance-head";
+import { useAttendancePhaseLine } from "./use-attendance-phase-line";
 import { OvertimeAckBar } from "./overtime-ack-bar";
 import { PeriodStepper } from "./period-stepper";
 import { ScopePicker } from "./scope-picker";

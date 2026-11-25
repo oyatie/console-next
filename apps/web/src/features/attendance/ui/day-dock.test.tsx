@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+// oxlint-disable-next-line no-restricted-imports -- A refused person-month read is a transport refusal.
 import { ApiError } from "@console/api";
 import { beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { i18n, loadCatalog, t } from "@console/i18n";
@@ -21,7 +22,7 @@ vi.mock("@tanstack/react-query", () => ({ useQuery: ({ queryKey }: { queryKey: r
 } }));
 vi.mock("@tanstack/react-router", async original => ({
   ...await original<typeof import("@tanstack/react-router")>(),
-  Link: ({ children }: { children: ReactNode }) => <a href="/">{children}</a>,
+  Link: ({ children }: { children: ReactNode }) => <span>{children}</span>,
 }));
 beforeAll(() => loadCatalog("ko"));
 beforeEach(() => { state.load = "ready"; state.missingDay = false; delete day.entry; delete day.intervals; day.marks = []; });

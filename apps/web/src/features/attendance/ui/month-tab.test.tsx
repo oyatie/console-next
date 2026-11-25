@@ -2,6 +2,7 @@
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, beforeEach, expect, test, vi } from "vitest";
+// oxlint-disable-next-line no-restricted-imports -- A refused month read is a transport refusal.
 import { ApiError } from "@console/api";
 import { loadCatalog, t } from "@console/i18n";
 import { refusalText } from "../present";

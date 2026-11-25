@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, beforeEach, expect, test, vi } from "vitest";
+// oxlint-disable-next-line no-restricted-imports -- A refused day read is a transport refusal.
 import { ApiError } from "@console/api";
 import { loadCatalog, t } from "@console/i18n";
 import { refusalText } from "../present";
@@ -272,7 +273,7 @@ test.each([
   expect(render(view())).toContain(jump(key));
 });
 
-test("the Console month close grid opens a scope from its row, with no 작업 column or row button", () => {
+test("the Console month close grid opens a scope from its row, with no actions column or row button", () => {
   const html = render(<CloseConsoleView baseline={() => null} />);
   expect(html).toContain("wp-1");
   expect(html).not.toContain(t("settingsHub.reasons.actionsCol"));

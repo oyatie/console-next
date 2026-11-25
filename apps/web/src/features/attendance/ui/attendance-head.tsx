@@ -1,12 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
-import { get } from "../../../lib/query";
 import { PageHead } from "../../../ui/page-head/page-head";
-import { PhaseLine } from "../../../ui/page-head/phase-line";
 import { tabClass } from "../../../ui/tabs/tab-class";
 import { TabNav } from "../../../ui/tabs/tabs";
 import type { Tab } from "./attendance-page";
+import { useAttendancePhaseLine } from "./use-attendance-phase-line";
 import s from "./attendance-console.module.css";
 
 /**
@@ -24,12 +22,6 @@ export function AttendanceTabNav({ tab }: { tab: Tab }) {
       </TabNav>
     </div>
   );
-}
-
-/** The head's phase line: what the tenant's phase means for attendance schedules, or nothing until the tenant is read. */
-export function useAttendancePhaseLine() {
-  const phase = useQuery(get("/api/v1/users/me")).data?.tenant?.phase;
-  return phase ? <PhaseLine phase={phase === "OPERATING" ? "operating" : "setup"}>{t(phase === "OPERATING" ? "attendance.phase.operating" : "attendance.phase.setup")}</PhaseLine> : null;
 }
 
 export function AttendanceHead({ tab }: { tab: Tab }) {
