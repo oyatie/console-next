@@ -112,7 +112,10 @@ test("a refused day pane says who can grant and offers the request, with the ser
       <DayDock employeeId="person" date={day.date} own={false} variant="pane" onClose={() => {}} onRewrite={() => {}} onDone={() => {}} />
     </SidePanelReadContext>,
   );
-  expect(html).toContain(t("common.denied.title.plain"));
+  // The screen beside the pane stays open: the refusal names the item, in its heading and its region.
+  expect(html).toContain(`>${t("common.denied.panel")}</h2>`);
+  expect(html).toContain(`aria-label="${t("common.denied.panel")}"`);
+  expect(html).not.toContain(t("common.denied.title.plain"));
   expect(html).toContain(t("common.denied.request"));
   expect(html).toContain(t("common.denied.granters.unavailable"));
   expect(html).toContain(refusalText("forbidden")!);

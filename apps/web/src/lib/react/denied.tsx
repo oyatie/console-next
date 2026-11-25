@@ -66,7 +66,7 @@ export function Denied({ screen, error, title, reason, back, need }: { screen?: 
   const why = code === "out_of_scope" ? "common.denied.scope" : code === "scope_tenant_wide_only" ? "common.denied.tenantWide" : "common.denied.reason";
   const path = typeof window === "undefined" ? "/" : window.location.pathname;
   return (
-    <div className="page"><Card label={t("common.denied.title.plain")} flush>
+    <div className="page"><Card label={title ?? t("common.denied.title.plain")} flush>
       <EmptyState title={title ?? (screen ? t("common.denied.title", { screen }) : t("common.denied.title.plain"))} reason={need ? requirementText(need) : null} />
       <div className={css.body}>
       <div className={css.row}>
