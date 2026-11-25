@@ -2,19 +2,23 @@
 import { afterAll, beforeAll, expect, test } from "vitest";
 import type { ViteDevServer } from "vite";
 import { expect as dom } from "@playwright/test";
-import type { Browser, Page } from "../../lib/browser-test";
+import { openBrowserTestPage, type Browser, type Page } from "../../lib/browser-test";
 import { tableTest } from "../../../../../e2e/long-table-fixture";
 
 let server: ViteDevServer;
 let browser: Browser;
 let page: Page;
+let navigationPage: Page;
 beforeAll(async () => {
   ({ server, browser, page } = await tableTest());
+  navigationPage = await browser.newPage();
   // Exercise both platform shortcuts on every runner.
-  await page.addInitScript(() => {
+  for (const each of [page, navigationPage]) await each.addInitScript(() => {
     Object.defineProperty(navigator, "platform", { value: location.search.includes("-mac-") ? "MacIntel" : "Win32" });
     Object.defineProperty(navigator, "userAgentData", { value: undefined });
   });
+  // Boot the navigation cases' page once, outside the test budget; each case then switches its mode in place.
+  await openBrowserTestPage(navigationPage, `${server.resolvedUrls!.local[0]}long-table-test?navigation-cell`, navigationPage.getByRole("grid"));
 }, 60_000);
 afterAll(async () => { await browser?.close(); await server?.close(); });
 
@@ -140,16 +144,17 @@ const navigationMatrix = [1440, 390].flatMap(width => navigationKeys.flatMap(({ 
 ));
 
 test.each(navigationMatrix)("grid navigation $key from $origin at $width px matches cell navigation", async ({ width, key, origin, expected }) => {
-  await page.setViewportSize({ width, height: 900 });
-  const address = () => page.evaluate(() => {
+  await navigationPage.setViewportSize({ width, height: 900 });
+  const address = () => navigationPage.evaluate(() => {
     const active = document.activeElement;
     const cell = active?.closest('[role="gridcell"], [role="rowheader"], [role="columnheader"]');
     return [Number(active?.closest('[role="row"]')?.getAttribute("aria-rowindex")) || null, Number(cell?.getAttribute("aria-colindex")) || null];
   });
   const open = async (mode: string) => {
-    await page.goto(`${server.resolvedUrls!.local[0]}long-table-test?navigation-${mode}`);
-    await dom(page.getByRole("grid")).toHaveAttribute("data-layout", width === 390 ? "cards" : "rows");
-    const row = page.getByRole("row").filter({ hasText: "Beta" });
+    // A reload per case refetched the whole catalog after load, inside the 5 s check below.
+    await navigationPage.evaluate(search => (window as unknown as { renderFixture: (search: string) => void }).renderFixture(search), `?navigation-${mode}`);
+    await dom(navigationPage.getByRole("grid")).toHaveAttribute("data-layout", width === 390 ? "cards" : "rows");
+    const row = navigationPage.getByRole("row").filter({ hasText: "Beta" });
     return width === 390 ? row.getByRole("rowheader") : row.getByRole("gridcell").nth(1);
   };
   for (const wrapped of [false, true]) {
@@ -161,11 +166,11 @@ test.each(navigationMatrix)("grid navigation $key from $origin at $width px matc
       (el as HTMLInputElement).setSelectionRange(3, 3);
       resolve();
     })));
-    await page.keyboard.press(key);
+    await navigationPage.keyboard.press(key);
     if (origin === "input") {
       await dom(target).toBeFocused();
       await dom(target).toHaveValue("abcdef");
-      await dom(page.locator("body")).toHaveAttribute("data-input-prevented", "false");
+      await dom(navigationPage.locator("body")).toHaveAttribute("data-input-prevented", "false");
       if (key === "ArrowLeft" || key === "ArrowRight") {
         expect(await target.evaluate(el => (el as HTMLInputElement).selectionStart)).toBe(key === "ArrowLeft" ? 2 : 4);
       }
@@ -173,9 +178,9 @@ test.each(navigationMatrix)("grid navigation $key from $origin at $width px matc
     if (origin === "button") {
       for (const activation of ["Enter", "Space"]) {
         await target.focus();
-        await page.locator("body").evaluate(el => { delete el.dataset.pressed; });
-        await page.keyboard.press(activation);
-        await dom(page.locator("body")).toHaveAttribute("data-pressed", "b");
+        await navigationPage.locator("body").evaluate(el => { delete el.dataset.pressed; });
+        await navigationPage.keyboard.press(activation);
+        await dom(navigationPage.locator("body")).toHaveAttribute("data-pressed", "b");
       }
     }
   }
