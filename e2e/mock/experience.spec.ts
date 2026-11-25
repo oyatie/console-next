@@ -2,7 +2,7 @@
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
-import { offeredExperiences } from "../../apps/web/src/experience/table";
+import { offeredExperiences, resolveExperience } from "../../apps/web/src/experience/table";
 import { EXPERIENCE_SOURCE_KEY } from "../../apps/web/src/experience/store";
 import { EXPERIENCE_KEY } from "../../apps/web/src/lib/prefs";
 import { mockScreen } from "./screen";
@@ -14,8 +14,11 @@ import { screens } from "../states/registry";
 test.beforeAll(() => loadCatalog("ko"));
 const optionText = (experience: ReturnType<typeof offeredExperiences>[number]) =>
   experience.listing === "preview" ? t("account.experience.preview", { style: t(experience.label) }) : t(experience.label);
-const tenantOptionText = (styleId = "baseline") =>
+const tenantOptionText = (styleId: string) =>
   t("account.experience.organizationDefault", { style: styleId === "console" ? t("account.experience.console") : t("account.experience.baseline") });
+// The style with nothing chosen. No attribute on <html> draws Classic, as the stylesheets do.
+const shipped = resolveExperience().id;
+const painted = (id: string | null | undefined) => id ?? "baseline";
 
 // Start on a fresh device to exercise the default before switching styles.
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -36,7 +39,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       const chooser = page.getByRole("combobox", { name: t("account.experience"), exact: true });
       expect(await page.evaluate(key => localStorage.getItem(key), EXPERIENCE_KEY)).toBeNull();
       await expect(chooser).toHaveValue("tenant");
-      await expect(chooser.locator("option")).toHaveText([tenantOptionText("baseline"), ...offeredExperiences("baseline").map(optionText)]);
+      await expect(chooser.locator("option")).toHaveText([tenantOptionText(shipped), ...offeredExperiences(shipped).map(optionText)]);
       expect(await chooser.locator("option").allTextContents()).not.toContain(
         t("account.experience.preview", { style: t("account.experience.console") }),
       );
@@ -46,7 +49,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
         await page.evaluate(({ key, value }) => localStorage.setItem(key, value), { key: EXPERIENCE_KEY, value: unknown });
         await page.reload();
         await expect(chooser).toHaveValue("tenant");
-        expect(await page.evaluate(() => (window as Window & { experienceAtBoot?: string }).experienceAtBoot)).toBeUndefined();
+        expect(painted(await page.evaluate(() => (window as Window & { experienceAtBoot?: string }).experienceAtBoot))).toBe(shipped);
         await expect(page.getByRole("main")).toHaveCount(1);
       }
 
@@ -103,11 +106,11 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       await page.reload();
       await expect(page.locator("html")).toHaveAttribute("data-experience", "warm-clear");
       await expect(chooser).toHaveValue("warm-clear");
-      await expect(chooser.locator("option")).toHaveText([tenantOptionText("baseline"), ...offeredExperiences("warm-clear").map(optionText)]);
+      await expect(chooser.locator("option")).toHaveText([tenantOptionText(shipped), ...offeredExperiences("warm-clear").map(optionText)]);
 
       await chooser.selectOption("baseline");
       await expect(chooser).toHaveValue("baseline");
-      await expect(chooser.locator("option")).toHaveText([tenantOptionText("baseline"), ...offeredExperiences("baseline").map(optionText)]);
+      await expect(chooser.locator("option")).toHaveText([tenantOptionText(shipped), ...offeredExperiences("baseline").map(optionText)]);
 
       await fits(page, `screen style ${width} ${theme}`);
       await page.screenshot({ path: info.outputPath("screen-style.png"), fullPage: true });
@@ -158,7 +161,7 @@ test("the screen style chooser is available for gallery review at phone width", 
   await page.addInitScript(() => localStorage.setItem("console.theme", "dark"));
   await mockNavigate(page, "/_gallery?entry=experience-chooser");
   await expect(page.getByRole("heading", { name: t("account.experience"), exact: true })).toBeVisible();
-  await expect(page.getByRole("combobox", { name: t("account.experience"), exact: true })).toHaveValue("baseline");
+  await expect(page.getByRole("combobox", { name: t("account.experience"), exact: true })).toHaveValue(shipped);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
   await page.screenshot({ path: info.outputPath("screen-style-gallery.png"), fullPage: true });
 });

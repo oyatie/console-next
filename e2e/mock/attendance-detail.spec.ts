@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import type { components } from "@console/api";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
+import { experienceState } from "../experience";
 import { screens } from "../states/registry";
 import { mockScreen } from "./screen";
 import { mockRoute } from "./route";
@@ -50,7 +51,7 @@ for (const width of [1440, 390]) test(`detail population, group headers and comp
   const fixture = await setup(page, 5);
   await page.goto("/attendance?tab=day&date=2026-10-06&detail=true");
   const grids = page.getByRole("grid", { name: /^일별 · 자세히/ });
-  await expect(page.getByText(/^근태 대상 5명/)).toBeVisible();
+  await expect(page.getByText(t("attendance.people", { count: 5 })).first()).toBeVisible();
   await expect(grids).toHaveCount(2);
   await expect(grids.nth(0)).toHaveAttribute("aria-rowcount", "4");
   await expect(grids.nth(1)).toHaveAttribute("aria-rowcount", "3");
@@ -89,7 +90,7 @@ test("2,000-person detail restores folded rows within the 2s page budget", async
     page.waitForResponse(response => new URL(response.url()).pathname === "/api/v1/attendance/days"),
     page.goto("/attendance?tab=day&date=2026-10-06"),
   ]);
-  await expect(page.getByText(/^근태 대상 2,000명/)).toBeVisible();
+  await expect(page.getByText(t("attendance.people", { count: 2000 })).first()).toBeVisible();
   await page.evaluate(() => {
     document.addEventListener("click", () => performance.mark("detail-start"), { once: true, capture: true });
     const observer = new MutationObserver(() => {
@@ -133,6 +134,23 @@ test("2,000-person detail restores folded rows within the 2s page budget", async
   await expect(paper.locator("tbody tr[data-id]")).toHaveCount(2000);
   await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
   expect(fixture.unexpected).toEqual([]);
+});
+
+// How each style states the day's population: Classic's ledger sentence; Console's term and count, as the month
+// board draws its population (no board draws the day view).
+for (const style of ["baseline", "console"] as const) test.describe(`${style} day population`, () => {
+  test.use({ storageState: experienceState(style) });
+  for (const detail of [false, true]) test(`the day${detail ? " detail" : ""} states its population in ${style}'s words`, style === "baseline" ? { tag: "@baseline" } : {}, async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const fixture = await setup(page, 5);
+    await page.goto(`/attendance?tab=day&date=2026-10-06${detail ? "&detail=true" : ""}`);
+    if (style === "baseline") await expect(page.getByText(t("attendanceRecords.board.ledgerHead", { people: 5 }))).toBeVisible();
+    else {
+      const scope = page.getByRole("term").filter({ hasText: new RegExp(`^${t("attendance.monthConsole.summary.scope")}$`) });
+      await expect(scope.locator("xpath=following-sibling::dd[1]")).toHaveText(t("attendance.people", { count: 5 }));
+    }
+    expect(fixture.unexpected).toEqual([]);
+  });
 });
 
 test("an upgraded tab never restores a previous account's owner-less attendance cells", async ({ page }) => {

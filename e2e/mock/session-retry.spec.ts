@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Page } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
 import { lifecycleSheetScreens } from "../states/lifecycle-sheets";
 import { screens } from "../states/registry";
 import { mockScreen } from "./screen";
 import { filingTask, mockFilings } from "./filings";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 const refresh = "**/api/v1/auth/token/refresh";
 async function refuseWrite(page: Page, path: string) {
@@ -48,7 +51,12 @@ for (const width of [1440, 390]) {
     const fixture = await mockScreen(page, screens[0], "populated");
     await mockFilings(page, { ...filingTask, insurer: "EI" });
     await page.goto("/statutory");
-    await page.getByRole("button", { name: "신고 요청·근로월 기록", exact: true }).click();
+    // Classic offers the request in the row; Console in the filing's record pane, opened from the row.
+    const request = page.getByRole("button", { name: t("statutory.futureRequest"), exact: true });
+    const record = page.getByRole("button", { name: t("statutory.record"), exact: true });
+    await expect(request.or(record).first()).toBeVisible();
+    if (!(await request.isVisible())) await record.click();
+    await request.click();
     const sheet = page.getByRole("dialog", { name: "김신고 · 신고 요청·근로월 기록" });
     await sheet.getByRole("button", { name: /신고 종류$/ }).click();
     await page.getByRole("option", { name: "근로자 요청 취득 신고" }).click();

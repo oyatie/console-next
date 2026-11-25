@@ -61,8 +61,8 @@ for (const width of [1440, 390]) for (const state of ["populated", "empty", "loa
       if (!["decided", "without-delay", "clock-unknown"].includes(state)) await expect(page.getByText("D-6", { exact: true })).toBeVisible();
       else await expect(page.getByText("D-6", { exact: true })).toHaveCount(0);
       await page.getByText(receipt.receipt_no, { exact: true }).click();
-      const panel = page.locator("[data-side-panel]");
-      await expect(panel.getByText(t("account.privacy.controller.TENANT"), { exact: true })).toBeVisible();
+      const panel = page.getByRole("complementary", { name: receipt.receipt_no, exact: true });
+      await expect(panel.getByRole("definition").filter({ hasText: t("account.privacy.controller.TENANT") })).toBeVisible();
       await expect(panel.getByText(receipt.detail, { exact: true })).toBeVisible();
       await expect(panel.getByText(t("account.privacy.status"), { exact: true })).toBeVisible();
       await expect(panel.getByText(state === "decided" ? "결정 완료" : "접수됨", { exact: true })).toBeVisible();

@@ -2,6 +2,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { fits } from "../a11y";
+import { accountMenu } from "../shell";
 import { authz, checklist, failure, id, inbox, screenAccess } from "./fixtures";
 import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
@@ -196,7 +197,8 @@ for (const screen of [attendanceBoardScreens[0], accountScreens[0]]) {
         await page.evaluate(() => document.fonts.ready);
         held.resolve();
         await page.clock.resume();
-        await expect(main.getByRole("heading", { level: 1 })).toBeVisible();
+        // The page's one title, wherever its style puts it at this width.
+        await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
         await expectStable(page, `${screen.path}/${read}/${width} from navigation`);
         for (const theme of ["light", "dark"]) {
           await page.locator("html").evaluate((el, value) => el.dataset.theme = value, theme);
@@ -235,7 +237,8 @@ for (const phase of ["SETUP", "OPERATING"] as const) test(`entity-record: ${phas
       held.resolve();
     }
     await expect(heading).toBeVisible();
-    await expect(main.locator("section.card").getByText(t(phase === "SETUP" ? "entityRecord.phase.setup" : "entityRecord.phase.operating"), { exact: true })).toBeVisible();
+    // The record's header states the phase first (Classic repeats it in the overview).
+    await expect(main.getByText(t(phase === "SETUP" ? "entityRecord.phase.setup" : "entityRecord.phase.operating"), { exact: true }).first()).toBeVisible();
     await expect(edit).toBeVisible();
     const before = await main.getByRole("button").allTextContents();
     held.resolve();
@@ -272,7 +275,7 @@ for (const read of ["/api/v1/access/me", "/api/v1/me/authz", "/api/v1/onboarding
       await expect(heading).toBeVisible();
       await expect(main.locator("[data-phase-band]")).toHaveCount(0);
       if (read === "/api/v1/onboarding/checklist") {
-        await page.locator('a[href="/account"]').first().click();
+        await (await accountMenu(page)).locator('a[href="/account"]').first().click();
         await advanceUntil(page, main.getByRole("heading", { level: 1, name: t("account.title"), exact: true }).waitFor({ state: "visible" }));
         await expect(main.locator("[data-phase-pending]")).toHaveCount(0);
       }

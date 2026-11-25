@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import { AT } from "./fixtures";
 import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
+import { setTheme } from "../shell";
 import { lifecycleSheetScreens } from "../states/lifecycle-sheets";
 import { moveDetail } from "./lifecycle-sheets";
 
@@ -32,7 +33,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"] as const)
       return { status: 422, json: { error: { code: "nationality_unknown", message: "요청을 처리하지 못했습니다." } } };
     });
     await page.goto(`/people/${moveDetail.employee.id}`);
-    if (theme === "dark") await page.getByRole("button", { name: "어두운 화면으로 전환", exact: true }).click();
+    if (theme === "dark") await setTheme(page, "dark");
     await expect(page.getByText("영국 · GB", { exact: true })).toBeVisible();
     const edit = page.getByRole("button", { name: "국적 · 신분증 수정", exact: true });
     await edit.focus();

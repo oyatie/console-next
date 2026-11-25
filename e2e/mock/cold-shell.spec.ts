@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { fits } from "../a11y";
 import { go } from "../flows";
+import { openNav, shell } from "../shell";
 import { screens } from "../states/registry";
 import { mockScreen } from "./screen";
 
@@ -37,12 +38,11 @@ for (const path of ["/org/nope", "/people/x/nope/deeper"]) for (const width of [
   try {
     await page.goto(path);
     await expect(page.locator("[data-route-ready]")).toHaveAttribute("data-route-ready", path);
-    if (width === 390) await page.getByRole("button", { name: t("shell.menu"), exact: true }).click();
-    const rail = page.getByRole("navigation", { name: t("shell.nav"), exact: true });
+    const rail = await openNav(page);
     await expect(rail.getByRole("link").first()).toBeVisible();
     await expect(rail.locator('[aria-busy="true"]')).toHaveCount(0);
     expect(identities.length).toBeGreaterThan(0);
-    if (width === 390) await page.keyboard.press("Escape");
+    await page.keyboard.press("Escape");
     await fits(page, `unknown screen ${width}px ${theme}`);
     expect(fixture.unexpected).toEqual([]);
   } finally {
@@ -65,9 +65,9 @@ for (const path of ["/people", "/inbox"]) for (const width of [1440, 390]) for (
     const requested = page.waitForRequest(request => chunk.test(new URL(request.url()).pathname));
     await page.goto(path);
     await requested;
-    if (width === 390) {
-      await expect(page.getByRole("button", { name: t("shell.menu"), exact: true })).toBeVisible({ timeout: 1500 });
-    } else await expect(page.getByRole("navigation", { name: t("shell.nav"), exact: true })).toBeVisible({ timeout: 1500 });
+    // Within the cold-shell budget: the bar's navigation, or Classic's phone menu that opens it.
+    const menu = page.getByRole("banner").getByRole("button", { name: t("shell.menu"), exact: true });
+    await expect(shell(page).navigation.or(menu).filter({ visible: true }).first()).toBeVisible({ timeout: 1500 });
     expect(identities).toHaveLength(0);
     held.resolve();
     await expect(page.locator("[data-route-ready]")).toHaveAttribute("data-route-ready", path);
@@ -75,8 +75,7 @@ for (const path of ["/people", "/inbox"]) for (const width of [1440, 390]) for (
     await go(page, path === "/inbox" ? "/people" : "/");
     expect(identities).toHaveLength(2);
     if (width === 390) {
-      await page.getByRole("button", { name: t("shell.menu"), exact: true }).click();
-      await expect(page.getByRole("navigation", { name: t("shell.nav"), exact: true })).toBeVisible();
+      await openNav(page);
       await page.keyboard.press("Escape");
     }
     await fits(page, `cold shell ${width}px ${theme}`);
