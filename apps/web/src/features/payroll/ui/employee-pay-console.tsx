@@ -274,6 +274,8 @@ function EmployeePayConsoleContent({ baseline }: { baseline: () => ReactNode }) 
   return (
     <RecordPattern
       q={hasQuery ? draft : IDLE_READ}
+      // A refused draft still names whose pay it was: the way back is that person's card, not home.
+      back={{ to: "/people", search: { sel: employeeId }, label: t("payroll.employee.person") }}
       head={{
         title: t("payroll.employee.title"),
         titleId: "employee-pay-title",

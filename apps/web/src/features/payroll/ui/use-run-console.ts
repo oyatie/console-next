@@ -85,6 +85,9 @@ export function useRunConsole(id: string) {
   const activeEntityId = entityOverride ?? run?.legal_entity_id ?? "";
   const activeEntity = entities.find(entity => entity.id === activeEntityId);
   const entityLabel = activeEntity?.name ?? t("payroll.entityUnnamed");
+  // A group id is unique only within its legal entity: never name another entity's group.
+  const group = run && groups.data?.items.find(g => g.id === run.pay_group_id && g.legal_entity_id === run.legal_entity_id);
+  const groupLabel = group?.name ?? t("payroll.rule.unknown");
 
   const lines = detailData?.lines ?? [];
   const rates = useQuery({
@@ -174,6 +177,7 @@ export function useRunConsole(id: string) {
     activePeriod,
     activeEntityId,
     entityLabel,
+    groupLabel,
     lines,
     ratesData: rates.data,
     filter,
