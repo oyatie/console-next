@@ -24,7 +24,10 @@ export function CardContent<R>({ row, columns, titleId }: { row: R; columns: Lon
   );
 }
 
-/** Compact 2-line operational row (`52–68px`) for phone viewports (`mobileLayout="compact"`). */
+/**
+ * Compact 2-line operational row (`52–68px`) for phone viewports (`mobileLayout="compact"`). On a phone outside Classic
+ * a 2-line row's status and actions stand across both lines; a name or fact line that holds a 44px control grows it.
+ */
 export function CompactCardContent<R>({ row, columns, titleId }: { row: R; columns: LongColumn<R>[]; titleId: string }) {
   const roles = cardRoles(columns);
   const title = columns.findLast((column, index) => column.rowHeader && roles[index] === "title") ?? columns.find((_column, index) => roles[index] === "title");

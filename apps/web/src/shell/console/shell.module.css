@@ -161,9 +161,11 @@
   max-inline-size: calc(var(--space-6) * 10);
 }
 
+/* Each row keeps its bar's room before the bar draws, so the page does not move when it does. */
 .tabsArea {
   grid-area: tabs;
   min-width: 0;
+  min-block-size: var(--tabbar-h);
 }
 
 .noticesArea {
@@ -174,6 +176,7 @@
 .statusArea {
   grid-area: status;
   min-width: 0;
+  min-block-size: var(--statusbar-h);
 }
 
 @media (--below-wide) {
