@@ -150,29 +150,26 @@ export function PersonCard({ id, month, head }: { id: string; month?: string; he
               </DayBars>
             </RecordSection>
             <RecordSection id="att-person-history" no={2} title={t("attendanceRecords.card.historyTitle")}>
-              {p.history.length ? (
-                <ItemList
-                  label={t("attendanceRecords.card.historyTitle")}
-                  items={p.history.map(h => ({
-                    key: h.entry.id,
-                    text: (
-                      <>
-                        {dateText(h.date)} ·{" "}
-                        {h.entry.kind === "VOID" || h.entry.undone ? (
-                          <s>{entryText(h.entry.kind, h.entry.segments)}</s>
-                        ) : (
-                          entryText(h.entry.kind, h.entry.segments)
-                        )}{" "}
-                        · <Chip>{t(`attendanceRecords.source.${h.entry.source}`)}</Chip>
-                        {h.entry.reason && <> · {h.entry.reason}</>}
-                      </>
-                    ),
-                    end: <bdi className="muted">{h.entry.created_by_name}</bdi>,
-                  }))}
-                />
-              ) : (
-                <p className="muted">{t("attendanceRecords.day.noHistory")}</p>
-              )}
+              <ItemList
+                label={t("attendanceRecords.card.historyTitle")}
+                empty={t("attendanceRecords.day.noHistory")}
+                items={p.history.map(h => ({
+                  key: h.entry.id,
+                  text: (
+                    <>
+                      {dateText(h.date)} ·{" "}
+                      {h.entry.kind === "VOID" || h.entry.undone ? (
+                        <s>{entryText(h.entry.kind, h.entry.segments)}</s>
+                      ) : (
+                        entryText(h.entry.kind, h.entry.segments)
+                      )}{" "}
+                      · <Chip>{t(`attendanceRecords.source.${h.entry.source}`)}</Chip>
+                      {h.entry.reason && <> · {h.entry.reason}</>}
+                    </>
+                  ),
+                  end: <bdi className="muted">{h.entry.created_by_name}</bdi>,
+                }))}
+              />
             </RecordSection>
           </>
         ) : null
