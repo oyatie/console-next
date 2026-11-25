@@ -89,15 +89,6 @@
   visibility: hidden;
 }
 
-.readState {
-  align-self: start;
-  padding: var(--space-2) var(--space-4);
-}
-
-.readState:empty {
-  display: none;
-}
-
 .reasonStack {
   display: flex;
   flex-direction: column;

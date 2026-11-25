@@ -11,7 +11,7 @@ import { Button } from "../../../ui/button/button";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { EnumValue } from "../../../ui/enum-value";
 import { KeyValue, type KeyValueItem } from "../../../ui/key-value/key-value";
-import { RecordIdentityBar, RecordPaneGroup, RecordPaneSection } from "../../../ui/patterns/list-record-parts";
+import { RecordIdentityBar, RecordPaneGroup, RecordPaneSection, RecordPaneState } from "../../../ui/patterns/list-record-parts";
 import { eraseQuery, recoveryQuery, supportSessionsQuery, type EraseRead, type Health, type Issued, type OpsRecoveryRead, type Org, type Recorded } from "../api";
 import { MOVES, type Move } from "../domain/tenants";
 import { DomainDialog } from "./domain-dialog";
@@ -146,11 +146,11 @@ export function TenantConsolePanel({
           or refusal. Offline, the page's own notice says so. */}
       <RecordPaneGroup held={!answered} shape={org.status} className={s.readSlot}>
         {answered && recovery.data ? <>
-          <div className={s.readState}>{online ? recoveryState : null}</div>
+          <RecordPaneState>{online ? recoveryState : null}</RecordPaneState>
           {recoverySections(recovery.data)}
         </> : <div className={s.readHold}>
           <div className={s.readPlaceholder} aria-hidden inert>{recoverySections(NO_RECOVERY)}</div>
-          <div className={s.readState}>{recoveryState}</div>
+          <RecordPaneState>{recoveryState}</RecordPaneState>
         </div>}
       </RecordPaneGroup>
 

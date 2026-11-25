@@ -70,6 +70,11 @@ export function RecordPaneGroup({ className, held, shape, children }: { classNam
   return <div ref={box} className={className ? `${s.paneGroup} ${className}` : s.paneGroup}>{children}</div>;
 }
 
+/** A record pane read's loading or failure, inset like its sections; it takes no room while the read shows nothing. */
+export function RecordPaneState({ children }: { children: ReactNode }) {
+  return <div className={s.paneState}>{children}</div>;
+}
+
 /** Rule-separated subject identity header at the top of a Console side record pane. */
 export function RecordIdentityBar({
   name,
