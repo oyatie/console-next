@@ -10,3 +10,4 @@ mod register_inbox;
 mod rules;
 mod void;
 mod void_governed;
+mod void_race;

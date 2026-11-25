@@ -16,5 +16,6 @@ responses:
         schema: {$ref: '#/components/schemas/PayrollRunPreview'}
   '401': {$ref: '#/components/responses/Unauthorized'}
   '403': {description: Cedar refuses pay-group edit or sensitive edit clearance. Unknown and foreign groups also refuse.}
+  '409': {description: "pay_group_roster_ambiguous when the group's legal entity has more than one pay group, so its members are not known."}
   '422': {description: run_kind_unsupported for non-REGULAR kinds; validation for missing group or invalid kind.}
   '503': {description: holiday_calendar_missing when an adjustment requires an unloaded calendar year; or unavailable Cedar facts.}

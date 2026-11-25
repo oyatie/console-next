@@ -22,3 +22,15 @@ test("DueCell passes WCAG 2.2 AA axe checks across all five tones", async () => 
   const tones = await page.locator("data[data-tone]").evaluateAll(els => els.map(el => el.getAttribute("data-tone")));
   expect(tones).toEqual(["over", "today", "near", "far", "undated"]);
 });
+
+test("on Console the today cell takes the warn roles", async () => {
+  const { page } = mounted;
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const today = await page.evaluate(() => {
+    document.documentElement.dataset.experience = "console";
+    document.documentElement.dataset.theme = "light";
+    const s = getComputedStyle(document.querySelector<HTMLElement>('data[data-tone="today"]')!);
+    return { fill: s.backgroundColor, text: s.color };
+  });
+  expect(today).toEqual({ fill: "rgb(253, 240, 213)", text: "rgb(138, 79, 0)" });
+});

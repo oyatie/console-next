@@ -38,80 +38,6 @@ struct JsonResponse {
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn readiness_counts_only_inspectable_active_payroll_close_statuses(pool: PgPool) {
-    let keys = keys();
-    let org = OrgId::one();
-    let user = UserId::new();
-    seed_user(&pool, org, user).await;
-
-    for (source_label, status, calculation_enabled) in [
-        ("terminal-issued", "ISSUED", true),
-        ("terminal-void", "VOID", false),
-    ] {
-        sqlx::query(
-            "INSERT INTO payroll_draft_runs \
-             (id, org_id, period_start, period_end, source_label, status, calculation_enabled, created_by) \
-             VALUES ($1, $2, '2026-07-01', '2026-07-31', $3, $4, $5, $6)",
-        )
-        .bind(Uuid::new_v4())
-        .bind(*org.as_uuid())
-        .bind(source_label)
-        .bind(status)
-        .bind(calculation_enabled)
-        .bind(*user.as_uuid())
-        .execute(&pool)
-        .await
-        .unwrap();
-    }
-
-    let service = build_router(
-        app_state(
-            runtime_role_pool(&pool).await,
-            leave_command_role_pool(&pool).await,
-            &keys,
-        )
-        .unwrap(),
-    );
-    let token = bearer(&pool, &keys, org, user, &["SUPER_ADMIN"]).await;
-
-    let terminal_only = get(service.clone(), HR_READINESS_SUMMARY_PATH, &token).await;
-    assert_eq!(
-        terminal_only.status,
-        StatusCode::OK,
-        "{:?}",
-        terminal_only.json
-    );
-    assert_eq!(terminal_only.json["payroll"]["draft_runs"], 2);
-    assert_eq!(terminal_only.json["payroll"]["active_close_runs"], 0);
-
-    for (source_label, status, calculation_enabled) in [
-        ("active-staged", "STAGED", false),
-        ("active-blocked", "BLOCKED_LEGAL_GATE", false),
-        ("active-ready", "READY_FOR_REVIEW", true),
-        ("active-approved", "APPROVED", true),
-    ] {
-        sqlx::query(
-            "INSERT INTO payroll_draft_runs \
-             (id, org_id, period_start, period_end, source_label, status, calculation_enabled, created_by) \
-             VALUES ($1, $2, '2026-08-01', '2026-08-31', $3, $4, $5, $6)",
-        )
-        .bind(Uuid::new_v4())
-        .bind(*org.as_uuid())
-        .bind(source_label)
-        .bind(status)
-        .bind(calculation_enabled)
-        .bind(*user.as_uuid())
-        .execute(&pool)
-        .await
-        .unwrap();
-    }
-
-    let active = get(service, HR_READINESS_SUMMARY_PATH, &token).await;
-    assert_eq!(active.status, StatusCode::OK, "{:?}", active.json);
-    assert_eq!(active.json["payroll"]["active_close_runs"], 4);
-}
-
-#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn employee_create_is_idempotent_unique_and_tenant_scoped(pool: PgPool) {
     let keys = keys();
     let org = OrgId::one();
@@ -1252,3 +1178,5 @@ async fn scoped_role_pool(owner_pool: &PgPool, role: &'static str) -> PgPool {
 
 #[path = "hr_people_create/hire_date.rs"]
 mod hire_date;
+#[path = "hr_people_create/readiness.rs"]
+mod readiness;
