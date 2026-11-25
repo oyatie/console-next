@@ -16,9 +16,9 @@ import { attendanceBoardState } from "./attendance-helpers";
 test.beforeAll(() => loadCatalog("ko"));
 const screen = attendanceBoardScreens.find(candidate => candidate.key === "attendance-day")!;
 const screenDate = new URL(screen.path, "http://localhost").searchParams.get("date")!;
-// A docked pane by its name, in the style the test seeded. Classic draws one landmark of that name. Console nests the
-// docked sheet inside a record pane of the same name: two landmarks of one name stay a soft red there, and the first is
-// held to the rest of the test.
+// A docked pane by its name, in the style the test seeded: one landmark carries that name. Under Classic a second one
+// fails the test here; under Console it is a soft red, and the first is held to the rest of the test, because a record
+// pane around the dock may take the same name.
 async function expectDockPane(page: Page, name: string, storageState: PlaywrightTestOptions["storageState"]) {
   const panes = page.getByRole("complementary", { name, exact: true });
   if (seededExperience(storageState) !== "console") return expect(panes).toBeVisible();
