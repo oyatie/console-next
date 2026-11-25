@@ -20,8 +20,11 @@ vi.mock("@tanstack/react-router", async original => ({
 // Only the head's slots: the list's own read state never gates what is drawn here (the page's read failure is told once,
 // while the head keeps its controls and their reads).
 vi.mock("../../../ui/patterns/list-record", () => ({
-  ListRecord: ({ head, find, tools }: ListRecordProps) => <header>{head.actions}{find}{tools}</header>,
+  ListRecord: ({ head, find, tools, list }: ListRecordProps) => <><header>{head.actions}{find}{tools}</header><section>{list}</section></>,
 }));
+vi.mock("./roster-table", () => ({ RosterTable: () => <table /> }));
+// Restoration runs in effects; the marker shows which grid it is bound to.
+vi.mock("./table-scroll-restoration", () => ({ TableScrollRestoration: ({ id }: { id: string }) => <i data-restores={id} /> }));
 
 beforeAll(() => loadCatalog("ko"));
 
@@ -51,4 +54,9 @@ test.each([false, true])("the roster head offers saved views (roster read failed
   const views = html.match(new RegExp(`<button[^>]*>${t("directoryViews.open")}</button>`, "g")) ?? [];
   expect(views).toHaveLength(1);
   expect(views[0]).toContain("disabled");
+});
+
+// The grid's rows render after the router restores scroll, so Back from a record must put the roster's own scroll back once they have.
+test("the roster grid reapplies its scroll position on Back", () => {
+  expect(render(false)).toContain('data-restores="people-roster"');
 });
