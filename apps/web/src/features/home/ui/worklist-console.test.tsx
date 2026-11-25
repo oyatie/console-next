@@ -204,30 +204,25 @@ const inboxLink = () => `href="/inbox">${t("home.inbox.viewInbox")}</a>`;
 const home = () => renderNode("/", <Home canOrgStructure={false} />);
 const rows = (count: number) => Array.from({ length: count }, (_, i) => ({ ...samplePage().items[1]!, id: `stat-${i}` }));
 
-test("Console home links to the full to-do list once every item is on the page, even with its own lane empty", () => {
-  state.inboxPages = [{ ...samplePage(), total: 2 }];
-  expect(home()).toContain(inboxLink());
-  state.inboxPages = [{ ...samplePage(), items: [], total: 0, attention_filters: [] }];
-  expect(home()).toContain(inboxLink());
-});
-
-test("Console home links to the full to-do list beside the more bar when the list is long or on later pages", () => {
-  state.inboxPages = [{ ...samplePage(), items: rows(31), total: 31 }];
-  expect(home()).toContain(inboxLink());
+test("Console home links to the full to-do list at every list length, on later pages and with its own lane empty", () => {
+  for (const page of [{ total: 2 }, { items: [], total: 0, attention_filters: [] }, { items: rows(23), total: 23 }, { items: rows(31), total: 31 }]) {
+    state.inboxPages = [{ ...samplePage(), ...page }];
+    expect(home(), `${page.total} rows`).toContain(inboxLink());
+  }
+  expect(home()).toContain(t("home.worklist.moreCount", { count: 21 }));
   state.inboxPages = [{ ...samplePage(), total: 15, total_is_exact: false }];
   state.hasNextPage = true;
   expect(home()).toContain(inboxLink());
 });
 
-test("Console home keeps the drawn more bar without the link while a short remainder is loaded", () => {
-  state.inboxPages = [{ ...samplePage(), items: rows(23), total: 23 }];
-  expect(home()).toContain(t("home.worklist.moreCount", { count: 13 }));
-  expect(home()).not.toContain(t("home.inbox.viewInbox"));
+const idle = (counts: AttentionInboxResponse["counts"]) =>
+  [{ ...samplePage(), items: [], total: 0, has_work: false, available_filters: [], attention_filters: [], counts: { ...samplePage().counts, ...counts } }];
+test.each([["snoozed", 2, true], ["snoozed", 0, false], ["notices", 1, true], ["snoozed", 0, true]] as const)("Console home links a reader without work grants to the to-do list with %s at %i (exact %s)", (key, total, exact) => {
+  state.inboxPages = idle({ [key]: { total, total_is_exact: exact } });
+  expect(home()).toContain(inboxLink());
 });
 
-test("Console offers no to-do link when no lane holds anything, nor on /inbox itself", () => {
-  state.inboxPages = [{ ...samplePage(), items: [], total: 0, has_work: false, available_filters: [], attention_filters: [] }];
-  expect(home()).not.toContain(t("home.inbox.viewInbox"));
+test("Console /inbox does not link to itself", () => {
   state.inboxPages = [{ ...samplePage(), total: 2 }];
   expect(renderNode("/inbox", <InboxPage canOrgStructure={false} />)).not.toContain(t("home.inbox.viewInbox"));
 });
@@ -296,7 +291,7 @@ test("Console WorklistLower renders headcount (ON_LEAVE/LEAVE fallback and PRE_H
   expect(state.reads).toContain("/api/v1/employees/facets");
   expect(state.reads).toContain("/api/v1/org-structure");
   expect(markup).toMatch(new RegExp(`<h1\\b[^>]*id="home-title"[^>]*>${t("home.inbox.title")}</h1>`));
-  expect(markup).not.toContain(t("home.inbox.viewInbox"));
+  expect(markup).toContain(inboxLink());
   expect(markup).toContain(t("home.worklist.headcount"));
   expect(markup).toContain(t("home.asOf", { time: "2026-11-10" }));
   expect(markup).toContain(t("home.worklist.contractEnding"));
