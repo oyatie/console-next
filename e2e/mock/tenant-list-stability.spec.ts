@@ -1,17 +1,29 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { fmtNumber } from "@console/i18n/format";
 import type { Org, OpsRecoveryRead } from "../../apps/web/src/features/platform/api";
 import { MAX_RETRY_AFTER_MS } from "../../apps/web/src/lib/react/query-defaults";
-import { VIEWS } from "../../apps/web/src/features/platform/domain/tenants";
+import { MOVES, VIEWS } from "../../apps/web/src/features/platform/domain/tenants";
 import { expectAxe, fits } from "../a11y";
 import { mockScreen } from "./screen";
 import { mockRoute } from "./route";
 import { AT, failure, id, token } from "./fixtures";
 import { screens } from "../states/registry";
+import { experienceState } from "../experience";
 
 test.beforeAll(() => loadCatalog("ko"));
+
+const RECOVERY: OpsRecoveryRead = { request: null, state: null, recovery_available: false, ops_has_passkey: false,
+  ops_enrolled: false, second_operator_available: true, active_accounts: 0, hold_hours: 24, code_ttl_minutes: 10 };
+
+// The tenant search is found by its label: Classic's is a labelled text field in a search form, Console's a search field.
+/** A section of the tenant record by its heading: Classic labels its sections, Console's record pane sections are unnamed. */
+const section = (panel: Locator, title: string) => panel.getByRole("heading", { name: title, exact: true }).locator("xpath=ancestor::section[1]");
+/** The failed read that shows `title`, with its retry. */
+const failedRead = (panel: Locator, title: string) => panel.getByRole("alert").filter({ has: panel.page().getByRole("heading", { name: title, exact: true }) });
+/** The headings of the record's sections, in order. */
+const sectionTitles = (panel: Locator) => panel.locator("section").evaluateAll(elements => elements.map(el => el.querySelector("h2, h3")?.textContent));
 
 async function mockPlatform(page: Page) {
   const fixture = await mockScreen(page, screens[0], "populated");
@@ -19,12 +31,18 @@ async function mockPlatform(page: Page) {
   const [header, payload, signature] = auth.access_token.split(".");
   auth.access_token = `${header}.${Buffer.from(JSON.stringify({ ...JSON.parse(Buffer.from(payload!, "base64url").toString()), platform: true })).toString("base64url")}.${signature}`;
   await mockRoute(page, "post", "/api/v1/auth/token/refresh", { status: 200, json: auth });
+  // Console's filter rail reads the groups. At desk widths it opens the first tenant's record, whose reads answer here
+  // unless a test holds them.
+  await mockRoute(page, "get", "/api/platform/groups", { status: 200, json: [] });
+  await mockRoute(page, "get", "/api/platform/support-sessions", { status: 200, json: { sessions: [] } });
+  await mockRoute(page, "get", "/api/platform/orgs/{id}/erase", { status: 200, json: { request: null, archived: false, legal_hold: false, second_operator_available: true, cooling_hours: 24 } });
+  await mockRoute(page, "get", "/api/platform/orgs/{id}/ops-recovery", { status: 200, json: RECOVERY });
   return fixture;
 }
 
 
-for (const count of [0, 48]) for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
-  test(`tenant list settles into useful controls with ${count} customers at ${width}px ${theme}`, async ({ page }) => {
+for (const count of [0, 48]) for (const width of [1440, 390]) for (const theme of ["light", "dark"]) for (const classic of [false, true]) {
+  test(`tenant list settles into useful controls with ${count} customers at ${width}px ${theme}${classic ? " and status views @baseline" : ""}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(theme => localStorage.setItem("console.theme", theme), theme);
     const fixture = await mockPlatform(page);
@@ -41,27 +59,29 @@ for (const count of [0, 48]) for (const width of [1440, 390]) for (const theme o
     try {
       await page.goto("/platform");
       const main = page.getByRole("main");
-      const search = main.getByRole("search");
+      const search = main.getByLabel(t("tenants.search"), { exact: true });
       const views = main.getByRole("group", { name: t("tenants.views"), exact: true });
       const create = main.getByRole("button", { name: t("tenants.create"), exact: true });
       await expect(search).toBeVisible();
       await page.evaluate(() => document.fonts.ready);
       await expect.soft(create).toBeDisabled();
-      await expect.soft(views.locator(".btn__count")).toHaveText(VIEWS.map(() => ""));
-      const positions = async () => Promise.all([search.boundingBox(), views.getByRole("button").evaluateAll(elements => elements.map(el => el.getBoundingClientRect().toJSON()))]);
+      if (classic) await expect.soft(views.locator(".btn__count")).toHaveText(VIEWS.map(() => ""));
+      const positions = async () => Promise.all([search.boundingBox(), classic ? views.getByRole("button").evaluateAll(elements => elements.map(el => el.getBoundingClientRect().toJSON())) : []]);
       const before = await positions();
       held.resolve();
       await expect(main.locator("#tenants-list")).toBeVisible();
       await expect(main.locator("#tenants-list tbody tr")).toHaveCount(orgs.length);
       if (count === 0) {
         await expect(search).toHaveCount(0);
-        await expect(views).toHaveCount(0);
+        if (classic) await expect(views).toHaveCount(0);
         await expect(main.locator("#tenants-list").getByRole("button", { name: t("tenants.create"), exact: true })).toBeEnabled();
       } else {
         expect(await search.count()).toBe(1);
-        expect(await views.count()).toBe(1);
         expect.soft(await positions()).toEqual(before);
-        await expect(views.getByRole("button").first()).toContainText(fmtNumber(orgs.length));
+        if (classic) {
+          expect(await views.count()).toBe(1);
+          await expect(views.getByRole("button").first()).toContainText(fmtNumber(orgs.length));
+        }
       }
       await expect(create).toBeEnabled();
       await expect(create).toHaveCount(1);
@@ -76,6 +96,31 @@ for (const count of [0, 48]) for (const width of [1440, 390]) for (const theme o
     } finally { held.resolve(); fixture.release(); await page.close(); }
   });
 }
+
+// /platform has no board, so this pins Console's render at 1440: its status views are a stat row over a filter rail. No
+// board draws an admin screen at 390.
+test.describe("console tenant stats", () => {
+  test.use({ storageState: experienceState("console") });
+  test("console tenant stats count the landed list at 1440px", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const fixture = await mockPlatform(page);
+    const orgs: Org[] = Array.from({ length: 48 }, (_, index) => ({
+      id: id(5000 + index), name: `Synthetic customer ${index + 1}`, slug: `customer-${index + 1}`,
+      group_id: null, group_slug: null, group_name: null, status: "ACTIVE", created_at: AT, updated_at: AT,
+    }));
+    await mockRoute(page, "get", "/api/platform/orgs", { status: 200, json: orgs });
+    await mockRoute(page, "get", "/api/platform/ops", { status: 200, json: { tenants: [], notices: [] } });
+    try {
+      await page.goto("/platform");
+      const stats = page.getByRole("main").getByLabel(t("tenants.stat.label"), { exact: true });
+      const all = stats.getByRole("button", { name: t("tenants.view.all"), exact: true });
+      await expect(all).toHaveAttribute("aria-pressed", "true");
+      // The stat's value stands beside its button, in the same item.
+      await expect(all.locator("xpath=ancestor::div[1]")).toContainText(fmtNumber(orgs.length));
+      expect(fixture.unexpected).toEqual([]);
+    } finally { fixture.release(); await page.close(); }
+  });
+});
 
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
   test(`tenant creation explains a failed list and recovers to an empty-card action at ${width}px ${theme}`, async ({ page }) => {
@@ -94,9 +139,10 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     try {
       await page.goto("/platform");
       const main = page.getByRole("main");
-      await expect(main.getByRole("search")).toBeVisible();
+      const search = main.getByLabel(t("tenants.search"), { exact: true });
+      await expect(search).toBeVisible();
       await page.evaluate(() => document.fonts.ready);
-      const positions = () => main.locator(".page__head button, .page__head input").evaluateAll(elements => elements.map(el => el.getBoundingClientRect().toJSON()));
+      const positions = () => search.or(main.getByRole("button", { name: t("tenants.create"), exact: true })).evaluateAll(elements => elements.map(el => el.getBoundingClientRect().toJSON()));
       const before = await positions();
       held.resolve();
       await expect(main.getByRole("heading", { name: t("common.loadFailed.title"), exact: true })).toBeVisible();
@@ -104,7 +150,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       const create = main.getByRole("button", { name: t("tenants.create"), exact: true });
       await expect(create).toHaveAttribute("aria-disabled", "true");
       await expect(create).toHaveAccessibleDescription(t("tenants.create.unavailable"));
-      await expect(main.getByRole("alert").locator(".state__actions").getByText(t("tenants.create.unavailable"), { exact: true })).toBeVisible();
+      await expect(main.getByRole("alert").getByText(t("tenants.create.unavailable"), { exact: true })).toBeVisible();
       await create.focus();
       await create.press("Enter");
       await create.click({ force: true });
@@ -134,7 +180,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     try {
       await page.goto("/platform");
       const main = page.getByRole("main");
-      await expect(main.getByRole("search")).toBeVisible();
+      await expect(main.getByLabel(t("tenants.search"), { exact: true })).toBeVisible();
       await page.evaluate(() => {
         Object.defineProperty(navigator, "onLine", { configurable: true, get: () => false });
         dispatchEvent(new Event("offline"));
@@ -222,15 +268,16 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       await page.goto("/platform");
       await page.getByRole("row").filter({ has: page.getByRole("gridcell", { name: org.name, exact: true }) }).click();
       const panel = page.getByRole("complementary", { name: org.name, exact: true });
-      await expect(panel.locator('section[aria-labelledby="tenant-status"] button')).toHaveCount(removable ? 2 : 1);
+      // Each status move once; archiving an undeletable tenant is offered as deletion's remedy instead.
+      for (const move of MOVES[org.status]) await expect(panel.getByRole("button", { name: t(`tenants.status.${move}`, { org: org.name }), exact: true })).toHaveCount(1);
       const remove = panel.getByRole("button", { name: t("tenants.remove", { org: org.name }), exact: true });
       await expect(remove).toBeVisible();
-      const deletion = panel.getByRole("region", { name: t("tenants.section.remove"), exact: true });
+      const deletion = section(panel, t("tenants.section.remove"));
       const erase = deletion.getByRole("button", { name: t("tenants.remove.force", { org: org.name }), exact: true });
       await expect(erase).toBeVisible();
       await expect(erase).toHaveAccessibleDescription(t("common.loading"));
       await expect(deletion.locator("[data-bone], [role=progressbar]")).toHaveCount(0);
-      await expect(panel.locator("section").last()).toHaveAttribute("aria-labelledby", "tenant-remove");
+      expect((await sectionTitles(panel)).at(-1)).toBe(t("tenants.section.remove"));
       if (removable) await expect(remove).toBeEnabled();
       else {
         await expect(remove).toHaveAttribute("aria-disabled", "true");
@@ -246,7 +293,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
         rect.y += scrollY + main.scrollTop;
         return {
           name: el.getAttribute("aria-label") ?? el.textContent,
-          section: el.closest("section[aria-labelledby]")?.getAttribute("aria-labelledby"),
+          section: el.closest("section")?.querySelector("h2, h3")?.textContent,
           failure: el.closest('[role="alert"]') !== null,
           rect: rect.toJSON(),
         };
@@ -279,8 +326,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
         for (const read of [first, first === "recovery" ? "erase" : "recovery"] as const) {
           if (read === "recovery" ? recoveryStatus !== 503 : eraseStatus !== 503) continue;
           const received = page.waitForResponse(response => new URL(response.url()).pathname.endsWith(read === "erase" ? "/erase" : "/ops-recovery"));
-          const resource = read === "erase" ? deletion : panel.getByRole("region", { name: `${t("tenants.section.code")} · ${t("opsRecovery.title")}`, exact: true });
-          await resource.getByRole("button", { name: t("common.retry"), exact: true }).click();
+          await failedRead(panel, t(read === "erase" ? "tenants.eraseFailed" : "tenants.recoveryFailed")).getByRole("button", { name: t("common.retry"), exact: true }).click();
           // The retry can scroll into view; measure the held response after that deliberate movement.
           await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
           const persistent = (await positions()).filter(button => !button.failure);
@@ -294,8 +340,8 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       await expect(panel.getByRole("heading", { name: t("opsRecovery.title"), exact: true })).toBeVisible();
       await expect(panel.getByRole("button", { name: t("tenants.reissue"), exact: true })).toBeEnabled();
       await expect(panel.getByRole("button", { name: t("tenants.remove.force", { org: org.name }), exact: true })).toHaveCount(1);
-      const sections = await panel.locator("section[aria-labelledby]").evaluateAll(elements => elements.map(el => el.getAttribute("aria-labelledby")));
-      expect(sections).toEqual(["tenant-status", "tenant-code", "tenant-ops-recovery", "tenant-remove"]);
+      // The record opens on the tenant's status (Classic) or overview (Console); code, recovery and deletion close it.
+      expect((await sectionTitles(panel)).slice(-3)).toEqual([t("tenants.section.code"), t("opsRecovery.title"), t("tenants.section.remove")]);
       await expect(erase).toHaveCount(1);
       await expect(erase).toHaveAccessibleDescription(t("tenants.erase.tenant_active"));
       await fits(page, `tenant-panel/${width}/${theme}`);
@@ -307,15 +353,14 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
   }
 }
 
-for (const width of [1440, 390]) for (const theme of ["light", "dark"]) for (const status of ["ACTIVE", "SUSPENDED", "ARCHIVED"] as const) {
-  test(`tenant read reservation follows ${status} content at ${width}px ${theme}`, async ({ page }) => {
+for (const width of [1440, 390]) for (const theme of ["light", "dark"]) for (const status of ["ACTIVE", "SUSPENDED", "ARCHIVED"] as const) for (const classic of [false, true]) {
+  test(classic ? `tenant read reservation follows ${status} content at ${width}px ${theme} @baseline` : `tenant deletion holds still while the ${status} recovery read fails and retries at ${width}px ${theme}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1600 });
     await page.addInitScript(theme => localStorage.setItem("console.theme", theme), theme);
     const fixture = await mockPlatform(page);
     const org: Org = { id: id(5000), name: "Synthetic customer", slug: "customer", group_id: null, group_slug: null, group_name: null,
       status, removable: true, created_at: AT, updated_at: AT };
-    const recovery: OpsRecoveryRead = { request: null, state: null, recovery_available: false, ops_has_passkey: false,
-      ops_enrolled: false, second_operator_available: true, active_accounts: 0, hold_hours: 24, code_ttl_minutes: 10 };
+    const recovery: OpsRecoveryRead = { ...RECOVERY };
     let held = Promise.withResolvers<void>();
     let failed = true;
     await mockRoute(page, "get", "/api/platform/orgs", { status: 200, json: [org] });
@@ -330,27 +375,37 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) for (con
     });
     try {
       const open = async () => {
-        await page.goto("/platform");
-        if (status !== "ACTIVE") await page.getByRole("group", { name: t("tenants.views"), exact: true }).getByRole("button", { name: t("tenants.view.all"), exact: false }).click();
+        await page.goto("/platform?view=all");
         await page.getByRole("row").filter({ has: page.getByRole("gridcell", { name: org.name, exact: true }) }).click();
         await page.evaluate(() => document.fonts.ready);
       };
       await open();
       const panel = page.getByRole("complementary", { name: org.name, exact: true });
       const slot = panel.getByRole("region", { name: `${t("tenants.section.code")} · ${t("opsRecovery.title")}`, exact: true });
-      const deletion = panel.getByRole("region", { name: t("tenants.section.remove"), exact: true });
+      const deletion = section(panel, t("tenants.section.remove"));
+      const failure = failedRead(panel, t("tenants.recoveryFailed"));
+      // A settled recovery read offers to open a recovery, here with the reason it cannot yet.
+      const settledRecovery = panel.getByRole("button", { name: t("opsRecovery.open"), exact: true });
       const position = () => deletion.evaluate(el => el.getBoundingClientRect().top + el.closest("main")!.scrollTop + scrollY);
       const before = await position();
       held.resolve();
-      await expect(slot.getByRole("alert")).toBeVisible();
+      await expect(failure).toBeVisible();
       expect(await position()).toBe(before);
       failed = false;
       held = Promise.withResolvers<void>();
-      await slot.getByRole("button", { name: t("common.retry"), exact: true }).click();
+      await failure.getByRole("button", { name: t("common.retry"), exact: true }).click();
       expect(await position()).toBe(before);
       held.resolve();
-      await expect(slot.locator("#tenant-ops-recovery")).toBeVisible();
+      await expect(failure).toHaveCount(0);
+      await expect(settledRecovery).toBeVisible();
       expect(await position()).toBe(before);
+      expect((await sectionTitles(panel)).at(-1)).toBe(t("tenants.section.remove"));
+      await expect(deletion.getByRole("button", { name: t("tenants.remove", { org: org.name }), exact: true })).toBeVisible();
+      if (!classic) {
+        expect(fixture.unexpected).toEqual([]);
+        return;
+      }
+      await expect(slot.locator("#tenant-ops-recovery")).toBeVisible();
       const measure = () => slot.evaluate(el => {
         const rect = el.getBoundingClientRect();
         const last = el.querySelector("section:last-child")!;
