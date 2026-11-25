@@ -82,6 +82,7 @@ export function ConsolePhoneBottom({
   unlinked,
   activeId,
   onNavigate,
+  menuLoading = false,
 }: {
   links: readonly NavLink[];
   inboxCount?: number;
@@ -96,6 +97,8 @@ export function ConsolePhoneBottom({
   unlinked?: boolean;
   activeId?: string;
   onNavigate: (href: string) => void;
+  /** The menu is still loading: My profile takes the last of the bar's five places, where a full menu leaves it. */
+  menuLoading?: boolean;
 }) {
   const items: PhoneNavItem[] =
     !platform && mode === "self-service"
@@ -118,6 +121,9 @@ export function ConsolePhoneBottom({
   return (
     <PhoneBottomNav
       items={items}
+      // shortcut: a menu shorter than five places still moves My profile once when it lands; holding the slot to the
+      // right count needs the menu's size before the menu itself.
+      reserve={menuLoading ? 5 : undefined}
       activeId={activeId}
       onNavigate={item => onNavigate(item.href)}
       renderLink={(item, props) => (

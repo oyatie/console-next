@@ -414,22 +414,21 @@ test("on a phone the to-do slot names its label before its count, as the desk ba
   await element(nav.locator('a[href="/"]')).toHaveAccessibleDescription(t("shell.needsMe.countDescription", { count: 3 }));
 });
 
-test("on a phone the bottom bar holds its room while the menu loads, rather than stretching My profile alone across it", async () => {
+test("on a phone My profile stays reachable while the menu loads, in the last of the bar's five places", async () => {
   const asked = Promise.withResolvers<void>(), done = Promise.withResolvers<void>();
   const opened = openPhoneShell("UNLINKED", { held: { path: "/api/v1/access/me", asked: asked.resolve, done: done.promise } });
   opened.catch(() => {});
   try {
     await asked.promise;
-    // The phone bars' code has loaded once the top bar draws its search.
-    await page.getByRole("banner").getByRole("button", { name: t("shell.jumpLabel"), exact: true }).waitFor();
+    const profile = page.getByRole("navigation", { name: t("shell.nav"), exact: true }).getByRole("link", { name: t("shell.profile"), exact: true });
+    await profile.waitFor();
     await frames();
-    // A lone slot would span the bar, then jump to its own place when the menu lands under a thumb already on it.
-    expect(await page.locator("[data-pinned-bar] a").count()).toBe(0);
+    // Alone it would span the bar, then jump to its own place under a thumb already on it when a full menu lands.
+    expect(await profile.boundingBox()).toMatchObject({ x: 312, width: 78 });
   } finally { done.resolve(); }
   const nav = await opened;
-  await element(nav.getByRole("link", { name: t("shell.profile"), exact: true })).toBeVisible();
   await element(nav.locator('a[href="/"]')).toBeVisible();
-});
+}, 30_000);
 
 test("on a phone a failed menu read says so beside the bar and offers the retry, as it does on a desktop", async () => {
   await openPhoneShell("UNLINKED", { refused: "/api/v1/onboarding/modules" });

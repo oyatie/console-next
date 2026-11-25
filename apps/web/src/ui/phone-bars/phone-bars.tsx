@@ -113,6 +113,7 @@ export function PhoneBottomNav({
   moreLabel,
   onNavigate,
   renderLink,
+  reserve,
 }: {
   /** Accessible name of the bottom navigation landmark; defaults to `shell.nav`. */
   label?: string;
@@ -126,6 +127,11 @@ export function PhoneBottomNav({
   onNavigate?: (item: PhoneNavItem) => void;
   /** Optional custom link renderer for router integration; falls back to a native `<a>` element. */
   renderLink?: (item: PhoneNavItem, props: PhoneNavLinkRenderProps) => ReactNode;
+  /**
+   * While the rest of the items are still coming, the bar keeps this many slots' room and draws the items it has in
+   * the last of them, so they need not move when the rest arrive.
+   */
+  reserve?: number;
 }) {
   const descriptionId = useId();
   if (items.length === 0) return null;
@@ -161,7 +167,10 @@ export function PhoneBottomNav({
 
   return (
     <nav aria-label={resolvedLabel} className={s.bottomNav}>
-      <ul className={s.list}>
+      <ul
+        className={s.list}
+        style={reserve && reserve > items.length ? { paddingInlineStart: `${((reserve - items.length) / reserve) * 100}%` } : undefined}
+      >
         {inlineItems.map((item, idx) => {
           const isCurrent = item.id === activeId;
           const linkProps: PhoneNavLinkRenderProps = {
