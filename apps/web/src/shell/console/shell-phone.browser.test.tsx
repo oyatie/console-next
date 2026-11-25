@@ -361,5 +361,5 @@ for (const [what, hold] of desktopHolds) test(`on a desktop neither the page nor
 test("on a desktop an operator's chrome draws without the tenant reader's read", async () => {
   await openPhoneShell("LINKED", { width: 1440, operator: true });
   await page.locator("[data-workspace-tab]").first().waitFor();
-  await page.locator("[data-console-shell] footer").first().waitFor();
+  await expect.poll(() => page.locator("[data-console-shell] footer").count()).toBe(1);
 });
