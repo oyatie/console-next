@@ -21,7 +21,7 @@ vi.mock("../../../experience/dom", async original => ({
 
 beforeAll(() => loadCatalog("ko"));
 
-const certificate = { id: "cert-1", certificate_no: "C-2026-0001", name: "검증직원", kind: "EMPLOYMENT", issued_at: "2026-10-26T09:00:00Z", voided_at: null };
+const certificate = { id: "cert-1", certificate_no: "C-2026-0001", name: "Synthetic person", kind: "EMPLOYMENT", issued_at: "2026-10-26T09:00:00Z", voided_at: null };
 
 // The person card reads one person's certificates as a plain list; the register pages the same list, so a shared
 // cache entry would hand the register a page it cannot read.

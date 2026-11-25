@@ -2,6 +2,8 @@
 import { dirname, resolve } from "node:path";
 import { realpathSync } from "node:fs";
 import { afterAll, beforeAll, expect, test } from "vitest";
+import { loadCatalog } from "@console/i18n";
+import { tg } from "@console/i18n/gallery";
 import { expect as element } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 import { browserTestOptimizeDeps, chromium, openBrowserTestPage, waitForBrowserTestPage, type Browser, type Page } from "../../lib/browser-test";
@@ -10,6 +12,7 @@ let server: ViteDevServer;
 let browser: Browser;
 let page: Page;
 beforeAll(async () => {
+  await loadCatalog("ko");
   server = await createServer({
     configFile: false, cacheDir: ".cache/tabs-test", logLevel: "error",
     // Reloads need one locale chunk, rather than the full graph of screen catalog sources.
@@ -122,17 +125,17 @@ test("URL links replace history, restore deep links and preserve other filters",
 test("a view that hosts its own strip keeps keyboard focus on the chosen link", async () => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(`${server.resolvedUrls!.local[0]}tabs-remount`);
-  const tabs = page.getByRole("navigation", { name: "보기", exact: true });
-  await tabs.getByRole("link", { name: "조직도", exact: true }).focus();
+  const tabs = page.getByRole("navigation", { name: tg("tabs.label"), exact: true });
+  await tabs.getByRole("link", { name: tg("tabs.chart"), exact: true }).focus();
   await page.keyboard.press("Tab");
   await page.keyboard.press("Enter");
   await element(page.getByRole("region", { name: "list", exact: true })).toBeVisible();
-  await element(tabs.getByRole("link", { name: "목록", exact: true })).toBeFocused();
+  await element(tabs.getByRole("link", { name: tg("tabs.list"), exact: true })).toBeFocused();
   await page.keyboard.press("Tab");
-  await element(tabs.getByRole("link", { name: "아웃라인", exact: true })).toBeFocused();
+  await element(tabs.getByRole("link", { name: tg("tabs.outline"), exact: true })).toBeFocused();
   // Only focus the strip had is carried: a choice made without it (a script, a pointer that does not focus) leaves focus alone.
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-  await tabs.getByRole("link", { name: "조직도", exact: true }).evaluate((link: HTMLElement) => link.click());
+  await tabs.getByRole("link", { name: tg("tabs.chart"), exact: true }).evaluate((link: HTMLElement) => link.click());
   await element(page.getByRole("region", { name: "chart", exact: true })).toBeVisible();
   await element(page.locator("body")).toBeFocused();
 });
