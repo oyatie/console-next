@@ -73,7 +73,7 @@ test("the search button is named by the shared search label and its visible word
 
 test("the search button's / follows the single-key switch at once, in this tab and from another", async () => {
   const { page } = mounted;
-  const search = page.getByRole("button", { name: t("shell.jumpLabel") });
+  const search = page.getByRole("button", { name: `${t("shell.jumpLabel")} ${t("shell.searchHint")}`, exact: true });
   const hint = search.locator("kbd");
   const toggle = page.getByRole("switch", { name: t("account.singleKeys") });
 
