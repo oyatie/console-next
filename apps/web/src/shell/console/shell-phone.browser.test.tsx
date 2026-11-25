@@ -256,6 +256,9 @@ test("on a phone a failed menu read says so beside the bar and offers the retry,
   await element(alert.getByRole("heading", { name: t("shell.nav.failed"), exact: true })).toBeVisible();
   await element(alert.getByRole("button", { name: t("common.retry"), exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+  // A printed page leaves it out with the bars, as a desktop print leaves out the bar that carries it.
+  await page.emulateMedia({ media: "print" });
+  try { await element(alert).toBeHidden(); } finally { await page.emulateMedia({ media: "screen" }); }
 });
 
 test("on a phone the search says it opens a dialog, as the desk search does", async () => {

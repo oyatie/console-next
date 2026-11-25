@@ -242,6 +242,7 @@
   .noticesArea,
   .statusArea,
   .phoneTop,
+  .phoneNotice,
   .phoneNav {
     display: none;
   }
