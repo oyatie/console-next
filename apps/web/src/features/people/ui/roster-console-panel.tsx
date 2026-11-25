@@ -157,6 +157,7 @@ function ConsolePeek({
     <div className={s.peekConsole}>
       <RecordIdentityBar
         name={e.name}
+        nameLevel={3}
         number={e.employee_number ?? t("people.number.none")}
         badges={
           <>

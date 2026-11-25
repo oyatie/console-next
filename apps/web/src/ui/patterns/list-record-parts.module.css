@@ -106,6 +106,7 @@
 }
 
 .identityName {
+  margin: 0;
   font-size: var(--text-xl);
   font-weight: var(--fw-strong);
   color: var(--ink);
