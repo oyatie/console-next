@@ -65,7 +65,7 @@ function consoleReasonText(item: AttentionInboxItem, taskLabel: string): string 
 
 export function ConsoleWorklistTable({
   items, selected, onSelect, onOpen, checkedIds, onToggleCheck, onToggleIds, onToggleAll,
-  shownCols, action, inlineRowAction, focusAfter, extra, moreCount, morePending, onMore,
+  shownCols, action, inlineRowAction, focusAfter, extra, moreCount, moreLink, morePending, onMore,
 }: {
   items: readonly AttentionInboxItem[];
   selected?: string;
@@ -81,10 +81,12 @@ export function ConsoleWorklistTable({
   focusAfter?: string;
   extra?: RowAction;
   moreCount?: number;
+  moreLink?: ReactNode;
   morePending?: boolean;
   onMore?: () => void;
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const canMore = Boolean(onMore) && (moreCount ?? 0) > 0;
   const tableSectionRef = useRef<HTMLDivElement>(null);
   const pendingFoldFocus = useRef<{ rowId: string; button: boolean } | null>(null);
 
@@ -287,12 +289,15 @@ export function ConsoleWorklistTable({
         onOpen={handleOpen}
         columns={columns}
       />
-      {moreCount && moreCount > 0 && onMore ? (
+      {canMore || moreLink ? (
         <WorklistMoreBar>
-          <Button variant="ghost" size="sm" disabled={morePending} onClick={onMore}>
-            <ChevronDown size={14} aria-hidden="true" />
-            {t("home.worklist.moreCount", { count: moreCount })}
-          </Button>
+          {canMore ? (
+            <Button variant="ghost" size="sm" disabled={morePending} onClick={onMore}>
+              <ChevronDown size={14} aria-hidden="true" />
+              {t("home.worklist.moreCount", { count: moreCount })}
+            </Button>
+          ) : null}
+          {moreLink}
         </WorklistMoreBar>
       ) : null}
     </div>

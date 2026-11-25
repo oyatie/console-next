@@ -26,4 +26,6 @@ const router = createRouter({
   routeTree: root.addChildren([app.addChildren([card, pay])]),
   history: createMemoryHistory({ initialEntries: [`/people/${new URLSearchParams(location.search).get("person")}`] }),
 });
+// The style is read from the page root, where the app's boot script puts the stored one.
+if (new URLSearchParams(location.search).get("look") === "console") document.documentElement.dataset.experience = "console";
 createRoot(document.getElementById("root")!).render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><RouterProvider router={router} /></QueryClientProvider>);
