@@ -6,8 +6,9 @@ repo=${2:-${GITHUB_REPOSITORY:-$(gh repo view --json nameWithOwner --jq .nameWit
 scratch=$(mktemp -d)
 trap 'rm -rf "$scratch"' EXIT
 export CONSOLE_NEXT=${CONSOLE_NEXT:-$(git rev-parse --show-toplevel)}
-gh run list --repo "$repo" --workflow ci.yml --branch dev --event push --status completed --limit 1 \
-  --json databaseId,headSha,headBranch,event > "$scratch/run.json"
+# The listing's status filter can omit a finished run.
+gh run list --repo "$repo" --workflow ci.yml --branch dev --event push \
+  --json databaseId,headSha,headBranch,event,status > "$scratch/run.json"
 python3 - "$scratch" "$reader" "$repo" <<'PY'
 import importlib.util
 import json
@@ -23,8 +24,8 @@ import evidence
 
 root, repo = Path(sys.argv[1]), sys.argv[3]
 runs = json.loads((root / 'run.json').read_text())
-if not runs: sys.exit('no completed dev CI run')
-run = runs[0]
+run = next((run for run in runs if run['status'] == 'completed'), None)
+if run is None: sys.exit('no completed dev CI run')
 if run['event'] != 'push' or run['headBranch'] != 'dev': sys.exit('only a dev push run may be ingested')
 job_pages = json.loads(subprocess.check_output(['gh', 'api', f'repos/{repo}/actions/runs/{run["databaseId"]}/jobs', '--paginate', '--slurp'], text=True))
 jobs = {job['name']: job.get('conclusion') for page in job_pages for job in page['jobs']}
