@@ -11,7 +11,7 @@ tauri-build = { version = "2.7.1", features = [] }
 url = "2"
 
 [dependencies]
-tauri = { version = "=2.12.2", features = [] }
+tauri = { version = "=2.12.5", features = [] }
 tauri-plugin-single-instance = { version = "=2.5.5", features = ["deep-link"] }
 tauri-plugin-window-state = "=2.5.0"
 tauri-plugin-deep-link = "=2.6.3"

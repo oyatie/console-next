@@ -7,8 +7,12 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { after, test } from 'node:test';
 import { runInNewContext } from 'node:vm';
+import { dump, load } from 'js-yaml';
+import { suiteRunsFixture } from './fixtures/suite-runs.mjs';
 
 const root = resolve(process.env.PLATFORM_REPO_ROOT ?? '.');
+const workflow = load(readFileSync(join(root, '.github/workflows/promote.yml'), 'utf8'));
+const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
 const api = () => import(pathToFileURL(join(root, 'deploy/ci/promote.mjs')));
 const historyRoot = mkdtempSync(join(tmpdir(), 'promotion-history-'));
 after(() => rmSync(historyRoot, {recursive:true, force:true}));
@@ -37,6 +41,43 @@ function proof() {
       .map((name, index) => ({id:index + 1, name, run_id:42, head_sha:sha, status:'completed', conclusion:'success'})),
   };
 }
+
+test('proof emits the requested environment on dispatch and every environment on a dev push', async t => {
+  const step = workflow.jobs.proof.steps.find(step => step.id === 'proof');
+  const runProof = new AsyncFunction('github', 'core', 'process', step.with.script);
+  const input = proof();
+  input.run.run_attempt = 1;
+  const github = {rest:{actions:{getWorkflowRun:async () => ({data:input.run})}}, paginate:async () => input.jobs};
+  const rows = ['preview', 'production'].map(environment => ({environment, target:'host', channel:`release-${environment}`}));
+  const workspace = mkdtempSync(join(tmpdir(), 'promotion-proof-'));
+  t.after(() => rmSync(workspace, {recursive:true, force:true}));
+  cpSync(join(historyRoot, '.github'), join(workspace, '.github'), {recursive:true});
+  for (const {environment, ...config} of rows) {
+    const directory = join(workspace, 'deploy/clusters', environment);
+    mkdirSync(directory, {recursive:true});
+    writeFileSync(join(directory, 'platform.json'), JSON.stringify(config));
+  }
+  symlinkSync(join(root, 'deploy/ci'), join(workspace, 'deploy/ci'));
+  const cwd = process.cwd();
+  try {
+    process.chdir(workspace);
+    for (const environment of ['', ...rows.map(row => row.environment)]) {
+      const outputs = {};
+      await runProof(github, {setOutput:(key, value) => { outputs[key] = value; }}, {env:{
+        GITHUB_WORKSPACE:workspace, GITHUB_REPOSITORY:repository, PLATFORM_RUN_ID:String(input.run.id), PROMOTION_ENVIRONMENT:environment,
+      }});
+      assert.deepEqual(outputs.matrix, {include:environment ? rows.filter(row => row.environment === environment) : rows});
+      assert.equal(outputs.sha, sha);
+      assert.equal(JSON.parse(readFileSync('promotion-proof.json')).sha, sha);
+    }
+  } finally { process.chdir(cwd); }
+  const choice = workflow.on.workflow_dispatch.inputs.environment;
+  assert.equal(choice.required, true);
+  assert.equal(choice.type, 'choice');
+  const {discoverEnvironments} = await api();
+  assert.deepEqual(choice.options.toSorted(), discoverEnvironments(root).map(row => row.environment));
+  assert.equal(step.env.PROMOTION_ENVIRONMENT, '${{ inputs.environment }}');
+});
 
 test('discovers channel and target from environment configuration, without promoting templates', async () => {
   const {discoverEnvironments} = await api();
@@ -267,7 +308,6 @@ for (const [name, message] of [
   ['Native image smoke test · ${{ matrix.unknown }}', /unsupported job name expression/],
 ]) test(`PROMOTE_NOT_GREEN: refuses unsupported matrix display name ${name}`, async () => {
   const {assertPromotion} = await api();
-  const {load, dump} = await import('js-yaml');
   const dir = mkdtempSync(join(tmpdir(), 'promotion-name-'));
   try {
     mkdirSync(join(dir, '.github/workflows'), {recursive:true});
@@ -380,14 +420,15 @@ async function publishingFixture(options = {}) {
   const deploy = `ghcr.io/${repository}/console-deploy`;
   const digests = {shadow:`sha256:${'b'.repeat(64)}`, current:`sha256:${'c'.repeat(64)}`, artifact:`sha256:${'d'.repeat(64)}`};
   const image = `ghcr.io/${repository}/console@sha256:${'a'.repeat(64)}`;
-  const envConfig = join(historyRoot, 'deploy/clusters/production');
+  const environment = options.environment ?? 'production';
+  const envConfig = join(historyRoot, 'deploy/clusters', environment);
   mkdirSync(envConfig, {recursive:true});
-  writeFileSync(join(envConfig, 'platform.json'), JSON.stringify({target:'host', channel:'production'}));
+  writeFileSync(join(envConfig, 'platform.json'), JSON.stringify({target:'host', channel:environment}));
   const execute = (bin, args, toolOptions) => {
     calls.push([bin, ...args]);
     if (bin === 'buildx') {
       const tag = args[2].split(':').at(-1);
-      const kind = tag === `shadow-${sha}` || tag === 'shadow' ? 'shadow' : tag === 'production' ? 'current' : 'artifact';
+      const kind = tag === `shadow-${sha}` || tag === 'shadow' ? 'shadow' : tag === environment ? 'current' : 'artifact';
       if (tag === 'shadow' && options.shadowMoved) throw new Error('mutable shadow moved to a newer build');
       if ((options.registryError || options.unrelated404) && kind === 'current') throw Object.assign(new Error('registry unavailable'), {stderr:options.unrelated404 ? '404 route not found' : 'UNAUTHORIZED'});
       if (kind === 'current' && !options.current || kind === 'artifact' && !pushed) {
@@ -432,7 +473,7 @@ async function publishingFixture(options = {}) {
       writeFileSync(join(output, 'revision.json'), JSON.stringify({
         revision:current ? options.current : options.immutableSha && args[2].endsWith(digests.artifact) ? previous : options.shadowSha ?? sha,
         image:options.invalidImage ? image.replace('/console@', '/other@') : image,
-        environment:options.invalidEnvironment ? 'other' : current || args[2].endsWith(digests.artifact) ? 'production' : 'exit-test',
+        environment:options.invalidEnvironment ? 'other' : current || args[2].endsWith(digests.artifact) ? environment : 'exit-test',
       }));
       writeFileSync(join(output, 'image-sbom.json'), JSON.stringify({spdxVersion:'SPDX-2.3'}));
       if (args[2].endsWith(digests.artifact)) {
@@ -454,7 +495,7 @@ async function publishingFixture(options = {}) {
       assert.equal(toolOptions.cwd, options.candidateRoot ?? historyRoot);
       const output = args[3];
       mkdirSync(output, {recursive:true});
-      writeFileSync(join(output, 'revision.json'), JSON.stringify({revision:sha, image, environment:'production'}));
+      writeFileSync(join(output, 'revision.json'), JSON.stringify({revision:sha, image, environment}));
     }
     if (bin === 'flux' && args[0] === 'push') {
       pushed = true;
@@ -462,7 +503,7 @@ async function publishingFixture(options = {}) {
     }
     return '';
   };
-  const input = {proof:{...proof(), currentRevision:null}, environment:'production',
+  const input = {proof:{...proof(), currentRevision:null}, environment, github:options.github ?? suiteRunsFixture(sha, repository).github,
     predicate:options.missingPredicate ? undefined : predicate(), runUrl, root:historyRoot,
     candidateRoot:options.candidateRoot, directory};
   if (options.failedGate) input.predicate.gates[0].result = 'fail';
@@ -474,6 +515,62 @@ async function publishingFixture(options = {}) {
   };
   return {publish, calls, directory, deploy, digests};
 }
+
+test('publisher reports PROMOTE_SUITES before reading or writing artifacts when a suite is missing', async () => {
+  const suites = suiteRunsFixture(sha, repository);
+  suites.runs['route-load.yml'] = [];
+  const fixture = await publishingFixture({github:suites.github});
+  try {
+    assert.deepEqual(await fixture.publish(), {published:false, code:'PROMOTE_SUITES',
+      summary:'production not published: route-load.yml (missing candidate run)'});
+    assert.deepEqual(fixture.calls, []);
+  } finally { rmSync(fixture.directory, {recursive:true, force:true}); }
+});
+
+test('publisher fails before reading or writing artifacts if the suite API fails after a refusal', async () => {
+  const error = Object.assign(new Error('actions unavailable', {cause:new Error('timeout')}), {status:500});
+  const github = {paginate:async (route, params) => {
+    if (params.workflow_id === 'db-tests.yml') return [];
+    throw error;
+  }};
+  const fixture = await publishingFixture({github});
+  try {
+    await assert.rejects(fixture.publish, actual => actual === error);
+    assert.deepEqual(fixture.calls, []);
+  } finally { rmSync(fixture.directory, {recursive:true, force:true}); }
+});
+
+test('publisher fails before reading or writing artifacts if the configured channel has no suite policy', async () => {
+  const fixture = await publishingFixture({environment:'candidate'});
+  try {
+    await assert.rejects(fixture.publish, {name:'AssertionError', message:'PROMOTE_ENVIRONMENT: candidate has no suite policy'});
+    assert.deepEqual(fixture.calls, []);
+  } finally { rmSync(fixture.directory, {recursive:true, force:true}); }
+});
+
+test('publisher moves preview without reading production suites', async () => {
+  const suites = suiteRunsFixture(sha, repository);
+  const fixture = await publishingFixture({environment:'preview', github:suites.github});
+  try {
+    assert.equal((await fixture.publish()).published, true);
+    assert.equal(fixture.calls.at(-1).at(-1), '--tag=preview');
+    assert.deepEqual(suites.requests, []);
+  } finally { rmSync(fixture.directory, {recursive:true, force:true}); }
+});
+
+test('publisher moves production and returns the accepted suite runs', async () => {
+  const fixture = await publishingFixture();
+  try {
+    const {published, artifact, summary} = await fixture.publish();
+    assert.equal(published, true);
+    assert.ok(summary.includes(`production: ${artifact}`));
+    for (const [index, workflow] of ['db-tests.yml', 'e2e-live.yml', 'route-load.yml'].entries()) {
+      const id = index + 1;
+      assert.ok(summary.includes(`${workflow}: [run ${id}, attempt 1](https://github.com/${repository}/actions/runs/${id}/attempts/1)`));
+    }
+    assert.equal(fixture.calls.at(-1).at(-1), '--tag=production');
+  } finally { rmSync(fixture.directory, {recursive:true, force:true}); }
+});
 
 for (const reason of ['unsigned', 'wrongIdentity', 'failedGate', 'missingPredicate', 'registryError', 'unrelated404', 'signFailure', 'attestFailure', 'failedAttestation', 'missingAttestation', 'emptyAttestation', 'malformedAttestation', 'wrongType', 'wrongSubject', 'wrongAttestationRepo', 'badDigest', 'invalidImage', 'shadowSha', 'current']) {
   test(`publisher refuses ${reason} without moving a channel`, async () => {
@@ -489,7 +586,7 @@ for (const reason of ['unsigned', 'wrongIdentity', 'failedGate', 'missingPredica
         wrongAttestationRepo:'PROMOTE_GATES', badDigest:'PROMOTE_ARTIFACT', invalidImage:'PROMOTE_ARTIFACT',
         shadowSha:'PROMOTE_NOT_GREEN', current:'PROMOTE_NOT_DESCENDANT',
       };
-      assert.throws(fixture.publish, new RegExp(refusal[reason]));
+      await assert.rejects(fixture.publish, new RegExp(refusal[reason]));
       assert.equal(fixture.calls.some(call => call[0] === 'flux' && call[1] === 'tag'), false);
       if (['unsigned', 'wrongIdentity', 'failedGate', 'missingPredicate', 'registryError', 'unrelated404', 'badDigest', 'invalidImage', 'shadowSha', 'current'].includes(reason)) {
         assert.equal(fixture.calls.some(call => call[0] === 'flux' && call[1] === 'push'), false);
@@ -502,7 +599,7 @@ for (const reason of ['unsigned', 'wrongIdentity', 'failedGate', 'missingPredica
 test('publisher bootstraps on the locked Buildx missing-tag response', async () => {
   const fixture = await publishingFixture({buildxAbsent:true});
   try {
-    assert.equal(fixture.publish(), `${fixture.deploy}@${fixture.digests.artifact}`);
+    assert.equal((await fixture.publish()).artifact, `${fixture.deploy}@${fixture.digests.artifact}`);
     assert.equal(fixture.calls.at(-1)[1], 'tag');
   } finally { rmSync(fixture.directory, {recursive:true, force:true}); }
 });
@@ -511,7 +608,7 @@ for (const reason of ['immutableSha', 'invalidEnvironment', 'invalidImage', 'fai
   test(`publisher refuses existing immutable ${reason}`, async () => {
     const fixture = await publishingFixture({existing:true, [reason]:true});
     try {
-      assert.throws(fixture.publish, reason.includes('Attestation') ? /PROMOTE_GATES/ : /PROMOTE_ARTIFACT|PROMOTE_ENVIRONMENT/);
+      await assert.rejects(fixture.publish, reason.includes('Attestation') ? /PROMOTE_GATES/ : /PROMOTE_ARTIFACT|PROMOTE_ENVIRONMENT/);
       assert.equal(fixture.calls.some(call => call[0] === 'flux' && ['push', 'tag'].includes(call[1])), false);
     } finally { rmSync(fixture.directory, {recursive:true, force:true}); }
   });
@@ -520,7 +617,7 @@ for (const reason of ['immutableSha', 'invalidEnvironment', 'invalidImage', 'fai
 for (const [existing, current] of [[false, null], [false, previous], [true, previous]]) test(`publisher ${existing ? 'reuses' : 'creates'} immutable artifact for ${current ? 'existing' : 'first'} channel`, async () => {
   const fixture = await publishingFixture({existing, current});
   try {
-    const ref = fixture.publish();
+    const {artifact:ref} = await fixture.publish();
     assert.equal(ref, `${fixture.deploy}@${fixture.digests.artifact}`);
     const calls = fixture.calls;
     const push = calls.find(call => call[0] === 'flux' && call[1] === 'push');
@@ -545,7 +642,7 @@ for (const [existing, current] of [[false, null], [false, previous], [true, prev
 for (const reason of ['invalidEnvironment', 'unsignedCurrent']) test(`publisher refuses current channel ${reason}`, async () => {
   const fixture = await publishingFixture({current:previous, [reason]:true});
   try {
-    assert.throws(fixture.publish, reason === 'invalidEnvironment' ? /PROMOTE_ENVIRONMENT/ : /no signatures found/);
+    await assert.rejects(fixture.publish, reason === 'invalidEnvironment' ? /PROMOTE_ENVIRONMENT/ : /no signatures found/);
     assert.equal(fixture.calls.some(call => call[0] === 'flux' && ['push', 'tag'].includes(call[1])), false);
   } finally { rmSync(fixture.directory, {recursive:true, force:true}); }
 });
@@ -553,7 +650,7 @@ for (const reason of ['invalidEnvironment', 'unsignedCurrent']) test(`publisher 
 test('publisher refuses a promotion identity verification failure after signing', async () => {
   const fixture = await publishingFixture({postSignIdentity:true});
   try {
-    assert.throws(fixture.publish, /certificate identity mismatch/);
+    await assert.rejects(fixture.publish, /certificate identity mismatch/);
     assert.ok(fixture.calls.some(call => call[1] === 'sign'));
     assert.equal(fixture.calls.some(call => call[1] === 'tag'), false);
   } finally { rmSync(fixture.directory, {recursive:true, force:true}); }
@@ -563,12 +660,12 @@ for (const failure of ['signFailure', 'attestFailure']) test(`publisher resumes 
   const options = {[failure]:true};
   const fixture = await publishingFixture(options);
   try {
-    assert.throws(fixture.publish, /OIDC unavailable|attestation upload failed/);
+    await assert.rejects(fixture.publish, /OIDC unavailable|attestation upload failed/);
     assert.equal(fixture.calls.some(call => call[1] === 'tag'), false);
     const before = fixture.calls.length;
     options[failure] = false;
     options.shadowMoved = true;
-    const ref = fixture.publish();
+    const {artifact:ref} = await fixture.publish();
     assert.equal(ref, `${fixture.deploy}@${fixture.digests.artifact}`);
     assert.equal(fixture.calls.filter(call => call[1] === 'push').length, 1);
     const retry = fixture.calls.slice(before);
@@ -584,7 +681,7 @@ for (const failure of ['signFailure', 'attestFailure']) test(`publisher resumes 
 test('publisher resolves only the proven SHA shadow even after the mutable tag moves', async () => {
   const fixture = await publishingFixture({shadowMoved:true});
   try {
-    fixture.publish();
+    await fixture.publish();
     assert.ok(fixture.calls.some(call => call[0] === 'buildx' && call[3] === `${fixture.deploy}:shadow-${sha}`));
     assert.equal(fixture.calls.some(call => call.includes(`${fixture.deploy}:shadow`)), false);
   } finally { rmSync(fixture.directory, {recursive:true, force:true}); }
@@ -594,7 +691,7 @@ for (const reason of ['differentImage', 'differentSbom', 'extraFile', 'linkedFil
   test(`publisher refuses immutable ${reason} before granting a promotion signature`, async () => {
     const fixture = await publishingFixture({existing:true, [reason]:true});
     try {
-      assert.throws(fixture.publish, /PROMOTE_ARTIFACT/);
+      await assert.rejects(fixture.publish, /PROMOTE_ARTIFACT/);
       assert.equal(fixture.calls.some(call => ['sign', 'attest', 'push', 'tag'].includes(call[1])), false);
     } finally { rmSync(fixture.directory, {recursive:true, force:true}); }
   });
@@ -606,7 +703,7 @@ test('publisher uses the trusted renderer with candidate data as its working dir
   try {
     cpSync(join(historyRoot, 'deploy'), join(candidateRoot, 'deploy'), {recursive:true});
     writeFileSync(join(candidateRoot, 'deploy/clusters/production/platform.json'), JSON.stringify({target:'host', channel:'candidate'}));
-    fixture.publish();
+    await fixture.publish();
     const render = fixture.calls.find(call => call[0] === process.execPath);
     assert.equal(render[1], join(root, 'deploy/ci/render.mjs'));
     assert.equal(fixture.calls.at(-1).at(-1), '--tag=production');
@@ -617,8 +714,7 @@ test('publisher uses the trusted renderer with candidate data as its working dir
 });
 
 test('promotion workflow fails rather than succeeding when gates do not pass', async () => {
-  const {load} = await import('js-yaml');
-  const {jobs} = load(readFileSync(join(root, '.github/workflows/promote.yml'), 'utf8'));
+  const {jobs} = workflow;
   const refused = jobs.refused;
   assert.ok(refused, 'gate refusal needs a failing job');
   assert.deepEqual(refused.needs, ['proof', 'gates']);
@@ -648,23 +744,81 @@ test('promotion workflow fails rather than succeeding when gates do not pass', a
   } finally { rmSync(dir, {recursive:true, force:true}); }
 });
 
-test('publish workflow executes promotion policy from dev and renders the separate candidate tree', async () => {
-  const {load} = await import('js-yaml');
-  const {jobs} = load(readFileSync(join(root, '.github/workflows/promote.yml'), 'utf8'));
+test('publish workflow checks out trusted promotion policy from dev', () => {
+  const {jobs} = workflow;
   const checkouts = jobs.publish.steps.filter(step => step.uses?.startsWith('actions/checkout@'));
   assert.equal(checkouts.length, 1);
   assert.equal(checkouts[0].with.ref, 'dev');
   assert.equal(checkouts[0].with.path, undefined);
   assert.ok(checkouts.every(step => step.with['persist-credentials'] === false && step.with['fetch-depth'] === 0));
-  const script = jobs.publish.steps.find(step => step.with?.script?.includes('publishEnvironment')).with.script;
-  assert.match(script, /import\(`\$\{process.env.GITHUB_WORKSPACE\}\/deploy\/ci\/promote.mjs`\)/);
-  assert.match(script, /candidateRoot:`\$\{process.env.GITHUB_WORKSPACE\}\/\.tmp\/candidate`/);
+});
+
+test('promotion tools authenticate to the registry with the job token on stdin', t => {
+  const setup = workflow.jobs.publish.steps.find(step => step.env?.REGISTRY_TOKEN);
+  assert.equal(setup.env.REGISTRY_TOKEN, '${{ github.token }}');
+  const workspace = mkdtempSync(join(tmpdir(), 'promotion-login-'));
+  t.after(() => rmSync(workspace, {recursive:true, force:true}));
+  for (const tool of ['python3', 'npm']) symlinkSync('/usr/bin/true', join(workspace, tool));
+  symlinkSync('/bin/mkdir', join(workspace, 'mkdir'));
+  writeFileSync(join(workspace, 'docker'), `#!${process.execPath}
+    const fs = require('node:fs');
+    console.log(JSON.stringify({args:process.argv.slice(2), stdin:fs.readFileSync(0, 'utf8')}));
+  `, {mode:0o755});
+  const token = 'fixture-registry-token';
+  const actor = 'fixture-user';
+  const result = spawnSync('/bin/bash', ['-e', '-o', 'pipefail', '-c', setup.run], {
+    cwd:workspace, encoding:'utf8', env:{PATH:workspace, REGISTRY_TOKEN:token, GITHUB_ACTOR:actor},
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {args:['login', 'ghcr.io', '--username', actor, '--password-stdin'], stdin:token});
+});
+
+for (const outcome of ['reports a suite refusal', 'propagates a publisher error']) test(`publish step ${outcome}`, async t => {
+  const step = workflow.jobs.publish.steps.find(step => step.uses?.startsWith('actions/github-script@'));
+  const runPublish = new AsyncFunction('github', 'context', 'core', 'process', step.with.script);
+  const workspace = mkdtempSync(join(tmpdir(), 'promotion-publish-'));
+  t.after(() => rmSync(workspace, {recursive:true, force:true}));
+  const directory = join(workspace, '.tmp/promotion');
+  mkdirSync(directory, {recursive:true});
+  const saved = {sha, run:{id:42, run_attempt:1}};
+  writeFileSync(join(directory, 'promotion-proof.json'), JSON.stringify(saved));
+  writeFileSync(join(directory, 'console-gates.json'), '{}');
+  mkdirSync(join(workspace, 'deploy/ci'), {recursive:true});
+  writeFileSync(join(workspace, 'deploy/ci/promote.mjs'), `
+    export const collectPlatformProof = async github => github.proof;
+    export const publishEnvironment = async options => options.github.publish(options);
+  `);
+  const error = new Error('publisher unavailable');
+  const summary = 'production not published: db-tests.yml (failure)';
+  const github = {proof:saved, publish:({candidateRoot, environment}) => {
+    assert.equal(candidateRoot, join(workspace, '.tmp/candidate'));
+    assert.equal(environment, 'production');
+    if (outcome === 'propagates a publisher error') throw error;
+    return {published:false, code:'PROMOTE_SUITES', summary};
+  }};
+  const notices = [];
+  const summaries = [];
+  const core = {
+    notice:message => notices.push(message),
+    summary:{addRaw:text => ({write:async () => { summaries.push(text); }})},
+  };
+  const result = runPublish(github, {serverUrl:'https://github.com', repo:{owner:'example', repo:'console'}, runId:7}, core, {env:{
+    GITHUB_WORKSPACE:workspace, GITHUB_REPOSITORY:repository, GITHUB_RUN_ATTEMPT:'1', PROMOTION_ENVIRONMENT:'production',
+  }});
+  if (outcome === 'propagates a publisher error') {
+    await assert.rejects(result, thrown => thrown === error);
+    assert.deepEqual(notices, []);
+    assert.deepEqual(summaries, []);
+  } else {
+    await result;
+    assert.deepEqual(notices, [`PROMOTE_SUITES: ${summary}`]);
+    assert.deepEqual(summaries, [summary]);
+  }
 });
 
 for (const candidate of ['ancestor', 'tip', 'unmerged', 'newer', 'unknown']) {
   test(`candidate data worktree ${['ancestor', 'tip'].includes(candidate) ? 'admits' : 'refuses'} ${candidate}`, async () => {
-    const {load} = await import('js-yaml');
-    const {jobs} = load(readFileSync(join(root, '.github/workflows/promote.yml'), 'utf8'));
+    const {jobs} = workflow;
     const step = jobs.publish.steps.find(step => step.id === 'candidate');
     assert.ok(step, 'materialise the candidate without a second checkout action');
     assert.equal(step.env.CANDIDATE_SHA, '${{ needs.proof.outputs.sha }}');
@@ -694,7 +848,6 @@ for (const candidate of ['ancestor', 'tip', 'unmerged', 'newer', 'unknown']) {
 }
 
 test('platform publishes a SHA shadow and signs its digest before moving the mutable shadow tag', async () => {
-  const {load} = await import('js-yaml');
   const {jobs} = load(readFileSync(join(root, '.github/workflows/platform.yml'), 'utf8'));
   const script = jobs.publish.steps.find(step => step.id === 'artifact').run;
   assert.match(script, /flux push artifact "oci:\/\/\$\{DEPLOY\}:shadow-\$\{GITHUB_SHA\}"/);
@@ -704,8 +857,6 @@ test('platform publishes a SHA shadow and signs its digest before moving the mut
 });
 
 test('promotion workflow binds reusable gates, proof, permissions and channel serialization', async () => {
-  const {load} = await import('js-yaml');
-  const workflow = load(readFileSync(join(root, '.github/workflows/promote.yml'), 'utf8'));
   assert.deepEqual(workflow.on.workflow_run, {workflows:['Platform validation and images'], types:['completed']});
   assert.equal(workflow.jobs.gates.uses, './.github/workflows/gates.yml');
   assert.equal(workflow.jobs.gates.with.sha, '${{ needs.proof.outputs.sha }}');
