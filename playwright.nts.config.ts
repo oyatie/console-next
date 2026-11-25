@@ -4,10 +4,7 @@ import { SLOT } from "./e2e/slot";
 import config from "./playwright.config";
 
 const ntsPort = Number(process.env.NTS_FAKE_PORT ?? 18125 + SLOT * 10);
-const fakeUrl = process.env.NTS_FAKE_URL ?? `http://127.0.0.1:${ntsPort}`;
-const baseUrl = process.env.NTS_BASE_URL ?? `${fakeUrl}/api/nts-businessman/v1/`;
-const apiKey = process.env.NTS_BUSINESSMAN_API_KEY ?? "e2e-nts-fake-key";
-const apiKeyExpiresOn = process.env.NTS_BUSINESSMAN_API_KEY_EXPIRES_ON ?? "2099-12-31";
+const fakeUrl = `http://127.0.0.1:${ntsPort}`;
 
 process.env.NTS_FAKE_URL = fakeUrl;
 
@@ -31,9 +28,9 @@ export default defineConfig({
             ...server,
             env: {
               ...server.env,
-              NTS_BASE_URL: baseUrl,
-              NTS_BUSINESSMAN_API_KEY: apiKey,
-              NTS_BUSINESSMAN_API_KEY_EXPIRES_ON: apiKeyExpiresOn,
+              NTS_BASE_URL: `${fakeUrl}/api/nts-businessman/v1/`,
+              NTS_BUSINESSMAN_API_KEY: "e2e-nts-fake-key",
+              NTS_BUSINESSMAN_API_KEY_EXPIRES_ON: "2099-12-31",
             },
           }
         : server,
