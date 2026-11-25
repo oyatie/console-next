@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { i18n, loadCatalog, t } from "@console/i18n";
 import type { Day } from "../api";
+import { DayOpenPaneBody } from "./day-console-rail";
 import { DayDock } from "./day-dock";
 
 const state = vi.hoisted(() => ({ load: "ready" as "ready" | "loading" | "error", missingDay: false }));
@@ -87,4 +88,10 @@ for (const [locale, labels] of [
   } finally {
     i18n.set("ko");
   }
+});
+
+test("Console day view: the person-day body inside the record pane adds no landmark of its own", () => {
+  const html = renderToStaticMarkup(<DayOpenPaneBody employeeId="person" date={day.date} own={false} mode="view" onModeChange={() => {}} onClose={() => {}} onSetNote={() => {}} />);
+  expect(html.match(/role="tab"/g)).toHaveLength(3);
+  expect(html).not.toContain("<aside");
 });
