@@ -2,11 +2,10 @@
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
-import { seededExperience } from "../experience";
 import { chooseRadio } from "../flows";
 import { attendanceBoardScreens } from "../states/attendance";
 import { mockScreen } from "./screen";
-import { attendancePerson } from "./attendance-board";
+import { attendancePerson, phoneDayPane } from "./attendance-board";
 import { AT, id } from "./fixtures";
 
 test.beforeAll(() => loadCatalog("ko"));
@@ -22,10 +21,7 @@ for (const [kind, text] of [["WORK_OUTPUT", "작업 기록 · 결과물"], ["FUT
     await page.route(url => url.pathname === `/api/v1/attendance/people/${id(100)}/month`, route => route.fulfill({ json: { ...attendancePerson, days: [day], history: [{ date: day.date, entry }] } }));
     await page.goto(screen.path);
     await page.getByRole("button", { name: t("attendanceRecords.board.open"), exact: true }).first().click();
-    // Classic opens the day in a sheet; Console in its record pane, which holds the same tabs.
-    const dock = seededExperience(storageState) === "console"
-      ? page.getByRole("complementary").filter({ has: page.getByRole("tab", { name: t("attendanceRecords.day.tab.source"), exact: true }) })
-      : page.getByRole("dialog");
+    const dock = phoneDayPane(page, storageState, day.date);
     for (const tab of ["source", "history"] as const) {
       await dock.getByRole("tab", { name: t(`attendanceRecords.day.tab.${tab}`), exact: true }).click();
       await expect(dock.getByRole("list", { name: t("attendanceRecords.day.historyLabel") })).toContainText(text);

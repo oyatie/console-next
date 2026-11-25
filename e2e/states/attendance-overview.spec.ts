@@ -1,21 +1,16 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Page, type PlaywrightTestOptions } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
-import { fmtDate } from "@console/i18n/format";
 import { expectAxe, fits } from "../a11y";
-import { seededExperience } from "../experience";
-import { attendanceDayBoard, attendancePerson } from "../mock/attendance-board";
+import { attendanceDayBoard, attendancePerson, phoneDayPane } from "../mock/attendance-board";
 import { AT, failure, id } from "../mock/fixtures";
 import { mockScreen } from "../mock/screen";
 import { attendanceBoardScreens } from "./attendance";
 
 test.beforeAll(() => loadCatalog("ko"));
 const screen = attendanceBoardScreens.find(s => s.key === "attendance-day")!;
-/** The day pane, in the style the test seeded: docked beside the board at desk widths; at 390 Classic's modal sheet, Console's record pane. */
-const dayPane = (page: Page, width: number, storageState: PlaywrightTestOptions["storageState"]) => width === 1440 ? page.getByRole("complementary")
-  : seededExperience(storageState) === "console"
-    ? page.getByRole("complementary", { name: t("attendanceRecords.day.title", { date: fmtDate(new URL(screen.path, "http://localhost").searchParams.get("date")!, { weekday: "short" }) }), exact: true })
-    : page.getByRole("dialog");
+/** The day pane: docked beside the board at desk widths; at 390 the seeded style's pane. */
+const dayPane = (page: Page, width: number, storageState: PlaywrightTestOptions["storageState"]) => width === 1440 ? page.getByRole("complementary") : phoneDayPane(page, storageState, day.date);
 /** Classic clears the type and turns issues-only off from its toolbar; Console's day filter does both by going back to all. */
 const toolbar = (page: Page) => page.getByRole("toolbar", { name: t("attendanceRecords.toolbar.label"), exact: true });
 const showAll = (page: Page) => page.getByRole("group", { name: t("attendance.dayConsole.filter.label"), exact: true }).getByRole("button", { name: t("home.inbox.filter.all"), exact: true });
