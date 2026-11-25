@@ -1,6 +1,10 @@
 {
   "_license": "SPDX-License-Identifier: LicenseRef-Proprietary",
   "longBakePaths": ["apps/web/src/shell/**", "apps/web/src/features/auth/**", "backend/crates/platform/auth/**"],
+  "environmentSuites": {
+    "preview": [],
+    "production": ["db-tests.yml", "e2e-live.yml", "route-load.yml"]
+  },
   "checks": {
     "code-gates": [{"workflow": "ci.yml", "job": "Backend release code gates", "step": "Backend code gates (release parity)"}],
     "api-compat": [{"workflow": "api-compat.yml", "job": "Released API compatibility"}],

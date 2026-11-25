@@ -6,6 +6,11 @@ on:
     types: [completed]
   workflow_dispatch:
     inputs:
+      environment:
+        description: Environment to promote
+        required: true
+        type: choice
+        options: [production, preview]
       platform_run_id:
         description: Successful dev-push platform run to promote (ancestry still enforced)
         required: true
@@ -36,6 +41,7 @@ jobs:
       - id: proof
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
         env:
+          PROMOTION_ENVIRONMENT: ${{ inputs.environment }}
           PLATFORM_RUN_ID: ${{ github.event.workflow_run.id || inputs.platform_run_id }}
         with:
           script: |
@@ -44,7 +50,7 @@ jobs:
             const proof = await collectPlatformProof(github, process.env.GITHUB_REPOSITORY, Number(process.env.PLATFORM_RUN_ID));
             writeFileSync('promotion-proof.json', JSON.stringify(proof));
             core.setOutput('sha', proof.sha);
-            core.setOutput('matrix', {include:discoverEnvironments()});
+            core.setOutput('matrix', {include:discoverEnvironments('.', process.env.PROMOTION_ENVIRONMENT)});
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with: {name: promotion-proof, path: promotion-proof.json, if-no-files-found: error}
 
@@ -130,8 +136,9 @@ jobs:
             const saved = JSON.parse(readFileSync(`${directory}/promotion-proof.json`));
             const proof = await collectPlatformProof(github, process.env.GITHUB_REPOSITORY, saved.run.id);
             if (proof.sha !== saved.sha || proof.run.run_attempt !== saved.run.run_attempt) throw new Error('PROMOTE_NOT_GREEN: platform attempt changed');
-            const artifact = publishEnvironment({proof, environment:process.env.PROMOTION_ENVIRONMENT, directory,
+            const result = await publishEnvironment({github, proof, environment:process.env.PROMOTION_ENVIRONMENT, directory,
               candidateRoot:`${process.env.GITHUB_WORKSPACE}/.tmp/candidate`,
               predicate:JSON.parse(readFileSync(`${directory}/console-gates.json`)),
               runUrl:`${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/attempts/${process.env.GITHUB_RUN_ATTEMPT}`});
-            await core.summary.addRaw(`${process.env.PROMOTION_ENVIRONMENT}: ${artifact}\nVerified promotion signature, gates attestation and identity negative controls.\n`).write();
+            if (!result.published) core.notice(`${result.code}: ${result.summary}`);
+            await core.summary.addRaw(result.summary).write();
