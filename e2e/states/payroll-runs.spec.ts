@@ -7,7 +7,7 @@ import { AT, failure, id, screenAccess } from "../mock/fixtures";
 import { mockScreen } from "../mock/screen";
 import { payrollRunCreateScreen, payrollScreens } from "./payroll";
 import { expectAxe, fits } from "../a11y";
-import { experienceState, seededExperience } from "../experience";
+import { experienceState, seededDateStyle, seededExperience } from "../experience";
 import type { PayrollRunDetail } from "@console/api/pending";
 
 test.beforeAll(() => loadCatalog("ko"));
@@ -59,7 +59,7 @@ async function chooseRegular(page: Page, storageState: PlaywrightTestOptions["st
   await groupChoice(page, payGroups.items[0]!, storageState).locator("xpath=ancestor::label[1]").click();
   await page.getByRole("radio", { name: t("payroll.create.kind.REGULAR"), exact: true }).locator("xpath=ancestor::label[1]").click();
   await expect(page.getByRole("main")).toContainText(preview.attribution_month);
-  await expect(page.getByRole("main")).toContainText(fmtDate(preview.pay_date));
+  await expect(page.getByRole("main")).toContainText(fmtDate(preview.pay_date, { style: seededDateStyle(storageState) }));
 }
 
 for (const [width, colorScheme] of [[1440, "light"], [390, "dark"]] as const) test(`home run links open their read-only stages at ${width}px ${colorScheme}`, async ({ page }) => {

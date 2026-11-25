@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import type { PlaywrightTestOptions } from "@playwright/test";
+import type { DateStyle } from "@console/i18n";
 import { experiences, resolveExperience } from "../apps/web/src/experience/table";
 import { EXPERIENCE_KEY } from "../apps/web/src/lib/prefs";
 import { PORTS } from "./slot";
@@ -27,3 +28,9 @@ export function seededExperience(state: PlaywrightTestOptions["storageState"]) {
   if (typeof state === "string") throw new Error("seededExperience reads an inline storage seed, not a file");
   return resolveExperience(state?.origins.flatMap(origin => origin.localStorage).find(item => item.name === EXPERIENCE_KEY)?.value).id;
 }
+
+/**
+ * How the seeded style writes business dates, for `fmtDate`'s `style`: the test process has no page, so its dates
+ * default to the locale form. Console writes ISO days, as the app's experience DOM sets `i18n.dateStyle`.
+ */
+export const seededDateStyle = (state: PlaywrightTestOptions["storageState"]): DateStyle => seededExperience(state) === "console" ? "iso" : "locale";

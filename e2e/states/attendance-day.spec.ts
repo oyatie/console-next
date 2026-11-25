@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Page, type PlaywrightTestOptions } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
-import { fmtDate } from "@console/i18n/format";
 import type { components } from "@console/api";
 import { expectAxe, fits } from "../a11y";
 import { expectStable, recordShifts } from "../stability";
 import { experienceState, seededExperience } from "../experience";
 import { id } from "../mock/fixtures";
-import { attendanceDayBoard } from "../mock/attendance-board";
+import { attendanceDayBoard, dayTitle } from "../mock/attendance-board";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
@@ -16,7 +15,7 @@ import { attendanceBoardState } from "./attendance-helpers";
 
 test.beforeAll(() => loadCatalog("ko"));
 const screen = attendanceBoardScreens.find(candidate => candidate.key === "attendance-day")!;
-const dayTitle = () => t("attendanceRecords.day.title", { date: fmtDate(new URL(screen.path, "http://localhost").searchParams.get("date")!, { weekday: "short" }) });
+const screenDate = new URL(screen.path, "http://localhost").searchParams.get("date")!;
 // A docked pane by its name, in the style the test seeded. Classic draws one landmark of that name. Console nests the
 // docked sheet inside a record pane of the same name: two landmarks of one name stay a soft red there, and the first is
 // held to the rest of the test.
@@ -274,7 +273,7 @@ for (const width of [1440, 1100]) for (const height of [900, 640]) for (const do
     await input.fill("9-18");
     await page.getByRole("button", { name: t("attendanceRecords.toolbar.save"), exact: true }).click();
   } else await page.getByRole("button", { name: t("attendanceRecords.board.open"), exact: true }).click();
-  await expectDockPane(page, dock === "save" ? t("attendanceRecords.save.title", { count: 1 }) : dayTitle(), storageState);
+  await expectDockPane(page, dock === "save" ? t("attendanceRecords.save.title", { count: 1 }) : dayTitle(screenDate, storageState), storageState);
   await expect(page.locator("[data-board-head]")).toBeHidden();
   // By its heading: Console's rail section is not a named region.
   const rail = page.getByRole("main").getByRole("heading", { name: t("attendanceRecords.rail.title"), exact: true });
@@ -298,7 +297,7 @@ for (const width of [1440, 390]) test(`day drawer retains readable board rows at
   const fixture = await mockScreen(page, screen, "populated");
   await page.goto(screen.path);
   await page.getByRole("button", { name: t("attendanceRecords.board.open"), exact: true }).click();
-  if (width === 1440) await expectDockPane(page, dayTitle(), storageState);
+  if (width === 1440) await expectDockPane(page, dayTitle(screenDate, storageState), storageState);
   else await expect(page.getByRole("dialog")).toBeVisible();
   const name = page.getByRole("link", { name: "근태직원 1", exact: true });
   const input = page.getByRole("textbox", { name: /^근태직원 2 기록/ });

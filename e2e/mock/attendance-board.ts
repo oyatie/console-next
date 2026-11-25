@@ -3,18 +3,18 @@ import type { Page, PlaywrightTestOptions } from "@playwright/test";
 import type { components } from "@console/api";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
-import { seededExperience } from "../experience";
+import { seededDateStyle, seededExperience } from "../experience";
 import type { attendanceBoardScreens, AttendanceState } from "../states/attendance";
 import { AT, failure, id } from "./fixtures";
 import { mockRoute } from "./route";
 
 type S = components["schemas"];
-/**
- * The open day at 390, in the style the test seeded: Classic's modal sheet, or Console's record pane, named by the day
- * as Console writes dates.
- */
+/** The day pane's title, with the day written as the seeded style writes dates. */
+export const dayTitle = (date: string, storageState: PlaywrightTestOptions["storageState"]) =>
+  t("attendanceRecords.day.title", { date: fmtDate(date, { weekday: "short", style: seededDateStyle(storageState) }) });
+/** The open day at 390, in the style the test seeded: Classic's modal sheet, or Console's record pane named by the day. */
 export const phoneDayPane = (page: Page, storageState: PlaywrightTestOptions["storageState"], date: string) => seededExperience(storageState) === "console"
-  ? page.getByRole("complementary", { name: t("attendanceRecords.day.title", { date: fmtDate(date, { weekday: "short", style: "iso" }) }), exact: true })
+  ? page.getByRole("complementary", { name: dayTitle(date, storageState), exact: true })
   : page.getByRole("dialog");
 const attendanceTotals: S["AttendanceGridTotals"] = { recognised: 480, approved: 0, unrecognised: 0, not_worked: 0, blocking: 1, decision: 0 };
 const marks = { blocking: 1, decision: 0, info: 0 };
