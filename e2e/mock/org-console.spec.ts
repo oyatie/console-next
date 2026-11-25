@@ -371,6 +371,48 @@ test("Baseline experience parity remains intact on /org and /org/entities/$id", 
   }
 });
 
+// The as-of date is the way out of a failed first read, so the strip that holds it, and its focus, stay through the
+// read it starts and that read's failure.
+test("Console /org keeps the as-of strip and its focus through a failed first read and the read it starts", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const { fixture } = await setupConsoleOrg(page, { theme: "light" });
+  await mockRoute(page, "get", "/api/v1/org-structure", { status: 503, json: failure("service_unavailable") });
+  const held = Promise.withResolvers<void>();
+  try {
+    await page.goto("/org");
+    const main = page.getByRole("main");
+    const alert = main.getByRole("alert");
+    await expect(alert).toBeVisible({ timeout: 15_000 });
+    const strip = main.getByRole("group", { name: t("structure.toolbar"), exact: true });
+    await expect(strip).toBeVisible();
+    const trigger = strip.getByRole("button", { name: new RegExp(`^${t("asof.label")} · `) });
+    await expect(trigger).toBeVisible();
+
+    let requested = false;
+    await mockRoute(page, "get", "/api/v1/org-structure", async () => {
+      requested = true;
+      await held.promise;
+      return { status: 503, json: failure("service_unavailable") };
+    });
+    await trigger.click();
+    const field = page.getByRole("dialog", { name: t("asof.label"), exact: true }).getByRole("textbox", { name: t("asof.label"), exact: true });
+    await field.fill("2026-01-01");
+    await field.press("Tab");
+    await expect.poll(() => requested).toBe(true);
+    await expect(alert).toHaveCount(0);
+    await expect(strip).toBeVisible();
+    await expect(trigger).toBeFocused();
+    held.resolve();
+    await expect(alert).toBeVisible({ timeout: 15_000 });
+    await expect(trigger).toBeFocused();
+    expect(fixture.unexpected).toEqual([]);
+  } finally {
+    held.resolve();
+    await page.close();
+    fixture.release();
+  }
+});
+
 test("PatternShell forwards keepOnLoss/back on /org/changes/$id and own/back on /requests/missing-req", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const { fixture, change } = await setupConsoleOrg(page, { theme: "light", refusalOnChangeRefetch: true });
