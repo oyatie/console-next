@@ -108,7 +108,7 @@ for (const width of [1440, 390] as const) {
         await sheet.locator('input[name="name"]').fill(saeonUniverse.hero.name);
         await sheet.getByText(t("register.where.none"), { exact: true }).click();
         await sheet.getByRole("button", { name: new RegExp(`^${t("uiDate.preset.today")}`) }).click();
-        await sheet.getByRole("button", { name: new RegExp(`^${t("register.run.submit")}`) }).click();
+        await sheet.getByRole("button", { name: t("register.run.submit"), exact: true }).click();
         await expect(sheet.getByRole("columnheader", { name: new RegExp(saeonUniverse.hero.name) })).toBeVisible();
         expect(detailCalls).toEqual([]);
         await fits(page, `Console /people/new ${width} ${theme}`);
