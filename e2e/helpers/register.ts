@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 
 // The 직원 등록 sheet (spec employee-ux E3), driven as a person does: typing is free, picks are clicks.
 
@@ -39,9 +40,13 @@ export async function fillRegister(page: Page, p: Person, c: C = plain) {
   await s.getByRole("textbox", { name: /^기본급/ }).fill("3000000");
 }
 
-/** 「등록하고 닫기」 (or 「등록하고 다음 사람」 with `next`). */
-export const pressRegister = (page: Page, next = false, c: C = plain) =>
-  c.click(registerSheet(page).getByRole("button", { name: next ? /^직원 등록 1명 적용 · 다음 직원/ : /^직원 등록 1명 적용(?: ⌘|$)/ }));
+/** The sheet's commit for one person, or with `next` the one that keeps the sheet open for the next person. */
+export async function pressRegister(page: Page, next = false, c: C = plain) {
+  await loadCatalog("ko");
+  const label = t("composer.commit.count", { action: t("composer.action.registration"), count: 1, unit: t("composer.unit.people"), verb: t("composer.verb.apply") });
+  // The plain commit's name is part of the next-person commit's, so it is matched whole.
+  await c.click(registerSheet(page).getByRole("button", next ? { name: t("composer.commit.next", { label }) } : { name: label, exact: true }));
+}
 
 /** The receipt a registration leaves (in the sheet while it stays open, on the roster once it closes). */
 export const receiptOf = (page: Page, name: string) => page.getByRole("status").filter({ hasText: new RegExp(`${name}.* 등록했습니다 · 사번 `) }).first();
