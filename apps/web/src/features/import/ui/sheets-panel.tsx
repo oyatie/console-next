@@ -52,7 +52,7 @@ function SheetRow({ s: sh, open, busy, targets, onOpen, onSave, onUnskip }: {
   const title = t("importSheet.sheet", { name: sh.name });
   return (
     <section className={css.sheet} aria-label={title}>
-      <div className="toolbar">
+      <div className={`toolbar ${css.sheetHead}`}>
         <h3 className="toolbar__title">{title}</h3>
         {remembered ? <Chip tone={labeled(IMPORT_SHEET_STATUS, sh.status).tone}>{t("importSheet.status.remembered")}</Chip> : <EnumValue e={IMPORT_SHEET_STATUS} value={sh.needs_confirmation ? "needs_confirmation" : sh.status} />}
         <span className="muted num">{t("importSheet.rows", { count: sh.rows })}</span>

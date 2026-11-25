@@ -37,7 +37,7 @@
 .sheet { padding-bottom: var(--space-3); }
 .sheet > p, .edge { margin-inline: var(--space-4); }
 /* The sheet's head (name, status, rows, its mapping action) wraps where it runs out of room, as on a phone. */
-.sheet > :global(.toolbar) { flex-wrap: wrap; }
+.sheetHead { flex-wrap: wrap; }
 /* Two fields side by side line up by their labels, whatever hint either carries. */
 .alignTop { align-items: flex-start; }
 .phoneOnly { display: none; }
