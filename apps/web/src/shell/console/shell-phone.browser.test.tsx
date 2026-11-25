@@ -85,8 +85,12 @@ afterAll(async () => {
   await server?.close();
 });
 
-/** `restore` opens cold: the page starts with no session, and the refresh that restores it waits for `restore.done`. */
-async function openPhoneShell(link: "LINKED" | "UNLINKED" = "LINKED", { restore }: { restore?: { asked: () => void; done: Promise<void> } } = {}) {
+type Held = { asked: () => void; done: Promise<void> };
+/**
+ * `restore` opens cold: the page starts with no session, and the refresh that restores it waits for `restore.done`.
+ * `held` holds the read at `held.path` until `held.done`; `refused` refuses the read at that path, once its hold ends.
+ */
+async function openPhoneShell(link: "LINKED" | "UNLINKED" = "LINKED", { restore, held, refused, width = 390 }: { restore?: Held; held?: Held & { path: string }; refused?: string; width?: number } = {}) {
   const apiMocks: Record<string, unknown> = {
     "/api/v1/users/me": {
       id: "u1", display_name: "Hajun", employee_name: "Hajun", employee_id: link === "LINKED" ? "e1" : null,
@@ -99,8 +103,10 @@ async function openPhoneShell(link: "LINKED" | "UNLINKED" = "LINKED", { restore 
     "/api/v1/onboarding/checklist": { phase: "OPERATING", steps: [] },
     "/api/v1/me/action-inbox": { items: [], next_cursor: null, counts: { turn: { total: 0, total_is_exact: true } }, attention_filters: [] },
     "/api/v1/auth/passkeys": [],
+    // The reader's own choice keeps the page in Console once the shell syncs the style.
+    "/api/v1/me/workspace": { layout: { experience: "console" } },
   };
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
   await page.route(url => url.pathname.endsWith("/console-phone-nav-test"), route => route.fulfill({
     contentType: "text/html",
     body: '<html lang="ko" data-experience="console"><title>Console Phone</title><div id="root"></div><script type="module" src="/console-phone-nav-test.js"></script></html>',
@@ -112,6 +118,11 @@ async function openPhoneShell(link: "LINKED" | "UNLINKED" = "LINKED", { restore 
       await restore.done;
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(TOKEN) });
     }
+    if (held && path === held.path) {
+      held.asked();
+      await held.done;
+    }
+    if (path === refused) return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ code: "service_unavailable", message: "unavailable" }) });
     return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(apiMocks[path] ?? { items: [] }) });
   });
 
@@ -303,4 +314,49 @@ test("on a phone a reload keeps the page's place while the session restores, sin
   } finally {
     done();
   }
+});
+
+/** Where each drawn part of the desktop chrome sits, by its look and, for tabs and status segments, its text. */
+const chromePlaces = () => page.evaluate(() => Object.fromEntries(
+  [...document.querySelectorAll("[data-console-shell] header > *, [data-console-shell] li, [data-console-shell] footer *")]
+    .map(el => [el.className + (el.matches("header > *") ? "" : `|${el.textContent}`), el.getBoundingClientRect()] as const)
+    .filter(([, r]) => r.width > 0)
+    .map(([key, r]) => [key, `${Math.round(r.x)},${Math.round(r.y)}`]),
+));
+
+const frames = () => page.evaluate(() => new Promise<void>(ok => requestAnimationFrame(() => requestAnimationFrame(() => ok()))));
+const desktopHolds: [string, (hold: Held) => Parameters<typeof openPhoneShell>[1]][] = [
+  ["the session restores", hold => ({ restore: hold })],
+  ["/api/v1/users/me lands", hold => ({ held: { ...hold, path: "/api/v1/users/me" } })],
+  ["/api/v1/users/me fails", hold => ({ held: { ...hold, path: "/api/v1/users/me" }, refused: "/api/v1/users/me" })],
+  ["/api/v1/access/me lands", hold => ({ held: { ...hold, path: "/api/v1/access/me" } })],
+  ["/api/v1/users/me lands after /api/v1/access/me fails", hold => ({ held: { ...hold, path: "/api/v1/users/me" }, refused: "/api/v1/access/me" })],
+];
+
+for (const [what, hold] of desktopHolds) test(`on a desktop neither the page nor any chrome drawn moves when ${what}`, async () => {
+  const requested = Promise.withResolvers<void>(), answered = Promise.withResolvers<void>();
+  const options = { ...hold({ asked: requested.resolve, done: answered.promise }), width: 1440 };
+  // A refused read falls back to the menu a returning reader was last shown, so the reader has opened the page before.
+  // With no menu remembered, the top bar draws the read's failure notice and grows taller; these cases do not cover that.
+  if (options.refused) await (await openPhoneShell("LINKED", { width: 1440 })).getByRole("link").first().waitFor();
+  const opened = openPhoneShell("LINKED", options);
+  // A failure before the release below closes the page under this open; its own error would only repeat that one.
+  opened.catch(() => {});
+  try {
+    await requested.promise;
+    await page.locator("#main").waitFor();
+    await frames();
+    const [before, frame] = [await chromePlaces(), await pageFrame()];
+
+    answered.resolve();
+    // Settled once the tabs, the brand and the menu draw: the brand is the tenant's name, or the product's when the
+    // reader's own read is refused.
+    await page.locator("[data-workspace-tab]").first().waitFor();
+    await page.getByRole("link", { name: options.refused === "/api/v1/users/me" ? t("app.name") : "Saeon", exact: true }).waitFor();
+    await page.getByRole("navigation", { name: t("shell.nav"), exact: true }).getByRole("link").first().waitFor();
+    await frames();
+    const after = await chromePlaces();
+    expect(Object.fromEntries(Object.keys(before).map(key => [key, after[key] ?? "gone"]))).toEqual(before);
+    expect(await pageFrame()).toEqual(frame);
+  } finally { answered.resolve(); }
 });

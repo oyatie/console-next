@@ -53,7 +53,8 @@ export function RequestLookup() {
 }
 const requestRoute = getRouteApi("/app/requests/$id");
 export function RequestPage() {
-  const {id}=requestRoute.useParams(); const q=useQuery({...outcomeQuery(id),refetchOnMount:"always"});
+  // Every field re-renders: the Console screen reads the state behind a lazy chunk, after this render's tracking.
+  const {id}=requestRoute.useParams(); const q=useQuery({...outcomeQuery(id),refetchOnMount:"always",notifyOnChangeProps:"all"});
   const own = (code: string) => code === "request_not_found" ? `${t("requestOutcome.notFound")} ${t("requestOutcome.remedy")}` : undefined;
   const renderOutcome = (out: NonNullable<typeof q.data>) => (
     <>
