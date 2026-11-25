@@ -34,6 +34,7 @@ jobs:
       backend: ${{ steps.paths.outputs.backend || steps.import.outputs.backend }}
       web: ${{ steps.paths.outputs.web || steps.import.outputs.web }}
       docs: ${{ steps.paths.outputs.docs }}
+      lockfile: ${{ steps.paths.outputs.lockfile }}
     steps:
       - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with: {egress-policy: audit}
@@ -137,6 +138,7 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       - name: Verify npm registry signatures and provenance
+        if: needs.affected.outputs.lockfile != 'false'
         run: npm audit signatures
       - &playwright-version
         name: Locked Playwright version
