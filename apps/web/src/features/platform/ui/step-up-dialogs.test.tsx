@@ -202,6 +202,10 @@ test("OperatorConsolePanel uses secondary revoke trigger and TenantConsolePanel 
   expect(tenantHtml).not.toContain(`>${t("tenants.col.status")}<`);
   expect(tenantHtml).not.toContain('id="tenant-code"');
   expect(tenantHtml).not.toContain('id="tenant-ops-recovery"');
+  // The pane draws the headings, and each section Classic makes a region stays one region, named once.
+  const regions = [...tenantHtml.matchAll(/<section[^>]*aria-label="([^"]*)"/g)].map(m => m[1]);
+  expect(regions.filter(name => name === t("tenants.section.code"))).toHaveLength(1);
+  expect(regions.filter(name => name === t("opsRecovery.title"))).toHaveLength(1);
 });
 
 test("ops recovery inside the Console record pane is still the region named for it, as Classic's section is", () => {
