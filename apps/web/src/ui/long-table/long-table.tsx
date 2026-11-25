@@ -126,10 +126,12 @@ export function LongTable<R>(p: {
     return () => { resize.disconnect(); rows.disconnect(); };
   }, [cardLayout, mobileLayout]);
   // The select-all checkbox may stand taller than the header is drawn (a phone's touch size); the header then grows to
-  // hold it above its 1px rule.
+  // hold it above its 1px rule. It is measured once as it mounts too, before the first frame paints, so the rows under the
+  // header never move down a frame later.
   const [headCheckHeight, setHeadCheckHeight] = useState(0);
   const observeHeadCheck = useCallback((check: HTMLLabelElement | null) => {
     if (!check) return;
+    setHeadCheckHeight(check.getBoundingClientRect().height);
     const resize = new ResizeObserver(([entry]) => setHeadCheckHeight(entry?.borderBoxSize[0]?.blockSize ?? 0));
     resize.observe(check);
     return () => resize.disconnect();

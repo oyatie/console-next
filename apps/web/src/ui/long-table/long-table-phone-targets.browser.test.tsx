@@ -38,6 +38,9 @@ beforeAll(async () => {
       createRoot(document.getElementById('root')).render(h('main', null, h(Table, { label: 'Cards' }), h(Table, { label: 'Compact', compact: true }),
         h(Table, { label: 'No tail', compact: true, shown: columns.slice(0, 2) }),
         h(Table, { label: 'One line', compact: true, shown: [{ ...columns[0], cell: r => 'Person ' + r.id }, columns[2], columns[3]] })));
+      // A table a test mounts later, to watch its first frames.
+      const late = document.body.appendChild(document.createElement('section'));
+      window.mountLate = () => createRoot(late).render(h(Table, { label: 'Late', compact: true }));
     `,
   });
 }, 60_000);
@@ -126,6 +129,28 @@ test("in Console a phone compact row keeps its fact line under the name, and a 1
   }
   const { name, action } = await place("One line");
   expect(Math.abs(name.middle - action!.middle)).toBeLessThanOrEqual(1);
+}, 30_000);
+
+// The rows sit under the header, so a header that grows after its first frame moves every row and its controls.
+test("in Console a phone table draws its header at the select-all checkbox's height from its first frame", async () => {
+  const { page } = mounted;
+  await targets("Compact", "console", 390, "cards");
+  const heights = await page.evaluate(() => new Promise<number[]>(resolve => {
+    const seen: number[] = [];
+    const start = performance.now();
+    const tick = () => {
+      const head = document.querySelector('[aria-label="Late"] [role="columnheader"]');
+      if (head) {
+        const height = Math.round(head.getBoundingClientRect().height);
+        if (seen.at(-1) !== height) seen.push(height);
+      }
+      if (seen.length && performance.now() - start > 500) resolve(seen);
+      else requestAnimationFrame(tick);
+    };
+    (window as unknown as { mountLate: () => void }).mountLate();
+    requestAnimationFrame(tick);
+  }));
+  expect(heights).toEqual([45]);
 }, 30_000);
 
 test("in Console a phone compact-density row clips none of its controls", async () => {
