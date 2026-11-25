@@ -42,7 +42,7 @@ def e2e_rows(report, index):
             title = " › ".join(groups + [spec["title"]])
             for test in spec["tests"]:
                 browser = {"parallel": "chromium", "clock": "chromium", "firefox": "firefox"}.get(test["projectName"], "unknown")
-                if test["projectName"] == "" and report.get("config", {}).get("configFile", "").endswith("e2e/mock/playwright.config.ts"):
+                if test["projectName"] in ("", "default", "baseline") and report.get("config", {}).get("configFile", "").endswith("e2e/mock/playwright.config.ts"):
                     browser = "chromium"
                 for result in test.get("results", []) or [{"status": "skipped"}]:
                     state = status(result["status"]) if test.get("expectedStatus") == "passed" and not report.get("errors") else "unknown"
