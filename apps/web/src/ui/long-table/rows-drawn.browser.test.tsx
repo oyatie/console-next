@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { afterAll, beforeAll, expect, test } from "vitest";
-import { mountBrowserModule, type MountedGallery } from "../../../lib/gallery-browser-test";
+import { mountBrowserModule, type MountedGallery } from "../../lib/gallery-browser-test";
 
 let mounted: MountedGallery;
 
@@ -11,7 +11,7 @@ beforeAll(async () => {
     readySelector: "[data-grid]",
     viewport: { width: 1280, height: 800 },
     moduleCode: `
-      import { whenRowsDrawn } from '/apps/web/src/features/people/ui/rows-drawn.ts';
+      import { whenRowsDrawn } from '/apps/web/src/ui/long-table/rows-drawn.ts';
       const grid = document.createElement('div');
       grid.dataset.grid = '';
       grid.style.cssText = 'height: 200px; overflow: auto';

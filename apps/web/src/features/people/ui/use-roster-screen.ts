@@ -5,6 +5,7 @@ import { getRouteApi } from "@tanstack/react-router";
 import type { EmployeeViewFilters } from "@console/api/pending";
 import { rosterWindowQuery } from "../api/roster";
 import { FOCUS_SETTLE_MS, editable, rowById } from "../../../ui/long-table/row-keys";
+import { whenRowsDrawn } from "../../../ui/long-table/rows-drawn";
 import { NO_SELECTION, type Selection } from "../../../ui/long-table/selection";
 import { focusSoon } from "../../../lib/react/announce";
 import { columnSelection } from "../../../lib/react/use-column-selection";
@@ -17,7 +18,6 @@ import { activeView, exactNumber, joinReview, parseIds, parseReview, parseStatus
 import { parseOrder, type RosterOrder } from "../domain/roster-order";
 import { useRoster } from "./use-roster";
 import { useRosterColumns } from "./use-roster-columns";
-import { whenRowsDrawn } from "./rows-drawn";
 import type { ExitView } from "./exit-tabs";
 
 const route = getRouteApi("/app/people");
