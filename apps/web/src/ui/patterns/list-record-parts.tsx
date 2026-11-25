@@ -48,6 +48,11 @@ export function RecordPaneSection({
   );
 }
 
+/** Record sections kept together in one box (one read fills them): it carries the rule its last section would end on. */
+export function RecordPaneGroup({ className, children }: { className?: string; children: ReactNode }) {
+  return <div className={className ? `${s.paneGroup} ${className}` : s.paneGroup}>{children}</div>;
+}
+
 /** Rule-separated subject identity header at the top of a Console side record pane. */
 export function RecordIdentityBar({
   name,

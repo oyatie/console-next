@@ -53,14 +53,16 @@
   overflow-wrap: anywhere;
 }
 
-.paneSection {
+.paneSection,
+.paneGroup {
   display: flex;
   flex-direction: column;
   border-block-end: 1px solid var(--border);
   min-width: 0;
 }
 
-.paneSection:last-child {
+.paneSection:last-child,
+.paneGroup:last-child {
   border-block-end: 0;
 }
 
