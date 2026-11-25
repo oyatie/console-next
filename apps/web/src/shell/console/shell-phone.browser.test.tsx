@@ -16,7 +16,7 @@ const TOKEN = {
   token_type: "Bearer", refresh_expires_at: "2099-01-01T00:00:00Z", requires_passkey_setup: false,
 };
 /** A platform operator's session: the frame sends no tenant reader's read for it. */
-const OPERATOR = { ...TOKEN, access_token: `h.${Buffer.from(JSON.stringify({ sub: "operator", org: "platform", name: "Operator", platform: true })).toString("base64url")}.s` };
+const OPERATOR = { ...TOKEN, access_token: `h.${Buffer.from(JSON.stringify({ sub: "operator", org: "platform", platform: true })).toString("base64url")}.s` };
 
 beforeAll(async () => {
   await loadCatalog("ko");
@@ -50,8 +50,7 @@ beforeAll(async () => {
         await loadCatalog('ko');
         // ?cold opens with no session, as a reload does, so the shell restores it through the refresh the test answers.
         // ?operator opens as a platform operator.
-        if (location.search.includes('cold')) configure(webPlatform);
-        else session.set(location.search.includes('operator') ? ${JSON.stringify(OPERATOR)} : ${JSON.stringify(TOKEN)});
+        if (location.search.includes('cold')) configure(webPlatform); else session.set(location.search.includes('operator') ? ${JSON.stringify(OPERATOR)} : ${JSON.stringify(TOKEN)});
         const h = React.createElement;
         const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
         function Screen({ title }) {
@@ -117,15 +116,8 @@ async function openPhoneShell(link: "LINKED" | "UNLINKED" = "LINKED", { restore,
   }));
   await page.route("**/api/v1/**", async route => {
     const path = new URL(route.request().url()).pathname;
-    if (restore && path === "/api/v1/auth/token/refresh") {
-      restore.asked();
-      await restore.done;
-      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(TOKEN) });
-    }
-    if (held && path === held.path) {
-      held.asked();
-      await held.done;
-    }
+    if (restore && path === "/api/v1/auth/token/refresh") { restore.asked(); await restore.done; return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(TOKEN) }); }
+    if (held && path === held.path) { held.asked(); await held.done; }
     if (path === refused) return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ code: "service_unavailable", message: "unavailable" }) });
     return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(apiMocks[path] ?? { items: [] }) });
   });

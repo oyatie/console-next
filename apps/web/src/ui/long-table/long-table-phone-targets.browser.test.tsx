@@ -135,7 +135,7 @@ test("in Console a phone compact row keeps its fact line under the name, and a 1
 test("in Console a phone table draws its header at the select-all checkbox's height from its first frame", async () => {
   const { page } = mounted;
   await targets("Compact", "console", 390, "cards");
-  const heights = await page.evaluate(() => new Promise<number[]>(resolve => {
+  const drawn = await page.evaluate(() => new Promise<number[]>(resolve => {
     const seen: number[] = [];
     const start = performance.now();
     const tick = () => {
@@ -150,7 +150,7 @@ test("in Console a phone table draws its header at the select-all checkbox's hei
     (window as unknown as { mountLate: () => void }).mountLate();
     requestAnimationFrame(tick);
   }));
-  expect(heights).toEqual([45]);
+  expect(drawn).toEqual([45]);
 }, 30_000);
 
 test("in Console a phone compact-density row clips none of its controls", async () => {
