@@ -17,7 +17,7 @@ import { PageHead } from "../../../ui/page-head/page-head";
 import { Composer } from "../../../ui/composer/composer";
 import { myAccessQuery } from "../../../reference/authz/api";
 import { accessRefusal } from "../../../reference/authz/domain/access";
-import { freshOnOpen } from "../../../lib/query";
+import { cursorPages, freshOnOpen } from "../../../lib/query";
 import { PaperSeal } from "../../../ui/paper/paper";
 import { PickOne } from "../../../reference/entity/ui/pick-one";
 import { EntityName } from "../../../reference/entity/ui/entity-name";
@@ -28,7 +28,7 @@ import { ListRecord } from "../../../ui/patterns/list-record";
 import { ExperienceSwitch } from "../../../ui/patterns/pattern-shell";
 import { WorklistSearchField, WorklistSegmentBar } from "../../../ui/patterns/worklist-parts";
 import { Table, type Column } from "../../../ui/table";
-import { certificatesQuery, certificateSettingsQuery, setCertificateSettings, certificateError, type CertificateSettings } from "../api/certificates";
+import { certificateSettingsQuery, setCertificateSettings, certificateError, type CertificateSettings } from "../api/certificates";
 import s from "./certificate.module.css";
 type CertificateSummary = components["schemas"]["CertificatePage"]["items"][number];
 const KIND_LABEL = {
@@ -48,10 +48,7 @@ export function CertificatesPage() {
   const setConfigure = (open: boolean) => void nav({ search: true, hash: open ? "certificate-settings" : "", replace: true });
   const [qText, setQText] = useState("");
   const [kindFilter, setKindFilter] = useState<"ALL" | CertificateSummary["kind"]>("ALL");
-  const q = useInfiniteQuery({ ...certificatesQuery(employee), initialPageParam: undefined as string | undefined,
-    queryFn: ({ pageParam }) => certificatesQuery(employee, pageParam).queryFn(),
-    getNextPageParam: (last) => last.next_cursor ?? undefined,
-  });
+  const q = useInfiniteQuery(cursorPages("/api/v1/hr/certificates", { employee_id: employee }));
   const items = q.data?.pages.flatMap((p) => p.items) ?? [];
   const term = qText.trim().toLowerCase();
   const filtered = items.filter((c) => {
