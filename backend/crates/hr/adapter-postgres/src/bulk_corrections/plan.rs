@@ -9,28 +9,31 @@ use console_hr_domain::corrections::bulk::{FieldPath, RowOutcome, field_path};
 use console_hr_domain::corrections::route_for_current;
 use console_hr_domain::profile::mask::RevealField;
 use http::StatusCode;
-use serde_json::json;
+use serde::Serialize;
 use sqlx::{Postgres, Transaction};
 use uuid::Uuid;
 
 use super::select::RowInput;
 use super::{
     BulkCorrectionCounts, BulkCorrectionField, BulkCorrectionPreview, BulkCorrectionPreviewRow,
-    BulkCorrectionRefusal,
+    BulkCorrectionRefusal, row_refusal,
 };
 use crate::HrError;
 use crate::corrections::{
-    FieldValue, LockedEmployee, SecondPersonContext, check_against_record, normalize_value,
-    read_employee, refusal, route_or_refuse,
+    FieldValue, LockedEmployee, SecondPersonContext, check_against_record, read_employee, refusal,
 };
-use crate::digest::sha256_hex;
+use crate::digest::json_sha256_hex;
 
 /// One employee's plan: the preview row, and for CHANGE / PENDING the record
 /// read and the differing values with their path.
-pub(super) struct PlannedRow {
+pub(super) struct PlannedRow<'a> {
     pub row: BulkCorrectionPreviewRow,
+    record: PlannedWrites<'a>,
+}
+
+pub(super) struct PlannedWrites<'a> {
     pub head: Option<LockedEmployee>,
-    pub writes: Vec<(FieldValue, FieldPath)>,
+    pub writes: Vec<(&'a FieldValue, FieldPath)>,
 }
 
 /// The recorded value of `field` in the form `normalize_value` gives: the
@@ -61,82 +64,49 @@ fn writes(head: &LockedEmployee, field: &str, value: Option<&str>) -> bool {
     recorded != value || (recorded.is_some() && RevealField::from_column(field).is_some())
 }
 
-/// One refusal of a row: the field it is about (`None`: the whole row).
-fn refused_by(field: Option<&str>, error: &HrError) -> BulkCorrectionRefusal {
-    BulkCorrectionRefusal {
-        field: field.map(str::to_owned),
-        code: error.code,
-        message: error.message.clone(),
-    }
-}
-
-/// A client error is the row's (or one field's) refusal; a server fault
-/// aborts the whole plan.
-fn client(error: HrError) -> Result<HrError, HrError> {
-    if error.status.is_client_error() {
-        Ok(error)
-    } else {
-        Err(error)
-    }
-}
-
 /// The record checks of `values`; when they fail, each value is checked on
 /// its own so the refusal names its field (EMP-UI 13). A failure no single
 /// value causes (dates out of order across two fields) is the row's.
 async fn record_refusals(
     tx: &mut Transaction<'_, Postgres>,
     org: Uuid,
-    input: &RowInput,
+    employee_id: Uuid,
     head: &LockedEmployee,
     values: &[FieldValue],
 ) -> Result<Vec<BulkCorrectionRefusal>, HrError> {
-    let Err(combined) = check_against_record(tx, org, input.employee_id, head, values).await else {
+    let Err(combined) = check_against_record(tx, org, employee_id, head, values).await else {
         return Ok(Vec::new());
     };
-    let combined = client(combined)?;
+    let combined = row_refusal(None, combined)?;
     let mut refusals = Vec::new();
     for value in values {
-        if let Err(error) = check_against_record(
-            tx,
-            org,
-            input.employee_id,
-            head,
-            std::slice::from_ref(value),
-        )
-        .await
+        if let Err(error) =
+            check_against_record(tx, org, employee_id, head, std::slice::from_ref(value)).await
         {
-            refusals.push(refused_by(Some(&value.0), &client(error)?));
+            refusals.push(row_refusal(Some(&value.0), error)?);
         }
     }
     if refusals.is_empty() {
-        refusals.push(refused_by(None, &combined));
+        refusals.push(combined);
     }
     Ok(refusals)
 }
 
 /// The values of `input` that differ from the record, each with its path;
 /// `Err` lists every refusal of the row (a field's, or the row's).
-async fn plan_row(
+async fn plan_row<'a>(
     tx: &mut Transaction<'_, Postgres>,
     org: Uuid,
-    input: &RowInput,
+    input: RowInput<'a>,
     holders: SecondPersonContext,
     numbers: &mut BTreeSet<String>,
 ) -> Result<
-    Result<(LockedEmployee, Vec<(FieldValue, FieldPath)>), Vec<BulkCorrectionRefusal>>,
+    Result<(LockedEmployee, Vec<(&'a FieldValue, FieldPath)>), Vec<BulkCorrectionRefusal>>,
     HrError,
 > {
-    let mut refusals = Vec::new();
-    let mut checked = Vec::with_capacity(input.changes.len());
-    for (field, value) in &input.changes {
-        match route_or_refuse(field).and_then(|route| Ok((normalize_value(field, value)?, route))) {
-            Ok((value, route)) => checked.push(((field.clone(), value), route)),
-            Err(error) => refusals.push(refused_by(Some(field), &client(error)?)),
-        }
-    }
     let head = match read_employee(tx, org, input.employee_id).await {
         Ok(head) => head,
-        Err(error) => return Ok(Err(vec![refused_by(None, &client(error)?)])),
+        Err(error) => return Ok(Err(vec![row_refusal(None, error)?])),
     };
     if input
         .expected_updated_at
@@ -147,34 +117,40 @@ async fn plan_row(
             "stale_record",
             "the employee changed since the grid read it; reload the row",
         );
-        return Ok(Err(vec![refused_by(None, &stale)]));
+        return Ok(Err(vec![row_refusal(None, stale)?]));
     }
-    checked.retain(|((field, value), _)| writes(&head, field, value.as_deref()));
-    checked.sort_by(|a, b| a.0.0.cmp(&b.0.0));
+    let mut refusals = input.refusals;
+    let mut checked: Vec<_> = input
+        .changes
+        .iter()
+        .filter(|change| {
+            let (field, value) = &change.value;
+            writes(&head, field, value.as_deref())
+        })
+        .collect();
+    checked.sort_by(|a, b| a.value.0.cmp(&b.value.0));
     // check_against_record sees the database only: an employee number given
     // twice in one batch is refused here, before the commit could meet it.
     let number = checked
         .iter()
-        .find_map(|((field, value), _)| (field == "employee_number").then(|| value.clone()))
-        .flatten();
-    if number
-        .as_ref()
-        .is_some_and(|number| numbers.contains(number))
-    {
+        .find(|change| change.value.0 == "employee_number")
+        .and_then(|change| change.value.1.as_ref());
+    if number.is_some_and(|number| numbers.contains(number)) {
         let twice = refusal(
             StatusCode::CONFLICT,
             "employee_number_in_use",
             "another row of this bulk correction gives the same employee number",
         );
-        refusals.push(refused_by(Some("employee_number"), &twice));
+        refusals.push(row_refusal(Some("employee_number"), twice)?);
     }
-    let values: Vec<FieldValue> = checked.iter().map(|(pair, _)| pair.clone()).collect();
-    refusals.extend(record_refusals(tx, org, input, &head, &values).await?);
+    let values: Vec<FieldValue> = checked.iter().map(|change| change.value.clone()).collect();
+    refusals.extend(record_refusals(tx, org, input.employee_id, &head, &values).await?);
     let high = holders.path();
     let mut writes = Vec::with_capacity(checked.len());
-    for (pair, route) in checked {
+    for change in checked {
+        let pair = &change.value;
         match field_path(
-            route_for_current(route, head.current(&pair.0).is_some()),
+            route_for_current(change.route, head.current(&pair.0).is_some()),
             high,
         ) {
             Some(path) => writes.push((pair, path)),
@@ -184,7 +160,7 @@ async fn plan_row(
                     "employee_correction_sole_holder_refused",
                     "no second person can approve this correction and the organization refuses sole-holder corrections",
                 );
-                refusals.push(refused_by(Some(&pair.0), &sole));
+                refusals.push(row_refusal(Some(&pair.0), sole)?);
             }
         }
     }
@@ -192,18 +168,18 @@ async fn plan_row(
         return Ok(Err(refusals));
     }
     // Reserved only by a row that passed: a refused row takes no number.
-    numbers.extend(number);
+    numbers.extend(number.cloned());
     Ok(Ok((head, writes)))
 }
 
 /// Plans every input in order. A client error is the row's refusal; a server
 /// fault aborts the whole plan.
-pub(super) async fn plan(
+pub(super) async fn plan<'a>(
     tx: &mut Transaction<'_, Postgres>,
     org: Uuid,
-    inputs: &[RowInput],
+    inputs: Vec<RowInput<'a>>,
     holders: SecondPersonContext,
-) -> Result<Vec<PlannedRow>, HrError> {
+) -> Result<Vec<PlannedRow<'a>>, HrError> {
     let mut numbers = BTreeSet::new();
     let mut planned = Vec::with_capacity(inputs.len());
     for input in inputs {
@@ -236,8 +212,10 @@ pub(super) async fn plan(
                     .collect();
                 planned.push(PlannedRow {
                     row,
-                    head: Some(head),
-                    writes,
+                    record: PlannedWrites {
+                        head: Some(head),
+                        writes,
+                    },
                 });
             }
             Err(refusals) => {
@@ -248,8 +226,10 @@ pub(super) async fn plan(
                 row.refusals = refusals;
                 planned.push(PlannedRow {
                     row,
-                    head: None,
-                    writes: Vec::new(),
+                    record: PlannedWrites {
+                        head: None,
+                        writes: Vec::new(),
+                    },
                 });
             }
         }
@@ -257,47 +237,107 @@ pub(super) async fn plan(
     Ok(planned)
 }
 
-/// The preview of `planned`: exact counts, the digest that binds the commit
-/// (every row's pin, outcome and values, plus the reason), and its job id.
-pub(super) fn preview(
-    planned: &[PlannedRow],
+pub(super) struct CorrectionPlan<'a> {
+    pub preview: BulkCorrectionPreview,
+    pub records: Vec<PlannedWrites<'a>>,
+}
+
+/// Move the planned rows into the preview and retain the writes for commit.
+pub(super) fn preview<'a>(
+    planned: Vec<PlannedRow<'a>>,
     reason_code: &str,
     note: Option<&str>,
-) -> Result<BulkCorrectionPreview, HrError> {
+) -> Result<CorrectionPlan<'a>, HrError> {
+    let (rows, records): (Vec<_>, Vec<_>) = planned.into_iter().map(|p| (p.row, p.record)).unzip();
     let mut counts = BulkCorrectionCounts {
-        selected: planned.len(),
+        selected: rows.len(),
         ..BulkCorrectionCounts::default()
     };
-    for planned in planned {
-        match planned.row.outcome {
+    for row in &rows {
+        match row.outcome {
             "CHANGE" => counts.change += 1,
             "PENDING" => counts.pending += 1,
             "UNCHANGED" => counts.unchanged += 1,
             _ => counts.refused += 1,
         }
     }
-    let rows: Vec<BulkCorrectionPreviewRow> = planned.iter().map(|p| p.row.clone()).collect();
-    let canonical = json!({ "reason_code": reason_code, "note": note, "rows": &rows });
-    let digest = sha256_hex(canonical.to_string().as_bytes());
+    // Field order preserves the digest of previews already issued.
+    #[derive(Serialize)]
+    struct CanonicalPreview<'a> {
+        reason_code: &'a str,
+        note: Option<&'a str>,
+        rows: &'a [BulkCorrectionPreviewRow],
+    }
+    let digest = json_sha256_hex(&CanonicalPreview {
+        reason_code,
+        note,
+        rows: &rows,
+    })
+    .map_err(|error| HrError::internal(format!("cannot serialize correction preview: {error}")))?;
     let preview_id = Uuid::parse_str(&digest[..32])
         .map_err(|_| HrError::internal("preview digest is not hex"))?;
-    let step_up_required = planned.iter().any(|p| {
+    let step_up_required = records.iter().any(|p| {
         p.writes
             .iter()
             .any(|(_, path)| *path == FieldPath::SoleHolderReview)
     });
-    Ok(BulkCorrectionPreview {
-        preview_id,
-        preview_digest: digest,
-        counts,
-        step_up_required,
-        rows,
+    Ok(CorrectionPlan {
+        preview: BulkCorrectionPreview {
+            preview_id,
+            preview_digest: digest,
+            counts,
+            step_up_required,
+            rows,
+        },
+        records,
     })
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
-    use super::stored_form;
+    use super::*;
+    fn changed_row(after: String) -> BulkCorrectionPreviewRow {
+        BulkCorrectionPreviewRow {
+            employee_id: Uuid::nil(),
+            name: None,
+            employee_number: None,
+            updated_at: None,
+            outcome: "CHANGE",
+            fields: vec![BulkCorrectionField {
+                field: "careers".into(),
+                before: None,
+                after: Some(after),
+                path: "NOW",
+            }],
+            code: None,
+            message: None,
+            refusals: vec![],
+        }
+    }
+
+    #[test]
+    fn preview_moves_the_planned_value_and_preserves_its_digest() {
+        let row = changed_row("employment history".into());
+        let after = row.fields[0].after.as_ref().unwrap().as_ptr();
+        let reason = "DATA_ENTRY_ERROR";
+        let note = Some("correction");
+        let canonical = serde_json::json!({ "reason_code": reason, "note": note, "rows": [&row] });
+        let expected = crate::digest::sha256_hex(canonical.to_string().as_bytes());
+        let planned = vec![PlannedRow {
+            row,
+            record: PlannedWrites {
+                head: None,
+                writes: vec![],
+            },
+        }];
+        let result = preview(planned, reason, note).unwrap().preview;
+        assert_eq!(result.preview_digest, expected);
+        assert_eq!(
+            result.rows[0].fields[0].after.as_ref().unwrap().as_ptr(),
+            after
+        );
+    }
 
     #[test]
     fn a_recorded_pay_compares_as_whole_won() {

@@ -342,6 +342,9 @@ for (const [what, hold] of desktopHolds) test(`on a desktop neither the page nor
     await requested.promise;
     await page.locator("#main").waitFor();
     await frames();
+    // The app's first paint waits for its UI font or keeps the system face for good (lib/fonts); this page has no such
+    // gate, so the place to hold is read once the font its text asked for has loaded, not from the fallback face before it.
+    await page.evaluate(() => document.fonts.ready);
     const [before, frame] = [await chromePlaces(), await pageFrame()];
 
     answered.resolve();
