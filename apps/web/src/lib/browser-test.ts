@@ -20,5 +20,8 @@ export async function openBrowserTestPage(page: Page, url: string, ready: Locato
 export async function waitForBrowserTestPage(page: Page, ready: Locator) {
   // The enclosing Vitest hook/test owns the budget; unrelated resources are not a render signal.
   await ready.waitFor({ timeout: 0 });
-  await page.evaluate(() => document.fonts.ready);
+  await settleFonts(page);
 }
+
+/** Loads every UI face, drawn or not: text that first asks for a face later would be measured in a fallback it then leaves. */
+export const settleFonts = (page: Page) => page.evaluate(async () => { await Promise.allSettled([...document.fonts].map(face => face.load())); });

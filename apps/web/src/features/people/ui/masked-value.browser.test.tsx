@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, expect, test } from "vitest";
 import { createServer, type ViteDevServer } from "vite";
 import { AxeBuilder } from "@axe-core/playwright";
-import { browserTestOptimizeDeps, chromium, type Browser, type Page } from "../../../lib/browser-test";
+import { browserTestOptimizeDeps, chromium, openBrowserTestPage, type Browser, type Page } from "../../../lib/browser-test";
 import { rrn } from "../../../../../../e2e/helpers/import-layouts";
 
 let server: ViteDevServer;
@@ -49,8 +49,7 @@ afterAll(async () => { await browser?.close(); await server?.close(); });
 beforeEach(async () => {
   await page.route("**/api/v1/auth/passkey/step-up/start", route => route.fulfill({ json: { ceremony_id: "ceremony", challenge: { publicKey: {} } } }));
   await page.route("**/api/v1/reason-codes?**", (route) => route.fulfill({ json: { items: [{ code: "REVIEW", system: false, label_ko: "업무 확인", active: true, requires_note: false }] } }));
-  await page.goto(`${server.resolvedUrls!.local[0]}privacy-test`);
-  await page.getByRole("button", { name: /주민등록번호 보기/ }).waitFor();
+  await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}privacy-test`, page.getByRole("button", { name: /주민등록번호 보기/ }));
 });
 afterEach(async () => { await page.unrouteAll({ behavior: "ignoreErrors" }); });
 
