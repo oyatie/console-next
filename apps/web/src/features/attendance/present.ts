@@ -26,6 +26,15 @@ export const dayText = (d: string) => fmtDate(d);
 export const weekdayText = (d: string) => fmtWeekday(d);
 export const dateText = (d: string) => fmtDate(d, { weekday: "short" });
 
+/** What the day sheet is doing to one person-day: reading it, correcting it, or voiding it. */
+export type DayDockMode = "view" | "correct" | "void";
+
+/** The record pane head of a person-day in each mode: its title (also the pane's name) and whose day it is. */
+export function dayPaneHead(mode: DayDockMode, date: string, person?: { name: string; employee_number?: string | null }) {
+  const title = mode === "correct" ? t("attendanceRecords.correct.title") : mode === "void" ? t("attendanceRecords.void.title") : t("attendanceRecords.day.title", { date: dateText(date) });
+  return { label: title, title, meta: person && (mode === "view" ? `${person.name} ${person.employee_number ?? ""}`.trim() : `${person.name} · ${dateText(date)}`) };
+}
+
 /** A clock with the next-day mark: "06:00 (+1)". */
 export const clockText = (min: number) => (nextDay(min) ? t("attendancePatterns.clock.next", { time: clock(min) }) : clock(min));
 

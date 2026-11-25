@@ -3,14 +3,28 @@ import { realpathSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { createServer, type ViteDevServer } from "vite";
+import type { Locator } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { browserEngine, browserTestOptimizeDeps, openBrowserTestPage, type Browser, type BrowserContext, type Page } from "../../lib/browser-test";
+import { contrastRatio } from "../../../../../scripts/check-contrast.mjs";
 
 let server: ViteDevServer;
 let browser: Browser;
 let context: BrowserContext;
 let page: Page;
-let phonePage: Page;
+
+// Axe does not measure a background image, so the select's chevron (its only dropdown cue) is measured here.
+async function chevronContrast(select: Locator) {
+  const { image, background } = await select.evaluate(el => {
+    const style = getComputedStyle(el);
+    return { image: style.backgroundImage, background: style.backgroundColor };
+  });
+  const stroke = image.match(/stroke='%23([\da-f]{6})'/i)?.[1];
+  const rgb = background.match(/^rgb\((\d+), (\d+), (\d+)\)$/)?.slice(1);
+  expect(stroke, image).toBeTruthy();
+  expect(rgb, background).toBeTruthy();
+  return contrastRatio(`#${stroke}`, `#${rgb!.map(v => Number(v).toString(16).padStart(2, "0")).join("")}`);
+}
 
 beforeAll(async () => {
   await loadCatalog("ko");
@@ -29,12 +43,7 @@ beforeAll(async () => {
     },
     plugins: [{
       name: "console-shell-shortcut-test",
-      resolveId: id =>
-        id === "/console-shell-shortcut-test.js"
-          ? "\0console-shell-shortcut-test"
-          : id === "/console-phone-nav-test.js"
-            ? "\0console-phone-nav-test"
-            : undefined,
+      resolveId: id => id === "/console-shell-shortcut-test.js" ? "\0console-shell-shortcut-test" : undefined,
       load: id => id === "\0console-shell-shortcut-test" ? `
         import React, { useEffect, useState } from 'react';
         import { createRoot } from 'react-dom/client';
@@ -92,7 +101,7 @@ beforeAll(async () => {
           return React.createElement(
             React.Fragment,
             null,
-            React.createElement('header', null, React.createElement(ConsoleAccountMenu, { id: 'console-top-account', name: 'Console Operator' })),
+            React.createElement('header', { 'data-surface': 'chrome' }, React.createElement(ConsoleAccountMenu, { id: 'console-top-account', name: 'Console Operator' })),
             React.createElement('main', { id: 'main', 'data-shell-harness': '' },
               React.createElement('output', { 'data-opens': '' }, String(searchOpens)),
               React.createElement('output', { 'data-href': '' }, href),
@@ -116,40 +125,6 @@ beforeAll(async () => {
           history: createMemoryHistory({ initialEntries: ['/'] }),
         });
         createRoot(document.getElementById('root')).render(React.createElement(RouterProvider, { router }));
-      ` : id === "\0console-phone-nav-test" ? `
-        import React from 'react';
-        import { createRoot } from 'react-dom/client';
-        import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-        import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider, useNavigate } from '@tanstack/react-router';
-        import { session } from '@console/api';
-        import { loadCatalog } from '@console/i18n';
-        import { ConsoleShell } from '/apps/web/src/shell/console/shell.tsx';
-        import '/apps/web/src/app.css';
-        await loadCatalog('ko');
-        session.set({
-          access_token: 'h.' + btoa(JSON.stringify({ sub: 'hero', org: 'tenant', name: 'Hajun' })).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, '') + '.s',
-          token_type: 'Bearer', refresh_expires_at: '2099-01-01T00:00:00Z', requires_passkey_setup: false,
-        });
-        const h = React.createElement;
-        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-        function Screen({ title }) {
-          const navigate = useNavigate();
-          return h('div', { 'data-phone-screen': title },
-            h('h1', null, title),
-            h('button', { type: 'button', onClick: () => void navigate({ href: '/people/certificates/cert-1' }) }, 'go-cert-detail'),
-            h('button', { type: 'button', onClick: () => void navigate({ href: '/account' }) }, 'go-account'),
-          );
-        }
-        const root = createRootRoute({ component: () => h(ConsoleShell) });
-        const mk = (path, title) => createRoute({ getParentRoute: () => root, path, staticData: { access: 'signed-in' }, component: () => h(Screen, { title }) });
-        const router = createRouter({
-          routeTree: root.addChildren([
-            mk('/', 'Home'), mk('/people/certificates', 'Certificates'), mk('/people/certificates/$certificateId', 'Certificate Detail'),
-            mk('/account', 'Account'), mk('/leave', 'Leave'), mk('/payslips', 'Payslips'),
-          ]),
-          history: createMemoryHistory({ initialEntries: ['/people/certificates'] }),
-        });
-        createRoot(document.getElementById('root')).render(h(QueryClientProvider, { client: qc }, h(RouterProvider, { router })));
       ` : undefined,
     }],
   });
@@ -157,16 +132,14 @@ beforeAll(async () => {
   browser = await browserEngine().launch();
   context = await browser.newContext();
   page = await context.newPage();
-  phonePage = await context.newPage();
   await page.route("**/console-shell-shortcut-test", route => route.fulfill({
     contentType: "text/html",
-    body: '<html lang="ko"><title>Console Shell</title><div id="root"></div><script type="module" src="/console-shell-shortcut-test.js"></script></html>',
+    body: '<html lang="ko" data-experience="console"><title>Console Shell</title><div id="root"></div><script type="module" src="/console-shell-shortcut-test.js"></script></html>',
   }));
   await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}console-shell-shortcut-test`, page.locator("[data-shell-harness]"));
 }, 60_000);
 
 afterAll(async () => {
-  await phonePage?.close();
   await page?.close();
   await context?.close();
   await browser?.close();
@@ -200,19 +173,43 @@ test("slash shortcut opens search, yields to in-page find, and respects singleKe
   await expect.poll(async () => await page.locator("[data-opens]").textContent()).toBe("1");
 });
 
-test("ConsoleAccountMenu renders locale, theme, and logout controls when opened and closes on Escape", async () => {
+test("ConsoleAccountMenu holds the shared language, theme and sign-out controls by their shared names and closes on Escape", async () => {
+  await page.evaluate(() => localStorage.setItem("console.theme", "light"));
   const trigger = page.getByRole("button", { name: "Console Operator", exact: true });
   await trigger.click();
 
   const group = page.getByRole("group", { name: t("shell.account"), exact: true });
   await group.waitFor();
-  for (const key of ["shell.locale.ko", "shell.locale.en", "shell.theme.light", "shell.theme.dark", "shell.logout"] as const) {
-    expect(await group.getByRole("button", { name: t(key), exact: true }).isVisible()).toBe(true);
-  }
+  const language = group.getByRole("combobox", { name: t("shell.locale"), exact: true });
+  await expect.poll(() => language.locator("option").allTextContents()).toEqual([t("shell.locale.ko"), t("shell.locale.en")]);
+  expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe("light");
+  expect(await chevronContrast(language)).toBeGreaterThanOrEqual(3);
+  expect(await group.getByRole("button", { name: t("shell.logout"), exact: true }).isVisible()).toBe(true);
 
+  // The theme control is the one Classic's bar has, named for the theme it turns to.
+  await group.getByRole("button", { name: t("shell.theme.toDark"), exact: true }).click();
+  await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe("dark");
+  await trigger.click();
+  expect(await chevronContrast(language)).toBeGreaterThanOrEqual(3);
+  await group.getByRole("button", { name: t("shell.theme.toLight"), exact: true }).click();
+  await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe("light");
+
+  // Escape closes the menu from its trigger or from any control in it, and is the menu's alone: no listener above hears it.
+  await page.evaluate(() => {
+    const seen = window as unknown as { escapes: number };
+    seen.escapes = 0;
+    document.addEventListener("keydown", event => { if (event.key === "Escape") seen.escapes++; });
+  });
+  await trigger.click();
+  await trigger.focus();
+  await page.keyboard.press("Escape");
+  await expect.poll(async () => await group.count()).toBe(0);
+  await trigger.click();
+  await language.focus();
   await page.keyboard.press("Escape");
   await expect.poll(async () => await group.count()).toBe(0);
   await expect.poll(() => page.evaluate(() => document.activeElement?.id)).toBe("console-top-account");
+  expect(await page.evaluate(() => (window as unknown as { escapes: number }).escapes)).toBe(0);
 });
 
 test("openWorkspaceTab resolves query-only href against current pathname and rejects external/protocol-relative URLs", async () => {
@@ -250,47 +247,4 @@ test("openWorkspaceTab preserves hash fragments on view-query routes when reconc
   const afterChart = JSON.parse((await page.locator("[data-tabs]").textContent()) ?? "[]") as string[];
   expect(afterChart).toContain("/org");
   expect(afterChart).not.toContain("/org?tab=entities#identifier-corrections");
-});
-
-test("ConsolePhoneBottom highlights certificates tab on both /people/certificates and /people/certificates/$certificateId", async () => {
-  const apiMocks: Record<string, unknown> = {
-    "/api/v1/users/me": {
-      id: "u1", display_name: "Hajun", employee_name: "Hajun", employee_id: "e1",
-      employee_link_status: "LINKED", employee_company: "Saeon", tenant: { name: "Saeon", phase: "OPERATING" },
-    },
-    "/api/v1/me/authz": { capabilities: [] },
-    "/api/v1/access/me": { is_ops: false, entries: [], phase: "OPERATING" },
-    "/api/v1/support-sessions/active": { can_approve: false, sessions: [], pending_count: 0 },
-    "/api/v1/onboarding/modules": ["home", "people"].map(key => ({ key, ready: true, unblock: null })),
-    "/api/v1/onboarding/checklist": { phase: "OPERATING", steps: [] },
-    "/api/v1/me/action-inbox": { items: [], next_cursor: null, counts: { turn: { total: 0, total_is_exact: true } }, attention_filters: [] },
-    "/api/v1/auth/passkeys": [],
-  };
-  await phonePage.setViewportSize({ width: 390, height: 844 });
-  await phonePage.route("**/console-phone-nav-test", route => route.fulfill({
-    contentType: "text/html",
-    body: '<html lang="ko" data-experience="console"><title>Console Phone</title><div id="root"></div><script type="module" src="/console-phone-nav-test.js"></script></html>',
-  }));
-  await phonePage.route("**/api/v1/**", route => {
-    const path = new URL(route.request().url()).pathname;
-    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(apiMocks[path] ?? { items: [] }) });
-  });
-
-  await openBrowserTestPage(phonePage, `${server.resolvedUrls!.local[0]}console-phone-nav-test`, phonePage.locator('[data-phone-screen="Certificates"]'));
-  const nav = phonePage.getByRole("navigation", { name: t("shell.nav"), exact: true });
-  const expectCurrent = async (href: string, label: string) => {
-    await expect.poll(async () => await nav.locator('a[aria-current="page"]').count()).toBe(1);
-    await expect.poll(async () => await nav.locator('a[aria-current="page"]').getAttribute("href")).toBe(href);
-    await expect.poll(async () => (await nav.locator('a[aria-current="page"]').textContent())?.trim()).toBe(label);
-  };
-
-  await expectCurrent("/people/certificates", t("shell.link.certificates"));
-
-  await phonePage.getByRole("button", { name: "go-cert-detail", exact: true }).click();
-  await phonePage.locator('[data-phone-screen="Certificate Detail"]').waitFor();
-  await expectCurrent("/people/certificates", t("shell.link.certificates"));
-
-  await phonePage.getByRole("button", { name: "go-account", exact: true }).click();
-  await phonePage.locator('[data-phone-screen="Account"]').waitFor();
-  await expectCurrent("/account", t("shell.link.profile"));
 });

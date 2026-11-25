@@ -25,6 +25,7 @@ import { MyAccessCard } from "./my-access";
 
 const state = vi.hoisted(() => ({
   experience: "console" as "baseline" | "console",
+  search: {} as Record<string, unknown>,
   platform: false,
   me: {
     id: "u1",
@@ -101,7 +102,13 @@ vi.mock("../../../experience/dom", () => ({
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => vi.fn(),
   useLocation: () => "/account",
+  useRouter: () => ({ history: { back: vi.fn() } }),
+  useSearch: ({ select }: { select: (search: Record<string, unknown>) => unknown }) => select(state.search),
   Link: ({ children, to }: { children: React.ReactNode; to: string }) => <div data-href={to}>{children}</div>,
+}));
+
+vi.mock("./me-certificates-sheet", () => ({
+  MeCertificatesSheet: ({ open }: { open: boolean }) => <div data-certificates-sheet={open ? "open" : "closed"} />,
 }));
 
 vi.mock("../api", async original => {
@@ -162,6 +169,7 @@ beforeAll(() => loadCatalog("ko"));
 afterEach(() => {
   state.experience = "console";
   state.platform = false;
+  state.search = {};
   state.me.employee_link_status = "LINKED";
   state.profileError = null;
 });
@@ -248,4 +256,10 @@ test("MyAccessCard uses DS Card without legacy raw .toolbar classes", () => {
   expect(html).toContain('aria-labelledby="acct-access"');
   expect(html).not.toContain("toolbar__title");
   expect(html).not.toContain("card__body");
+});
+
+test("the certificate sheet opens from the address, so the phone nav and a shared link reach it", () => {
+  expect(renderMe(false)).toContain('data-certificates-sheet="closed"');
+  state.search = { sheet: "certificates" };
+  expect(renderMe(false)).toContain('data-certificates-sheet="open"');
 });

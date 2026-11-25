@@ -2,6 +2,7 @@
 import type { ReactNode, RefObject } from "react";
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
+import { modHint } from "../../../lib/mod-hint";
 import { CommandError } from "../../../lib/react/command-error";
 import type { ReadState } from "../../../lib/react/query-view";
 import { Button } from "../../../ui/button/button";
@@ -99,12 +100,12 @@ export function RegisterRunConsole({
       {liveCount > 0 && (
         <Button onClick={() => onSave(true)}>
           {t("register.run.finish")}
-          <Kbd keys="⌘⇧↵" />
+          <Kbd keys={modHint("⇧↵")} />
         </Button>
       )}
       <Button variant="primary" onClick={() => onSave(false)}>
         {t("register.run.submit")}
-        <Kbd keys="⌘↵" />
+        <Kbd keys={modHint("↵")} />
       </Button>
     </>
   );
@@ -115,7 +116,7 @@ export function RegisterRunConsole({
       back={{ to: "/people", label: t("people.title") }}
       head={{
         title,
-        crumbs: <Crumbs items={[<Link key="people" to="/people" search={{}} className={s.crumbLink}>{t("people.title")}</Link>]} current={t("register.run.crumb")} />,
+        crumbs: <Crumbs items={[<Link key="people" to="/people" search={{}}>{t("people.title")}</Link>]} current={t("register.run.crumb")} />,
         meta: <PhaseLine phase={setup ? "setup" : "operating"}>{t(setup ? "register.run.phaseSetup" : "register.run.phaseOp")}</PhaseLine>,
         tools: (
           <bdi className={s.sum} role="status">
@@ -126,7 +127,7 @@ export function RegisterRunConsole({
         actions: liveCount > 0 ? (
           <Button size="sm" onClick={() => onSave(true)}>
             {t("register.run.finish")}
-            <Kbd keys="⌘⇧↵" />
+            <Kbd keys={modHint("⇧↵")} />
           </Button>
         ) : undefined,
       }}

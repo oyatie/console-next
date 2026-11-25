@@ -108,7 +108,7 @@ for (const width of [1440, 390] as const) {
         await sheet.locator('input[name="name"]').fill(saeonUniverse.hero.name);
         await sheet.getByText(t("register.where.none"), { exact: true }).click();
         await sheet.getByRole("button", { name: new RegExp(`^${t("uiDate.preset.today")}`) }).click();
-        await sheet.getByRole("button", { name: new RegExp(`^${t("register.run.submit")}`) }).click();
+        await sheet.getByRole("button", { name: t("register.run.submit"), exact: true }).click();
         await expect(sheet.getByRole("columnheader", { name: new RegExp(saeonUniverse.hero.name) })).toBeVisible();
         expect(detailCalls).toEqual([]);
         await fits(page, `Console /people/new ${width} ${theme}`);
@@ -137,6 +137,8 @@ for (const width of [1440, 390] as const) {
         await main.getByRole("button", { name: t("renew.open", { count: 2 }), exact: true }).click();
         await expect(page).toHaveURL(/\/people\/renew/);
         await expect(page.locator('[data-pattern="wizard"]')).toHaveCount(1);
+        // One named region per table: the focusable scroller carries the name, its pane does not repeat it.
+        await expect(main.getByRole("region", { name: t("renew.crumb"), exact: true })).toHaveCount(1);
         await fits(page, `Console /people/renew ${width} ${theme}`);
         await expectAxe(page, `Console /people/renew ${width} ${theme}`);
         await capture(page, width, "people-renew", theme);
@@ -163,6 +165,7 @@ for (const width of [1440, 390] as const) {
         await expect(page).toHaveURL(/tab=appointments/);
         await expect.poll(() => idsBatchCalls.length).toBeGreaterThanOrEqual(1);
         await expect(main.getByRole("heading", { name: t("bulk.page.where"), exact: true })).toBeVisible();
+        await expect(main.getByRole("region", { name: t("bulk.page.people", { n: 2 }), exact: true })).toHaveCount(1);
         await fits(page, `Console /people/bulk populated ${width} ${theme}`);
         await expectAxe(page, `Console /people/bulk populated ${width} ${theme}`);
         await capture(page, width, "people-bulk", theme);

@@ -29,8 +29,21 @@
   --danger-solid: #b3261e;
   --warn-tx: #8a4f00;
   --warn-bg: #fdf0d5;
+  --warn-mark: #c47a00;
   --ok-tx: #1c6b3f;
   --ok-bg: #e2f2e8;
+  /* The Console design has no info hue: an info tag is the plain outlined tag. */
+  --info-bg: var(--surface);
+  --info-bd: var(--steel);
+  --info-tx: var(--ink);
+  /* Today and the legal due marks are drawn in the warn roles. */
+  --due-bg: var(--warn-bg);
+  --due-bd: var(--warn-mark);
+  --due-tx: var(--warn-tx);
+  /* With no info hue, the record just recorded takes the selected fill so it still stands apart from its card. */
+  --highlight-bg: var(--surface-selected);
+  /* In the Console design signal tags are bold, and codes and masked values are set in the body face, untracked. */
+  --fw-tag-signal: var(--fw-strong); --font-code: var(--font-sans); --tracking-masked: 0px;
   --chrome: #15202b;
   --chrome-raised: #202d3a;
   --chrome-hover: #263646; /* Derived, not drawn. */
@@ -48,6 +61,8 @@
   --chrome-warn-bg: #3a2d13;
   --chrome-warn-bd: #92610a;
   --chrome-scheme: dark;
+  /* The frame is dark in the light theme too, so its select chevron is the dark theme's. */
+  --chrome-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23c3cdd8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   /* Shared chart marks adjusted for 3:1 on the warm and cool grounds. */
   --chart-cat-1: #0c85d5; --chart-cat-4: #858326; --chart-cat-6: #5f6b79;
   --shadow: 0 1px 0 rgba(20, 29, 38, 0.08);
@@ -61,14 +76,15 @@
   --link-decoration: underline;
   --page-pad: 0px; --cell-px: 8px;
   --radius-sm: 2px; --radius: 2px; --radius-lg: 3px; --radius-avatar: 2px;
-  /* As drawn: 28px rows hold 24px controls, compact rows and the smallest pointer target are 24px. */
-  --row-h: 28px; --row-h-compact: 24px; --control-h-sm: 24px; --target: 24px; --target-touch: 44px; --chip-h: 20px; --kbd-h: 16px; --kbd-min-w: 16px;
+  /* As drawn: every table row is 28px, a compact one too, and holds 24px controls. Slip, before/after and pane lines
+     and the smallest pointer target are 24px. */
+  --row-h: 28px; --row-h-compact: 28px; --row-h-sm: 24px; --control-h-sm: 24px; --target: 24px; --target-touch: 44px; --chip-h: 20px; --kbd-h: 16px; --kbd-min-w: 16px;
   --topbar-h: 40px; --tabbar-h: 32px; --statusbar-h: 24px; --navbar-h: 0px;
   /* As drawn: a 40px toolbar with 4px above and below its 24px controls. A decision button is 32px wherever it stands
-     (the side pane draws 28), so the role has one value. A compact row holds a control as tall as itself. */
+     (the side pane draws 28), so the role has one value. A compact row holds a 24px control, as a row does. */
   --control-h: 24px; --control-h-lg: 32px; --control-h-compact: 24px; --toolbar-h: 40px; --toolbar-py: 4px;
-  /* A field is as tall as a row; in a toolbar it is level with the 24px controls beside it. */
-  --field-h: 28px; --field-h-toolbar: 24px;
+  /* As drawn: a field is as tall as the controls beside it, inside a 28px row, and so in a toolbar too. */
+  --field-h: 24px; --field-h-toolbar: 24px;
 }
 
 :root[data-experience="console"][data-theme="dark"] {
@@ -100,8 +116,12 @@
   --danger-solid: #f99b90; /* Derived, not drawn. */
   --warn-tx: #f5bd4f; /* Derived, not drawn. */
   --warn-bg: #3a2d13; /* Derived, not drawn. */
+  --warn-mark: #c47a00; /* Derived, not drawn. */
   --ok-tx: #94d9ad; /* Derived, not drawn. */
   --ok-bg: #183729; /* Derived, not drawn. */
+  --info-bg: var(--surface); /* Derived, not drawn. */
+  --info-bd: var(--steel); /* Derived, not drawn. */
+  --info-tx: var(--ink); /* Derived, not drawn. */
   --chrome: #0a1017; /* Derived, not drawn: one step darker than dark --canvas (#101820). */
   --chrome-raised: #131d27; /* Derived, not drawn. */
   --chrome-hover: #1b2835; /* Derived, not drawn. */
@@ -131,7 +151,7 @@
 @media (--phone) {
   :root[data-experience="console"] {
     --text-xs: 13px; --text-sm: 14px; --text-body: 15px; --text-lg: 17px; --text-xl: 22px;
-    --row-h: 48px; --row-h-compact: 40px; --control-h-sm: 44px; --target: 44px; --topbar-h: 52px; --tabbar-h: 0px; --statusbar-h: 0px; --navbar-h: 56px;
+    --row-h: 48px; --row-h-compact: 40px; --row-h-sm: 40px; --control-h-sm: 44px; --target: 44px; --target-cell: 44px; --topbar-h: var(--phone-top-h); --tabbar-h: 0px; --statusbar-h: 0px; --navbar-h: var(--phone-nav-h);
     /* A control stays 44px, not the 48px drawn for one standing free: a 48px button in a 48px table row would grow the row. */
     /* A compact row is 40px, and what sits in it is as tall as the row: under the 44px touch size. */
     --control-h: 44px; --control-h-lg: 48px; --control-h-compact: 40px; --toolbar-h: 52px;

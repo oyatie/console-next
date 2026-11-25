@@ -141,6 +141,16 @@ A sheet is **dirty** when it holds an edit that closing would lose. There are tw
   `searchbox` or `combobox`, so text typed to filter a list does not count. A value put back to what it was makes
   the sheet clean again.
 
+  The sheet knows a control again by the first of these it has: for an element with `data-form-value`, its
+  label; its `id`; its `name`, with its tag, an input's type, and a checkbox's or a radio's value; its label,
+  with its tag. Its label is its `aria-label`, or else the text of the first `<label>` inside it less a trailing
+  `*`. A control with none of them is known as that element. Controls known the same way are told apart by their
+  order in the sheet. A control that is no longer in the sheet is not compared, so a value held only by a
+  control that goes away, such as a tree that closes on a pick, stops counting with it. The dissolve sheet,
+  whose destination trees close on a pick, keeps its plan on an element that stays: its members block writes
+  where everyone goes and each person sent elsewhere as `data-form-value` on its summary line, which has an `id`
+  and no label. A person sent to where everyone goes is left out of it. See [Tree](tree.md).
+
 Four gestures can close a sheet. Each calls `onClose`; none removes the sheet by itself.
 
 | Gesture | Clean sheet | Dirty sheet | While `pending` |
@@ -186,12 +196,21 @@ draft in a browser. It has no test of `pending`.
 The sheet's own Escape handler stands aside, and so does not show the unsaved line, in these cases:
 
 - another handler has already prevented the event's default;
-- it is pressed in a list box, or on an element with `aria-expanded="true"`, such as an open picker;
+- it is pressed in a list box, or on a control whose popup is open, such as an open picker: `aria-expanded="true"`
+  with an `aria-haspopup` other than `false`, or an expanded `combobox` (`popupOpen` in `lib/pure/popup.ts`);
 - it is pressed inside another dialog nested in the sheet;
 - the event's `isComposing` flag is set.
 
 On a dirty sheet that has not yet shown the unsaved line, such an Escape does nothing to the sheet. On a clean
 sheet, React Aria's overlay still closes the sheet if the Escape reaches it.
+
+A control that is expanded without declaring a popup, such as a disclosure button or an open branch of a tree,
+opens nothing that Escape closes. Escape from it is handled like any other Escape in the sheet: on a dirty sheet
+the first press shows the unsaved line and the second closes.
+`apps/web/src/features/org/ui/target-tree.browser.test.tsx` drives this in Chromium from both, in a sheet that is
+told it is dirty. The tree there has `required`, so it leaves Escape to the sheet: see [Tree](tree.md).
+The Escape handlers of the side panel, the pane grid, flexible columns and the dirty-escape hook use the same
+test: each stands aside for a control whose popup is open, and not for one that is only expanded.
 
 The last case is the sheet's rule for the Korean input method. `sheet-dismiss.ts` checks `isComposing` and
 nothing else: it does not check key code 229 and listens for no composition event. An Escape flagged as composing
@@ -282,7 +301,12 @@ Tests: `ui/sheet` has no unit test of its own. The sheet is proved in a browser 
 `apps/web/src/ui/dialog.browser.test.tsx`, by `e2e/mock/sheet-interactions.spec.ts` and by
 `e2e/mock/sheet-layout.spec.ts`. The last opens a real sheet at 1440 and 390 px in the light and the dark theme,
 checks that it fits, runs axe over the dialog, and checks that the record behind it does not change width when
-the sheet opens or closes.
+the sheet opens or closes. Two browser tests of features press Escape on a row of a tree inside a sheet:
+`apps/web/src/features/org/ui/target-tree.browser.test.tsx` and
+`apps/web/src/features/access/ui/scope-picker.browser.test.tsx`. See Keyboard, and [Tree](tree.md).
+`apps/web/src/features/org/ui/dept-dissolve-sheet.browser.test.tsx` drives the dissolve sheet itself: a new
+destination for everyone, or one person sent elsewhere, is unsaved after its tree has closed on the pick, and a
+plan put back to where it started is not.
 
 Other specs drive a sheet on the screen that owns it. One example: `e2e/states/structure-sheet-read.spec.ts` holds
 a read back and expects a `common.loading` status inside the sheet. Where this page traced it, for the sheet that

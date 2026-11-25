@@ -15,7 +15,6 @@ import { WizardPattern } from "../../../ui/patterns/wizard";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { StepLine } from "../../../ui/step-line/step-line";
 import type { RenewBatch } from "../domain/renew";
-import s from "./bulk-page.module.css";
 
 type Employee = components["schemas"]["Employee"];
 type Step = { key: string; label: string; state: "done" | "current" | "waiting" };
@@ -78,7 +77,7 @@ export function RenewConsole({
       back={{ to: "/people", label: t("people.title") }}
       head={{
         title: t("renew.title", { n: peopleCount }),
-        crumbs: <Crumbs items={[<Link key="people" to="/people" search={{}} className={s.crumbLink}>{t("people.title")}</Link>]} current={t("renew.crumb")} />,
+        crumbs: <Crumbs items={[<Link key="people" to="/people" search={{}}>{t("people.title")}</Link>]} current={t("renew.crumb")} />,
       }}
       steps={<StepLine steps={[...steps]} label={t("renew.steps")} />}
       notes={notes}

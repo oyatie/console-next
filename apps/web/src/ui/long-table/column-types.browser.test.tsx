@@ -105,6 +105,19 @@ for (const long of [false, true]) for (const theme of ["light", "dark"]) {
   });
 }
 
+for (const long of [false, true]) test(`${long ? "virtual" : "native"} code cells on Console read in the body face with tabular figures, and warm-clear keeps the code face`, async () => {
+  await open(long ? "long" : "");
+  await page.locator("html").evaluate(el => { el.dataset.experience = "console"; });
+  const code = long ? page.locator('[role="row"][data-row-id] [role="gridcell"][data-type="code"]').first() : page.locator('tbody td[data-type="code"]').first();
+  const [cell, body] = await code.evaluate(el => [getComputedStyle(el), getComputedStyle(document.body)].map(s => ({ font: s.fontFamily, figures: s.fontVariantNumeric })));
+  expect(cell!.font).not.toContain("monospace");
+  expect(cell!.font).toBe(body!.font);
+  expect(cell!.figures).toContain("tabular-nums");
+  // Warm-clear keeps the code face.
+  await page.locator("html").evaluate(el => { el.dataset.experience = "warm-clear"; });
+  expect(await code.evaluate(el => getComputedStyle(el).fontFamily)).toContain("monospace");
+});
+
 test("native and virtual tables use the same width presets and preserve explicit widths", async () => {
   await open("");
   const sizes = () => page.getByRole("columnheader").evaluateAll(els => els.map(el => el.getBoundingClientRect().width));

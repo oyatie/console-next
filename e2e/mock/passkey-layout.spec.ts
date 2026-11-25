@@ -52,7 +52,7 @@ for (const width of [1280, 390]) for (const theme of ["light", "dark"]) {
     const terms = { version: "consent-test", sha256: "a".repeat(64) };
     await mockRoute(page, "get", "/api/v1/onboarding/terms", async () => {
       await held;
-      return { status: 200, json: { ...terms, body: "이용 약관", privacy: { ...terms, title: "개인정보 처리 안내", body: "개인정보 처리 안내 전문", published_on: AT.slice(0, 10), policy_url: "/privacy", review_pending: false } } };
+      return { status: 200, json: { ...terms, body: "이용 약관", privacy: { ...terms, title: "개인정보 처리 안내", body: "개인정보 처리 안내 전문", published_on: AT.slice(0, 10), policy_url: "https://example.test/privacy", review_pending: false } } };
     });
     await page.addInitScript(recordShifts);
     try {
@@ -68,6 +68,12 @@ for (const width of [1280, 390]) for (const theme of ["light", "dark"]) {
       await expect(page.getByRole("heading", { name: "패스키 등록", exact: true })).toBeVisible();
       await expect(page.getByRole("checkbox")).toHaveCount(2);
       await expect(enroll).toBeDisabled();
+      // The policy is in view beside the consent itself, not inside a closed full text.
+      const policy = page.getByText("https://example.test/privacy");
+      await expect(page.locator("details[open]")).toHaveCount(0);
+      await expect(policy).toBeVisible();
+      expect((await policy.boundingBox())!.y).toBeLessThan((await enroll.boundingBox())!.y);
+      await expect(page.getByRole("checkbox").first()).toHaveAccessibleDescription(/example\.test\/privacy/);
       await page.evaluate(() => document.fonts.ready);
       await expectStable(page, "consent document arrival");
       await expectAxe(page, "settled consent form");

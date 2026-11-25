@@ -29,7 +29,10 @@ export const i18n = {
     listeners.add(l);
     return () => listeners.delete(l);
   },
+  /** The day style a business date takes when its caller names none; the screen style chooses it. */
+  dateStyle: (): DateStyle => "locale",
 };
+export type DateStyle = "locale" | "iso";
 
 // Only loading and recovery copy ships in the entry; routes await their locale before painting.
 const boot: Record<Locale, Catalog> = { ko: bootBootstrapKo, en: bootBootstrapEn };

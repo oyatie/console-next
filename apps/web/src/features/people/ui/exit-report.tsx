@@ -96,7 +96,7 @@ export function ReportForm({ employee, contractEnd = false, onClose, onDone }: {
           onChange={(nextDate) => draft.set({ ...draft.value, date: nextDate })}
           showErrors={tried}
           // Decision #9: the field is the last working day; the statutory exit date and the insurance loss date are the day after.
-          echo={date ? `${t("exit.field.date.statutory")} ${fmtDate(retirementDate(date))} · ${t("exit.field.date.loss")} ${fmtDate(retirementDate(date))}` : undefined}
+          echo={`${t("exit.field.date.statutory")} ${fmtDate(retirementDate(date || today))} · ${t("exit.field.date.loss")} ${fmtDate(retirementDate(date || today))}`}
           error={tried && problems.date ? t("exit.error.date") : undefined}
         />
         {/* What to settle first sits under the date it depends on: drawn above it, it pushed the field being typed in down. */}

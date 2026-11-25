@@ -23,7 +23,7 @@
 | Start pane | `<div>` | Optional inline-start column (`--pane-start-w`) separated by `1px solid var(--border-strong)`. |
 | Center column | `<div>` | Holds `main` and optional `bottom` (`1px solid var(--border-strong)` top rule). |
 | Splitter | `<div role="separator">` | Focusable vertical resize handle (`aria-orientation="vertical"`) before each open side pane. |
-| Side pane | `<aside>` | Named complementary region (`aria-label`) with `PaneHead`, scrollable `tabIndex={0}` body, and optional pinned `footer`. |
+| Side pane | `<aside>` | Named complementary region (`aria-label`) with `PaneHead`, scrollable `tabIndex={0}` body, and optional pinned `footer`. The footer is also drawn while Escape has armed the unsaved line, holding that line above any `footer`. |
 | `PaneHead` | `<header>` | Filled title bar (`--row-h`) with `<h2>`/`<h3>` title, optional `<bdi>` `meta`, and trailing `actions`. |
 
 ## Looks and sizes
@@ -42,11 +42,11 @@
 | `Enter` on a focused non-grid, non-tree row | Calls `onOpen(id)` when `record` already displays that row and `onOpen` is provided; otherwise calls `onSelect(id)` (native `<button>` rows trigger click when unselected). |
 | `ArrowLeft` / `ArrowRight` on splitter | Widens or narrows the adjacent side pane by `24px`; ignores keys while `isImeKey(event)` is true. |
 | `Home` on splitter | Resets the side pane width to its default token width. |
-| `Escape` inside `PaneGrid` | Exits `full` mode or closes `related` then `record` and returns focus via `returnFocus`, unless `isImeKey(event)` is true, focus is in an editable control, or a dialog/menu is open. |
+| `Escape` inside `PaneGrid` | Exits `full` mode or closes `related` then `record` and returns focus via `returnFocus`, unless `isImeKey(event)` is true, focus is in an editable control, a dialog/menu is open, or the focused control has a popup open (`popupOpen` in `lib/pure/popup.ts`). An expanded disclosure button or an unfolded tree row opens no popup, so Escape from it is handled as from any other control: it exits `full` mode or closes a pane. An expanded element around the focus does not count either, so the same holds for a row inside an unfolded tree item. When the pane it would close holds unsaved input (`hasUnsavedInput` in `experience/dirty-guard.ts`, asked of that pane alone), the first Escape closes nothing and shows `composer.unsaved` as a `role="status"` line in the pane's footer; the next Escape closes the pane. Any other key, a click or an input in the grid withdraws the line, so the Escape after it asks again. The pane is asked against the values its form opened with, so a save the screen refused still warns, and a stored session draft, which has no place on the page, does not. Exiting `full` mode is never held. |
 
 ## Accessibility contract
 
-Each open side pane is an `<aside>` named by `pane.label`, its scrollable body has `tabIndex={0}` (WCAG 2.1.1), and each splitter exposes `role="separator"`, `aria-orientation="vertical"`, `aria-valuemin`, `aria-valuemax`, and `aria-valuenow` (WCAG 2.2 AA 1.3.1, 2.1.1, 2.5.7, 2.5.8).
+Each open side pane is an `<aside>` named by `pane.label`, its scrollable body has `tabIndex={0}` (WCAG 2.1.1), and each splitter exposes `role="separator"`, `aria-orientation="vertical"`, `aria-valuemin`, `aria-valuemax`, and `aria-valuenow` (WCAG 2.2 AA 1.3.1, 2.1.1, 2.5.7, 2.5.8). The unsaved line is a `role="status"` element added to the footer already holding its text, and focus stays where it was when it appears (WCAG 4.1.3).
 
 ## Phone behaviour at 390 px
 
@@ -54,7 +54,7 @@ Below `768px` (`--phone`), when `record` or `related` is open (`data-depth` > `0
 
 ## Copy rules
 
-Built-in labels read `common.back`, `common.closePanel`, `common.closeRelated`, `common.resizeColumn`, `uiFlexibleColumns.full`, and `uiFlexibleColumns.openInTab` from `packages/i18n`.
+Built-in labels read `common.back`, `common.closePanel`, `common.closeRelated`, `common.resizeColumn`, `composer.unsaved` (the unsaved line), `uiFlexibleColumns.full`, and `uiFlexibleColumns.openInTab` from `packages/i18n`.
 
 ## Props
 

@@ -1,8 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "./a11y";
 import { go } from "./flows";
 import { tenantWithExecutive } from "./setup-flows";
 import { rosterXlsx } from "./workbook";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 const COMPANY = "명부주식회사";
 const FAMILIES = ["김", "이", "박", "최", "정", "강", "조"];
@@ -111,7 +114,7 @@ test("the roster at 3,000 people: virtualized paging, server counts, jump, bound
   await find.fill("");
   await find.press("Enter");
   await expect(admin.getByText(new RegExp(` / ${fmt(total)}줄$`))).toBeVisible(); // the pages scrolled through earlier are still cached
-  await admin.getByRole("heading", { name: "직원", level: 1 }).focus();
+  await admin.getByRole("heading", { name: t("roster.head.title"), level: 1 }).focus();
   await admin.keyboard.press("/");
   await expect(find).not.toBeFocused();
   await toEnd(); // the Latin names are the last rows

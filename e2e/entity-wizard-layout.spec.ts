@@ -45,7 +45,7 @@ test("the 법인 wizard scrolls inside the shell, never the document (W06)", { t
   await shellHolds(a, "법인 wizard, 발급일 focused");
   await a.getByRole("textbox", { name: /^법인등록번호/ }).focus();
   await shellHolds(a, "법인 wizard, 법인등록번호 focused");
-  await expect(a.getByRole("banner").first()).toBeInViewport();
+  await expect(a.getByRole("banner")).toBeInViewport();
 });
 
 test("the quick 법인 sheet says what it needs, and that is what it asks for", { tag: ["@org", "@regression"] }, async ({ browser }) => {

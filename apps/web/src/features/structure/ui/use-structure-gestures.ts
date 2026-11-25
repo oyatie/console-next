@@ -46,6 +46,8 @@ export function useStructureGestures(s: Structure, c: ChartState, cmd: Commands,
     if (n.kind === "tenant") return void navigate({ to: "/org/entities/new" });
     if (n.kind === "entity") return void navigate({ to: "/org/entities/$id/workplaces/new", params: { id: n.id } });
     c.toggle(n.id, true);
+    // The box added under becomes the keyboard's box (as in the outline), so its editor comes into view beside it.
+    c.setCursor(n.id);
     c.setAdding(n.id);
   };
   const create = (parentId: string, name: string, values: InlineUnitValues, done?: () => void) => {

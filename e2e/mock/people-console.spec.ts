@@ -97,7 +97,8 @@ for (const width of [1440, 390] as const) {
             expect(box!.height).toBeLessThanOrEqual(72);
             if (box!.y + box!.height <= 900) aboveFoldCount += 1;
           }
-          expect(aboveFoldCount).toBeGreaterThanOrEqual(6);
+          // Below the name index, whose keys are 44px phone targets in two rows of seven.
+          expect(aboveFoldCount).toBeGreaterThanOrEqual(5);
         }
 
         await fits(page, `Console /people ${width} ${theme}`);
@@ -125,7 +126,7 @@ for (const width of [1440, 390] as const) {
         await expect(page.getByRole("heading", { level: 1, name: saeonUniverse.hero.name })).toBeVisible();
         await expect(pattern).toContainText(saeonUniverse.hero.employeeNumber);
         await expect(pattern).toContainText(saeonUniverse.hero.rrnMasked);
-        await expect(pattern).toContainText(fmtDate(saeonUniverse.heroDetails.scheduledEvent.effectiveDate));
+        await expect(pattern).toContainText(fmtDate(saeonUniverse.heroDetails.scheduledEvent.effectiveDate, { style: "iso" }));
 
         await fits(page, `Console /people/$id ${width} ${theme}`);
         await expectAxe(page, `Console /people/$id ${width} ${theme}`);
@@ -270,9 +271,9 @@ test("Console /people interactive filters (StatRow, FilterRail, IndexBar), side-
     await page.getByRole("button", { name: new RegExp(t("people.stat.exited")) }).click();
     const exitedRow = pattern.locator(`[role="row"][data-row-id="${SAEON_EXITED_ID}"]`);
     await expect(exitedRow).toBeVisible();
-    await expect(exitedRow).toContainText("2029. 11. 01.");
+    await expect(exitedRow).toContainText("2029-11-01");
     await exitedRow.click();
-    await expect(sidePane).toContainText("2029. 11. 01.");
+    await expect(sidePane).toContainText("2029-11-01");
 
     // Return to active, open hero, and use open-in-tab link to reach /people/$id (P3)
     await page.getByRole("button", { name: new RegExp(t("people.stat.exited")) }).click();
@@ -362,7 +363,7 @@ test("Capability-gated peek queries do not fire 403s for read-only users and EXI
     const pattern = page.locator('[data-pattern="record"]');
     await expect(pattern).toBeVisible();
     await expect(pattern).toContainText(saeonUniverse.statusSamples.exited.retentionInstrument);
-    await expect(pattern).toContainText(fmtDate(saeonUniverse.statusSamples.exited.keptUntil));
+    await expect(pattern).toContainText(fmtDate(saeonUniverse.statusSamples.exited.keptUntil, { style: "iso" }));
     expect(forbiddenUrls).toEqual([]);
     expect(directoryCalls).toEqual([]);
     expect(fixture.unexpected).toEqual([]);
@@ -496,8 +497,8 @@ for (const theme of ["light", "dark"] as const) {
       const sec5 = page.locator('[data-pattern="record"] #s5');
       await expect(sec5).toBeVisible();
       await expect(sec5).toContainText("2017-01-02 ~ 2019-02-28");
-      await expect(sec5).toContainText("2011. 03. 01. ~ 2015. 02. 25.");
-      await expect(sec5).toContainText("2024. 06. 03. ~ 2024. 06. 07.");
+      await expect(sec5).toContainText("2011-03-01 ~ 2015-02-25");
+      await expect(sec5).toContainText("2024-06-03 ~ 2024-06-07");
 
       await assertZeroOverflowAt320(page);
       const metrics = await sec5.evaluate(sec => ({

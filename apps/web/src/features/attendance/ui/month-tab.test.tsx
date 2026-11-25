@@ -143,3 +143,17 @@ test("Console P5 mounts SaveDock inside SidePane when save is open with drafts",
   expect(html).toContain('data-pane="record"');
   expect(html).toContain('data-testid="save-dock"');
 });
+
+// Save takes Command or Control in the grid; the hint names the key this system's keyboard has.
+test.each((["baseline", "console"] as const).flatMap(look => [[look, "Win32", "Ctrl+S"], [look, "MacIntel", "⌘S"]] as const))("%s look: on %s the save command's key hint reads %s", (look, platform, hint) => {
+  state.experience = look;
+  // The hint reads the navigator only inside a page, so the test stands in for both.
+  vi.stubGlobal("document", {});
+  vi.stubGlobal("navigator", { platform, onLine: true });
+  state.drafts = { "person|2026-10-06": { value: "=", base: null } };
+  try {
+    expect(render()).toContain(`>${hint}</kbd>`);
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});

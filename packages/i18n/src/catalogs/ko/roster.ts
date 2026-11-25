@@ -66,7 +66,7 @@ export const koRoster: Record<keyof typeof enRoster, string> = {
   "roster.export.commit": "{count, number}명 내려받기",
   "roster.export.done": "직원 {count, number}명을 내려받았습니다",
   "roster.export.file": "직원명부-{date}.csv",
-  "roster.head.title": "직원",
+  "roster.head.title": "구성원",
   "roster.head.asof": "기준일",
   "roster.head.today": "오늘",
   "roster.head.register": "근로자 명부",

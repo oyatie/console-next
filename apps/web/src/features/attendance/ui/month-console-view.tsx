@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useMemo, type ReactNode } from "react";
 import { t } from "@console/i18n";
+import { modHint } from "../../../lib/mod-hint";
 import { Badge } from "../../../ui/badge/badge";
 import { Button } from "../../../ui/button/button";
 import { Segmented } from "../../../ui/button/segmented";
@@ -137,7 +138,7 @@ export function MonthConsoleView({
   }, [filteredRows.length, dailyFooter]);
   const consoleSaveButton = (
     <Button size="sm" variant={saveOpen ? "secondary" : "primary"} className={s.nowrap} disabled={!!saveWhy} onClick={onOpenSave}>
-      {t("attendanceRecords.toolbar.save")} <Kbd keys="⌘S" />
+      {t("attendanceRecords.toolbar.save")} <Kbd keys={modHint("S")} />
     </Button>
   );
 

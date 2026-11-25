@@ -6,7 +6,7 @@
 .row > span { display: flex; align-items: center; gap: var(--space-1); min-height: calc(var(--target) + var(--space-1)); padding: 0 var(--space-3); border-bottom: 1px solid var(--border-soft); overflow: hidden; white-space: nowrap; }
 .n { justify-content: flex-end; color: var(--steel); font-variant-numeric: tabular-nums; }
 .colHead { color: var(--ink); }
-.tag { display: inline-flex; align-items: center; height: calc(var(--space-4) + var(--space-1)); padding: 0 var(--space-1); border: 1px solid var(--warn-bd); border-radius: var(--radius-sm); background: var(--warn-bg); color: var(--warn-tx); font-size: var(--text-xs); }
+.tag { display: inline-flex; align-items: center; height: calc(var(--space-4) + var(--space-1)); padding: 0 var(--space-1); border: 1px solid var(--warn-mark); border-radius: var(--radius-sm); background: var(--warn-bg); color: var(--warn-tx); font-size: var(--text-xs); }
 .tag[data-tone="info"] { border-color: var(--info-bd); background: var(--info-bg); color: var(--info-tx); }
 .cell { scroll-margin-inline: var(--space-1); cursor: cell; }
 .cell:focus-visible, .cell[data-editing] { outline: 2px solid var(--primary); outline-offset: -2px; }

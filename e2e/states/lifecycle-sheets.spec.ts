@@ -178,10 +178,12 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await expect(sheet).toHaveAccessibleName(t("lifecycle.title.relocate"));
     const today = todayPreset(sheet);
     await expect(today).toContainText(t("lifecycle.preset.today"));
+    // The echo's line is held unseen and unread before a date: only a shown line describes the input.
+    await expect(dateBox(sheet)).toHaveAccessibleDescription("");
     await today.click();
     await expect(today).toHaveAttribute("aria-pressed", "true");
     await expect(dateBox(sheet)).toHaveValue("2026. 10. 29.");
-    await expect(sheet).toContainText(t("lifecycle.when.today"));
+    await expect(dateBox(sheet)).toHaveAccessibleDescription(t("lifecycle.when.today"));
     await fits(page, `today-preset/${width}/${theme}`);
     await expectAxe(page, `today-preset/${width}/${theme}`);
     expect(fixture.unexpected).toEqual([]);

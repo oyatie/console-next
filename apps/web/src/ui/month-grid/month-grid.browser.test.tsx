@@ -1,169 +1,180 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { resolve } from "node:path";
 import { realpathSync } from "node:fs";
-import { chromium, expect as expectDom, type Browser, type Page } from "@playwright/test";
-import { createServer, type ViteDevServer } from "vite";
+import { dirname } from "node:path";
 import { afterAll, beforeAll, expect, test } from "vitest";
-import { browserTestOptimizeDeps, openBrowserTestPage } from "../../lib/browser-test";
+import { expect as element } from "@playwright/test";
+import { createServer, type ViteDevServer } from "vite";
+import { browserTestOptimizeDeps, chromium, openBrowserTestPage, type Browser, type Page } from "../../lib/browser-test";
 
+const [fixture] = Object.values(import.meta.glob<string>("./month-grid.browser-fixture.tsx", { query: "?url", import: "default", eager: true }));
 let server: ViteDevServer;
 let browser: Browser;
 let page: Page;
-
 beforeAll(async () => {
-  server = await createServer({
-    configFile: false,
-    cacheDir: ".cache/month-grid-test",
-    logLevel: "error",
-    optimizeDeps: browserTestOptimizeDeps,
-    resolve: { dedupe: ["react", "react-dom"] },
-    server: { host: "127.0.0.1", port: 0, watch: null, hmr: false, fs: { allow: [resolve("."), realpathSync("node_modules/pretendard")] } },
-    plugins: [{
-      name: "month-grid-test",
-      resolveId: (id) => (id === "/month-grid-test.js" ? "\0month-grid-test" : undefined),
-      load: (id) => (id === "\0month-grid-test" ? `
-        import { createElement as h, useState } from 'react';
-        import { createRoot } from 'react-dom/client';
-        import { MonthGrid } from '/apps/web/src/ui/month-grid/month-grid.tsx';
-        import '/apps/web/src/app.css';
-
-        const FULL_WEEKS = [0, 1, 2, 3, 4].map((w) =>
-          Array.from({ length: 7 }, (_, d) => new Date(Date.UTC(2026, 8, 27 + w * 7 + d)).toISOString().slice(0, 10))
-        );
-        const RAGGED_WEEKS = [
-          ['2026-09-27', '2026-09-28', '2026-09-29', '2026-09-30', '2026-10-01', '2026-10-02', '2026-10-03'],
-          ['2026-10-04', '2026-10-05', '2026-10-06'],
-        ];
-
-        window.lastDefaultPrevented = null;
-        function App() {
-          const params = new URLSearchParams(location.search);
-          const readonly = params.get('readonly') === 'true';
-          const ragged = params.get('ragged') === 'true';
-          const [selected, setSelected] = useState('2026-10-01');
-          const [lastEvent, setLastEvent] = useState('');
-          return h('main', {
-            onKeyDown: (e) => { window.lastDefaultPrevented = e.defaultPrevented; },
-          },
-            h('h1', null, 'Month Grid'),
-            h('output', { id: 'selected' }, selected),
-            h('output', { id: 'events' }, lastEvent),
-            h(MonthGrid, {
-              label: 'October 2026',
-              weeks: ragged ? RAGGED_WEEKS : FULL_WEEKS,
-              weekdays: ['S', 'M', 'T', 'W', 'T', 'F', 'S'],
-              inMonth: (d) => d.startsWith('2026-10'),
-              cell: () => null,
-              selected,
-              onSelect: readonly ? undefined : (d) => { setSelected(d); setLastEvent(d); },
-            })
-          );
-        }
-
-        createRoot(document.getElementById('root')).render(h(App));
-      ` : undefined),
-      configureServer: (vite) => {
-        vite.middlewares.use((req, res, next) => {
-          if (req.url?.split("?")[0] !== "/month-grid-test") return next();
-          res.setHeader("Content-Type", "text/html; charset=utf-8");
-          res.end('<!doctype html><html lang="en"><head><title>MonthGrid</title></head><body><div id="root"></div><script type="module" src="/month-grid-test.js"></script></body></html>');
-        });
-      },
-    }],
+  server = await createServer({ configFile: false, cacheDir: ".cache/month-grid-test", logLevel: "error",
+    optimizeDeps: { ...browserTestOptimizeDeps, entries: ["apps/web/src/ui/month-grid/month-grid.browser-fixture.tsx"] },
+    server: { host: "127.0.0.1", port: 0, watch: null, hmr: false, fs: { allow: [process.cwd(), dirname(realpathSync("node_modules/pretendard"))] } },
   });
   await server.listen();
   browser = await chromium.launch();
   page = await browser.newPage();
+  await page.route("**/month-test*", route => route.fulfill({ contentType: "text/html", body: `<html lang="en"><title>Month grid</title><div id="root"></div><script type="module" src="${fixture}"></script></html>` }));
 }, 60_000);
+afterAll(async () => { await browser?.close(); await server?.close(); });
 
-afterAll(async () => {
-  await browser?.close();
-  await server?.close();
+// October 2026 is drawn in five weeks, from Sunday 27 September to Saturday 31 October. Its first day is a Thursday.
+const open = async (query = "", size = { width: 1280, height: 720 }) => {
+  await page.setViewportSize(size);
+  await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}month-test${query}`, page.getByRole("grid", { name: "October 2026" }));
+};
+const day = (date: string) => page.getByRole("gridcell").and(page.locator(`[data-date="${date}"]`));
+/** Focus is on that day, and it is the grid's one tab stop. */
+const on = (date: string) => expect.poll(() => page.evaluate(() => ({
+  focus: document.activeElement instanceof HTMLElement ? document.activeElement.dataset.date : undefined,
+  stops: [...document.querySelectorAll<HTMLElement>('td[tabindex="0"]')].map(el => el.dataset.date),
+}))).toEqual({ focus: date, stops: [date] });
+/** The last key pressed, and whether the grid cancelled its default ("taken") or not ("left"). */
+const key = (text: string) => element(page.locator("#key")).toHaveText(text);
+const press = async (...keys: string[]) => { for (const k of keys) await page.keyboard.press(k); };
+// A viewport shorter than the fixture, so the page has room to scroll both ways from 40.
+const SHORT = { width: 390, height: 420 };
+const scrollPart = () => page.evaluate(() => scrollTo(0, 40));
+/** Where the page is scrolled to, read two frames on so that a scroll the last key started has moved it. */
+const scrolled = () => page.evaluate(() => new Promise<number>(done => requestAnimationFrame(() => requestAnimationFrame(() => done(scrollY)))));
+const tabIn = async () => {
+  await page.getByRole("button", { name: "Before" }).focus();
+  await press("Tab");
+  await on("2026-10-01");
+};
+
+test("Up in the first week stays on the day, from the tab stop and from a day that was clicked, and does not scroll the page", async () => {
+  await open("", SHORT);
+  await tabIn();
+  await scrollPart();
+  await press("ArrowUp");
+  await on("2026-10-01");
+  await key("ArrowUp taken");
+  expect(await scrolled()).toBe(40);
+  await day("2026-09-29").click();
+  await on("2026-09-29");
+  await press("ArrowUp");
+  await on("2026-09-29");
+  await day("2026-09-27").click();
+  await press("ArrowUp");
+  await on("2026-09-27");
 });
 
-const url = (query = "") => `${server.resolvedUrls!.local[0]}month-grid-test${query}`;
-const cell = (date: string) => page.locator(`td[data-date="${date}"]`);
-const activeDate = () => page.evaluate(() => document.activeElement?.getAttribute("data-date"));
-const lastPrevented = () => page.evaluate(() => (window as unknown as { lastDefaultPrevented: boolean | null }).lastDefaultPrevented);
-
-test("ArrowUp on row 0 and ArrowDown on the final row preserve column instead of wrapping horizontally", async () => {
-  await openBrowserTestPage(page, url(), cell("2026-10-01"));
-
-  await cell("2026-09-30").focus();
-  await page.keyboard.press("ArrowUp");
-  expect(await activeDate()).toBe("2026-09-30");
-  expect(await lastPrevented()).toBe(true);
-
-  await cell("2026-09-27").focus();
-  await page.keyboard.press("ArrowUp");
-  expect(await activeDate()).toBe("2026-09-27");
-  expect(await lastPrevented()).toBe(true);
-
-  await cell("2026-10-28").focus();
-  await page.keyboard.press("ArrowDown");
-  expect(await activeDate()).toBe("2026-10-28");
-  expect(await lastPrevented()).toBe(true);
-
-  await cell("2026-10-31").focus();
-  await page.keyboard.press("ArrowDown");
-  expect(await activeDate()).toBe("2026-10-31");
-  expect(await lastPrevented()).toBe(true);
+test("Down in the last week stays on the day, reached by arrows and by a click, and does not scroll the page", async () => {
+  await open("", SHORT);
+  await tabIn();
+  await press("ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown");
+  await on("2026-10-29");
+  await scrollPart();
+  await press("ArrowDown");
+  await on("2026-10-29");
+  await key("ArrowDown taken");
+  expect(await scrolled()).toBe(40);
+  await day("2026-10-26").click();
+  await on("2026-10-26");
+  await press("ArrowDown");
+  await on("2026-10-26");
+  await day("2026-10-31").click();
+  await press("ArrowDown");
+  await on("2026-10-31");
 });
 
-test("interior ArrowUp/ArrowDown move +/-7 days and ArrowLeft/ArrowRight wrap weeks and stop at bounds", async () => {
-  await openBrowserTestPage(page, url(), cell("2026-10-01"));
-
-  await cell("2026-10-08").focus();
-  await page.keyboard.press("ArrowDown");
-  expect(await activeDate()).toBe("2026-10-15");
-  await page.keyboard.press("ArrowUp");
-  expect(await activeDate()).toBe("2026-10-08");
-
-  await cell("2026-10-03").focus();
-  await page.keyboard.press("ArrowRight");
-  expect(await activeDate()).toBe("2026-10-04");
-  await page.keyboard.press("ArrowLeft");
-  expect(await activeDate()).toBe("2026-10-03");
-
-  await cell("2026-09-27").focus();
-  await page.keyboard.press("ArrowLeft");
-  expect(await activeDate()).toBe("2026-09-27");
-
-  await cell("2026-10-31").focus();
-  await page.keyboard.press("ArrowRight");
-  expect(await activeDate()).toBe("2026-10-31");
+test("the other keys move as the design page says: a week up or down, across a week's end, to a week's ends, and no further than the days shown", async () => {
+  await open();
+  await tabIn();
+  await press("ArrowDown");
+  await on("2026-10-08");
+  await press("ArrowUp");
+  await on("2026-10-01");
+  await press("End");
+  await on("2026-10-03");
+  await press("ArrowRight");
+  await on("2026-10-04");
+  await press("ArrowLeft");
+  await on("2026-10-03");
+  await press("Home");
+  await on("2026-09-27");
+  await press("ArrowLeft");
+  await on("2026-09-27");
+  await key("ArrowLeft taken");
+  await day("2026-10-31").click();
+  await press("ArrowRight");
+  await on("2026-10-31");
+  await key("ArrowRight taken");
+  await press("Home");
+  await on("2026-10-25");
+  await press("End");
+  await on("2026-10-31");
+  // A modifier is not read: the key moves the same way.
+  await press("Shift+ArrowUp");
+  await on("2026-10-24");
+  await press("Control+Home");
+  await on("2026-10-18");
 });
 
-test("Home and End move to week ends and End clamps on a ragged final row", async () => {
-  await openBrowserTestPage(page, url(), cell("2026-10-01"));
-  await cell("2026-10-14").focus();
-  await page.keyboard.press("Home");
-  expect(await activeDate()).toBe("2026-10-11");
-  await page.keyboard.press("End");
-  expect(await activeDate()).toBe("2026-10-17");
-
-  await openBrowserTestPage(page, url("?ragged=true"), cell("2026-10-01"));
-  await cell("2026-10-04").focus();
-  await page.keyboard.press("End");
-  expect(await activeDate()).toBe("2026-10-06");
-  expect(await lastPrevented()).toBe(true);
+test("End on a last week shorter than seven days goes to that week's last day", async () => {
+  await open("?ragged");
+  await day("2026-10-04").click();
+  await press("End");
+  await on("2026-10-06");
+  await key("End taken");
 });
 
-test("Enter and Space invoke onSelect only when provided and skip preventDefault when read-only", async () => {
-  await openBrowserTestPage(page, url(), cell("2026-10-01"));
-  await cell("2026-10-15").focus();
-  await page.keyboard.press("Enter");
-  await expectDom(page.locator("#selected")).toHaveText("2026-10-15");
-  expect(await lastPrevented()).toBe(true);
+test("a key the grid has no use for is left to the browser: Page Up and Page Down, a letter, and with nothing to choose Enter and Space", async () => {
+  await open();
+  await tabIn();
+  for (const k of ["PageUp", "PageDown", "KeyA", "Enter", "Space"]) {
+    await press(k);
+    await key(`${k} left`);
+    await on("2026-10-01");
+  }
+  // Tab leaves the grid in one step each way, and comes back to the day last focused.
+  await press("ArrowRight", "Tab");
+  await element(page.getByRole("button", { name: "After" })).toBeFocused();
+  await press("Shift+Tab");
+  await on("2026-10-02");
+  await press("Shift+Tab");
+  await element(page.getByRole("button", { name: "Before" })).toBeFocused();
+});
 
-  await cell("2026-10-16").focus();
-  await page.keyboard.press("Space");
-  await expectDom(page.locator("#selected")).toHaveText("2026-10-16");
-  expect(await lastPrevented()).toBe(true);
+test("a selected day with nothing to choose is the tab stop and is not marked, and Space is left to the browser", async () => {
+  await open("?selected=2026-10-15");
+  await page.getByRole("button", { name: "Before" }).focus();
+  await press("Tab", "Space");
+  await on("2026-10-15");
+  await key("Space left");
+  await element(day("2026-10-15")).not.toHaveAttribute("aria-selected");
+});
 
-  await openBrowserTestPage(page, url("?readonly=true"), cell("2026-10-01"));
-  await cell("2026-10-15").focus();
-  await page.keyboard.press("Space");
-  await expectDom(page.locator("#events")).toHaveText("");
-  expect(await lastPrevented()).toBe(false);
+test("with a day to choose, Enter, Space and a click choose the focused day", async () => {
+  await open("?choose");
+  await tabIn();
+  await press("ArrowRight", "Enter");
+  await key("Enter taken");
+  await element(page.locator("#chosen")).toHaveText("2026-10-02");
+  await element(day("2026-10-02")).toHaveAttribute("aria-selected", "true");
+  await press("ArrowRight", "Space");
+  await key("Space taken");
+  await element(page.locator("#chosen")).toHaveText("2026-10-03");
+  await day("2026-09-28").click();
+  await element(page.locator("#chosen")).toHaveText("2026-09-28");
+  await on("2026-09-28");
+});
+
+// The two ways a browser marks a key the input method owns: mid-composition, and by key code 229 alone.
+test.each([{ isComposing: true }, { isComposing: false, keyCode: 229 }])("an arrow and Enter the input method owns, %j, move nothing and choose nothing, then a plain arrow moves", async state => {
+  await open("?choose");
+  await tabIn();
+  // For each key, true when nothing cancelled its default.
+  const left = await day("2026-10-01").evaluate((el, init) => ["ArrowDown", "Enter"].map(key => el.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true, ...init }))), state);
+  expect(left).toEqual([true, true]);
+  await on("2026-10-01");
+  await press("ArrowDown");
+  await on("2026-10-08");
+  // Read after a real key press, by which time a choice the Enter made would have rendered.
+  await element(page.locator("#chosen")).toBeEmpty();
 });

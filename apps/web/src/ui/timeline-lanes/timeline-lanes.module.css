@@ -5,7 +5,7 @@
 .item { display: grid; grid-template-columns: max-content max-content minmax(0, 1fr); gap: 0 var(--space-3); padding: var(--space-2); border-radius: var(--radius); font-size: var(--text-sm); }
 .item:hover, .item[data-hovered] { background: var(--muted); }
 .item:focus-visible { box-shadow: var(--focus); outline: none; }
-.item[data-highlight] { background: var(--info-bg); }
+.item[data-highlight] { background: var(--highlight-bg); }
 .item[data-struck] .text { text-decoration: line-through; color: var(--steel); }
 .date { white-space: nowrap; color: var(--steel); }
 .dot { width: var(--space-2); height: var(--space-2); margin-top: var(--space-1); border-radius: var(--radius-sm); background: var(--steel); }

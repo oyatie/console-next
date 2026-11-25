@@ -189,7 +189,7 @@ for (const width of [1440, 390]) {
             "placeholder",
             t("home.worklist.find"),
           );
-          await expect(worklist.getByRole("link", { name: t("home.inbox.viewInbox"), exact: true })).toHaveCount(0);
+          await expect(worklist.getByRole("link", { name: t("home.inbox.viewInbox"), exact: true })).toHaveAttribute("href", "/inbox");
           const orgRow = queueTable.locator('tbody tr[data-id="OC-2026-0418"]');
           const leaveRow = queueTable.locator('tbody tr[data-id="leave-app-1"]');
           await expect(orgRow.getByRole("button", { name: t("uiWorklist.reject"), exact: true })).toBeVisible();
@@ -685,7 +685,7 @@ for (const locale of ["ko", "en"] as const) {
       const admin = saeonAdminUser();
       const principalKey = `console.tabs.${JSON.stringify(["00000000-0000-4000-8000-000000000002", admin.id])}`;
       const seededTabs = [
-        { id: "pinned-home", href: "/", label: t("shell.link.home"), pinned: true },
+        { id: "pinned-home", href: "/", label: t("shell.link.todo"), pinned: true },
         ...Array.from({ length: 7 }, (_, idx) => ({
           id: `tab-doc-${idx + 1}`,
           href: `/people?tab=${idx + 1}`,

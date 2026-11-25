@@ -1,18 +1,21 @@
 import { expect, test } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "./a11y";
 import { go, passkeyLogin, routeReady, stepUp } from "./flows";
 import { tenantWithExecutive } from "./setup-flows";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 // The production path from an empty database: vendor cold start → tenant → admin → executive → setup → operating.
 test("onboarding creates every account through the product", { tag: "@smoke" }, async ({ browser }) => {
   const { admin, exec } = await tenantWithExecutive(browser, "hanbit", "한빛정밀", true);
   // The executive signed in while the tenant was still in setup.
   await exec.reload();
-  await expect(exec.getByRole("heading", { name: "이임원님" })).toBeVisible();
+  await expect(exec.getByRole("main").getByText("이임원님", { exact: true })).toBeVisible();
   // The menu follows the caller's /me/authz grants (executives read org changes and the directory).
   const menu = exec.getByRole("navigation", { name: "주 메뉴" });
-  await expect(menu.getByRole("link", { name: "조직 구조" })).toBeVisible();
-  await expect(menu.getByRole("link", { name: "직원" })).toBeVisible();
+  await expect(menu.getByRole("link", { name: t("shell.link.org"), exact: true })).toBeVisible();
+  await expect(menu.getByRole("link", { name: t("shell.link.people"), exact: true })).toBeVisible();
   // The tenant operates (its setup was finished by the admin): neither the setup list nor a getting-started card shows.
   await expect(exec.getByRole("region", { name: /운영 준비|^시작$/ })).toHaveCount(0);
   await expectAccessible(exec, "home");

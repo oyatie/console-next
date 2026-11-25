@@ -105,7 +105,8 @@ impl PgPayrollStore {
         &self.pool
     }
 
-    /// Org-scoped page of payroll draft runs, newest period first.
+    /// Org-scoped page of payroll draft runs, newest period first. Runs of pay
+    /// groups are left out, as in [`list_runs_in_tx`].
     ///
     /// This opens its own transaction. A caller that must combine the read
     /// with an audited write in one atomic transaction (the REST layer's
@@ -182,18 +183,21 @@ impl PgPayrollStore {
 
     /// Keyset page of SUBMITTED runs the caller did not submit.
     ///
-    /// Capability (`PayrollRunManage` org-wide) is enforced by the inbox
-    /// composition root; this query only applies the SoD and as-of predicates.
+    /// Capability (`PayrollRunManage` org-wide, and the pay groups in `visible`)
+    /// is decided by the inbox composition root; this query applies the SoD,
+    /// as-of and pay-group predicates.
     pub async fn list_submitted_action_inbox_page(
         &self,
         caller: UserId,
         as_of: OffsetDateTime,
         after: Option<(Option<OffsetDateTime>, OffsetDateTime, String)>,
         limit: i64,
+        visible: &[Uuid],
     ) -> Result<(Vec<PayrollActionInboxItem>, i64, bool), PgPayrollError> {
         let limit = limit.clamp(1, 200);
         let org = current_org().map_err(KernelError::from)?;
         let caller_id = *caller.as_uuid();
+        let visible = visible.to_vec();
         with_org_conn::<_, _, PgPayrollError>(&self.pool, org, move |tx| {
             Box::pin(async move {
                 let total: i64 = sqlx::query_scalar(
@@ -202,10 +206,12 @@ impl PgPayrollStore {
                        AND submitted_by IS NOT NULL \
                        AND submitted_by <> $1 \
                        AND submitted_at IS NOT NULL \
-                       AND submitted_at <= $2",
+                       AND submitted_at <= $2 \
+                       AND (pay_group_id IS NULL OR pay_group_id = ANY($3))",
                 )
                 .bind(caller_id)
                 .bind(as_of)
+                .bind(&visible)
                 .fetch_one(tx.as_mut())
                 .await?;
                 let mut query = QueryBuilder::<Postgres>::new(
@@ -218,7 +224,10 @@ impl PgPayrollStore {
                 query
                     .push_bind(caller_id)
                     .push(" AND submitted_at IS NOT NULL AND submitted_at <= ")
-                    .push_bind(as_of);
+                    .push_bind(as_of)
+                    .push(" AND (pay_group_id IS NULL OR pay_group_id = ANY(")
+                    .push_bind(visible)
+                    .push("))");
                 console_platform_db::inbox::push_page(
                     &mut query,
                     "NULL::timestamptz",

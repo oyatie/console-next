@@ -1,10 +1,13 @@
 import { expect, test } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "./a11y";
 import { clickCounter } from "./clicks";
 import { go, koDate, kstDate, registerEmployee } from "./flows";
 import { staffedTenant } from "./setup-flows";
 import { reasonBox, sheet } from "./sheet";
 import { holdRead } from "./helpers/read";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 // J3 계약 갱신: contracts ending soon queue on Home; one link opens the renewal sheet, and its receipt opens the
 // next renewal in the same queue (away from the commit).
@@ -18,7 +21,7 @@ test("J3 contract renewal from Home's queue, then the next one", { tag: "@hr" },
   await expect(admin.getByRole("region", { name: "재직·배치" }).getByText("D-20")).toBeVisible();
 
   await go(admin, "/");
-  const queue = admin.getByRole("region", { name: "업무함", exact: true }).getByRole("row").filter({ hasText: "갑계약" }).filter({ has: admin.getByRole("link", { name: "계약 조건 확인", exact: true }) });
+  const queue = admin.getByRole("region", { name: t("home.inbox.title"), exact: true }).getByRole("row").filter({ hasText: "갑계약" }).filter({ has: admin.getByRole("link", { name: "계약 조건 확인", exact: true }) });
   await expect(queue).toContainText("갑계약");
   await expectAccessible(admin, "J3: Home renewal queue");
   await c.click(queue.getByRole("link", { name: "계약 조건 확인", exact: true }));

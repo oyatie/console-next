@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useCallback, useEffect, useLayoutEffect, useRef, type ReactNode, type RefObject } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { hasUnsavedInput } from "../../experience/dirty-guard";
 import { isImeKey } from "../../lib/pure/ime";
+import { popupOpen } from "../../lib/pure/popup";
 import { editable, FOCUS_SETTLE_MS, ROW_SELECTOR, rowStep } from "../long-table/row-keys";
 import { PaneSplitter, SidePane, type SidePaneSpec } from "./pane-grid-side";
 import s from "./pane-grid.module.css";
@@ -90,10 +92,14 @@ export function PaneGrid({
   const openRecord = record || undefined;
   const openRelated = openRecord && related ? related : undefined;
   const depth = openRelated ? 2 : openRecord ? 1 : 0;
+  const closingKey = openRelated ? `related:${openRelated.id}` : openRecord ? `record:${openRecord.id}` : null;
+  // The unsaved warning belongs to the pane Escape would close; once that pane changes or closes, it is withdrawn.
+  const [armedFor, setArmedFor] = useState<string | null>(null);
+  if (armedFor && armedFor !== closingKey) setArmedFor(null);
   const prevDepthRef = useRef(depth);
-  const liveRef = useRef({ openRecord, openRelated, full, onFull, onSelect, onOpen, depth });
+  const liveRef = useRef({ openRecord, openRelated, full, onFull, onSelect, onOpen, depth, closingKey, armedFor });
   useLayoutEffect(() => {
-    liveRef.current = { openRecord, openRelated, full, onFull, onSelect, onOpen, depth };
+    liveRef.current = { openRecord, openRelated, full, onFull, onSelect, onOpen, depth, closingKey, armedFor };
   });
 
   const closePane = useCallback((pane: SidePaneSpec) => {
@@ -188,13 +194,16 @@ export function PaneGrid({
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
+    // Any other key, click or input may change what the warning was about, so the next Escape asks again.
+    const disarm = () => setArmedFor(null);
     const onKeyDown = (e: KeyboardEvent) => {
+      const { openRecord: rec, openRelated: rel, full: isFull, onFull: setFull, closingKey: closing, armedFor: warned } = liveRef.current;
+      if (e.key !== "Escape") return disarm();
       if (e.defaultPrevented || isImeKey(e) || e.altKey || e.ctrlKey || e.metaKey) return;
-      const { openRecord: rec, openRelated: rel, full: isFull, onFull: setFull } = liveRef.current;
-      if (e.key !== "Escape" || (!rel && !rec) || editable(e.target)) return;
+      if ((!rel && !rec) || editable(e.target)) return;
       if (
         e.target instanceof Element &&
-        e.target.closest('[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"], [data-sheet-layer], [data-escape-scope], [aria-expanded="true"]')
+        (e.target.closest('[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"], [data-sheet-layer], [data-escape-scope]') || popupOpen(e.target))
       ) {
         return;
       }
@@ -204,10 +213,17 @@ export function PaneGrid({
       e.preventDefault();
       e.stopPropagation();
       if (isFull && setFull && !window.matchMedia("(max-width: 767px)").matches) setFull(false);
+      else if (!warned && activePane && hasUnsavedInput(activePane)) setArmedFor(closing);
       else closePane((rel ?? rec)!);
     };
     root.addEventListener("keydown", onKeyDown, true);
-    return () => root.removeEventListener("keydown", onKeyDown, true);
+    root.addEventListener("click", disarm, true);
+    root.addEventListener("input", disarm, true);
+    return () => {
+      root.removeEventListener("keydown", onKeyDown, true);
+      root.removeEventListener("click", disarm, true);
+      root.removeEventListener("input", disarm, true);
+    };
   }, [closePane]);
 
   useEffect(() => {
@@ -253,6 +269,7 @@ export function PaneGrid({
             full={full}
             onFull={!openRelated ? onFull : undefined}
             onCloseRequest={closePane}
+            armed={Boolean(armedFor) && !openRelated}
           />
         </>
       ) : null}
@@ -267,6 +284,7 @@ export function PaneGrid({
             full={full}
             onFull={onFull}
             onCloseRequest={closePane}
+            armed={Boolean(armedFor)}
           />
         </>
       ) : null}

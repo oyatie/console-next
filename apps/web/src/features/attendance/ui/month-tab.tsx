@@ -4,6 +4,7 @@ import { getRouteApi, Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { QueryState } from "../../../lib/react/query-state";
 import { PageReadGate } from "../../../reference/authz/ui/access-gate";
+import { modHint } from "../../../lib/mod-hint";
 import { todayKst } from "../../../lib/pure/today";
 import { Banner } from "../../../ui/banner/banner";
 import { Button } from "../../../ui/button/button";
@@ -18,8 +19,8 @@ import { shiftMonth } from "../domain/month";
 import { cellKey, draftState, splitKey } from "../domain/grid";
 import { suggestFix } from "../domain/grammar";
 import { pageState } from "../domain/month-state";
-import { dateText, monthText, refusalText } from "../present";
-import { DayDock, type DayDockMode } from "./day-dock";
+import { dayPaneHead, monthText, refusalText, type DayDockMode } from "../present";
+import { DayDock } from "./day-dock";
 import { MonthConsoleView } from "./month-console-view";
 import { extractOpenIssues, filterMonthRows, summarizeMonth, type MonthFilter, type OpenIssueRow } from "../domain/month-console-summary";
 import { MonthGridView, type GridAct } from "./month-grid-view";
@@ -103,7 +104,7 @@ export function MonthTab({ head }: { head?: ReactNode }) {
   const empty = grid.isSuccess && total === 0;
   const saveButton = (
     <Button variant={dock ? "secondary" : "primary"} disabled={!!saveWhy} onClick={() => setDock({ kind: "save" })}>
-      {t("attendanceRecords.toolbar.save")} <Kbd keys="⌘S" />
+      {t("attendanceRecords.toolbar.save")} <Kbd keys={modHint("S")} />
     </Button>
   );
 
@@ -174,13 +175,6 @@ export function MonthTab({ head }: { head?: ReactNode }) {
     </>
   );
 
-  const dockRow = dock?.kind === "day" ? rows.find((r) => r.employee_id === dock.employeeId) : undefined;
-  const dayDockTitle = dock?.kind === "day"
-    ? dayMode === "correct" ? t("attendanceRecords.correct.title") : dayMode === "void" ? t("attendanceRecords.void.title") : t("attendanceRecords.day.title", { date: dateText(dock.date) })
-    : "";
-  const dayDockMeta = dock?.kind === "day" && dockRow
-    ? dayMode === "view" ? `${dockRow.name} ${dockRow.employee_number ?? ""}`.trim() : `${dockRow.name} · ${dateText(dock.date)}`
-    : undefined;
   const record = dock?.kind === "save" && drafts.length > 0
     ? {
         id: "save",
@@ -193,9 +187,7 @@ export function MonthTab({ head }: { head?: ReactNode }) {
     : dock?.kind === "day"
       ? {
           id: `day:${dock.employeeId}:${dock.date}`,
-          label: dayDockTitle,
-          title: dayDockTitle,
-          meta: dayDockMeta,
+          ...dayPaneHead(dayMode, dock.date, rows.find((r) => r.employee_id === dock.employeeId)),
           onClose: closeDock,
           children: <DayDock variant="pane" employeeId={dock.employeeId} date={dock.date} own={dock.own} mode={dayMode} onModeChange={setDayMode} onClose={closeDock} onRewrite={closeDock} onDone={(m) => (closeDock(), setNote(m))} />,
         }

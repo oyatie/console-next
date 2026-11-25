@@ -6,7 +6,7 @@ import { createServer, type ViteDevServer } from "vite";
 import { i18n, loadCatalog, t } from "@console/i18n";
 import { browserTestOptimizeDeps, chromium, openBrowserTestPage, type Browser, type Page } from "../../../lib/browser-test";
 import { SINGLE_KEYS_KEY } from "../../../lib/prefs";
-import { authz, failure } from "../../../../../../e2e/mock/fixtures";
+import { authz, failure, id } from "../../../../../../e2e/mock/fixtures";
 import { mockLifecycleSheets, moveDetail } from "../../../../../../e2e/mock/lifecycle-sheets";
 import { mockRoute } from "../../../../../../e2e/mock/route";
 import { lifecycleSheetScreens } from "../../../../../../e2e/states/lifecycle-sheets";
@@ -16,7 +16,7 @@ let server: ViteDevServer;
 let browser: Browser;
 let page: Page;
 // What the server answers for this reader: read at each request, so a test sets it and opens the card.
-const reader = { manage: true, restricted: false };
+const reader = { manage: true, restricted: false, placed: false };
 beforeAll(async () => {
   await loadCatalog("en");
   i18n.set("en");
@@ -34,16 +34,19 @@ beforeAll(async () => {
   const grant = (feature: string) => ({ feature, permission: "allow" as const, branch_scope: { kind: "all" as const }, org_wide: true, scoped: false });
   await mockRoute(page, "get", "/api/v1/me/authz", () => ({ status: 200, json: { ...authz, capabilities: [...authz.capabilities, grant("documents"), ...(reader.manage ? [grant("employee_directory_manage")] : [])] } }));
   await mockRoute(page, "get", "/api/v1/employees/{id}/records", () => ({ status: 200, json: { sections: reader.restricted ? [{ section: "DISABILITY" as const, enabled: true }] : [], items: [] } }));
+  // A placed person is second of three in a unit, so the card can walk to the one before and after.
+  await mockRoute(page, "get", "/api/v1/employees/{id}", () => ({ status: 200, json: reader.placed ? { ...moveDetail, employee: { ...moveDetail.employee, org_unit_id: id(4013) } } : moveDetail }));
+  await mockRoute(page, "get", "/api/v1/employees/{id}/unit-position", { status: 200, json: { org_unit_id: id(4013), index: 2, total: 3, prev_id: id(4001), next_id: id(4002), pre_hire_count: 0 } });
 }, 120_000);
 afterAll(async () => { i18n.set("ko"); await browser?.close(); await server?.close(); });
 
 const links = () => page.getByRole("navigation", { name: t("uiRecord.sections"), exact: true }).getByRole("link");
-const tab = (id: "card" | "ledger") => page.getByRole("navigation", { name: t("empCard.tabs"), exact: true }).getByRole("link", { name: t(`empCard.tab.${id}`), exact: true });
+const tab = (name: "card" | "ledger") => page.getByRole("navigation", { name: t("empCard.tabs"), exact: true }).getByRole("link", { name: t(`empCard.tab.${name}`), exact: true });
 // A jump lands two frames after its key; a key that must do nothing is given that long, and more, to do it.
 const settle = () => page.evaluate(() => new Promise<void>(done => { let n = 6; const tick = () => (--n ? requestAnimationFrame(tick) : done()); tick(); }));
-async function open(as: Partial<typeof reader> = {}) {
-  Object.assign(reader, { manage: true, restricted: false }, as);
-  await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}card-sections-test?person=${moveDetail.employee.id}`, page.getByRole("heading", { level: 1, name: moveDetail.employee.name }));
+async function open(as: Partial<typeof reader> = {}, look = "baseline") {
+  Object.assign(reader, { manage: true, restricted: false, placed: false }, as);
+  await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}card-sections-test?person=${moveDetail.employee.id}&look=${look}`, page.getByRole("heading", { level: 1, name: moveDetail.employee.name }));
   await element(tab("card")).toHaveAttribute("aria-current", "page");
 }
 /** Every link's cap is the digit that opens its section and marks the link, and the number in the section's head. */
@@ -132,6 +135,29 @@ test("a digit or H pressed in the print view leaves the tab and the current sect
   await close();
   await element(tab("card")).toHaveAttribute("aria-current", "page");
   await element(second).toHaveAttribute("aria-current", "true");
+}, 90_000);
+
+test.each(["baseline", "console"])("%s: the card's key caps hide while single keys are off, and follow a change made in another tab", async look => {
+  await open({ placed: true }, look);
+  const caps = page.locator("kbd").filter({ hasText: /^[JKH?]$/ });
+  await element(caps).toHaveCount(4);
+  const set = (value: string | null) => page.evaluate(([key, next]) => {
+    if (next === null) localStorage.removeItem(key!); else localStorage.setItem(key!, next);
+    window.dispatchEvent(new StorageEvent("storage", { key, newValue: next, storageArea: localStorage }));
+  }, [SINGLE_KEYS_KEY, value] as const);
+  try {
+    await set("off");
+    await element(caps).toHaveCount(0);
+    await element(page.getByText(t("empCard.walk"))).toHaveCount(0);
+  } finally { await set(null); }
+  await element(caps).toHaveCount(4);
+}, 90_000);
+
+test("console: a person in no unit has no walk keys, since J and K have no one to go to", async () => {
+  await open({}, "console");
+  await element(page.locator("kbd").filter({ hasText: /^[H?]$/ })).toHaveCount(2);
+  await element(page.locator("kbd").filter({ hasText: /^[JK]$/ })).toHaveCount(0);
+  await element(page.getByText(t("empCard.walk"))).toHaveCount(0);
 }, 90_000);
 
 test("the digits wait while single keys are off or a key is composing, and a click or Enter on a link still opens its section", async () => {

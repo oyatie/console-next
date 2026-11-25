@@ -1,5 +1,5 @@
 // Display formats are fixed to the app language and Korean business time, never the browser locale.
-import { i18n, t, type Locale } from "./index";
+import { i18n, t, type DateStyle, type Locale } from "./index";
 
 const TZ = "Asia/Seoul";
 const INTL_LOCALE: Record<Locale, string> = { ko: "ko-KR", en: "en-US" };
@@ -11,6 +11,7 @@ type Formatters = {
   time: Intl.DateTimeFormat;
   month: Intl.DateTimeFormat;
   monthShort: Intl.DateTimeFormat;
+  monthName: Intl.DateTimeFormat;
   number: Intl.NumberFormat;
 };
 const cache = new Map<Locale, Formatters>();
@@ -29,6 +30,7 @@ const fmt = () => {
         time: new Intl.DateTimeFormat(tag, { timeZone: TZ, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }),
         month: new Intl.DateTimeFormat(tag, { timeZone: "UTC", year: "numeric", month: "long" }),
         monthShort: new Intl.DateTimeFormat(tag, { timeZone: "UTC", year: "numeric", month: "short" }),
+        monthName: new Intl.DateTimeFormat(tag, { timeZone: "UTC", month: "long" }),
         number: new Intl.NumberFormat(tag),
       }),
     );
@@ -52,24 +54,31 @@ export function parseTimestamp(v: unknown): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-type DateFormatOptions = { weekday?: "short" | "long" };
+type DateFormatOptions = { weekday?: "short" | "long"; style?: DateStyle };
+const isoDay = (d: Date) => {
+  const p = Object.fromEntries(fmt().date.formatToParts(d).map(({ type, value }) => [type, value]));
+  return `${p.year}-${p.month}-${p.day}`;
+};
 
-/** A business date as YYYY. MM. DD. in Korean or a localized English date, optionally with its weekday. */
+/**
+ * A business date as YYYY. MM. DD. in Korean or a localized English date, or as YYYY-MM-DD in the ISO day style,
+ * optionally with its weekday. The style is the screen style's unless `style` names one (a printed paper does).
+ */
 export function fmtDate(v: unknown, options: DateFormatOptions = {}) {
   const d = typeof v === "string" ? (/^\d{4}-\d{2}-\d{2}$/.test(v) ? dateOnly(v) : parseTimestamp(v)) : null;
   if (!d) return "—";
-  const date = fmt().date.format(d);
+  const date = (options.style ?? i18n.dateStyle()) === "iso" ? isoDay(d) : fmt().date.format(d);
   if (!options.weekday) return date;
   const weekday = (options.weekday === "long" ? fmt().weekdayLong : fmt().weekdayShort).format(d);
   return i18n.locale === "ko" ? `${date} (${weekday})` : `${weekday}, ${date}`;
 }
 
-/** A month label with its year, for a YYYY-MM business month. */
-export function fmtMonth(v: unknown, style: "long" | "short" = "long") {
+/** A month label with its year, for a YYYY-MM business month; `name` is the month alone. */
+export function fmtMonth(v: unknown, style: "long" | "short" | "name" = "long") {
   if (typeof v !== "string" || !/^\d{4}-\d{2}$/.test(v)) return "—";
   if (Number(v.slice(5, 7)) < 1 || Number(v.slice(5, 7)) > 12) return "—";
   const d = new Date(`${v}-15T00:00:00Z`);
-  return (style === "short" ? fmt().monthShort : fmt().month).format(d);
+  return (style === "short" ? fmt().monthShort : style === "name" ? fmt().monthName : fmt().month).format(d);
 }
 
 /** A weekday label for a business date. */

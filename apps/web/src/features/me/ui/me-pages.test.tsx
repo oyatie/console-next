@@ -15,6 +15,9 @@ const state = vi.hoisted(() => ({
   records403: false,
   canClock: true,
   employeeLinkStatus: "LINKED" as "LINKED" | "UNLINKED",
+  meFails: false,
+  experience: "console" as "console" | "baseline",
+  enabled: {} as Record<string, unknown>,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -23,7 +26,7 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 vi.mock("../../../experience/dom", () => ({
-  useActiveExperienceId: () => "console",
+  useActiveExperienceId: () => state.experience,
 }));
 
 vi.mock("@tanstack/react-query", async original => {
@@ -33,6 +36,7 @@ vi.mock("@tanstack/react-query", async original => {
     useQuery: (opts: Record<string, unknown>) => {
       const first = Object.values(opts).find(Array.isArray);
       const path = String(first?.[0] ?? "");
+      state.enabled[path] = opts.enabled;
       if (opts.enabled === false) return { isPending: false, error: null, data: undefined, refetch: vi.fn() };
       if (path.includes("/api/v1/attendance/me/schedule")) {
         if (state.schedule403) {
@@ -148,6 +152,7 @@ vi.mock("@tanstack/react-query", async original => {
         };
       }
       if (path.includes("/api/v1/users/me")) {
+        if (state.meFails) return { isPending: false, error: new ApiError(503, "service_unavailable", ""), data: undefined, refetch: vi.fn() };
         return {
           isPending: false,
           error: null,
@@ -194,7 +199,12 @@ beforeEach(() => {
   state.records403 = false;
   state.canClock = true;
   state.employeeLinkStatus = "LINKED";
+  state.meFails = false;
+  state.experience = "console";
+  state.enabled = {};
 });
+
+const attendanceReads = () => Object.entries(state.enabled).filter(([path]) => path.includes("attendance"));
 
 function render(node: ReactNode) {
   const qc = new QueryClient();
@@ -241,4 +251,39 @@ test("me desk surfaces honest unlinked notice and secondary query 403 refusals",
   expect(refusedHtml).toContain("attendance.refuse.missing_grant");
   expect(refusedHtml).not.toContain(t("me.desk.requests.empty"));
   expect(refusedHtml).not.toContain(t("me.desk.payslips.empty"));
+});
+
+test("me attendance tells an account with no employee record why, and sends no attendance read", () => {
+  state.employeeLinkStatus = "UNLINKED";
+  const html = render(<MeAttendancePage />);
+  expect(html).toContain(t("account.status.unlinked"));
+  expect(html).toContain(t("me.desk.profile.unlinked"));
+  expect(html).not.toContain(t("me.attendance.records.title"));
+  expect(html).toContain(`<span data-link="/account">${t("shell.profile")}</span>`);
+  expect(attendanceReads().map(([path]) => path).sort()).toEqual([
+    "/api/v1/attendance/me/exceptions",
+    "/api/v1/attendance/me/schedule",
+    "/api/v1/attendance/me/week52",
+    "/api/v1/hr/attendance-records/me",
+  ]);
+  expect(attendanceReads().every(([, enabled]) => enabled === false)).toBe(true);
+});
+
+test("me attendance in Classic tells an unlinked account why, under the page's own title and crumb", () => {
+  state.employeeLinkStatus = "UNLINKED";
+  state.experience = "baseline";
+  const html = render(<MeAttendancePage />);
+  expect(html).toContain(t("me.attendance.title"));
+  expect(html).toContain(`<span data-link="/account">${t("shell.profile")}</span>`);
+  expect(html).toContain(t("me.desk.profile.unlinked"));
+  expect(attendanceReads().every(([, enabled]) => enabled === false)).toBe(true);
+});
+
+test("a failed users/me is the attendance page's failed read, and no attendance read is sent", () => {
+  state.meFails = true;
+  const html = render(<MeAttendancePage />);
+  expect(html).toContain(t("common.loadFailed.title"));
+  expect(html).not.toContain(t("account.status.unlinked"));
+  expect(attendanceReads().length).toBe(4);
+  expect(attendanceReads().every(([, enabled]) => enabled === false)).toBe(true);
 });

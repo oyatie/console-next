@@ -1,7 +1,7 @@
 // The shell's one event stream (decision #27, spec §5.2): opened when a principal signs in, before any screen's
 // loader, and closed when the principal changes. Frames only invalidate reads (topics.ts); nothing here writes the
 // cache, and nothing here re-reads on a timer.
-import type { QueryClient } from "@tanstack/react-query";
+import { notifyManager, type QueryClient } from "@tanstack/react-query";
 import { ApiError, refresh, session } from "@console/api";
 import { openEventStream, type EventStream, type StreamFrame, type StreamOptions, type StreamSnapshot } from "@console/api/events";
 import { invalidateWhere, shownWhere } from "../query";
@@ -75,6 +75,8 @@ export async function showHeld() {
   emitHeld();
   try {
     await applyHeld?.();
+    // Screens hear their reads a notify tick after the cache: clearing first remounts them on the old data for a frame.
+    await new Promise<void>((done) => notifyManager.schedule(done));
   } finally {
     applying = false;
     emitHeld();

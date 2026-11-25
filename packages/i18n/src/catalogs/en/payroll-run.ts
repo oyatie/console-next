@@ -46,6 +46,7 @@ export const enPayrollRun = {
   "payrollRun.error.sod_violation": "The submitter cannot approve or reject the same payroll run.",
   "payrollRun.error.legal_gate": "Legal release verification is required before issuing payslips.",
   "payrollRun.error.exceptions_open": "Resolve all open payroll exceptions before submitting.",
+  "payrollRun.error.nothing_calculated": "This run has no calculated pay, so there is nothing to submit.",
   "payrollRun.error.preflight_blocked": "Resolve all hard preflight blockers before closing attendance.",
   "payrollRun.error.payroll.refuse.identity_unbound": "Your sign-in account must be linked to an employee record to run payroll actions.",
 } as const;
