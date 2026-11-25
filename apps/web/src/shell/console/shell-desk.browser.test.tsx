@@ -106,3 +106,30 @@ test("on a desktop a counted to-do link is named as drawn and described in Class
   await element(menu().locator('a[href="/"]')).toHaveAccessibleDescription(t("shell.needsMe.countDescription", { count: 3 }));
   expect(await nameMismatches(page)).toEqual([]);
 });
+
+test("on a desktop a record tab's close and the new-tab button wait for its title, and a refused record gets them back", async () => {
+  const strip = page.getByRole("navigation", { name: t("shell.tabs.label"), exact: true });
+  const close = (name: string) => strip.getByRole("button", { name: t("shell.tabs.closeOne", { name }), exact: true });
+  const add = strip.getByRole("button", { name: t("shell.tabs.new"), exact: true });
+  const standIn = t("shellRoutes.peopleCard");
+  const asked = Promise.withResolvers<void>(), done = Promise.withResolvers<void>();
+  await openPhoneShell("LINKED", { width: 1440, held: { path: "/api/v1/employees/p1", asked: asked.resolve, done: done.promise } });
+  try {
+    await page.getByRole("button", { name: "go-person", exact: true }).click();
+    await asked.promise;
+    await frames(page);
+    // Both sit after the stand-in title, which the record's name will widen.
+    await element(strip.getByRole("link", { name: standIn, exact: true })).toBeVisible();
+    await element(close(standIn)).toHaveCount(0);
+    await element(add).toHaveCount(0);
+  } finally { done.resolve(); }
+  await element(close("Minji Kim")).toBeVisible();
+  await element(add).toBeVisible();
+
+  // A refused record never names its tab, so both come back once the screen stops reading.
+  await page.evaluate(() => localStorage.clear());
+  await openPhoneShell("LINKED", { width: 1440, refused: "/api/v1/employees/p1" });
+  await page.getByRole("button", { name: "go-person", exact: true }).click();
+  await element(close(standIn)).toBeVisible();
+  await element(add).toBeVisible();
+});

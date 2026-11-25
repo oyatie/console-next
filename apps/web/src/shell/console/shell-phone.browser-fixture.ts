@@ -39,13 +39,14 @@ export async function phoneShellFixture() {
       load: id => id === "\0console-phone-nav-test" ? `
         import React from 'react';
         import { createRoot } from 'react-dom/client';
-        import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-        import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider, useLocation, useNavigate, useRouter } from '@tanstack/react-router';
+        import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
+        import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider, useLocation, useNavigate, useParams, useRouter } from '@tanstack/react-router';
         import { configure, session } from '@console/api';
         import { webPlatform } from '@console/api/web';
         import { useSidePanel } from '/apps/web/src/lib/side-panel/use-side-panel.ts';
         import { loadCatalog } from '@console/i18n';
         import { ConsoleShell } from '/apps/web/src/shell/console/shell.tsx';
+        import { employeeQuery } from '/apps/web/src/features/people/api/employee-read.ts';
         import '/apps/web/src/app.css';
         await loadCatalog('ko');
         // ?cold opens with no session, as a reload does, so the shell restores it through the refresh the test answers.
@@ -64,13 +65,20 @@ export async function phoneShellFixture() {
             h('button', { type: 'button', onClick: () => void navigate({ href: '/account' }) }, 'go-account'),
             h('button', { type: 'button', onClick: () => sheet.close() }, 'close-sheet'),
             h('button', { type: 'button', onClick: () => router.history.back() }, 'go-back'),
+            h('button', { type: 'button', onClick: () => void navigate({ href: '/people/p1' }) }, 'go-person'),
           );
+        }
+        // A record screen: its tab shows a stand-in title until the record's own read names it.
+        function Person() {
+          const { id } = useParams({ strict: false });
+          return h('h1', null, useQuery(employeeQuery(id)).data?.employee?.name ?? 'person');
         }
         // The frame's skip link comes before the shell, as ShellFrame draws it.
         const root = createRootRoute({ component: () => h(React.Fragment, null, h('a', { className: 'skip', href: '#main' }, 'skip'), h(ConsoleShell)) });
         const mk = (path, title) => createRoute({ getParentRoute: () => root, path, staticData: { access: 'signed-in' }, component: () => h(Screen, { title }) });
         const router = createRouter({
-          routeTree: root.addChildren([mk('/', 'Home'), mk('/account', 'Account'), mk('/leave', 'Leave'), mk('/payslips', 'Payslips')]),
+          routeTree: root.addChildren([mk('/', 'Home'), mk('/account', 'Account'), mk('/leave', 'Leave'), mk('/payslips', 'Payslips'),
+            createRoute({ getParentRoute: () => root, path: '/people/$id', staticData: { access: 'signed-in' }, component: Person })]),
           history: createMemoryHistory({ initialEntries: ['/account'] }),
         });
         createRoot(document.getElementById('root')).render(h(QueryClientProvider, { client: qc }, h(RouterProvider, { router })));
@@ -98,6 +106,7 @@ export async function phoneShellFixture() {
       "/api/v1/onboarding/checklist": { phase: "OPERATING", steps: [] },
       "/api/v1/me/action-inbox": { items: [], next_cursor: null, counts: { turn: { total: inbox?.total ?? 0, total_is_exact: inbox?.exact ?? true } }, attention_filters: [] },
       "/api/v1/auth/passkeys": [],
+      "/api/v1/employees/p1": { employee: { name: "Minji Kim" } },
       // The reader's own choice keeps the page in Console once the shell syncs the style.
       "/api/v1/me/workspace": { layout: { experience: "console" } },
     };
