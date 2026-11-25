@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use super::*;
 
+#[path = "sensitive_run_access.rs"]
+mod sensitive_run_access;
+
 fn operations(run: Uuid) -> Vec<(&'static str, String, Option<Value>)> {
     let root = format!("/api/v1/payroll/runs/{run}");
     vec![

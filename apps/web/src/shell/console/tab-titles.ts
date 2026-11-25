@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useMemo, useSyncExternalStore } from "react";
 import { i18n, t } from "@console/i18n";
+import { todayKst } from "../../lib/pure/today";
 import { useCachedRecordData } from "../../lib/react/cached-record";
 import { activeLink, type NavLink } from "../nav";
 import { canonicalViewTarget, normalizeAppPath } from "./tab-href";
-import { formatRecordTitle, resolveDynamicRouteMeta, type RouteTabMeta } from "./tab-record-format";
+import { formatRecordTitle, monthOnly, resolveDynamicRouteMeta, type RouteTabMeta } from "./tab-record-format";
 
 /** Canonicalizes `pathname` + `searchStr`, keeping only view-distinguishing query params on multi-view routes. */
 export function canonicalTabTarget(pathname: string, searchStr = ""): string {
@@ -71,7 +72,18 @@ const STATIC_ROUTES: Readonly<Record<string, () => string>> = {
   "/platform": () => t("shell.link.tenants"),
 };
 
-function resolveQueryViewTitle(path: string, searchStr: string): string | null {
+/** The attendance month tab names its month (the current one without ?month, as the screen shows), and its cached scope. */
+function attendanceMonthMeta(params: URLSearchParams): RouteTabMeta {
+  const month = monthOnly(params.get("month") ?? todayKst().slice(0, 7));
+  const node = params.get("unit") ?? params.get("wp");
+  return {
+    title: month ? t("shellRoutes.attendanceMonthOf", { month }) : t("shellRoutes.attendanceMonth"),
+    isFallback: false,
+    recordSpec: node ? { kind: "attendanceScope", path: "/api/v1/attendance/schedule/tree", match: () => true, node } : null,
+  };
+}
+
+function resolveQueryViewTitle(path: string, searchStr: string): string | RouteTabMeta | null {
   const params = new URLSearchParams(searchStr.startsWith("?") ? searchStr.slice(1) : searchStr);
   if (path === "/org") {
     const tab = params.get("tab");
@@ -97,7 +109,7 @@ function resolveQueryViewTitle(path: string, searchStr: string): string | null {
     if (tab === "issues") return t("shellRoutes.attendanceIssues");
     if (tab === "close") return t("shellRoutes.attendanceClose");
     if (tab === "import") return t("shellRoutes.attendanceImport");
-    return t("shellRoutes.attendanceMonth");
+    return attendanceMonthMeta(params);
   }
   if (path === "/statutory") {
     return t("shell.link.statutory");
@@ -123,7 +135,7 @@ export function resolveRouteTabMeta({
     return { title: platform ? t("shell.link.tenants") : t("shell.link.todo"), isFallback: false, recordSpec: null };
   }
   const viewTitle = resolveQueryViewTitle(path, searchStr);
-  if (viewTitle) return { title: viewTitle, isFallback: false, recordSpec: null };
+  if (viewTitle) return typeof viewTitle === "string" ? { title: viewTitle, isFallback: false, recordSpec: null } : viewTitle;
   const exact = STATIC_ROUTES[path];
   if (exact) return { title: exact(), isFallback: false, recordSpec: null };
   const dynamic = resolveDynamicRouteMeta(path);
@@ -152,7 +164,8 @@ export function useResolvedTabTitle({
     [pathname, searchStr, allLinks, platform, locale],
   );
   const cached = useCachedRecordData<unknown>(meta.recordSpec);
-  const recordTitle = meta.recordSpec && cached !== undefined ? formatRecordTitle(meta.recordSpec.kind, cached, locale) : null;
+  const named = meta.recordSpec && cached !== undefined ? formatRecordTitle(meta.recordSpec, cached, locale) : null;
+  const recordTitle = named && meta.recordSpec?.node ? t("shellRoutes.pair", { primary: meta.title, secondary: named }) : named;
   return {
     title: recordTitle ?? meta.title,
     isFallback: recordTitle ? false : meta.isFallback,

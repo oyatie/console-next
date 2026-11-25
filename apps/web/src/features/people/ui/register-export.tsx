@@ -21,6 +21,8 @@ import { Paper, PaperFoot, PaperHead, PaperWell } from "../../../ui/paper/paper"
 import s from "./card.module.css";
 
 const ITEMS = ["name", "sex", "birth", "address", "history", "job", "contract", "exit", "note"] as const;
+// The register paper keeps the locale date form whatever the screen style draws.
+const day = (v: unknown) => fmtDate(v, { style: "locale" });
 
 /**
  * employee register export (E10-register): one workplace's register (Labor Standards Act §41: per workplace), the nine items of Decree §20 always,
@@ -71,7 +73,7 @@ export function RegisterExport({ onClose }: { onClose: () => void }) {
         </Card>
         <PaperWell>
           <Paper size="wide" label={t("empDoc.reg.preview")}>
-            <PaperHead title={t("empDoc.reg.paperTitle")}><span>{chosen ? `${chosen.entity} · ${chosen.name}` : ""}</span><span className="grow" /><span>{t("empDoc.reg.paperAsOf", { date: fmtDate(todayKst()) })}</span></PaperHead>
+            <PaperHead title={t("empDoc.reg.paperTitle")}><span>{chosen ? `${chosen.entity} · ${chosen.name}` : ""}</span><span className="grow" /><span>{t("empDoc.reg.paperAsOf", { date: day(todayKst()) })}</span></PaperHead>
             <RecordRows
               label={t("empDoc.reg.preview")}
               rows={preview}
@@ -82,7 +84,7 @@ export function RegisterExport({ onClose }: { onClose: () => void }) {
                   header: `${n + 1}. ${t(`empCard.reg.item.${i}`)}`,
                   cell: (e: (typeof preview)[number]) => {
                     const f = facts(e.id);
-                    return i === "name" ? e.name : i === "job" ? e.job ?? "—" : i === "contract" ? fmtDate(e.hire_date) : i === "exit" ? (e.exit_date ? fmtDate(e.exit_date) : "") : i === "sex" ? f.sex : i === "birth" ? f.birth : i === "address" ? f.address : f.history;
+                    return i === "name" ? e.name : i === "job" ? e.job ?? "—" : i === "contract" ? day(e.hire_date) : i === "exit" ? (e.exit_date ? day(e.exit_date) : "") : i === "sex" ? f.sex : i === "birth" ? f.birth : i === "address" ? f.address : f.history;
                   },
                 })),
               ]}

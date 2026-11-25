@@ -16,11 +16,10 @@ import s from "./shell.module.css";
 
 function ConsoleBrandMark() {
   return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <rect x="1.5" y="2" width="13" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
-      <path d="M5.5 2V14" stroke="currentColor" strokeWidth="1.4" />
-      <path d="M5.5 6H14.5" stroke="currentColor" strokeWidth="1.4" />
-      <rect x="7.5" y="8" width="5" height="4" rx="0.5" fill="currentColor" opacity="0.85" />
+    <svg className={s.brandMark} width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+      <rect x="1.25" y="1.25" width="15.5" height="15.5" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M1.25 6.5h15.5M6.5 6.5v10.25" stroke="currentColor" strokeWidth="1.5" />
+      <rect className={s.brandSquare} x="9.5" y="9.5" width="4.5" height="4.5" />
     </svg>
   );
 }
@@ -96,9 +95,7 @@ export function ConsoleTopBar({
       {!restoring ? (
         <>
           <Link to={defaultHref} className={s.brand}>
-            <bdi className={s.brandMark} aria-hidden="true">
-              <ConsoleBrandMark />
-            </bdi>
+            <ConsoleBrandMark />
             <bdi className={s.brandName}>{platform ? t("app.name") : tenantName ?? t("app.name")}</bdi>
             {!platform && tenantPhase === "SETUP" ? (
               <bdi className={s.phaseBadge}>{t("shell.phase.setup")}</bdi>
