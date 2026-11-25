@@ -27,14 +27,18 @@ const notOverflow = new RegExp(`^(?!${bootKo["shell.nav.more"].replace(/[.*+?^${
 /**
  * The signed-in account control in either style: Classic's bar holds the sign-out command itself; Console's bar
  * holds the account menu, whose trigger is named after the person, so it is the collapsed button of a bar with no
- * sign-out, other than the module overflow. A signed-out page has no bar, and a modal over the shell hides it.
+ * sign-out, other than the module overflow. A signed-out page has no bar.
  */
 export function accountControl(page: Page) {
   const banner = page.getByRole("banner");
   return banner.getByRole("button", signOutName).or(banner.filter({ hasNot: page.getByRole("button", signOutName) }).getByRole("button", { expanded: false, name: notOverflow }));
 }
 
-export const expectSignedIn = (page: Page, options?: { timeout?: number }) => expect(accountControl(page)).toBeVisible(options);
+/** A session that ends in use keeps its screen, bar included, under the sign-in-again dialog, which only makes it inert. */
+export async function expectSignedIn(page: Page, options?: { timeout?: number }) {
+  await expect(accountControl(page)).toBeVisible(options);
+  await expect(page.getByRole("dialog", { name: bootKo["idle.reauth.title"], exact: true })).toBeHidden();
+}
 
 /** Signs out from the bar: Classic offers the command there, Console inside the account menu. */
 export async function signOut(page: Page) {
