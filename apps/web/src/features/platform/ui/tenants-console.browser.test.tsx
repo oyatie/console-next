@@ -163,6 +163,13 @@ const pane = (panel: Locator) => panel.evaluate((aside, { overview, remove }) =>
   };
 }, { overview: t("tenants.panel.overview"), remove: t("tenants.section.remove") });
 
+/** The blank room between the recovery section's last content and deletion. */
+const deadSpace = (panel: Locator) => panel.evaluate((aside, { recoveryTitle, removeTitle }) => {
+  const titled = (title: string) => [...aside.querySelectorAll("section:has(> header > h3)")].find(section => section.querySelector("h3")?.textContent === title)!;
+  const content = [...titled(recoveryTitle).querySelectorAll("button, p, span")].map(el => el.getBoundingClientRect().bottom);
+  return titled(removeTitle).getBoundingClientRect().top - Math.max(...content);
+}, { recoveryTitle: t("opsRecovery.title"), removeTitle: t("tenants.section.remove") });
+
 test.each((["ACTIVE", "SUSPENDED", "ARCHIVED"] as const).flatMap(status => [1440, 390].map(width => ({ status, width }))))(
   "$status record at $width px keeps deletion still while its recovery read loads, fails and retries",
   async ({ status, width }) => {
@@ -202,12 +209,7 @@ test.each((["ACTIVE", "SUSPENDED", "ARCHIVED"] as const).flatMap(status => [1440
       : [t("tenants.panel.overview"), t("opsRecovery.title"), t("tenants.section.remove")]);
     expect(settled.rule).toBe("1px");
     // The reserved room stays close to what a settled read draws.
-    const dead = await panel.evaluate((aside, { recoveryTitle, removeTitle }) => {
-      const titled = (title: string) => [...aside.querySelectorAll("section:has(> header > h3)")].find(section => section.querySelector("h3")?.textContent === title)!;
-      const content = [...titled(recoveryTitle).querySelectorAll("button, p, span")].map(el => el.getBoundingClientRect().bottom);
-      return titled(removeTitle).getBoundingClientRect().top - Math.max(...content);
-    }, { recoveryTitle: t("opsRecovery.title"), removeTitle: t("tenants.section.remove") });
-    expect(dead).toBeLessThan(80);
+    expect(await deadSpace(panel)).toBeLessThan(80);
   }, 60_000);
 
 // An established tenant: its first admin has a passkey, so its answer is shorter than the held room.
@@ -228,6 +230,26 @@ test.each([1440, 390])("an established tenant's shorter recovery answer leaves d
   await element(panel.getByRole("button", { name: t("opsRecovery.open"), exact: true })).toBeEnabled();
   await element(panel.getByRole("button", { name: t("tenants.reissue"), exact: true })).toHaveAccessibleDescription(t("tenants.reissue.enrolled", { org: "Synthetic customer" }));
   expect((await pane(panel)).deletion).toBe(loading.deletion);
+}, 60_000);
+
+test.each([1440, 390])("suspending an open tenant lets go of the room its active answer was held in at %i px", async width => {
+  await page.setViewportSize({ width, height: 1600 });
+  let status: OrgStatus = "ACTIVE";
+  await page.route("**/api/platform/orgs/*/erase", route => route.fulfill({ json: erased(status) }));
+  const recovery = await held("**/api/platform/orgs/*/ops-recovery", () => ({ json: RECOVERY }));
+  const list = await platform(() => ({ json: [org(status)] }), "/platform?view=all");
+  list.hold.resolve();
+  await page.getByRole("gridcell", { name: "Synthetic customer", exact: true }).click();
+  const panel = page.getByRole("complementary", { name: "Synthetic customer", exact: true });
+  await element(panel.getByRole("button", { name: t("tenants.remove", { org: "Synthetic customer" }), exact: true })).toBeVisible();
+  recovery.hold.resolve();
+  await element(panel.getByRole("button", { name: t("tenants.reissue"), exact: true })).toBeVisible();
+  status = "SUSPENDED";
+  // The move reaches the open record when the list is read again, as after this pane's own status dialog.
+  await page.evaluate(() => dispatchEvent(new Event("visibilitychange")));
+  await element(panel.getByRole("button", { name: t("tenants.reissue"), exact: true })).toHaveCount(0);
+  await page.evaluate(() => document.fonts.ready);
+  expect(await deadSpace(panel)).toBeLessThan(80);
 }, 60_000);
 
 test("a recovery read refused after it answered replaces the code and recovery controls, and deletion stays put", async () => {

@@ -51,13 +51,19 @@ export function RecordPaneSection({
 /**
  * Record sections kept together in one box (one read fills them): it carries the rule its last section would end on.
  * While `held` (its read is out), it keeps the tallest height it has drawn as its minimum, so a shorter answer leaves the
- * sections below it where they were.
+ * sections below it where they were. A new `shape` (what the sections are drawn for, such as a status) lets that go.
  */
-export function RecordPaneGroup({ className, held, children }: { className?: string; held?: boolean; children: ReactNode }) {
+export function RecordPaneGroup({ className, held, shape, children }: { className?: string; held?: boolean; shape?: string; children: ReactNode }) {
   const box = useRef<HTMLDivElement>(null);
+  const drawnFor = useRef(shape);
   useLayoutEffect(() => {
     const group = box.current;
-    if (!held || !group) return;
+    if (!group) return;
+    if (drawnFor.current !== shape) {
+      drawnFor.current = shape;
+      group.style.minBlockSize = "";
+    }
+    if (!held) return;
     const height = group.getBoundingClientRect().height;
     if (height > (parseFloat(group.style.minBlockSize) || 0)) group.style.minBlockSize = `${height}px`;
   });

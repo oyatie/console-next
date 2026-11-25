@@ -144,7 +144,7 @@ export function TenantConsolePanel({
       {/* One read fills both sections: until it answers, its loading or failure shows once over room held for a new tenant's
           answer, and that room stays (an established tenant's answer is shorter), so deletion moves only for a taller answer
           or refusal. Offline, the page's own notice says so. */}
-      <RecordPaneGroup held={!answered} className={s.readSlot}>
+      <RecordPaneGroup held={!answered} shape={org.status} className={s.readSlot}>
         {answered && recovery.data ? <>
           <div className={s.readState}>{online ? recoveryState : null}</div>
           {recoverySections(recovery.data)}
