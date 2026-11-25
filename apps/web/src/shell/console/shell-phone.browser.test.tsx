@@ -245,7 +245,8 @@ test("on a phone My profile stays reachable while the menu loads, in the last of
 
 test("on a phone a failed menu read leaves My profile in the place it held while the menu loaded", async () => {
   // The support read failing leaves the menu unread, as a failed access read does, when no earlier menu was kept.
-  await page.evaluate(() => { try { localStorage.clear(); } catch { /* A blank page keeps no storage. */ } });
+  // A blank page, before any test here opened the shell, has no storage to clear.
+  await page.evaluate(() => { if (location.protocol !== "about:") localStorage.clear(); });
   const nav = await openPhoneShell("UNLINKED", { refused: "/api/v1/support-sessions/active" });
   await element(page.getByText(t("shell.nav.failed"), { exact: true })).toBeVisible();
   await frames(page);
