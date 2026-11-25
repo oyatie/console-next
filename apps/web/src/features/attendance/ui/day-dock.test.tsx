@@ -122,3 +122,13 @@ test("a refused day pane says who can grant and offers the request, with the ser
   expect(html).toContain(refusalText("forbidden")!);
   expect(html).not.toContain('role="tab"');
 });
+
+test("a refused docked day keeps the screen's refusal: the full card, not the item's", () => {
+  state.load = "refused";
+  const html = render();
+  expect(html).toContain(`>${t("common.denied.title.plain")}</h2>`);
+  expect(html).not.toContain(t("common.denied.panel"));
+  expect(html).toContain(t("common.denied.request"));
+  expect(html).toContain(refusalText("forbidden")!);
+  expect(html).not.toContain('role="tab"');
+});
