@@ -17,8 +17,13 @@ import { attendanceBoardState } from "./attendance-helpers";
 test.beforeAll(() => loadCatalog("ko"));
 const screen = attendanceBoardScreens.find(candidate => candidate.key === "attendance-day")!;
 const dayTitle = () => t("attendanceRecords.day.title", { date: fmtDate(new URL(screen.path, "http://localhost").searchParams.get("date")!, { weekday: "short" }) });
-// A docked pane by its name. Console nests the docked sheet inside a record pane of the same title.
-const dockPane = (page: Page, name: string) => page.getByRole("complementary", { name, exact: true }).first();
+// A docked pane by its name. Console nests the docked sheet inside a record pane of the same name: two landmarks of one
+// name stay a soft red, and the first is held to the rest of the test.
+async function expectDockPane(page: Page, name: string) {
+  const panes = page.getByRole("complementary", { name, exact: true });
+  await expect(panes.first()).toBeVisible();
+  await expect.soft(panes, "one complementary landmark carries the pane's name").toHaveCount(1);
+}
 
 for (const state of Object.keys(screen.states) as AttendanceState[]) for (const width of [1440, 390]) {
   test(`${screen.key}: ${state} at ${width}px @ui-state`, async ({ page }) => {
@@ -267,7 +272,7 @@ for (const width of [1440, 1100]) for (const height of [900, 640]) for (const do
     await input.fill("9-18");
     await page.getByRole("button", { name: t("attendanceRecords.toolbar.save"), exact: true }).click();
   } else await page.getByRole("button", { name: t("attendanceRecords.board.open"), exact: true }).click();
-  await expect(dockPane(page, dock === "save" ? t("attendanceRecords.save.title", { count: 1 }) : dayTitle())).toBeVisible();
+  await expectDockPane(page, dock === "save" ? t("attendanceRecords.save.title", { count: 1 }) : dayTitle());
   await expect(page.locator("[data-board-head]")).toBeHidden();
   // By its heading: Console's rail section is not a named region.
   const rail = page.getByRole("main").getByRole("heading", { name: t("attendanceRecords.rail.title"), exact: true });
@@ -291,7 +296,8 @@ for (const width of [1440, 390]) test(`day drawer retains readable board rows at
   const fixture = await mockScreen(page, screen, "populated");
   await page.goto(screen.path);
   await page.getByRole("button", { name: t("attendanceRecords.board.open"), exact: true }).click();
-  await expect(width === 1440 ? dockPane(page, dayTitle()) : page.getByRole("dialog")).toBeVisible();
+  if (width === 1440) await expectDockPane(page, dayTitle());
+  else await expect(page.getByRole("dialog")).toBeVisible();
   const name = page.getByRole("link", { name: "근태직원 1", exact: true });
   const input = page.getByRole("textbox", { name: /^근태직원 2 기록/ });
   expect((await input.boundingBox())!.width).toBeGreaterThan((await name.boundingBox())!.width);
