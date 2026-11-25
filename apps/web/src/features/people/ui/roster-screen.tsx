@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { lazy, Suspense, type ReactNode } from "react";
-import { Link } from "@tanstack/react-router";
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { Link, useElementScrollRestoration, useLocation, useRouter } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { chunk } from "../../../lib/chunk-guard";
 import { Button } from "../../../ui/button/button";
@@ -42,9 +42,27 @@ import { useRosterHead } from "./roster-head";
 import { ExitTabs, VoidedList } from "./exit-tabs";
 import { RosterConsole } from "./roster-console";
 import { RosterSavedViews } from "./roster-saved-views";
-import { TableScrollRestoration } from "./table-scroll-restoration";
 
 type RosterScreenProps = { manage: boolean; scoped?: boolean; switcher?: ReactNode; notice?: ReactNode; actions?: ReactNode; tabs?: ReactNode; screen: ReturnType<typeof useRosterScreen> };
+
+function TableScrollRestoration({ id, grid }: { id: string; grid: RefObject<HTMLElement | null> }) {
+  const router = useRouter();
+  const key = useLocation({ select: location => location.state["__TSR_key"] });
+  const entry = useElementScrollRestoration({ id });
+  const applied = useRef<string | undefined>(undefined);
+  const [, setRendered] = useState(0);
+  useEffect(() => router.subscribe("onRendered", () => setRendered(value => value + 1)), [router]);
+  useEffect(() => {
+    if (!key || !entry || applied.current === key) return;
+    const frame = requestAnimationFrame(() => {
+      if (!grid.current) return;
+      applied.current = key;
+      grid.current.scrollTop = entry.scrollY;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [entry, grid, key]);
+  return null;
+}
 
 /** The people list: status and attention chips, a virtualized server-paged table, and the selected person beside it. */
 export function RosterScreen(props: RosterScreenProps) {

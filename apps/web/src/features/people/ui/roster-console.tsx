@@ -45,7 +45,6 @@ import { RosterFirstRun } from "./roster-first-run";
 import { RosterSavedViews } from "./roster-saved-views";
 import { RosterTable } from "./roster-table";
 import { RosterUnitPanel } from "./roster-unit-panel";
-import { TableScrollRestoration } from "./table-scroll-restoration";
 import { BULK_MAX } from "./use-roster";
 import type { useRosterScreen } from "./use-roster-screen";
 import s from "./roster.module.css";
@@ -182,7 +181,6 @@ export function RosterConsole({
       list={
         voided ? <VoidedList /> : firstRun ? <RosterFirstRun /> : (
           <div className={s.tableWrap}>
-            <TableScrollRestoration id="people-roster" grid={scroller} />
             <RosterTable
               consoleMode
               mobileLayout="compact"
