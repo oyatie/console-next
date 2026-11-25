@@ -190,8 +190,8 @@ function ConsoleLayout({
   const topHold = <header className={s.phoneTopHold} data-surface="chrome" aria-busy="true" />;
   const navHold = <div className={s.phoneNavHold} />;
   // My profile alone would span the bottom bar until the menu lands, then jump to its own slot. It stays reachable while
-  // the menu loads, in the last of the bar's five places.
-  const menuLoading = !platform && navigationState === "loading" && phoneHeader?.phoneNav !== "self-service";
+  // the menu is away, in the last of the bar's five places, and keeps that place if the menu's read fails.
+  const menuAway = !platform && navigationState !== "ready" && phoneHeader?.phoneNav !== "self-service";
   // With a session, a desktop bar draws once the reader's own read has settled too: the tenant's name sets the brand's
   // width, and the scope chip, the nav and the status segments sit after it.
   const holding = restoring || (!platform && Boolean(session.token) && profileRead.isPending);
@@ -311,7 +311,7 @@ function ConsoleLayout({
                 unlinked={userProfile?.employee_link_status === "UNLINKED"}
                 activeId={phoneActiveId}
                 onNavigate={navigateToHref}
-                menuLoading={menuLoading}
+                menuAway={menuAway}
               />
             </Suspense>
           </div>

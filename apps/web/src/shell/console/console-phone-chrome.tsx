@@ -82,7 +82,7 @@ export function ConsolePhoneBottom({
   unlinked,
   activeId,
   onNavigate,
-  menuLoading = false,
+  menuAway = false,
 }: {
   links: readonly NavLink[];
   inboxCount?: number;
@@ -97,8 +97,11 @@ export function ConsolePhoneBottom({
   unlinked?: boolean;
   activeId?: string;
   onNavigate: (href: string) => void;
-  /** The menu is still loading: My profile takes the last of the bar's five places, where a five-place menu leaves it. */
-  menuLoading?: boolean;
+  /**
+   * The menu is still loading, or its read failed: My profile takes the last of the bar's five places, where a
+   * five-place menu leaves it.
+   */
+  menuAway?: boolean;
 }) {
   const items: PhoneNavItem[] =
     !platform && mode === "self-service"
@@ -121,9 +124,9 @@ export function ConsolePhoneBottom({
   return (
     <PhoneBottomNav
       items={items}
-      // shortcut: a shorter menu still moves My profile once when it lands, and a longer one puts More in its place with
-      // My profile inside; holding the right place needs the menu's size before the menu itself.
-      reserve={menuLoading ? 5 : undefined}
+      // shortcut: a shorter menu widens My profile's slot when it lands (the slot still covers this place), and a longer
+      // one puts More here with My profile inside; holding the right place needs the menu's size before the menu itself.
+      reserve={menuAway ? 5 : undefined}
       activeId={activeId}
       onNavigate={item => onNavigate(item.href)}
       renderLink={(item, props) => (

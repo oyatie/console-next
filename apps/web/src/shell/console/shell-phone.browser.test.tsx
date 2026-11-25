@@ -427,17 +427,31 @@ test("on a phone My profile stays reachable while the menu loads, in the last of
   const asked = Promise.withResolvers<void>(), done = Promise.withResolvers<void>();
   const opened = openPhoneShell("UNLINKED", { held: { path: "/api/v1/access/me", asked: asked.resolve, done: done.promise } });
   opened.catch(() => {});
+  let held: { x: number; y: number; width: number; height: number };
   try {
     await asked.promise;
     const profile = page.getByRole("navigation", { name: t("shell.nav"), exact: true }).getByRole("link", { name: t("shell.profile"), exact: true });
     await profile.waitFor();
     await frames();
-    // Alone it would span the bar, then jump to its own place under a thumb already on it when a five-place menu lands.
-    expect(await profile.boundingBox()).toMatchObject({ x: 312, width: 78 });
+    // Alone it would span the bar, then jump from under a thumb already on it when the menu lands.
+    held = (await profile.boundingBox())!;
+    expect(held).toMatchObject({ x: 312, width: 78 });
   } finally { done.resolve(); }
   const nav = await opened;
   await element(nav.locator('a[href="/"]')).toBeVisible();
+  await frames();
+  // The menu here lands with two places; the last of any menu up to five still covers the held place.
+  expect(await hitIn(held.x + held.width / 2, held.y + held.height / 2, 'nav a[href="/account"]')).toBe(true);
 }, 30_000);
+
+test("on a phone a failed menu read leaves My profile in the place it held while the menu loaded", async () => {
+  // The support read failing leaves the menu unread, as a failed access read does, when no earlier menu was kept.
+  await page.evaluate(() => { try { localStorage.clear(); } catch { /* A blank page keeps no storage. */ } });
+  const nav = await openPhoneShell("UNLINKED", { refused: "/api/v1/support-sessions/active" });
+  await element(page.getByText(t("shell.nav.failed"), { exact: true })).toBeVisible();
+  await frames();
+  expect(await nav.getByRole("link", { name: t("shell.profile"), exact: true }).boundingBox()).toMatchObject({ x: 312, width: 78 });
+});
 
 test("on a phone a failed menu read says so beside the bar and offers the retry, as it does on a desktop", async () => {
   await openPhoneShell("UNLINKED", { refused: "/api/v1/onboarding/modules" });
