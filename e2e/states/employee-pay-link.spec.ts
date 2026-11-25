@@ -42,10 +42,14 @@ for (const viewer of ["hr", "exited", "reviewer", "denied", "unready"] as const)
           await expect(page).toHaveURL(`/payroll/employees/${draft.employee_id}`);
           await expect(page.getByRole("main").getByRole("heading", { name: t("payroll.employee.title"), exact: true })).toBeVisible();
           await expect(page.getByRole("heading", { name: t("payroll.employee.pick"), exact: true })).toBeVisible();
-          await page.getByLabel(t("payroll.period"), { exact: false }).fill(draft.period.start.slice(0, 7));
+          // The period comes from the address, which both styles read: Console's period control is a stepper, not a field.
+          await page.goto(`/payroll/employees/${draft.employee_id}?period=${draft.period.start.slice(0, 7)}`);
           await page.getByLabel(t("payroll.setup.day"), { exact: false }).fill(draft.pay_date);
           await page.getByRole("button", { name: t("payroll.employee.preview"), exact: true }).click();
-          await expect(page.getByRole("region", { name: draft.employee_name, exact: true })).toBeVisible();
+          // The draft is the employee's: Classic heads its card with the name, Console lists the name among its figures.
+          const named = new RegExp(`^${draft.employee_name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`);
+          await expect(page.getByRole("region", { name: draft.employee_name, exact: true })
+            .or(page.getByRole("main").getByRole("definition").filter({ hasText: named }))).toBeVisible();
         }
         expect(fixture.unexpected).toEqual([]);
       } finally { await page.close(); fixture.release(); }

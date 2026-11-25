@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
+import { fmtDate } from "@console/i18n/format";
 import type { components } from "@console/api";
 import { expectAxe, fits } from "../a11y";
 import { expectStable, recordShifts } from "../stability";
+import { experienceState } from "../experience";
 import { id } from "../mock/fixtures";
 import { attendanceDayBoard } from "../mock/attendance-board";
 import { mockRoute } from "../mock/route";
@@ -14,6 +16,9 @@ import { attendanceBoardState } from "./attendance-helpers";
 
 test.beforeAll(() => loadCatalog("ko"));
 const screen = attendanceBoardScreens.find(candidate => candidate.key === "attendance-day")!;
+const dayTitle = () => t("attendanceRecords.day.title", { date: fmtDate(new URL(screen.path, "http://localhost").searchParams.get("date")!, { weekday: "short" }) });
+// A docked pane by its name. Console nests the docked sheet inside a record pane of the same title.
+const dockPane = (page: Page, name: string) => page.getByRole("complementary", { name, exact: true }).first();
 
 for (const state of Object.keys(screen.states) as AttendanceState[]) for (const width of [1440, 390]) {
   test(`${screen.key}: ${state} at ${width}px @ui-state`, async ({ page }) => {
@@ -71,7 +76,8 @@ test("a held date read reserves the day panel without the previous date's notice
   expect(fixture.unexpected).toEqual([]);
 });
 
-for (const [width, colorScheme] of [[1440, "light"], [390, "dark"]] as const) test(`the day board has one vertical scroller, a sticky header and row actions at ${width}px ${colorScheme}`, async ({ page }, testInfo) => {
+// The 390 leg is Classic's phone layout of a desk screen no board draws at that width.
+for (const [width, colorScheme] of [[1440, "light"], [390, "dark"]] as const) test(`the day board has one vertical scroller, a sticky header and row actions at ${width}px ${colorScheme}${width === 390 ? " @baseline" : ""}`, async ({ page }, testInfo) => {
   await page.emulateMedia({ colorScheme });
   await page.setViewportSize({ width, height: 640 });
   const fixture = await mockScreen(page, screen, "populated");
@@ -144,7 +150,8 @@ for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as 
   await page.evaluate(() => document.fonts.ready);
   const name = page.getByRole("link", { name: "근태직원 2", exact: true });
   expect((await input.boundingBox())!.width).toBeGreaterThan((await name.boundingBox())!.width);
-  const status = page.getByText(t("attendanceRecords.mark.NO_RECORD"), { exact: true }).locator("..");
+  // The row's status, not Console's ledger term of the same word.
+  const status = page.getByText(t("attendanceRecords.mark.NO_RECORD"), { exact: true }).and(page.locator(":not(dt)")).locator("..");
   // Sideways-scroll checks cannot detect text wrapping inside a collapsed column or overlapping fields.
   const layout = await status.evaluate(el => {
     const field = el.nextElementSibling!.getBoundingClientRect();
@@ -205,7 +212,8 @@ for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as 
   expect(fixture.unexpected).toEqual([]);
 });
 
-for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as const) test(`Shift+Tab keeps day board focus clear of the sticky header at ${width}px ${colorScheme}`, async ({ page }, testInfo) => {
+// Classic's drawn head row; Console's pin is in the console day board block below.
+for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as const) test(`Shift+Tab keeps day board focus clear of the sticky header at ${width}px ${colorScheme} @baseline`, async ({ page }, testInfo) => {
   await page.emulateMedia({ colorScheme });
   await page.setViewportSize({ width, height: 640 });
   const fixture = await mockScreen(page, screen, "populated");
@@ -259,9 +267,10 @@ for (const width of [1440, 1100]) for (const height of [900, 640]) for (const do
     await input.fill("9-18");
     await page.getByRole("button", { name: t("attendanceRecords.toolbar.save"), exact: true }).click();
   } else await page.getByRole("button", { name: t("attendanceRecords.board.open"), exact: true }).click();
-  await expect(page.getByRole("complementary")).toBeVisible();
+  await expect(dockPane(page, dock === "save" ? t("attendanceRecords.save.title", { count: 1 }) : dayTitle())).toBeVisible();
   await expect(page.locator("[data-board-head]")).toBeHidden();
-  const rail = page.getByRole("region", { name: t("attendanceRecords.rail.title"), exact: true });
+  // By its heading: Console's rail section is not a named region.
+  const rail = page.getByRole("main").getByRole("heading", { name: t("attendanceRecords.rail.title"), exact: true });
   const lastRow = page.getByRole("group", { name: t("attendanceRecords.board.nextActionFor", { name: "근태직원 2" }), exact: true }).locator("..");
   expect((await rail.boundingBox())!.y).toBeGreaterThanOrEqual((await lastRow.boundingBox())!.y + (await lastRow.boundingBox())!.height);
   await input.scrollIntoViewIfNeeded();
@@ -275,12 +284,14 @@ for (const width of [1440, 1100]) for (const height of [900, 640]) for (const do
   expect(fixture.unexpected).toEqual([]);
 });
 
-for (const width of [1440, 390]) test(`day drawer retains readable board rows at ${width}px`, async ({ page }) => {
+// At 390 Classic keeps the board rows beside its drawer; Console's record pane takes the column, and no board draws this
+// desk screen at phone width, so only the Classic layout is pinned there.
+for (const width of [1440, 390]) test(`day drawer retains readable board rows at ${width}px${width === 390 ? " @baseline" : ""}`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 });
   const fixture = await mockScreen(page, screen, "populated");
   await page.goto(screen.path);
   await page.getByRole("button", { name: t("attendanceRecords.board.open"), exact: true }).click();
-  await expect(page.getByRole(width === 1440 ? "complementary" : "dialog")).toBeVisible();
+  await expect(width === 1440 ? dockPane(page, dayTitle()) : page.getByRole("dialog")).toBeVisible();
   const name = page.getByRole("link", { name: "근태직원 1", exact: true });
   const input = page.getByRole("textbox", { name: /^근태직원 2 기록/ });
   expect((await input.boundingBox())!.width).toBeGreaterThan((await name.boundingBox())!.width);
@@ -292,4 +303,42 @@ for (const width of [1440, 390]) test(`day drawer retains readable board rows at
   await fits(page, `drawer/${width}`);
   await expectAxe(page, `drawer/${width}`);
   expect(fixture.unexpected).toEqual([]);
+});
+
+// No board draws the day view, so this value is the Console render's. Console's rows have no head row of their own (the
+// sticky heads belong to its time-span table), so focus is held clear of anything drawn over it. Desk only: no board
+// draws this screen at 390.
+test.describe("console day board", () => {
+  test.use({ storageState: experienceState("console") });
+  test("Shift+Tab keeps Console day row focus unobscured at 1440px", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 640 });
+    const fixture = await mockScreen(page, screen, "populated");
+    const base = attendanceDayBoard.groups[0]!.rows[1]!;
+    const count = 36;
+    const board: components["schemas"]["AttendanceDayBoard"] = {
+      ...attendanceDayBoard,
+      marks: { blocking: count, decision: 0, info: 0 },
+      ledger: { ...attendanceDayBoard.ledger, people: count, normal: 0, no_record: count, late_or_early: 0 },
+      groups: [{ ...attendanceDayBoard.groups[0]!, people: count, normal: 0, no_schedule: 0, marks: { blocking: count, decision: 0, info: 0 }, hidden: 0,
+        rows: Array.from({ length: count }, (_, i) => ({ ...base, employee_id: id(5000 + i), employee_number: `AT-${5000 + i}`, name: `Worker ${i + 1}` })) }],
+    };
+    await mockRoute(page, "get", "/api/v1/attendance/days", { status: 200, json: board });
+    await page.goto(screen.path);
+    const last = page.getByRole("textbox", { name: t("attendanceRecords.board.record", { name: `Worker ${count}` }), exact: true });
+    await last.focus();
+    const obscured: string[] = [];
+    for (let stop = 0; stop < 40; stop++) {
+      await page.keyboard.press("Shift+Tab");
+      const focus = await page.evaluate(() => {
+        const control = document.activeElement as HTMLElement;
+        const box = control.getBoundingClientRect();
+        const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+        return { tag: control.tagName, label: control.getAttribute("aria-label") ?? control.textContent, covered: !hit || !control.contains(hit) };
+      });
+      expect(["INPUT", "A"]).toContain(focus.tag);
+      if (focus.covered) obscured.push(`${stop}: ${focus.label}`);
+    }
+    expect(obscured, "reverse keyboard navigation keeps row controls clear of anything drawn over them").toEqual([]);
+    expect(fixture.unexpected).toEqual([]);
+  });
 });

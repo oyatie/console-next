@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
+import { fmtDate } from "@console/i18n/format";
 import { expectAxe, fits } from "../a11y";
 import { attendanceDayBoard, attendancePerson } from "../mock/attendance-board";
 import { AT, failure, id } from "../mock/fixtures";
@@ -9,6 +10,12 @@ import { attendanceBoardScreens } from "./attendance";
 
 test.beforeAll(() => loadCatalog("ko"));
 const screen = attendanceBoardScreens.find(s => s.key === "attendance-day")!;
+/** The day pane: docked beside the board at desk widths; at 390 Classic's modal sheet, in Console also the record pane. */
+const dayPane = (page: Page, width: number) => width === 1440 ? page.getByRole("complementary") : page.getByRole("dialog")
+  .or(page.getByRole("complementary", { name: t("attendanceRecords.day.title", { date: fmtDate(new URL(screen.path, "http://localhost").searchParams.get("date")!, { weekday: "short" }) }), exact: true }));
+/** Classic clears the type and turns issues-only off from its toolbar; Console's day filter does both by going back to all. */
+const toolbar = (page: Page) => page.getByRole("toolbar", { name: t("attendanceRecords.toolbar.label"), exact: true });
+const showAll = (page: Page) => page.getByRole("group", { name: t("attendance.dayConsole.filter.label"), exact: true }).getByRole("button", { name: t("home.inbox.filter.all"), exact: true });
 const entry = { id: id(800), batch_id: id(801), kind: "TIMES", segments: [{ start: 540, end: 1200 }], source: "MANUAL", evidence_kind: "PAPER_SHEET", undone: false, created_at: AT, created_by_name: "근태담당" };
 const intervals = [
   { start: 540, end: 720, minutes: 180, category: "WORK", recognised: true, reason_code: "SCHEDULED_WORK", rule_version: "ATTENDANCE_RECOGNITION_V1" },
@@ -46,12 +53,12 @@ for (const width of [1440, 390]) {
     expect(reads.at(-1)?.searchParams.get("workplace_id")).toBe(id(4));
     expect(reads.at(-1)?.searchParams.get("date")).toBe("2026-10-04");
     expect(reads.at(-1)?.searchParams.get("mark")).toBe("LATE");
-    await page.getByRole("button", { name: t("attendanceOverview.issues.clear"), exact: true }).click();
+    await toolbar(page).getByRole("button", { name: t("attendanceOverview.issues.clear"), exact: true }).or(showAll(page)).click();
     await expect.poll(() => new URL(page.url()).searchParams.has("mark")).toBe(false);
     await expect(page.getByRole("link", { name: "근태직원 2", exact: true })).toBeVisible();
     await groups.getByText(t("attendanceRecords.mark.LATE"), { exact: true }).click();
     await expect.poll(() => new URL(page.url()).searchParams.get("mark")).toBe("LATE");
-    await page.getByRole("button", { name: t("attendanceRecords.board.issuesOnly"), exact: true }).click();
+    await toolbar(page).getByRole("button", { name: t("attendanceRecords.board.issuesOnly"), exact: true }).or(showAll(page)).click();
     await expect.poll(() => new URL(page.url()).searchParams.has("mark")).toBe(false);
     await expect.poll(() => new URL(page.url()).searchParams.has("issues")).toBe(false);
     await fits(page, `overview-groups/${width}`);
@@ -68,7 +75,7 @@ for (const width of [1440, 390]) {
     await page.goto(screen.path);
     await expect(page.getByText(t("attendanceRecords.source.MANUAL"), { exact: true })).toBeVisible();
     await page.getByRole("button", { name: t("attendanceRecords.board.open"), exact: true }).click();
-    const dock = page.getByRole(width === 1440 ? "complementary" : "dialog");
+    const dock = dayPane(page, width);
     await expect(page.locator("html")).toHaveAttribute("data-theme", colorScheme);
     const minutes = dock.getByRole("table", { name: "분 단위 내역", exact: true });
     await expect(dock.getByRole("heading", { name: "분 단위 내역", exact: true })).toBeVisible();
@@ -96,7 +103,7 @@ for (const width of [1440, 390]) {
       await page.route(url => url.pathname === `/api/v1/attendance/people/${id(100)}/month`, route => route.fulfill({ json: { ...attendancePerson, days: [{ ...day, entry: current }], history: [{ date: day.date, entry: current }] } }));
       await page.goto(screen.path);
       await page.getByRole("button", { name: t("attendanceRecords.board.open"), exact: true }).click();
-      const dock = page.getByRole(width === 1440 ? "complementary" : "dialog");
+      const dock = dayPane(page, width);
       await dock.getByRole("tab", { name: t("attendanceRecords.day.tab.source"), exact: true }).click();
       await expect(dock.getByText(t("attendanceRecords.day.noHistory"), { exact: true })).toBeVisible();
       await expect(dock.getByText(t(current.undone ? "attendanceRecords.source.MANUAL" : "attendanceRecords.source.VOID"), { exact: true })).toHaveCount(0);
@@ -122,7 +129,7 @@ for (const state of ["empty", "failed", "refused", "loading"] as const) for (con
     });
     await page.goto(screen.path);
     await page.getByRole("button", { name: t("attendanceRecords.board.open"), exact: true }).click();
-    const dock = page.getByRole(width === 1440 ? "complementary" : "dialog");
+    const dock = dayPane(page, width);
     if (state === "empty") {
       await expect(dock.getByRole("tab").first()).toBeVisible();
       await expect(dock.getByRole("table", { name: "분 단위 내역", exact: true })).toHaveCount(0);

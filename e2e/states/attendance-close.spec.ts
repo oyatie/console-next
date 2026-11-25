@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import type { components } from "@console/api";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
@@ -13,6 +13,9 @@ import { attendanceReadState } from "./attendance-helpers";
 
 test.beforeAll(() => loadCatalog("ko"));
 const screen = attendanceScreens.find(candidate => candidate.key === "attendance-close")!;
+// The unit control: Classic's select is named by its label; Console's select button names its value, then the label.
+const scope = (page: Page) => page.getByRole("combobox", { name: t("attendanceRecords.scope.label"), exact: true })
+  .or(page.getByRole("button", { name: new RegExp(`${t("attendanceRecords.scope.label").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`) }));
 
 for (const state of Object.keys(screen.states) as AttendanceState[]) for (const width of [1440, 390]) {
   test(`${screen.key}: ${state} at ${width}px @ui-state`, async ({ page }) => {
@@ -60,10 +63,10 @@ for (const { name, wp, row } of handoffs) for (const width of [1440, 390]) for (
     if (width === 1440) await expect(table.getByRole("columnheader", { name: "기간 잠금", exact: true })).toHaveCount(row.close?.period_lock_id ? 1 : 0);
     if (row.closed) await expect(table.getByText(t("attendance.close.frozenCount", { count: row.open_exceptions }), { exact: true }).first()).toBeVisible();
     else await expect(table.getByText(/마감 시점/)).toHaveCount(0);
-    await expect(page.getByRole("combobox", { name: t("attendanceRecords.scope.label"), exact: true })).not.toContainText(t("attendanceRecords.scope.unavailable"));
+    await expect(scope(page)).not.toContainText(t("attendanceRecords.scope.unavailable"));
     if (!wp) {
       await expect(table.getByText(t("attendanceRecords.scope.all", { count: 2 }), { exact: true })).toHaveCount(0);
-      await expect(page.getByRole("combobox", { name: t("attendanceRecords.scope.label"), exact: true })).toContainText(t("attendanceRecords.scope.all", { count: 1 }));
+      await expect(scope(page)).toContainText(t("attendanceRecords.scope.all", { count: 1 }));
     }
     await expect(table.getByText(t("attendanceRecords.month.locks"), { exact: true })).toHaveCount(0);
     await expect(table.getByRole("button")).toHaveCount(0);

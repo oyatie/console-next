@@ -7,6 +7,7 @@ import { AT, failure, id, screenAccess } from "../mock/fixtures";
 import { mockScreen } from "../mock/screen";
 import { payrollRunCreateScreen, payrollScreens } from "./payroll";
 import { expectAxe, fits } from "../a11y";
+import { experienceState } from "../experience";
 import type { PayrollRunDetail } from "@console/api/pending";
 
 test.beforeAll(() => loadCatalog("ko"));
@@ -16,8 +17,41 @@ const detail: PayrollRunDetail = { run, legal_basis: {}, source_summary: {}, lin
 const preview = { legal_entity_id: payGroups.items[0]!.legal_entity_id, pay_group_id: payGroups.items[0]!.id, kind: "REGULAR" as const, attribution_month: "2026-11", pay_date: "2026-11-25", pay_date_clamped: false, period_start: "2026-11-01", period_end: "2026-11-30", variable_period_start: "2026-10-16", variable_period_end: "2026-11-15" };
 const created = { ...run, ...preview, id: id(881), source_label: "모의 급여 그룹 1 · 2026-11 · REGULAR", status: "BLOCKED_LEGAL_GATE" as const };
 
+type PayGroup = (typeof payGroups.items)[number];
+
+/** A pay group's card on the payroll home: Classic draws every group's card; Console the one chosen in its group list. */
+async function groupCard(page: Page, group: PayGroup) {
+  const main = page.getByRole("main");
+  const entity = payGroups.legal_entities.find(candidate => candidate.id === group.legal_entity_id)!.name!;
+  const card = main.getByRole("region", { name: group.name, exact: true });
+  const choice = main.getByRole("navigation", { name: t("payroll.home.groups"), exact: true }).getByRole("button", { name: `${group.name} · ${entity}`, exact: true });
+  await expect(card.or(choice).first()).toBeVisible();
+  if (await choice.count() && (await choice.getAttribute("aria-pressed")) !== "true") await choice.click();
+  await expect(card).toBeVisible();
+  return card;
+}
+
+/** Serves the run's read held (loading) or refused as `state` says; returns what lets a held read go. */
+async function serveRun(page: Page, state: "loading" | "failed" | "refused" | "missing") {
+  let release!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  await page.route(`**/api/v1/payroll/runs/${run.id}`, async route => {
+    if (state === "loading") await held;
+    if (page.isClosed()) return;
+    return route.fulfill({ status: state === "failed" ? 500 : state === "refused" ? 403 : 404, json: failure(state === "failed" ? "internal_error" : state === "refused" ? "forbidden" : "not_found") });
+  });
+  return release;
+}
+
+/** A pay group's choice, named by the group then its entity; Console's name goes on to the pay-date rule. */
+function groupChoice(page: Page, group: PayGroup) {
+  const entity = payGroups.legal_entities.find(candidate => candidate.id === group.legal_entity_id)!.name!;
+  const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return page.getByRole("radio", { name: new RegExp(`^${escape(group.name)}(?: ·)? ${escape(entity)}(?:$| · )`) });
+}
+
 async function chooseRegular(page: Page) {
-  await page.getByRole("radio", { name: `${payGroups.items[0]!.name} · ${payGroups.legal_entities.find(entity => entity.id === payGroups.items[0]!.legal_entity_id)!.name}`, exact: true }).locator("xpath=ancestor::label[1]").click();
+  await groupChoice(page, payGroups.items[0]!).locator("xpath=ancestor::label[1]").click();
   await page.getByRole("radio", { name: t("payroll.create.kind.REGULAR"), exact: true }).locator("xpath=ancestor::label[1]").click();
   await expect(page.getByRole("main")).toContainText(preview.attribution_month);
   await expect(page.getByRole("main")).toContainText(fmtDate(preview.pay_date));
@@ -43,15 +77,16 @@ for (const [width, colorScheme] of [[1440, "light"], [390, "dark"]] as const) te
   try {
     await page.goto("/payroll");
     const main = page.getByRole("main");
-    const card = main.getByRole("region", { name: payGroups.items[2]!.name, exact: true });
-    await expect(card.getByRole("link", { name: runLabel, exact: true })).toBeVisible();
-    await expect(main.getByRole("link", { name: runLabel, exact: true })).toHaveCount(1);
+    await groupCard(page, payGroups.items[2]!);
+    const link = main.getByRole("link", { name: runLabel, exact: true });
+    await expect(link).toBeVisible();
+    await expect(link).toHaveCount(1);
     await fits(page, `payroll-home/${width}`);
     await expectAxe(page, `payroll-home/${width}`);
     await page.screenshot({ path: test.info().outputPath(`home-${width}.png`), fullPage: true });
-    await card.getByRole("link", { name: runLabel, exact: true }).click();
+    await link.click();
     await expect(page).toHaveURL(new RegExp(`/payroll/runs/${run.id}$`));
-    await expect(main.getByRole("heading", { level: 1 })).toHaveText(runLabel);
+    await expect(main.getByRole("heading", { level: 1 })).toHaveCount(1);
     await expect(main).toContainText(payGroups.items[2]!.name);
     await expect(main).toContainText(payGroups.legal_entities[1]!.name!);
     const rail = main.getByRole("list", { name: t("payroll.stages.title") });
@@ -64,7 +99,7 @@ for (const [width, colorScheme] of [[1440, "light"], [390, "dark"]] as const) te
     await expectAxe(page, `payroll-run/${width}`);
     await page.screenshot({ path: test.info().outputPath(`run-${width}.png`) });
     await page.reload();
-    await expect(main.getByRole("heading", { level: 1 })).toHaveText(runLabel);
+    await expect(rail.locator('[aria-current="step"]')).toHaveText(t("payroll.stage.attendance"));
     expect(writes).toEqual([]);
     expect(fixture.unexpected).toEqual([]);
   } finally { await page.close(); fixture.release(); }
@@ -74,17 +109,11 @@ for (const state of ["loading", "failed", "refused", "missing"] as const) test(`
   await page.setViewportSize({ width: 390, height: 900 });
   await page.emulateMedia({ colorScheme: "dark" });
   const fixture = await mockScreen(page, payrollScreens[0], "populated");
-  let release!: () => void;
-  const held = new Promise<void>(resolve => { release = resolve; });
-  await page.route(`**/api/v1/payroll/runs/${run.id}`, async route => {
-    if (state === "loading") await held;
-    if (page.isClosed()) return;
-    return route.fulfill({ status: state === "failed" ? 500 : state === "refused" ? 403 : 404, json: failure(state === "failed" ? "internal_error" : state === "refused" ? "forbidden" : "not_found") });
-  });
+  const release = await serveRun(page, state);
   try {
     await page.goto(`/payroll/runs/${run.id}`);
     const main = page.getByRole("main");
-    await expect(main.getByRole("heading", { level: 1 })).toHaveText(t("payroll.runName"));
+    await expect(main.getByRole("heading", { level: 1 })).toHaveCount(1);
     if (state === "loading") await expect(main.locator('[aria-busy="true"]').last()).toBeVisible();
     else if (state === "refused") await expect(main.getByRole("region", { name: t("common.denied.title.plain") })).toBeVisible();
     else if (state === "failed") await expect(main.getByRole("button", { name: t("common.retry"), exact: true })).toBeVisible({ timeout: 15_000 });
@@ -103,7 +132,10 @@ for (const state of ["empty", "populated"] as const) test(`home offers run creat
     await page.goto("/payroll");
     const main = page.getByRole("main");
     await expect(main.getByRole("region", { name: state === "empty" ? t("payroll.setup.title") : payGroups.items[0]!.name, exact: true })).toBeVisible();
-    await expect(main.getByRole("link", { name: t("payroll.create.title"), exact: true })).toHaveAttribute("href", "/payroll/runs/new");
+    // Classic links to the creation page; Console's head command goes there.
+    const create = { name: t("payroll.create.title"), exact: true };
+    await main.getByRole("link", create).or(main.getByRole("button", create)).click();
+    await expect(page).toHaveURL(/\/payroll\/runs\/new$/);
     expect(fixture.unexpected).toEqual([]);
   } finally { await page.close(); fixture.release(); }
 });
@@ -181,13 +213,48 @@ test("creation offers only regular runs and distinguishes same-named groups by l
   await page.route("**/api/v1/payroll/pay-groups", route => route.fulfill({ json: { ...payGroups, items } }));
   try {
     await page.goto("/payroll/runs/new");
-    for (const group of items) {
-      const entity = payGroups.legal_entities.find(entity => entity.id === group.legal_entity_id)!;
-      await expect(page.getByRole("radio", { name: `${group.name} · ${entity.name}`, exact: true })).toBeVisible();
-    }
+    for (const group of items) await expect(groupChoice(page, group)).toBeVisible();
     await expect(page.getByRole("radio", { name: t("payroll.create.kind.REGULAR"), exact: true })).toHaveCount(1);
     for (const kind of ["OFF_CYCLE", "CORRECTION", "EXIT_SETTLEMENT"] as const)
       await expect(page.getByRole("radio", { name: t(`payroll.create.kind.${kind}`), exact: true })).toHaveCount(0);
     expect(fixture.unexpected).toEqual([]);
   } finally { await page.close(); fixture.release(); }
+});
+
+test("the Classic run page heads with the run's name @baseline", async ({ page }) => {
+  const fixture = await mockScreen(page, payrollScreens[0], "populated");
+  await page.route(`**/api/v1/payroll/runs/${run.id}`, route => route.fulfill({ json: detail }));
+  try {
+    await page.goto(`/payroll/runs/${run.id}`);
+    await expect(page.getByRole("main").getByRole("heading", { level: 1 })).toHaveText(runLabel);
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});
+
+for (const state of ["loading", "failed", "refused", "missing"] as const) test(`the Classic run page heads an unread run with the run-name placeholder: ${state} @baseline`, async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  const fixture = await mockScreen(page, payrollScreens[0], "populated");
+  const release = await serveRun(page, state);
+  try {
+    await page.goto(`/payroll/runs/${run.id}`);
+    await expect(page.getByRole("main").getByRole("heading", { level: 1 })).toHaveText(t("payroll.runName"));
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); release(); fixture.release(); }
+});
+
+test.describe("console run page", () => {
+  test.use({ storageState: experienceState("console") });
+  // The payroll board heads the run register with the module's word, not the run's name.
+  test("the Console run page heads with the page word", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const fixture = await mockScreen(page, payrollScreens[0], "populated");
+    await page.route(`**/api/v1/payroll/runs/${run.id}`, route => route.fulfill({ json: detail }));
+    try {
+      await page.goto(`/payroll/runs/${run.id}`);
+      const main = page.getByRole("main");
+      await expect(main.getByRole("list", { name: t("payroll.stages.title") })).toBeVisible();
+      await expect(main.getByRole("heading", { level: 1 })).toHaveText(t("payroll.title"));
+      expect(fixture.unexpected).toEqual([]);
+    } finally { await page.close(); fixture.release(); }
+  });
 });
