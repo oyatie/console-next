@@ -13,6 +13,8 @@ import { Paper, PaperFoot, PaperHead, PaperId } from "../../../ui/paper/paper";
 
 /** The history sections a print carries (awards and family, and the restricted ones are never in it). */
 const HISTORY: readonly string[] = ["EDUCATION", "QUALIFICATION", "MILITARY", "LANGUAGE", "TRAINING"];
+// A paper keeps the locale date form whatever the screen style draws.
+const day = (v: unknown) => fmtDate(v, { style: "locale" });
 
 /**
  * The personnel-record paper (E10-print): photo and identity in a grid, the nine register items (Decree §20), the action history
@@ -33,7 +35,7 @@ export function PrintPaper({ c, parts, at }: { c: Card; parts: readonly string[]
   const reveal = (key: string, v: string) => (key === "birth" ? birth : key === "address" && r?.address ? r.address : v);
   return (
     <Paper size="a4" label={t("empDoc.print.preview")} watermark={t("empDoc.print.wm", { at: fmtDateTime(at) })}>
-      <PaperHead title={t("empDoc.print.paperTitle")}><span className="grow" /><span>{t("empDoc.print.asOf", { entity: c.place.entity, date: fmtDate(todayKst()) })}</span></PaperHead>
+      <PaperHead title={t("empDoc.print.paperTitle")}><span className="grow" /><span>{t("empDoc.print.asOf", { entity: c.place.entity, date: day(todayKst()) })}</span></PaperHead>
       <PaperId photo={c.personal.data?.photo?.url ? t("empDoc.print.photo") : initial(e.name)}>
         <PaperGrid
           rows={[
@@ -45,7 +47,7 @@ export function PrintPaper({ c, parts, at }: { c: Card; parts: readonly string[]
             [t("empCard.f.phone"), phone ?? ""],
             [t("empDoc.print.place"), [c.place.workplace, ...c.place.path].filter(Boolean).join(" › ")],
             [t("empDoc.print.gradeTitle"), [c.title(k.grade_id) ?? e.position, c.title(k.position_kind_id)].filter(Boolean).join(" · ")],
-            [t("empCard.f.hire"), fmtDate(e.hire_date)],
+            [t("empCard.f.hire"), day(e.hire_date)],
             [t("empCard.f.type"), d.employment?.employment_type ? label(EMPLOYMENT_TYPE, d.employment.employment_type) : ""],
           ]}
         />
@@ -58,7 +60,7 @@ export function PrintPaper({ c, parts, at }: { c: Card; parts: readonly string[]
           <PaperTable
             label={t("empCard.tab.events")}
             head={[t("empDoc.print.col.from"), t("empDoc.print.col.act"), t("empDoc.print.col.what")]}
-            rows={events.map((x) => ({ id: x.id, cells: [fmtDate(x.event_type === "TERMINATE" || x.event_type === "OFFBOARD" ? retirementDate(x.effective_date) : x.effective_date), `${label(LIFECYCLE_EVENT, x.event_type)}${x.state === "SCHEDULED" ? ` ${t("empDoc.print.planned")}` : ""}`, <>{eventWhat(x, c.title) || commentText(x.comment, x.comment_code) || "—"} <EnumCode e={LEAVE_TYPE} value={x.leave_type} /></>] }))}
+            rows={events.map((x) => ({ id: x.id, cells: [day(x.event_type === "TERMINATE" || x.event_type === "OFFBOARD" ? retirementDate(x.effective_date) : x.effective_date), `${label(LIFECYCLE_EVENT, x.event_type)}${x.state === "SCHEDULED" ? ` ${t("empDoc.print.planned")}` : ""}`, <>{eventWhat(x, c.title) || commentText(x.comment, x.comment_code) || "—"} <EnumCode e={LEAVE_TYPE} value={x.leave_type} /></>] }))}
           />
         </>
       )}
