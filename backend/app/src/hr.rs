@@ -1099,7 +1099,7 @@ async fn get_hr_readiness_summary(
                     (ARRAY_AGG(period_start::TEXT ORDER BY updated_at DESC, id DESC))[1] AS latest_period_start,
                     (ARRAY_AGG(period_end::TEXT ORDER BY updated_at DESC, id DESC))[1] AS latest_period_end,
                     MAX(updated_at) AS latest_updated_at
-                FROM payroll_draft_runs
+                FROM payroll_draft_runs WHERE pay_group_id IS NULL -- a pay group's runs follow its own access
                 "#,
             )
             .fetch_one(tx.as_mut())
@@ -1114,7 +1114,7 @@ async fn get_hr_readiness_summary(
                     COALESCE(SUM(attendance_event_count), 0)::BIGINT AS attendance_event_links,
                     COUNT(*) FILTER (WHERE gross_pay_source_present)::BIGINT AS gross_pay_source_lines,
                     COUNT(*) FILTER (WHERE net_pay_source_present)::BIGINT AS net_pay_source_lines
-                FROM payroll_draft_lines
+                FROM payroll_draft_lines l WHERE EXISTS (SELECT 1 FROM payroll_draft_runs r WHERE r.org_id = l.org_id AND r.id = l.run_id AND r.pay_group_id IS NULL)
                 "#,
             )
             .fetch_one(tx.as_mut())

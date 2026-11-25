@@ -10,6 +10,8 @@ mod nullable_pay_groups;
 mod run_create_api;
 #[path = "run_preview_api.rs"]
 mod run_preview_api;
+#[path = "run_roster_api.rs"]
+mod run_roster_api;
 
 #[path = "module_readiness.rs"]
 mod module_readiness;
