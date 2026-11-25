@@ -31,3 +31,17 @@ test("SignIn pattern passes WCAG 2.2 AA matrix, fits 390px and 320px, renders ou
   await page.getByText(tg("pat.signIn.codeSummary")).click();
   await page.getByRole("button", { name: tg("pat.signIn.codeSubmit"), exact: true }).waitFor();
 }, 45_000);
+
+// One panel whose top edge never moves: a screen that grows (documents arriving, a notice) grows downward.
+test.each([[1280, 800], [390, 844]])("the Console panel keeps its top edge while its content grows at %spx", async (width, height) => {
+  const { page } = mounted;
+  await setConsoleViewport(page, width, height);
+  const card = page.locator('[data-pattern="sign-in"] > div').first();
+  const top = await card.evaluate(el => el.getBoundingClientRect().top);
+  await card.evaluate(el => { const grow = document.createElement("div"); grow.dataset.grow = ""; grow.style.height = "300px"; el.append(grow); });
+  try {
+    expect(await card.evaluate(el => el.getBoundingClientRect().top)).toBe(top);
+  } finally {
+    await page.evaluate(() => document.querySelector("[data-grow]")?.remove());
+  }
+});

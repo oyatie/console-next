@@ -64,6 +64,8 @@
   --page-pad: var(--space-5); --cell-px: var(--space-3);
   --radius-sm: 4px; --radius: 6px; --radius-lg: 10px; --radius-full: 999px; --radius-avatar: 50%;
   --row-h: 40px; --rail-w: 220px; --topbar-h: 48px; --tabbar-h: 0px; --statusbar-h: 0px; --navbar-h: 0px; --panel-w: 440px;
+  /* --panel-top: where a standalone panel (sign-in, setup) holds its top edge, so screens that follow one another never move it. */
+  --panel-top: 200px;
   /* The frame's insets: what fixed overlays and full-height regions clear. Each shell sets them; only the shell reads
      its own sizes (--rail-w, --topbar-h, --tabbar-h, --statusbar-h, --navbar-h). */
   --frame-top: calc(var(--topbar-h) + var(--tabbar-h)); --frame-start: var(--rail-w); --frame-bottom: calc(var(--statusbar-h) + var(--navbar-h));
