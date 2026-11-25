@@ -16,6 +16,7 @@ import { activeView, exactNumber, joinReview, parseIds, parseReview, parseStatus
 import { parseOrder, type RosterOrder } from "../domain/roster-order";
 import { useRoster } from "./use-roster";
 import { useRosterColumns } from "./use-roster-columns";
+import { whenRowsDrawn } from "./table-scroll-restoration";
 import type { ExitView } from "./exit-tabs";
 
 const route = getRouteApi("/app/people");
@@ -127,11 +128,14 @@ export function useRosterScreen() {
   useEffect(() => {
     const el = scroller.current;
     if (restored.current || !back || !rowCount || !el) return;
-    restored.current = true;
-    el.scrollTop = back.top;
-    if (back.row) requestAnimationFrame(() => {
-      // A delayed arrival read must not take focus from a search the user already started.
-      if (!editable(document.activeElement)) rowById(el, back.row!)?.focus();
+    // The row is focused a frame after the scroll, once the grid has seen it: focus re-applies the grid's last seen position.
+    return whenRowsDrawn(el, () => {
+      restored.current = true;
+      el.scrollTop = back.top;
+      if (back.row) requestAnimationFrame(() => {
+        // A delayed arrival read must not take focus from a search the user already started.
+        if (!editable(document.activeElement)) rowById(el, back.row!)?.focus();
+      });
     });
   }, [back, rowCount]);
   const scrollRef = (el: HTMLElement | null) => {
