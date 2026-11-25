@@ -8,11 +8,17 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 // oxlint-disable-next-line no-restricted-imports -- Exercise the existing read boundary with a transport refusal.
 import { ApiError } from "@console/api";
 import { loadCatalog } from "@console/i18n";
-import { beforeAll, expect, test } from "vitest";
+import { beforeAll, expect, test, vi } from "vitest";
 import type { ReadState } from "../../lib/react/query-view";
 import { ListRecord } from "./list-record";
 import { listRecordOptionalRegions } from "./list-record-contract";
 import { PageMain } from "../page/page-main";
+
+const experience = vi.hoisted(() => ({ id: "baseline" as "baseline" | "console" }));
+vi.mock("../../experience/dom", async original => ({
+  ...await original<typeof import("../../experience/dom")>(),
+  useActiveExperienceId: () => experience.id,
+}));
 
 beforeAll(() => loadCatalog("ko"));
 const registerLink = "Register link";
@@ -98,4 +104,14 @@ test("ListRecord renders baseline fallback when baseline prop is supplied in bas
   );
   expect(html).toContain('data-baseline-fallback="true"');
   expect(html).not.toContain('data-contract-region="list"');
+});
+
+test.each(["baseline", "console"] as const)("the %s head keeps the page's meta line, and a refusal removes it", async id => {
+  experience.id = id;
+  try {
+    const head = { title: "Roster", titleId: "roster-title", meta: mark("meta") };
+    expect(await markup(<ListRecord q={read} head={head} list={mark("list")} />)).toContain('data-contract-region="meta"');
+    const refused = { ...read, data: undefined, error: new ApiError(403, "forbidden", "", [], "meta-ref") };
+    expect(await markup(<ListRecord q={refused} head={head} list={mark("list")} />)).not.toContain('data-contract-region="meta"');
+  } finally { experience.id = "baseline"; }
 });

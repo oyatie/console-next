@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { ApiError } from "@console/api";
 import { loadCatalog } from "@console/i18n";
 import { beforeAll, expect, test } from "vitest";
 import { MonthGridPattern } from "./month-grid";
@@ -35,4 +36,12 @@ test("MonthGridPattern satisfies placement, refusal, loading, and 404 data-detai
 
   const notFound = await renderPatternMarkup(renderGrid(notFoundRead("missing-month")));
   expect(notFound).not.toContain("data-detail");
+});
+
+test("MonthGridPattern hands its refusal words to the refusal card, as every pattern does", async () => {
+  const refused = { ...readyRead, data: undefined, error: new ApiError(403, "forbidden", "", [], "month-ref") };
+  const html = await renderPatternMarkup(
+    <MonthGridPattern q={refused} own={code => (code === "forbidden" ? "server refusal words" : undefined)} head={makeHead("month-own-title")} grid={mark("grid")} />,
+  );
+  expect(html).toContain("server refusal words");
 });

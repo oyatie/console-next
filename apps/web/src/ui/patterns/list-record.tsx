@@ -66,7 +66,7 @@ export function ListRecord({
         {tabs}
         <PageReadGate q={q} head={available => available || !secondary ? <Band className={s.head}>
           <PageHeadingLevel value={secondary ? 2 : 1}><PageHead title={head.title} titleId={head.titleId}
-            asOf={available ? head.asOf : undefined}
+            meta={available ? head.meta : undefined} asOf={available ? head.asOf : undefined}
             primary={available && head.primary && <Button variant="primary" onClick={head.primary.onAction}>{head.primary.label}</Button>}
             actions={available && <>{head.actions}{head.commands && <PageHeadActions {...head.commands} />}</>}
             tabs={available && shown(views) ? views : undefined}
@@ -130,6 +130,7 @@ export function ListRecord({
                     band
                     title={head.title}
                     titleId={head.titleId}
+                    meta={available ? head.meta : undefined}
                     asOf={available ? head.asOf : undefined}
                     filters={filterNode}
                     tools={available && shown(tools) ? tools : undefined}

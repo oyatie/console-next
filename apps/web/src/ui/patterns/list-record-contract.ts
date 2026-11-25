@@ -25,7 +25,7 @@ export type ListRecordPane = SidePaneSpec & {
  */
 export type ListRecordProps = Pick<ComponentProps<typeof FlexibleColumns>, "list" | "full" | "onFull" | "onSelect" | "onOpen" | "onFind"> & {
   q: ReadState;
-  head: Pick<PageHeadProps, "title" | "titleId" | "asOf" | "actions"> & {
+  head: Pick<PageHeadProps, "title" | "titleId" | "meta" | "asOf" | "actions"> & {
     primary?: MenuAction;
     commands?: { label: string; items: readonly MenuAction[] };
   };
