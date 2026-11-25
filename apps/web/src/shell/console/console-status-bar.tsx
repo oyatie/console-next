@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useMemo, type ReactNode } from "react";
 import { t } from "@console/i18n";
-import { modHint } from "../../lib/mod-hint";
-import { Kbd } from "../../ui/kbd/kbd";
 import { StatusBar } from "../../ui/status-bar/status-bar";
-import { usePublishedStatusBar } from "../../ui/status-bar/status-bar-store";
+import { usePublishedStatusBar, usePublishedStatusTrailing } from "../../ui/status-bar/status-bar-store";
 
 export function ConsoleStatusBar({ platform, tenantName, currentTitle, inboxCount, inboxExact }: {
   platform?: boolean; tenantName?: string; currentTitle: string; inboxCount?: number; inboxExact: boolean;
 }) {
   const publishedSegments = usePublishedStatusBar();
+  const trailing = usePublishedStatusTrailing();
   const statusSegments = useMemo(() => {
     if (publishedSegments && publishedSegments.length > 0) {
       return publishedSegments;
@@ -28,17 +27,5 @@ export function ConsoleStatusBar({ platform, tenantName, currentTitle, inboxCoun
     return segments;
   }, [publishedSegments, platform, tenantName, currentTitle, inboxCount, inboxExact]);
 
-  return (
-    <StatusBar
-      segments={statusSegments}
-      trailing={
-        !platform ? (
-          <>
-            <bdi>{t("shell.jumpLabel")}</bdi>
-            <Kbd keys={modHint("K")} />
-          </>
-        ) : undefined
-      }
-    />
-  );
+  return <StatusBar segments={statusSegments} trailing={trailing} />;
 }

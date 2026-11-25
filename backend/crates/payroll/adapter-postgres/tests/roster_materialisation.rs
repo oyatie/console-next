@@ -13,6 +13,20 @@
 
 #[path = "roster_materialisation/names.rs"]
 mod names;
+#[path = "roster_materialisation/pay_group.rs"]
+mod pay_group;
+#[path = "roster_materialisation/pay_group_ambiguous.rs"]
+mod pay_group_ambiguous;
+#[path = "roster_materialisation/pay_group_close.rs"]
+mod pay_group_close;
+#[path = "roster_materialisation/placement.rs"]
+mod placement;
+#[path = "roster_materialisation/placement_migration.rs"]
+mod placement_migration;
+#[path = "roster_materialisation/places.rs"]
+mod places;
+#[path = "roster_materialisation/preflight_race.rs"]
+mod preflight_race;
 #[path = "roster_materialisation/seed.rs"]
 mod seed;
 

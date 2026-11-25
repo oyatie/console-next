@@ -18,12 +18,12 @@ requestBody:
       schema: {$ref: '#/components/schemas/CreatePayrollRun'}
 responses:
   '201':
-    description: The created run with its immutable derived schedule snapshot, or that original result on a same-key retry under current Cedar access.
+    description: The created run with its immutable derived schedule snapshot, or that original result on a same-key retry under current Cedar access. The run's roster, one line per member of the group's legal entity, is written in the same transaction and read through GET /api/v1/payroll/runs/{id}.
     content:
       application/json:
         schema: {$ref: '#/components/schemas/PayrollRunSummary'}
   '401': {$ref: '#/components/responses/Unauthorized'}
   '403': {description: Cedar refuses pay-group edit or sensitive edit clearance. Unknown and foreign groups also refuse.}
-  '409': {description: phase_not_operating during tenant setup; regular_run_exists for an occupied regular group/month; idempotency_key_reused for a changed body; command_processing or command_applied for an unavailable replay.}
-  '422': {description: run_kind_unsupported for non-REGULAR kinds; Missing, malformed or extra fields, an invalid run kind, or invalid_request_key.}
+  '409': {description: "phase_not_operating during tenant setup; regular_run_exists for an occupied regular group/month; pay_group_roster_ambiguous when the group's legal entity has more than one pay group, so its members are not known; idempotency_key_reused for a changed body; command_processing or command_applied for an unavailable replay."}
+  '422': {description: "run_kind_unsupported for non-REGULAR kinds; Missing, malformed or extra fields, an invalid run kind, or invalid_request_key."}
   '503': {description: holiday_calendar_missing when the applicable calendar is unavailable; or unavailable Cedar facts.}

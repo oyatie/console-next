@@ -82,6 +82,24 @@ test.each(SYSTEMS)("Console look: on $platform the registration sheet's register
   await element(sheet.getByRole("button", { name: t("register.run.submit"), exact: true }).locator("kbd")).toHaveText(next);
 });
 
+// Both looks reach the run page from the sheet by one name; the Console link follows the import link, drawn the same way.
+test("Console look: the registration sheet links to the run page beside the import link", async () => {
+  await page.goto(`${server.resolvedUrls!.local[0]}register-keys-test?case=sheet&look=console`);
+  const sheet = page.getByRole("dialog", { name: t("register.title"), exact: true });
+  const run = sheet.getByRole("link", { name: t("register.run.open"), exact: true });
+  await element(run).toHaveAttribute("href", "/people/run");
+  await element(sheet.locator('a[href="/people/import"] + a[href="/people/run"]')).toHaveCount(1);
+  expect(await run.getAttribute("class")).toBe(await sheet.getByRole("link", { name: t("register.manyShort"), exact: true }).getAttribute("class"));
+});
+
+test("in both catalogs the run link and the create-more switch have different names", async () => {
+  for (const lang of ["en", "ko"] as const) {
+    await loadCatalog(lang);
+    i18n.set(lang);
+    expect(t("register.run.open"), lang).not.toBe(t("register.createMore"));
+  }
+});
+
 test.each(SYSTEMS)("Console look: on $platform the run page shows $next to register and $close to finish", async ({ platform, next, close }) => {
   await page.goto(`${server.resolvedUrls!.local[0]}register-keys-test?case=run&look=console&platform=${platform}`);
   await element(page.getByRole("button", { name: t("register.run.submit"), exact: true }).locator("kbd")).toHaveText(next);

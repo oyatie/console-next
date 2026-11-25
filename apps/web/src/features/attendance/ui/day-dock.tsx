@@ -17,13 +17,11 @@ import { Tabs } from "../../../ui/tabs/tabs";
 import { personMonthQuery, type Day, type Entry } from "../api";
 import { duration } from "../domain/minutes";
 import { closed } from "../domain/month-state";
-import { clockText, dateText, entryText, shiftText, refusalText } from "../present";
+import { clockText, dateText, entryText, shiftText, refusalText, type DayDockMode } from "../present";
 import { DayBar, DayBars } from "./day-bar";
 import { EntryForm } from "./entry-form";
 import { MarkChip } from "./mark-chip";
 import s from "./records.module.css";
-
-export type DayDockMode = "view" | "correct" | "void";
 
 /**
  * One person-day (A3 day sheet), docked beside the grid: day (plan, record, recognition and what it means), source (the

@@ -1,2 +1,2 @@
 /* SPDX-License-Identifier: LicenseRef-Proprietary */
-.masked { font-family: var(--font-mono); font-size: var(--text-sm); letter-spacing: 0.5px; }
+.masked { font-family: var(--font-code); font-size: var(--text-sm); letter-spacing: var(--tracking-masked); }

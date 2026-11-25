@@ -229,3 +229,38 @@ async fn a_routed_tenant_gets_no_direct_dissolve_or_details_after_go_live(owner:
     assert!(options.delete.allowed);
     store.erase_org_unit(&cmd(&actor), ids[0], 1).await.unwrap();
 }
+
+/// A payroll line records the department its person was in, so a department
+/// named only there was used: erasing it would leave the line naming nothing.
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn a_department_a_payroll_line_names_is_not_erased(owner: PgPool) {
+    let (store, actor) = tenant(&owner, ORG, "A").await;
+    let (_, [(hq, _), _]) = two_workplaces(&store, &actor).await;
+    let dept = batch(&store, &actor, vec![under_workplace("a", "Sales", hq)]).await[0];
+    sqlx::query("WITH run AS (INSERT INTO payroll_draft_runs (org_id, period_start, period_end, source_label) VALUES ($1, DATE '2026-06-01', DATE '2026-06-30', 'placed') RETURNING id) INSERT INTO payroll_draft_lines (org_id, run_id, employee_source_key, employee_display_name, employee_company, org_unit_id) SELECT $1, id, 'kim', 'kim', 'SAE', $2 FROM run")
+        .bind(ORG).bind(dept).execute(&owner).await.unwrap();
+    let options = store
+        .org_unit_end_options(&actor, dept, port())
+        .await
+        .unwrap();
+    let (c, _, remedy) = code(
+        store
+            .erase_org_unit(&cmd(&actor), dept, 1)
+            .await
+            .unwrap_err(),
+    );
+    assert_eq!(
+        (
+            options.delete.refusal,
+            c,
+            remedy,
+            exists(&owner, &[dept]).await
+        ),
+        (
+            Some("org_unit_has_history"),
+            "org_unit_has_history",
+            Some("dissolve_instead"),
+            (1, 1)
+        )
+    );
+}

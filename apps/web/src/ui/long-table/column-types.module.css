@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: LicenseRef-Proprietary */
 .surface [data-type] { text-align: start; font-variant-numeric: tabular-nums; }
 .surface :is([data-type="num"], [data-type="money"], [data-type="pct"], [data-type="time"], [data-type="duration"], [data-type="action"]) { text-align: end; justify-content: flex-end; }
-.surface :is(td, [role="gridcell"])[data-type="code"] { font-family: var(--font-mono); }
+.surface :is(td, [role="gridcell"])[data-type="code"] { font-family: var(--font-code); }
 .native[data-typed] { table-layout: fixed; }
 :where([data-experience]:not([data-experience="baseline"])) .native[data-typed][data-scroll-layout="auto"] { table-layout: auto; }
 .native[data-typed] thead th { white-space: normal; overflow-wrap: anywhere; }

@@ -18,7 +18,7 @@ Use it once at the bottom of the desktop application shell to display persistent
 
 - **Landmark:** `<footer aria-label={label} data-surface="chrome">`.
 - **Leading segments:** inline list of `StatusBarSegment` items separated by `--space-5` (`24px`), with index `0` defaulting to `tone="strong"`.
-- **Trailing slot:** optional right-aligned content (`margin-inline-start: auto`) for shortcut hints or secondary metadata.
+- **Trailing slot:** optional right-aligned content (`margin-inline-start: auto`) for secondary metadata. In the desk shell it is the screen's: `useScreenStatusBar(segments, trailing)` publishes it. The trailing fact and the segments are owned apart, so a screen can publish its fact while its pattern publishes the segments; each leaves with the component that published it.
 
 ## Looks and sizes
 
@@ -26,9 +26,9 @@ One compact height (`min-height: var(--space-5)`, `24px`) with `--text-xs` (`12p
 
 | `tone` | Text colour and weight | Typical use |
 |---|---|---|
-| `strong` (default on index `0`) | `--ink` (`--on-chrome`), `--fw-strong` | Active tenant or scope summary. |
+| `strong` (default on index `0`) | `--ink` (`--on-chrome`), `--fw-semibold` | Active tenant or scope summary. |
 | `default` | `--steel` (`--on-chrome-muted`), regular weight | Counts, period, or connection state. |
-| `attention` | `--warn-tx` (`--chrome-attention`), `--fw-strong` | Overdue items or pending exceptions. |
+| `attention` | `--warn-tx` (`--chrome-attention`), `--fw-semibold` | Overdue items or pending exceptions. |
 
 ## States
 
@@ -73,7 +73,7 @@ Phone shells omit `StatusBar` (`--statusbar-h: 0px`), giving full vertical room 
 | Token | Read by |
 | --- | --- |
 | `--border` | `border-block-start` |
-| `--fw-strong` | `font-weight` |
+| `--fw-semibold` | `font-weight` |
 | `--ink` | `color` |
 | `--space-1-5` | `gap` |
 | `--space-2` | `gap` |
