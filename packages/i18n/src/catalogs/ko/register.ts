@@ -109,7 +109,7 @@ export const koRegister: Record<keyof typeof enRegister, string> = {
   "register.err.workplace": "사업장을 선택하십시오",
   "register.err.noWorkplace": "등록된 사업장이 없어 등록할 수 없습니다 · 법인·사업장에서 사업장부터 등록하십시오",
   "register.field.workplace": "사업장",
-  "register.run.open": "표로 연속 등록",
+  "register.run.open": "연속 등록",
   "register.run.crumb": "연속 등록",
   "register.run.title": "연속 등록",
   "register.run.titleAt": "연속 등록 · {place}",
