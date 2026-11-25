@@ -20,6 +20,12 @@ export const notFoundRead = (ref: string): ReadState => ({
   error: new ApiError(404, "not_found", "", [], ref),
 });
 
+export const failedRead = (ref: string): ReadState => ({
+  ...readyRead,
+  data: undefined,
+  error: new ApiError(503, "service_unavailable", "", [], ref),
+});
+
 export const mark = (name: string) => <bdi data-contract-region={name}>{name}</bdi>;
 
 const actionLinkLabel = "Action link";
@@ -109,12 +115,7 @@ export async function assertPatternLifecycle({
 
   for (const state of ["loading", "failed"] as const) {
     const html = await renderPatternMarkup(
-      render({
-        ...readyRead,
-        isPending: state === "loading",
-        data: undefined,
-        error: state === "failed" ? new ApiError(503, "service_unavailable", "", [], `${pattern}-fail`) : null,
-      }),
+      render(state === "failed" ? failedRead(`${pattern}-fail`) : { ...readyRead, isPending: true, data: undefined }),
     );
     expect(html).toContain('data-contract-region="tabs"');
     expect(html).toContain('data-contract-region="overlays"');

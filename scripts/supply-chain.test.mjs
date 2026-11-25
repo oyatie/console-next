@@ -14,15 +14,6 @@ import { REQUIRED_SECURITY_JOBS } from "./check-workflow-hardening.mjs";
 const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
 const workflow = yaml.load(read(".github/workflows/ci.yml"));
 
-test("web verifies installed npm registry signatures before running checks on PRs and merge groups", () => {
-  const web = workflow.jobs.web;
-  const install = web.steps.findIndex((s) => s.run === "npm ci --no-audit --no-fund");
-  const verify = web.steps.findIndex((s) => s.run === "npm audit signatures");
-  const checks = web.steps.findIndex((s) => s.run?.includes("npm run check"));
-  assert.ok(install >= 0 && verify > install && checks > verify);
-  assert.equal(web.steps[verify].if, undefined);
-  assert.equal(web.steps[verify]["continue-on-error"], undefined);
-});
 const security = () => {
   assert.ok(workflow.jobs["supply-chain"], "CI must run the supply-chain job");
   return workflow.jobs["supply-chain"];

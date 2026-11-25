@@ -11,7 +11,7 @@ use sqlx::{Postgres, Transaction};
 use time::OffsetDateTime;
 
 use super::merge::apply_requested_merge_in_tx;
-use super::{LedgerMeta, apply_fields_in_tx, lock_employee, normalize_value, route_or_refuse};
+use super::{LedgerMeta, apply_fields_in_tx, check_change, lock_employee};
 use crate::HrError;
 use crate::requests::ChangeRequestResponse;
 
@@ -56,8 +56,7 @@ async fn apply_profile_correction(
         .ok_or_else(|| HrError::validation("payload.changes must name at least one field"))?;
     let mut fields = Vec::with_capacity(changes.len());
     for (field, value) in changes {
-        route_or_refuse(field)?;
-        fields.push((field.clone(), normalize_value(field, value)?));
+        fields.push(check_change(field, value)?.value);
     }
     let org = *principal.org_id.as_uuid();
     let head = lock_employee(tx, org, request.subject_id).await?;

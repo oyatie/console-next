@@ -67,6 +67,7 @@ export const koAccessLog: Record<keyof typeof enAccessLog, string> = {
   "accessLog.filters": "접속기록 필터",
   "accessLog.appliedFilters": "적용한 필터",
   "accessLog.filterInvalid": "필터를 확인하십시오",
+  "accessLog.actorNameUnconfirmed": "이름 미확인",
   "accessLog.actorUnavailable": "선택할 수 없는 접속자",
   "accessLog.filtersUnavailable": "필터를 사용할 수 없습니다",
   "accessLog.filtersUnavailableReason": "접속자·IP 주소 검색으로 기록을 확인하십시오.",

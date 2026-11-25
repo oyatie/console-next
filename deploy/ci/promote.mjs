@@ -1,27 +1,14 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
+import { cpSync, lstatSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { load } from 'js-yaml';
+import { readEnvironment } from './environment.mjs';
+import { attemptJobs, collectSuiteRuns } from './gates.mjs';
 import gatesPolicy from '../gates.json' with {type:'json'};
 
-export function readEnvironment(environment, root = '.') {
-  assert.match(environment ?? '', /^[a-z0-9][a-z0-9-]*$/, 'PLAT_OVERLAY: select a committed environment');
-  const directory = join(root, 'deploy/clusters', environment);
-  assert.ok(existsSync(directory) && lstatSync(directory).isDirectory() &&
-    existsSync(join(directory, 'platform.json')) && lstatSync(join(directory, 'platform.json')).isFile(),
-  'PLAT_OVERLAY: select a committed environment');
-  const config = JSON.parse(readFileSync(join(directory, 'platform.json'), 'utf8'));
-  if (config.target !== undefined || config.channel !== undefined) {
-    assert.ok(['host', 'kubernetes'].includes(config.target) && typeof config.channel === 'string' &&
-      /^[a-z0-9][a-z0-9_.-]*$/.test(config.channel) && config.channel.length <= 87,
-    'PROMOTE_ENVIRONMENT: target and channel must be valid; reserve room for the immutable SHA tag');
-  }
-  return config;
-}
-
-export function discoverEnvironments(root = '.') {
+export function discoverEnvironments(root = '.', environment) {
   const channels = new Set();
   return readdirSync(join(root, 'deploy/clusters'), {withFileTypes:true})
     .filter(entry => entry.isDirectory()).map(entry => {
@@ -30,7 +17,8 @@ export function discoverEnvironments(root = '.') {
       assert.ok(!channels.has(channel), 'PROMOTE_ENVIRONMENT: channels must be unique');
       channels.add(channel);
       return {environment:entry.name, target, channel};
-    }).filter(Boolean).sort((a, b) => a.environment.localeCompare(b.environment));
+    }).filter(row => row && (!environment || row.environment === environment))
+    .sort((a, b) => a.environment.localeCompare(b.environment));
 }
 
 export function assertPromotion({sha, repository, run, jobs, gatesResult, currentRevision}, root = '.') {
@@ -110,8 +98,7 @@ export async function collectPlatformProof(github, repository, runId, root = '.'
   const {data:run} = await github.rest.actions.getWorkflowRun({owner, repo, run_id:runId});
   assert.ok(run.id === runId && Number.isSafeInteger(run.run_attempt) && run.run_attempt > 0,
     'PROMOTE_NOT_GREEN: require the selected run and a known attempt');
-  const jobs = await github.paginate('GET /repos/{owner}/{repo}/actions/runs/{run_id}/attempts/{attempt_number}/jobs',
-    {owner, repo, run_id:runId, attempt_number:run.run_attempt, per_page:100});
+  const jobs = await attemptJobs(github, {owner, repo, per_page:100}, runId, run.run_attempt);
   const proof = {sha:run.head_sha, repository, run, jobs, gatesResult:'pass', currentRevision:null};
   assertPromotion(proof, root);
   return proof;
@@ -122,11 +109,16 @@ const executeTool = (bin, args, options = {}) => execFileSync(bin, args, {
 });
 
 // Resolve mutable tags once, then verify and pull only that digest.
-export function publishEnvironment({proof, environment, predicate, runUrl, directory, root = '.', candidateRoot = root}, execute = executeTool) {
+export async function publishEnvironment({github, proof, environment, predicate, runUrl, directory,
+  root = '.', candidateRoot = root}, execute = executeTool) {
   validatePredicate(predicate, proof.sha, runUrl);
   assertPromotion(proof, root);
   const {channel} = readEnvironment(environment, root);
   assert.ok(channel, 'PROMOTE_ENVIRONMENT: select a configured channel');
+  const {runs:suiteRuns, refusals} = await collectSuiteRuns(github, environment, proof);
+  if (refusals.length) {
+    return {published:false, code:'PROMOTE_SUITES', summary:`${environment} not published: ${refusals.join(', ')}`};
+  }
   const deploy = `ghcr.io/${proof.repository.toLowerCase()}/console-deploy`;
   const issuer = '--certificate-oidc-issuer=https://token.actions.githubusercontent.com';
   const identity = workflow => `--certificate-identity=https://github.com/${proof.repository}/.github/workflows/${workflow}.yml@refs/heads/dev`;
@@ -217,5 +209,10 @@ export function publishEnvironment({proof, environment, predicate, runUrl, direc
       'PROMOTE_GATES: attestation must belong to this repository');
   }
   execute('flux', ['tag', 'artifact', `oci://${artifact}`, `--tag=${channel}`]);
-  return artifact;
+  const summary = [`${environment}: ${artifact}`,
+    'Verified promotion signature, gates attestation and identity negative controls.',
+    ...suiteRuns.map(({workflow, id, run_attempt, html_url}) =>
+      `- ${workflow}: [run ${id}, attempt ${run_attempt}](${html_url}/attempts/${run_attempt})`),
+  ].join('\n');
+  return {published:true, artifact, summary};
 }

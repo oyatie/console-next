@@ -82,7 +82,8 @@ export function OpsRecovery({ org, data, embedded = false, onIssued }: { org: Or
       </Form>
     </Dialog>}
   </>;
-  if (embedded) return <div className={s.embedded}>{content}</div>;
+  // The record pane draws the heading; the section keeps the region and its name, as the standalone one has.
+  if (embedded) return <section className={s.embedded} aria-label={t("opsRecovery.title")}>{content}</section>;
   return <section className={s.section} aria-labelledby="tenant-ops-recovery">
     <h3 id="tenant-ops-recovery" className={s.heading}>{t("opsRecovery.title")}</h3>
     {content}

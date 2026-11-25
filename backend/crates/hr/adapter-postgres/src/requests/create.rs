@@ -19,7 +19,7 @@ use super::{
 use crate::authz::{
     Tier, authorize_hr_org_wide, authorize_hr_person_in, authorize_hr_scoped_write, hr_reach_in,
 };
-use crate::corrections::{normalize_value, route_or_refuse};
+use crate::corrections::{check_change, normalize_value};
 use crate::{HrError, HrService, change_request_columns};
 
 fn not_found(subject_type: &str) -> HrError {
@@ -102,8 +102,7 @@ fn payload(kind: ChangeRequestKind, raw: Option<Value>) -> Result<Value, HrError
             .ok_or_else(|| HrError::validation("payload.changes must name at least one field"))?;
         // A request is only filed for a field that can be applied.
         for (field, value) in changes {
-            route_or_refuse(field)?;
-            normalize_value(field, value)?;
+            check_change(field, value)?;
         }
     }
     Ok(payload)
