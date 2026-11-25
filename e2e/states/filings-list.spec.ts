@@ -17,14 +17,17 @@ const filings = (scope: Page | Locator) => scope.getByRole("table", { name: t("s
 const cell = (scope: Page | Locator, name: string) => scope.getByRole("cell", { name, exact: true }).or(scope.getByRole("gridcell", { name, exact: true }));
 /** Console's filing record pane, which its grid row opens. */
 const recordPane = (page: Page) => page.getByRole("complementary", { name: t("statutory.detailTitle"), exact: true });
-/** Opens a filing's record dialog. Classic's row button opens it; Console's row button opens the record pane, whose own
- * button of the same name opens it. */
+/** Opens a filing's record dialog from its row's button. Console's row button of that name opens the record pane instead
+ * (one name, two actions): that stays a soft red, and the pane's own button then opens the dialog so the rest of the flow
+ * is still checked. Where Console's phone pane covers the row, only the pane's button is reachable. */
 async function recordFiling(row: Locator) {
-  const pane = recordPane(row.page());
   const dialog = row.page().getByRole("dialog");
-  if (!await pane.isVisible()) await row.getByRole("button", { name: t("statutory.record"), exact: true }).click();
-  await expect(dialog.or(pane).first()).toBeVisible();
-  if (!await dialog.isVisible()) await pane.getByRole("button", { name: t("statutory.record"), exact: true }).click();
+  const button = row.getByRole("button", { name: t("statutory.record"), exact: true });
+  if (await button.isVisible()) {
+    await button.click();
+    await expect.soft(dialog, "the row's record button opens the record dialog").toBeVisible();
+  }
+  if (!await dialog.isVisible()) await recordPane(row.page()).getByRole("button", { name: t("statutory.record"), exact: true }).click();
 }
 /** Opens a filing's record pane in Console by the row's event, as a reader would. */
 async function openRecord(row: Locator, event: string) {
