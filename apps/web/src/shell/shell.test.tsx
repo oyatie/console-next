@@ -25,8 +25,7 @@ const locationState = vi.hoisted(() => ({ pathname: "/people" }));
 vi.mock("react", async original => ({ ...await original<typeof import("react")>(), useSyncExternalStore: (_subscribe: unknown, snapshot: () => unknown) => snapshot() }));
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to }: { children: ReactNode; to: string }) => <a href={to}>{children}</a>, Outlet: () => child(),
-  useNavigate: () => vi.fn(), useLocation: () => ({ pathname: locationState.pathname }),
-  useRouterState: ({ select }: { select: (state: { status: string }) => unknown }) => select({ status: "idle" }),
+  useNavigate: () => vi.fn(), useLocation: () => ({ pathname: locationState.pathname }), useRouterState: ({ select }: { select: (state: { status: string }) => unknown }) => select({ status: "idle" }),
   useRouter: () => ({ routesByPath: Object.fromEntries([
     ["/", "signed-in"], ["/requests", "signed-in"], ["/people/requests", "signed-in"],
     ["/people", { domain: "hr_basic", level: "view" }], ["/audit/support-access", "signed-in"],
