@@ -15,6 +15,8 @@ const TOKEN = {
   access_token: `h.${Buffer.from(JSON.stringify({ sub: "hero", org: "tenant", name: "Hajun" })).toString("base64url")}.s`,
   token_type: "Bearer", refresh_expires_at: "2099-01-01T00:00:00Z", requires_passkey_setup: false,
 };
+/** A platform operator's session: the frame sends no tenant reader's read for it. */
+const OPERATOR = { ...TOKEN, access_token: `h.${Buffer.from(JSON.stringify({ sub: "operator", org: "platform", name: "Operator", platform: true })).toString("base64url")}.s` };
 
 beforeAll(async () => {
   await loadCatalog("ko");
@@ -47,7 +49,9 @@ beforeAll(async () => {
         import '/apps/web/src/app.css';
         await loadCatalog('ko');
         // ?cold opens with no session, as a reload does, so the shell restores it through the refresh the test answers.
-        if (location.search.includes('cold')) configure(webPlatform); else session.set(${JSON.stringify(TOKEN)});
+        // ?operator opens as a platform operator.
+        if (location.search.includes('cold')) configure(webPlatform);
+        else session.set(location.search.includes('operator') ? ${JSON.stringify(OPERATOR)} : ${JSON.stringify(TOKEN)});
         const h = React.createElement;
         const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
         function Screen({ title }) {
@@ -90,7 +94,7 @@ type Held = { asked: () => void; done: Promise<void> };
  * `restore` opens cold: the page starts with no session, and the refresh that restores it waits for `restore.done`.
  * `held` holds the read at `held.path` until `held.done`; `refused` refuses the read at that path, once its hold ends.
  */
-async function openPhoneShell(link: "LINKED" | "UNLINKED" = "LINKED", { restore, held, refused, width = 390 }: { restore?: Held; held?: Held & { path: string }; refused?: string; width?: number } = {}) {
+async function openPhoneShell(link: "LINKED" | "UNLINKED" = "LINKED", { restore, held, refused, width = 390, operator = false }: { restore?: Held; held?: Held & { path: string }; refused?: string; width?: number; operator?: boolean } = {}) {
   const apiMocks: Record<string, unknown> = {
     "/api/v1/users/me": {
       id: "u1", display_name: "Hajun", employee_name: "Hajun", employee_id: link === "LINKED" ? "e1" : null,
@@ -126,7 +130,7 @@ async function openPhoneShell(link: "LINKED" | "UNLINKED" = "LINKED", { restore,
     return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(apiMocks[path] ?? { items: [] }) });
   });
 
-  await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}console-phone-nav-test${restore ? "?cold" : ""}`, page.locator('[data-phone-screen="Account"]'));
+  await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}console-phone-nav-test${restore ? "?cold" : operator ? "?operator" : ""}`, page.locator('[data-phone-screen="Account"]'));
   return page.getByRole("navigation", { name: t("shell.nav"), exact: true });
 }
 
@@ -359,4 +363,11 @@ for (const [what, hold] of desktopHolds) test(`on a desktop neither the page nor
     expect(Object.fromEntries(Object.keys(before).map(key => [key, after[key] ?? "gone"]))).toEqual(before);
     expect(await pageFrame()).toEqual(frame);
   } finally { answered.resolve(); }
+});
+
+// The frame never sends the tenant reader's read for an operator, so waiting on it would hold the chrome for good.
+test("on a desktop an operator's chrome draws without the tenant reader's read", async () => {
+  await openPhoneShell("LINKED", { width: 1440, operator: true });
+  await page.locator("[data-workspace-tab]").first().waitFor();
+  await page.locator("[data-console-shell] footer").first().waitFor();
 });
