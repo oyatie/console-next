@@ -36,9 +36,10 @@ test("a run names its own pay group, matched by id within the run's legal entity
   expect(renderToStaticMarkup(<Probe />)).toBe("<output>Base group</output>");
 });
 
+// Beside the page title a bare "unavailable" names nothing, so the fallback says what is missing.
 test("a group id that only matches in another legal entity is never borrowed", () => {
   state.runEntity = "entity-c";
-  expect(renderToStaticMarkup(<Probe />)).toBe(`<output>${t("payroll.rule.unknown")}</output>`);
+  expect(renderToStaticMarkup(<Probe />)).toBe(`<output>${t("payroll.group")} · ${t("payroll.rule.unknown")}</output>`);
 });
 
 test("while the pay groups are still read, the run names no group rather than calling it unknown", () => {

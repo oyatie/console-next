@@ -87,8 +87,9 @@ export function useRunConsole(id: string) {
   const entityLabel = activeEntity?.name ?? t("payroll.entityUnnamed");
   // A group id is unique only within its legal entity: never name another entity's group.
   const group = run && groups.data?.items.find(g => g.id === run.pay_group_id && g.legal_entity_id === run.legal_entity_id);
-  // Unknown only once both reads answered: a run that lands before the groups names nothing yet.
-  const groupLabel = run && groups.data ? group?.name ?? t("payroll.rule.unknown") : undefined;
+  // Unknown only once both reads answered: a run that lands before the groups names nothing yet. Beside the page
+  // title a bare "unavailable" would name nothing, so the fallback says it is the group that is missing.
+  const groupLabel = run && groups.data ? group?.name ?? `${t("payroll.group")} · ${t("payroll.rule.unknown")}` : undefined;
 
   const lines = detailData?.lines ?? [];
   const rates = useQuery({
