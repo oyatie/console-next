@@ -191,7 +191,8 @@ function ConsoleLayout({
               onSearch={onSearch}
             />
             <div className={s.tabsArea}>
-              {!holding ? (
+              {/* Tabs need nothing from the reader's own read, so they wait only for the session. */}
+              {!restoring ? (
                 <WorkspaceTabs
                   tabs={tabsWithIcons}
                   activeId={workspaceTabs.activeId}
