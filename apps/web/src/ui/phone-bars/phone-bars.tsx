@@ -88,7 +88,7 @@ export type PhoneNavItem = {
   count?: number;
   /** The count is a lower bound, so its badge reads with a plus. */
   countMore?: boolean;
-  /** The slot's name when its count says more than the badge can (loading, unreadable, a lower bound); it starts with the label. */
+  /** The slot's name when the badge cannot say the count's state (loading, unreadable); it starts with the label. */
   name?: string;
   /** What the count means, read after the name. */
   description?: string;

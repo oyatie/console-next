@@ -35,11 +35,9 @@ export function useConsoleCounts(enabled: boolean) {
   return {
     inboxCount: total && total > 0 ? total : undefined,
     inboxExact: exact,
-    // The to-do link's name and count description, in Classic's words: the count's state is said even while it loads
-    // or cannot be read, when the badge shows nothing.
-    inboxName: total == null
-      ? t(inbox.isPending ? "shell.needsMe.loading" : "shell.needsMe.unknown")
-      : total > 0 ? t(exact ? "shell.needsMe.count" : "shell.needsMe.countMore", { count: total }) : undefined,
+    // While the count loads or cannot be read the badge shows nothing, so the to-do link's name says so, in Classic's
+    // words. A shown count names the link itself, as drawn; its meaning is the description.
+    inboxName: total == null ? t(inbox.isPending ? "shell.needsMe.loading" : "shell.needsMe.unknown") : undefined,
     inboxDescription: total
       ? t(exact ? "shell.needsMe.countDescription" : "shell.needsMe.countMoreDescription", { count: total })
       : undefined,

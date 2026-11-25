@@ -190,7 +190,7 @@ function ConsoleLayout({
   const topHold = <header className={s.phoneTopHold} data-surface="chrome" aria-busy="true" />;
   const navHold = <div className={s.phoneNavHold} />;
   // My profile alone would span the bottom bar until the menu lands, then jump to its own slot. It stays reachable while
-  // the menu loads, in the place a full menu leaves it.
+  // the menu loads, in the last of the bar's five places.
   const menuLoading = !platform && navigationState === "loading" && phoneHeader?.phoneNav !== "self-service";
   // With a session, a desktop bar draws once the reader's own read has settled too: the tenant's name sets the brand's
   // width, and the scope chip, the nav and the status segments sit after it.

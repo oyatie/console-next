@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { AxeBuilder } from "@axe-core/playwright";
 import { realpathSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { afterAll, beforeAll, expect, test } from "vitest";
@@ -80,7 +81,7 @@ beforeAll(async () => {
   });
   await server.listen();
   browser = await browserEngine().launch();
-  page = await browser.newPage();
+  page = await (await browser.newContext()).newPage();
 }, 60_000);
 
 afterAll(async () => {
@@ -378,6 +379,9 @@ test("on a desktop an operator's chrome draws without the tenant reader's read",
 });
 
 const menu = () => page.getByRole("navigation", { name: t("shell.nav"), exact: true });
+/** Links whose name leaves out the words they show, so a spoken label would not reach them. */
+const nameMismatches = async () => (await new AxeBuilder({ page }).withRules(["label-content-name-mismatch"]).analyze())
+  .violations.flatMap(violation => violation.nodes.map(node => node.html));
 
 test("on a desktop the to-do link says when its count is still loading or cannot be read, as Classic's does", async () => {
   const asked = Promise.withResolvers<void>(), done = Promise.withResolvers<void>();
@@ -386,6 +390,7 @@ test("on a desktop the to-do link says when its count is still loading or cannot
   try {
     await asked.promise;
     await element(menu().locator('a[href="/"]')).toHaveAccessibleName(t("shell.needsMe.loading"));
+    expect(await nameMismatches()).toEqual([]);
   } finally { done.resolve(); }
   await opened;
 
@@ -393,18 +398,21 @@ test("on a desktop the to-do link says when its count is still loading or cannot
   const todo = menu().locator('a[href="/"]');
   await element(todo).toHaveAccessibleName(t("shell.needsMe.unknown"));
   await element(todo.locator("data")).toHaveCount(0);
+  expect(await nameMismatches()).toEqual([]);
 });
 
-test("on a desktop a counted to-do link carries Classic's name and count description, a lower bound with its plus", async () => {
+test("on a desktop a counted to-do link is named as drawn and described in Classic's words, a lower bound with its plus", async () => {
   await openPhoneShell("LINKED", { width: 1440, inbox: { total: 1234, exact: false } });
   const todo = menu().locator('a[href="/"]');
-  await element(todo).toHaveAccessibleName(t("shell.needsMe.countMore", { count: 1234 }));
+  await element(todo).toHaveAccessibleName(`${t("shell.link.todo")} 1,234+`);
   await element(todo).toHaveAccessibleDescription(t("shell.needsMe.countMoreDescription", { count: 1234 }));
   await element(todo.locator("data")).toHaveText("1,234+");
+  expect(await nameMismatches()).toEqual([]);
 
   await openPhoneShell("LINKED", { width: 1440, inbox: { total: 3, exact: true } });
   await element(menu().locator('a[href="/"]')).toHaveAccessibleName(t("shell.needsMe.count", { count: 3 }));
   await element(menu().locator('a[href="/"]')).toHaveAccessibleDescription(t("shell.needsMe.countDescription", { count: 3 }));
+  expect(await nameMismatches()).toEqual([]);
 });
 
 test("on a phone the to-do slot names its label before its count, as the desk bar does", async () => {
@@ -412,6 +420,7 @@ test("on a phone the to-do slot names its label before its count, as the desk ba
   const nav = await openPhoneShell("UNLINKED", { inbox: { total: 3, exact: true } });
   await element(nav.locator('a[href="/"]')).toHaveAccessibleName(t("shell.needsMe.count", { count: 3 }));
   await element(nav.locator('a[href="/"]')).toHaveAccessibleDescription(t("shell.needsMe.countDescription", { count: 3 }));
+  expect(await nameMismatches()).toEqual([]);
 });
 
 test("on a phone My profile stays reachable while the menu loads, in the last of the bar's five places", async () => {
@@ -423,7 +432,7 @@ test("on a phone My profile stays reachable while the menu loads, in the last of
     const profile = page.getByRole("navigation", { name: t("shell.nav"), exact: true }).getByRole("link", { name: t("shell.profile"), exact: true });
     await profile.waitFor();
     await frames();
-    // Alone it would span the bar, then jump to its own place under a thumb already on it when a full menu lands.
+    // Alone it would span the bar, then jump to its own place under a thumb already on it when a five-place menu lands.
     expect(await profile.boundingBox()).toMatchObject({ x: 312, width: 78 });
   } finally { done.resolve(); }
   const nav = await opened;
