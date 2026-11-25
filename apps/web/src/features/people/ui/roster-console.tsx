@@ -8,6 +8,7 @@ import { HeartPulse, SlidersHorizontal, Upload } from "lucide-react";
 import { chunk } from "../../../lib/chunk-guard";
 import { EMPLOYMENT_TYPE, label } from "../../../lib/labels";
 import { read } from "../../../lib/query";
+import { focusSoon } from "../../../lib/react/announce";
 import { QueryState } from "../../../lib/react/query-state";
 import { entitiesRef } from "../../../reference/entity/api";
 import { unitsQuery } from "../../../reference/org/api";
@@ -19,6 +20,7 @@ import { EmptyState } from "../../../ui/empty-state";
 import { IndexBar } from "../../../ui/index-bar/index-bar";
 import { StatRow } from "../../../ui/key-value/key-value";
 import { rowById } from "../../../ui/long-table/row-keys";
+import { NO_SELECTION } from "../../../ui/long-table/selection";
 import { ListRecord } from "../../../ui/patterns/list-record";
 import { ListSummaryFooter } from "../../../ui/patterns/list-record-parts";
 import { RecordBannerBand } from "../../../ui/patterns/record-banner-band";
@@ -28,7 +30,8 @@ import { ReadSkeleton } from "../../../ui/skeleton/skeleton";
 import { SortControl } from "../../../ui/sort-control/sort-control";
 import { employeeQuery } from "../api";
 import { fetchAllConsoleRows } from "../api/peek";
-import { type RosterOrder } from "../domain/roster-order";
+import { joinReview, parseReview, parseStatus } from "../domain/roster";
+import { parseOrder, type RosterOrder } from "../domain/roster-order";
 import { BulkRescind } from "./bulk-rescind";
 import { BulkSheet } from "./bulk-sheet";
 import { ExitTabs, VoidedList } from "./exit-tabs";
@@ -39,6 +42,7 @@ import { buildConsoleStatusSegments, buildStatItems, CHOSUNG, filterConsoleRows,
 import { RosterConsoleRail } from "./roster-console-rail";
 import { RosterEmpty } from "./roster-empty";
 import { RosterFirstRun } from "./roster-first-run";
+import { RosterSavedViews } from "./roster-saved-views";
 import { RosterTable } from "./roster-table";
 import { RosterUnitPanel } from "./roster-unit-panel";
 import { BULK_MAX } from "./use-roster";
@@ -105,7 +109,8 @@ export function RosterConsole({
 
   const voided = status === "EXITED" && exitView === "voided";
   const firstRun = !r.loading && !r.list.error && !filtered && (r.status.totals.all ?? total) === 0 && !r.changed;
-  const resetAll = () => { setEmpTypes(new Set()); setAddressMissingOnly(false); setProbationOnly(false); setActiveChosung(null); reset(); };
+  const clearLocalFilters = () => { setEmpTypes(new Set()); setAddressMissingOnly(false); setProbationOnly(false); setActiveChosung(null); };
+  const resetAll = () => { clearLocalFilters(); reset(); };
   const toggleEntityExpand = (id: string) => setExpandedEntities(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   const activeFilterCount = (unit ? 1 : 0) + (ids.length > 0 ? 1 : 0) + empTypes.size + review.length + (addressMissingOnly ? 1 : 0) + (probationOnly ? 1 : 0) + (activeChosung ? 1 : 0);
   const registerMissingCount = r.review.totals.register ?? 0;
@@ -147,7 +152,19 @@ export function RosterConsole({
         primary: manage ? { id: "register", label: t("people.tools.add"), onAction: () => void consoleNavigate({ to: "/people/new", search: {} }) } : undefined,
       }}
       find={<div ref={findInputRef} className={s.consoleFind} data-list-find=""><WorklistSearchField label={t("people.find.placeholder")} value={q} onChange={find} /></div>}
-      tools={<div className={s.consoleDesktopSort}>{sortControl}</div>}
+      tools={
+        <>
+          <div className={s.consoleDesktopSort}>{sortControl}</div>
+          {/* In the head, outside the list's read: kept in place when the list fails, offered only with the list it filters. */}
+          <RosterSavedViews unavailable={!!r.list.error && r.list.data === undefined} filters={{ status, review: joinReview(review), unit, sort }} onApply={filters => {
+            clearLocalFilters();
+            setSel(NO_SELECTION);
+            find("");
+            setFilter({ status: parseStatus(filters.status), review: parseReview(filters.review), unit: filters.unit ?? null, sort: parseOrder(filters.sort) });
+            focusSoon("people-title");
+          }} />
+        </>
+      }
       stats={!firstRun ? <StatRow label={t("people.stat.label")} items={buildStatItems({ status, review, statusTotals: r.status.totals, registerMissingCount, setFilter })} /> : undefined}
       rail={!firstRun ? <RosterConsoleRail entities={entities} facets={r.facets} unit={unit} idsActive={ids.length > 0} expandedEntities={expandedEntities} toggleEntityExpand={toggleEntityExpand} empTypes={empTypes} setEmpTypes={setEmpTypes} review={review} registerMissingCount={registerMissingCount} addressMissingOnly={addressMissingOnly} setAddressMissingOnly={setAddressMissingOnly} probationOnly={probationOnly} setProbationOnly={setProbationOnly} soonDays={soonDays} contractSoonCount={contractSoonCount} activeFilterCount={activeFilterCount} q={q} status={status} setFilter={setFilter} resetAll={resetAll} phoneTools={sortControl} /> : undefined}
       indexBar={!voided && !firstRun ? <IndexBar label={t("people.index.label")} items={CHOSUNG.map(ch => ({ id: ch, label: ch }))} active={activeChosung} onSelect={setActiveChosung} range={displayedRows.length > 0 ? t("people.index.range", { start: rangeStart, end: rangeEnd, total: rangeTotal }) : undefined} prev={{ label: t("people.index.prev"), disabled: hasClientFilter || firstOffset <= 0, onPress: () => scroller.current?.scrollBy({ top: -400, behavior: "smooth" }) }} next={{ label: t("people.index.next"), disabled: hasClientFilter || !r.list.hasNextPage, onPress: () => { if (r.list.hasNextPage && !r.list.isFetchingNextPage) void r.list.fetchNextPage(); } }} /> : undefined}
