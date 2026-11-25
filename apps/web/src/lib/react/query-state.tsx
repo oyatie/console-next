@@ -20,8 +20,10 @@ import { SidePanelReadContext } from "../../ui/side-panel/read-context";
  * Invariant: page chrome (head, tabs, toolbar and the control just used) stays above read boundaries.
  * Refetches keep rendered content and focus; only a first load may show a layout placeholder.
  * Filter/date/search reads use keepPreviousData; the retained region is busy until the answer lands.
+ * A read that fills its whole pane passes `deniedTitle`: its refusal is the full card (who can grant, the request)
+ * headed for the item, where a pane's other reads keep the short note.
  */
-export function QueryState<T>({ q, empty, children, own, loading, denied, layout, back, removed, inline, keepOnLoss, need, failedTitle, failedActions, compact }: { q: ReadState<T>; own?: (code: string) => string | undefined; empty?: (d: T) => ReactNode | null; children: (d: T) => ReactNode; loading?: ReactNode; denied?: ReactNode; layout?: ReadLayout; back?: ReadBack; removed?: string; inline?: boolean; keepOnLoss?: boolean; need?: AccessRequirement; failedTitle?: string; failedActions?: ReactNode; compact?: boolean }) {
+export function QueryState<T>({ q, empty, children, own, loading, denied, deniedTitle, layout, back, removed, inline, keepOnLoss, need, failedTitle, failedActions, compact }: { q: ReadState<T>; own?: (code: string) => string | undefined; empty?: (d: T) => ReactNode | null; children: (d: T) => ReactNode; loading?: ReactNode; denied?: ReactNode; deniedTitle?: string; layout?: ReadLayout; back?: ReadBack; removed?: string; inline?: boolean; keepOnLoss?: boolean; need?: AccessRequirement; failedTitle?: string; failedActions?: ReactNode; compact?: boolean }) {
   const online = useOnline();
   const panel = useContext(SidePanelReadContext);
   const recovery = useContext(ReadFailureContext);
@@ -57,9 +59,9 @@ export function QueryState<T>({ q, empty, children, own, loading, denied, layout
     </>}
   </Banner>;
   if (inline && q.error && !lost) return notice;
-  if (view === "denied" && !lost) return denied ?? (panel
+  if (view === "denied" && !lost) return denied ?? (panel && !deniedTitle
     ? <EmptyState title={t("common.denied.panel")} reason={e ? own?.(e.code) ?? readFailureText(e) : null} meta={<ReadReference error={e} />} />
-    : <Denied error={e} reason={e ? own?.(e.code) : undefined} back={back} need={need} />);
+    : <Denied error={e} title={deniedTitle} reason={e ? own?.(e.code) : undefined} back={back} need={need} />);
   if (view === "not-found" && !lost) return <div className="page"><EmptyState title={t("common.read.notFound.title")} reason={q.data !== undefined && removed ? removed : e && own?.(e.code) || t("common.read.notFound.reason")} actions={<Link to={back?.to ?? "/"} search={back?.search} className="btn">{back?.label ?? t("common.notFound.action")}</Link>} /></div>;
   if (view === "loading" && !retainedRefetch) return loading !== undefined ? loading : (layout ? <ReadSkeleton layout={layout} /> : <Skeleton bones={["line"]} label={t("common.loading")} />);
   if ((view === "failed" && !retainedRefetch) || (offline && q.data === undefined && !retainedRefetch)) {
