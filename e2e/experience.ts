@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { experiences } from "../apps/web/src/experience/table";
+import type { PlaywrightTestOptions } from "@playwright/test";
+import { experiences, resolveExperience } from "../apps/web/src/experience/table";
 import { EXPERIENCE_KEY } from "../apps/web/src/lib/prefs";
 import { PORTS } from "./slot";
 
@@ -16,4 +17,13 @@ export function experienceState(id?: string) {
   if (!id) return { cookies: [], origins: [] };
   if (!experiences.some(experience => experience.id === id)) throw new Error(`unknown experience "${id}": expected ${experiences.map(experience => experience.id).join(", ")}`);
   return { cookies: [], origins: [{ origin: `http://localhost:${PORTS.web}`, localStorage: [{ name: EXPERIENCE_KEY, value: id }] }] };
+}
+
+/**
+ * The style a test's page paints, read from the `storageState` fixture the test was given (the project's seed, or a
+ * describe's `test.use`), not from the page: the seeded id, else the shipped default.
+ */
+export function seededExperience(state: PlaywrightTestOptions["storageState"]) {
+  if (typeof state === "string") throw new Error("seededExperience reads an inline storage seed, not a file");
+  return resolveExperience(state?.origins.flatMap(origin => origin.localStorage).find(item => item.name === EXPERIENCE_KEY)?.value).id;
 }

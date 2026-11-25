@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type PlaywrightTestOptions } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import type { components } from "@console/api";
 import { expectAxe, fits } from "../a11y";
 import { expectStable, recordShifts } from "../stability";
-import { experienceState } from "../experience";
+import { experienceState, seededExperience } from "../experience";
 import { id } from "../mock/fixtures";
 import { attendanceDayBoard } from "../mock/attendance-board";
 import { mockRoute } from "../mock/route";
@@ -17,10 +17,12 @@ import { attendanceBoardState } from "./attendance-helpers";
 test.beforeAll(() => loadCatalog("ko"));
 const screen = attendanceBoardScreens.find(candidate => candidate.key === "attendance-day")!;
 const dayTitle = () => t("attendanceRecords.day.title", { date: fmtDate(new URL(screen.path, "http://localhost").searchParams.get("date")!, { weekday: "short" }) });
-// A docked pane by its name. Console nests the docked sheet inside a record pane of the same name: two landmarks of one
-// name stay a soft red, and the first is held to the rest of the test.
-async function expectDockPane(page: Page, name: string) {
+// A docked pane by its name, in the style the test seeded. Classic draws one landmark of that name. Console nests the
+// docked sheet inside a record pane of the same name: two landmarks of one name stay a soft red there, and the first is
+// held to the rest of the test.
+async function expectDockPane(page: Page, name: string, storageState: PlaywrightTestOptions["storageState"]) {
   const panes = page.getByRole("complementary", { name, exact: true });
+  if (seededExperience(storageState) !== "console") return expect(panes).toBeVisible();
   await expect(panes.first()).toBeVisible();
   await expect.soft(panes, "one complementary landmark carries the pane's name").toHaveCount(1);
 }
@@ -262,7 +264,7 @@ for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as 
   expect(fixture.unexpected).toEqual([]);
 });
 
-for (const width of [1440, 1100]) for (const height of [900, 640]) for (const dock of ["day", "save"]) for (const colorScheme of ["light", "dark"] as const) test(`the ${dock} dock keeps the header aligned and rail below board rows at ${width}x${height} ${colorScheme}`, async ({ page }, testInfo) => {
+for (const width of [1440, 1100]) for (const height of [900, 640]) for (const dock of ["day", "save"]) for (const colorScheme of ["light", "dark"] as const) test(`the ${dock} dock keeps the header aligned and rail below board rows at ${width}x${height} ${colorScheme}`, async ({ page, storageState }, testInfo) => {
   await page.emulateMedia({ colorScheme });
   await page.setViewportSize({ width, height });
   const fixture = await mockScreen(page, screen, "populated");
@@ -272,7 +274,7 @@ for (const width of [1440, 1100]) for (const height of [900, 640]) for (const do
     await input.fill("9-18");
     await page.getByRole("button", { name: t("attendanceRecords.toolbar.save"), exact: true }).click();
   } else await page.getByRole("button", { name: t("attendanceRecords.board.open"), exact: true }).click();
-  await expectDockPane(page, dock === "save" ? t("attendanceRecords.save.title", { count: 1 }) : dayTitle());
+  await expectDockPane(page, dock === "save" ? t("attendanceRecords.save.title", { count: 1 }) : dayTitle(), storageState);
   await expect(page.locator("[data-board-head]")).toBeHidden();
   // By its heading: Console's rail section is not a named region.
   const rail = page.getByRole("main").getByRole("heading", { name: t("attendanceRecords.rail.title"), exact: true });
@@ -291,12 +293,12 @@ for (const width of [1440, 1100]) for (const height of [900, 640]) for (const do
 
 // At 390 Classic keeps the board rows beside its drawer; Console's record pane takes the column, and no board draws this
 // desk screen at phone width, so only the Classic layout is pinned there.
-for (const width of [1440, 390]) test(`day drawer retains readable board rows at ${width}px${width === 390 ? " @baseline" : ""}`, async ({ page }) => {
+for (const width of [1440, 390]) test(`day drawer retains readable board rows at ${width}px${width === 390 ? " @baseline" : ""}`, async ({ page, storageState }) => {
   await page.setViewportSize({ width, height: 900 });
   const fixture = await mockScreen(page, screen, "populated");
   await page.goto(screen.path);
   await page.getByRole("button", { name: t("attendanceRecords.board.open"), exact: true }).click();
-  if (width === 1440) await expectDockPane(page, dayTitle());
+  if (width === 1440) await expectDockPane(page, dayTitle(), storageState);
   else await expect(page.getByRole("dialog")).toBeVisible();
   const name = page.getByRole("link", { name: "근태직원 1", exact: true });
   const input = page.getByRole("textbox", { name: /^근태직원 2 기록/ });
