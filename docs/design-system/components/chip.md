@@ -32,10 +32,18 @@ an `id` or an ARIA attribute.
 | `tone` | Fill | Border | Text |
 |---|---|---|---|
 | `ok` | `--ok-bg` | `--ok-bd` | `--ok-tx` |
-| `warn` | `--warn-bg` | `--warn-bd` | `--warn-tx` |
+| `warn` | `--warn-bg` | `--warn-mark` | `--warn-tx` |
 | `danger` | `--danger-bg` | `--danger-bd` | `--danger-tx` |
 | `info` | `--info-bg` | `--info-bd` | `--info-tx` |
 | `neutral` | `--muted` | `--border` | `--steel` |
+| `outline` | `--surface` | `--border-strong` | `--ink` |
+| `accent` | `--primary-soft` | none | `--primary-hover` |
+
+`--warn-mark` is the edge of a warn tag; a callout or a banner keeps `--warn-bd`. `outline` is semibold and `accent`
+is bold in every style. `warn`, `danger` and `info` take `--fw-tag-signal`: medium, and bold in the Console style.
+
+`TurnChip` marks the viewer's turn on a document (the `orgChange.turn` text). It is the `accent` chip in the Console
+style and the `info` chip in every other style.
 
 There is one size: 20 px high (`calc(var(--space-5) - var(--space-1))`), 8 px side padding, a 1 px border, a 4 px
 radius (`--radius-sm`), 12 px medium text (`--text-xs`), on one line.
@@ -67,7 +75,7 @@ The WCAG 2.2 criteria that apply:
 | 1.4.3 Contrast (Minimum) | Each tone pairs a text token with its own fill token. The text is 12 px medium, which is not large text, so the pair needs the full 4.5:1. |
 | 1.4.10 Reflow | By its own rule the chip stays on one line and has no ellipsis, so a long label is the caller's to avoid. |
 
-The gallery shows the five tones and one long label in `apps/web/src/gallery/sections/chips.gallery.tsx`.
+The gallery shows the seven tones and one long label in `apps/web/src/gallery/sections/chips.gallery.tsx`.
 
 No workflow runs the accessibility scan of the gallery. `e2e/visual.spec.ts` runs axe with the WCAG 2.2 A and AA
 rules over the whole gallery, in the light and the dark theme, when it is run against a development stack. It
@@ -104,9 +112,15 @@ chip inside its table wrap and grow.
 | `className` | no | `string` |  |  |
 | `tone` | no | `Tone` | `"neutral"` |  |
 
+### TurnChip
+
+| Prop | Required | Type | Default | Description |
+| --- | --- | --- | --- | --- |
+| `children` | yes | `ReactNode` |  |  |
+
 <!-- /ds:props -->
 
-The values of `Tone` are the five tones under Looks and sizes.
+The values of `Tone` are the seven tones under Looks and sizes.
 
 ## Tokens it reads
 
@@ -121,6 +135,8 @@ The values of `Tone` are the five tones under Looks and sizes.
 | `--danger-tx` | `color` |
 | `--fw-medium` | `font-weight` |
 | `--fw-semibold` | `font-weight` |
+| `--fw-strong` | `font-weight` |
+| `--fw-tag-signal` | `font-weight` |
 | `--info-bd` | `border-color` |
 | `--info-bg` | `background` |
 | `--info-tx` | `color` |
@@ -129,6 +145,8 @@ The values of `Tone` are the five tones under Looks and sizes.
 | `--ok-bd` | `border-color` |
 | `--ok-bg` | `background` |
 | `--ok-tx` | `color` |
+| `--primary-hover` | `color` |
+| `--primary-soft` | `background` |
 | `--radius-sm` | `border-radius` |
 | `--space-1` | `height` |
 | `--space-2` | `padding` |
@@ -136,8 +154,8 @@ The values of `Tone` are the five tones under Looks and sizes.
 | `--steel` | `color` |
 | `--surface` | `background` |
 | `--text-xs` | `font-size` |
-| `--warn-bd` | `border-color` |
 | `--warn-bg` | `background` |
+| `--warn-mark` | `border-color` |
 | `--warn-tx` | `color` |
 
 <!-- /ds:tokens -->

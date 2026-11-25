@@ -47,6 +47,7 @@ export const koPayrollRun: Record<keyof typeof enPayrollRun, string> = {
   "payrollRun.error.sod_violation": "상신자와 동일한 담당자는 급여를 승인·반려할 수 없습니다.",
   "payrollRun.error.legal_gate": "노무사·세무사 검증이 완료되어야 급여명세서를 교부할 수 있습니다.",
   "payrollRun.error.exceptions_open": "미확인 급여 예외를 모두 처리한 뒤 상신하십시오.",
+  "payrollRun.error.nothing_calculated": "계산된 급여가 없어 상신할 수 없습니다.",
   "payrollRun.error.preflight_blocked": "사전 점검의 마감 불가 항목을 해소한 뒤 근태 마감을 진행하십시오.",
   "payrollRun.error.payroll.refuse.identity_unbound": "급여 정산 처리를 위해 계정에 직원 정보가 연결되어 있어야 합니다.",
 };
