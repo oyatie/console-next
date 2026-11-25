@@ -82,15 +82,16 @@ test("fixture reload waits for its render signal without waiting for unrelated r
   }
 });
 
-test("fixture readiness settles every font face, including one no drawn text has asked for yet", async () => {
+test("fixture readiness settles every font face, including one no drawn text has asked for yet and one that fails", async () => {
   const page = await browser.newPage();
   const face = resolve("node_modules/pretendard/dist/web/variable/woff2-dynamic-subset/PretendardVariable.subset.0.woff2");
   const requested = Promise.withResolvers<void>();
   const held = Promise.withResolvers<void>();
   await page.route("https://fixture.test/fonts", route => route.fulfill({ contentType: "text/html", body:
-    '<html><style>@font-face{font-family:Drawn;src:url(/drawn.woff2)}@font-face{font-family:Later;src:url(/later.woff2)}</style><h1 style="font-family:Drawn">Ready</h1></html>',
+    '<html><style>@font-face{font-family:Drawn;src:url(/drawn.woff2)}@font-face{font-family:Later;src:url(/later.woff2)}@font-face{font-family:Broken;src:url(/broken.woff2)}</style><h1 style="font-family:Drawn">Ready</h1></html>',
   }));
   await page.route("**/drawn.woff2", route => route.fulfill({ path: face }));
+  await page.route("**/broken.woff2", route => route.fulfill({ status: 404 }));
   await page.route("**/later.woff2", async route => { requested.resolve(); await held.promise; await route.fulfill({ path: face }); });
   let ready = false;
   const opening = openBrowserTestPage(page, "https://fixture.test/fonts", page.getByRole("heading", { name: "Ready" })).then(() => { ready = true; });
@@ -100,7 +101,7 @@ test("fixture readiness settles every font face, including one no drawn text has
     expect(ready).toBe(false);
     held.resolve();
     await opening;
-    expect(await page.evaluate(() => [...document.fonts].map(f => `${f.family}:${f.status}`))).toEqual(["Drawn:loaded", "Later:loaded"]);
+    expect(await page.evaluate(() => [...document.fonts].map(f => `${f.family}:${f.status}`))).toEqual(["Drawn:loaded", "Later:loaded", "Broken:error"]);
   } finally {
     held.resolve();
     await page.close();
