@@ -9,7 +9,7 @@ const person = (n: number, code: string, unit = tg("sample.team")): PickerOption
 const POOL = [person(1, "HK-0112"), person(12, "HK-0187", tg("sample.dept")), person(5, "HK-0045"), person(5, "HK-0203", tg("sample.dept"))];
 
 /** The caller's server search, stood in by filtering a fixed pool. */
-function Sample({ initial, escape, state, reserveError }: { initial: string; reserveError?: boolean; escape?: PickerEscape; state?: "readOnly" | "disabled" | "error" | "loading" }) {
+function Sample({ initial, escape, state, reserveError, error }: { initial: string; reserveError?: boolean; escape?: PickerEscape; state?: "readOnly" | "disabled" | "error" | "loading"; error?: string }) {
   const [q, setQ] = useState(initial);
   const [value, setValue] = useState<string | null>(null);
   const options = POOL.filter((o) => q.trim() !== "" && `${o.name} ${o.code}`.includes(q.trim()));
@@ -28,7 +28,8 @@ function Sample({ initial, escape, state, reserveError }: { initial: string; res
       reserveError={reserveError}
       readOnly={state === "readOnly"}
       disabledReason={state === "disabled" ? tg("picker.disabledWhy") : undefined}
-      error={state === "error" ? tg("error.message") : undefined}
+      readError={state === "error" ? tg("error.message") : undefined}
+      error={error}
       loading={state === "loading"}
     />
   );
@@ -46,6 +47,7 @@ export default function ServerPickers() {
         <Sample initial={tg("sample.person", { n: 1 })} state="readOnly" />
         <Sample initial={tg("sample.person", { n: 1 })} state="disabled" />
         <Sample initial="" state="error" />
+        <Sample initial={tg("sample.site")} error={t("uiReason.pick", { label: tg("col.name") })} />
         <Sample initial={tg("sample.person", { n: 1 })} state="loading" />
         <Sample initial="" reserveError state="loading" />
         <Sample initial="" reserveError state="error" />

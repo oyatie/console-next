@@ -37,7 +37,7 @@ export function AccountPick({ accounts: all, ops, loading, onPick }: { accounts:
       group={t("access.grants.pick.group")}
       loading={loading || search.isFetching}
       total={total}
-      error={search.error ? failureText(search.error) : undefined}
+      readError={search.error ? failureText(search.error) : undefined}
       empty={t("access.grants.pick.none")}
     />
   );
