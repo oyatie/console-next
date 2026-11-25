@@ -331,8 +331,7 @@ test("the shipped image stage builds on images.runtime, the reviewed Distroless 
   const file = "deploy/images/console.Dockerfile";
   const runtime = dockerfileStages(read(file), file).at(-1);
   assert.equal(runtime?.image, "${RUNTIME_IMAGE}", "the shipped stage must build on images.runtime");
-  assert.ok([undefined, "$TARGETPLATFORM", "${TARGETPLATFORM}"].includes(runtime.platform),
-    "the shipped stage must use the target architecture");
+  assert.equal(runtime.platform, undefined, "the shipped stage must take the build's target platform");
   // The image scan runs on dev pushes. Update this reviewed digest with the build pin so regressions fail before merge.
   assert.equal(versions.images.runtime, "gcr.io/distroless/cc-debian13@sha256:532c7a94f9e96ba9db75eb9388f4227751131c7cb0a411d1a8521af4096135de");
 });
