@@ -69,7 +69,7 @@ async function grow(html: string) {
   return page.evaluate(markup => {
     document.querySelector("[data-phone-screen]")!.insertAdjacentHTML("beforeend", markup);
     return Object.fromEntries([...document.querySelectorAll<HTMLElement>("[data-probe]")]
-      .map(element => [element.dataset.probe!, element.getBoundingClientRect().top + window.scrollY]));
+      .map(probe => [probe.dataset.probe!, probe.getBoundingClientRect().top + window.scrollY]));
   }, html);
 }
 const hitIn = (x: number, y: number, selector: string) =>
@@ -215,6 +215,9 @@ test("on a phone the to-do slot names its label before its count, as the desk ba
   await element(nav.locator('a[href="/"]')).toHaveAccessibleName(t("shell.needsMe.count", { count: 3 }));
   await element(nav.locator('a[href="/"]')).toHaveAccessibleDescription(t("shell.needsMe.countDescription", { count: 3 }));
   expect(await nameMismatches(page)).toEqual([]);
+  // The label leads what is read; the icon row with its count still draws above it, as the board shows.
+  const [icon, label] = [(await nav.locator('a[href="/"] svg').boundingBox())!, (await nav.locator('a[href="/"] bdi').boundingBox())!];
+  expect(icon.y + icon.height).toBeLessThanOrEqual(label.y);
 });
 
 test("on a phone My profile stays reachable while the menu loads, in the last of the bar's five places", async () => {
