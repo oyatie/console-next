@@ -121,7 +121,7 @@ function EmployeePayConsoleContent({ baseline }: { baseline: () => ReactNode }) 
         {
           key: "status",
           label: t("payroll.employee.net"),
-          value: t("payroll.employee.incomplete"),
+          value: t("payroll.employee.netUnavailable"),
           tone: "warn",
         },
       ]}
