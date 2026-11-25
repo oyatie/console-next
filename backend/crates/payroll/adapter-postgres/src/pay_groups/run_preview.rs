@@ -176,6 +176,15 @@ impl PgPayrollStore {
                     }
                     return Err(error.into());
                 }
+                // The header and its roster are created together or not at all.
+                crate::roster::materialise_roster_in_tx(
+                    tx,
+                    *org.as_uuid(),
+                    id,
+                    preview.period_start,
+                    preview.period_end,
+                )
+                .await?;
                 let row = crate::run_detail::fetch_run_row(tx, id)
                     .await?
                     .ok_or_else(|| KernelError::internal("created payroll run was not readable"))?;
@@ -215,6 +224,22 @@ impl PgPayrollStore {
         .fetch_one(tx.as_mut())
         .await?
         .0;
+        // Counts groups the actor cannot see; the refusal says only that there are several.
+        let shared: bool = sqlx::query_scalar(
+            "SELECT EXISTS (SELECT 1 FROM pay_groups WHERE org_id=$1 AND legal_entity_id=$2 AND id<>$3)",
+        )
+        .bind(org.as_uuid())
+        .bind(group.legal_entity_id)
+        .bind(group.id)
+        .fetch_one(tx.as_mut())
+        .await?;
+        if shared {
+            return Err(KernelError::conflict(
+                "the legal entity has more than one pay group, so who belongs to this one is not known",
+            )
+            .with_code("pay_group_roster_ambiguous")
+            .into());
+        }
         let today: Date = sqlx::query_scalar("SELECT entity_today()")
             .fetch_one(tx.as_mut())
             .await?;

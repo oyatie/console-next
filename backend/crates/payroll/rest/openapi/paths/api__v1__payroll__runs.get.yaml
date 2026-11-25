@@ -36,7 +36,7 @@ parameters:
     format: uuid
 responses:
   '200':
-    description: Page of payroll draft runs, newest period first.
+    description: Page of payroll draft runs, newest period first. Runs of pay groups the caller may not read are left out of the page and its total.
     content:
       application/json:
         schema:

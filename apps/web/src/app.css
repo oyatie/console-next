@@ -24,7 +24,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 [data-focus-managed]:focus { outline: none; }
 .num { font-variant-numeric: tabular-nums; }
-.code { font-family: var(--font-mono); font-size: var(--text-sm); }
+.code { font-family: var(--font-code); font-size: var(--text-sm); }
 .muted { color: var(--steel); }
 /* The type scale and tones (design-language §3) as classes: feature CSS composes them (`composes: t-xs muted from
    global`) or a className names them; a feature never sets font-size, font-weight or a text colour itself (§12). */
@@ -93,6 +93,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   --on-primary: var(--chrome);
   --warn-bg: var(--chrome-warn-bg);
   --warn-bd: var(--chrome-warn-bd);
+  --warn-mark: var(--chrome-warn-bd);
   --warn-tx: var(--chrome-attention);
   --danger-bg: var(--chrome-danger-bg);
   --danger-bd: var(--chrome-danger-bd);
@@ -295,11 +296,14 @@ aside.panel { position: sticky; top: 0; }
 /* ── chips and states ──────────────────────────────── */
 .chip { display: inline-flex; align-items: center; flex-shrink: 0; height: calc(var(--space-5) - var(--space-1)); padding: 0 var(--space-2); border-radius: var(--radius-sm); border: 1px solid; font-size: var(--text-xs); font-weight: var(--fw-medium); white-space: nowrap; }
 .chip--ok { background: var(--ok-bg); border-color: var(--ok-bd); color: var(--ok-tx); }
-.chip--warn { background: var(--warn-bg); border-color: var(--warn-bd); color: var(--warn-tx); }
+.chip--warn { background: var(--warn-bg); border-color: var(--warn-mark); color: var(--warn-tx); }
 .chip--danger { background: var(--danger-bg); border-color: var(--danger-bd); color: var(--danger-tx); }
 .chip--info { background: var(--info-bg); border-color: var(--info-bd); color: var(--info-tx); }
 .chip--neutral { background: var(--muted); border-color: var(--border); color: var(--steel); }
 .chip--outline { background: var(--surface); border-color: var(--border-strong); color: var(--ink); font-weight: var(--fw-semibold); }
+.chip--accent { background: var(--primary-soft); border-color: transparent; color: var(--primary-hover); font-weight: var(--fw-strong); }
+/* A signal tag takes its own weight; an edge or plain tag keeps the lighter one. */
+:is(.chip--warn, .chip--danger, .chip--info) { font-weight: var(--fw-tag-signal); }
 .state { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); padding: var(--space-5); }
 .state__title { margin: 0; font-size: var(--text-lg); font-weight: var(--fw-strong); }
 .state__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }

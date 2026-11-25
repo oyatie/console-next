@@ -150,5 +150,5 @@ export const koRegister: Record<keyof typeof enRegister, string> = {
   "register.run.undoAll": "{n, number}명 한 번에 되돌리기",
   "register.run.submit": "등록",
   "register.manyShort": "여러 명 등록",
-  "register.createMore": "연속 등록",
+  "register.createMore": "다음 사람도 등록",
 };

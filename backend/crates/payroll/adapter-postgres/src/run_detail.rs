@@ -109,7 +109,7 @@ pub async fn get_run_filtered_in_tx(
     let counts_row = sqlx::query(
         "SELECT COUNT(*)::bigint AS run_lines_total, \
                 COUNT(*) FILTER (WHERE NOT bank_account_registered)::bigint AS missing_bank_account_count \
-         FROM payroll_draft_lines WHERE run_id = $1",
+         FROM payroll_draft_lines WHERE run_id = $1 AND calculation_status <> 'VOID'",
     )
     .bind(run_id)
     .fetch_one(tx.as_mut())
@@ -130,7 +130,7 @@ pub async fn get_run_filtered_in_tx(
             LIMIT 1
         ) ou ON e.org_unit_id IS NOT NULL
         LEFT JOIN job_titles jt ON jt.org_id = e.org_id AND jt.id = e.job_title_id
-        WHERE l.run_id = $1
+        WHERE l.run_id = $1 AND l.calculation_status <> 'VOID'
           AND ($2::bool = FALSE OR NOT l.bank_account_registered)
           AND (
               $3::text IS NULL
@@ -198,7 +198,7 @@ pub async fn get_run_filtered_in_tx(
             ORDER BY version DESC
             LIMIT 1
         ) c ON TRUE
-        WHERE l.run_id = $1
+        WHERE l.run_id = $1 AND l.calculation_status <> 'VOID'
           AND ($4::bool = FALSE OR NOT l.bank_account_registered)
           AND (
               $5::text IS NULL

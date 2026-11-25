@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, expect, test, vi } from "vitest";
 import { loadCatalog, t } from "@console/i18n";
 import type { Drafts } from "../domain/grid";
+import { DaySavePaneBody } from "./day-console-rail";
 import { SaveDock } from "./save-dock";
 import { usePreview } from "./use-preview";
 
@@ -47,4 +48,14 @@ test("a resolved preview requires evidence before Save is enabled", () => {
   const save = html.match(/<button[^>]*>.*?<\/button>/g)?.find(button => button.includes(t("attendanceRecords.save.commit", { count: 1 })));
   expect(save).toContain('aria-disabled="true"');
   expect(save).toContain(t("attendanceRecords.save.commit", { count: 1 }));
+});
+
+test("Console day view: the save body inside the record pane adds no landmark of its own", () => {
+  const client = new QueryClient();
+  const html = renderToStaticMarkup(
+    <QueryClientProvider client={client}><DaySavePaneBody kindOf={() => "WORK"} drafts={{ "person|2026-10-06": { value: "=", base: null } }} rows={[]} month="2026-10" onClose={() => {}} onSaved={() => {}} /></QueryClientProvider>,
+  );
+  client.clear();
+  expect(html).toContain(t("attendanceRecords.save.previewing"));
+  expect(html).not.toContain("<aside");
 });

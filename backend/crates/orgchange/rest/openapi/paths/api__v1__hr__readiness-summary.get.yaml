@@ -5,6 +5,8 @@ summary: Read HR data readiness counters
 description: Returns import, payroll, annual-leave, and attendance readiness counters for org-wide HR operators without
   exposing raw workbook rows. `payroll.active_close_runs` counts only STAGED, BLOCKED_LEGAL_GATE,
   READY_FOR_REVIEW, and APPROVED payroll runs; terminal ISSUED and VOID history is excluded.
+  The `payroll` counters and `latest_*` fields cover runs staged from imports only; a pay group's
+  runs and lines are left out, since they follow pay-group access.
 security:
 - bearerAuth: []
 responses:

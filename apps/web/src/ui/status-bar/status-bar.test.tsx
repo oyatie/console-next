@@ -68,10 +68,28 @@ describe("useScreenStatusBar", () => {
             ? `
           import React, { createContext, StrictMode, useContext, useRef, useState } from 'react';
           import { createRoot } from 'react-dom/client';
-          import { usePublishedStatusBar, useScreenStatusBar } from '/apps/web/src/ui/status-bar/status-bar-store.ts';
+          import { usePublishedStatusBar, usePublishedStatusTrailing, useScreenStatusBar } from '/apps/web/src/ui/status-bar/status-bar-store.ts';
 
           const TickCtx = createContext(0);
           const SHARED_SEG = [{ id: 'shared', content: 'Shared segment' }];
+          let trailingRenders = 0;
+
+          // Memoised, so it renders only when the published trailing node changes.
+          const TrailingProbe = React.memo(function TrailingProbe() {
+            const trailing = usePublishedStatusTrailing();
+            trailingRenders += 1;
+            return React.createElement('output', { 'data-trailing': '', 'data-trailing-renders': String(trailingRenders) }, trailing);
+          });
+
+          function CountPattern({ count }) {
+            useScreenStatusBar([{ id: 'count', content: 'Pending ' + count }]);
+            return null;
+          }
+
+          function QueueScreen({ count, pattern }) {
+            useScreenStatusBar(null, React.createElement('span', null, 'Position 1 of 4'));
+            return pattern ? React.createElement(CountPattern, { count }) : null;
+          }
 
           function deepNode(levels, text) {
             let node = React.createElement('span', null, text);
@@ -86,7 +104,7 @@ describe("useScreenStatusBar", () => {
             useScreenStatusBar([
               { id: 'jsx', content: React.createElement('span', { style: { color: 'red', fontWeight: 600 } }, 'JSX') },
               { id: 'deep', content: deepNode(10, 'Deep') },
-            ]);
+            ], React.createElement('span', { style: { fontWeight: 600 } }, 'Trailing'));
             return React.createElement('div', { 'data-jsx-tick': String(tick) });
           }
 
@@ -101,6 +119,9 @@ describe("useScreenStatusBar", () => {
             const [mode, setMode] = useState('jsx');
             const [showA, setShowA] = useState(true);
             const [showB, setShowB] = useState(true);
+            const [count, setCount] = useState(4);
+            const [pattern, setPattern] = useState(true);
+            const [screen, setScreen] = useState(true);
             const renders = useRef(0);
             renders.current += 1;
 
@@ -109,17 +130,25 @@ describe("useScreenStatusBar", () => {
               'data-renders': String(renders.current),
               'data-count': String(segments?.length ?? 0),
               'data-first-id': segments?.[0]?.id ?? '',
+              'data-first-content': typeof segments?.[0]?.content === 'string' ? segments[0].content : '',
             },
               React.createElement('button', { type: 'button', 'data-bump': '', onClick: () => setTick(n => n + 1) }, 'Bump'),
               React.createElement('button', { type: 'button', 'data-mode-shared': '', onClick: () => setMode('shared') }, 'Shared mode'),
               React.createElement('button', { type: 'button', 'data-unmount-a': '', onClick: () => setShowA(false) }, 'Unmount A'),
               React.createElement('button', { type: 'button', 'data-unmount-b': '', onClick: () => setShowB(false) }, 'Unmount B'),
+              React.createElement('button', { type: 'button', 'data-mode-compose': '', onClick: () => setMode('compose') }, 'Compose mode'),
+              React.createElement('button', { type: 'button', 'data-count-down': '', onClick: () => setCount(n => n - 1) }, 'Count down'),
+              React.createElement('button', { type: 'button', 'data-unmount-pattern': '', onClick: () => setPattern(false) }, 'Unmount pattern'),
+              React.createElement('button', { type: 'button', 'data-unmount-screen': '', onClick: () => setScreen(false) }, 'Unmount screen'),
+              React.createElement(TrailingProbe),
               mode === 'jsx'
                 ? React.createElement(TickCtx.Provider, { value: tick }, React.createElement(JsxPublisher))
-                : React.createElement(React.Fragment, null,
-                    showA ? React.createElement(SharedPublisher, { id: 'a' }) : null,
-                    showB ? React.createElement(SharedPublisher, { id: 'b' }) : null,
-                  ),
+                : mode === 'compose'
+                  ? (screen ? React.createElement(QueueScreen, { count, pattern }) : null)
+                  : React.createElement(React.Fragment, null,
+                      showA ? React.createElement(SharedPublisher, { id: 'a' }) : null,
+                      showB ? React.createElement(SharedPublisher, { id: 'b' }) : null,
+                    ),
             );
           }
 
@@ -152,6 +181,9 @@ describe("useScreenStatusBar", () => {
     const main = page.locator("[data-status-ready]");
     await expect.poll(() => main.getAttribute("data-first-id")).toBe("jsx");
     const rendersAfterMount = Number(await main.getAttribute("data-renders"));
+    const trailing = page.locator("[data-trailing]");
+    await expect.poll(() => trailing.textContent()).toBe("Trailing");
+    const trailingRendersAfterMount = await trailing.getAttribute("data-trailing-renders");
 
     // Re-rendering the context-providing subscriber passes fresh inline-style and 10-deep JSX elements; renders must stay bounded (no loop).
     await page.locator("[data-bump]").click();
@@ -159,6 +191,8 @@ describe("useScreenStatusBar", () => {
     expect(await main.getAttribute("data-count")).toBe("2");
     const rendersAfterBump = Number(await main.getAttribute("data-renders"));
     expect(rendersAfterBump - rendersAfterMount).toBeLessThanOrEqual(2);
+    // An equal trailing node is not published again, so its subscribers do not render.
+    expect(await trailing.getAttribute("data-trailing-renders")).toBe(trailingRendersAfterMount);
 
     // Switch to two publishers sharing the exact same SHARED_SEG constant reference.
     await page.locator("[data-mode-shared]").click();
@@ -174,5 +208,25 @@ describe("useScreenStatusBar", () => {
     // Unmounting the last surviving publisher clears the status bar cleanly.
     await page.locator("[data-unmount-b]").click();
     await expect.poll(() => main.getAttribute("data-count")).toBe("0");
+  });
+
+  test("a screen's trailing fact and its pattern's segments are owned apart, so neither clears the other", async () => {
+    const main = page.locator("[data-status-ready]");
+    const trailing = page.locator("[data-trailing]");
+    await page.locator("[data-mode-compose]").click();
+    await expect.poll(() => main.getAttribute("data-first-content")).toBe("Pending 4");
+    await expect.poll(() => trailing.textContent()).toBe("Position 1 of 4");
+
+    // The pattern publishes again when its count changes; the screen's fact stays.
+    await page.locator("[data-count-down]").click();
+    await expect.poll(() => main.getAttribute("data-first-content")).toBe("Pending 3");
+    expect(await trailing.textContent()).toBe("Position 1 of 4");
+
+    // The pattern leaving takes only its segments, and the screen leaving takes its fact.
+    await page.locator("[data-unmount-pattern]").click();
+    await expect.poll(() => main.getAttribute("data-count")).toBe("0");
+    expect(await trailing.textContent()).toBe("Position 1 of 4");
+    await page.locator("[data-unmount-screen]").click();
+    await expect.poll(() => trailing.textContent()).toBe("");
   });
 });

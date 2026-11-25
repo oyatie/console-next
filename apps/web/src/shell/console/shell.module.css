@@ -42,15 +42,11 @@
 }
 
 .brandMark {
-  display: inline-grid;
-  place-items: center;
   flex-shrink: 0;
-  width: calc(var(--space-4) + var(--space-half));
-  height: calc(var(--space-4) + var(--space-half));
-  border: 1px solid var(--chrome-border);
-  border-radius: var(--radius-sm);
-  background: var(--chrome-raised);
-  color: var(--chrome-accent);
+}
+
+.brandSquare {
+  fill: var(--chrome-attention);
 }
 
 .brandName,
@@ -165,9 +161,11 @@
   max-inline-size: calc(var(--space-6) * 10);
 }
 
+/* Each row keeps its bar's room before the bar draws, so the page does not move when it does. */
 .tabsArea {
   grid-area: tabs;
   min-width: 0;
+  min-block-size: var(--tabbar-h);
 }
 
 .noticesArea {
@@ -178,6 +176,7 @@
 .statusArea {
   grid-area: status;
   min-width: 0;
+  min-block-size: var(--statusbar-h);
 }
 
 @media (--below-wide) {

@@ -3,22 +3,63 @@
 use console_kernel_core::{OrgId, UserId};
 use console_platform_authz::Feature;
 use console_platform_authz::access::{NodeKind, NodeRef};
-use console_platform_authz::cedar_pbac::visible::load_facts;
+use console_platform_authz::cedar_pbac::visible::{DecisionFacts, load_facts};
 use sqlx::{Postgres, Transaction};
+use uuid::Uuid;
 
-use axum::http::HeaderMap;
+use axum::http::{HeaderMap, StatusCode};
+use console_payroll_adapter_postgres::pay_groups::{RlsPayGroupFacts, run_pay_group_in_tx};
 use console_payroll_adapter_postgres::{PayrollRunSummary, PgPayrollStore};
 use console_platform_auth::JwtVerifier;
 use console_platform_authz::Principal;
 
 use crate::{PageParams, PayrollRestState, RestError, list_runs_page};
 
-pub(crate) async fn require_run_read_in_tx(
+/// Tenant pay access, then the run's pay group. A run the caller may not read
+/// answers exactly as one that does not exist, before any body is validated, so
+/// no request can tell the two apart; one they may read but not manage refuses
+/// its commands.
+pub(crate) async fn require_run_in_tx(
     tx: &mut Transaction<'_, Postgres>,
     org: OrgId,
     actor: UserId,
+    feature: Feature,
+    run_id: Uuid,
 ) -> Result<(), RestError> {
-    require_pay_action_in_tx(tx, org, actor, Feature::PayrollRunRead).await
+    let facts = require_pay_action_in_tx(tx, org, actor, feature).await?;
+    let not_found = || RestError::new(StatusCode::NOT_FOUND, "not_found", "run not found");
+    let Some(group) = run_pay_group_in_tx(tx, run_id)
+        .await
+        .map_err(RestError::from_store)?
+        .ok_or_else(not_found)?
+    else {
+        return Ok(());
+    };
+    let allowed = visible_pay_groups(tx, &facts, feature).await?;
+    if allowed.contains(&group) {
+        return Ok(());
+    }
+    let read = Feature::PayrollRunRead;
+    if feature != read && visible_pay_groups(tx, &facts, read).await?.contains(&group) {
+        return Err(RestError::from_kernel(
+            console_kernel_core::KernelError::forbidden(
+                "payroll run commands require sensitive:edit for this pay group",
+            ),
+        ));
+    }
+    Err(not_found())
+}
+
+/// The pay groups whose runs the caller may act on with `feature`.
+pub(crate) async fn visible_pay_groups(
+    tx: &mut Transaction<'_, Postgres>,
+    facts: &DecisionFacts,
+    feature: Feature,
+) -> Result<Vec<Uuid>, RestError> {
+    facts
+        .visible_pay_groups(tx, feature, &RlsPayGroupFacts)
+        .await
+        .map_err(RestError::from_kernel)
 }
 
 pub(crate) async fn require_pay_action_in_tx(
@@ -26,7 +67,7 @@ pub(crate) async fn require_pay_action_in_tx(
     org: OrgId,
     actor: UserId,
     feature: Feature,
-) -> Result<(), RestError> {
+) -> Result<DecisionFacts, RestError> {
     let facts = load_facts(tx, org, *actor.as_uuid())
         .await
         .map_err(RestError::from_kernel)?;
@@ -47,7 +88,7 @@ pub(crate) async fn require_pay_action_in_tx(
             ),
         ));
     }
-    Ok(())
+    Ok(facts)
 }
 
 fn cedar_error(error: console_platform_authz::access::AccessEngineError) -> RestError {
