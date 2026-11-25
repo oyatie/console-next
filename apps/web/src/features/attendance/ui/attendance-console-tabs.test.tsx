@@ -278,7 +278,8 @@ test("the Console month close grid opens a scope from its row, with no actions c
   expect(html).toContain("wp-1");
   expect(html).not.toContain(t("settingsHub.reasons.actionsCol"));
   const grid = html.slice(html.indexOf('role="grid"'));
-  expect(grid).toContain("wp-1");
+  // The row itself carries the open action: React Aria marks an actionable row pressable.
+  expect(grid).toMatch(/role="row"[^>]*data-react-aria-pressable="true"[^>]*data-row-id="wp-1"/);
   expect(grid).not.toContain("<button");
 });
 
