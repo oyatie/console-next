@@ -20,6 +20,12 @@ export const notFoundRead = (ref: string): ReadState => ({
   error: new ApiError(404, "not_found", "", [], ref),
 });
 
+export const failedRead = (ref: string): ReadState => ({
+  ...readyRead,
+  data: undefined,
+  error: new ApiError(503, "service_unavailable", "", [], ref),
+});
+
 export const mark = (name: string) => <bdi data-contract-region={name}>{name}</bdi>;
 
 const actionLinkLabel = "Action link";

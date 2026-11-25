@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { loadCatalog } from "@console/i18n";
-import { ApiError } from "@console/api";
 import { beforeAll, expect, test } from "vitest";
 import { canvasOptionalRegions } from "./canvas-contract";
 import { CanvasPattern } from "./canvas";
-import { assertPatternLifecycle, makeHead, makeTabs, mark, notFoundRead, readyRead, renderPatternMarkup } from "./pattern-test-helpers";
+import { assertPatternLifecycle, failedRead, makeHead, makeTabs, mark, notFoundRead, readyRead, renderPatternMarkup } from "./pattern-test-helpers";
 
 beforeAll(() => loadCatalog("ko"));
 
@@ -36,7 +35,7 @@ test("CanvasPattern satisfies docked and SidePaneSpec inspector contracts includ
   // failure, as Classic's page head does. A refusal removes it with the rest of the page.
   const strip = (q: typeof readyRead) => renderPatternMarkup(<CanvasPattern q={q} head={{ title: mark("head") }} toolbar={mark("toolbar")} canvas={mark("canvas")} />);
   expect(await strip({ ...readyRead, isPending: true, data: undefined })).not.toContain('data-contract-region="toolbar"');
-  const failed = await strip({ ...readyRead, data: undefined, error: new ApiError(503, "service_unavailable", "", [], "canvas-fail") });
+  const failed = await strip(failedRead("canvas-fail"));
   expect(failed).toContain('data-contract-region="toolbar"');
   expect(failed).toContain("canvas-fail");
   expect(failed).not.toContain('data-contract-region="canvas"');
