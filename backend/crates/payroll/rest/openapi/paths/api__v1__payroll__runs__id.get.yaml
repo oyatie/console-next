@@ -4,6 +4,7 @@ tags:
 - payroll
 operationId: getPayrollRun
 summary: Get one payroll draft run and its per-employee readiness lines (tenant pay:view)
+description: A run of a pay group the caller may not read answers 404, as a run that does not exist.
 security:
 - bearerAuth: []
 parameters:

@@ -28,6 +28,10 @@ export function RegisterConsoleFooter({
           {t("register.manyShort")}
           <ArrowUpRight size={14} aria-hidden />
         </Link>
+        <Link to="/people/run" className={buttonClass("ghost", { size: "sm" })}>
+          {t("register.run.open")}
+          <ArrowUpRight size={14} aria-hidden />
+        </Link>
         <Check switch checked={createMore} onChange={onCreateMore}>
           {t("register.createMore")}
         </Check>

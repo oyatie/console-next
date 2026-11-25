@@ -7,6 +7,9 @@ import { Ledger } from "../../../ui/ledger/ledger";
 import type { PayslipPayload } from "../domain/payslip";
 import { presentContextStats, presentDeductionRows, presentEarningRows } from "../present";
 
+// A paper keeps the locale date form whatever the screen style draws.
+const day = (v: unknown) => fmtDate(v, { style: "locale" });
+
 /** Builds a standalone printable payslip document via React static markup (no raw HTML concatenation). */
 export function buildPayslipPrintHtml(payload: PayslipPayload, fallbackMonth: string | null): string {
   const month = payload.attributionMonth ?? fallbackMonth;
@@ -14,8 +17,8 @@ export function buildPayslipPrintHtml(payload: PayslipPayload, fallbackMonth: st
   const periodRange =
     payload.periodStart && payload.periodEnd
       ? t("payslip.print.periodRange", {
-          start: fmtDate(payload.periodStart),
-          end: fmtDate(payload.periodEnd),
+          start: day(payload.periodStart),
+          end: day(payload.periodEnd),
         })
       : null;
 
@@ -39,7 +42,7 @@ export function buildPayslipPrintHtml(payload: PayslipPayload, fallbackMonth: st
       ? [{ key: "period", label: t("payslip.print.period"), value: periodRange }]
       : []),
     ...(payload.payDate
-      ? [{ key: "payDate", label: t("payslip.payDateLabel"), value: fmtDate(payload.payDate) }]
+      ? [{ key: "payDate", label: t("payslip.payDateLabel"), value: day(payload.payDate) }]
       : []),
     {
       key: "net",
