@@ -85,8 +85,8 @@ export function PatternShell({
   q: ReadState;
   head: PatternHead;
   tabs?: ReactNode;
-  /** A strip under the head that waits for the first answer, then stays through a failed read (its controls may be the
-   * way out, such as an as-of date). A refusal removes it with the rest of the page. */
+  /** A strip under the head that waits for the first answer, then stays through a failed read and the reads after it
+   * (its controls may be the way out, such as an as-of date). A refusal removes it with the rest of the page. */
   toolbar?: ReactNode;
   overlays?: ReactNode;
   queryLayout: ReadLayout;
@@ -111,6 +111,9 @@ export function PatternShell({
   const refused = view === "denied" || view === "not-found";
   if (refused && latchedRefusal !== q.error) setLatchedRefusal(q.error);
   if (view === "ready" && !q.isPlaceholderData && latchedRefusal) setLatchedRefusal(null);
+  // A read started after a failure is "loading" again; the toolbar that started it (and its focus) stays.
+  const [answered, setAnswered] = useState(false);
+  if (view !== "loading" && !answered) setAnswered(true);
 
   if (useBaselineFallback && baseline) return <>{baseline()}</>;
 
@@ -189,7 +192,7 @@ export function PatternShell({
           }}
         >
           {overlays}
-          {view === "loading" ? null : toolbar}
+          {answered ? toolbar : null}
           <PageHeadingLevel value={2}>
             <QueryState q={q} layout={queryLayout} keepOnLoss={keepOnLoss} back={back} own={own} removed={removed}>
               {children}
