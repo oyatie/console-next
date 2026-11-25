@@ -193,6 +193,8 @@ test.each((["ACTIVE", "SUSPENDED", "ARCHIVED"] as const).flatMap(status => [1440
     const failed = panel.getByRole("alert").filter({ has: page.getByRole("heading", { name: t("tenants.recoveryFailed"), exact: true }) });
     await element(failed).toHaveCount(1);
     await element(panel.getByRole("button", { name: t("common.retry"), exact: true })).toHaveCount(1);
+    // The failure is inset like the record's sections.
+    expect((await box(failed)).left).toBe((await box(panel.getByRole("heading", { name: t("tenants.panel.overview"), exact: true }))).left);
     expect((await pane(panel)).deletion).toBe(loading.deletion);
     fails = false;
     await page.unroute("**/api/platform/orgs/*/ops-recovery");
