@@ -146,11 +146,10 @@ export function AccessLogPage() {
             <Button size="sm" variant="secondary" disabled={!first && !filterInvalid} onClick={() => setFilterOpen(true)}>
               {t("accessLog.chooseFilters")}
             </Button>
-            {Boolean(first && period) && (
-              <Button size="sm" variant="secondary" onClick={() => { setReviewEventId(null); setReviewOpen(true); }}>
-                {t("accessLog.review.open")}
-              </Button>
-            )}
+            {/* Held in place, disabled until the month is known, so 필터 선택 never moves when the records arrive. */}
+            <Button size="sm" variant="secondary" disabled={!(first && period)} onClick={() => { setReviewEventId(null); setReviewOpen(true); }}>
+              {t("accessLog.review.open")}
+            </Button>
             {filtered && (
               <Button size="sm" variant="ghost" onClick={clear}>
                 {t("accessLog.clearSearch")}
@@ -183,8 +182,8 @@ export function AccessLogPage() {
           <StatRow
             label={t("accessLog.summary")}
             items={[
-              { key: "events", label: t("accessLog.all"), value: fmtNumber(consoleFirst.totals.events), active: all, onPress: () => void navigate({ search: s => ({ ...s, view: "all" }), replace: true }) },
-              { key: "flagged", label: t("accessLog.flagged"), value: fmtNumber(consoleFirst.totals.flagged), active: !all, onPress: () => void navigate({ search: s => ({ ...s, view: undefined }), replace: true }) },
+              { key: "events", label: t("accessLog.all"), value: fmtNumber(consoleFirst.totals.events), active: all, onPress: () => void navigate({ search: s => ({ ...s, view: "all" }) }) },
+              { key: "flagged", label: t("accessLog.flagged"), value: fmtNumber(consoleFirst.totals.flagged), active: !all, onPress: () => void navigate({ search: s => ({ ...s, view: undefined }) }) },
             ]}
           />
         ) : undefined
