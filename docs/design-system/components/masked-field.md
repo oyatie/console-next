@@ -212,11 +212,11 @@ The control box, `field__input` in `app.css`:
 
 | Token | Read by |
 | --- | --- |
-| `--chrome-chevron` | `background-image` |
 | `--control-border` | `border` |
 | `--field-h` | `height` |
 | `--field-h-toolbar` | `height` |
 | `--radius` | `border-radius` |
+| `--select-chevron` | `background-image` |
 | `--space-2` | `background-position` |
 | `--space-3` | `padding` |
 | `--space-6` | `padding-inline-end` |

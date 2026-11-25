@@ -64,9 +64,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
 :where(p, .notice, .alert, .field__error, .prose) :where(a:hover, a:focus-visible), .link:hover, .link:focus-visible { text-decoration-color: currentcolor; }
 .link { align-self: flex-start; min-height: var(--space-5); padding: 0; border: 0; background: none; font-weight: var(--fw-medium); cursor: pointer; }
 
-/* Frame surface scope: re-declares surface, hover, selected, ink, border and focus roles to the frame roles, plus
-   every token in tokens.css whose value references a re-declared token, so controls placed on the frame take frame
-   colours without a dedicated variant while portalled overlays attached to <body> inherit page colours. */
+/* Frame surface scope: re-declares the surface, hover, selected, ink, border, focus and select chevron roles to the
+   frame roles, plus every token in tokens.css whose value references a re-declared token, so controls placed on the
+   frame take frame colours without a dedicated variant while portalled overlays attached to <body> inherit page
+   colours. */
 [data-surface="chrome"] {
   --canvas: var(--chrome);
   --surface: var(--chrome);
@@ -117,6 +118,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   --derived-tx: var(--steel);
   --kbd-bg: var(--muted);
   --focus: 0 0 0 2px var(--surface), 0 0 0 4px var(--primary);
+  --select-chevron: var(--chrome-chevron);
   color-scheme: var(--chrome-scheme);
   background: var(--chrome);
   color: var(--on-chrome);
@@ -234,16 +236,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
   max-width: 100%;
   appearance: none;
   padding-inline-end: var(--space-6);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2355616d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-image: var(--select-chevron);
   background-repeat: no-repeat;
   background-position: right var(--space-2) center;
   background-size: 14px 14px;
 }
-:root[data-theme="dark"]:where([data-experience]:not([data-experience="baseline"])) select.field__input {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23c3cdd8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-}
-/* In light a select on the frame takes the frame's chevron; the dark rule above outranks this one. */
-:where([data-experience]:not([data-experience="baseline"])) [data-surface="chrome"] select.field__input { background-image: var(--chrome-chevron); }
 /* In a toolbar a field has a height of its own, so a style can draw it level with the controls beside it. The toolbar
    adds no weight to the selector: every rule that outranks a field's height today outranks this one as well. */
 :where(.toolbar) .field__input { height: var(--field-h-toolbar); }
