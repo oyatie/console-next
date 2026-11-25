@@ -194,6 +194,10 @@ for (const [experience, light, dark, primaryLight, primaryDark] of experiences) 
           await expect(accountMenu.getByRole("button", { name: t(key), exact: true })).toBeVisible();
         }
         await fits(page, `${experience}/${theme}/${screen.key}/${width} account menu`);
+        // The menu hangs from the trigger's end edge, so it overflows the start edge, which adds no page scroll.
+        const menuBox = (await accountMenu.boundingBox())!;
+        expect(menuBox.x, "account menu stays on screen").toBeGreaterThanOrEqual(0);
+        expect(menuBox.x + menuBox.width, "account menu stays on screen").toBeLessThanOrEqual(width);
         // The open menu covers page targets for a moment, which axe would count as undersized; the page is scanned closed below.
         await expectAxe(page, `${experience}/${theme}/${screen.key}/${width} account menu`, { include: "header" });
         await page.keyboard.press("Escape");
