@@ -257,3 +257,8 @@ test("on a phone a failed menu read says so beside the bar and offers the retry,
   await element(alert.getByRole("button", { name: t("common.retry"), exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
 });
+
+test("on a phone the search says it opens a dialog, as the desk search does", async () => {
+  await openPhoneShell();
+  await element(page.getByRole("banner").getByRole("button", { name: t("shell.jumpLabel"), exact: true })).toHaveAttribute("aria-haspopup", "dialog");
+});

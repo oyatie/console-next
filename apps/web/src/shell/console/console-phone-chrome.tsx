@@ -46,6 +46,7 @@ export function ConsolePhoneTop({
                 type="button"
                 className={s.phoneIconBtn}
                 aria-label={t("shell.jumpLabel")}
+                aria-haspopup="dialog"
                 onClick={onSearch}
               >
                 <Search size={18} aria-hidden="true" />
