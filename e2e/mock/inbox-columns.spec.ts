@@ -296,24 +296,3 @@ test.describe("console look", () => {
     await expect(page.locator(`[data-id="${data.items[0]!.id}"]`).getByRole("button", { expanded: true })).toHaveCount(1);
   });
 });
-
-// Home previews the queue's first rows: five in Classic; up to ten in Console (HOME_CONSOLE_ROWS), which no board fixes,
-// so the Console value is the render's.
-async function openHome(page: Page) {
-  await mockScreen(page, screens[0], "populated");
-  await mockRoute(page, "get", "/api/v1/me/action-inbox", { status: 200, json: inbox(12) });
-  await page.goto("/");
-}
-
-test("Classic Home previews five queue rows", { tag: "@baseline" }, async ({ page }) => {
-  await openHome(page);
-  await expect(page.getByRole("region", { name: t("home.inbox.title"), exact: true }).locator("[data-id]")).toHaveCount(5);
-});
-
-test.describe("console look", () => {
-  test.use({ storageState: experienceState("console") });
-  test("Console Home lists ten queue rows", async ({ page }) => {
-    await openHome(page);
-    await expect(page.getByRole("grid", { name: t("home.inbox.title"), exact: true }).locator("[data-id]")).toHaveCount(10);
-  });
-});

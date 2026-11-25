@@ -416,8 +416,8 @@ for (const width of [1440, 390]) test(`Home without a receipt keeps the inbox at
   expect(mock.unexpected).toEqual([]);
 });
 
-// Home previews the queue's first rows: five in Classic; up to ten in Console (HOME_CONSOLE_ROWS), which no board fixes,
-// so the Console value is the render's. Console's Home draws no lane navigation and no receipt band without a receipt.
+// Home previews the queue's first rows: five in Classic; ten in Console, as d-home draws them before its more button.
+// Console's Home draws no lane navigation and no receipt band without a receipt.
 test("Classic Home previews five queue rows", { tag: "@baseline" }, async ({ page }) => {
   await mockScreen(page, screens[0], "populated");
   await mockRoute(page, "get", "/api/v1/me/action-inbox", { status: 200, json: inbox(12) });
