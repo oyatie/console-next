@@ -79,7 +79,19 @@ test.each(SYSTEMS)("on $platform the run page's finish button shows $close once 
 test.each(SYSTEMS)("Console look: on $platform the registration sheet's register button shows $next", async ({ platform, next }) => {
   await page.goto(`${server.resolvedUrls!.local[0]}register-keys-test?case=sheet&look=console&platform=${platform}`);
   const sheet = page.getByRole("dialog", { name: t("register.title"), exact: true });
-  await element(sheet.getByRole("button", { name: t("register.run.submit"), exact: true }).locator("kbd")).toHaveText(next);
+  await element(sheet.getByRole("button", { name: commitLabel({ kind: "ONBOARD", mode: "apply", count: 1 }), exact: true }).locator("kbd")).toHaveText(next);
+});
+
+// One button and a switch stand for Classic's two register buttons, so the button carries the name of the one it is.
+test("Console look: the register button carries Classic's register name, and its next-employee name while create-more is on", async () => {
+  await page.goto(`${server.resolvedUrls!.local[0]}register-keys-test?case=sheet&look=console`);
+  const sheet = page.getByRole("dialog", { name: t("register.title"), exact: true });
+  const close = commitLabel({ kind: "ONBOARD", mode: "apply", count: 1 });
+  const next = commitLabel({ kind: "ONBOARD", mode: "apply", count: 1, continuation: "next" });
+  await element(sheet.getByRole("button", { name: close, exact: true })).toBeVisible();
+  await sheet.getByRole("switch", { name: t("register.createMore"), exact: true }).check();
+  await element(sheet.getByRole("button", { name: next, exact: true })).toBeVisible();
+  await element(sheet.getByRole("button", { name: close, exact: true })).toHaveCount(0);
 });
 
 test.each(SYSTEMS)("Console look: on $platform the run page shows $next to register and $close to finish", async ({ platform, next, close }) => {

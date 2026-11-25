@@ -5,6 +5,7 @@ import { t } from "@console/i18n";
 import { modHint } from "../../../lib/mod-hint";
 import { Button, Check } from "../../../ui/button/button";
 import { buttonClass } from "../../../ui/button/button-class";
+import { commitLabel } from "../../../ui/composer/actions";
 import { Kbd } from "../../../ui/kbd/kbd";
 import s from "./register-console.module.css";
 
@@ -32,8 +33,9 @@ export function RegisterConsoleFooter({
           {t("register.createMore")}
         </Check>
       </div>
+      {/* Classic's two register buttons, one at a time: the switch picks which this one is, and it says so. */}
       <Button variant="primary" aria-disabled={incomplete} disabled={disabled} onClick={onSubmit}>
-        {t("register.run.submit")}
+        {commitLabel({ kind: "ONBOARD", mode: "apply", count: 1, continuation: createMore ? "next" : undefined })}
         <Kbd keys={modHint("↵")} />
       </Button>
     </div>
