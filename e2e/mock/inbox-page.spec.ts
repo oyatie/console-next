@@ -6,7 +6,7 @@ import { mockScreen } from "./screen";
 import { mockRoute } from "./route";
 import { checklist, failure, inbox, screenAccess, user } from "./fixtures";
 import { expectAxe, fits } from "../a11y";
-import { experienceState } from "../experience";
+import { experienceState, seededExperience } from "../experience";
 import { expectStable, recordShifts } from "../stability";
 import { screens } from "../states/registry";
 
@@ -179,12 +179,14 @@ test("inbox keeps its title on failed reads and retries without claiming empty",
   await expectStable(page, "failed inbox recovery");
 });
 
-test("Home hides the inbox link when the server offers no work or personal filter", async ({ page }) => {
+test("with no work or personal filter offered, Classic's Home hides the inbox link and Console's keeps it", async ({ page, storageState }) => {
   await mockScreen(page, screens[0], "empty");
   await mockRoute(page, "get", "/api/v1/me/action-inbox", { status: 200, json: { ...inbox(0), available_filters: [] } });
   await page.goto("/");
   await expect(page.getByRole("heading", { name: t("home.noWork.title"), exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: t("home.inbox.viewInbox"), exact: true })).toHaveCount(0);
+  const link = page.getByRole("link", { name: t("home.inbox.viewInbox"), exact: true });
+  if (seededExperience(storageState) === "console") await expect(link).toHaveAttribute("href", "/inbox");
+  else await expect(link).toHaveCount(0);
 });
 
 for (const path of ["/", "/inbox"]) {
