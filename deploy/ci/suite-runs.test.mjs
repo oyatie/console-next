@@ -82,6 +82,23 @@ for (const [reason, change, refused] of [
     Object.assign(fixture.database, {event, conclusion:'cancelled'});
     fixture.jobs.set(fixture.database.id, []);
   }, 'db-tests.yml (missing candidate run)']),
+  ['a red push behind a zero-job cancelled schedule and a green schedule', fixture => {
+    fixture.database.conclusion = 'failure';
+    const cancelled = fixture.addRun('db-tests.yml', 'schedule');
+    cancelled.conclusion = 'cancelled';
+    fixture.jobs.set(cancelled.id, []);
+    fixture.addRun('db-tests.yml', 'schedule');
+  }, 'db-tests.yml (failure)'],
+  ['a cancelled push whose only job was cancelled beside a green schedule', fixture => {
+    fixture.database.conclusion = 'cancelled';
+    fixture.jobs.set(fixture.database.id, [{...databaseJob(fixture), conclusion:'cancelled'}]);
+    fixture.addRun('db-tests.yml', 'schedule');
+  }, 'db-tests.yml (cancelled)'],
+  ['a cancelled rerun of a run that never started beside a green schedule', fixture => {
+    Object.assign(fixture.database, {conclusion:'cancelled', run_attempt:2});
+    fixture.jobs.set(fixture.database.id, []);
+    fixture.addRun('db-tests.yml', 'schedule');
+  }, 'db-tests.yml (expected first attempt)'],
   ['a skipped job past the first page of jobs', fixture => {
     const jobs = fixture.jobs.get(fixture.liveBrowser.id);
     jobs.unshift(...Array.from({length:100}, (_, shard) => ({...jobs[0], name:`shard ${shard}`})));
