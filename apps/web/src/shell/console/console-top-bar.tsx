@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { lazy, Suspense, type ReactNode } from "react";
+import { lazy, Suspense, useId, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { Search } from "lucide-react";
 import { i18n, t } from "@console/i18n";
@@ -51,7 +51,7 @@ function ConsoleAccountSlot({
   return (
     <Suspense
       fallback={
-        <Link to="/account" className={s.accountBtn} aria-label={name}>
+        <Link to="/account" className={s.accountBtn} aria-label={compact ? name : undefined}>
           <Avatar name={name} size="sm" tone="accent" />
           {!compact ? <bdi className={s.accountName}>{name}</bdi> : null}
         </Link>
@@ -90,6 +90,7 @@ export function ConsoleTopBar({
   onSearch: () => void;
 }) {
   const singleKeys = useSingleKeys();
+  const searchId = useId();
   return (
     <header className={s.top} data-surface="chrome" aria-busy={restoring || undefined}>
       {!restoring ? (
@@ -127,6 +128,8 @@ export function ConsoleTopBar({
                     className={props.className}
                     activeOptions={{ exact: item.href !== currentModuleTo }}
                     aria-current={props["aria-current"]}
+                    aria-label={props["aria-label"]}
+                    aria-describedby={props["aria-describedby"]}
                   >
                     {props.children}
                   </Link>
@@ -139,15 +142,18 @@ export function ConsoleTopBar({
           </div>
 
           {!platform ? (
+            // Named as the phone bar and the palette name it, then by the hint it shows, so a spoken hint reaches it.
             <button
               type="button"
               className={s.searchField}
               onClick={onSearch}
-              aria-label={t("shell.jump")}
+              aria-labelledby={`${searchId}-name ${searchId}-hint`}
+              aria-haspopup="dialog"
               aria-keyshortcuts={singleKeys ? "Meta+K Control+K /" : "Meta+K Control+K"}
             >
               <Search size={14} aria-hidden="true" />
-              <bdi className={s.searchText}>{t("shell.searchHint")}</bdi>
+              <span id={`${searchId}-name`} className="sr-only">{t("shell.jumpLabel")}</span>
+              <bdi id={`${searchId}-hint`} className={s.searchText}>{t("shell.searchHint")}</bdi>
               {singleKeys && <Kbd keys="/" />}
             </button>
           ) : null}

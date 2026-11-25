@@ -2,6 +2,7 @@
 import { realpathSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { afterAll, beforeAll, expect, test } from "vitest";
+import { expect as element } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 import { loadCatalog, t } from "@console/i18n";
 import { browserEngine, browserTestOptimizeDeps, openBrowserTestPage, type Browser, type Page } from "../../lib/browser-test";
@@ -93,7 +94,7 @@ type Held = { asked: () => void; done: Promise<void> };
  * `restore` opens cold: the page starts with no session, and the refresh that restores it waits for `restore.done`.
  * `held` holds the read at `held.path` until `held.done`; `refused` refuses the read at that path, once its hold ends.
  */
-async function openPhoneShell(link: "LINKED" | "UNLINKED" = "LINKED", { restore, held, refused, width = 390, operator = false }: { restore?: Held; held?: Held & { path: string }; refused?: string; width?: number; operator?: boolean } = {}) {
+async function openPhoneShell(link: "LINKED" | "UNLINKED" = "LINKED", { restore, held, refused, width = 390, operator = false, inbox }: { restore?: Held; held?: Held & { path: string }; refused?: string; width?: number; operator?: boolean; inbox?: { total: number; exact: boolean } } = {}) {
   const apiMocks: Record<string, unknown> = {
     "/api/v1/users/me": {
       id: "u1", display_name: "Hajun", employee_name: "Hajun", employee_id: link === "LINKED" ? "e1" : null,
@@ -104,7 +105,7 @@ async function openPhoneShell(link: "LINKED" | "UNLINKED" = "LINKED", { restore,
     "/api/v1/support-sessions/active": { can_approve: false, sessions: [], pending_count: 0 },
     "/api/v1/onboarding/modules": ["home", "people"].map(key => ({ key, ready: true, unblock: null })),
     "/api/v1/onboarding/checklist": { phase: "OPERATING", steps: [] },
-    "/api/v1/me/action-inbox": { items: [], next_cursor: null, counts: { turn: { total: 0, total_is_exact: true } }, attention_filters: [] },
+    "/api/v1/me/action-inbox": { items: [], next_cursor: null, counts: { turn: { total: inbox?.total ?? 0, total_is_exact: inbox?.exact ?? true } }, attention_filters: [] },
     "/api/v1/auth/passkeys": [],
     // The reader's own choice keeps the page in Console once the shell syncs the style.
     "/api/v1/me/workspace": { layout: { experience: "console" } },
@@ -247,6 +248,14 @@ test("on a phone the bars draw over the page's own raised layers, the skip link 
   expect(await hitIn(skipBox.x + skipBox.width / 2, skipBox.y + skipBox.height / 2, "a.skip")).toBe(true);
 });
 
+/** The phone's top room while its bar cannot draw yet: the page's banner, marked busy, holding no control. */
+async function expectBusyBar() {
+  const banner = page.getByRole("banner");
+  await element(banner).toHaveCount(1);
+  await element(banner).toHaveAttribute("aria-busy", "true");
+  await element(banner.locator("a, button")).toHaveCount(0);
+}
+
 /** Where the page starts below the top, and how much room is left after it, in page coordinates. */
 const pageFrame = () => page.evaluate(() => {
   const main = document.getElementById("main")!.getBoundingClientRect();
@@ -272,8 +281,8 @@ test("on a phone the page keeps its place while the bars' code loads, since an e
     // The new page has asked for the bars' code, so what is on screen now is that page, not the previous test's.
     await requested;
     await page.locator('[data-phone-screen="Account"]').waitFor();
-    // The bars' code is still held back, so the screen is drawn without them.
-    expect(await page.locator('header[data-surface="chrome"]').count()).toBe(0);
+    // The bars' code is still held back, so the screen is drawn without them: the top room is the bar, busy and bare.
+    await expectBusyBar();
     const before = await pageFrame();
     const heldLook = await barLook();
 
@@ -300,7 +309,8 @@ test("on a phone a reload keeps the page's place while the session restores, sin
     // The new page is restoring its session, so what is on screen now is that page, not the previous test's.
     await requested;
     await page.locator("#main").waitFor();
-    expect(await page.locator('header[data-surface="chrome"]').count()).toBe(0);
+    // A restoring session is said on the bar itself, as the desk bar says it, with nothing on it to press yet.
+    await expectBusyBar();
     const before = await pageFrame();
 
     done();
@@ -365,4 +375,66 @@ test("on a desktop an operator's chrome draws without the tenant reader's read",
   await openPhoneShell("LINKED", { width: 1440, operator: true });
   await page.locator("[data-workspace-tab]").first().waitFor();
   await expect.poll(() => page.locator("[data-console-shell] footer").count()).toBe(1);
+});
+
+const menu = () => page.getByRole("navigation", { name: t("shell.nav"), exact: true });
+
+test("on a desktop the to-do link says when its count is still loading or cannot be read, as Classic's does", async () => {
+  const asked = Promise.withResolvers<void>(), done = Promise.withResolvers<void>();
+  const opened = openPhoneShell("LINKED", { width: 1440, held: { path: "/api/v1/me/action-inbox", asked: asked.resolve, done: done.promise } });
+  opened.catch(() => {});
+  try {
+    await asked.promise;
+    await element(menu().locator('a[href="/"]')).toHaveAccessibleName(t("shell.needsMe.loading"));
+  } finally { done.resolve(); }
+  await opened;
+
+  await openPhoneShell("LINKED", { width: 1440, refused: "/api/v1/me/action-inbox" });
+  const todo = menu().locator('a[href="/"]');
+  await element(todo).toHaveAccessibleName(t("shell.needsMe.unknown"));
+  await element(todo.locator("data")).toHaveCount(0);
+});
+
+test("on a desktop a counted to-do link carries Classic's name and count description, a lower bound with its plus", async () => {
+  await openPhoneShell("LINKED", { width: 1440, inbox: { total: 1234, exact: false } });
+  const todo = menu().locator('a[href="/"]');
+  await element(todo).toHaveAccessibleName(t("shell.needsMe.countMore", { count: 1234 }));
+  await element(todo).toHaveAccessibleDescription(t("shell.needsMe.countMoreDescription", { count: 1234 }));
+  await element(todo.locator("data")).toHaveText("1,234+");
+
+  await openPhoneShell("LINKED", { width: 1440, inbox: { total: 3, exact: true } });
+  await element(menu().locator('a[href="/"]')).toHaveAccessibleName(t("shell.needsMe.count", { count: 3 }));
+  await element(menu().locator('a[href="/"]')).toHaveAccessibleDescription(t("shell.needsMe.countDescription", { count: 3 }));
+});
+
+test("on a phone the to-do slot names its label before its count, as the desk bar does", async () => {
+  // An account with no employee record works from the desk menu, so its bottom bar carries the to-do link.
+  const nav = await openPhoneShell("UNLINKED", { inbox: { total: 3, exact: true } });
+  await element(nav.locator('a[href="/"]')).toHaveAccessibleName(t("shell.needsMe.count", { count: 3 }));
+  await element(nav.locator('a[href="/"]')).toHaveAccessibleDescription(t("shell.needsMe.countDescription", { count: 3 }));
+});
+
+test("on a phone the bottom bar holds its room while the menu loads, rather than stretching My profile alone across it", async () => {
+  const asked = Promise.withResolvers<void>(), done = Promise.withResolvers<void>();
+  const opened = openPhoneShell("UNLINKED", { held: { path: "/api/v1/access/me", asked: asked.resolve, done: done.promise } });
+  opened.catch(() => {});
+  try {
+    await asked.promise;
+    // The phone bars' code has loaded once the top bar draws its search.
+    await page.getByRole("banner").getByRole("button", { name: t("shell.jumpLabel"), exact: true }).waitFor();
+    await frames();
+    // A lone slot would span the bar, then jump to its own place when the menu lands under a thumb already on it.
+    expect(await page.locator("[data-pinned-bar] a").count()).toBe(0);
+  } finally { done.resolve(); }
+  const nav = await opened;
+  await element(nav.getByRole("link", { name: t("shell.profile"), exact: true })).toBeVisible();
+  await element(nav.locator('a[href="/"]')).toBeVisible();
+});
+
+test("on a phone a failed menu read says so beside the bar and offers the retry, as it does on a desktop", async () => {
+  await openPhoneShell("UNLINKED", { refused: "/api/v1/onboarding/modules" });
+  const alert = page.getByRole("alert");
+  await element(alert.getByRole("heading", { name: t("shell.nav.failed"), exact: true })).toBeVisible();
+  await element(alert.getByRole("button", { name: t("common.retry"), exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
 });

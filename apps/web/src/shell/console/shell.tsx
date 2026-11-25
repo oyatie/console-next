@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { lazy, Suspense, useCallback, useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react";
-import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
+import { Link, useLocation, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useIsFetching, useQuery } from "@tanstack/react-query";
 import { session } from "@console/api";
 import { i18n, t } from "@console/i18n";
 import { meQuery } from "../../features/account/api";
 import { healthStatus, pickLocalized, STATUS_PAGE_URL } from "../../features/health/api/active-status";
 import { chunk } from "../../lib/chunk-guard";
+import { streamReady } from "../../lib/live/session-stream";
 import { useKeys } from "../../lib/react/use-keys";
 import { personName } from "../../reference/person/present";
 import type { ModuleNavItem } from "../../ui/module-nav/module-nav";
@@ -72,7 +73,9 @@ function ConsoleLayout({
   useEffect(() => healthStatus.mount(noticesActive), [noticesActive]);
   const showOutage = noticesActive && notices.outage !== null;
   const showStale = noticesActive && notices.stale;
-  const { inboxCount, inboxExact, approvalsCount } = useConsoleCounts(noticesActive);
+  // The count is a read like the frame's own: it waits for the session's event stream, so the stream opens first.
+  const stream = useSyncExternalStore(streamReady.subscribe, streamReady.get);
+  const { inboxCount, inboxExact, inboxName, inboxDescription, approvalsCount } = useConsoleCounts(noticesActive && stream);
   // Watches the frame's own read of the reader without sending it again.
   const profileRead = useQuery({ ...meQuery, enabled: false });
 
@@ -84,13 +87,12 @@ function ConsoleLayout({
 
   const navItems: readonly ModuleNavItem[] = useMemo(
     () =>
-      allLinks.map(link => ({
-        id: link.to,
-        href: link.to,
-        label: t(link.label),
-        count: link.countKey === "inbox" ? inboxCount : link.countKey === "approvals" ? approvalsCount : undefined,
-      })),
-    [allLinks, inboxCount, approvalsCount],
+      allLinks.map(link =>
+        link.countKey === "inbox"
+          ? { id: link.to, href: link.to, label: t(link.label), count: inboxCount, countMore: !inboxExact, name: inboxName, description: inboxDescription }
+          : { id: link.to, href: link.to, label: t(link.label), count: link.countKey === "approvals" ? approvalsCount : undefined },
+      ),
+    [allLinks, inboxCount, inboxExact, inboxName, inboxDescription, approvalsCount],
   );
 
   const { title: currentTitle, isFallback, tabTarget } = useResolvedTabTitle({
@@ -121,11 +123,31 @@ function ConsoleLayout({
     onNavigate: navigateToHref,
   });
 
+  // A record tab shows a stand-in title until the record's own lands with the screen's first answer. It is settled once
+  // the screen stops reading (a refused record never names it), and stays settled for that tab while background reads
+  // come and go.
+  const reads = useIsFetching({ type: "active" });
+  const routing = useRouterState({ select: state => state.status === "pending" });
+  const screenReading = reads > 0 || routing;
+  const [titleSettled, setTitleSettled] = useState<string>();
+  if (!isFallback && titleSettled !== tabTarget) setTitleSettled(tabTarget);
+  // Checked a frame after the screen's own reads have started, which happens after this render.
+  useEffect(() => {
+    if (screenReading || titleSettled === tabTarget) return;
+    const frame = requestAnimationFrame(() => setTitleSettled(tabTarget));
+    return () => cancelAnimationFrame(frame);
+  }, [screenReading, titleSettled, tabTarget]);
+  const titlePending = isFallback && titleSettled !== tabTarget;
+
   // A tab's icon comes from the nav table, not the reader's menu, so the tab keeps its width when the menu lands.
   const tabsWithIcons = useMemo(() => {
     const iconLinks = (platform ? PLATFORM_NAV : TENANT_NAV).flatMap(group => group.links);
-    return workspaceTabs.tabs.map(tab => ({ ...tab, icon: tabIconForHref(tab.href, iconLinks) }));
-  }, [workspaceTabs.tabs, platform]);
+    return workspaceTabs.tabs.map(tab => ({
+      ...tab,
+      icon: tabIconForHref(tab.href, iconLinks),
+      pending: titlePending && tab.id === workspaceTabs.activeId && tab.label === currentTitle,
+    }));
+  }, [workspaceTabs.tabs, workspaceTabs.activeId, platform, titlePending, currentTitle]);
 
   useKeys(
     platform
@@ -164,9 +186,12 @@ function ConsoleLayout({
   const shellOwnsH1 = isPhone && Boolean(phoneHeader?.shellOwnsH1);
   const phoneHeaderValue = useMemo(() => ({ shellOwnsH1 }), [shellOwnsH1]);
   // An empty bar holds each bar's room while the session restores and while the bars' code loads, so the page does not
-  // move when they draw.
-  const topHold = <div className={s.phoneTopHold} data-surface="chrome" />;
+  // move when they draw. The top one is the page's banner, busy, as the desk bar is while it holds.
+  const topHold = <header className={s.phoneTopHold} data-surface="chrome" aria-busy="true" />;
   const navHold = <div className={s.phoneNavHold} />;
+  // My profile alone would span the bottom bar until the menu lands, then jump to its own slot: the bar holds instead.
+  // A failed menu still leaves My profile to reach.
+  const menuLoading = !platform && navigationState === "loading" && phoneHeader?.phoneNav !== "self-service";
   // With a session, a desktop bar draws once the reader's own read has settled too: the tenant's name sets the brand's
   // width, and the scope chip, the nav and the status segments sit after it.
   const holding = restoring || (!platform && Boolean(session.token) && profileRead.isPending);
@@ -226,20 +251,24 @@ function ConsoleLayout({
         ) : restoring ? (
           <div className={s.phoneTop} data-pinned-bar>{topHold}</div>
         ) : (
-          <div className={s.phoneTop} data-pinned-bar>
-            <Suspense fallback={topHold}>
-              <ConsolePhoneTop
-                title={phoneHeader?.title ?? currentTitle}
-                shellOwnsH1={phoneHeader?.shellOwnsH1}
-                context={phoneHeader?.context ?? (!platform ? tenantName : undefined)}
-                back={phoneHeader?.back}
-                hideActions={phoneHeader?.hideActions}
-                platform={platform}
-                displayName={displayName}
-                onSearch={onSearch}
-              />
-            </Suspense>
-          </div>
+          <>
+            <div className={s.phoneTop} data-pinned-bar>
+              <Suspense fallback={topHold}>
+                <ConsolePhoneTop
+                  title={phoneHeader?.title ?? currentTitle}
+                  shellOwnsH1={phoneHeader?.shellOwnsH1}
+                  context={phoneHeader?.context ?? (!platform ? tenantName : undefined)}
+                  back={phoneHeader?.back}
+                  hideActions={phoneHeader?.hideActions}
+                  platform={platform}
+                  displayName={displayName}
+                  onSearch={onSearch}
+                />
+              </Suspense>
+            </div>
+            {/* The menu's own failure, with its retry, beside the bar as on a desktop. */}
+            {navigationNotice ? <div className={s.phoneNotice}>{navigationNotice}</div> : null}
+          </>
         )}
 
         {showOutage || showStale ? (
@@ -265,7 +294,7 @@ function ConsoleLayout({
               />
             ) : null}
           </div>
-        ) : restoring ? (
+        ) : restoring || menuLoading ? (
           <div className={s.phoneNav} data-pinned-bar>{navHold}</div>
         ) : (
           <div className={s.phoneNav} data-pinned-bar>
@@ -273,6 +302,9 @@ function ConsoleLayout({
               <ConsolePhoneBottom
                 links={allLinks}
                 inboxCount={inboxCount}
+                inboxExact={inboxExact}
+                inboxName={inboxName}
+                inboxDescription={inboxDescription}
                 approvalsCount={approvalsCount}
                 platform={platform}
                 mode={phoneHeader?.phoneNav}

@@ -26,6 +26,7 @@ vi.mock("react", async original => ({ ...await original<typeof import("react")>(
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to }: { children: ReactNode; to: string }) => <a href={to}>{children}</a>, Outlet: () => child(),
   useNavigate: () => vi.fn(), useLocation: () => ({ pathname: locationState.pathname }),
+  useRouterState: ({ select }: { select: (state: { status: string }) => unknown }) => select({ status: "idle" }),
   useRouter: () => ({ routesByPath: Object.fromEntries([
     ["/", "signed-in"], ["/requests", "signed-in"], ["/people/requests", "signed-in"],
     ["/people", { domain: "hr_basic", level: "view" }], ["/audit/support-access", "signed-in"],
@@ -230,7 +231,8 @@ test.each([...experiences.map(experience => experience.id), "alternate"])("the %
       ? <ShellFrame layout={AlternateLayout}>{screen}</ShellFrame> : <Pack>{screen}</Pack>}</QueryClientProvider>);
     expect(html).toMatch(/<main\b[^>]*data-console-scope=""/);
     const expectedLandmarks = layout === "console"
-      ? (["shell.jump", "account.name.unset", "shell.tabs.label", "shell.status.label"] as const)
+      // Console names its search by the words it shows, after the name the phone bar and the palette use.
+      ? (["shell.jumpLabel", "shell.searchHint", "account.name.unset", "shell.tabs.label", "shell.status.label"] as const)
       : (["shell.jump", "shell.locale", "shell.theme.toDark", "shell.logout", "account.name.unset"] as const);
     for (const key of expectedLandmarks) expect(html).toContain(t(key));
     expect(html.match(/<main\b/g)).toHaveLength(1);

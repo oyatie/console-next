@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { AxeBuilder } from "@axe-core/playwright";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { expect as element } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
@@ -27,7 +28,7 @@ beforeAll(async () => {
       document.documentElement.dataset.experience = 'console';
       const rootRoute = createRootRoute({ component: () => h('div', null,
         h(ConsoleTopBar, { platform: false, restoring: false, defaultHref: '/', navigationState: 'ready', navigationNotice: null,
-          navItems: [], displayName: 'Test', onNavigate: () => {}, onSearch: () => {} }),
+          navItems: [], displayName: 'Dana Kim · HR Manager', onNavigate: () => {}, onSearch: () => {} }),
         h('main', null, h(SingleKeysCheck))) });
       const router = createRouter({ routeTree: rootRoute, history: createMemoryHistory({ initialEntries: ['/'] }) });
       createRoot(document.getElementById('root')).render(h(QueryClientProvider, { client: new QueryClient() }, h(RouterProvider, { router })));
@@ -61,7 +62,7 @@ test("the brand is an 18px mark drawn on the bar itself, its strokes in the bar'
 
 test("the search button's / follows the single-key switch at once, in this tab and from another", async () => {
   const { page } = mounted;
-  const search = page.getByRole("button", { name: t("shell.jump"), exact: true });
+  const search = page.getByRole("banner").getByRole("button", { name: t("shell.searchHint") });
   const hint = search.locator("kbd");
   const toggle = page.getByRole("switch", { name: t("account.singleKeys") });
 
@@ -82,4 +83,20 @@ test("the search button's / follows the single-key switch at once, in this tab a
   await element(search).toHaveAttribute("aria-keyshortcuts", "Meta+K Control+K /");
   await element(hint).toHaveCount(1);
   await element(toggle).toBeChecked();
+});
+
+test("every bar control named apart from its text still says its visible text, so a spoken label reaches it", async () => {
+  const { page } = mounted;
+  // The account menu draws in place of its link once its code has loaded; both are checked.
+  await page.locator("#console-top-account").waitFor();
+  for (const theme of ["light", "dark"]) {
+    await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
+    const scan = await new AxeBuilder({ page }).include('header[data-surface="chrome"]').withRules(["label-content-name-mismatch", "button-name", "link-name"]).analyze();
+    expect(scan.violations.map(v => `${v.id}: ${v.nodes.map(n => n.html).join(" | ")}`), theme).toEqual([]);
+  }
+  // The search keeps the name the phone bar and the palette give it, followed by the hint it shows.
+  const search = page.getByRole("banner").getByRole("button", { name: t("shell.searchHint") });
+  await element(search).toHaveAccessibleName(`${t("shell.jumpLabel")} ${t("shell.searchHint")}`);
+  await element(search).toHaveAttribute("aria-haspopup", "dialog");
+  await element(page.locator("#console-top-account")).toHaveAccessibleName("Dana Kim · HR Manager");
 });

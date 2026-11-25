@@ -230,6 +230,10 @@
     background: var(--surface);
     border-block-start: 1px solid var(--border);
   }
+
+  .phoneNotice {
+    padding: var(--space-2) var(--space-4);
+  }
 }
 
 @media print {

@@ -73,6 +73,9 @@ const CERTIFICATES = "/account?sheet=certificates";
 export function ConsolePhoneBottom({
   links,
   inboxCount,
+  inboxExact = true,
+  inboxName,
+  inboxDescription,
   approvalsCount,
   platform,
   mode,
@@ -82,6 +85,10 @@ export function ConsolePhoneBottom({
 }: {
   links: readonly NavLink[];
   inboxCount?: number;
+  inboxExact?: boolean;
+  /** The to-do link's name and count description, which say the count's state when the badge cannot. */
+  inboxName?: string;
+  inboxDescription?: string;
   approvalsCount?: number;
   platform: boolean;
   mode?: "self-service";
@@ -99,13 +106,11 @@ export function ConsolePhoneBottom({
           ...(unlinked ? [] : [{ id: CERTIFICATES, href: CERTIFICATES, label: t("shell.link.certificates"), icon: FileText }]),
           { id: "/account", href: "/account", label: t("shell.link.profile"), icon: UserRound },
         ]
-      : links.map(link => ({
-          id: link.to,
-          href: link.to,
-          label: t(link.label),
-          icon: link.icon,
-          count: link.countKey === "inbox" ? inboxCount : link.countKey === "approvals" ? approvalsCount : undefined,
-        }));
+      : links.map(link =>
+          link.countKey === "inbox"
+            ? { id: link.to, href: link.to, label: t(link.label), icon: link.icon, count: inboxCount, countMore: !inboxExact, name: inboxName, description: inboxDescription }
+            : { id: link.to, href: link.to, label: t(link.label), icon: link.icon, count: link.countKey === "approvals" ? approvalsCount : undefined },
+        );
   const here = useLocation({ select: location => location.href });
   if (!platform && mode !== "self-service" && !items.some(item => item.id === "/account")) {
     items.push({ id: "/account", href: "/account", label: t("shell.profile"), icon: UserRound });
@@ -124,6 +129,8 @@ export function ConsolePhoneBottom({
           className={props.className}
           activeOptions={{ exact: item.href !== activeId }}
           aria-current={props["aria-current"]}
+          aria-label={props["aria-label"]}
+          aria-describedby={props["aria-describedby"]}
         >
           {props.children}
         </Link>

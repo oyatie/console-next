@@ -52,6 +52,26 @@ test("PhoneBottomNav renders five direct slots when <= 5 and folds excess into s
   expect(six).toContain('data-active="true"');
 });
 
+test("a slot names its label before its count, as the desk bar does, and carries a count's name and description", () => {
+  const markup = html(
+    <PhoneBottomNav
+      items={[
+        { id: "/", label: "To-dos", href: "/", icon: Home, count: 1234, countMore: true, name: "To-dos 1234+", description: "1,234 or more to-dos" },
+        { id: "/approvals", label: "Approvals", href: "/approvals", icon: ClipboardCheck, count: 4 },
+      ]}
+      renderLink={(_, props) => <a {...props}>{props.children}</a>}
+    />,
+  );
+  const [todo = "", approvals = ""] = [...markup.matchAll(/<a [^>]*>[\s\S]*?<\/a>/g)].map(match => match[0]);
+  // The content reads label, then count: "Approvals 4", never "4 Approvals".
+  expect(approvals.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()).toBe("Approvals 4");
+  expect(todo).toContain('aria-label="To-dos 1234+"');
+  expect(todo).toContain(">1,234+</data>");
+  const describedBy = todo.match(/aria-describedby="([^"]+)"/)?.[1];
+  expect(describedBy).toBeTruthy();
+  expect(markup).toContain(`<bdi id="${describedBy}" class="sr-only">1,234 or more to-dos</bdi>`);
+});
+
 test("PhoneTopBar and PhoneBottomNav add zero standing-text blocks to screens that import them", () => {
   expect(html(<PhoneBottomNav items={[]} />)).toBe("");
   const source = readFileSync("apps/web/src/ui/phone-bars/phone-bars.tsx", "utf8");
