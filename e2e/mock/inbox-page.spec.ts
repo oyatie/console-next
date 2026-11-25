@@ -247,10 +247,10 @@ for (const path of ["/", "/inbox"]) for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 });
     const mock = await mockScreen(page, screens[0], "loading");
     await page.goto(path);
-    const queue = page.getByRole("region", { name: t("home.inbox.title"), exact: true });
     if (path === "/") {
       await expect(page.getByRole("main").getByRole("status", { name: t("common.loading"), exact: true })).toBeVisible();
-      await expect(queueRows(page)).toHaveCount(0);
+      // Home draws no queue, Classic's card or Console's grid, while the read is held.
+      await expect(page.getByRole("region", { name: t("home.inbox.title"), exact: true }).or(page.getByRole("grid", { name: t("home.inbox.title"), exact: true }))).toHaveCount(0);
       mock.release();
       await expect(queueRows(page)).toHaveCount(3);
       expect(mock.unexpected).toEqual([]);
