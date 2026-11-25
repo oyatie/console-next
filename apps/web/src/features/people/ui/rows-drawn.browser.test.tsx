@@ -7,11 +7,11 @@ let mounted: MountedGallery;
 // A scrolling grid that has not drawn its rows yet, as a virtual table is on its first frame after Back.
 beforeAll(async () => {
   mounted = await mountBrowserModule({
-    slug: "table-scroll-restoration-test",
+    slug: "rows-drawn-test",
     readySelector: "[data-grid]",
     viewport: { width: 1280, height: 800 },
     moduleCode: `
-      import { whenRowsDrawn } from '/apps/web/src/features/people/ui/table-scroll-restoration.tsx';
+      import { whenRowsDrawn } from '/apps/web/src/features/people/ui/rows-drawn.ts';
       const grid = document.createElement('div');
       grid.dataset.grid = '';
       grid.style.cssText = 'height: 200px; overflow: auto';

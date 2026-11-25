@@ -26,5 +26,5 @@ test("a full-length title wraps in its cell rather than widening the table", () 
   const client = new QueryClient();
   client.setQueryData(jobTitlesQuery.queryKey, { can_manage: true, items: [{ id: "jt-1", kind: "TITLE", label, grade_rank: 10, active: true }] });
   const html = renderToStaticMarkup(<QueryClientProvider client={client}><JobTitlesPage /></QueryClientProvider>);
-  expect(html).toContain(`<span class="${sf.wrap}">${label}</span>`);
+  expect(html).toContain(`<bdi class="${sf.wrap}">${label}</bdi>`);
 });

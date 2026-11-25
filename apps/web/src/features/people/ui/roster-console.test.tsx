@@ -22,7 +22,7 @@ vi.mock("@tanstack/react-router", async original => ({
 vi.mock("../../../ui/patterns/list-record", () => ({
   ListRecord: ({ head, find, tools, list }: ListRecordProps) => <><header>{head.actions}{find}{tools}</header><section>{list}</section></>,
 }));
-vi.mock("./roster-table", () => ({ RosterTable: () => <table /> }));
+vi.mock("./roster-table", () => ({ RosterTable: () => <div role="grid" /> }));
 // Restoration runs in effects; the marker shows which grid it is bound to.
 vi.mock("./table-scroll-restoration", () => ({ TableScrollRestoration: ({ id }: { id: string }) => <i data-restores={id} /> }));
 

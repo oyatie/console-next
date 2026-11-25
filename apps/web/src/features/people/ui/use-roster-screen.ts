@@ -16,7 +16,7 @@ import { activeView, exactNumber, joinReview, parseIds, parseReview, parseStatus
 import { parseOrder, type RosterOrder } from "../domain/roster-order";
 import { useRoster } from "./use-roster";
 import { useRosterColumns } from "./use-roster-columns";
-import { whenRowsDrawn } from "./table-scroll-restoration";
+import { whenRowsDrawn } from "./rows-drawn";
 import type { ExitView } from "./exit-tabs";
 
 const route = getRouteApi("/app/people");
