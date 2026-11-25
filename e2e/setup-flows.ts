@@ -69,7 +69,7 @@ export async function typeAddress(page: Page, group: string, road: string, zip: 
   await pressUntil(c, g.getByRole("button", { name: "이 주소로 저장" }), g.getByRole("button", { name: "주소 다시 찾기" }));
 }
 
-/** A workplace's own registration facts typed by hand in the 사업장 추가 sheet (the certificate's sections). */
+/** A workplace's own registration facts typed by hand in the add-workplace sheet (the certificate's sections). */
 export async function typeCertificate(page: Page, f: { brn: string | null; name: string; road: string; zip: string }, c: C = plain) {
   await loadCatalog("ko");
   const form = workplaceSheet(page);
@@ -80,7 +80,7 @@ export async function typeCertificate(page: Page, f: { brn: string | null; name:
   await typeAddress(page, "사업장 소재지", f.road, f.zip, c);
 }
 
-/** The certificate's business and tax sections in the 사업장 추가 sheet (no NTS list on this server: the office is taken as printed). */
+/** The certificate's business and tax sections in the add-workplace sheet (no NTS list on this server: the office is taken as printed). */
 export async function typeBusiness(page: Page, c: C = plain) {
   await loadCatalog("ko");
   const form = workplaceSheet(page);
@@ -116,7 +116,7 @@ export async function registerEntity(page: Page, name: string, audit = false, c:
   await expect(page.getByRole("heading", { name: new RegExp(name), level: 1 })).toBeVisible();
 }
 
-/** The entity wizard's 사업자등록번호, found in the page body: the bar's search names 사업자등록번호 among what it finds. */
+/** The entity wizard's business registration number, found in the page body: the bar's search names that field among what it finds. */
 export const wizardBrn = (page: Page) => page.getByRole("main").getByRole("textbox", { name: ko["entityCreate.field.brn"] });
 
 /** The wizard filled as registerEntity does, up to its review step, not yet saved. */

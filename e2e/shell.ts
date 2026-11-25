@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, type Locator, type Page } from "@playwright/test";
 import { bootKo } from "../packages/i18n/src/catalogs/boot";
-import { ko } from "../packages/i18n/src/catalogs/ko";
 
 const shells = {
   baseline: { banner: ".top", account: ".top__name", accountText: ".top__name span", search: ".top__jump", searchText: ".top__jumpText", spacer: ".top__spacer" },
@@ -43,12 +42,12 @@ export const accountEntry = (page: Page) => page.getByRole("banner").locator('a[
 
 /** Opens My account from the bar: Classic's link does it in one press, Console's account menu and its link in two. */
 export async function openAccount(page: Page, click: (target: Locator) => Promise<void> = target => target.click()) {
-  await click(accountEntry(page));
+  const onAccount = () => new URL(page.url()).pathname === "/account";
   const menuLink = page.getByRole("banner").getByRole("link", { name: bootKo["shell.account"], exact: true });
-  const heading = page.getByRole("heading", { name: ko["account.title"], exact: true, level: 1 });
-  await expect(heading.or(menuLink)).toBeVisible();
-  if (await menuLink.isVisible()) await click(menuLink);
-  await expect(heading).toBeVisible();
+  await click(accountEntry(page));
+  await expect.poll(async () => onAccount() || await menuLink.isVisible()).toBe(true);
+  if (!onAccount()) await click(menuLink);
+  await expect(page).toHaveURL(/\/account$/);
 }
 
 /** A session that ends in use keeps its screen, bar included, under the sign-in-again dialog, which only makes it inert. */

@@ -54,6 +54,7 @@ test("tenant facts drive lifecycle, account counts and disabled deletion; first-
   await expect(row).not.toContainText("운영 중");
   await expect(row).toContainText("패스키 등록 0");
   await row.click();
+  await expect(vendor).toHaveURL(/[?&]sel=/);
   await expect(vendor.getByRole("complementary", { name })).toContainText("활성 0명");
 
   const listPath = "**/api/platform/orgs";
