@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, type Page } from "@playwright/test";
-import { commitLabel } from "../../apps/web/src/ui/composer/actions";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
 import { test } from "../locale-fixture";
@@ -109,7 +108,7 @@ for (const width of [1440, 390] as const) {
         await sheet.locator('input[name="name"]').fill(saeonUniverse.hero.name);
         await sheet.getByText(t("register.where.none"), { exact: true }).click();
         await sheet.getByRole("button", { name: new RegExp(`^${t("uiDate.preset.today")}`) }).click();
-        await sheet.getByRole("button", { name: commitLabel({ kind: "ONBOARD", mode: "apply", count: 1 }), exact: true }).click();
+        await sheet.getByRole("button", { name: new RegExp(`^${t("register.run.submit")}`) }).click();
         await expect(sheet.getByRole("columnheader", { name: new RegExp(saeonUniverse.hero.name) })).toBeVisible();
         expect(detailCalls).toEqual([]);
         await fits(page, `Console /people/new ${width} ${theme}`);

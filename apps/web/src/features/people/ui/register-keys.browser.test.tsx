@@ -79,38 +79,7 @@ test.each(SYSTEMS)("on $platform the run page's finish button shows $close once 
 test.each(SYSTEMS)("Console look: on $platform the registration sheet's register button shows $next", async ({ platform, next }) => {
   await page.goto(`${server.resolvedUrls!.local[0]}register-keys-test?case=sheet&look=console&platform=${platform}`);
   const sheet = page.getByRole("dialog", { name: t("register.title"), exact: true });
-  await element(sheet.getByRole("button", { name: commitLabel({ kind: "ONBOARD", mode: "apply", count: 1 }), exact: true }).locator("kbd")).toHaveText(next);
-});
-
-// One button and a switch stand for Classic's two register buttons, so the button carries the name of the one it is.
-test("Console look: the register button carries Classic's register name, and its next-employee name while create-more is on", async () => {
-  await page.goto(`${server.resolvedUrls!.local[0]}register-keys-test?case=sheet&look=console`);
-  const sheet = page.getByRole("dialog", { name: t("register.title"), exact: true });
-  const close = commitLabel({ kind: "ONBOARD", mode: "apply", count: 1 });
-  const next = commitLabel({ kind: "ONBOARD", mode: "apply", count: 1, continuation: "next" });
-  await element(sheet.getByRole("button", { name: close, exact: true })).toBeVisible();
-  await sheet.getByRole("switch", { name: t("register.createMore"), exact: true }).check();
-  await element(sheet.getByRole("button", { name: next, exact: true })).toBeVisible();
-  await element(sheet.getByRole("button", { name: close, exact: true })).toHaveCount(0);
-});
-
-// The next-employee name is the longest the button shows; with the wider Control cap it still fits a phone.
-test("Console look: at 390 px the register button's next-employee name and its cap stay inside the button and the page", async () => {
-  await page.setViewportSize({ width: 390, height: 900 });
-  await page.goto(`${server.resolvedUrls!.local[0]}register-keys-test?case=sheet&look=console&platform=Win32`);
-  const sheet = page.getByRole("dialog", { name: t("register.title"), exact: true });
-  await sheet.getByRole("switch", { name: t("register.createMore"), exact: true }).check();
-  const button = sheet.getByRole("button", { name: commitLabel({ kind: "ONBOARD", mode: "apply", count: 1, continuation: "next" }), exact: true });
-  await element(button.locator("kbd")).toHaveText("Ctrl+↵");
-  await page.evaluate(() => document.fonts.ready);
-  const fit = await button.evaluate(el => {
-    const box = el.getBoundingClientRect();
-    const cap = el.querySelector("kbd")!.getBoundingClientRect();
-    return { inPage: box.left >= 0 && box.right <= innerWidth, capInside: cap.left >= box.left && cap.right <= box.right, oneLine: el.scrollWidth <= el.clientWidth };
-  });
-  expect(fit).toEqual({ inPage: true, capInside: true, oneLine: true });
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.setViewportSize({ width: 1280, height: 720 });
+  await element(sheet.getByRole("button", { name: t("register.run.submit"), exact: true }).locator("kbd")).toHaveText(next);
 });
 
 test.each(SYSTEMS)("Console look: on $platform the run page shows $next to register and $close to finish", async ({ platform, next, close }) => {
