@@ -1,7 +1,7 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "./a11y";
-import { tenantOnboardSubmit, tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
+import { tenantNameField, tenantOnboardSubmit, tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
 import { idleOnServer, psql, settled, sinceServerInput } from "./idle-fixture";
 import { tenantInSetup } from "./setup-flows";
 import { box, revealUnit } from "./structure-flows";
@@ -23,7 +23,7 @@ async function tenantAdmin(browser: Browser, slug: string, name: string) {
   const v = await vendorPage(browser);
   await go(v, "/platform");
   await v.getByRole("button", { name: "고객 계정 개설" }).click();
-  await v.getByLabel("고객 이름").fill(name);
+  await tenantNameField(v).fill(name);
   const id = unique(slug);
   await tenantSlugField(v).fill(id);
   await tenantOnboardSubmit(v).click();

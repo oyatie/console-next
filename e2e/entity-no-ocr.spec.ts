@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { go, option } from "./flows";
+import { wizardBrn } from "./setup-flows";
 import { openTenant } from "./helpers/tenant";
 
 // Uploads remain evidence; the MVP does not read their contents or look up registration details.
@@ -30,7 +31,7 @@ test("an uploaded 사업자등록증 fills nothing, and the screens never promis
   await expect(original).toContainText(PDF.name);
 
   // Negative: every certificate field is still empty after the upload.
-  for (const field of [admin.getByLabel("사업자등록번호"), admin.getByRole("textbox", { name: /^법인등록번호/ }), admin.getByRole("textbox", { name: /^대표자/ }), admin.getByLabel("개업연월일"), admin.getByLabel("관할 세무서")])
+  for (const field of [wizardBrn(admin), admin.getByRole("textbox", { name: /^법인등록번호/ }), admin.getByRole("textbox", { name: /^대표자/ }), admin.getByLabel("개업연월일"), admin.getByLabel("관할 세무서")])
     await expect(field).toHaveValue("");
   await expectAccessible(admin, "entity wizard: original uploaded, nothing filled");
 });

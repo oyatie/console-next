@@ -3,7 +3,7 @@ import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "./a11y";
 import { go, option, routeReady } from "./flows";
 import { openTenant } from "./helpers/tenant";
-import { REGISTRATION_FIXTURES, typeAddress } from "./setup-flows";
+import { wizardBrn, REGISTRATION_FIXTURES, typeAddress } from "./setup-flows";
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -33,7 +33,7 @@ test("the 법인 wizard scrolls inside the shell, never the document (W06)", { t
   await a.getByLabel("법인명(단체명)").fill("주식회사 새온바이오");
   await a.getByRole("button", { name: "다음", exact: true }).click();
   await a.locator('input[type="file"]').setInputFiles(PDF);
-  await a.getByLabel("사업자등록번호").fill(REGISTRATION_FIXTURES.primary.brn);
+  await wizardBrn(a).fill(REGISTRATION_FIXTURES.primary.brn);
   await a.getByLabel("개업연월일").fill("2024-09-01");
   await typeAddress(a, "사업장 소재지", "충청북도 청주시 흥덕구 오송읍 오송생명로 21", "28160");
   await a.getByRole("textbox", { name: /^업태/ }).first().fill("제조업");

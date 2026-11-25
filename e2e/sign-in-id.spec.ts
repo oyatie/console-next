@@ -3,7 +3,7 @@ import { josa } from "@console/i18n";
 import { atPhoneWidth, expectAccessible } from "./a11y";
 import { OTP_LENGTH } from "@console/api";
 import { authenticatorOf, virtualAuthenticator } from "./auth";
-import { tenantOnboardSubmit, acceptConsent, tenantSlugField, firstSignIn, go, newContext, option, stepUp, takeCode, unique, vendorPage, vendorStepUp } from "./flows";
+import { tenantNameField, tenantOnboardSubmit, acceptConsent, tenantSlugField, firstSignIn, go, newContext, option, stepUp, takeCode, unique, vendorPage, vendorStepUp } from "./flows";
 import { forgetResize } from "./stability";
 import { expectSignedIn, signOut as signOutOfShell } from "./shell";
 
@@ -23,7 +23,7 @@ async function tenant(browser: Browser, slug: string) {
   const v = await vendorPage(browser);
   await go(v, "/platform");
   await v.getByRole("button", { name: "고객 계정 개설" }).click();
-  await v.getByLabel("고객 이름").fill(`${slug} 고객`);
+  await tenantNameField(v).fill(`${slug} 고객`);
   await tenantSlugField(v).fill(domain);
   await tenantOnboardSubmit(v).click();
   return { admin: await firstSignIn(browser, await takeCode(v)), domain };
@@ -165,7 +165,7 @@ test("sign-in ID: a security key without a resident credential enrols, signs in 
   const v = await vendorPage(browser);
   await go(v, "/platform");
   await v.getByRole("button", { name: "고객 계정 개설" }).click();
-  await v.getByLabel("고객 이름").fill("seckeyid 고객");
+  await tenantNameField(v).fill("seckeyid 고객");
   await tenantSlugField(v).fill(domain);
   await tenantOnboardSubmit(v).click();
   const code = await takeCode(v);

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "./a11y";
-import { tenantOnboardSubmit, vendorPage, unique, tenantSlugField } from "./flows";
+import { tenantNameField, tenantOnboardSubmit, vendorPage, unique, tenantSlugField } from "./flows";
 import { expect, test, type Page } from "@playwright/test";
 
 // B-01: a white screen, from any cause, reaches our own origin as a beacon (POST /api/v1/client-errors) instead of
@@ -89,7 +89,7 @@ test("a mutation 500 displays the same server reference that ops resolves to the
   try {
     await page.goto("/platform");
     await page.getByRole("button", { name: "고객 계정 개설" }).click();
-    await page.getByLabel("고객 이름").fill(unique("지원참조회사"));
+    await tenantNameField(page).fill(unique("지원참조회사"));
     await tenantSlugField(page).fill(unique("supportref"));
     let envelope: { support_ref: string; trace_id: string } | undefined;
     await page.route("**/api/platform/orgs", async (route) => {

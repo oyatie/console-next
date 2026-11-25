@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "./a11y";
 import { authenticatorOf, virtualAuthenticator } from "./auth";
-import { tenantOnboardSubmit, tenantSlugField, firstSignIn, go, kstDate, option, takeCode, unique, vendorPage } from "./flows";
+import { tenantNameField, tenantOnboardSubmit, tenantSlugField, firstSignIn, go, kstDate, option, takeCode, unique, vendorPage } from "./flows";
 import { pickKind, setupCompany, setupRail, startOperations, tenantInSetup, typeAddress, workplaceSheet } from "./setup-flows";
 import { fillRegister, openRegistered, pressRegister, registerSheet } from "./helpers/register";
 import { addDepartments, revealUnit } from "./structure-flows";
@@ -62,7 +62,7 @@ test("go-live counts what the panels show and fixes each record in place; the te
   const v = await vendorPage(browser);
   await go(v, "/platform");
   await v.getByRole("button", { name: "고객 계정 개설" }).click();
-  await v.getByLabel("고객 이름").fill(ACCOUNT);
+  await tenantNameField(v).fill(ACCOUNT);
   await tenantSlugField(v).fill(unique("setup-truth"));
   await tenantOnboardSubmit(v).click();
   const admin = await firstSignIn(browser, await takeCode(v));
