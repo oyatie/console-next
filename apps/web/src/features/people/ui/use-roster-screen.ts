@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
+import type { EmployeeViewFilters } from "@console/api/pending";
 import { rosterWindowQuery } from "../api/roster";
 import { FOCUS_SETTLE_MS, editable, rowById } from "../../../ui/long-table/row-keys";
 import { NO_SELECTION, type Selection } from "../../../ui/long-table/selection";
@@ -100,6 +101,14 @@ export function useRosterScreen() {
     setFilter({ status: "current", review: [], unit: null, ids: null });
     focusSoon("people-title");
   };
+  // A saved view holds the URL filters; applying one starts over from them, as a reset does.
+  const viewFilters: EmployeeViewFilters = { status, review: joinReview(review), unit, sort };
+  const applyView = (filters: EmployeeViewFilters) => {
+    setSel(NO_SELECTION);
+    find("");
+    setFilter({ status: parseStatus(filters.status), review: parseReview(filters.review), unit: filters.unit ?? null, sort: parseOrder(filters.sort) });
+    focusSoon("people-title");
+  };
   const closePaste = () => void navigate({ search: (prev) => ({ ...prev, bulk: undefined }), replace: true });
   const bulkDone = (message: string, recordedBatch?: { id: string; count: number }) => {
     setSel(NO_SELECTION);
@@ -164,7 +173,7 @@ export function useRosterScreen() {
     open, openUnit, select, selectRelated, full, expand, restore, unitTrigger, unitItems, selectedUnit,
     sort, q, exitView, setExitView, findSlot, setFindSlot, sel, setSel,
     recorded, batch, setBatch, rescinding, setRescinding, setRecorded, rescindReady,
-    r, view, prefetch, setFilter, find, reset, closePaste, bulkDone, openRecord,
+    r, view, prefetch, setFilter, find, reset, viewFilters, applyView, closePaste, bulkDone, openRecord,
     scroller, rowCount, scrollRef, onRowFocus, filtered, customFilters, sameName,
     onRowAction: (id: string) => (id === open ? openRecord(id) : (remember(key, q, { row: id }), select(id))),
   };
