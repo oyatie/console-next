@@ -8,6 +8,7 @@ export const enStatutory = {
   "statutory.empty": "No filings to record", "statutory.emptyReason": "Check hiring, exit, leave and return records in People.", "statutory.openPeople": "Open People",
   "statutory.noWorkers": "No worker register for this date", "statutory.noWorkersReason": "Check the workplace and date or register an employee.", "statutory.noSite": "Select a workplace", "statutory.noSiteReason": "Select a workplace or register one in Organization structure.", "statutory.openStructure": "Open organization structure",
   "statutory.employee": "Employee", "statutory.employeeNumber": "Employee number", "statutory.event": "Filing", "statutory.date": "Effective date", "statutory.deadline": "Filing deadline", "statutory.evidence": "Completion evidence", "statutory.action": "Action",
+  "statutory.openCol": "Open", "statutory.openRow": "Open {insurer} {kind} for {name}",
   "statutory.NPS": "National pension", "statutory.NHIS": "Health insurance", "statutory.EI": "Employment insurance", "statutory.IACI": "Industrial accident insurance",
   "statutory.ACQUIRE": "Acquisition filing", "statutory.LOSE": "Loss filing", "statutory.LEAVE": "Leave filing", "statutory.RESUME": "Return filing",
   "statutory.days": "D-{days, number}", "statutory.overdue": "Overdue · {days, number} days", "statutory.dueToday": "Due today", "statutory.unknown": "Deadline unverified", "statutory.hold": "Before labor attorney review · holiday rollover unverified",

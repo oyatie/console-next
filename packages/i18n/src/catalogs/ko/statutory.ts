@@ -32,6 +32,8 @@ export const koStatutory: Record<keyof typeof enStatutory, string> = {
   "statutory.deadline": "기한",
   "statutory.evidence": "완료 증빙",
   "statutory.action": "처리",
+  "statutory.openCol": "열기",
+  "statutory.openRow": "{name} {insurer} {kind} 열기",
   "statutory.NPS": "국민연금",
   "statutory.NHIS": "건강보험",
   "statutory.EI": "고용보험",
