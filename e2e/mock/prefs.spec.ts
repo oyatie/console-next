@@ -189,9 +189,17 @@ for (const [experience, light, dark, primaryLight, primaryDark] of experiences) 
         await accountBtn.click();
         const accountMenu = page.getByRole("group", { name: t("shell.account"), exact: true });
         await expect(accountMenu).toBeVisible();
-        for (const key of ["shell.locale.ko", "shell.locale.en", "shell.theme.light", "shell.theme.dark", "shell.logout"] as const) {
+        await expect(accountMenu.getByRole("combobox", { name: t("shell.locale"), exact: true })).toBeVisible();
+        for (const key of [theme === "dark" ? "shell.theme.toLight" : "shell.theme.toDark", "shell.logout"] as const) {
           await expect(accountMenu.getByRole("button", { name: t(key), exact: true })).toBeVisible();
         }
+        await fits(page, `${experience}/${theme}/${screen.key}/${width} account menu`);
+        // The menu hangs from the trigger's end edge, so it overflows the start edge, which adds no page scroll.
+        const menuBox = (await accountMenu.boundingBox())!;
+        expect(menuBox.x, "account menu stays on screen").toBeGreaterThanOrEqual(0);
+        expect(menuBox.x + menuBox.width, "account menu stays on screen").toBeLessThanOrEqual(width);
+        // The open menu covers page targets for a moment, which axe would count as undersized; the page is scanned closed below.
+        await expectAxe(page, `${experience}/${theme}/${screen.key}/${width} account menu`, { include: "header" });
         await page.keyboard.press("Escape");
         await expect(accountMenu).toBeHidden();
       } else {
@@ -216,3 +224,20 @@ for (const [experience, light, dark, primaryLight, primaryDark] of experiences) 
     });
   }
 }
+
+// Console keeps the language select in its account menu. A switch remounts the app, which closes the menu, so focus
+// goes back to the menu's trigger rather than to the page.
+test("console account menu switches the language with the shared select and hands focus back to its trigger", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript(() => localStorage.setItem("console.experience", "console"));
+  const fixture = await mockScreen(page, screens[0], "populated");
+  await page.goto(screens[0].path);
+  await expect(page.getByRole("main").getByRole("heading", { level: 1 })).toBeVisible({ timeout: 20_000 });
+  const trigger = page.locator("#console-top-account");
+  await page.getByRole("banner").getByRole("button", { name: user.display_name, exact: true }).click();
+  await page.getByRole("group", { name: t("shell.account"), exact: true }).getByRole("combobox", { name: t("shell.locale"), exact: true }).selectOption("en");
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await expect(trigger).toHaveAttribute("aria-expanded", "false");
+  await expect(trigger).toBeFocused();
+  expect(fixture.unexpected).toEqual([]);
+});

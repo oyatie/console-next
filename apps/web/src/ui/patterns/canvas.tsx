@@ -11,8 +11,8 @@ const isSidePane = (value: SidePaneSpec | ReactNode | false | null | undefined):
   typeof value === "object" && value !== null && !("$$typeof" in value) && "id" in value && "onClose" in value && "label" in value;
 
 /**
- * Canvas (`P10`) arrangement: optional `toolbar` strip, viewport-locked `canvas` stage inside `PaneGrid`, and
- * optional `inspector` (`SidePaneSpec` or docked `<aside>`).
+ * Canvas (`P10`) arrangement: optional `toolbar` strip (kept through a failed read), viewport-locked `canvas` stage
+ * inside `PaneGrid`, and optional `inspector` (`SidePaneSpec` or docked `<aside>`).
  */
 export function CanvasPattern({
   q,
@@ -44,6 +44,7 @@ export function CanvasPattern({
       q={q}
       head={head}
       tabs={tabs}
+      toolbar={shownSlot(toolbar) ? <div className={s.toolbar}>{toolbar}</div> : null}
       overlays={overlays}
       queryLayout="grid"
       detailActive={Boolean(paneInspector)}
@@ -55,7 +56,6 @@ export function CanvasPattern({
     >
       {() => (
         <div className={s.shell} data-docked-inspector={Boolean(dockedInspector) || undefined}>
-          {shownSlot(toolbar) ? <div className={s.toolbar}>{toolbar}</div> : null}
           <div className={s.stageArea}>
             <div className={s.paneWrap}>
               <PaneGrid
