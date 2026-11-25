@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { signOutHere } from "../../features/account/api";
@@ -28,15 +28,15 @@ export function ConsoleAccountMenu({
 
   useEffect(() => {
     if (!open) return;
-    const panel = panelRef.current;
-    panel?.querySelector<HTMLElement>("a, button")?.focus();
+    const wrap = wrapRef.current;
+    panelRef.current?.querySelector<HTMLElement>("a, button")?.focus();
     const onPointerDown = (event: PointerEvent) => {
-      if (wrapRef.current && event.target instanceof Node && !wrapRef.current.contains(event.target)) {
+      if (wrap && event.target instanceof Node && !wrap.contains(event.target)) {
         setOpen(false);
       }
     };
-    // Escape from any control in the menu, the language select included, closes it back to its trigger.
-    const onPanelKey = (event: globalThis.KeyboardEvent) => {
+    // Escape from the trigger or any control in the menu, the language select included, closes it back to the trigger.
+    const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || isImeKey(event)) return;
       event.preventDefault();
       event.stopPropagation();
@@ -44,20 +44,12 @@ export function ConsoleAccountMenu({
       btnRef.current?.focus();
     };
     document.addEventListener("pointerdown", onPointerDown);
-    panel?.addEventListener("keydown", onPanelKey);
+    wrap?.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("pointerdown", onPointerDown);
-      panel?.removeEventListener("keydown", onPanelKey);
+      wrap?.removeEventListener("keydown", onKey);
     };
   }, [open]);
-
-  const onEscape = (event: KeyboardEvent<HTMLElement>) => {
-    if (!open || event.key !== "Escape" || isImeKey(event)) return;
-    event.preventDefault();
-    event.stopPropagation();
-    setOpen(false);
-    btnRef.current?.focus();
-  };
 
   const onLogout = async () => {
     setOpen(false);
@@ -74,7 +66,6 @@ export function ConsoleAccountMenu({
         className={m.accountBtn}
         aria-label={name}
         aria-expanded={open}
-        onKeyDown={onEscape}
         onClick={() => setOpen(prev => !prev)}
       >
         <Avatar name={name} size="sm" tone="accent" />
