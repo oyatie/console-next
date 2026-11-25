@@ -12,6 +12,7 @@ import { guardRawIds } from "./raw-id-guard";
 import { fillRegister, openRegistered, pressRegister, receiptOf, registerSheet } from "./helpers/register";
 import { expectSuccess } from "./helpers/setup-response";
 import { bootKo } from "../packages/i18n/src/catalogs/boot";
+import { ko } from "../packages/i18n/src/catalogs/ko";
 import { redirectTargets } from "./helpers/route-list";
 import { accountControl, expectSignedIn } from "./shell";
 
@@ -53,11 +54,17 @@ export async function newContext(browser: Browser, contextOptions: Pick<BrowserC
   return context;
 }
 
-/** The tenant slug was called a domain in current UI copy and an identifier on the shipped UI. */
-export const tenantSlugField = (scope: Page | Locator) => scope.getByLabel(/(?:회사 )?도메인|식별자/);
+/**
+ * The tenant-opening modal. Its fields are found inside it: the platform list beside it names rows, checkboxes and an
+ * open record after the tenants other tests made, and any of those names may contain a field's label.
+ */
+export const tenantOnboardDialog = (page: Page) => page.getByRole("dialog", { name: ko["tenants.create"], exact: true });
+export const tenantNameField = (page: Page) => tenantOnboardDialog(page).getByRole("textbox", { name: ko["tenants.form.name"] });
+/** The company domain in the tenant-opening modal, or in `scope` (the domain rename dialog). A Locator has page(). */
+export const tenantSlugField = (scope: Page | Locator) => ("page" in scope ? scope : tenantOnboardDialog(scope)).getByRole("textbox", { name: ko["tenants.form.slug"] });
 
 /** The onboarding action belongs to its named modal, separate from the page opener. */
-export const tenantOnboardSubmit = (page: Page) => page.getByRole("dialog", { name: "고객 계정 개설", exact: true }).getByRole("button", { name: "개설", exact: true });
+export const tenantOnboardSubmit = (page: Page) => tenantOnboardDialog(page).getByRole("button", { name: ko["tenants.form.submit"], exact: true });
 
 // `audit`: run axe on the screens a helper passes through. Only the specs that test those screens
 // (onboarding, recovery) pass true; everywhere else they are set-up steps.
@@ -183,9 +190,10 @@ export async function passkeyLogin(page: Page) {
 
 /** Reads the code a dialog shows exactly once, then closes it (an account code is "delivered", a tenant code is closed). */
 export async function takeCode(page: Page, audit = false): Promise<string> {
-  await expect(page.getByRole("dialog").filter({ has: page.getByLabel("일회용 코드") })).toBeVisible({ timeout: test.info().timeout });
+  const secret = page.getByRole("dialog").getByLabel(bootKo["common.oneTimeCode"], { exact: true });
+  await expect(secret).toBeVisible({ timeout: test.info().timeout });
   if (audit) await expectAccessible(page, "one-time code dialog");
-  const code = (await page.getByLabel("일회용 코드").textContent())!.trim();
+  const code = (await secret.textContent())!.trim();
   await page.getByRole("button", { name: /^(코드 전달 완료|코드 닫기)$/ }).click();
   return code;
 }
