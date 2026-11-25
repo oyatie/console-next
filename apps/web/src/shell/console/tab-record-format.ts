@@ -15,13 +15,21 @@ type RecordKind =
   | "certificate"
   | "notice"
   | "accessRole"
-  | "accessPerson";
+  | "accessPerson"
+  | "attendanceScope";
 
 export type RouteTabMeta = {
   title: string;
   isFallback: boolean;
-  recordSpec: (CachedRecordSpec & { kind: RecordKind }) | null;
+  /** `node`: the one record of a collection read that the title names, which then follows the route's own title. */
+  recordSpec: (CachedRecordSpec & { kind: RecordKind; node?: string }) | null;
 };
+
+/** A YYYY-MM month as its month alone, as the tab titles draw it, or null when it is not one. */
+export function monthOnly(month: string | null | undefined): string | null {
+  const name = fmtMonth(month, "name");
+  return name === "—" ? null : name;
+}
 
 function safeDecode(segment: string): string {
   try {
@@ -153,8 +161,9 @@ export function resolveDynamicRouteMeta(path: string): RouteTabMeta | null {
   return null;
 }
 
-export function formatRecordTitle(kind: RecordKind, data: unknown, locale: string): string | null {
+export function formatRecordTitle(spec: { kind: RecordKind; node?: string }, data: unknown, locale: string): string | null {
   if (!data || typeof data !== "object") return null;
+  const { kind } = spec;
   if (kind === "accessRole" && Array.isArray(data)) {
     const latest = (data as Array<{ name_ko?: string | null; name_en?: string | null; version?: number }>)
       .reduce((best, cur) => (!best || (cur.version ?? 0) >= (best.version ?? 0) ? cur : best), undefined as { name_ko?: string | null; name_en?: string | null; version?: number } | undefined);
@@ -184,7 +193,10 @@ export function formatRecordTitle(kind: RecordKind, data: unknown, locale: strin
     }
     case "approval": {
       const docNo = typeof rec.document_no === "string" ? rec.document_no.trim() : "";
-      const title = typeof rec.title === "string" ? rec.title.trim() : "";
+      // The kind of document, not its long title, follows the number, so the tab reads whole.
+      const source = rec.source as { label?: unknown } | undefined;
+      const kindLabel = typeof source?.label === "string" ? source.label.trim() : "";
+      const title = kindLabel || (typeof rec.title === "string" ? rec.title.trim() : "");
       if (docNo && title) return `${docNo} ${title}`;
       return docNo || title || null;
     }
@@ -194,8 +206,13 @@ export function formatRecordTitle(kind: RecordKind, data: unknown, locale: strin
     }
     case "payrollRun": {
       const run = rec.run as { attribution_month?: string | null } | undefined;
-      const month = run?.attribution_month?.trim();
-      return month ? t("shellRoutes.payrollRunMonth", { month: fmtMonth(month) }) : null;
+      const month = monthOnly(run?.attribution_month?.trim());
+      return month ? t("shellRoutes.payrollRunMonth", { month }) : null;
+    }
+    case "attendanceScope": {
+      const nodes = Array.isArray(rec.nodes) ? (rec.nodes as Array<{ id?: unknown; name?: unknown }>) : [];
+      const name = nodes.find(node => node.id === spec.node)?.name;
+      return typeof name === "string" && name.trim() ? name.trim() : null;
     }
     case "certificate": {
       const no = typeof rec.certificate_no === "string" ? rec.certificate_no.trim() : "";

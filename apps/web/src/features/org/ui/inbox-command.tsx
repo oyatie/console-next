@@ -10,7 +10,7 @@ import { CommandError } from "../../../lib/react/command-error";
 import { QueryState } from "../../../lib/react/query-state";
 import { ORG_READS } from "../../../reference/org/api";
 import { Button } from "../../../ui/button/button";
-import { Chip } from "../../../ui/chip";
+import { TurnChip } from "../../../ui/chip";
 import { Dialog } from "../../../ui/dialog";
 import { commitLabel } from "../../../ui/composer/actions";
 import { changeCommands, changeQuery } from "../api";
@@ -44,7 +44,7 @@ export function InboxCommand({
   if (command === "approve" && canDecide === false) return null;
   const disabled = !detail.isSuccess || detail.isPending || detail.isFetching || action.isPending;
   if (command === "approve") return <div className="row">
-    {step && <Chip tone="info">{t("orgChange.turn", { role })}</Chip>}
+    {step && <TurnChip>{t("orgChange.turn", { role })}</TurnChip>}
     <Button size="sm" disabled={disabled || !step} onClick={() => action.mutate(undefined)}>{commitLabel({ kind: "orgChange", mode: "approve" })}</Button>
     <CommandError error={action.error} />
   </div>;

@@ -16,7 +16,7 @@ import { focusSoon } from "../lib/react/announce";
 import { useCommand } from "../lib/react/command";
 import { CommandError } from "../lib/react/command-error";
 import { QueryState } from "../lib/react/query-state";
-import { Chip } from "../ui/chip";
+import { TurnChip } from "../ui/chip";
 import { DecisionPane } from "../ui/decision-pane/decision-pane";
 import { KeyValue } from "../ui/key-value/key-value";
 import { PaneHead } from "../ui/pane-grid/pane-grid";
@@ -89,7 +89,7 @@ export function ApprovalRunWorklistBody({
               status={
                 currentStep || dueLabel ? (
                   <>
-                    {currentStep ? <Chip tone="info">{t("orgChange.turn", { role: currentStep.label })}</Chip> : null}
+                    {currentStep ? <TurnChip>{t("orgChange.turn", { role: currentStep.label })}</TurnChip> : null}
                     {dueLabel}
                   </>
                 ) : undefined

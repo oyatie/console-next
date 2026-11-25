@@ -33,6 +33,31 @@ test("English dates and input follow the app language, not the browser language"
   expect(fmtMonth("2026-10")).toBe("October 2026");
 });
 
+test("the month-name style draws a business month without its year, and nothing for a month that is not one", () => {
+  i18n.set("en");
+  expect(fmtMonth("2026-10", "name")).toBe("October");
+  expect(fmtMonth("2026-01", "name")).toBe("January");
+  expect(fmtMonth("2026-13", "name")).toBe("—");
+});
+
+test("the ISO day style draws business dates as YYYY-MM-DD in Korean time, and a caller may pin the locale style", () => {
+  const localeStyle = i18n.dateStyle;
+  try {
+    i18n.dateStyle = () => "iso";
+    expect(fmtDate("2026-11-06")).toBe("2026-11-06");
+    expect(fmtDate("2026-09-30T20:00:00Z")).toBe("2026-10-01");
+    expect(fmtDate("2026-11-10", { weekday: "short" })).toBe(`2026-11-10 (${fmtWeekday("2026-11-10")})`);
+    expect(fmtDate("2026-11-06", { style: "locale" })).toBe("2026. 11. 06.");
+    expect(fmtDate("2026-02-30")).toBe("—");
+    i18n.set("en");
+    expect(fmtDate("2026-11-10", { weekday: "short" })).toBe("Tue, 2026-11-10");
+    expect(fmtDate("2026-11-06", { style: "locale" })).toBe("11/06/2026");
+  } finally {
+    i18n.dateStyle = localeStyle;
+  }
+  expect(fmtDate("2026-11-06")).toBe("11/06/2026");
+});
+
 test("all timestamps use Korean business time, 24-hour time and a KST zone label", () => {
   expect(fmtDateTime("2026-09-30T05:45:53Z")).toBe("2026. 09. 30. 14:45 KST");
   expect(fmtDateTime("2026-10-02T07:40:00Z")).toBe("2026. 10. 02. 16:40 KST");

@@ -7,7 +7,7 @@ import type { ReadState } from "../../lib/react/query-view";
 import { Button } from "../button/button";
 import { ChainStepper } from "../chain-stepper/chain-stepper";
 import { ChangeRows } from "../change-rows/change-rows";
-import { Chip } from "../chip";
+import { Chip, TurnChip } from "../chip";
 import { DecisionPane } from "../decision-pane/decision-pane";
 import { KeyValue } from "../key-value/key-value";
 import { PaneHead } from "../pane-grid/pane-grid";
@@ -186,7 +186,7 @@ export default function DocumentDecisionExample({ q = READY }: { q?: ReadState }
           />
           <div className={fx.decisionPad} data-outcome={outcome}>
             <div className={fx.turnBanner}>
-              <Chip tone="info">{t("orgChange.turn", { role: t("enum.approvalRole.finance") })}</Chip>
+              <TurnChip>{t("orgChange.turn", { role: t("enum.approvalRole.finance") })}</TurnChip>
               <bdi className="num">{dueMeta}</bdi>
             </div>
             <DecisionPane
