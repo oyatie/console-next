@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, type Locator, type Page } from "@playwright/test";
-import { bootKo } from "../packages/i18n/src/catalogs/boot";
+import { bootEn, bootKo, type BootMessageId } from "../packages/i18n/src/catalogs/boot";
 
 const shells = {
   baseline: { banner: ".top", account: ".top__name", accountText: ".top__name span", search: ".top__jump", searchText: ".top__jumpText", spacer: ".top__spacer" },
@@ -20,9 +20,13 @@ export function shell(page: Page) {
   };
 }
 
-const signOutName = { name: bootKo["shell.logout"], exact: true };
+// A bar name in either language, whole: a session may switch the screen to English, and an English bar must not fall
+// through to another collapsed button there (Classic's to-do list, Console's module overflow).
+const eitherLanguage = (id: BootMessageId) => `(?:${[bootKo[id], bootEn[id]].map(name => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`;
+const whole = (id: BootMessageId) => new RegExp(`^${eitherLanguage(id)}$`);
+const signOutName = { name: whole("shell.logout") };
 // Any name but the module overflow's, which Console's bar also shows collapsed when its modules do not fit.
-const notOverflow = new RegExp(`^(?!${bootKo["shell.nav.more"].replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$)`);
+const notOverflow = new RegExp(`^(?!${eitherLanguage("shell.nav.more")}$)`);
 
 /**
  * The signed-in account control in either style: Classic's bar holds the sign-out command itself; Console's bar
@@ -43,7 +47,7 @@ export const accountEntry = (page: Page) => page.getByRole("banner").locator('a[
 /** Opens My account from the bar: Classic's link does it in one press, Console's account menu and its link in two. */
 export async function openAccount(page: Page, click: (target: Locator) => Promise<void> = target => target.click()) {
   const onAccount = () => new URL(page.url()).pathname === "/account";
-  const menuLink = page.getByRole("banner").getByRole("link", { name: bootKo["shell.account"], exact: true });
+  const menuLink = page.getByRole("banner").getByRole("link", { name: whole("shell.account") });
   await click(accountEntry(page));
   await expect.poll(async () => onAccount() || await menuLink.isVisible()).toBe(true);
   if (!onAccount()) await click(menuLink);
@@ -53,7 +57,7 @@ export async function openAccount(page: Page, click: (target: Locator) => Promis
 /** A session that ends in use keeps its screen, bar included, under the sign-in-again dialog, which only makes it inert. */
 export async function expectSignedIn(page: Page, options?: { timeout?: number }) {
   await expect(accountControl(page)).toBeVisible(options);
-  await expect(page.getByRole("dialog", { name: bootKo["idle.reauth.title"], exact: true })).toBeHidden();
+  await expect(page.getByRole("dialog", { name: whole("idle.reauth.title") })).toBeHidden();
 }
 
 /** A control of the bar in either style: Classic's bar shows it, Console's keeps it in the account menu, opened when it is not shown. */
