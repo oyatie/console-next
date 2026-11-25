@@ -31,9 +31,9 @@ test tiers in [testing/README.md](testing/README.md) and the browser-test strate
 Green checks leave two kinds of test unrun. Database-backed backend tests run on pushes to `dev` and
 nightly; `.github/workflows/db-tests.yml` runs on a pull request only when the pull request changes that
 workflow or the test tooling it names. After merging `dev` into your branch, run the full database suite with
-`gh workflow run db-tests.yml --ref <branch>`. The result proves only that ref at the tested commit.
-Releases currently ship without proof from the database tests: neither
-merge admission nor release promotion waits for this workflow. Of the journey specs, a pull request runs one
+`gh workflow run db-tests.yml --ref <branch>`. The result proves only that ref at the tested commit; it never
+counts for a release. Production promotion requires first-attempt success for the database, live browser and
+route-load workflows on `dev` at the candidate SHA. Of the journey specs, a pull request runs one
 (`e2e/performance/home-inbox.spec.ts`) and the merge queue adds three (`e2e/first-run-solo.spec.ts`,
 `e2e/authz/write-refusals.spec.ts`, `e2e/error-beacon.spec.ts`); the rest run nightly
 (`.github/workflows/e2e-live.yml`). When you add or change a database test or a journey spec, run it
@@ -56,6 +56,7 @@ When renaming a check, inspect the active repository rulesets read-only and upda
 |---|---|
 | `deploy/ci/promote.mjs` | Promotion reads the platform workflow's explicit job names and renders declared matrix fields; ambiguous names, unsupported expressions, missing or duplicate proofs fail closed |
 | `deploy/gates.json` and `deploy/ci/gates.mjs` | Release evidence matches exact job display names and step names; native smoke checks use `Native image smoke test · amd64` and `Native image smoke test · arm64` |
+| `deploy/gates.json` environment suites | Production selects suite runs by exact workflow filename |
 | `scripts/pull-measured-evidence.sh` and `scripts/pull_measured_evidence_test.py` | Evidence ingestion matches **Collect release test evidence** and reports its job ID in diagnostics |
 | `.github/workflows/promote.yml` | `workflow_run.workflows` matches `Platform validation and images` |
 | `.github/release-admission-policy.json` and `.github/release-admission.cjs` | The policy records `Candidate checks` as workflow metadata; admission matches required check contexts, which remain unchanged |

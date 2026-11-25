@@ -2,16 +2,28 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
-import { buildPredicate, classifyBake } from './gates.mjs';
-import admission from '../../.github/release-admission.cjs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import yaml from 'js-yaml';
+import { buildPredicate, classifyBake, suiteEvents } from './gates.mjs';
+import { discoverEnvironments } from './promote.mjs';
+import admission from '../../.github/release-admission.cjs';
 const collector = await import(pathToFileURL(resolve(process.env.PLATFORM_REPO_ROOT ?? '.', 'deploy/ci/gates.mjs')));
 const root = resolve(process.env.PLATFORM_REPO_ROOT ?? '.');
 const gatesPolicy = JSON.parse(readFileSync(resolve(root, 'deploy/gates.json'), 'utf8'));
+
+test('each promotion environment has a suite policy', () => {
+  assert.deepEqual(Object.keys(gatesPolicy.environmentSuites).sort(), discoverEnvironments(root).map(row => row.environment));
+});
+
+for (const [environment, suites] of Object.entries(gatesPolicy.environmentSuites ?? {})) {
+  for (const file of suites) test(`${environment}: ${file} can supply suite evidence`, () => {
+    const workflow = yaml.load(readFileSync(resolve(root, '.github/workflows', file), 'utf8'));
+    assert.ok(Object.keys(workflow.on).some(event => suiteEvents.includes(event)), `${file} needs an eligible trigger`);
+  });
+}
 
 for (const [gate, definitions] of Object.entries(gatesPolicy.checks)) {
   for (const definition of definitions) test(`${gate}: configured evidence resolves once in the workflow`, () => {
