@@ -191,7 +191,7 @@ function TenantsConsolePage({
           </div>
         ),
         primary: empty ? undefined : unavailable ? <>{unavailableCreate}</> : (
-          <Button variant="primary" disabled={!list.data} onClick={() => setOnboarding(true)}>
+          <Button variant="primary" pending={!list.data} onClick={() => setOnboarding(true)}>
             {t("tenants.create")}
           </Button>
         ),

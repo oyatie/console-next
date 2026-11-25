@@ -115,6 +115,24 @@ test("offline before the first answer, opening an account says why; back online 
   await element(create()).not.toHaveAttribute("aria-disabled", "true");
 }, 60_000);
 
+test("a keyboard user on the unavailable open-account button keeps their place while the list reloads after reconnecting", async () => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const list = await platform(() => ({ json: [org("ACTIVE")] }));
+  await offline();
+  const offlineFailure = page.getByRole("main").getByRole("heading", { name: t("common.read.offline"), exact: true });
+  await element(offlineFailure).toBeVisible();
+  await create().focus();
+  await page.evaluate(() => { Reflect.deleteProperty(navigator, "onLine"); dispatchEvent(new Event("online")); });
+  // Back online, the list loads again: the button waits, and focus stays on it.
+  await element(offlineFailure).toHaveCount(0);
+  await element(create()).toBeDisabled();
+  await element(create()).toBeFocused();
+  list.hold.resolve();
+  await element(page.getByRole("gridcell", { name: "Synthetic customer", exact: true })).toBeVisible();
+  await element(create()).toBeEnabled();
+  await element(create()).toBeFocused();
+}, 60_000);
+
 test("offline with the list and an open record, the offline notice shows once and opening an account stays available", async () => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.route("**/api/platform/orgs/*/erase", route => route.fulfill({ json: erased("ACTIVE") }));
