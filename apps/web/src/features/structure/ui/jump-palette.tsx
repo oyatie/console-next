@@ -73,6 +73,8 @@ export function JumpPalette({ onClose }: { onClose: () => void }) {
       query={q}
       onQuery={setQ}
       sections={sections}
+      // People land above the request lookup and the tasks: with no place found, the first of them becomes the first result.
+      pending={people.isLoading && hits.length === 0}
       empty={t("structure.find.none", { q: query })}
       footer={request ? undefined : <span>{t("structure.jump.keys", { total: fmtNumber(hits.length) })}</span>}
     />
