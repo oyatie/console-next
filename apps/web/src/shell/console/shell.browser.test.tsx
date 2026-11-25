@@ -3,13 +3,28 @@ import { realpathSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { createServer, type ViteDevServer } from "vite";
+import type { Locator } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { browserEngine, browserTestOptimizeDeps, openBrowserTestPage, type Browser, type BrowserContext, type Page } from "../../lib/browser-test";
+import { contrastRatio } from "../../../../../scripts/check-contrast.mjs";
 
 let server: ViteDevServer;
 let browser: Browser;
 let context: BrowserContext;
 let page: Page;
+
+// Axe does not measure a background image, so the select's chevron (its only dropdown cue) is measured here.
+async function chevronContrast(select: Locator) {
+  const { image, background } = await select.evaluate(el => {
+    const style = getComputedStyle(el);
+    return { image: style.backgroundImage, background: style.backgroundColor };
+  });
+  const stroke = image.match(/stroke='%23([\da-f]{6})'/i)?.[1];
+  const rgb = background.match(/^rgb\((\d+), (\d+), (\d+)\)$/)?.slice(1);
+  expect(stroke, image).toBeTruthy();
+  expect(rgb, background).toBeTruthy();
+  return contrastRatio(`#${stroke}`, `#${rgb!.map(v => Number(v).toString(16).padStart(2, "0")).join("")}`);
+}
 
 beforeAll(async () => {
   await loadCatalog("ko");
@@ -86,7 +101,7 @@ beforeAll(async () => {
           return React.createElement(
             React.Fragment,
             null,
-            React.createElement('header', null, React.createElement(ConsoleAccountMenu, { id: 'console-top-account', name: 'Console Operator' })),
+            React.createElement('header', { 'data-surface': 'chrome' }, React.createElement(ConsoleAccountMenu, { id: 'console-top-account', name: 'Console Operator' })),
             React.createElement('main', { id: 'main', 'data-shell-harness': '' },
               React.createElement('output', { 'data-opens': '' }, String(searchOpens)),
               React.createElement('output', { 'data-href': '' }, href),
@@ -119,7 +134,7 @@ beforeAll(async () => {
   page = await context.newPage();
   await page.route("**/console-shell-shortcut-test", route => route.fulfill({
     contentType: "text/html",
-    body: '<html lang="ko"><title>Console Shell</title><div id="root"></div><script type="module" src="/console-shell-shortcut-test.js"></script></html>',
+    body: '<html lang="ko" data-experience="console"><title>Console Shell</title><div id="root"></div><script type="module" src="/console-shell-shortcut-test.js"></script></html>',
   }));
   await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}console-shell-shortcut-test`, page.locator("[data-shell-harness]"));
 }, 60_000);
@@ -158,19 +173,43 @@ test("slash shortcut opens search, yields to in-page find, and respects singleKe
   await expect.poll(async () => await page.locator("[data-opens]").textContent()).toBe("1");
 });
 
-test("ConsoleAccountMenu renders locale, theme, and logout controls when opened and closes on Escape", async () => {
+test("ConsoleAccountMenu holds the shared language, theme and sign-out controls by their shared names and closes on Escape", async () => {
+  await page.evaluate(() => localStorage.setItem("console.theme", "light"));
   const trigger = page.getByRole("button", { name: "Console Operator", exact: true });
   await trigger.click();
 
   const group = page.getByRole("group", { name: t("shell.account"), exact: true });
   await group.waitFor();
-  for (const key of ["shell.locale.ko", "shell.locale.en", "shell.theme.light", "shell.theme.dark", "shell.logout"] as const) {
-    expect(await group.getByRole("button", { name: t(key), exact: true }).isVisible()).toBe(true);
-  }
+  const language = group.getByRole("combobox", { name: t("shell.locale"), exact: true });
+  await expect.poll(() => language.locator("option").allTextContents()).toEqual([t("shell.locale.ko"), t("shell.locale.en")]);
+  expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe("light");
+  expect(await chevronContrast(language)).toBeGreaterThanOrEqual(3);
+  expect(await group.getByRole("button", { name: t("shell.logout"), exact: true }).isVisible()).toBe(true);
 
+  // The theme control is the one Classic's bar has, named for the theme it turns to.
+  await group.getByRole("button", { name: t("shell.theme.toDark"), exact: true }).click();
+  await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe("dark");
+  await trigger.click();
+  expect(await chevronContrast(language)).toBeGreaterThanOrEqual(3);
+  await group.getByRole("button", { name: t("shell.theme.toLight"), exact: true }).click();
+  await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe("light");
+
+  // Escape closes the menu from its trigger or from any control in it, and is the menu's alone: no listener above hears it.
+  await page.evaluate(() => {
+    const seen = window as unknown as { escapes: number };
+    seen.escapes = 0;
+    document.addEventListener("keydown", event => { if (event.key === "Escape") seen.escapes++; });
+  });
+  await trigger.click();
+  await trigger.focus();
+  await page.keyboard.press("Escape");
+  await expect.poll(async () => await group.count()).toBe(0);
+  await trigger.click();
+  await language.focus();
   await page.keyboard.press("Escape");
   await expect.poll(async () => await group.count()).toBe(0);
   await expect.poll(() => page.evaluate(() => document.activeElement?.id)).toBe("console-top-account");
+  expect(await page.evaluate(() => (window as unknown as { escapes: number }).escapes)).toBe(0);
 });
 
 test("openWorkspaceTab resolves query-only href against current pathname and rejects external/protocol-relative URLs", async () => {

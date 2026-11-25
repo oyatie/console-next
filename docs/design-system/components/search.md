@@ -252,6 +252,7 @@ The input's box, `field__input` in `app.css`:
 
 | Token | Read by |
 | --- | --- |
+| `--chrome-chevron` | `background-image` |
 | `--control-border` | `border` |
 | `--field-h` | `height` |
 | `--field-h-toolbar` | `height` |

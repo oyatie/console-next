@@ -82,6 +82,23 @@ test.each(SYSTEMS)("Console look: on $platform the registration sheet's register
   await element(sheet.getByRole("button", { name: t("register.run.submit"), exact: true }).locator("kbd")).toHaveText(next);
 });
 
+// The design draws one register button beside the create-more switch: the switch says the sheet goes on to the next
+// employee, so the button keeps its own verb either way.
+test("Console look: the register button says its verb with create-more off and on, and the switch states the mode", async () => {
+  await page.goto(`${server.resolvedUrls!.local[0]}register-keys-test?case=sheet&look=console`);
+  const sheet = page.getByRole("dialog", { name: t("register.title"), exact: true });
+  const button = sheet.getByRole("button", { name: t("register.run.submit"), exact: true });
+  const createMore = sheet.getByRole("switch", { name: t("register.createMore"), exact: true });
+  for (const on of [false, true]) {
+    if (on) await createMore.check();
+    await element(createMore).toBeChecked({ checked: on });
+    await element(button).toBeVisible();
+    await element(button).toContainText(t("register.run.submit"));
+  }
+  // Classic's two button names (the next-employee one starts with the other) stay out of the Console sheet.
+  await element(sheet.getByRole("button", { name: commitLabel({ kind: "ONBOARD", mode: "apply", count: 1 }) })).toHaveCount(0);
+});
+
 // Both looks reach the run page from the sheet by one name; the Console link follows the import link, drawn the same way.
 test("Console look: the registration sheet links to the run page beside the import link", async () => {
   await page.goto(`${server.resolvedUrls!.local[0]}register-keys-test?case=sheet&look=console`);
