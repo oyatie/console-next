@@ -82,8 +82,9 @@ test("consoleOrder renders compact cell badges, active row marker, tail group he
   expect(html).toContain(">+2<");
   expect(html).toContain(">+3<");
   expect(html).toContain(`>${t("attendance.monthConsole.grid.badge.late")}<`);
-  expect(html).toContain(`>${t("attendance.monthConsole.grid.badge.annual")}<`);
-  expect(html).toContain(`>${t("attendance.monthConsole.grid.badge.half")}<`);
+  // The month grid carries no leave, so an empty work day and a four-hour day stay unmarked rather than guessed as leave.
+  expect(html).not.toContain('data-badge="annual"');
+  expect(html).not.toContain('data-badge="half"');
   expect(html).toContain(`>${t("attendance.monthConsole.grid.badge.holidayWork")}<`);
   expect(html).not.toContain(">0:00<");
 });

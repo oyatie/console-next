@@ -7,7 +7,6 @@
 "apps/web/src/features/access/ui/grant-sheet.tsx": {"dsClass":1},
 "apps/web/src/features/access/ui/person-access.tsx": {"dsClass":1},
 "apps/web/src/features/access/ui/role-editor.tsx": {"dsClass":3},
-"apps/web/src/features/access/ui/role-pick.tsx": {"dsClass":1},
 "apps/web/src/features/access/ui/scope-picker.tsx": {"dsClass":1},
 "apps/web/src/features/entity/ui/business-section.tsx": {"dsClass":1},
 "apps/web/src/features/entity/ui/create-cert-form.tsx": {"dsClass":3},

@@ -67,15 +67,13 @@ export function RosterConsole({
   const [colsOpen, setColsOpen] = useState(false);
   const [expandedEntities, setExpandedEntities] = useState<Set<string>>(() => new Set());
   const [empTypes, setEmpTypes] = useState<Set<EmpType>>(() => new Set());
-  const [addressMissingOnly, setAddressMissingOnly] = useState(false);
-  const [probationOnly, setProbationOnly] = useState(false);
   const [activeChosung, setActiveChosung] = useState<string | null>(null);
   const findInputRef = useRef<HTMLDivElement>(null);
   const entitiesQ = useQuery(entitiesRef);
   const unitsQ = useQuery(unitsQuery);
   const entities = entitiesQ.data?.items ?? [];
   const total = r.total;
-  const hasClientFilter = empTypes.size > 0 || addressMissingOnly || probationOnly || activeChosung !== null;
+  const hasClientFilter = empTypes.size > 0 || activeChosung !== null;
   const firstOffset = (r.list.data?.pages[0] as { offset?: number } | undefined)?.offset ?? 0;
   const needsFullRoster =
     hasClientFilter &&
@@ -91,8 +89,8 @@ export function RosterConsole({
   });
   const sourceRows = needsFullRoster ? (fullRoster.data ?? EMPTY_EMPLOYEES) : r.rows;
   const displayedRows = useMemo(
-    () => filterConsoleRows(sourceRows, { empTypes, addressMissingOnly, probationOnly, activeChosung }),
-    [sourceRows, empTypes, addressMissingOnly, probationOnly, activeChosung],
+    () => filterConsoleRows(sourceRows, { empTypes, activeChosung }),
+    [sourceRows, empTypes, activeChosung],
   );
 
   if (search.export === "register") {
@@ -105,9 +103,9 @@ export function RosterConsole({
 
   const voided = status === "EXITED" && exitView === "voided";
   const firstRun = !r.loading && !r.list.error && !filtered && (r.status.totals.all ?? total) === 0 && !r.changed;
-  const resetAll = () => { setEmpTypes(new Set()); setAddressMissingOnly(false); setProbationOnly(false); setActiveChosung(null); reset(); };
+  const resetAll = () => { setEmpTypes(new Set()); setActiveChosung(null); reset(); };
   const toggleEntityExpand = (id: string) => setExpandedEntities(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
-  const activeFilterCount = (unit ? 1 : 0) + (ids.length > 0 ? 1 : 0) + empTypes.size + review.length + (addressMissingOnly ? 1 : 0) + (probationOnly ? 1 : 0) + (activeChosung ? 1 : 0);
+  const activeFilterCount = (unit ? 1 : 0) + (ids.length > 0 ? 1 : 0) + empTypes.size + review.length + (activeChosung ? 1 : 0);
   const registerMissingCount = r.review.totals.register ?? 0;
   const contractSoonCount = r.review.totals.contractSoon ?? 0;
   const effectiveOffset = hasClientFilter ? 0 : firstOffset;
@@ -149,7 +147,7 @@ export function RosterConsole({
       find={<div ref={findInputRef} className={s.consoleFind} data-list-find=""><WorklistSearchField label={t("people.find.placeholder")} value={q} onChange={find} /></div>}
       tools={<div className={s.consoleDesktopSort}>{sortControl}</div>}
       stats={!firstRun ? <StatRow label={t("people.stat.label")} items={buildStatItems({ status, review, statusTotals: r.status.totals, registerMissingCount, setFilter })} /> : undefined}
-      rail={!firstRun ? <RosterConsoleRail entities={entities} facets={r.facets} unit={unit} idsActive={ids.length > 0} expandedEntities={expandedEntities} toggleEntityExpand={toggleEntityExpand} empTypes={empTypes} setEmpTypes={setEmpTypes} review={review} registerMissingCount={registerMissingCount} addressMissingOnly={addressMissingOnly} setAddressMissingOnly={setAddressMissingOnly} probationOnly={probationOnly} setProbationOnly={setProbationOnly} soonDays={soonDays} contractSoonCount={contractSoonCount} activeFilterCount={activeFilterCount} q={q} status={status} setFilter={setFilter} resetAll={resetAll} phoneTools={sortControl} /> : undefined}
+      rail={!firstRun ? <RosterConsoleRail entities={entities} facets={r.facets} unit={unit} idsActive={ids.length > 0} expandedEntities={expandedEntities} toggleEntityExpand={toggleEntityExpand} empTypes={empTypes} setEmpTypes={setEmpTypes} review={review} registerMissingCount={registerMissingCount} soonDays={soonDays} contractSoonCount={contractSoonCount} activeFilterCount={activeFilterCount} q={q} status={status} setFilter={setFilter} resetAll={resetAll} phoneTools={sortControl} /> : undefined}
       indexBar={!voided && !firstRun ? <IndexBar label={t("people.index.label")} items={CHOSUNG.map(ch => ({ id: ch, label: ch }))} active={activeChosung} onSelect={setActiveChosung} range={displayedRows.length > 0 ? t("people.index.range", { start: rangeStart, end: rangeEnd, total: rangeTotal }) : undefined} prev={{ label: t("people.index.prev"), disabled: hasClientFilter || firstOffset <= 0, onPress: () => scroller.current?.scrollBy({ top: -400, behavior: "smooth" }) }} next={{ label: t("people.index.next"), disabled: hasClientFilter || !r.list.hasNextPage, onPress: () => { if (r.list.hasNextPage && !r.list.isFetchingNextPage) void r.list.fetchNextPage(); } }} /> : undefined}
       notes={
         <>

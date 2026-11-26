@@ -8,6 +8,7 @@ import path from "node:path";
 import test from "node:test";
 import { promisify } from "node:util";
 import yaml from "js-yaml";
+import { dockerfileStages } from "./quality/tooling-inventory.mjs";
 import { REQUIRED_SECURITY_JOBS } from "./check-workflow-hardening.mjs";
 
 const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
@@ -316,6 +317,16 @@ test("Node image digest stays paired with the reviewed upstream tag", () => {
   assert.equal(node.uses.find((u) => u.file === "deploy/versions.json").pin, versions.images.node);
 });
 
+test("the shipped image stage builds on images.runtime, the reviewed Distroless cc-debian13 nonroot digest", () => {
+  const versions = JSON.parse(read("deploy/versions.json"));
+  const file = "deploy/images/console.Dockerfile";
+  const runtime = dockerfileStages(read(file), file).at(-1);
+  assert.equal(runtime?.image, "${RUNTIME_IMAGE}", "the shipped stage must build on images.runtime");
+  assert.equal(runtime.platform, undefined, "the shipped stage must take the build's target platform");
+  // The image scan runs on dev pushes. Update this reviewed digest with the build pin so regressions fail before merge.
+  assert.equal(versions.images.runtime, "gcr.io/distroless/cc-debian13@sha256:532c7a94f9e96ba9db75eb9388f4227751131c7cb0a411d1a8521af4096135de");
+});
+
 test("security workflow templates use the shared Node major", () => {
   const pins = Object.values(REQUIRED_SECURITY_JOBS).flatMap((job) => job.steps)
     .filter((step) => step.uses?.startsWith("actions/setup-node@"))
@@ -327,7 +338,7 @@ test("security workflow templates use the shared Node major", () => {
 test("dependency/tool/image pin regeneration is current and refuses an unregistered image", () => {
   for (const [pins, status] of [["container:docker.io/library/node", 0], ["ci-tool:Node.js", 0], ["npm:qs", 0],
     ["npm:@axe-core/playwright", 0], ["npm:oxlint", 0], ["npm:@tanstack/react-query", 0], ["npm:lucide-react", 0],
-    ["container:unregistered/image", 1]]) {
+    ["container:gcr.io/distroless/cc-debian13", 0], ["container:unregistered/image", 1]]) {
     const result = spawnSync(process.execPath, ["scripts/quality/generate-tooling-ledger.mjs", `--pins=${pins}`], { encoding: "utf8" });
     assert.equal(result.status, status, result.stdout + result.stderr);
     if (status) assert.match(result.stderr, /unregistered tool\/image: container:unregistered\/image/);

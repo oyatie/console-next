@@ -140,8 +140,6 @@ export const koAttendance: Record<keyof typeof enAttendance, string> = {
   "attendance.monthConsole.grid.unit": "소속",
   "attendance.monthConsole.grid.position": "직급 · 직책",
   "attendance.monthConsole.grid.tailGroup": "개인별 합계",
-  "attendance.monthConsole.grid.badge.annual": "연",
-  "attendance.monthConsole.grid.badge.half": "반",
   "attendance.monthConsole.grid.badge.holidayWork": "휴",
   "attendance.monthConsole.grid.badge.late": "지",
   "attendance.monthConsole.grid.badge.earlyOut": "조",

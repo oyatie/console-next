@@ -176,12 +176,14 @@ async fn commands_require_accountable_actors(pool: PgPool) {
 
 #[sqlx::test(migrator = "MIGRATOR")]
 async fn case_details_and_release_actor_are_required(pool: PgPool) {
-    let (target, actor) = fixture(&pool).await;
+    let (release_org, actor) = fixture(&pool).await;
     for (case_ref, basis) in [("", "order"), ("case", " ")] {
+        // Placement locks the organization before it validates the case details.
+        let target = org(&pool).await;
         refused(&sqlx::query("SELECT audit_legal_hold_place($1, $2, $3, 'preserve', $4, repeat('a',32)::char(32), repeat('b',16)::char(16), now())")
             .bind(target).bind(case_ref).bind(basis).bind(actor).execute(&pool).await.unwrap_err(), "23514");
     }
-    let hold = place(&pool, target, actor).await;
+    let hold = place(&pool, release_org, actor).await;
     refused(&sqlx::query("UPDATE docs_evidence_legal_holds SET status = 'RELEASED', released_at = now(), release_reason = 'closed' WHERE id = $1")
         .bind(hold).execute(&pool).await.unwrap_err(), "23514");
 }

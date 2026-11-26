@@ -192,7 +192,7 @@ function EmployeeLink({ u, admin, onRecorded }: { u: User; admin: boolean; onRec
         value: picked,
         onChange: (id) => { setPicked(id); setPickedName(options.find((e) => e.id === id)?.name ?? ""); },
         group: t("accounts.employee.group"), loading: found.isFetching,
-        error: found.isError ? readFailureText(found.error) : undefined,
+        readError: found.isError ? readFailureText(found.error) : undefined,
         empty: t("accounts.employee.none"),
       }}>
         {picked && <PersonLabel person={{ ...options.find((p) => p.id === picked), id: picked, employee_id: picked }} peers={options} />}
