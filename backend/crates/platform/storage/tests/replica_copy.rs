@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-use console_platform_storage::{CopyObjectRequest, S3ObjectStore, SeaweedS3Storage};
+use console_platform_storage::{CopyObjectRequest, S3ObjectStore, SeaweedS3Storage, StorageError};
 use std::io::{self, BufRead, BufReader, Write};
 use std::net::TcpListener;
 use time::{Duration, OffsetDateTime};
@@ -7,10 +7,7 @@ use time::{Duration, OffsetDateTime};
 #[tokio::test]
 async fn retained_copy_fails_without_a_version_or_when_its_retention_write_is_refused()
 -> Result<(), Box<dyn std::error::Error>> {
-    for (version, expected_error) in [
-        ("null", "retained copy has no version ID"),
-        ("copied-version", "put object retention failed with 403"),
-    ] {
+    for version in ["null", "copied-version"] {
         let listener = TcpListener::bind("127.0.0.1:0")?;
         let endpoint = format!("http://{}", listener.local_addr()?).parse()?;
         let server = std::thread::spawn(move || -> io::Result<()> {
@@ -53,7 +50,18 @@ async fn retained_copy_fails_without_a_version_or_when_its_retention_write_is_re
             .await
             .err()
             .ok_or("copy reported success")?;
-        assert!(error.to_string().contains(expected_error), "{error}");
+        if version == "null" {
+            assert!(
+                matches!(&error, StorageError::S3(message) if message == "retained copy has no version ID"),
+                "{error}"
+            );
+        } else {
+            assert!(
+                matches!(&error, StorageError::Response { operation, status: 403, code }
+                if operation == "put object retention" && code.is_empty()),
+                "{error}"
+            );
+        }
         server.join().map_err(|_| "storage fixture failed")??;
     }
     Ok(())
