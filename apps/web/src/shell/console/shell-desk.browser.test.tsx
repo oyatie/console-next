@@ -2,7 +2,7 @@
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { expect as element } from "@playwright/test";
 import { t } from "@console/i18n";
-import type { Page } from "../../lib/browser-test";
+import { settleFonts, type Page } from "../../lib/browser-test";
 import { frames, nameMismatches, pageFrame, phoneShellFixture, type Held } from "./shell-phone.browser-fixture";
 
 let shell: Awaited<ReturnType<typeof phoneShellFixture>>;
@@ -48,9 +48,8 @@ for (const [what, hold] of desktopHolds) test(`on a desktop neither the page nor
     await requested.promise;
     await page.locator("#main").waitFor();
     await frames(page);
-    // The app's first paint waits for its UI font or keeps the system face for good (lib/fonts); this page has no such
-    // gate, so the place to hold is read once the font its text asked for has loaded, not from the fallback face before it.
-    await page.evaluate(() => document.fonts.ready);
+    // This measurement precedes the fixture readiness check while the request is held.
+    await settleFonts(page);
     const [before, frame] = [await chromePlaces(), await pageFrame(page)];
 
     answered.resolve();
