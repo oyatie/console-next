@@ -3343,6 +3343,7 @@ dependencies = [
  "console-kernel-core",
  "console-platform-authz",
  "console-platform-crypto",
+ "console-platform-test-support",
  "console-settings-domain",
  "hex",
  "secrecy",

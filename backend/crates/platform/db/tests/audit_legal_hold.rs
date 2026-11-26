@@ -2,8 +2,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! Legal-hold authority, immutable evidence and request-correlated audit preservation.
 
-#[path = "../../../../test_support/governed_erase.rs"]
-mod governed_erase;
+use console_platform_test_support::governed_erase;
 use sqlx::{PgPool, Row};
 use uuid::Uuid;
 

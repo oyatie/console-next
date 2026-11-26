@@ -23,7 +23,7 @@ function sql(cluster, statement, variables = {}) {
     'psql', '-XqAt', '-U', 'postgres', '-d', 'console', '-v', 'ON_ERROR_STOP=1', ...bindings], {input:statement});
 }
 
-// Owner-only historical approval fixture, matching backend/test_support/governed_erase.rs.
+// Owner-only historical approval fixture, matching the governed_erase fixture in platform test support.
 // The live erasure command checks both proofs, the cooling period and legal holds.
 export const seed = `
   BEGIN;

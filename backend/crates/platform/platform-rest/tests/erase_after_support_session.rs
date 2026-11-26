@@ -3,8 +3,7 @@
 #[allow(dead_code)]
 #[path = "fixtures/rename.rs"]
 mod fixture;
-#[path = "../../../../test_support/governed_erase.rs"]
-mod governed_erase;
+use console_platform_test_support::governed_erase;
 #[allow(dead_code)]
 #[path = "fixtures/support_sessions.rs"]
 mod support;

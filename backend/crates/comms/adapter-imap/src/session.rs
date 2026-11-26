@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 use async_imap::Session;
 use async_imap::types::{Fetch, Flag, Name};
 use console_comms_application::{

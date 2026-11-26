@@ -218,7 +218,7 @@ crates/platform/authz/tests/cedar_pbac_readiness_cases.rs	499
 crates/platform/authz/tests/policy.rs	1449
 crates/platform/db/src/durability.rs	579
 crates/platform/db/src/lifecycle.rs	301
-crates/platform/db/tests/attendance_console_migration_contract.rs	1251
+crates/platform/db/tests/attendance_console_migration_contract.rs	1250
 crates/platform/db/tests/auth_command_role.rs	492
 crates/platform/db/tests/auth_security_state.rs	479
 crates/platform/db/tests/durability_physical.rs	718
@@ -236,10 +236,10 @@ crates/platform/jobs/src/soak.rs	742
 crates/platform/jobs/tests/apalis_schema_contract.rs	957
 crates/platform/platform-rest/tests/platform_groups.rs	374
 crates/platform/platform-rest/tests/remove_tenant.rs	899
-crates/platform/provisioning/tests/account_identity.rs	698
+crates/platform/provisioning/tests/account_identity.rs	697
 crates/platform/provisioning/tests/account_locking.rs	676
 crates/platform/provisioning/tests/bootstrap_passkey.rs	690
-crates/platform/provisioning/tests/company_locking.rs	362
+crates/platform/provisioning/tests/company_locking.rs	361
 crates/platform/provisioning/tests/first_enrollment_command.rs	629
 crates/platform/provisioning/tests/rls_auth_chain_as_runtime_role.rs	542
 crates/platform/provisioning/tests/self_enroll_handoff_as_runtime_role.rs	313

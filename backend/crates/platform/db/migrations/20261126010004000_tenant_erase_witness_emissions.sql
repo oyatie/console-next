@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: LicenseRef-Proprietary
 -- migration-class: expand
 -- Erasure ledger sequence numbers are scoped to each erased tenant.
 -- A committed emission receipt identifies the immutable platform erase request.

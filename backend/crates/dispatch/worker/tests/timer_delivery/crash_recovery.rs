@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 use super::*;
 
 // FIX 4: a worker crash after the provider send but before the SENT mark must

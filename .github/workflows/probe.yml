@@ -64,7 +64,7 @@ jobs:
           # The listing's status filter can omit a finished run.
           prev="$(gh run list -R "${GITHUB_REPOSITORY}" --workflow probe.yml --json status,conclusion \
             --jq 'map(select(.status == "completed"))[0].conclusion // "success"')"
-          if [[ "${prev}" != failure || "$(date -u +%M)" -lt 10 ]]; then echo "page=true" >>"${GITHUB_OUTPUT}"; fi
+          if [[ "${prev}" != failure || "$(date -u +%M)" == 0[0-9] ]]; then echo "page=true" >>"${GITHUB_OUTPUT}"; fi
 
   notify:
     name: Report availability failure

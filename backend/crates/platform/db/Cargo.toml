@@ -32,6 +32,7 @@ tokio = { workspace = true }
 zeroize = { workspace = true }
 
 [dev-dependencies]
+console-platform-test-support = { workspace = true }
 # Dev-only: feature_catalog_covers_every_feature asserts every shipped Feature is grantable.
 # The layer-boundary gate scopes its layer-edge check to normal deps (backend/ci/gates/
 # layer-boundary/src/lib.rs:397), so a dev-dep here is sanctioned rather than tolerated.

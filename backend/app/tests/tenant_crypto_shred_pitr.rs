@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-#[path = "../../test_support/governed_erase.rs"]
-mod governed_erase;
+use console_platform_test_support::governed_erase;
 #[path = "support/credential_reseal_helpers.rs"]
 mod helpers;
 #[path = "support/rrn_blind_index.rs"]

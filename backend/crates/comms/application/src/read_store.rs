@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 use crate::{
     AddressLookup, AttachmentRef, DueAccount, EmailAccountId, EmailMessageId, FolderCursor,
     FolderView, ImapFolder, InboundUpsert, MailAttachmentStore, MailFuture, MailServiceError,

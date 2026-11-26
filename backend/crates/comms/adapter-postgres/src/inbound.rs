@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 use std::sync::Arc;
 
 use console_comms_application::{InboundUpsert, MailAttachmentStore, inbound_sync_audit_event};

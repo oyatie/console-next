@@ -9,7 +9,7 @@ const page = workflow.jobs.probe.steps.find(step => step.id === "page");
 const commands = `
 GITHUB_OUTPUT=$(mktemp)
 trap 'rm -f "$GITHUB_OUTPUT"' EXIT
-date() { echo 30; }
+date() { echo "\${MINUTE:-30}"; }
 gh() {
   local runs=$RUNS limit=20 fields query=.
   while (( $# )); do
@@ -39,5 +39,15 @@ test("outside the hourly reminder, the newest completed probe determines whether
       encoding: "utf8",
     });
     expect(output.trim()).toBe(expected);
+  }
+});
+
+test("the hourly continuing-outage reminder accepts zero-padded minutes", () => {
+  for (const [minute, expected] of [["00", "page=true"], ["08", "page=true"], ["09", "page=true"], ["10", ""]]) {
+    const output = execFileSync("bash", ["-eo", "pipefail", "-c", commands + page.run + '\ncat "$GITHUB_OUTPUT"'], {
+      env: { ...process.env, GITHUB_REPOSITORY: "sample/console", RUNS: '[{"status":"completed","conclusion":"failure"}]', MINUTE: minute },
+      encoding: "utf8",
+    });
+    expect(output.trim(), minute).toBe(expected);
   }
 });

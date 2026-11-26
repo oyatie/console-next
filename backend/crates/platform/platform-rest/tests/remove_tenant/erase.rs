@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-#[path = "../../../../../test_support/governed_erase.rs"]
-mod governed_erase;
 use super::*;
+use console_platform_test_support::governed_erase;
 pub(super) use governed_erase::due;
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

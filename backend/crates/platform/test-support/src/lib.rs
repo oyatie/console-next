@@ -6,6 +6,7 @@
 //! instead; keep seeding on the original owner pool.
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+pub mod governed_erase;
 pub mod json_response;
 pub mod strict_json;
 use console_kernel_core::{BranchId, OrgId, UserId};
