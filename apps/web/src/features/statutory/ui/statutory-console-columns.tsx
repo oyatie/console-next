@@ -125,14 +125,17 @@ export function buildFilingColumns(onInspect: (id: string) => void): LongColumn<
     },
     {
       id: "action",
-      header: t("statutory.action"),
+      header: <bdi className="sr-only">{t("statutory.openCol")}</bdi>,
       card: "action",
-      minWidth: 110,
+      minWidth: 72,
       cell: (r) => (
-        <Button size="sm" className={s.nowrap} onClick={() => onInspect(taskKey(r))}>
-          {r.state === "LEGAL_REVIEW" || r.record_action === "COMPLETE" || r.record_action === "NOT_APPLICABLE"
-            ? t("statutory.detailTitle")
-            : t("statutory.record")}
+        <Button
+          size="sm"
+          className={s.nowrap}
+          aria-label={t("statutory.openRow", { name: r.name, insurer: filingLabel(r.insurer), kind: filingLabel(r.kind) })}
+          onClick={() => onInspect(taskKey(r))}
+        >
+          {t("statutory.openCol")}
         </Button>
       ),
     },

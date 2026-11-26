@@ -24,7 +24,6 @@ import { PeriodStepper } from "./period-stepper";
 import { ScopeTree } from "./scope-tree";
 import { inField, useKeys } from "./use-keys";
 import s from "./attendance.module.css";
-import cs from "./attendance-console.module.css";
 
 const HOLIDAY = new Set(["PUBLIC_HOLIDAY", "SUBSTITUTE_HOLIDAY", "ELECTION_DAY", "LABOR_DAY", "CONTRACTUAL_HOLIDAY"]);
 const tone = (d?: ScheduleDay): DayTone | undefined => (!d ? undefined : HOLIDAY.has(d.kind) ? "holiday" : d.kind === "WEEKLY_HOLIDAY" || d.kind === "REST_DAY" ? "rest" : undefined);
@@ -89,20 +88,30 @@ export function CalendarView({ tree, search, onScope, onMonth, onAssign, onCance
     // History sets the shared grid row's height; settle both reads before exposing the action below it.
     <QueryState q={calendarRead} layout="grid">{() => {
       const c = cal.data!;
+      const assignButton = (
+        <Button variant="primary" size={consoleMode ? "sm" : undefined} onClick={() => onAssign([{ kind: c.scope_kind, id: c.scope_id, name: c.scope_name }])}>
+          <Plus size={16} aria-hidden /> {t("attendanceSchedule.assign.open")}
+        </Button>
+      );
       return <div ref={keys} className={s.calendarLayout}>
       <ScopeTree tree={tree} selected={scope.id} onSelect={(n: TreeNode) => onScope(n.kind, n.id)} onPerson={(id) => onScope("PERSON", id)} />
       <div className={s.centerCol}>
-        <PeriodStepper unit="month" variant={consoleMode ? "boxed" : "plain"} showCurrent={!consoleMode} value={month} onChange={onMonth} />
+        {consoleMode ? (
+          // The board keeps the assign command in the period row, so the history below can grow without moving it.
+          <div className={s.toolbar}>
+            <PeriodStepper unit="month" variant="boxed" value={month} onChange={onMonth} />
+            <span className={s.grow} />
+            {assignButton}
+          </div>
+        ) : (
+          <PeriodStepper unit="month" value={month} onChange={onMonth} />
+        )}
         <Month c={c} month={month} weeks={weeks} />
         <QueryState q={history} inline>{(h) => <LayerHistory consoleMode={consoleMode} layers={h.items} disabled={history.isPlaceholderData || cal.isPlaceholderData} onCancel={onCancel} />}</QueryState>
       </div>
       <aside className={s.sideCol} aria-label={t("attendanceSchedule.side.label")}>
         <LayerStack calendar={c} />
-        <div className={consoleMode ? cs.paneActions : undefined}>
-          <Button variant="primary" onClick={() => onAssign([{ kind: c.scope_kind, id: c.scope_id, name: c.scope_name }])}>
-            <Plus size={16} aria-hidden /> {t("attendanceSchedule.assign.open")}
-          </Button>
-        </div>
+        {consoleMode ? null : <div>{assignButton}</div>}
         <MonthHolidays c={c} />
       </aside>
     </div>;

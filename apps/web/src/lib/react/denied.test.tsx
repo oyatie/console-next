@@ -7,7 +7,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Denied } from "./denied";
 import { DeniedRequestForm } from "./denied-request-form";
 
-vi.mock("@tanstack/react-router", () => ({ Link: ({ children }: { children: React.ReactNode }) => <a href="/">{children}</a> }));
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({ to, search, children }: { to?: string; search?: Record<string, string>; children: React.ReactNode }) => (
+    <a href={`${to ?? "/"}${search ? `?${new URLSearchParams(search)}` : ""}`}>{children}</a>
+  ),
+}));
 beforeAll(() => loadCatalog("ko"));
 
 test.each(["forbidden", "out_of_scope", "scope_tenant_wide_only"])("%s keeps its diagnostic inside the reason disclosure and its support reference visible", code => {
@@ -46,4 +50,13 @@ test("Denied keeps the request form deferred until opened, and DeniedRequestForm
   expect(form).toContain("<form");
   expect(form).toContain(t("common.denied.request.reason"));
   expect(form).toContain(t("common.denied.request.send"));
+});
+
+test("the way back can carry the page's selection, so a refused record returns to the person it was about", () => {
+  const markup = renderToStaticMarkup(
+    <QueryClientProvider client={new QueryClient()}>
+      <Denied error={new ApiError(403, "forbidden", "")} back={{ to: "/people", search: { sel: "person-1" }, label: "person card" }} />
+    </QueryClientProvider>,
+  );
+  expect(markup).toContain('<a href="/people?sel=person-1">person card</a>');
 });
