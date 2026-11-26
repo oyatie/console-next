@@ -205,7 +205,6 @@ export const koAttendance: Record<keyof typeof enAttendance, string> = {
   "attendance.close.amendedDone": "마감 후 정정을 기록했습니다",
   "attendance.close.handoffTitle": "2인 승인 기간 잠금 해제",
   "attendance.close.handoffSummary": "마감된 월을 다시 열려면 다른 결재자의 패스키 승인이 필요합니다.",
-  "attendance.close.openRow": "열기",
   "attendance.close.statusRatio": "마감 {closed, number}/{total, number}곳",
   "attendance.issues.noun": "근태 예외",
   "attendance.issues.raiseButton": "예외 등록",

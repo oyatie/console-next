@@ -47,6 +47,7 @@ function RunConsoleContent({ id, baseline }: { id: string; baseline: () => React
     activePeriod,
     activeEntityId,
     entityLabel,
+    groupLabel,
     lines,
     ratesData,
     filter,
@@ -98,6 +99,7 @@ function RunConsoleContent({ id, baseline }: { id: string; baseline: () => React
       head={{
         title: t("payroll.title"),
         titleId: "payroll-run-title",
+        meta: groupLabel ? <bdi>{groupLabel}</bdi> : undefined,
         filters: detailData ? (
           <RunConsoleFilters
             activePeriod={activePeriod}

@@ -121,3 +121,13 @@ test.each(["baseline", "console"] as const)("%s: a screen's own primary takes th
     expect(ready).not.toContain("Load the roster to register.");
   } finally { style.id = "baseline"; }
 });
+
+test.each(["baseline", "console"] as const)("the %s head keeps the page's meta line, and a refusal removes it", async id => {
+  style.id = id;
+  try {
+    const head = { title: "Roster", titleId: "roster-title", meta: mark("meta") };
+    expect(await markup(<ListRecord q={read} head={head} list={mark("list")} />)).toContain('data-contract-region="meta"');
+    const refused = { ...read, data: undefined, error: new ApiError(403, "forbidden", "", [], "meta-ref") };
+    expect(await markup(<ListRecord q={refused} head={head} list={mark("list")} />)).not.toContain('data-contract-region="meta"');
+  } finally { style.id = "baseline"; }
+});

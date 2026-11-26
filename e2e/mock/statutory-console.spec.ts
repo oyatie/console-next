@@ -131,7 +131,8 @@ test("Console /statutory supports filters, side inspector, HOLD visibility, and 
     await expect(grid).not.toContainText(heldFilingName);
     await root.getByRole("button", { name: t("statutory.urgentOnly"), exact: true }).click();
 
-    await grid.getByRole("row").filter({ hasText: firstFilingName }).getByRole("button", { name: t("statutory.record"), exact: true }).click();
+    const openFirst = t("statutory.openRow", { name: firstFilingName, insurer: t("statutory.NHIS"), kind: t("statutory.ACQUIRE") });
+    await grid.getByRole("row").filter({ hasText: firstFilingName }).getByRole("button", { name: openFirst, exact: true }).click();
     const detail = page.getByRole("complementary", { name: t("statutory.detailTitle") });
     await expect(detail).toBeVisible();
     await expect(detail).toContainText(firstFilingName);

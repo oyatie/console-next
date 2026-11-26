@@ -1,20 +1,30 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+// oxlint-disable-next-line no-restricted-imports -- A refused person-month read is a transport refusal.
+import { ApiError } from "@console/api";
 import { beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { i18n, loadCatalog, t } from "@console/i18n";
 import type { Day } from "../api";
+import { SidePanelReadContext } from "../../../ui/side-panel/read-context";
+import { queryPath } from "../../../lib/query";
+import { refusalText } from "../present";
 import { DayOpenPaneBody } from "./day-console-rail";
 import { DayDock } from "./day-dock";
 
-const state = vi.hoisted(() => ({ load: "ready" as "ready" | "loading" | "error", missingDay: false }));
+const state = vi.hoisted(() => ({ load: "ready" as "ready" | "loading" | "error" | "refused", missingDay: false }));
 const day: Day = {
   date: "2026-10-06", plan: { kind: "REST_DAY", holiday_work: false }, marks: [],
   recognition: { recorded: 0, recognised: 0, regular: 0, approved: 0, early_unrecognised: 0, late_unrecognised: 0, late_in: 0, early_out: 0, away: 0, approval_unused: 0 },
 };
-vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({
-  isPending: state.load === "loading", error: state.load === "error" ? new Error("unavailable") : null,
+vi.mock("@tanstack/react-query", () => ({ useQuery: (q: Parameters<typeof queryPath>[0]) => queryPath(q).startsWith("/api/v1/access/") ? { isPending: true, error: null, data: undefined } : {
+  isPending: state.load === "loading", error: state.load === "error" ? new Error("unavailable") : state.load === "refused" ? new ApiError(403, "forbidden", "", [], "day-ref") : null,
   data: state.load === "ready" ? { name: "Person", days: state.missingDay ? [] : [day], history: [], month_state: { state: "OPEN" } } : undefined,
-}) }));
+} }));
+vi.mock("@tanstack/react-router", async original => ({
+  ...await original<typeof import("@tanstack/react-router")>(),
+  Link: ({ children }: { children: ReactNode }) => <span>{children}</span>,
+}));
 beforeAll(() => loadCatalog("ko"));
 beforeEach(() => { state.load = "ready"; state.missingDay = false; delete day.entry; delete day.intervals; day.marks = []; });
 const render = () => renderToStaticMarkup(<DayDock employeeId="person" date={day.date} own={false} onClose={() => {}} onRewrite={() => {}} onDone={() => {}} />);
@@ -94,4 +104,31 @@ test("Console day view: the person-day body inside the record pane adds no landm
   const html = renderToStaticMarkup(<DayOpenPaneBody employeeId="person" date={day.date} own={false} mode="view" onModeChange={() => {}} onClose={() => {}} onSetNote={() => {}} />);
   expect(html.match(/role="tab"/g)).toHaveLength(3);
   expect(html).not.toContain("<aside");
+});
+
+test("a refused day pane says who can grant and offers the request, with the server's reason behind the disclosure", () => {
+  state.load = "refused";
+  const html = renderToStaticMarkup(
+    <SidePanelReadContext value={true}>
+      <DayDock employeeId="person" date={day.date} own={false} variant="pane" onClose={() => {}} onRewrite={() => {}} onDone={() => {}} />
+    </SidePanelReadContext>,
+  );
+  // The screen beside the pane stays open: the refusal names the item, in its heading and its region.
+  expect(html).toContain(`>${t("common.denied.panel")}</h2>`);
+  expect(html).toContain(`aria-label="${t("common.denied.panel")}"`);
+  expect(html).not.toContain(t("common.denied.title.plain"));
+  expect(html).toContain(t("common.denied.request"));
+  expect(html).toContain(t("common.denied.granters.unavailable"));
+  expect(html).toContain(refusalText("forbidden")!);
+  expect(html).not.toContain('role="tab"');
+});
+
+test("a refused docked day keeps the screen's refusal: the full card, not the item's", () => {
+  state.load = "refused";
+  const html = render();
+  expect(html).toContain(`>${t("common.denied.title.plain")}</h2>`);
+  expect(html).not.toContain(t("common.denied.panel"));
+  expect(html).toContain(t("common.denied.request"));
+  expect(html).toContain(refusalText("forbidden")!);
+  expect(html).not.toContain('role="tab"');
 });

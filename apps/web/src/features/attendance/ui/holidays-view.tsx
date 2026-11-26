@@ -32,7 +32,7 @@ export function HolidaysView({ tree, onDone, consoleMode = false }: { tree: Sche
   const [retiring, setRetiring] = useState<ContractualHoliday | null>(null);
   const tools = !q.error ? (
     <>
-      <PeriodStepper unit="year" variant={consoleMode ? "boxed" : "plain"} showCurrent={!consoleMode} value={String(year)} onChange={value => setYear(Number(value))} />
+      <PeriodStepper unit="year" variant={consoleMode ? "boxed" : "plain"} value={String(year)} onChange={value => setYear(Number(value))} />
       <Button size="sm" variant="primary" onClick={() => setAdding(true)}><Plus size={16} aria-hidden /> {t("attendanceHolidays.holidays.add")}</Button>
     </>
   ) : undefined;

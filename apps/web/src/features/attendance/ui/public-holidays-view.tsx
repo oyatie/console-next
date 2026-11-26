@@ -18,7 +18,7 @@ import { PeriodStepper } from "./period-stepper";
 export function PublicHolidaysView({ consoleMode = false }: { consoleMode?: boolean }) {
   const [year, setYear] = useState(Number(todayKst().slice(0, 4)));
   const q = useQuery({ ...holidaysQuery(year), placeholderData: keepPreviousData });
-  const tools = <PeriodStepper unit="year" variant={consoleMode ? "boxed" : "plain"} showCurrent={!consoleMode} value={String(year)} onChange={value => setYear(Number(value))} />;
+  const tools = <PeriodStepper unit="year" variant={consoleMode ? "boxed" : "plain"} value={String(year)} onChange={value => setYear(Number(value))} />;
   const body = (
     <QueryState q={q} layout="list" empty={(d) => (d.loaded ? null : <EmptyState title={t("attendanceHolidays.public.notLoaded", { year })} reason={t("attendanceHolidays.public.notLoaded.reason")} />)}>
       {(d) => (
