@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import type { ReactNode } from "react";
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 import s from "./list-record-parts.module.css";
 
 /** Compact bottom summary footer beneath a Console `ListRecord` table. */
@@ -46,6 +46,33 @@ export function RecordPaneSection({
       {foot}
     </section>
   );
+}
+
+/**
+ * Record sections kept together in one box (one read fills them): it carries the rule its last section would end on.
+ * While `held` (its read is out), it keeps the tallest height it has drawn as its minimum, so a shorter answer leaves the
+ * sections below it where they were. A new `shape` (what the sections are drawn for, such as a status) lets that go.
+ */
+export function RecordPaneGroup({ className, held, shape, children }: { className?: string; held?: boolean; shape?: string; children: ReactNode }) {
+  const box = useRef<HTMLDivElement>(null);
+  const drawnFor = useRef(shape);
+  useLayoutEffect(() => {
+    const group = box.current;
+    if (!group) return;
+    if (drawnFor.current !== shape) {
+      drawnFor.current = shape;
+      group.style.minBlockSize = "";
+    }
+    if (!held) return;
+    const height = group.getBoundingClientRect().height;
+    if (height > (parseFloat(group.style.minBlockSize) || 0)) group.style.minBlockSize = `${height}px`;
+  });
+  return <div ref={box} className={className ? `${s.paneGroup} ${className}` : s.paneGroup}>{children}</div>;
+}
+
+/** A record pane read's loading or failure, inset like its sections; it takes no room while the read shows nothing. */
+export function RecordPaneState({ children }: { children: ReactNode }) {
+  return <div className={s.paneState}>{children}</div>;
 }
 
 /** Rule-separated subject identity header at the top of a Console side record pane. */

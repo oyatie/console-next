@@ -14,11 +14,8 @@ import { ListRecord } from "./list-record";
 import { listRecordOptionalRegions } from "./list-record-contract";
 import { PageMain } from "../page/page-main";
 
-const experience = vi.hoisted(() => ({ id: "baseline" as "baseline" | "console" }));
-vi.mock("../../experience/dom", async original => ({
-  ...await original<typeof import("../../experience/dom")>(),
-  useActiveExperienceId: () => experience.id,
-}));
+const style = vi.hoisted(() => ({ id: "baseline" as "baseline" | "console" }));
+vi.mock("../../experience/dom", async original => ({ ...(await original<typeof import("../../experience/dom")>()), useActiveExperienceId: () => style.id }));
 
 beforeAll(() => loadCatalog("ko"));
 const registerLink = "Register link";
@@ -106,12 +103,31 @@ test("ListRecord renders baseline fallback when baseline prop is supplied in bas
   expect(html).not.toContain('data-contract-region="list"');
 });
 
+const failure = { ...read, data: undefined, error: new ApiError(503, "service_unavailable", "", [], "pattern-failure") };
+const why = "Load the roster to register.";
+const register = "Register";
+const ownPrimary = (q: ReadState) => <ListRecord q={q} list={mark("list")} failedActions={<span id="why">{why}</span>}
+  head={{ title: "Roster", primary: <button type="button" aria-disabled="true" aria-describedby="why">{register}</button> }} />;
+
+test.each(["baseline", "console"] as const)("%s: a screen's own primary takes the primary slot and its failure actions sit in the list failure's alert", async id => {
+  style.id = id;
+  try {
+    const failed = await markup(ownPrimary(failure));
+    expect(failed).toContain('<button type="button" aria-disabled="true" aria-describedby="why">Register</button>');
+    expect(failed.split("Load the roster to register.")).toHaveLength(2);
+    expect(failed.slice(failed.indexOf('role="alert"'))).toContain('<span id="why">Load the roster to register.</span>');
+    const ready = await markup(ownPrimary(read));
+    expect(ready).toContain(">Register</button>");
+    expect(ready).not.toContain("Load the roster to register.");
+  } finally { style.id = "baseline"; }
+});
+
 test.each(["baseline", "console"] as const)("the %s head keeps the page's meta line, and a refusal removes it", async id => {
-  experience.id = id;
+  style.id = id;
   try {
     const head = { title: "Roster", titleId: "roster-title", meta: mark("meta") };
     expect(await markup(<ListRecord q={read} head={head} list={mark("list")} />)).toContain('data-contract-region="meta"');
     const refused = { ...read, data: undefined, error: new ApiError(403, "forbidden", "", [], "meta-ref") };
     expect(await markup(<ListRecord q={refused} head={head} list={mark("list")} />)).not.toContain('data-contract-region="meta"');
-  } finally { experience.id = "baseline"; }
+  } finally { style.id = "baseline"; }
 });

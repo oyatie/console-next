@@ -7,7 +7,10 @@ import { t } from "@console/i18n";
 import { fmtDate, fmtNumber } from "@console/i18n/format";
 import { focusSoon } from "../../../lib/react/announce";
 import { QueryState } from "../../../lib/react/query-state";
+import { queryView } from "../../../lib/react/query-view";
+import { useOnline } from "../../../lib/react/use-online";
 import { Button } from "../../../ui/button/button";
+import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { EmptyState } from "../../../ui/empty-state";
 import { StatRow, type StatRowItem } from "../../../ui/key-value/key-value";
 import { rowById } from "../../../ui/long-table/row-keys";
@@ -37,18 +40,30 @@ import s from "./platform-console.module.css";
 
 const route = getRouteApi("/app/platform");
 type TenantsSearch = { sel?: string; q?: string; view?: Exclude<View, "active"> };
+type TenantsConsoleProps = { tabs: ReactNode; onOpenSupport: (orgId: string) => void };
 
-export function TenantsConsole({
+/** Opening an account checks the new name against the list, so it waits for the list and says why when the list cannot load. */
+export function TenantsConsole(props: TenantsConsoleProps) {
+  // Always mounted, so the page keeps its state when creation turns unavailable or back.
+  return (
+    <DisabledReason reason={t("tenants.create.unavailable")} control={(p) => <Button variant="primary" {...p}>{t("tenants.create")}</Button>}>
+      {({ control, reason }) => <TenantsConsolePage {...props} unavailableCreate={control} unavailableReason={reason} />}
+    </DisabledReason>
+  );
+}
+
+function TenantsConsolePage({
   tabs,
   onOpenSupport,
-}: {
-  tabs: ReactNode;
-  onOpenSupport: (orgId: string) => void;
-}) {
+  unavailableCreate,
+  unavailableReason,
+}: TenantsConsoleProps & { unavailableCreate: ReactNode; unavailableReason: ReactNode }) {
   const { sel, q: q0 = "", view } = route.useSearch();
   const navigate = route.useNavigate();
   const set = (next: TenantsSearch) => navigate({ search: (p) => ({ ...p, ...next }), replace: true });
   const list = useQuery(tenantsQuery);
+  const online = useOnline();
+  const unavailable = list.data === undefined && ["failed", "offline"].includes(queryView(online ? list : { ...list, fetchStatus: "paused" }));
   const ops = useQuery(opsQuery);
   const all = useMemo(() => (list.data ?? []).filter((o) => o.slug !== "platform"), [list.data]);
   const groups = useQuery({ ...groupsQuery, enabled: all.length > 0, retry: false });
@@ -175,8 +190,13 @@ export function TenantsConsole({
             </Button>
           </div>
         ),
-        primary: empty ? undefined : { id: "create", label: t("tenants.create"), onAction: () => setOnboarding(true) },
+        primary: empty ? undefined : unavailable ? <>{unavailableCreate}</> : (
+          <Button variant="primary" pending={!list.data} onClick={() => setOnboarding(true)}>
+            {t("tenants.create")}
+          </Button>
+        ),
       }}
+      failedActions={unavailable ? unavailableReason : undefined}
       find={!empty ? <div className={s.findWrap} data-list-find=""><WorklistSearchField label={t("tenants.search")} value={q} onChange={setQ} /></div> : undefined}
       tools={!empty ? <div className={s.desktopTools}>{sortControl}</div> : undefined}
       stats={!empty ? <StatRow label={t("tenants.stat.label")} items={statItems} /> : undefined}
