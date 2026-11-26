@@ -15,13 +15,13 @@ test.each([
   });
   await eventually(() => existsSync(run.file) || run.child.exitCode !== null, Boolean);
   expect(run.child.exitCode, run.output()).toBeNull();
+  await eventually(run.output, (output) => output.includes("[backend] ready"));
   const next = await listener(run.file);
   expect(JSON.parse(readFileSync(path.join(orphan.cache, "backend.json"), "utf8"))).toMatchObject({ pid: run.child.pid, apiPid: next.pid });
   expect(next.pid).not.toBe(orphan.pid);
   expect(await responds(orphan.port)).toEqual({ pid: next.pid });
   expect(alive(orphan.pid)).toBe(false);
   expect(alive(orphan.child)).toBe(true);
-  await eventually(run.output, (output) => output.includes("[backend] ready"));
 }, 30_000);
 
 test.each([{ orphan: false, other: false }, { orphan: true, other: true }])("an unsafe listener is refused without killing it: %j", async (options) => {
