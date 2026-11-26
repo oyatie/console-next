@@ -16,4 +16,6 @@
 .label { font-weight: var(--fw-strong); white-space: nowrap; }
 .detail { color: var(--steel); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .empty { padding: var(--space-4); color: var(--steel); font-size: var(--text-sm); }
+.status { margin: 0; color: var(--steel); font-size: var(--text-sm); }
+.status:not(:empty) { padding: var(--space-2) var(--space-4) 0; }
 .foot { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-4); border-top: 1px solid var(--border); background: var(--muted); font-size: var(--text-xs); color: var(--steel); }

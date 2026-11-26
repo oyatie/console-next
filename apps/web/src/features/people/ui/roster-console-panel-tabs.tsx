@@ -23,7 +23,6 @@ export function RosterPanelTabBody({
   monthNum,
   employmentItems,
   personalItems,
-  insuranceItems,
   summaryItems,
   events,
   recentEvents,
@@ -39,7 +38,6 @@ export function RosterPanelTabBody({
   monthNum: number;
   employmentItems: PanelItem[];
   personalItems: PanelItem[];
-  insuranceItems: PanelItem[];
   summaryItems: { key: string; label: ReactNode; value: ReactNode }[];
   events: LifecycleEvent[];
   recentEvents: LifecycleEvent[];
@@ -163,12 +161,6 @@ export function RosterPanelTabBody({
       {personalItems.length > 0 ? (
         <RecordPaneSection title={t("people.panel.sec.personal")}>
           <KeyValue density="dense" items={personalItems} />
-        </RecordPaneSection>
-      ) : null}
-
-      {insuranceItems.length > 0 && e.status !== "EXITED" ? (
-        <RecordPaneSection title={t("people.panel.sec.insurance")}>
-          <KeyValue density="dense" items={insuranceItems} />
         </RecordPaneSection>
       ) : null}
 

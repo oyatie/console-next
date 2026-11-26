@@ -4,7 +4,8 @@ import { GridCellBadge } from "../../../ui/person-day-grid/person-day-grid";
 import type { GridRow } from "../api";
 import { GLYPH, hours } from "../domain/day";
 
-export function consoleCellContent(cell: GridRow["cells"][number], hasEntries: boolean) {
+/** A day cell drawn from what the grid sends. It carries no leave, so no day is shown as leave. */
+export function consoleCellContent(cell: GridRow["cells"][number]) {
   const marks = cell.marks ?? [];
   if (marks.length > 0) {
     if (marks.includes("NO_RECORD") || marks.includes("MISSING_OUT") || marks.includes("NO_SCHEDULE")) {
@@ -46,9 +47,6 @@ export function consoleCellContent(cell: GridRow["cells"][number], hasEntries: b
       if (cell.recognised === 480) {
         return <GridCellBadge tone="dot">·</GridCellBadge>;
       }
-      if (cell.recognised === 240) {
-        return <GridCellBadge tone="half">{t("attendance.monthConsole.grid.badge.half")}</GridCellBadge>;
-      }
       return cell.recognised > 0 ? hours(cell.recognised) : null;
     }
     case "ABSENT":
@@ -60,9 +58,6 @@ export function consoleCellContent(cell: GridRow["cells"][number], hasEntries: b
     case "CLOCK_IN_ONLY":
       return <GridCellBadge tone="blocking">{GLYPH.danger}</GridCellBadge>;
     default:
-      if (hasEntries && cell.plan_kind === "WORK" && cell.recognised === 0 && cell.not_worked === 0) {
-        return <GridCellBadge tone="annual">{t("attendance.monthConsole.grid.badge.annual")}</GridCellBadge>;
-      }
       return null;
   }
 }

@@ -18,10 +18,6 @@ function renderRail(over: Partial<Parameters<typeof RosterConsoleRail>[0]> = {})
       setEmpTypes={vi.fn()}
       review={[]}
       registerMissingCount={0}
-      addressMissingOnly={false}
-      setAddressMissingOnly={vi.fn()}
-      probationOnly={false}
-      setProbationOnly={vi.fn()}
       soonDays={60}
       contractSoonCount={0}
       activeFilterCount={0}
@@ -33,6 +29,16 @@ function renderRail(over: Partial<Parameters<typeof RosterConsoleRail>[0]> = {})
     />,
   );
 }
+
+const checkboxes = (html: string) => html.match(/<input\b[^>]*type="checkbox"/g)?.length ?? 0;
+
+test("the rail offers only filters the list rows can answer", () => {
+  // Three employment types, any missing register item, and a contract ending: the rows carry no address gap or probation end.
+  expect(checkboxes(renderRail())).toBe(5);
+  const noWindow = renderRail({ soonDays: undefined });
+  expect(checkboxes(noWindow)).toBe(4);
+  expect(noWindow).not.toContain(t("people.rail.upcoming"));
+});
 
 test("reset button is disabled when no filters or url ids are active, and enabled on /people?ids=...", () => {
   const clearLabel = t("people.rail.clear");

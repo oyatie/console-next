@@ -130,8 +130,6 @@ export const enAttendance = {
   "attendance.monthConsole.grid.unit": "Unit",
   "attendance.monthConsole.grid.position": "Grade · role",
   "attendance.monthConsole.grid.tailGroup": "Totals",
-  "attendance.monthConsole.grid.badge.annual": "AL",
-  "attendance.monthConsole.grid.badge.half": "HL",
   "attendance.monthConsole.grid.badge.holidayWork": "HW",
   "attendance.monthConsole.grid.badge.late": "L",
   "attendance.monthConsole.grid.badge.earlyOut": "E",

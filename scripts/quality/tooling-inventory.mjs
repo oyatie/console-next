@@ -16,6 +16,24 @@ export function cargoPins(source) {
   });
 }
 
+export function dockerfileStages(source, file) {
+  if (/<<|[^\t\n\x20-\x7e]|^[ \t]*#[ \t]*(?:escape|syntax)[ \t]*=/im.test(source)) {
+    throw new Error(`${file}: heredocs, parser directives and non-ASCII whitespace can hide Dockerfile instructions`);
+  }
+  // BuildKit drops comment lines before joining unescaped continuations without a separator.
+  const dockerfile = source.replace(/^[ \t]*#.*\r?\n/gm, "").replace(/(^|[^\\])\\[ \t]*\r?\n(?:[ \t]*\r?\n)*/gm, "$1");
+  return dockerfile.split(/^[ \t]*FROM[ \t]+/im).slice(1).map(stage => {
+    const from = stage.match(/^(?:--platform=(\S+)[ \t]+)?(\S+)(?:[ \t]+AS[ \t]+(\S+))?[ \t]*(?=\n|$)/i);
+    if (!from) throw new Error(`${file}: invalid Dockerfile FROM instruction`);
+    const [, platform, image, name] = from;
+    const contextSources = [...stage.slice(from[0].length).matchAll(/^[ \t]*COPY[ \t]+(.+)$/gim)]
+      .map(([, args]) => args.trim().split(/[ \t]+/))
+      .filter(args => !args[0].startsWith("--from="))
+      .flatMap(args => args.slice(0, -1));
+    return { platform, image, name, contextSources };
+  });
+}
+
 export function layer(file, kind = "normal", name = "") {
   if (kind === "devDependencies" && (name === "typescript" || name.startsWith("@types/"))) return "build/tooling";
   if (kind !== "normal" && kind !== null) return kind === "dev" || kind === "devDependencies" ? "test" : "build/tooling";
@@ -125,12 +143,12 @@ export function inventory(files, readInput, metadata = []) {
     }
     if (/(^|\/)(?:Dockerfile(?:\..*)?|[^/]+\.Dockerfile)$/.test(file)) {
       const stages = new Set();
-      for (const match of read(file).matchAll(/^FROM\s+(?:--platform=\S+\s+)?(\S+)(?:\s+AS\s+(\S+))?/gim)) {
-        const variable = match[1].match(/^\$\{(\w+)_IMAGE\}$/)?.[1];
-        const pin = variable ? platform.images?.[variable.toLowerCase()] : match[1];
-        if (!pin) throw new Error(`unresolved Dockerfile image argument: ${file}: ${match[1]}`);
+      for (const { image, name } of dockerfileStages(read(file), file)) {
+        const variable = image.match(/^\$\{(\w+)_IMAGE\}$/)?.[1];
+        const pin = variable ? platform.images?.[variable.toLowerCase()] : image;
+        if (!pin) throw new Error(`unresolved Dockerfile image argument: ${file}: ${image}`);
         if (pin !== "scratch" && !stages.has(pin)) add("container", pin.split(/[:@]/)[0], { file, user: file, pin, layer: "CI/supply chain" });
-        if (match[2]) stages.add(match[2]);
+        if (name) stages.add(name);
       }
     }
   }
