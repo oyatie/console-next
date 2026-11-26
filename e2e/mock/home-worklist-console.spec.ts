@@ -608,14 +608,11 @@ for (const locale of ["en", "ko"] as const) {
       await page.setViewportSize({ width: 320, height: 900 });
       const opsMinWidth320 = await opsTable.evaluate(el => getComputedStyle(el).minWidth);
       expect(opsMinWidth320).toBe("0px");
-      const opsFits320 = await opsTable.evaluate(el => {
-        const scroller = el.parentElement;
-        return (
-          el.scrollWidth <= (scroller?.clientWidth ?? el.clientWidth) + 1 &&
-          (!scroller || scroller.scrollWidth <= scroller.clientWidth + 1)
-        );
-      });
-      expect(opsFits320).toBe(true);
+      await expect.poll(() => opsTable.evaluate(async el => {
+        await document.fonts.ready;
+        const scroller = el.parentElement ?? el;
+        return Math.max(el.scrollWidth, scroller.scrollWidth) - scroller.clientWidth;
+      })).toBeLessThanOrEqual(1);
       await expect(opsTable.locator("..").locator("..").locator("[data-scroll-cue]")).toHaveCount(0);
       for (const control of await opsTable.locator("tbody a[href], tbody button").all()) {
         const tdBox = await control.locator("xpath=ancestor::td[1]").boundingBox();
