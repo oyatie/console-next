@@ -72,6 +72,10 @@ class EvidenceTest(unittest.TestCase):
         run["results"] = [{"status": "failed"}, {"status": "passed"}]
         self.assertEqual([r["status"] for r in self.rows()], ["fail", "pass"])
 
+    def test_live_webkit_project_keeps_its_engine(self):
+        self.report["suites"][0]["specs"][0]["tests"][0]["projectName"] = "webkit"
+        self.assertEqual(self.rows()[-1]["browser"], "webkit")
+
     def test_mock_experience_projects_require_recorded_browser(self):
         for project in ("", "default", "baseline"):
             self.report["suites"][0]["specs"][0]["tests"][0]["projectName"] = project
