@@ -107,6 +107,13 @@ impl From<SpoolError> for AlertActionError {
     }
 }
 
+/// Alertmanager has applied the change even when recording its outcome needs recovery.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AppliedSilence {
+    pub silence_id: String,
+    pub audit_error: Option<SpoolError>,
+}
+
 pub struct AlertActionsService<'a> {
     pub ack_store: &'a dyn AlertAckStore,
     pub silence_store: &'a dyn SilenceAuditStore,
@@ -145,7 +152,7 @@ impl<'a> AlertActionsService<'a> {
         input: &SilenceCreateInput,
         groups: &AlertGroupsView,
         context: &Context,
-    ) -> Result<String, AlertActionError> {
+    ) -> Result<AppliedSilence, AlertActionError> {
         self.create_silence_with_details(input, groups, None, context)
             .await
     }
@@ -156,7 +163,7 @@ impl<'a> AlertActionsService<'a> {
         groups: &AlertGroupsView,
         details: Option<&BTreeMap<String, AlertGroupDetailView>>,
         context: &Context,
-    ) -> Result<String, AlertActionError> {
+    ) -> Result<AppliedSilence, AlertActionError> {
         validate_silence_create(input, Some(Severity::Ticket), context.at)?;
         let target_severity = resolve_silence_target_severity(input, groups, details)?;
         let validated = validate_silence_create(input, Some(target_severity), context.at)?;
@@ -175,18 +182,25 @@ impl<'a> AlertActionsService<'a> {
             starts_at: validated.starts_at,
             ends_at: validated.ends_at,
             created_by: context.operator.person.clone(),
-            comment: validated.comment,
+            // The durable request and upstream silence can be matched even after a restart.
+            comment: format!("{} [{}]", validated.comment, context.support_ref),
         };
         match self.am_writer.create_silence(&post).await {
             Ok(silence_id) => {
-                self.silence_store.record_event(
-                    "silence_created",
-                    Some(&silence_id),
-                    validated.group_key.as_deref(),
-                    None,
-                    context,
-                )?;
-                Ok(silence_id)
+                let audit_error = self
+                    .silence_store
+                    .record_event(
+                        "silence_created",
+                        Some(&silence_id),
+                        validated.group_key.as_deref(),
+                        None,
+                        context,
+                    )
+                    .err();
+                Ok(AppliedSilence {
+                    silence_id,
+                    audit_error,
+                })
             }
             Err(err) => {
                 let _ = self.silence_store.record_event(
@@ -205,7 +219,7 @@ impl<'a> AlertActionsService<'a> {
         &self,
         silence_id: &str,
         context: &Context,
-    ) -> Result<(), AlertActionError> {
+    ) -> Result<AppliedSilence, AlertActionError> {
         let id = silence_id.trim();
         if id.is_empty() || id.contains(['/', '?', '#', ' ']) {
             return Err(AlertActionError::SilenceValidation(
@@ -221,14 +235,14 @@ impl<'a> AlertActionsService<'a> {
         )?;
         match self.am_writer.delete_silence(id).await {
             Ok(()) => {
-                self.silence_store.record_event(
-                    "silence_expired",
-                    Some(id),
-                    None,
-                    None,
-                    context,
-                )?;
-                Ok(())
+                let audit_error = self
+                    .silence_store
+                    .record_event("silence_expired", Some(id), None, None, context)
+                    .err();
+                Ok(AppliedSilence {
+                    silence_id: id.to_owned(),
+                    audit_error,
+                })
             }
             Err(err) => {
                 let _ = self.silence_store.record_event(

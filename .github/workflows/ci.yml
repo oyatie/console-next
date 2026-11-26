@@ -882,6 +882,9 @@ jobs:
         run: node --test scripts/supply-chain-fixtures.test.mjs
       - name: cargo-deny
         run: '"$TOOL_ROOT/bin/cargo-deny" --manifest-path backend/Cargo.toml --locked check'
+      - name: Windows desktop dependency advisories
+        if: ${{ !cancelled() }}
+        run: '"$TOOL_ROOT/bin/cargo-deny" --manifest-path apps/desktop/src-tauri/Cargo.toml --locked check advisories'
       - name: cargo-audit
         if: ${{ !cancelled() }}
         working-directory: backend

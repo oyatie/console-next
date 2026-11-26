@@ -19,6 +19,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 mod decide;
+mod decision_body;
 mod intake;
 
 pub const INTAKE: &str = "/api/v1/privacy/rights-requests/{id}";

@@ -2,8 +2,7 @@
 use super::{detail_max_length, kst_now_and_today};
 use crate::{PgComplianceError, statutory::StatutoryRegister};
 use console_compliance_domain::rights::{
-    AgentKind, Channel, Controller, IdentityMethod, Kind, ObjectionInput, OffAppReceipt, Receipt,
-    RightsRequest,
+    AgentKind, Channel, IdentityMethod, Kind, ObjectionInput, OffAppReceipt, Receipt, RightsRequest,
 };
 use console_kernel_core::{
     AuditAction, AuditEvent, KernelError, OrgId, Timestamp, TraceContext, UserId,
@@ -37,12 +36,6 @@ pub async fn receive_off_app(
     register: &StatutoryRegister,
 ) -> Result<Value, PgComplianceError> {
     let refuse = |code| PgComplianceError::Domain(KernelError::validation(code).with_code(code));
-    if input.controller != Controller::Tenant {
-        return Err(refuse("privacy_controller_invalid"));
-    }
-    if input.channel == Channel::InApp {
-        return Err(refuse("channel_invalid"));
-    }
     if input.detail.chars().count() > detail_max_length(tx, org).await? {
         return Err(refuse("detail_too_long"));
     }
@@ -63,8 +56,8 @@ pub async fn receive_off_app(
     let request = RightsRequest::receive(
         Receipt {
             id,
-            controller: input.controller,
-            channel: input.channel,
+            controller: input.controller.into(),
+            channel: input.channel.into(),
             agent: input.agent,
             mandate_received: input.mandate_received,
             identity_method: input.identity_method,

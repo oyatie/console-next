@@ -35,7 +35,7 @@ mod simulate;
 pub use blocks::*;
 use entities::*;
 pub use render::*;
-pub use review::*;
+pub use review::{ReviewDecision, ReviewStatus, review_draft, submit_draft};
 pub use schema::*;
 pub use simulate::*;
 

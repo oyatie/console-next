@@ -39,7 +39,7 @@ export const COPY_OC1_OPS = {
     bakeNormal: "Normal",
     bakeLong: "Long",
     requestBtn: "Request promotion",
-    blockedReason: "Blocked by open P0/P1 feedback or missing release gates",
+    blockedReason: "Check release gates, blocked signoffs and open P0/P1 feedback",
     watchingReason: "Awaiting a ready staging signoff for this candidate digest",
     unknownReason: "Candidate digest or staging status is unknown",
     signoffsTitle: "Staging signoffs",

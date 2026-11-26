@@ -501,6 +501,14 @@ test.each(["test.rs", "tests.rs", "case_test.rs", "case_tests.rs"])("CLI exclude
   expect(cli().status).toBe(0);
 });
 
+test("CLI ignores Rust build products while scanning backend source", () => {
+  const { cli, dir } = runtimeCli();
+  const generated = path.join(dir, "backend/target/debug/build/generated/src");
+  mkdirSync(generated, { recursive: true });
+  writeFileSync(path.join(generated, "refusal.rs"), 'refused("lifecycle.refuse.generated_only")');
+  expect(cli().status).toBe(0);
+});
+
 test("CLI refuses a rendered title assembled from two catalog values", () => {
   const { cli, dir } = runtimeCli();
   const parts = { noun: "사람", suffix: " 찾기" };

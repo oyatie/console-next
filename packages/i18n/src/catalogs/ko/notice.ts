@@ -26,6 +26,7 @@ export const koNotice: Record<keyof typeof enNotice, string> = {
   "notice.print": "인쇄 · PDF로 저장",
   "notice.copy": "글로 복사",
   "notice.copied": "글로 복사했습니다",
+  "notice.copyFailed": "공고를 복사하지 못했습니다. 공고 내용을 선택해 직접 복사하십시오.",
   "notice.list": "지난 공고",
   "notice.list.empty": "작성한 공고가 없습니다",
   "notice.list.col.no": "발령 번호",

@@ -298,6 +298,7 @@ function debtCeiling() {
 
 const walk = (dir, out = []) => {
   for (const name of readdirSync(dir)) {
+    if (dir === "backend" && name === "target") continue;
     const p = path.join(dir, name);
     if (statSync(p).isDirectory()) walk(p, out);
     else out.push(p);

@@ -166,7 +166,7 @@ for (const [width, colorScheme] of [[1440, "light"], [390, "dark"]] as const) te
     await page.screenshot({ path: test.info().outputPath(`create-${width}.png`) });
     await page.getByRole("button", { name: t("payroll.create.submit"), exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/payroll/runs/${created.id}$`));
-    expect(submitted).toEqual({ pay_group_id: preview.pay_group_id, kind: preview.kind });
+    expect(submitted).toEqual({ pay_group_id: preview.pay_group_id, kind: preview.kind, expected_attribution_month: preview.attribution_month });
     expect(fixture.unexpected).toEqual([]);
   } finally { await page.close(); fixture.release(); }
 });

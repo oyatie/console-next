@@ -34,9 +34,10 @@ const FROM: &str = " FROM sources l \
  LEFT JOIN LATERAL (SELECT a.workplace_id FROM employment_assignments a WHERE a.org_id=l.org_id AND a.employee_id=l.employee_id \
    AND a.superseded_at IS NULL AND a.valid_from<l.effective_date::date AND l.to_workplace_id IS NOT NULL ORDER BY a.valid_from DESC LIMIT 1) previous ON true \
  CROSS JOIN LATERAL (SELECT DISTINCT r.filing_kind AS k,r.insurer,r.recording_held, \
-   r.earliest_event_on FROM rules r \
-   WHERE ((r.effective_from<=l.effective_date::date+r.policy_offset_days \
-     AND (r.effective_to_exclusive IS NULL OR l.effective_date::date+r.policy_offset_days<r.effective_to_exclusive)) OR r.is_age) \
+   r.earliest_event_on,anchor.event_on FROM rules r \
+   CROSS JOIN LATERAL (SELECT l.effective_date::date-(l.event_type='GROUP_TRANSFER' AND r.filing_kind='LOSE')::int AS event_on) anchor \
+   WHERE ((r.event_from<=anchor.event_on \
+     AND (r.event_until IS NULL OR anchor.event_on<r.event_until)) OR r.is_age) \
      AND (NOT r.requires_workplace_change OR (previous.workplace_id IS DISTINCT FROM l.to_workplace_id AND l.to_workplace_id IS NOT NULL)) \
      AND (l.event_type=ANY(r.trigger_event_kinds) OR (l.event_type='STATUTORY_REQUEST' AND r.filing_kind=l.request_kind))) rule \
  CROSS JOIN LATERAL (SELECT rule.k) kind CROSS JOIN LATERAL (SELECT rule.insurer) agency \
@@ -55,7 +56,7 @@ const PLACEMENT: &str = " LEFT JOIN LATERAL (SELECT a.legal_entity_id, a.workpla
 const FILING: &str = " LEFT JOIN filing_obligations f ON f.org_id=l.org_id AND f.event_id=l.id AND f.filing_kind=kind.k AND f.insurer=agency.insurer \
 ";
 const WHERE: &str = " WHERE l.state IN ('APPLIED','SCHEDULED') AND x.voided_at IS NULL \
-   AND (rule.earliest_event_on IS NULL OR l.effective_date::date >= rule.earliest_event_on \
+   AND (rule.earliest_event_on IS NULL OR rule.event_on >= rule.earliest_event_on \
      OR (kind.k='ACQUIRE' AND agency.insurer='EI' AND EXISTS(SELECT 1 FROM insurance_filing_requests r WHERE r.org_id=l.org_id AND r.source_event_id=l.id AND r.filing_kind='ACQUIRE_REQUESTED'))) \
    AND NOT EXISTS (SELECT 1 FROM employee_lifecycle_events v \
      WHERE v.org_id = l.org_id AND v.voids_event_id IS NOT NULL AND v.voids_event_id = l.voidable_event_id AND v.state = 'APPLIED')";
@@ -116,25 +117,21 @@ pub(super) async fn query_rows(
            EXISTS(SELECT 1 FROM employee_lifecycle_events WHERE org_id=(SELECT org_id FROM boundary) AND event_type IN ('TERMINATE','OFFBOARD','GROUP_TRANSFER') AND state IN ('APPLIED','SCHEDULED')) AS exits), \
          sources AS (SELECT id,org_id,employee_id,event_type,state,effective_date,created_at,from_org_unit_id,to_org_unit_id,to_workplace_id,NULL::text AS request_kind,NULL::uuid AS source_event_id,effective_date AS placement_date,event_type AS source_type,id AS voidable_event_id FROM employee_lifecycle_events WHERE org_id=(SELECT org_id FROM boundary) UNION ALL \
            SELECT r.id,r.org_id,r.employee_id,'STATUTORY_REQUEST',p.state,r.anchor_on::text,r.created_at,p.from_org_unit_id,p.to_org_unit_id,p.to_workplace_id,r.filing_kind,r.source_event_id,p.effective_date,p.event_type,r.source_event_id FROM insurance_filing_requests r JOIN employee_lifecycle_events p ON p.org_id=r.org_id AND p.id=r.source_event_id WHERE r.filing_kind<>'ACQUIRE_REQUESTED' AND r.org_id=(SELECT org_id FROM boundary)), \
-         source_bounds AS MATERIALIZED (SELECT min(effective_date::date) AS first_on,max(effective_date::date) AS last_on FROM sources), \
-         rules AS MATERIALIZED (SELECT DISTINCT CASE WHEN r.filing_rule->>'age_trigger_years' IS NULL THEN r.effective_from END AS effective_from, \
-           CASE WHEN r.filing_rule->>'age_trigger_years' IS NULL THEN r.effective_to_exclusive END AS effective_to_exclusive, \
+         rules AS MATERIALIZED (SELECT DISTINCT r.event_from,r.event_until, \
            r.recording_held,r.requires_workplace_change,r.trigger_event_kinds, \
            r.filing_rule->>'filing_kind' AS filing_kind,r.filing_rule->>'insurer' AS insurer, \
-           r.policy_offset_days,r.filing_rule->>'age_trigger_years' IS NOT NULL AS is_age, \
+           r.filing_rule->>'age_trigger_years' IS NOT NULL AS is_age, \
            cutoff.earliest_event_on \
            FROM ",
         super::filing_boundary::filing_rule_periods!(),
         " r JOIN jsonb_to_recordset(",
     ));
     q.push_bind(bounds).push(
-        ") AS cutoff(code text,effective_from date,earliest_event_on date) ON cutoff.code=r.code AND cutoff.effective_from=r.effective_from CROSS JOIN source_bounds b WHERE r.filing_rule IS NOT NULL \
-             AND (r.filing_rule->>'age_trigger_years' IS NOT NULL OR (r.effective_from<=b.last_on+r.policy_offset_days \
-               AND (r.effective_to_exclusive IS NULL OR b.first_on+r.policy_offset_days<r.effective_to_exclusive)))), \
+        ") AS cutoff(code text,effective_from date,earliest_event_on date) ON cutoff.code=r.code AND cutoff.effective_from=r.effective_from), \
       filtered AS (SELECT l.id,l.org_id,l.created_at AS source_created_at, \
       'insurance_filing_' || kind.k || '_' || agency.insurer || ':' || l.id AS inbox_id,l.employee_id, \
       kind.k AS kind,agency.insurer AS insurer,rule.recording_held, \
-      CASE WHEN l.event_type='GROUP_TRANSFER' AND kind.k='LOSE' THEN (l.effective_date::date-1)::text ELSE l.effective_date END AS effective_date, \
+      rule.event_on::text AS effective_date, \
       l.effective_date::date AS source_on,l.placement_date,l.source_type,l.source_event_id,l.event_type, \
       x.name,x.employee_number,x.birth_date::text,profile.employment_type, \
       CASE WHEN kind.k='AGE60' THEN COALESCE(x.birth_date::text,assessment.applicability_facts->>'birth_date') END AS assessment_birth_date",

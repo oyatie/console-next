@@ -9,6 +9,7 @@ import { useOpsContext } from "../lib/ops-context";
 import { validateSilenceDraft } from "../lib/validation";
 import { Badge } from "../ui/badge";
 import { DisabledReason } from "../ui/disabled-reason";
+import { SilenceAuditNotice } from "../ui/silence-audit-notice";
 import { InlineError } from "../ui/inline-error";
 import s from "./alerts-screen.module.css";
 
@@ -136,6 +137,7 @@ export function AlertDetailActions({
           <span>{ackReceipt}</span>
         </div>
       ) : null}
+      <SilenceAuditNotice receipt={silenceMut.data} />
       {silenceCreatedId ? (
         <div className={s.receiptLine}>
           <Badge tone="info">{silenceCreatedId}</Badge>

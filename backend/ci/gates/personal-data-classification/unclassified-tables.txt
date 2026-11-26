@@ -263,7 +263,6 @@ p1_dispatch_targets
 payroll_attendance_material_refs
 payroll_disbursements
 payroll_draft_runs
-payroll_line_calculations
 payroll_payslip_deliveries
 period_locks
 policy_assignment_preview_receipts

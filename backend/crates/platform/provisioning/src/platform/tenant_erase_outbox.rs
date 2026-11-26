@@ -43,21 +43,10 @@ fn hex_lower(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
 
-fn is_not_found_error(err: &StorageError) -> bool {
-    let StorageError::S3(msg) = err else {
-        return false;
-    };
-    msg.contains("404") || msg.contains("NoSuchKey") || msg.contains("Not Found")
-}
-
 fn is_worm_retention_error(err: &StorageError) -> bool {
-    let StorageError::S3(msg) = err else {
-        return false;
-    };
-    msg.contains("403")
-        || msg.contains("AccessDenied")
-        || msg.contains("ObjectLock")
-        || msg.contains("Retention")
+    matches!(err, StorageError::Retained)
+        || matches!(err, StorageError::Response { status: 403, code, .. }
+        if matches!(code.as_str(), "ObjectLocked" | "AccessDeniedByObjectLock"))
 }
 
 fn truncate_error(err: &StorageError) -> String {
@@ -70,55 +59,55 @@ fn truncate_error(err: &StorageError) -> String {
 }
 
 impl PlatformProvisioner {
-    /// Emit structured, zero-PII witness logs for any newly completed tenant
-    /// erasures whose `erasure_witness_seq > after_seq`. Returns
-    /// `(emitted_count, highest_seq_seen)`.
-    pub async fn emit_erase_witnesses_after(
-        pool: &PgPool,
-        after_seq: i64,
-    ) -> Result<(usize, i64), ProvisioningError> {
-        let rows: Vec<WitnessRow> =
-            with_org_conn::<_, _, ProvisioningError>(pool, OrgId::platform(), move |tx| {
-                Box::pin(async move {
-                    Ok(sqlx::query_as(
-                        "SELECT id, target_org_id, erasure_witness_seq, \
-                                erasure_witness_hash, shredded_key_fingerprint \
-                           FROM tenant_erase_requests \
-                          WHERE org_id = $1 \
-                            AND erased_at IS NOT NULL \
-                            AND erasure_witness_seq IS NOT NULL \
-                            AND erasure_witness_hash IS NOT NULL \
-                            AND shredded_key_fingerprint IS NOT NULL \
-                            AND erasure_witness_seq > $2 \
-                          ORDER BY erasure_witness_seq ASC \
-                          LIMIT 100",
-                    )
-                    .bind(OrgId::platform().as_uuid())
-                    .bind(after_seq)
-                    .fetch_all(tx.as_mut())
-                    .await?)
-                })
+    /// Emit a batch of pending request witnesses. A worker crash before the receipt
+    /// commits can replay a log line; collectors can deduplicate it by request_id.
+    pub async fn emit_pending_erase_witnesses(pool: &PgPool) -> Result<usize, ProvisioningError> {
+        with_org_conn::<_, _, ProvisioningError>(pool, OrgId::platform(), |tx| {
+            Box::pin(async move {
+                // Uniqueness serializes competing workers. The claim and all log
+                // calls share a transaction, so a failed pass can retry every row.
+                let rows: Vec<WitnessRow> = sqlx::query_as(
+                    r#"WITH pending AS (
+                           SELECT r.id, r.target_org_id, r.erasure_witness_seq,
+                                  r.erasure_witness_hash, r.shredded_key_fingerprint
+                             FROM tenant_erase_requests r
+                            WHERE r.org_id = $1 AND r.erased_at IS NOT NULL
+                              AND r.erasure_witness_seq IS NOT NULL
+                              AND r.erasure_witness_hash IS NOT NULL
+                              AND r.shredded_key_fingerprint IS NOT NULL
+                              AND NOT EXISTS (
+                                  SELECT 1 FROM tenant_erase_witness_emissions e
+                                   WHERE e.org_id = $1 AND e.request_id = r.id
+                              )
+                            ORDER BY r.erased_at, r.id LIMIT 100
+                       ), claimed AS (
+                           INSERT INTO tenant_erase_witness_emissions (org_id, request_id)
+                           SELECT $1, id FROM pending ORDER BY id
+                           ON CONFLICT (request_id) DO NOTHING RETURNING request_id
+                       )
+                       SELECT p.* FROM pending p JOIN claimed c ON p.id = c.request_id"#,
+                )
+                .bind(OrgId::platform().as_uuid())
+                .fetch_all(tx.as_mut())
+                .await?;
+                if !rows.is_empty() && !tracing::enabled!(target: "console.erasure_ledger.witness", tracing::Level::INFO) {
+                    return Err(ProvisioningError::TenantErase("erasure_witness_logging_disabled"));
+                }
+                for row in &rows {
+                    tracing::info!(
+                        target: "console.erasure_ledger.witness",
+                        request_id = %row.id,
+                        org_id = %row.target_org_id,
+                        seq = row.erasure_witness_seq,
+                        entry_hash = %hex_lower(&row.erasure_witness_hash),
+                        key_fingerprint = %hex_lower(&row.shredded_key_fingerprint),
+                        "tenant DEK shredded and erasure ledger witnessed"
+                    );
+                }
+                Ok(rows.len())
             })
-            .await?;
-
-        let mut max_seq = after_seq;
-        for row in &rows {
-            let entry_hash = hex_lower(&row.erasure_witness_hash);
-            let key_fingerprint = hex_lower(&row.shredded_key_fingerprint);
-            tracing::info!(
-                target: "console.erasure_ledger.witness",
-                request_id = %row.id,
-                org_id = %row.target_org_id,
-                seq = row.erasure_witness_seq,
-                entry_hash = %entry_hash,
-                key_fingerprint = %key_fingerprint,
-                "tenant DEK shredded and erasure ledger witnessed"
-            );
-            if row.erasure_witness_seq > max_seq {
-                max_seq = row.erasure_witness_seq;
-            }
-        }
-        Ok((rows.len(), max_seq))
+        })
+        .await
     }
 
     /// Drain due S3 delete entries from `tenant_erase_s3_outbox` without
@@ -162,12 +151,8 @@ impl PlatformProvisioner {
                 continue;
             };
 
-            match store.delete_object(bucket.to_owned(), row.object_key).await {
+            match store.purge_object(bucket.to_owned(), row.object_key).await {
                 Ok(()) => {
-                    delete_outbox_row(pool, row.id).await?;
-                    stats.deleted += 1;
-                }
-                Err(ref err) if is_not_found_error(err) => {
                     delete_outbox_row(pool, row.id).await?;
                     stats.deleted += 1;
                 }

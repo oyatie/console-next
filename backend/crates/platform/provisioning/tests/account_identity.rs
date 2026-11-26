@@ -1,11 +1,10 @@
 //! Account allocation/retirement, with actual separately authenticated serving logins.
 //! This does not prove enrollment, human identity, auth custody or former-worker retention.
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-#[path = "../../../../test_support/governed_erase.rs"]
-mod governed_erase;
 use console_kernel_core::{OrgId, UserId};
 use console_platform_auth::RefreshTokenStore;
 use console_platform_provisioning::{PlatformProvisioner, ProvisioningError, TenantRemovalOutcome};
+use console_platform_test_support::governed_erase;
 use serde_json::Value;
 use sqlx::{PgPool, Postgres, Transaction, postgres::PgPoolOptions};
 use time::{Duration, OffsetDateTime};

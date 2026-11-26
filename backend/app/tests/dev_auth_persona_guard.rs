@@ -20,9 +20,10 @@ async fn refuses_to_start_when_a_dev_auth_persona_row_exists(pool: PgPool) {
         .await
         .unwrap();
 
-    let err = assert_no_dev_auth_personas(&pool)
-        .await
-        .expect_err("a dev-auth:* row must refuse startup in a default build");
+    let err =
+        assert_no_dev_auth_personas(&console_platform_test_support::runtime_role_pool(&pool).await)
+            .await
+            .expect_err("a dev-auth:* row must refuse startup in a default build");
     assert!(
         err.to_string().contains("dev-auth"),
         "error should name the reason: {err}"
@@ -40,5 +41,7 @@ async fn starts_normally_with_no_dev_auth_persona_rows(pool: PgPool) {
         .await
         .unwrap();
 
-    assert_no_dev_auth_personas(&pool).await.unwrap();
+    assert_no_dev_auth_personas(&console_platform_test_support::runtime_role_pool(&pool).await)
+        .await
+        .unwrap();
 }

@@ -117,6 +117,8 @@ pub(crate) async fn run_dispatch_worker(
                 .filter(|b| !b.trim().is_empty());
             lifecycle_schedule::S3PurgeTargets {
                 store: std::sync::Arc::new(store.clone()),
+                #[cfg(feature = "workorder")]
+                evidence: state.evidence_storage.clone(),
                 primary_bucket: primary_bucket.clone(),
                 replica_bucket,
             }

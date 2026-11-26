@@ -18,9 +18,9 @@ class PullMeasuredEvidenceTest(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        self.run = {"databaseId": 123, "headSha": "a" * 40, "headBranch": "dev", "event": "push", "status": "completed"}
+        self.run = {"id": 123, "head_sha": "a" * 40, "head_branch": "dev", "event": "push", "status": "completed"}
         self.jobs = {RELEASE_JOB: "success"}
-        self.data = {"commit": self.run["headSha"], "run_at": datetime.now(timezone.utc).isoformat(),
+        self.data = {"commit": self.run["head_sha"], "run_at": datetime.now(timezone.utc).isoformat(),
                      "source_command": "proof", "rows": [{"status": "fail"}, {"status": "unknown"}]}
         (self.root / "evidence.py").write_text('''import json, os, sys
 from pathlib import Path
@@ -36,14 +36,16 @@ import json, os, sys
 from pathlib import Path
 args = sys.argv[1:]
 runs = json.loads(os.environ['RUNS'])
-run_ids = [str(run['databaseId']) for run in runs]
+run_ids = [str(run['id']) for run in runs]
 assert args[args.index('--repo') + 1] == 'sample/console' if '--repo' in args else True
-if args[:2] == ['run', 'list']:
-    assert args[args.index('--workflow') + 1] == 'ci.yml'
-    if '--status' in args: runs = []
-    limit = int(args[args.index('--limit') + 1]) if '--limit' in args else 20
-    fields = args[args.index('--json') + 1].split(',')
-    print(json.dumps([{{key: run[key] for key in fields}} for run in runs[:limit]]))
+if args[0] == 'api' and '/workflows/ci.yml/runs?' in args[1]:
+    from urllib.parse import parse_qs
+    path, query = args[1].split('?')
+    assert path == 'repos/sample/console/actions/workflows/ci.yml/runs'
+    params = parse_qs(query)
+    page = int(params.pop('page')[0])
+    assert params == {{'per_page': ['100']}} and page >= 1
+    print(json.dumps({{'workflow_runs': runs[(page - 1) * 100:page * 100]}}))
 elif args[0] == 'api':
     assert '--paginate' in args and '--slurp' in args
     run_path, resource = args[1].rsplit('/', 1)
@@ -80,13 +82,21 @@ else: sys.exit('unexpected gh invocation: ' + repr(args))
                               env=self.env, capture_output=True, text=True)
 
     def test_newest_completed_run_supplies_failed_and_unknown_rows(self):
-        runs = [dict(self.run, databaseId=124, status="in_progress"), self.run, dict(self.run, databaseId=122)]
+        runs = [dict(self.run, id=124, status="in_progress"), self.run, dict(self.run, id=122)]
         result = self.invoke(runs)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual((self.root / "downloads").read_text().splitlines(), [str(self.run["databaseId"])])
+        self.assertEqual((self.root / "downloads").read_text().splitlines(), [str(self.run["id"])])
         records = [json.loads(line) for line in (self.root / "ingested").read_text().splitlines()]
         self.assertEqual([name for name, _ in records], ["e2e.json", "nextest.json"])
         self.assertTrue(all(data == self.data for _, data in records))
+
+    def test_searches_next_page_after_one_hundred_active_runs(self):
+        active = [dict(self.run, id=1000+i, status="in_progress") for i in range(101)]
+        self.assertIn("no completed dev push CI run", self.invoke(active).stderr)
+        result = self.invoke([*active, dict(self.run, id=997, head_branch="feature"),
+                              dict(self.run, id=998, event="pull_request"), self.run, dict(self.run, id=122)])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((self.root / "downloads").read_text().splitlines(), [str(self.run["id"])])
 
     def test_available_sources_ingest_independently_without_older_run_fallback(self):
         for sources in (("e2e",), ("nextest",), ("e2e", "nextest")):
@@ -147,7 +157,7 @@ else: sys.exit('unexpected gh invocation: ' + repr(args))
                 self.run, self.data = original_run.copy(), original_data.copy()
                 self.env['ARTIFACTS'] = json.dumps(["d7-evidence"])
                 self.env.pop('INVALID_SOURCE', None)
-                if case == 'branch': self.run['headBranch'] = 'feature'
+                if case == 'branch': self.run['head_branch'] = 'feature'
                 if case == 'event': self.run['event'] = 'pull_request'
                 if case == 'commit': self.data['commit'] = 'b' * 40
                 if case == 'stale': self.data['run_at'] = (datetime.now(timezone.utc) - timedelta(days=8)).isoformat()

@@ -162,7 +162,7 @@ pub async fn load_payslip_issuance_in_tx(
                 u.id AS recipient_user_id \
          FROM payroll_line_calculations c \
          JOIN payroll_draft_lines l ON l.org_id = c.org_id AND l.id = c.line_id \
-         JOIN users u ON u.org_id = l.org_id AND u.employee_id = l.employee_id \
+         LEFT JOIN users u ON u.org_id = l.org_id AND u.employee_id = l.employee_id \
          LEFT JOIN employees e ON e.org_id = l.org_id AND e.id = l.employee_id \
          LEFT JOIN LATERAL ( \
              SELECT r.attributes \
@@ -172,12 +172,26 @@ pub async fn load_payslip_issuance_in_tx(
              LIMIT 1 \
          ) ou ON e.org_unit_id IS NOT NULL \
          LEFT JOIN job_titles jt ON jt.org_id = e.org_id AND jt.id = e.job_title_id \
-         WHERE c.run_id = $1 AND l.employee_id IS NOT NULL \
+         WHERE c.run_id = $1 \
          ORDER BY c.line_id, c.version DESC",
     )
     .bind(run_id)
     .fetch_all(tx.as_mut())
     .await?;
+    let mut missing = 0;
+    for row in &rows {
+        if row
+            .try_get::<Option<Uuid>, _>("recipient_user_id")?
+            .is_none()
+        {
+            missing += 1;
+        }
+    }
+    if missing > 0 {
+        return Err(LifecycleError::InvalidState(format!(
+            "{missing} calculated payroll line(s) lack a linked recipient"
+        )));
+    }
     let lines =
         rows.iter()
             .map(|row| {

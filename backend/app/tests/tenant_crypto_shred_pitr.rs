@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-#[path = "../../test_support/governed_erase.rs"]
-mod governed_erase;
+use console_platform_test_support::governed_erase;
 #[path = "support/credential_reseal_helpers.rs"]
 mod helpers;
 #[path = "support/rrn_blind_index.rs"]
@@ -226,7 +225,7 @@ async fn two_operator_crypto_shred_survives_pitr_and_cleans_s3(owner: PgPool) {
     let sink = LogSink::default();
     let sub = tracing_subscriber::fmt().with_writer(sink.clone()).finish();
     let _guard = tracing::subscriber::set_default(sub);
-    let (emitted, _) = PlatformProvisioner::emit_erase_witnesses_after(&a.rt, 0)
+    let emitted = PlatformProvisioner::emit_pending_erase_witnesses(&a.rt)
         .await
         .unwrap();
     assert_eq!(emitted, 1);

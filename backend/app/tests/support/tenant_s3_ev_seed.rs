@@ -87,6 +87,14 @@ pub async fn seed_all_nine_s3_tables(
     keys.push(("PRIMARY".into(), None, em_th));
     keys.push(("REPLICA".into(), None, em_key));
 
+    let pending_key = format!("orgs/{org_uuid}/wo/{wo_id}/pending.jpg");
+    sqlx::query( // rls-arming: ok owner fixture
+        "INSERT INTO evidence_media (org_id,work_order_id,stage,s3_key,content_type,size_bytes,uploaded_by,worm_replica_status)
+         VALUES ($1,$2,'AFTER',$3,'image/jpeg',100,$4,'PENDING')",
+    ).bind(org_uuid).bind(wo_id).bind(&pending_key).bind(actor).execute(owner).await.unwrap();
+    keys.push(("PRIMARY".into(), None, pending_key.clone()));
+    keys.push(("REPLICA".into(), None, pending_key));
+
     // 2. employee_photo_uploads
     let photo_key = format!("orgs/{org_uuid}/employees/{employee_id}/photo.jpg");
     sqlx::query("INSERT INTO employee_photo_uploads (org_id, id, employee_id, object_key, content_type, byte_size, issued_by) VALUES ($1,$2,$3,$4,'image/jpeg',128,$5)") // rls-arming: ok owner fixture

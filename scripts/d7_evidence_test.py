@@ -72,13 +72,19 @@ class EvidenceTest(unittest.TestCase):
         run["results"] = [{"status": "failed"}, {"status": "passed"}]
         self.assertEqual([r["status"] for r in self.rows()], ["fail", "pass"])
 
-    def test_default_mock_project_is_chromium_only_for_the_known_config(self):
+    def test_live_webkit_project_keeps_its_engine(self):
+        self.report["suites"][0]["specs"][0]["tests"][0]["projectName"] = "webkit"
+        self.assertEqual(self.rows()[-1]["browser"], "webkit")
+
+    def test_mock_experience_projects_require_recorded_browser(self):
         for project in ("", "default", "baseline"):
-            self.report.pop("config", None)
             self.report["suites"][0]["specs"][0]["tests"][0]["projectName"] = project
-            self.assertEqual(self.rows()[-1]["browser"], "unknown")
             self.report["config"] = {"configFile": "/repo/e2e/mock/playwright.config.ts"}
-            self.assertEqual(self.rows()[-1]["browser"], "chromium")
+            self.assertEqual(self.rows()[-1]["browser"], "unknown")
+            for browser in ("chromium", "firefox", "webkit", "invalid"):
+                with self.subTest(project=project, browser=browser):
+                    self.report["config"]["metadata"] = {"browserName": browser}
+                    self.assertEqual(self.rows()[-1]["browser"], "unknown" if browser == "invalid" else browser)
 
     def test_junit_join_requires_binary_and_unique_title_and_executed_success(self):
         def xml(body, binary="sample::refusals"):

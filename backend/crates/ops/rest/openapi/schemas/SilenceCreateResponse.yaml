@@ -4,3 +4,4 @@ required: ["evaluated_at", "silence_id"]
 properties:
   evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
   silence_id: {"$ref": "#/components/schemas/Text"}
+  audit_recovery_ref: {"type": "string", "description": "Present when Alertmanager applied the change and the audit outcome needs reconciliation using this request reference."}

@@ -9,6 +9,21 @@ pub(super) async fn create(
     kind: &str,
     key: &str,
 ) -> JsonResponse {
+    create_body(
+        service,
+        token,
+        json!({"pay_group_id":group,"kind":kind}),
+        key,
+    )
+    .await
+}
+
+async fn create_body(
+    service: axum::Router,
+    token: &str,
+    body: serde_json::Value,
+    key: &str,
+) -> JsonResponse {
     let response = service
         .oneshot(
             Request::builder()
@@ -17,9 +32,7 @@ pub(super) async fn create(
                 .header(header::AUTHORIZATION, format!("Bearer {token}"))
                 .header(header::CONTENT_TYPE, "application/json")
                 .header("Idempotency-Key", key)
-                .body(Body::from(
-                    json!({"pay_group_id":group,"kind":kind}).to_string(),
-                ))
+                .body(Body::from(body.to_string()))
                 .unwrap(),
         )
         .await
@@ -244,4 +257,41 @@ async fn setup_tenant_cannot_create_a_run(pool: PgPool) {
         .await
         .unwrap();
     assert_eq!(count, 0);
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn stale_preview_refuses_the_next_month_and_preserves_the_original_run(pool: PgPool) {
+    let (service, token, group, _, _) = setup(&pool).await;
+    let preview = get(service.clone(), &uri(group, "REGULAR"), &token).await;
+    let invalid = create_body(
+        service.clone(),
+        &token,
+        json!({"pay_group_id":group,"kind":"REGULAR","expected_attribution_month":"2026-13"}),
+        &Uuid::new_v4().to_string(),
+    )
+    .await;
+    refusal(invalid, StatusCode::UNPROCESSABLE_ENTITY, "validation");
+    let intent = json!({"pay_group_id":group,"kind":"REGULAR","expected_attribution_month":preview.json["attribution_month"]});
+    let first = create_body(
+        service.clone(),
+        &token,
+        intent.clone(),
+        &Uuid::new_v4().to_string(),
+    )
+    .await;
+    assert_eq!(first.status, StatusCode::CREATED, "{}", first.json);
+    let stale = create_body(service.clone(), &token, intent, &Uuid::new_v4().to_string()).await;
+    refusal(stale, StatusCode::CONFLICT, "payroll_preview_changed");
+    let next = get(service, &uri(group, "REGULAR"), &token).await;
+    assert_ne!(
+        next.json["attribution_month"],
+        preview.json["attribution_month"]
+    );
+    let count: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM payroll_draft_runs WHERE pay_group_id=$1")
+            .bind(group)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(count, 1);
 }

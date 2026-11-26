@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(clippy::unwrap_used, clippy::expect_used, dead_code)]
 
-use std::collections::HashSet;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use console_app::EnvRrnVault;
 use console_hr_domain::import::rrn_value::SealedRrn;
@@ -10,60 +9,13 @@ use console_kernel_core::OrgId;
 use console_platform_db::tenant_keys::PgTenantKeyStore;
 use console_platform_db::with_org_conn;
 use console_platform_provisioning::PlatformProvisioner;
-use console_platform_storage::{
-    CopyObjectRequest, ObjectHead, PresignGetRequest, PresignPutRequest, PresignedUpload,
-    RetentionInfo, S3ObjectStore, StorageError, StorageFuture,
-};
 use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
 use uuid::Uuid;
 
-#[derive(Default)]
-pub struct FakeS3Store {
-    pub deletes: Mutex<Vec<(String, String)>>,
-    pub worm_replica_locked: bool,
-    pub not_found_keys: HashSet<String>,
-}
-
-impl S3ObjectStore for FakeS3Store {
-    fn presign_put(&self, _: PresignPutRequest) -> StorageFuture<'_, PresignedUpload> {
-        unreachable!()
-    }
-    fn presign_get(&self, _: PresignGetRequest) -> StorageFuture<'_, String> {
-        unreachable!()
-    }
-    fn copy_object(&self, _: CopyObjectRequest) -> StorageFuture<'_, ()> {
-        unreachable!()
-    }
-    fn head_object(&self, _: String, _: String) -> StorageFuture<'_, ObjectHead> {
-        unreachable!()
-    }
-    fn get_object_retention(&self, _: String, _: String) -> StorageFuture<'_, RetentionInfo> {
-        unreachable!()
-    }
-    fn get_object(&self, _: String, _: String) -> StorageFuture<'_, Vec<u8>> {
-        unreachable!()
-    }
-    fn put_object(&self, _: String, _: String, _: String, _: Vec<u8>) -> StorageFuture<'_, ()> {
-        unreachable!()
-    }
-    fn delete_object(&self, bucket: String, key: String) -> StorageFuture<'_, ()> {
-        Box::pin(async move {
-            if self.worm_replica_locked && bucket == "replica-bkt" {
-                return Err(StorageError::S3(
-                    "delete object failed with 403 Forbidden: AccessDenied".into(),
-                ));
-            }
-            if self.not_found_keys.contains(&key) {
-                return Err(StorageError::S3(
-                    "delete object failed with 404 Not Found: NoSuchKey".into(),
-                ));
-            }
-            self.deletes.lock().unwrap().push((bucket, key));
-            Ok(())
-        })
-    }
-}
+#[path = "tenant_purge_store.rs"]
+mod tenant_purge_store;
+use tenant_purge_store::FakeS3Store;
 
 pub async fn force_role_pool(owner: &PgPool) -> PgPool {
     if let Ok(pw) = std::env::var("CONSOLE_TEST_FORCE_PASSWORD") {
@@ -261,7 +213,14 @@ pub async fn assert_all_nine_s3_outbox_drain(
         .map(|(_, _, k)| k.clone())
         .into_iter()
         .collect();
+    let denied = expected_keys
+        .iter()
+        .find(|(kind, _, key)| kind == "REPLICA" && key.ends_with("/pending.jpg"))
+        .unwrap()
+        .2
+        .clone();
     let fake_s3 = FakeS3Store {
+        permission_denied_key: Some(denied.clone()),
         worm_replica_locked: true,
         not_found_keys: not_found,
         ..Default::default()
@@ -284,7 +243,7 @@ pub async fn assert_all_nine_s3_outbox_drain(
         .count();
     assert_eq!(
         (stats.deleted, stats.deferred_worm, stats.retried),
-        (expected_primary_plus_explicit, expected_replica, 0)
+        (expected_primary_plus_explicit, expected_replica - 1, 1)
     );
     {
         // The guard ends here: a std lock held across an await can deadlock another task that needs it.
@@ -304,4 +263,9 @@ pub async fn assert_all_nine_s3_outbox_drain(
     .await
     .unwrap();
     assert_eq!(remaining, i64::try_from(expected_replica).unwrap());
+    let prompt_retry: bool = sqlx::query_scalar(
+        "SELECT next_retry_at < now() + interval '2 hours' AND last_error LIKE '%AccessDenied%'
+         FROM tenant_erase_s3_outbox WHERE target_org_id=$1 AND object_key=$2 AND bucket_kind='REPLICA'",
+    ).bind(org_uuid).bind(denied).fetch_one(owner).await.unwrap();
+    assert!(prompt_retry);
 }

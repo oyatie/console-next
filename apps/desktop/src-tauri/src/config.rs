@@ -56,7 +56,7 @@ fn pick<T>(
     layers.iter().filter_map(&get).find_map(|raw| {
         let v = valid(raw);
         if v.is_none() {
-            diag(&format!("config: ignoring invalid {field} {raw:?}"));
+            diag(&format!("config: ignoring invalid {field}"));
         }
         v
     })
@@ -77,7 +77,7 @@ pub fn resolve(layers: &[Layer], default: &Url) -> Settings {
 }
 
 pub fn same_origin(console: &Url, url: &Url) -> bool {
-    url.origin() == console.origin()
+    external(url) && url.origin() == console.origin()
 }
 
 /// Links the shell hands to the default browser. Only https: URLs without credentials are allowed.
@@ -130,7 +130,11 @@ fn file() -> Layer {
     };
     match std::fs::read_to_string(&path) {
         Ok(text) => serde_json::from_str(&text).unwrap_or_else(|e| {
-            diag(&format!("config: ignoring {}: {e}", path.display()));
+            diag(&format!(
+                "config: invalid JSON at line {}, column {}",
+                e.line(),
+                e.column()
+            ));
             Layer::default()
         }),
         Err(_) => Layer::default(),
@@ -286,6 +290,8 @@ mod tests {
         assert!(!same_origin(&c, &url("http://c.test/")));
         assert!(!same_origin(&c, &url("https://evil.test/")));
         assert!(!same_origin(&c, &url("data:text/html,x")));
+        assert!(!same_origin(&c, &url("blob:https://c.test/document")));
+        assert!(!same_origin(&c, &url("https://user@c.test/")));
         assert!(external(&url("https://evil.test/")));
         assert!(!external(&url("mailto:a@b.test")));
         assert!(!external(&url("file:///C:/Windows")) && !external(&url("javascript:alert(1)")));

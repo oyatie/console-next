@@ -195,9 +195,17 @@ for (const environment of ['exit-test', 'template']) test(`${environment}: rende
     const groups = environment === 'exit-test' ? ['database', 'tests/restore'] : ['database'];
     for (const group of groups) {
       const clusters = yaml.loadAll(readFileSync(join(dir, group, 'resources.yaml'), 'utf8')).filter(doc => doc.kind === 'Cluster');
-      assert.equal(clusters.length, 1);
-      assert.equal(clusters[0].spec.imageName, JSON.parse(read('deploy/versions.json')).images.postgres);
-      cnpgVersion(clusters[0].spec.imageName);
+      assert.equal(clusters.length, group === 'tests/restore' ? 2 : 1);
+      for (const cluster of clusters) {
+        assert.equal(cluster.spec.imageName, JSON.parse(read('deploy/versions.json')).images.postgres);
+        cnpgVersion(cluster.spec.imageName);
+      }
+      if (group === 'tests/restore') {
+        const [current, stale] = clusters;
+        assert.deepEqual(current.spec.bootstrap.recovery, {source:'console-db'});
+        assert.equal(stale.spec.bootstrap.recovery.recoveryTarget.targetLSN, '${BEFORE_ERASURE_LSN}');
+        for (const cluster of clusters) assert.equal(cluster.spec.postgresql.pg_hba[0], 'host console all all reject');
+      }
     }
   } finally { rmSync(dir, {recursive:true,force:true}); }
 });

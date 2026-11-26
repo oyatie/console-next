@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-#[path = "../../../../test_support/governed_erase.rs"]
-mod governed_erase;
 use console_kernel_core::OrgId;
+use console_platform_test_support::governed_erase;
 use sqlx::PgPool;
 use uuid::Uuid;
 

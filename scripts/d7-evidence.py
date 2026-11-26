@@ -41,9 +41,10 @@ def e2e_rows(report, index):
             file = "e2e/" + file.split("/e2e/")[-1].removeprefix("e2e/")
             title = " › ".join(groups + [spec["title"]])
             for test in spec["tests"]:
-                browser = {"parallel": "chromium", "clock": "chromium", "firefox": "firefox"}.get(test["projectName"], "unknown")
+                browser = {"parallel": "chromium", "clock": "chromium", "firefox": "firefox", "webkit": "webkit"}.get(test["projectName"], "unknown")
                 if test["projectName"] in ("", "default", "baseline") and report.get("config", {}).get("configFile", "").endswith("e2e/mock/playwright.config.ts"):
-                    browser = "chromium"
+                    recorded = report["config"].get("metadata", {}).get("browserName")
+                    browser = recorded if recorded in ("chromium", "firefox", "webkit") else "unknown"
                 for result in test.get("results", []) or [{"status": "skipped"}]:
                     state = status(result["status"]) if test.get("expectedStatus") == "passed" and not report.get("errors") else "unknown"
                     if file == "e2e/error-beacon.spec.ts":

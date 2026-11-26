@@ -1,5 +1,5 @@
 use console_platform_storage::{
-    CopyObjectRequest, S3ObjectStore, S3StorageConfig, SeaweedS3Storage,
+    CopyObjectRequest, S3ObjectStore, S3StorageConfig, SeaweedS3Storage, StorageError,
 };
 use std::{env, io, process::Command};
 use time::format_description::well_known::Rfc3339;
@@ -47,7 +47,7 @@ async fn seaweedfs_compliance_retention_protects_locked_object_version()
         .err()
         .ok_or_else(|| io::Error::other("retained version was deleted"))?;
     assert!(
-        denial.to_string().contains("<Code>AccessDenied</Code>"),
+        matches!(&denial, StorageError::Response { status: 403, code, .. } if code == "AccessDenied"),
         "expected AccessDenied for the retained version, got {denial}"
     );
 
@@ -112,9 +112,40 @@ async fn seaweedfs_compliance_retention_protects_locked_object_version()
         .err()
         .ok_or_else(|| io::Error::other("retained replica was deleted"))?;
     assert!(
-        denial.to_string().contains("<Code>AccessDenied</Code>"),
+        matches!(&denial, StorageError::Response { status: 403, code, .. } if code == "AccessDenied"),
         "{denial}"
     );
+    assert!(matches!(
+        storage.purge_object(bucket.clone(), key.clone()).await,
+        Err(StorageError::Retained)
+    ));
+    let removable = format!("{key}/remove");
+    let neighbor = format!("{removable}-keep");
+    storage
+        .put_bytes(&bucket, &neighbor, "text/plain", vec![3])
+        .await?;
+    let mut versions = Vec::new();
+    for value in [1, 2] {
+        versions.push(
+            storage
+                .put_bytes_with_result(&bucket, &removable, "text/plain", vec![value])
+                .await?
+                .version_id
+                .ok_or_else(|| io::Error::other("missing purge fixture version"))?,
+        );
+    }
+    storage.delete_object(&bucket, &removable).await?;
+    storage
+        .purge_object(bucket.clone(), removable.clone())
+        .await?;
+    for id in versions {
+        assert!(matches!(
+            storage.head_object_version(&bucket, &removable, &id).await,
+            Err(StorageError::Response { status: 404, .. })
+        ));
+    }
+    storage.purge_object(bucket.clone(), removable).await?;
+    assert_eq!(storage.get_bytes(&bucket, &neighbor).await?.0, vec![3]);
     let mut version_url = url::Url::parse(&url)?;
     version_url
         .query_pairs_mut()

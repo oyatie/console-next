@@ -5,6 +5,10 @@ summary: List general-ledger vouchers (tenant-scoped; optional branch/status fil
 security:
 - bearerAuth: []
 parameters:
+- name: after
+  in: query
+  description: Cursor from the preceding X-Next-Cursor response header.
+  schema: {type: string, format: uuid}
 - name: branch_id
   in: query
   required: false
@@ -18,6 +22,10 @@ parameters:
 responses:
   '200':
     description: Vouchers visible to the caller.
+    headers:
+      X-Next-Cursor:
+        description: Continuation cursor when more rows are available.
+        schema: {type: string, format: uuid}
     content:
       application/json:
         schema:

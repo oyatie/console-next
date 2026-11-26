@@ -12,7 +12,10 @@ pub(crate) mod register;
 mod types;
 mod window;
 mod write;
-pub use types::*;
+pub use types::{
+    CaseItem, CaseItemPage, CaseItemQuery, CompleteItem, EvidenceDocument, ItemAttestation,
+    LifecycleCase, TemplateItem, TemplatePreviewQuery,
+};
 
 pub(super) fn refused(code: &'static str) -> crate::HrError {
     crate::HrError {

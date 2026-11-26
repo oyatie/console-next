@@ -235,3 +235,6 @@ async fn statutory_transfer_keeps_both_employers_scoped_and_receipt_versions_ind
             .unwrap();
     assert_eq!(requests, 1);
 }
+
+#[path = "statutory_transfer/rule_boundary.rs"]
+mod rule_boundary;
