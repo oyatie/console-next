@@ -12,6 +12,8 @@ export interface CssRuleNode {
 
 export interface ParsedCssRoot {
   walkRules(visitor: (rule: CssRuleNode) => void): void;
+  walkDecls(visitor: (decl: { prop: string; value: string; remove(): void }) => void): void;
+  toString(): string;
 }
 
 export function parseCss(css: string, from: string): ParsedCssRoot;

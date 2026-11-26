@@ -23,10 +23,6 @@ export function RosterConsoleRail({
   setEmpTypes,
   review,
   registerMissingCount,
-  addressMissingOnly,
-  setAddressMissingOnly,
-  probationOnly,
-  setProbationOnly,
   soonDays,
   contractSoonCount,
   activeFilterCount,
@@ -46,10 +42,6 @@ export function RosterConsoleRail({
   setEmpTypes: Dispatch<SetStateAction<Set<EmpType>>>;
   review: readonly Review[];
   registerMissingCount: number;
-  addressMissingOnly: boolean;
-  setAddressMissingOnly: (checked: boolean) => void;
-  probationOnly: boolean;
-  setProbationOnly: (checked: boolean) => void;
   soonDays: number | undefined;
   contractSoonCount: number;
   activeFilterCount: number;
@@ -138,26 +130,14 @@ export function RosterConsoleRail({
                   review: checked ? [...review.filter(x => x !== "register"), "register"] : review.filter(x => x !== "register"),
                 }),
             },
-            {
-              id: "missingAddr",
-              label: t("people.rail.missingAddress"),
-              checked: addressMissingOnly,
-              onChange: setAddressMissingOnly,
-            },
           ],
         },
-        {
-          id: "upcoming",
-          title: t("people.rail.upcoming"),
-          items: [
-            {
-              id: "probation",
-              label: t("people.rail.probationEnding"),
-              checked: probationOnly,
-              onChange: setProbationOnly,
-            },
-            ...(soonDays !== undefined
-              ? [
+        ...(soonDays !== undefined
+          ? [
+              {
+                id: "upcoming",
+                title: t("people.rail.upcoming"),
+                items: [
                   {
                     id: "contract",
                     label: t("people.rail.contractEnding"),
@@ -170,10 +150,10 @@ export function RosterConsoleRail({
                           : review.filter(x => x !== "contractSoon"),
                       }),
                   },
-                ]
-              : []),
-          ],
-        },
+                ],
+              },
+            ]
+          : []),
       ]}
       reset={{
         label: t("people.rail.clear"),

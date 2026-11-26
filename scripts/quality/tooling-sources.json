@@ -1533,7 +1533,7 @@
     "container:gcr.io/distroless/cc-debian13": {
       "source": "https://gcr.io/v2/distroless/cc-debian13/tags/list",
       "latest": "nonroot",
-      "lastRelease": "2026-10-31",
+      "lastRelease": "2026-11-22",
       "maintainers": "GoogleContainerTools",
       "repository": "https://github.com/GoogleContainerTools/distroless"
     },

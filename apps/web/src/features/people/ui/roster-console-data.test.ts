@@ -2,7 +2,7 @@
 import { beforeAll, describe, expect, test } from "vitest";
 import type { components } from "@console/api/schema";
 import { loadCatalog, t } from "@console/i18n";
-import { CHOSUNG, filterConsoleRows, type EmpType } from "./roster-console-data";
+import { CHOSUNG, filterConsoleRows, missingLabel, type EmpType } from "./roster-console-data";
 
 type Employee = components["schemas"]["Employee"];
 
@@ -33,26 +33,22 @@ function makeEmployee(overrides: Partial<Employee>): Employee {
   };
 }
 
+describe("missingLabel", () => {
+  test("a register gap is tagged as one, never as a named item the row does not carry", () => {
+    expect(missingLabel(makeEmployee({ register_review_required: true }))).toBe(t("people.missing.register"));
+    expect(missingLabel(makeEmployee({ identity_review_required: true }))).toBe(t("people.identityReview"));
+    expect(missingLabel(makeEmployee({ employment_type: undefined }))).toBe(t("roster.type.missing"));
+    expect(missingLabel(makeEmployee({}))).toBeNull();
+  });
+});
+
 describe("filterConsoleRows", () => {
   const baseFilter = {
     empTypes: new Set<EmpType>(),
-    addressMissingOnly: false,
-    probationOnly: false,
     activeChosung: null as string | null,
   };
 
-  test("probationOnly keeps only PROMOTE next_event rows and excludes TRANSFER and null", () => {
-    const rows = [
-      makeEmployee({ id: "1", name: "Transfer Person", next_event: { id: "e1", event_type: "TRANSFER", effective_date: "2026-12-01" } }),
-      makeEmployee({ id: "2", name: "Promote Person", next_event: { id: "e2", event_type: "PROMOTE", effective_date: "2026-12-01" } }),
-      makeEmployee({ id: "3", name: "No Event Person", next_event: null }),
-    ];
-
-    expect(filterConsoleRows(rows, { ...baseFilter, probationOnly: true }).map(r => r.id)).toEqual(["2"]);
-    expect(filterConsoleRows(rows, { ...baseFilter, probationOnly: false }).map(r => r.id)).toEqual(["1", "2", "3"]);
-  });
-
-  test("filters by empTypes, addressMissingOnly, and Hangul chosung", () => {
+  test("filters by empTypes and Hangul chosung", () => {
     const rows = [
       makeEmployee({ id: "1", name: t("enum.employmentType.CONTRACT"), employment_type: "CONTRACT", register_review_required: true }),
       makeEmployee({ id: "2", name: t("people.col.number"), employment_type: "PART_TIME", register_review_required: false }),
@@ -61,7 +57,6 @@ describe("filterConsoleRows", () => {
     ];
 
     expect(filterConsoleRows(rows, { ...baseFilter, empTypes: new Set<EmpType>(["CONTRACT"]) }).map(r => r.id)).toEqual(["1"]);
-    expect(filterConsoleRows(rows, { ...baseFilter, addressMissingOnly: true }).map(r => r.id)).toEqual(["1", "3"]);
     expect(filterConsoleRows(rows, { ...baseFilter, activeChosung: CHOSUNG[0]! }).map(r => r.id)).toEqual(["1"]);
     expect(filterConsoleRows(rows, { ...baseFilter, activeChosung: CHOSUNG[6]! }).map(r => r.id)).toEqual(["2"]);
     expect(filterConsoleRows(rows, { ...baseFilter, activeChosung: CHOSUNG[13]! }).map(r => r.id)).toEqual(["3"]);

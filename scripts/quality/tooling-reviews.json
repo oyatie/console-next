@@ -7505,7 +7505,7 @@
     ],
     "layer": "CI/supply chain",
     "exitPlan": "Replace only the listed platform callers after image/admission/signature/restore parity, then remove the lock entry and regenerate this register.",
-    "securityProcess": "Verify the published Distroless keyless identity, generate the release SPDX SBOM and refuse fixable High/Critical findings with the locked Grype gate.",
+    "securityProcess": "The upstream policy records the Distroless keyless signer. Build CI does not verify that base signature. The release gate scans the verified SPDX attestation with locked Grype and refuses fixable High/Critical findings.",
     "ruleMapping": "Preserve digest/checksum pin, supported target architecture and deployment/admission/rollback test contract.",
     "standardTest": {
       "a": {
@@ -7521,7 +7521,7 @@
       "c": {
         "result": "pass",
         "source": "https://github.com/GoogleContainerTools/distroless#base-operating-system",
-        "reason": "Upstream maintains Debian 13 and deprecates Debian 12; the pinned nonroot artifact contains libssl3t64 3.5.7-1~deb13u3, fixing the five OpenSSL CVEs in the Debian tracker."
+        "reason": "Upstream maintains Debian 13 and deprecates Debian 12. The nonroot image's libssl3t64 package includes Debian's fixes for the five OpenSSL CVEs in the runtime ruling."
       },
       "d": {
         "result": "pass",

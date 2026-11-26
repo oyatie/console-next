@@ -11,7 +11,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::directory::create_placement::{branch_refused, workplace_branch};
-use crate::directory::read_detail::load_employee_detail;
+use crate::directory::read_detail::load_employee_detail_unfiltered;
 use crate::directory::types::{
     EmployeeDetailResponse, EmployeeHomeBranchResponse, SetEmployeeHomeBranchRequest,
 };
@@ -40,7 +40,9 @@ pub async fn assign_home_branch_if_unset(
         let pool = pool.clone();
         async move {
             with_org_conn::<_, _, HrError>(&pool, org, move |tx| {
-                Box::pin(async move { load_employee_detail(tx, *org.as_uuid(), employee_id).await })
+                Box::pin(async move {
+                    load_employee_detail_unfiltered(tx, *org.as_uuid(), employee_id).await
+                })
             })
             .await
         }
