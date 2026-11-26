@@ -78,6 +78,7 @@ export function RecordPaneState({ children }: { children: ReactNode }) {
 /** Rule-separated subject identity header at the top of a Console side record pane. */
 export function RecordIdentityBar({
   name,
+  nameLevel,
   number,
   badges,
   roleLine,
@@ -85,6 +86,8 @@ export function RecordIdentityBar({
   actions,
 }: {
   name: ReactNode;
+  /** A heading level for the name, when the pane's own title (level 2) is not the name itself. */
+  nameLevel?: 3;
   number?: ReactNode;
   badges?: ReactNode;
   roleLine?: ReactNode;
@@ -94,7 +97,7 @@ export function RecordIdentityBar({
   return (
     <div className={s.identityBar}>
       <div className={s.identityTop}>
-        <strong className={s.identityName}>{name}</strong>
+        {nameLevel ? <h3 className={s.identityName}>{name}</h3> : <strong className={s.identityName}>{name}</strong>}
         {number != null ? <bdi className={s.identityNumber}>{number}</bdi> : null}
         {badges}
         {roleLine != null ? <bdi className={s.identitySub}>{roleLine}</bdi> : null}

@@ -2,6 +2,8 @@
 import { dirname, resolve } from "node:path";
 import { realpathSync } from "node:fs";
 import { afterAll, beforeAll, expect, test } from "vitest";
+import { loadCatalog } from "@console/i18n";
+import { tg } from "@console/i18n/gallery";
 import { expect as element } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 import { browserTestOptimizeDeps, chromium, openBrowserTestPage, waitForBrowserTestPage, type Browser, type Page } from "../../lib/browser-test";
@@ -10,6 +12,7 @@ let server: ViteDevServer;
 let browser: Browser;
 let page: Page;
 beforeAll(async () => {
+  await loadCatalog("ko");
   server = await createServer({
     configFile: false, cacheDir: ".cache/tabs-test", logLevel: "error",
     // Reloads need one locale chunk, rather than the full graph of screen catalog sources.
@@ -21,7 +24,7 @@ beforeAll(async () => {
         // Serve fixtures here: Playwright routing disables the HTTP cache across every history restoration.
         vite.middlewares.use((req, res, next) => {
           if (req.url === "/tabs-history-pending.svg") return;
-          if (!/^\/tabs-(?:test|history)(?:\?.*)?$/.test(req.url ?? "")) return next();
+          if (!/^\/tabs-(?:test|history|remount)(?:\?.*)?$/.test(req.url ?? "")) return next();
           const params = new URL(req.url!, vite.resolvedUrls!.local[0]).searchParams;
           const pending = params.get("scope") === "previous" || params.get("tab") === "outline" ? '<img src="/tabs-history-pending.svg" alt="">' : "";
           res.setHeader("Content-Type", "text/html");
@@ -50,10 +53,18 @@ beforeAll(async () => {
           const search = useTabSearch(items);
           return React.createElement(PageTabs, { label: tg('tabs.label'), items, ...search }, () => null);
         }
+        // Each view draws the strip inside its own page, so choosing a view mounts a new strip.
+        function RemountTabs() {
+          const items = [{ id: 'chart', label: tg('tabs.chart') }, { id: 'list', label: tg('tabs.list') }, { id: 'outline', label: tg('tabs.outline') }];
+          const search = useTabSearch(items);
+          const view = search.selected || items[0].id;
+          return React.createElement('section', { key: view, 'aria-label': view }, React.createElement(PageTabs, { label: tg('tabs.label'), items, ...search }));
+        }
         const root = createRootRoute();
         const route = createRoute({ getParentRoute: () => root, path: '/tabs-test', component: TabsGallery });
         const history = createRoute({ getParentRoute: () => root, path: '/tabs-history', component: HistoryTabs });
-        const router = createRouter({ routeTree: root.addChildren([route, history]) });
+        const remount = createRoute({ getParentRoute: () => root, path: '/tabs-remount', component: RemountTabs });
+        const router = createRouter({ routeTree: root.addChildren([route, history, remount]) });
         createRoot(document.getElementById('root')).render(React.createElement(RouterProvider, { router }));
       ` : undefined }],
   });
@@ -109,6 +120,24 @@ test("URL links replace history, restore deep links and preserve other filters",
   await element(page).toHaveURL(/scope=workplace#record$/);
   await waitForBrowserTestPage(page, tabs.locator('[aria-current="page"]'));
   await element(tabs.locator('[aria-current="page"]')).toHaveAccessibleName("조직도");
+});
+
+test("a view that hosts its own strip keeps keyboard focus on the chosen link", async () => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(`${server.resolvedUrls!.local[0]}tabs-remount`);
+  const tabs = page.getByRole("navigation", { name: tg("tabs.label"), exact: true });
+  await tabs.getByRole("link", { name: tg("tabs.chart"), exact: true }).focus();
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Enter");
+  await element(page.getByRole("region", { name: "list", exact: true })).toBeVisible();
+  await element(tabs.getByRole("link", { name: tg("tabs.list"), exact: true })).toBeFocused();
+  await page.keyboard.press("Tab");
+  await element(tabs.getByRole("link", { name: tg("tabs.outline"), exact: true })).toBeFocused();
+  // Only focus the strip had is carried: a choice made without it (a script, a pointer that does not focus) leaves focus alone.
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await tabs.getByRole("link", { name: tg("tabs.chart"), exact: true }).evaluate((link: HTMLElement) => link.click());
+  await element(page.getByRole("region", { name: "chart", exact: true })).toBeVisible();
+  await element(page.locator("body")).toBeFocused();
 });
 
 test("unknown URL values select the first tab without treating a missing tab as allowed", async () => {

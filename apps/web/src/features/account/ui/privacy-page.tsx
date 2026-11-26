@@ -137,7 +137,7 @@ export function PrivacyRequests() {
 
   const items = q.data?.pages.flatMap(page => page.items) ?? [];
   const selected = items.find(item => item.id === selectedId) ?? (filed?.id === selectedId ? filed : undefined);
-  const filingSection = <PrivacyRequest onFiled={setFiled} hideWhenUnavailable sectionLayout />;
+  const filingSection = <PrivacyRequest onFiled={setFiled} sectionLayout />;
   const baselineFilingSection = <PrivacyRequest onFiled={setFiled} />;
   const loadMoreRequests = q.hasNextPage ? (
     <div className={s.pad}>

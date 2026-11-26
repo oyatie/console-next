@@ -10,12 +10,8 @@ import { ListRecord } from "../../../ui/patterns/list-record";
 import { ExperienceSwitch } from "../../../ui/patterns/pattern-shell";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { rowById } from "../../../ui/long-table/row-keys";
-import { NO_SELECTION } from "../../../ui/long-table/selection";
-import { focusSoon } from "../../../lib/react/announce";
 import { unitPath } from "../../../reference/org/present";
 import { employeeQuery } from "../api";
-import { joinReview, parseReview, parseStatus } from "../domain/roster";
-import { parseOrder } from "../domain/roster-order";
 import { BulkRescind } from "./bulk-rescind";
 import { BulkSheet } from "./bulk-sheet";
 import { RosterBulk } from "./roster-bulk";
@@ -79,7 +75,7 @@ function BaselineRosterScreen({ manage, scoped = false, switcher, notice, screen
     open, openUnit, select, selectRelated, full, expand, restore, unitTrigger, unitItems, selectedUnit,
     sort, q, exitView, setExitView, findSlot, setFindSlot, sel, setSel,
     recorded, batch, setBatch, rescinding, setRescinding, setRecorded, rescindReady,
-    r, view, prefetch, setFilter, find, reset, closePaste, bulkDone, openRecord,
+    r, view, prefetch, setFilter, find, reset, viewFilters, applyView, closePaste, bulkDone, openRecord,
     scroller, rowCount, scrollRef, onRowFocus, filtered, customFilters, sameName, onRowAction,
   } = screen;
   const { tabs: views, ...head } = useRosterHead({ manage, soonDays, status, review, onView: v => setFilter({ status: v.status, review: v.review }), actions, switcher });
@@ -111,12 +107,7 @@ function BaselineRosterScreen({ manage, scoped = false, switcher, notice, screen
         onDensity={view.setDensity}
         tools={<><RosterColumns shown={view.shown} onChange={view.set} density={view.density} onDensity={view.setDensity} />
         {/* Kept in place when the list fails (its neighbours never slide), offered only with the list it filters. */}
-        <RosterSavedViews unavailable={!!r.list.error && r.list.data === undefined} filters={{ status, review: joinReview(review), unit, sort }} onApply={filters => {
-          setSel(NO_SELECTION);
-          find("");
-          setFilter({ status: parseStatus(filters.status), review: parseReview(filters.review), unit: filters.unit ?? null, sort: parseOrder(filters.sort) });
-          focusSoon("people-title");
-        }} /></>}
+        <RosterSavedViews unavailable={!!r.list.error && r.list.data === undefined} filters={viewFilters} onApply={applyView} /></>}
       />
       </>}
       notes={<>
