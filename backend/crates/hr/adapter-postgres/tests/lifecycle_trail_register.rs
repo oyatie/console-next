@@ -107,7 +107,18 @@ async fn register_trigger_rows_preserve_legacy_four_scheme_mapping_and_n_minus_o
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn changing_a_register_trigger_removes_its_filing_without_a_code_change(pool: PgPool) {
     let f = fixture::fixture(pool.clone()).await;
-    let on = today_kst();
+    // Tomorrow's version still triggers on hire. Only the version on the hire date applies.
+    let on: time::Date = sqlx::query_scalar(
+        "SELECT max(effective_from) - 1 FROM statutory_rules WHERE code='ins.deadline.acquire.nhis' \
+         AND effective_from <= $1 AND 'ONBOARD'=ANY(trigger_event_kinds)",
+    )
+    .bind(today_kst())
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    sqlx::query("UPDATE tenant_phase SET phase='OPERATING',go_live_at=$2::date,go_live_by=$3,go_live_preview_digest=repeat('0',64) WHERE org_id=$1")
+        .bind(f.principal.org_id.as_uuid()).bind(on).bind(f.principal.user_id.as_uuid())
+        .execute(&pool).await.unwrap();
     let mut body = f.body("lifecycle-trigger-test", "REGULAR");
     body.hire_date = Some(on.to_string());
     let employee = f.create(body).await.unwrap().employee_id();
@@ -127,9 +138,11 @@ async fn changing_a_register_trigger_removes_its_filing_without_a_code_change(po
             .await
             .unwrap();
     assert_eq!(before.items.len(), 1);
-    sqlx::query("UPDATE statutory_rules SET trigger_event_kinds=array_remove(trigger_event_kinds,'ONBOARD') \
-        WHERE code='ins.deadline.acquire.nhis' AND effective_from<=$1 AND (effective_to_exclusive IS NULL OR $1<effective_to_exclusive)")
+    let changed_rules = sqlx::query("UPDATE statutory_rules SET trigger_event_kinds=array_remove(trigger_event_kinds,'ONBOARD') \
+        WHERE code='ins.deadline.acquire.nhis' AND 'ONBOARD'=ANY(trigger_event_kinds) \
+        AND effective_from<=$1 AND (effective_to_exclusive IS NULL OR $1<effective_to_exclusive)")
         .bind(on).execute(&pool).await.unwrap();
+    assert_eq!(changed_rules.rows_affected(), 1);
     let after =
         f.hr.insurance_filings(f.principal.clone(), query(), register(&pool).await)
             .await
