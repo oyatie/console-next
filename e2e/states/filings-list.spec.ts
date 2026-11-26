@@ -10,24 +10,18 @@ import { filingTask, mockFilings } from "../mock/filings";
 import { id } from "../mock/fixtures";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
-import { experienceState } from "../experience";
+import { experienceState, seededDateStyle, seededExperience } from "../experience";
 
 // Classic draws the filings as a table of cells, Console as a grid of gridcells.
 const filings = (scope: Page | Locator) => scope.getByRole("table", { name: t("statutory.insurance"), exact: true }).or(scope.getByRole("grid", { name: t("statutory.insurance"), exact: true }));
 const cell = (scope: Page | Locator, name: string) => scope.getByRole("cell", { name, exact: true }).or(scope.getByRole("gridcell", { name, exact: true }));
 /** Console's filing record pane, which its grid row opens. */
 const recordPane = (page: Page) => page.getByRole("complementary", { name: t("statutory.detailTitle"), exact: true });
-/** Opens a filing's record dialog from its row's button. Console's row button of that name opens the record pane instead
- * (one name, two actions): that stays a soft red, and the pane's own button then opens the dialog so the rest of the flow
- * is still checked. Where Console's phone pane covers the row, only the pane's button is reachable. */
-async function recordFiling(row: Locator) {
-  const dialog = row.page().getByRole("dialog");
-  const button = row.getByRole("button", { name: t("statutory.record"), exact: true });
-  if (await button.isVisible()) {
-    await button.click();
-    await expect.soft(dialog, "the row's record button opens the record dialog").toBeVisible();
-  }
-  if (!await dialog.isVisible()) await recordPane(row.page()).getByRole("button", { name: t("statutory.record"), exact: true }).click();
+/** Classic records from the row. Console opens the selected filing, then records from its pane. */
+async function recordFiling(row: Locator, openName?: string) {
+  if (openName) await row.getByRole("button", { name: openName, exact: true }).click();
+  const scope = openName ? recordPane(row.page()) : row;
+  await scope.getByRole("button", { name: t("statutory.record"), exact: true }).click();
 }
 /** Opens a filing's record pane in Console by the row's event, as a reader would. */
 async function openRecord(row: Locator, event: string) {
@@ -97,7 +91,7 @@ for (const experience of ["baseline", "console"] as const) test.describe(() => {
 });
 
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
-  test(`filing facts and actions are reachable at ${width}px in ${theme} @ui-state`, async ({ page }, info) => {
+  test(`filing facts and actions are reachable at ${width}px in ${theme} @ui-state`, async ({ page, storageState }, info) => {
     await page.setViewportSize({ width, height: 1000 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const fixture = await mockScreen(page, screens[2], "populated");
@@ -111,11 +105,13 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       await expect(row.getByRole("link", { name: new RegExp(filingTask.name) })).toHaveAttribute("href", `/people/${id(100)}`);
       // Classic's row carries the facts; Console's grid row is a summary that opens the record pane with the rest.
       await expect.soft(row.getByText(filingTask.employee_number!), "the employee number is shown in the row").toBeVisible();
-      await expect(row.getByRole("button", { name: t("statutory.record"), exact: true })).toBeVisible();
-      const inConsole = await page.getByRole("grid", { name: t("statutory.insurance"), exact: true }).count() > 0;
-      if (inConsole) await openRecord(row, `${t("statutory.NPS")} · ${t("statutory.ACQUIRE")}`);
+      const inConsole = seededExperience(storageState) === "console";
+      const actionName = inConsole ? t("statutory.openRow", { name: filingTask.name, insurer: t("statutory.NPS"), kind: t("statutory.ACQUIRE") }) : t("statutory.record");
+      const action = row.getByRole("button", { name: actionName, exact: true });
+      await expect(action).toBeVisible();
+      if (inConsole) await action.click();
       const facts = inConsole ? recordPane(page) : row;
-      for (const value of [filingTask.workplace_name!, t("statutory.NPS"), t("statutory.ACQUIRE"), fmtDate(filingTask.effective_date), t("statutory.days", { days: 3 })]) {
+      for (const value of [filingTask.workplace_name!, t("statutory.NPS"), t("statutory.ACQUIRE"), fmtDate(filingTask.effective_date, { style: seededDateStyle(storageState) }), t("statutory.days", { days: 3 })]) {
         await expect(facts).toContainText(value);
       }
       await expect(facts.getByRole("link", { name: t("lifecycle.trail.openCase"), exact: true })).toHaveAttribute("href", /case%3A/);
@@ -136,7 +132,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       await fits(page, `filings ${width} ${theme}`);
       await expectAxe(page, `filings ${width} ${theme}`);
       await basis.click();
-      await recordFiling(row);
+      await facts.getByRole("button", { name: t("statutory.record"), exact: true }).click();
       const dialog = page.getByRole("dialog", { name: t("statutory.completeTitle", { name: filingTask.name, insurer: t("statutory.NPS"), kind: t("statutory.ACQUIRE") }) });
       await expect(dialog.getByRole("button", { name: t("statutory.preview"), exact: true })).toBeVisible();
       await page.keyboard.press("Escape");
@@ -348,7 +344,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
   });
 }
 
-for (const sameEmployee of [false, true]) test(`filing actions remain reachable after searching ${sameEmployee ? "one employee’s filings" : "the filing list"} @ui-state`, async ({ page }) => {
+for (const sameEmployee of [false, true]) test(`filing actions remain reachable after searching ${sameEmployee ? "one employee’s filings" : "the filing list"} @ui-state`, async ({ page, storageState }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   const fixture = await mockScreen(page, screens[2], "populated");
   await mockFilings(page);
@@ -373,7 +369,9 @@ for (const sameEmployee of [false, true]) test(`filing actions remain reachable 
     for (let attempt = 0; attempt < 2; attempt++) {
       const row = await filingRow(page, t("statutory.NPS"), t("statutory.LOSE"), target.employee_number!);
       await expect(row).toBeVisible();
-      await recordFiling(row);
+      const openName = seededExperience(storageState) === "console"
+        ? t("statutory.openRow", { name: target.name, insurer: t("statutory.NPS"), kind: t("statutory.LOSE") }) : undefined;
+      await recordFiling(row, openName);
       const dialog = page.getByRole("dialog");
       await expect(dialog).toContainText(target.name);
       await page.keyboard.press("Escape");
