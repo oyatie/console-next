@@ -106,7 +106,7 @@ export function useRosterScreen() {
   const applyView = (filters: EmployeeViewFilters) => {
     setSel(NO_SELECTION);
     find("");
-    setFilter({ status: parseStatus(filters.status), review: parseReview(filters.review), unit: filters.unit ?? null, sort: parseOrder(filters.sort) });
+    setFilter({ status: parseStatus(filters.status), review: parseReview(filters.review), unit: filters.unit ?? null, ids: null, sort: parseOrder(filters.sort) });
     focusSoon("people-title");
   };
   const closePaste = () => void navigate({ search: (prev) => ({ ...prev, bulk: undefined }), replace: true });
