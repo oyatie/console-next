@@ -93,7 +93,7 @@ export function Accounts({ sel, head }: { sel?: string; head?: (available: boole
     query={q} onQueryChange={setQ} value={sel ?? null} onChange={select}
     options={options.map((p) => personOption(p, options))}
     total={stale ? undefined : total}
-    loading={waiting || list.isFetching} error={!waiting && list.isError ? readFailureText(list.error) : undefined}
+    loading={waiting || list.isFetching} readError={!waiting && list.isError ? readFailureText(list.error) : undefined}
     empty={t("accounts.noMatch.reason", { q })}
   /></div>;
 

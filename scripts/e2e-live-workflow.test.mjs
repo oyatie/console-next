@@ -96,6 +96,22 @@ test("Firefox live discovery preserves Chromium's live scope except visual basel
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
+test("the NTS check refuses a reused backend, which keeps the NTS endpoint and key it started with", () => {
+  const list = (reuse) => {
+    const env = { ...process.env, E2E_REUSE: reuse };
+    delete env.E2E_SERVED;
+    delete env.NODE_TEST_CONTEXT;
+    return spawnSync(process.execPath, ["node_modules/@playwright/test/cli.js", "test", "--list", "--config=playwright.nts.config.ts"], {
+      cwd: root, encoding: "utf8", timeout: 60_000, env,
+    });
+  };
+  const fresh = list("0");
+  assert.equal(fresh.status, 0, fresh.stdout + fresh.stderr);
+  const reused = list("1");
+  assert.notEqual(reused.status, 0, "a reused backend bypasses the loopback fake and the test-only key");
+  assert.match(reused.stdout + reused.stderr, /without E2E_REUSE=1/);
+});
+
 test("live shards reserve cleanup time and run auxiliary suites independently", () => {
   const workflow = yaml.load(read(".github/workflows/e2e-live.yml"));
   const dir = mkdtempSync(path.join(tmpdir(), "live-dispatch-"));

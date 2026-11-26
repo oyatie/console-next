@@ -2,7 +2,7 @@
   "baseline": {
     "apps/web/src/features/import/ui/import-console.tsx#ImportConsole": 133,
     "apps/web/src/features/people/ui/data-health-page.tsx#DataHealthPage": 7,
-    "apps/web/src/features/people/ui/unplaced-console.tsx#UnplacedConsole": 61
+    "apps/web/src/features/people/ui/unplaced-console.tsx#UnplacedConsole": 60
   },
   "newScreens": {
     "apps/web/src/features/import/ui/import-console.tsx#ImportConsole": {
@@ -23,7 +23,7 @@
     },
     "apps/web/src/features/people/ui/unplaced-console.tsx#UnplacedConsole": {
       "FACT": 43,
-      "REFUSAL": 13,
+      "REFUSAL": 12,
       "EMPTY": 2,
       "LEGAL": 0,
       "RECEIPT": 3,

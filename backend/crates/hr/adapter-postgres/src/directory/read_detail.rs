@@ -66,7 +66,8 @@ pub fn allowed_lifecycle_events(
         .collect()
 }
 
-pub async fn load_employee_detail(
+/// Loads employee detail without reader-specific masking or warnings.
+pub(crate) async fn load_employee_detail_unfiltered(
     tx: &mut sqlx::Transaction<'_, Postgres>,
     org_id: Uuid,
     employee_id: Uuid,
@@ -151,7 +152,6 @@ pub async fn load_employee_detail(
         None => Vec::new(),
     };
     let employee = employee_from_row(row)?;
-    let warnings = super::read_warnings::current_warnings(tx, org_id, &employee).await?;
     let retention = if employee.status.as_deref() == Some("EXITED") {
         let exit = employee
             .exit_date
@@ -194,8 +194,21 @@ pub async fn load_employee_detail(
         allowed_scheduled_events,
         schedule_after,
         classification,
-        warnings,
+        warnings: Vec::new(),
     })
+}
+
+/// Includes only warning matches within the reader's directory access.
+pub(super) async fn detail_with_visible_warnings(
+    tx: &mut sqlx::Transaction<'_, Postgres>,
+    reader: &Principal,
+    employee_id: Uuid,
+) -> Result<EmployeeDetailResponse, HrError> {
+    let org = *reader.org_id.as_uuid();
+    let mut detail = load_employee_detail_unfiltered(tx, org, employee_id).await?;
+    detail.warnings = super::read_warnings::current_warnings(tx, org, &detail.employee).await?;
+    super::read_warnings::visible_warnings(tx, reader, &mut detail.warnings).await?;
+    Ok(detail)
 }
 
 impl HrService {
@@ -208,7 +221,6 @@ impl HrService {
         hr_reach_in(&principal, Feature::EmployeeDirectoryRead, Tier::Branch)?;
         record_hr_read("employee_detail");
         let org = principal.org_id;
-        let org_uuid = *org.as_uuid();
         let reader = principal.clone();
         let detail = with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
@@ -223,7 +235,7 @@ impl HrService {
                     Tier::Branch,
                 )
                 .await?;
-                let detail = load_employee_detail(tx, org_uuid, employee_id).await?;
+                let mut detail = detail_with_visible_warnings(tx, &reader, employee_id).await?;
                 let manager = hr_may_person_in(
                     tx,
                     &reader,
@@ -234,8 +246,6 @@ impl HrService {
                 .await?;
                 let me = actor_employee_id(tx, &reader).await?;
                 // people-self-33: nothing is recordable on one's own record.
-                let mut detail = detail;
-                super::read_warnings::visible_warnings(tx, &reader, &mut detail.warnings).await?;
                 let (org, actor) = (reader.org_id, reader.user_id);
                 let manage = Feature::EmployeeDirectoryManage;
                 if own_record_decision(tx, org, actor, employee_id, manage).await?
