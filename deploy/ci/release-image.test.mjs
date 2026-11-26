@@ -39,8 +39,6 @@ test('PRs build and smoke-test one native image; release events retain both arch
   assert.deepEqual(pr.env, { ARCH: 'amd64', CACHE_WRITE: 'false' });
   assert.equal(workflow.jobs.validate.steps.find(step => step.name === 'Test PR image').run,
     build.steps.find(step => step.name === 'Test native image').run);
-  assert.match(script, /--file deploy\/images\/console\.Dockerfile/);
-  assert.match(script, /--build-arg "SOURCE_REVISION=\$\{GITHUB_SHA\}"/);
   assert.doesNotMatch(script, /--push|docker (?:push|login)/);
   assert.equal(workflow.jobs.publish.if, "github.event_name == 'push' && github.ref == 'refs/heads/dev'");
 });
@@ -58,8 +56,23 @@ ${script}`], { cwd: root, encoding: 'utf8', env: { ...process.env,
     assert.equal(result.status, 31, result.stderr);
     const args = readFileSync(join(dir, 'calls'), 'utf8').trim().split('\n');
     const versions = JSON.parse(read('deploy/versions.json'));
-    for (const name of ['node', 'rust', 'runtime']) assert.ok(args.includes(`${name.toUpperCase()}_IMAGE=${versions.images[name]}`));
-    assert.ok(args.includes(`SOURCE_REVISION=${revision}`));
+    const buildArgs = args.flatMap((arg, index) => {
+      if (arg === '--build-arg') return [args[index + 1]];
+      return arg.startsWith('--build-arg=') ? [arg.slice('--build-arg='.length)] : [];
+    });
+    for (const name of ['node', 'rust', 'runtime']) {
+      const key = `${name.toUpperCase()}_IMAGE=`;
+      assert.deepEqual(buildArgs.filter(arg => arg.startsWith(key)), [key + versions.images[name]]);
+    }
+    assert.ok(buildArgs.includes(`SOURCE_REVISION=${revision}`));
+    assert.deepEqual(buildArgs.map(arg => arg.split('=')[0]).sort(), ['NODE_IMAGE', 'RUNTIME_IMAGE', 'RUST_IMAGE', 'SOURCE_REVISION']);
+    const files = args.flatMap((arg, index) => {
+      if (arg === '-f' || arg === '--file') return [args[index + 1]];
+      return arg.match(/^(?:--file=|-f=?)(.*)$/)?.slice(1) ?? [];
+    });
+    assert.deepEqual(files, ['deploy/images/console.Dockerfile']);
+    assert.ok(!args.some(arg => /^--(?:target|build-context)(?:=|$)/.test(arg)),
+      'the build must use the default stage and the pinned image inputs');
     assert.ok(!args.includes('--cache-to'));
     assert.ok(!args.includes('--push'));
   } finally { rmSync(dir, { recursive: true, force: true }); }
@@ -76,6 +89,78 @@ test('the shared image preserves release provenance, probes and panic diagnostic
   assert.match(dockerfile, /COPY --from=web \/src\/api-probe.json \/app\/api-probe.json/);
   assert.match(dockerfile, /node deploy\/ci\/api-probe.mjs backend\/openapi\/openapi.yaml "\$\{SOURCE_REVISION\}"/);
   assert.match(dockerfile, /USER 65532:65532/);
+});
+
+test('runtime smoke requires two missing shells, a hardened app run and exit 64 for an invalid role', t => {
+  const dir = mkdtempSync(join(tmpdir(), 'image-smoke-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  writeFileSync(join(dir, 'curl'), `#!/bin/bash
+case "\${!#}" in
+  */healthz) echo '{"status":"ok","role":"api"}' ;;
+  */readyz) echo '{"status":"ready"}' ;;
+  */) echo '<!doctype html>' ;;
+  *) exit 1 ;;
+esac
+`, { mode: 0o755 });
+  writeFileSync(join(dir, 'docker'), `#!/bin/sh
+set -e
+case "$1" in
+  port) echo 127.0.0.1:8080; exit 0 ;;
+  logs|rm) exit 0 ;;
+  run) shift ;;
+  *) exit 99 ;;
+esac
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --detach|--detach=true) detached=yes; shift ;;
+    --read-only|--read-only=true) readonly_root=yes; shift ;;
+    --*=*) option=$1; shift; set -- "\${option%%=*}" "\${option#*=}" "$@" ;;
+    --tmpfs) tmpfs=$2; shift 2 ;;
+    --cap-drop) caps=$2; shift 2 ;;
+    --security-opt) security=$2; shift 2 ;;
+    --publish) shift 2 ;;
+    --pull) pull=$2; shift 2 ;;
+    --rm|--rm=true) cleanup=yes; shift ;;
+    --entrypoint) shell=$2; shift 2 ;;
+    -e|--env) role=$2; shift 2 ;;
+    *) break ;;
+  esac
+done
+[ "$1" = smoke-image ] || exit 99
+if [ "$detached" = yes ]; then
+  [ "$readonly_root" = yes ] && [ "$tmpfs" = /tmp:rw,noexec,nosuid,size=64m ] &&
+    [ "$caps" = ALL ] && [ "$security" = no-new-privileges ] || exit 99
+  echo smoke-container
+  exit 0
+fi
+[ "$cleanup" = yes ] || exit 99
+shift
+if [ "$role" = CONSOLE_APP_ROLE=invalid ]; then exit "$ROLE_STATUS"; fi
+[ "$pull" = never ] && [ "$1" = -c ] && sh "$@" || exit 99
+case "$shell" in
+  "$PROBE_SHELL") exit "$PROBE_STATUS" ;;
+  /bin/sh|/busybox/sh) exit 127 ;;
+  *) exit 99 ;;
+esac
+`, { mode: 0o755 });
+  function smoke(shell, probeStatus, roleStatus) {
+    return spawnSync('bash', ['deploy/ci/image-smoke.sh', 'smoke-image'], {
+      cwd: root, encoding: 'utf8',
+      env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, PROBE_SHELL: shell,
+        PROBE_STATUS: String(probeStatus), ROLE_STATUS: String(roleStatus) },
+    });
+  }
+  for (const shell of ['/bin/sh', '/busybox/sh']) {
+    for (const status of [0, 125, 126]) {
+      const result = smoke(shell, status, 64);
+      assert.equal(result.status, 1, result.stderr);
+      assert.ok(result.stderr.includes(`PLAT_RUNTIME_SHELL: smoke-image: expected missing ${shell} (exit 127), got exit ${status}`), result.stderr);
+    }
+  }
+  for (const roleStatus of [0, 1, 64]) {
+    const result = smoke('/bin/sh', 127, roleStatus);
+    assert.equal(result.status, roleStatus === 64 ? 0 : 1, result.stderr);
+  }
 });
 
 const revision = 'a'.repeat(40);

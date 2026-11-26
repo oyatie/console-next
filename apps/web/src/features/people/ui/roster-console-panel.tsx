@@ -133,7 +133,7 @@ function ConsolePeek({
     ...(c.users ? [{ id: "account", label: t("people.panel.tab.account") }] : []),
   ];
 
-  const { employmentItems, personalItems, insuranceItems } = buildPanelBasicItems({
+  const { employmentItems, personalItems } = buildPanelBasicItems({
     e,
     c,
     who,
@@ -220,7 +220,6 @@ function ConsolePeek({
               monthNum={monthNum}
               employmentItems={employmentItems}
               personalItems={personalItems}
-              insuranceItems={insuranceItems}
               summaryItems={summaryItems}
               events={events}
               recentEvents={recentEvents}

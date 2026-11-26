@@ -24,7 +24,7 @@ beforeAll(async () => {
       const props = { group: 'People', empty: 'No people', query: '', onQueryChange: () => {}, options: [], value: null, onChange: () => {} };
       return h('main', null,
         h('section', { id: 'form' }, h(ServerPicker, { ...props, label: 'Form person' })),
-        h('section', { id: 'read' }, h(ServerPicker, { ...props, label: 'Search people', reserveError: true, loading: state === 'loading', error: state === 'failed' ? t('common.read.failedReason') : undefined })),
+        h('section', { id: 'read' }, h(ServerPicker, { ...props, label: 'Search people', reserveError: true, loading: state === 'loading', readError: state === 'failed' ? t('common.read.failedReason') : undefined })),
         h('input', { id: 'after', 'aria-label': 'After' }));
     }
     createRoot(document.getElementById('root')).render(h(Fixture));

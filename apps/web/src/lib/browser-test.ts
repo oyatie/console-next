@@ -22,3 +22,7 @@ export async function waitForBrowserTestPage(page: Page, ready: Locator) {
   await ready.waitFor({ timeout: 0 });
   await page.evaluate(() => document.fonts.ready);
 }
+
+/** The trigger of the `SelectField` with this label: its name is the shown value, a space, then the label. */
+export const selectTrigger = (page: Page, label: string) =>
+  page.getByRole("button", { name: new RegExp(` ${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`) });

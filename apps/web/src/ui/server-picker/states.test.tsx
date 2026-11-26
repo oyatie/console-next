@@ -2,6 +2,7 @@
 import { chromium, expect as expectElement, type Browser, type Page } from "@playwright/test";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import type { ViteDevServer } from "vite";
+import { loadCatalog, t } from "@console/i18n";
 import { pickerTestServer } from "./browser-test";
 
 let server: ViteDevServer;
@@ -10,6 +11,7 @@ let page: Page;
 let catalogCount = 15;
 
 beforeAll(async () => {
+  await loadCatalog("ko");
   server = await pickerTestServer("picker-states", `
     import { createElement as h, useEffect, useState } from 'react';
     import { createRoot } from 'react-dom/client';
@@ -17,6 +19,7 @@ beforeAll(async () => {
     import { ServerPicker } from '/apps/web/src/ui/server-picker/server-picker.tsx';
     import { PickOne } from '/apps/web/src/reference/entity/ui/pick-one.tsx';
     import { RolePick } from '/apps/web/src/features/access/ui/role-pick.tsx';
+    import { AccountPick } from '/apps/web/src/features/access/ui/account-pick.tsx';
     import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
     import { CatalogPicker } from '/apps/web/src/features/people/ui/catalog-picker.tsx';
     import '/apps/web/src/app.css';
@@ -32,15 +35,17 @@ beforeAll(async () => {
       const choices = options.slice(0, count).map(o => ({ value: o.id, label: o.name }));
       return h(QueryClientProvider, { client }, h('main', null,
         h('button', { id: 'before' }, 'Before'),
+        mode === 'account' ? h(AccountPick, { accounts: [], ops: undefined, loading: false, onPick: a => setValue(a.id) }) :
         mode === 'catalog' ? h(CatalogPicker, { kind: 'TITLE', label: 'Title', currentId: '0', required: false, value, onChange: setValue }) :
         mode === 'entity' ? h(PickOne, { label: 'Entity', required: true, options: choices, value, onChange: setValue, group: 'Entities', empty: 'No entities' }) :
-        mode === 'role' ? h(RolePick, { label: 'Role', roles: choices.map(o => ({ id: o.value, name_ko: o.label, lines: [] })), value, onChange: setValue }) :
+        mode.startsWith('role') ? h(RolePick, { label: 'Role', roles: choices.map(o => ({ id: o.value, name_ko: o.label, lines: [] })), value, onChange: setValue, error: mode === 'role-missing' ? 'Choose a role' : undefined }) :
         h(ServerPicker, { label: 'Person', group: 'People', empty: 'No people', query, onQueryChange: setQuery,
           options: ['empty', 'readonly-empty', 'disabled-empty', 'error-empty'].includes(mode) ? [] : options,
           value, onChange: setValue, total: mode === 'complete' ? options.length : mode === 'unknown-total' ? undefined : 2000, loading, isRequired: true,
           readOnly: mode === 'readonly' || mode === 'readonly-empty',
           disabledReason: mode === 'disabled' || mode === 'disabled-empty' ? 'Approval required' : undefined,
-          error: mode === 'error' || mode === 'error-empty' ? 'Choose a person' : undefined,
+          readError: mode === 'error-empty' ? 'Search failed' : undefined,
+          error: mode === 'error' ? 'Choose a person' : undefined,
           escape: { kind: 'request', label: 'Request addition', note: 'Ask the owner', onRequest: () => setValue('request') } }),
         h('input', { id: 'after', 'aria-label': 'After' }),
         h('output', { id: 'selected' }, value)));
@@ -62,6 +67,9 @@ beforeAll(async () => {
       id: String(n), kind: "TITLE", label: `Employee ${n}`, active: true, grade_rank: null,
     })), can_manage: false } });
   });
+  // The grant dialog's account search: the opening list loads, and any search for a name fails.
+  await page.route("**/api/v1/users?*", route => new URL(route.request().url()).searchParams.has("search")
+    ? route.fulfill({ status: 500 }) : route.fulfill({ json: { items: [], total: 0 } }));
   await page.goto(`${server.resolvedUrls!.local[0]}picker-states`);
   await page.getByRole("combobox").waitFor({ timeout: 30_000 });
 }, 60_000);
@@ -155,7 +163,7 @@ test("narrowing and identity guidance are exposed to assistive technology", asyn
 
 test("a failed empty search reports the error without a no-match escape", async () => {
   const input = await open("error-empty");
-  await expectElement(input).toHaveAccessibleDescription("Choose a person");
+  await expectElement(input).toHaveAccessibleDescription("Search failed");
   await expectElement(page.getByText("No people", { exact: true })).toHaveCount(0);
   await expectElement(page.getByRole("button", { name: "Request addition" })).toHaveCount(0);
 });
@@ -283,3 +291,29 @@ for (const mode of ["entity", "role"]) {
     }
   });
 }
+
+test("above 15 roles a missing role marks the search invalid and is its description, and the list still counts and says when no role matches", async () => {
+  await open("role-missing", 16);
+  const input = page.getByRole("combobox", { name: "Role" });
+  await expectElement(input).toHaveAttribute("aria-invalid", "true");
+  await expectElement(input).toHaveAccessibleDescription("Choose a role");
+  await input.press("ArrowDown");
+  await expectElement(page.locator(".popover").getByRole("status")).toHaveText(t("uiServerPicker.count", { count: 16 }));
+  await input.fill("Nobody");
+  await expectElement(page.locator(".popover").getByText(t("uiServerPicker.none"), { exact: true })).toBeVisible();
+  await expectElement(page.getByText(t("access.grant.role.none"), { exact: true })).toBeVisible();
+  await expectElement(input).toHaveAttribute("aria-invalid", "true");
+});
+
+test("a failed account search in the grant dialog says it failed, not that no account matched", async () => {
+  await open("account");
+  const input = page.getByRole("combobox", { name: t("access.grants.pick") });
+  const failed = page.waitForResponse(response => response.status() === 500 && new URL(response.url()).searchParams.get("search") === "Nobody");
+  await input.fill("Nobody");
+  await failed;
+  const failure = t("common.failed.status", { status: "500" });
+  await expectElement(input).toHaveAccessibleDescription(failure);
+  await expectElement(page.locator(".popover").getByRole("status")).toHaveText(failure);
+  await expectElement(page.getByText(t("uiServerPicker.none"), { exact: true })).toHaveCount(0);
+  await expectElement(page.getByText(t("access.grants.pick.none"), { exact: true })).toHaveCount(0);
+});
