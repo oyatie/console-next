@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
-import { firstSignIn, go, kstDate, registerEmployee, takeCode, tenantOnboardSubmit, tenantSlugField, unique, vendorPage } from "./flows";
+import { tenantNameField, firstSignIn, go, kstDate, registerEmployee, takeCode, tenantOnboardSubmit, tenantSlugField, unique, vendorPage } from "./flows";
 import { apiOf, bearerOf } from "./helpers/api";
 import { psql, settled } from "./idle-fixture";
 import { SETUP_DEPARTMENT, setupCompany } from "./setup-flows";
@@ -11,7 +11,7 @@ test("entity evidence and both CSV layouts record their exact subject references
   const vendor = await vendorPage(browser);
   await go(vendor, "/platform");
   await vendor.getByRole("button", { name: "고객 계정 개설" }).click();
-  await vendor.getByLabel("고객 이름").fill("법인접속기록");
+  await tenantNameField(vendor).fill("법인접속기록");
   const slug = unique("entityaccess");
   await tenantSlugField(vendor).fill(slug);
   await tenantOnboardSubmit(vendor).click();

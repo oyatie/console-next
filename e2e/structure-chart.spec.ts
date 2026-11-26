@@ -3,7 +3,7 @@ import { loadCatalog, t } from "@console/i18n";
 import type { components } from "@console/api/schema";
 import { atPhoneWidth, expectAccessible } from "./a11y";
 import { clickCounter } from "./clicks";
-import { tenantOnboardSubmit, tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
+import { tenantNameField, tenantOnboardSubmit, tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
 import { registerEntity, registerWorkplace } from "./setup-flows";
 import { addDepartments, box, findPressable, leaveScreen, receipt, revealUnit } from "./structure-flows";
 import { holdRead } from "./helpers/read";
@@ -22,7 +22,7 @@ test("an empty tenant builds its structure on the chart", { tag: "@org" }, async
   const v = await vendorPage(browser);
   await go(v, "/platform");
   await v.getByRole("button", { name: "고객 계정 개설" }).click();
-  await v.getByLabel("고객 이름").fill("새온그룹");
+  await tenantNameField(v).fill("새온그룹");
   await tenantSlugField(v).fill(unique("saeon-chart"));
   await tenantOnboardSubmit(v).click();
   const admin = await firstSignIn(browser, await takeCode(v));

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { shell, shellSelectors } from "./shell";
+import { expectSignedIn, shell, shellSelectors } from "./shell";
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
 import { bootKo } from "../packages/i18n/src/catalogs/boot";
@@ -241,7 +241,7 @@ test.describe("one state contract across console routes", () => {
       await restored;
       await expect(page.getByRole("main").getByText("불러오지 못했습니다", { exact: true })).toHaveCount(0);
       await expect(page.getByRole("navigation", { name: "주 메뉴" })).toBeVisible();
-      await expect(page.getByRole("button", { name: "로그아웃", exact: true })).toBeVisible();
+      await expectSignedIn(page);
       await expect(page.getByRole("main").locator('[aria-busy="true"]')).toHaveCount(0, { timeout: 15_000 });
       await page.close();
     });

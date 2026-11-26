@@ -10,6 +10,7 @@ import { mockRoute } from "../mock/route";
 import { lifecycleSheetScreens } from "./lifecycle-sheets";
 import { dateBox, sheet as lifecycleSheet, todayPreset } from "../sheet";
 import { certificateAccess } from "../mock/certificates";
+import { setTheme } from "../shell";
 
 for (const width of [1440, 390]) {
   for (const state of [403, 503, "loading"] as const) {
@@ -313,8 +314,7 @@ test("the states theme choice changes application tokens @ui-state", async ({ pa
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   const canvas = () => page.locator("html").evaluate(el => getComputedStyle(el).getPropertyValue("--canvas"));
   const light = await canvas();
-  await page.getByRole("button", { name: t("shell.theme.toDark"), exact: true }).click();
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await setTheme(page, "dark");
   await expect.poll(canvas).not.toBe(light);
   expect(fixture.unexpected).toEqual([]);
 });

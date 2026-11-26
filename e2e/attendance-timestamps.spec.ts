@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
 import type { components } from "@console/api";
-import { firstSignIn, go, kstDate, takeCode, tenantOnboardSubmit, tenantSlugField, unique, vendorPage } from "./flows";
+import { tenantNameField, firstSignIn, go, kstDate, takeCode, tenantOnboardSubmit, tenantSlugField, unique, vendorPage } from "./flows";
 import { apiOf, bearerOf } from "./helpers/api";
 import { setupCompany } from "./setup-flows";
 import { responseTimestampProblems, timestampContract } from "../scripts/check-timestamp-display.mjs";
@@ -11,7 +11,7 @@ test("attendance close timestamps are browser-readable and identical on write an
   const vendor = await vendorPage(browser);
   await go(vendor, "/platform");
   await vendor.getByRole("button", { name: "고객 계정 개설" }).click();
-  await vendor.getByLabel("고객 이름").fill("근태시간검증");
+  await tenantNameField(vendor).fill("근태시간검증");
   await tenantSlugField(vendor).fill(unique("timestamps"));
   await tenantOnboardSubmit(vendor).click();
   const admin = await firstSignIn(browser, await takeCode(vendor));

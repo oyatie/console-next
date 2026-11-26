@@ -31,7 +31,8 @@ export async function openGrantNotice(page: Page, access: Access) {
   await loadCatalog("ko");
   const confirm = t("home.grantNotices.confirm", { role: ROLE[access].name });
   await go(page, "/inbox?tab=reference");
-  const notice = page.getByRole("region", { name: t("home.inbox.title"), exact: true }).getByRole("listitem")
+  // Classic sets the notices in a card inside main; Console sets them straight in main.
+  const notice = page.getByRole("main").getByRole("listitem")
     .filter({ has: page.getByRole("button", { name: confirm, exact: true }) });
   await expect(notice).toBeVisible();
   return notice;

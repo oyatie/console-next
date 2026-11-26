@@ -2,6 +2,8 @@
 import { expect } from "@playwright/test";
 import { test } from "../locale-fixture";
 import { i18n, loadCatalog, LOCALES, t } from "@console/i18n";
+import { fits } from "../a11y";
+import { experienceState } from "../experience";
 import { mockScreen } from "./screen";
 import { screens } from "../states/registry";
 
@@ -14,9 +16,10 @@ const values = [
   { name: "oversized", title: "조직 개편", secondary: "나".repeat(80) },
 ];
 
+// The card-cell geometry measured here (the title cell's floor, five secondary facts, the card fallback) is Classic's list.
 for (const preview of [false, true])
   for (const locale of LOCALES) for (const value of values) {
-    test(`approval column invariants: preview=${preview} ${locale} ${value.name}`, async ({ page }) => {
+    test(`approval column invariants: preview=${preview} ${locale} ${value.name}`, { tag: "@baseline" }, async ({ page }) => {
       await loadCatalog(locale);
       i18n.set(locale);
       await page.setViewportSize({ width: 1024, height: 900 });
@@ -156,3 +159,50 @@ for (const preview of [false, true])
       expect(mock.unexpected).toEqual([]);
     });
   }
+
+// No board draws the approvals list, so these are the render's values: the page never scrolls sideways, rows are the
+// desk's 28 px, and the grid holds real values without scrolling. Long values scroll inside the grid's own scroller,
+// which is not pinned.
+test.describe("console look", () => {
+  test.use({ storageState: experienceState("console") });
+  for (const preview of [false, true]) for (const value of values.filter(entry => ["real", "Korean", "oversized"].includes(entry.name))) {
+    test(`Console approval list fits with desk rows: preview=${preview} ${value.name}`, async ({ page }) => {
+      await loadCatalog("ko");
+      await page.setViewportSize({ width: 1024, height: 900 });
+      const mock = await mockScreen(page, screens[0], "empty");
+      const item = {
+        id: "approval-layout", box: "pending", title: value.title, summary: value.title, document_no: value.secondary,
+        source: { key: "org_change", label: value.secondary }, status: { key: "IN_APPROVAL" }, requester: { id: "requester", name: value.secondary },
+        requested_at: "2026-11-03T01:00:00Z", due_at: null, facts: [],
+        route: [{ id: "current", role_key: "legal", assignee: value.secondary, state: "current" }],
+        viewer: { kind: "org_change", id: "change-layout" },
+      };
+      await page.route(url => url.pathname === "/api/v1/approvals", route => route.fulfill({ json: {
+        items: [item], focused: null, next_cursor: null, sources: [],
+        counts: { pending: 1, upcoming: 0, requested: 0, reference: 0, completed: 0 },
+      } }));
+      await page.route(url => url.pathname === "/api/v1/approvals/approval-layout", route => route.fulfill({ json: {
+        ...item, body: [], revision: 1, fingerprint: "sha256:approval-layout-r1", consequence: value.title, opinion_max: 1000, my_actions: { kind: "none" },
+      } }));
+      await page.goto("/approvals");
+      const grid = page.getByRole("grid", { name: t("approvals.list"), exact: true });
+      const row = grid.getByRole("row", { name: new RegExp(value.title) });
+      await expect(row).toBeVisible();
+      if (preview) {
+        await row.click();
+        await expect(page.getByRole("complementary", { name: t("approvals.document.title"), exact: true })).toBeVisible();
+      }
+      for (const width of [1024, 1280, 1440, 1920]) {
+        await page.setViewportSize({ width, height: 900 });
+        await fits(page, `Console approval list ${value.name} at ${width}px`);
+        const metrics = await grid.evaluate(table => ({
+          scroll: table.parentElement!.scrollWidth - table.parentElement!.clientWidth,
+          rows: Array.from(table.querySelectorAll("tbody tr")).map(tr => tr.getBoundingClientRect().height),
+        }));
+        expect(metrics.rows, `${width}px rows`).toEqual([28]);
+        if (value.name === "real") expect(metrics.scroll, `${width}px: real values fit the grid`).toBe(0);
+      }
+      expect(mock.unexpected).toEqual([]);
+    });
+  }
+});

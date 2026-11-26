@@ -8,6 +8,8 @@ import { failure, inbox, user } from "./fixtures";
 import { fits, expectAxe } from "../a11y";
 import { screens } from "../states/registry";
 import { floorOf } from "../../apps/web/src/ui/experience-floors";
+import { resolveExperience } from "../../apps/web/src/experience/table";
+import { barControl, setTheme } from "../shell";
 
 test.beforeAll(() => loadCatalog("ko"));
 // First-paint cases own their preferences, independently of the selected test pack.
@@ -81,8 +83,8 @@ for (const [from, stored, system, theme] of starts) test(`sign-in is ${theme} fr
   release();
   await expect(page.getByRole("heading", { name: t("auth.login.title"), exact: true })).toBeVisible();
   await expect(html).toHaveAttribute("data-theme", theme);
-  // An unknown experience never applies.
-  await expect(html).not.toHaveAttribute("data-experience");
+  // An unknown experience never applies: the shipped default does (no attribute draws Classic, as the stylesheets do).
+  expect(await html.getAttribute("data-experience") ?? "baseline").toBe(resolveExperience().id);
   expect(await writes()).toEqual([theme]);
   expect(fixture.unexpected).toEqual([]);
 });
@@ -93,15 +95,13 @@ for (const from of ["a stored theme", "the system"] as const) test(`the shell ke
   else await page.addInitScript(() => localStorage.setItem("console.theme", "dark"));
   const writes = await themeWrites(page);
   await page.goto("/people");
-  // The shell's own switch: it has mounted, and it holds the theme the page began with.
-  const toLight = page.getByRole("button", { name: t("shell.theme.toLight"), exact: true });
-  await expect(toLight).toBeVisible();
+  // The shell's own switch: it has mounted, and it holds the theme the page began with. Console keeps the toggle in its account menu.
+  await expect(await barControl(page, bar => bar.getByRole("button", { name: t("shell.theme.toLight"), exact: true }))).toBeVisible();
   const html = page.locator("html");
   await expect(html).toHaveAttribute("data-theme", "dark");
   expect(await writes()).toEqual(["dark"]);
 
-  await toLight.click();
-  await expect(html).toHaveAttribute("data-theme", "light");
+  await setTheme(page, "light");
   expect(await writes()).toEqual(["dark", "light"]);
   expect(await page.evaluate(() => localStorage.getItem("console.theme"))).toBe("light");
   expect(fixture.unexpected).toEqual([]);

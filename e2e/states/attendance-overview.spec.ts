@@ -1,14 +1,19 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page, type PlaywrightTestOptions } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
-import { attendanceDayBoard, attendancePerson } from "../mock/attendance-board";
+import { attendanceDayBoard, attendancePerson, phoneDayPane } from "../mock/attendance-board";
 import { AT, failure, id } from "../mock/fixtures";
 import { mockScreen } from "../mock/screen";
 import { attendanceBoardScreens } from "./attendance";
 
 test.beforeAll(() => loadCatalog("ko"));
 const screen = attendanceBoardScreens.find(s => s.key === "attendance-day")!;
+/** The day pane: docked beside the board at desk widths; at 390 the seeded style's pane. */
+const dayPane = (page: Page, width: number, storageState: PlaywrightTestOptions["storageState"]) => width === 1440 ? page.getByRole("complementary") : phoneDayPane(page, storageState, day.date);
+/** Classic clears the type and turns issues-only off from its toolbar; Console's day filter does both by going back to all. */
+const toolbar = (page: Page) => page.getByRole("toolbar", { name: t("attendanceRecords.toolbar.label"), exact: true });
+const showAll = (page: Page) => page.getByRole("group", { name: t("attendance.dayConsole.filter.label"), exact: true }).getByRole("button", { name: t("home.inbox.filter.all"), exact: true });
 const entry = { id: id(800), batch_id: id(801), kind: "TIMES", segments: [{ start: 540, end: 1200 }], source: "MANUAL", evidence_kind: "PAPER_SHEET", undone: false, created_at: AT, created_by_name: "근태담당" };
 const intervals = [
   { start: 540, end: 720, minutes: 180, category: "WORK", recognised: true, reason_code: "SCHEDULED_WORK", rule_version: "ATTENDANCE_RECOGNITION_V1" },
@@ -46,12 +51,12 @@ for (const width of [1440, 390]) {
     expect(reads.at(-1)?.searchParams.get("workplace_id")).toBe(id(4));
     expect(reads.at(-1)?.searchParams.get("date")).toBe("2026-10-04");
     expect(reads.at(-1)?.searchParams.get("mark")).toBe("LATE");
-    await page.getByRole("button", { name: t("attendanceOverview.issues.clear"), exact: true }).click();
+    await toolbar(page).getByRole("button", { name: t("attendanceOverview.issues.clear"), exact: true }).or(showAll(page)).click();
     await expect.poll(() => new URL(page.url()).searchParams.has("mark")).toBe(false);
     await expect(page.getByRole("link", { name: "근태직원 2", exact: true })).toBeVisible();
     await groups.getByText(t("attendanceRecords.mark.LATE"), { exact: true }).click();
     await expect.poll(() => new URL(page.url()).searchParams.get("mark")).toBe("LATE");
-    await page.getByRole("button", { name: t("attendanceRecords.board.issuesOnly"), exact: true }).click();
+    await toolbar(page).getByRole("button", { name: t("attendanceRecords.board.issuesOnly"), exact: true }).or(showAll(page)).click();
     await expect.poll(() => new URL(page.url()).searchParams.has("mark")).toBe(false);
     await expect.poll(() => new URL(page.url()).searchParams.has("issues")).toBe(false);
     await fits(page, `overview-groups/${width}`);
@@ -59,7 +64,7 @@ for (const width of [1440, 390]) {
     expect(fixture.unexpected).toEqual([]);
   });
 
-  for (const colorScheme of ["light", "dark"] as const) test(`day minutes and source chips explain recognition at ${width}px in ${colorScheme}`, async ({ page }) => {
+  for (const colorScheme of ["light", "dark"] as const) test(`day minutes and source chips explain recognition at ${width}px in ${colorScheme}`, async ({ page, storageState }) => {
     await page.addInitScript(theme => localStorage.setItem("console.theme", theme), colorScheme);
     await page.setViewportSize({ width, height: 900 });
     const fixture = await mockScreen(page, screen, "populated");
@@ -68,7 +73,7 @@ for (const width of [1440, 390]) {
     await page.goto(screen.path);
     await expect(page.getByText(t("attendanceRecords.source.MANUAL"), { exact: true })).toBeVisible();
     await page.getByRole("button", { name: t("attendanceRecords.board.open"), exact: true }).click();
-    const dock = page.getByRole(width === 1440 ? "complementary" : "dialog");
+    const dock = dayPane(page, width, storageState);
     await expect(page.locator("html")).toHaveAttribute("data-theme", colorScheme);
     const minutes = dock.getByRole("table", { name: "분 단위 내역", exact: true });
     await expect(dock.getByRole("heading", { name: "분 단위 내역", exact: true })).toBeVisible();
@@ -90,13 +95,13 @@ for (const width of [1440, 390]) {
   });
 
   for (const current of [{ ...entry, undone: true }, { ...entry, kind: "VOID", source: "VOID", segments: [] }]) {
-    test(`current source excludes ${current.undone ? "undone" : "voided"} entries at ${width}px`, async ({ page }) => {
+    test(`current source excludes ${current.undone ? "undone" : "voided"} entries at ${width}px`, async ({ page, storageState }) => {
       await page.setViewportSize({ width, height: 900 });
       const fixture = await mockScreen(page, screen, "populated");
       await page.route(url => url.pathname === `/api/v1/attendance/people/${id(100)}/month`, route => route.fulfill({ json: { ...attendancePerson, days: [{ ...day, entry: current }], history: [{ date: day.date, entry: current }] } }));
       await page.goto(screen.path);
       await page.getByRole("button", { name: t("attendanceRecords.board.open"), exact: true }).click();
-      const dock = page.getByRole(width === 1440 ? "complementary" : "dialog");
+      const dock = dayPane(page, width, storageState);
       await dock.getByRole("tab", { name: t("attendanceRecords.day.tab.source"), exact: true }).click();
       await expect(dock.getByText(t("attendanceRecords.day.noHistory"), { exact: true })).toBeVisible();
       await expect(dock.getByText(t(current.undone ? "attendanceRecords.source.MANUAL" : "attendanceRecords.source.VOID"), { exact: true })).toHaveCount(0);
@@ -109,7 +114,7 @@ for (const width of [1440, 390]) {
 }
 
 for (const state of ["empty", "failed", "refused", "loading"] as const) for (const width of [1440, 390]) {
-  test(`overview details ${state} at ${width}px`, async ({ page }) => {
+  test(`overview details ${state} at ${width}px`, async ({ page, storageState }) => {
     await page.setViewportSize({ width, height: 900 });
     const fixture = await mockScreen(page, screen, "populated");
     let release!: () => void;
@@ -122,7 +127,7 @@ for (const state of ["empty", "failed", "refused", "loading"] as const) for (con
     });
     await page.goto(screen.path);
     await page.getByRole("button", { name: t("attendanceRecords.board.open"), exact: true }).click();
-    const dock = page.getByRole(width === 1440 ? "complementary" : "dialog");
+    const dock = dayPane(page, width, storageState);
     if (state === "empty") {
       await expect(dock.getByRole("tab").first()).toBeVisible();
       await expect(dock.getByRole("table", { name: "분 단위 내역", exact: true })).toHaveCount(0);

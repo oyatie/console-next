@@ -31,7 +31,8 @@ for (const locale of LOCALES) for (const refused of [false, true]) {
       return route.fulfill({ status: refused ? 403 : 200, json: refused ? failure("forbidden") : { id: exception, status: "REVIEWED" } });
     });
     await page.goto("/inbox");
-    const row = page.locator(`[data-id="period_unlock:${exception}"]`);
+    // Console's inbox lists the item again in its month table, after the worklist row.
+    const row = page.locator(`[data-id="period_unlock:${exception}"]`).first();
     await expect(row).toContainText(locale === "ko" ? "단독 해제 사후 검토" : "Sole-holder unlock review");
     const acknowledge = row.getByRole("button", { name: locale === "ko" ? "사후 검토 확인 기록" : "Acknowledge review", exact: true });
     await expect(acknowledge).toHaveCount(1);

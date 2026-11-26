@@ -1,5 +1,5 @@
 import { expect, type Browser } from "@playwright/test";
-import { tenantOnboardSubmit, tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "../flows";
+import { tenantNameField, tenantOnboardSubmit, tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "../flows";
 
 /** A new tenant opened by the vendor, and its ops account signed in for the first time: an empty setup phase. */
 export async function openTenant(browser: Browser, slug: string, name: string, locale?: string) {
@@ -7,7 +7,7 @@ export async function openTenant(browser: Browser, slug: string, name: string, l
   await go(v, "/platform");
   await expect(v.getByRole("button", { name: "고객 계정 개설" })).toBeVisible();
   await v.getByRole("button", { name: "고객 계정 개설" }).click();
-  await v.getByLabel("고객 이름").fill(name);
+  await tenantNameField(v).fill(name);
   await tenantSlugField(v).fill(unique(slug));
   await tenantOnboardSubmit(v).click();
   return firstSignIn(browser, await takeCode(v), undefined, false, locale ? { locale } : {});

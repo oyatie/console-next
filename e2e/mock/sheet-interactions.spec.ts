@@ -5,6 +5,7 @@ import { loadCatalog, t } from "@console/i18n";
 import { tg } from "@console/i18n/gallery";
 import { expectAxe } from "../a11y";
 import { go, routeReady } from "../flows";
+import { scroller } from "../shell";
 import { AT, id, user } from "./fixtures";
 import { mockLifecycleSheets } from "./lifecycle-sheets";
 import { orgPanelReads } from "./org-work";
@@ -231,8 +232,9 @@ test("Back restores the shell scroller on a non-table screen", async ({ page }) 
   const fixture = await mockScreen(page, screens[2], "populated");
   await page.goto("/org");
   await routeReady(page, "/org");
-  await page.addStyleTag({ content: "#main::after { content: ''; display: block; height: 1800px; }" });
-  const main = page.locator("#main");
+  // Filler that cannot shrink, so the content outgrows the view in a flex main too.
+  await page.addStyleTag({ content: "#main::after { content: ''; display: block; flex: none; height: 1800px; }" });
+  const main = await scroller(page);
   await expect(main).toBeVisible();
   await main.focus();
   await main.evaluate(element => { element.scrollTop = 700; });
@@ -256,8 +258,10 @@ test("Back restores the shell scroller without replacing roster restoration", as
   await mockLifecycleSheets(page, lifecycleSheetScreens[0]);
   await page.goto("/people");
   await routeReady(page, "/people");
-  await page.addStyleTag({ content: "#main::after { content: ''; display: block; height: 1800px; }" });
-  const main = page.locator("#main");
+  // A filler out of the page's flow: it lengthens the shell's scroll without taking height from a page that fills the
+  // view (Console's roster), and it outlives the navigation below.
+  await page.addStyleTag({ content: "#main { position: relative; } #main::after { content: ''; position: absolute; inset-block-start: 0; inline-size: 1px; block-size: calc(100% + 1800px); }" });
+  const main = await scroller(page);
   const roster = page.getByRole("grid", { name: t("people.table"), exact: true });
   await expect(roster).toHaveAttribute("aria-rowcount", "2001");
   await main.evaluate(element => { element.scrollTop = 500; });
@@ -281,7 +285,9 @@ test("Back restores the shell scroller without replacing roster restoration", as
   await page.waitForTimeout(200);
   const mainTop = await main.evaluate(element => element.scrollTop);
   expect(mainTop).toBeGreaterThan(0);
-  await panel.getByRole("link", { name: t("people.panel.open"), exact: false }).evaluate((element: HTMLElement) => element.click());
+  // Into the person's record from the panel: Classic's open link; Console's open-in-tab command in the pane head.
+  await panel.getByRole("link", { name: t("people.panel.open"), exact: false })
+    .or(panel.getByRole("button", { name: t("uiFlexibleColumns.openInTab"), exact: true })).evaluate((element: HTMLElement) => element.click());
   await expect(page).toHaveURL(/\/people\/[^/]+$/);
   await routeReady(page);
   await expect.poll(() => main.evaluate(element => element.scrollTop)).toBe(0);
@@ -418,8 +424,8 @@ test("open Sheet, CommandPalette, and Combobox popover contain overscroll withou
   await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { account_id: user.id, is_ops: true, phase: "OPERATING", as_of: AT, entries: [] } });
   await page.goto("/org");
   await routeReady(page, "/org");
-  await page.addStyleTag({ content: "#main::after { content: ''; display: block; height: 2200px; }" });
-  const main = page.locator("#main");
+  await page.addStyleTag({ content: "#main::after { content: ''; display: block; flex: none; height: 2200px; }" });
+  const main = await scroller(page);
   await main.evaluate((el) => { el.scrollTop = 300; });
   const startTop = await main.evaluate((el) => el.scrollTop);
   expect(startTop).toBeGreaterThan(0);

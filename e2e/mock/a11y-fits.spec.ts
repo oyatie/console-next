@@ -2,6 +2,7 @@
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { fits } from "../a11y";
+import { experienceState } from "../experience";
 import { accountSecurityScreens } from "../states/account-security";
 import { screens } from "../states/registry";
 import { accountSecurityReads } from "./account-security";
@@ -41,7 +42,6 @@ for (const theme of ["light", "dark"]) {
         await expect(main.getByRole("heading", { name: t(screen.key === "login" ? "auth.login.title" : "auth.setup.consent.title"), exact: true })).toBeVisible();
         await page.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
         await page.evaluate(() => document.fonts.ready);
-        await expect(main).toHaveClass("auth");
         await fits(page, screen.path);
         expect(fixture.unexpected).toEqual([]);
       } finally { await page.close(); fixture.release(); }
@@ -55,9 +55,7 @@ for (const theme of ["light", "dark"]) {
       try {
         await page.goto(path);
         const main = page.getByRole("main", { name: t("shell.main"), exact: true });
-        await expect(page.getByRole("main")).toHaveCount(2);
         await expect(main.getByRole("heading", { name: t("requestOutcome.title"), exact: true })).toBeVisible();
-        await expect(main).toHaveClass(/\bmain\b/);
         // A restyle can rename the shell's class and id while preserving its landmark.
         await main.evaluate(el => {
           el.classList.remove("main");
@@ -71,3 +69,32 @@ for (const theme of ["light", "dark"]) {
     });
   }
 }
+
+// How each style marks the landmarks above. No board draws sign-in or the request pages, so Console's values are the
+// render's: the sign-in pattern on main, and the shell's main as the only one (Classic nests the page's own).
+for (const style of ["baseline", "console"] as const) test.describe(`${style} landmarks`, () => {
+  test.use({ storageState: experienceState(style) });
+  const pin = style === "baseline" ? { tag: "@baseline" } : {};
+  for (const screen of accountSecurityScreens) test(`the standalone ${screen.key} main is ${style}'s sign-in`, pin, async ({ page }) => {
+    const fixture = await accountSecurityReads(page, screen, "failed");
+    try {
+      await page.goto(screen.path);
+      const main = page.getByRole("main");
+      await expect(main.getByRole("heading", { name: t(screen.key === "login" ? "auth.login.title" : "auth.setup.consent.title"), exact: true })).toBeVisible();
+      if (style === "baseline") await expect(main).toHaveClass("auth");
+      else await expect(main).toHaveAttribute("data-pattern", "sign-in");
+    } finally { await page.close(); fixture.release(); }
+  });
+
+  for (const path of ["/requests", `/requests/${id(99)}`]) test(`the shell around ${path} has ${style}'s main landmarks`, pin, async ({ page }) => {
+    const fixture = await mockScreen(page, screens[0], "empty");
+    await mockRoute(page, "get", "/api/v1/requests/{key}", { status: 404, json: failure("request_not_found") });
+    try {
+      await page.goto(path);
+      const main = page.getByRole("main", { name: t("shell.main"), exact: true });
+      await expect(main.getByRole("heading", { name: t("requestOutcome.title"), exact: true })).toBeVisible();
+      await expect(page.getByRole("main")).toHaveCount(style === "baseline" ? 2 : 1);
+      if (style === "baseline") await expect(main).toHaveClass(/\bmain\b/);
+    } finally { await page.close(); fixture.release(); }
+  });
+});

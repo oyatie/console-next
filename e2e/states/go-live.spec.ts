@@ -9,6 +9,8 @@ import { mockRoute } from "../mock/route";
 import { previewData } from "../mock/onboarding";
 import { mockScreen } from "../mock/screen";
 import { homeSetupChecklist, homeSetupScreen } from "./home-setup";
+import { scroller } from "../shell";
+import { experienceState } from "../experience";
 
 const states = ["loading", "failed", "refused", "blocked", "ready", "receipt", "legacy-receipt", "missing-receipt", "unknown-receipt"] as const;
 
@@ -144,7 +146,9 @@ for (const state of states) for (const width of [1440, 390]) {
         if (state === "legacy-receipt" || state === "unknown-receipt") {
           await expect(main.getByText(t(state === "legacy-receipt" ? "setup.receipt.unrecorded" : "setup.receipt.unsupported"), { exact: true })).toBeVisible();
         } else {
-          const recorded = main.getByRole("region", { name: t("setup.receipt.recorded"), exact: true });
+          // A card region in Classic; in Console the section its heading opens.
+          const recorded = main.getByRole("region", { name: t("setup.receipt.recorded"), exact: true })
+            .or(main.getByRole("heading", { name: t("setup.receipt.recorded"), exact: true }).locator("xpath=ancestor::section[1]"));
           await expect(recorded.getByText("42", { exact: true })).toBeVisible();
           await expect(recorded.getByText("2,000", { exact: true })).toHaveCount(0);
           await expect(recorded.locator("time")).toHaveAttribute("datetime", "2026-10-25T09:00:00Z");
@@ -161,16 +165,6 @@ for (const state of states) for (const width of [1440, 390]) {
         await expect(start).toBeVisible();
         await expect(back).toBeVisible();
         await expect(ack).toBeVisible();
-        expect(await main.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
-        expect(await main.evaluate(el => el.scrollTop)).toBe(0);
-        const [startBox, backBox] = await Promise.all([start.boundingBox(), back.boundingBox()]);
-        expect(startBox!.y).toBeGreaterThanOrEqual(0);
-        expect(startBox!.y + startBox!.height).toBeLessThanOrEqual(900);
-        expect(backBox!.y + backBox!.height).toBeLessThanOrEqual(900);
-        if (width === 1440) {
-          expect(Math.abs(startBox!.y - backBox!.y)).toBeLessThanOrEqual(4);
-          expect(startBox!.x).toBeGreaterThan(backBox!.x + backBox!.width);
-        }
         await expect(start).toHaveAttribute("aria-disabled", "true");
         if (state === "ready") {
           await expect(start).toHaveAccessibleDescription(t("setup.golive.ackNeeded"));
@@ -197,3 +191,49 @@ for (const state of states) for (const width of [1440, 390]) {
     }
   });
 }
+
+// Where the commands sit is the style's. Classic scrolls main under a sticky action bar that keeps both commands in
+// the first view, side by side at desk width. Console ends the scrolled content with the commands, start after back;
+// no board draws go-live, so that is the render's value, and at 390 it owes only the invariants.
+for (const experience of ["baseline", "console"] as const) test.describe(() => {
+  test.use({ storageState: experienceState(experience) });
+  for (const state of ["blocked", "ready"] as const) for (const width of experience === "baseline" ? [1440, 390] : [1440]) {
+    test(`go-live: ${state} commands ${experience === "baseline" ? "stay in the first view" : "end the page"} at ${width}px in ${experience} @ui-state${experience === "baseline" ? " @baseline" : ""}`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      const fixture = await mockScreen(page, homeSetupScreen, "empty");
+      await mockRoute(page, "get", "/api/v1/users/me", { status: 200, json: { ...user, is_tenant_ops: true, tenant: { name: "Screen Test Company", phase: "SETUP", go_live_at: null } } });
+      await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { ...screenAccess("/setup/go-live", "SETUP"), is_ops: true } });
+      await mockRoute(page, "get", "/api/v1/onboarding/checklist", { status: 200, json: homeSetupChecklist("all-done") });
+      await mockRoute(page, "get", "/api/v1/onboarding/go-live/preview", { status: 200, json: previewData(state) });
+      try {
+        await page.goto("/setup/go-live");
+        const main = page.getByRole("main");
+        const start = main.getByRole("button", { name: t("setup.golive.start"), exact: true });
+        const back = main.getByRole("link", { name: t("common.back"), exact: true });
+        await expect(start).toBeVisible();
+        await expect(back).toBeVisible();
+        if (experience === "baseline") {
+          expect(await main.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
+          expect(await main.evaluate(el => el.scrollTop)).toBe(0);
+          const [startBox, backBox] = await Promise.all([start.boundingBox(), back.boundingBox()]);
+          expect(startBox!.y).toBeGreaterThanOrEqual(0);
+          expect(startBox!.y + startBox!.height).toBeLessThanOrEqual(900);
+          expect(backBox!.y + backBox!.height).toBeLessThanOrEqual(900);
+          if (width === 1440) {
+            expect(Math.abs(startBox!.y - backBox!.y)).toBeLessThanOrEqual(4);
+            expect(startBox!.x).toBeGreaterThan(backBox!.x + backBox!.width);
+          }
+        } else {
+          expect(await (await scroller(page)).evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
+          await start.scrollIntoViewIfNeeded();
+          await expect(start).toBeInViewport();
+          await expect(back).toBeInViewport();
+          const [startBox, backBox] = await Promise.all([start.boundingBox(), back.boundingBox()]);
+          expect(Math.abs(startBox!.y - backBox!.y)).toBeLessThanOrEqual(4);
+          expect(startBox!.x).toBeGreaterThan(backBox!.x + backBox!.width);
+        }
+        expect(fixture.unexpected).toEqual([]);
+      } finally { await page.close(); fixture.release(); }
+    });
+  }
+});

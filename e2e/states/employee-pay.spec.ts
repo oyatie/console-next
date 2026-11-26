@@ -33,7 +33,8 @@ for (const state of Object.keys(employeePayScreen.states)) for (const [width, co
       await expect(main.getByRole("button", { name: t("payroll.employee.record") })).toHaveCount(0);
     }
     else {
-      await expect(main.getByText(t("payroll.employee.incomplete"), { exact: true })).toBeVisible();
+      // Console shows the draft's state twice: as the net pay figure and on the blockers.
+      await expect(main.getByText(t("payroll.employee.incomplete"), { exact: true }).first()).toBeVisible();
       await expect(main.getByText(t("payroll.employee.netUnavailable"), { exact: true })).toBeVisible();
       if (state === "empty") await expect(main.getByText(t("payroll.employee.noContract"), { exact: true })).toBeVisible();
       else {
@@ -85,7 +86,7 @@ for (const state of Object.keys(employeePayScreen.states)) for (const [width, co
         }
       }
       await page.reload();
-      await expect(main.getByText(t("payroll.employee.incomplete"), { exact: true })).toBeVisible();
+      await expect(main.getByText(t("payroll.employee.incomplete"), { exact: true }).first()).toBeVisible();
     }
     await fits(page, `employee-pay/${state}/${width}`);
     await expectAxe(page, `employee-pay/${state}/${width}`);

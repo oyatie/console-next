@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { fits } from "../a11y";
 import { screens } from "../states/registry";
@@ -10,6 +10,10 @@ import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
 
 test.beforeAll(() => loadCatalog("ko"));
+
+/** Home's to-do list by its name: Classic's region, Console's grid. */
+const todo = (page: Page) => page.getByRole("region", { name: t("home.inbox.title"), exact: true })
+  .or(page.getByRole("grid", { name: t("home.inbox.title"), exact: true })).first();
 
 for (const { screen, path } of [
   ...screens.filter(screen => screen.path === "/" || screen.path === "/people").map(screen => ({ screen, path: screen.path })),
@@ -72,7 +76,7 @@ for (const theme of ["light", "dark"] as const) test(`sign-in opens the stream b
   await page.locator("summary").click();
   await page.getByRole("textbox", { name: t("auth.login.code"), exact: true }).fill("ABCD-EFGH");
   await page.getByRole("button", { name: t("auth.login.submitCode"), exact: true }).click();
-  await expect(page.getByRole("region", { name: t("home.inbox.title"), exact: true })).toBeVisible();
+  await expect(todo(page)).toBeVisible();
   const requests = await page.evaluate(() => (window as unknown as { streamRequests: string[] }).streamRequests);
   expect(requests).toContain("/api/v1/me/action-inbox");
   expect(requests[0], "the stream opens before the first data read").toBe("/api/v1/events");
@@ -119,7 +123,7 @@ test("a failed live chunk has one recovery screen and reload restores the same s
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.unroute(liveAsset);
   await reload.click();
-  await expect(page.getByRole("region", { name: t("home.inbox.title"), exact: true })).toBeVisible();
+  await expect(todo(page)).toBeVisible();
   await expect(heading).toHaveCount(0);
   expect(fixture.unexpected).toEqual([]);
 });

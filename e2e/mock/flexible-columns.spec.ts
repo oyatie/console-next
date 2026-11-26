@@ -3,6 +3,7 @@ import { mockNavigate } from "./navigation";
 import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
+import { attendancePerson } from "./attendance-board";
 import { employees, id } from "./fixtures";
 import { mockLifecycleSheets, moveDetail } from "./lifecycle-sheets";
 import { mockRoute } from "./route";
@@ -37,6 +38,8 @@ async function setupRoster(page: Page) {
       ],
     },
   });
+  // Console's person record also shows the person's attendance month.
+  await mockRoute(page, "get", "/api/v1/attendance/people/{employee_id}/month", { status: 200, json: attendancePerson });
   return fixture;
 }
 

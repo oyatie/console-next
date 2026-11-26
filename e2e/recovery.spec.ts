@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { clickCounter } from "./clicks";
-import { tenantOnboardSubmit, tenantSlugField, firstSignIn, go, newContext, takeCode, unique, vendorPage, vendorStepUp } from "./flows";
+import { tenantNameField, tenantOnboardSubmit, tenantSlugField, firstSignIn, go, newContext, takeCode, unique, vendorPage, vendorStepUp } from "./flows";
 import { inviteAccount } from "./access-flows";
 
 // Lost codes and lost passkeys: the vendor reissues a first-admin code; an admin resets a user's passkeys.
@@ -12,7 +12,7 @@ test("vendor reissues a lost first-admin code; an admin resets a user's passkeys
   await v.getByRole("button", { name: "고객 계정 개설" }).click();
   const company = unique("복구주식회사");
   const slug = unique("recoverco");
-  await v.getByLabel("고객 이름").fill(company);
+  await tenantNameField(v).fill(company);
   await tenantSlugField(v).fill(slug);
   await tenantOnboardSubmit(v).click();
   const lost = (await v.getByLabel("일회용 코드").textContent())!.trim();

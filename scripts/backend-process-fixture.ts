@@ -190,4 +190,4 @@ afterEach(async () => {
   }
   pids.clear();
 });
-afterAll(() => rmSync(dir, { recursive: true, force: true }));
+afterAll(() => rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));

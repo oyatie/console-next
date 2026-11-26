@@ -3,6 +3,7 @@ import { mockNavigate } from "./navigation";
 import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
+import { experienceState } from "../experience";
 import { screens } from "../states/registry";
 import { mockScreen } from "./screen";
 import type { ApprovalDocument } from "../../apps/web/src/features/approvals/api";
@@ -78,7 +79,7 @@ for (const { width, theme } of [{ width: 1440, theme: "light" }, { width: 1440, 
     const { decisions, reads } = await mockViewer(page);
     await page.goto("/approvals/approval-1");
 
-    await expect(page.getByRole("heading", { level: 1, name: document.title, exact: true })).toBeVisible();
+    await expect(page.getByRole("main").getByRole("heading", { name: document.title, exact: true })).toBeVisible();
     await expect(page.getByRole("region", { name: "문서 정보", exact: true })).toContainText("대상 조직");
     await expect(page.getByRole("region", { name: "결재선", exact: true })).toContainText(t("enum.approvalRole.executive"));
     await expect(page.getByRole("link", { name: "원본 기록 열기", exact: true })).toHaveAttribute("href", "/org/changes/change-1");
@@ -87,9 +88,6 @@ for (const { width, theme } of [{ width: 1440, theme: "light" }, { width: 1440, 
     const chain = page.getByRole("region", { name: "결재선", exact: true });
     const body = page.getByRole("region", { name: "문서 내용", exact: true });
     expect(await chain.evaluate((el, after) => Boolean(el.compareDocumentPosition(after) & Node.DOCUMENT_POSITION_FOLLOWING), await body.elementHandle())).toBe(true);
-    expect((await chain.boundingBox())!.y).toBeLessThan((await body.boundingBox())!.y);
-    expect((await chain.boundingBox())!.y).toBeLessThan((await page.getByRole("button", { name: "승인", exact: true }).boundingBox())!.y);
-    await expect(page.getByText("결재 기록에 함께 남습니다.", { exact: true })).toBeVisible();
     await expectAxe(page, `approval viewer before ${width}px ${theme}`);
     await page.getByRole("button", { name: "보완 요청", exact: true }).click();
     await expect(page.getByRole("button", { name: "보완 요청", exact: true })).toBeDisabled();
@@ -100,7 +98,8 @@ for (const { width, theme } of [{ width: 1440, theme: "light" }, { width: 1440, 
     await page.getByRole("button", { name: "승인", exact: true }).click();
     await expect(page.locator("p[role=status]", { hasText: receipts.APPROVE })).toHaveText(receipts.APPROVE);
     await expect.poll(reads).toBe(2);
-    await expect(page.getByText(t("enum.orgChangeStatus.APPROVED"), { exact: true })).toBeVisible();
+    // Console's status bar repeats the document's status; the document's own is in the page.
+    await expect(page.getByRole("main").getByText(t("enum.orgChangeStatus.APPROVED"), { exact: true })).toBeVisible();
     await expect(chain).not.toContainText("내 차례");
     await expect(page.getByRole("textbox", { name: /^의견/ })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /승인|반려|보완 요청/ })).toHaveCount(0);
@@ -114,11 +113,48 @@ for (const { width, theme } of [{ width: 1440, theme: "light" }, { width: 1440, 
   });
 }
 
+// Classic titles the viewer with the document, stacks the route above the decision and explains the opinion under its
+// field; Console titles it with the module and gives the document an h2, sets the route, the document and the decision
+// side by side on a desk, and draws the opinion field with no explanation, as the approval board draws them.
+for (const width of [1440, 390]) test(`Classic titles the approval viewer with the document at ${width}px`, { tag: "@baseline" }, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  await mockScreen(page, screens[0], "empty");
+  await mockViewer(page);
+  await page.goto("/approvals/approval-1");
+  await expect(page.getByRole("heading", { level: 1, name: document.title, exact: true })).toBeVisible();
+  const chain = (await page.getByRole("region", { name: t("approvals.preview.route"), exact: true }).boundingBox())!;
+  expect(chain.y).toBeLessThan((await page.getByRole("region", { name: t("approvals.viewer.body"), exact: true }).boundingBox())!.y);
+  expect(chain.y).toBeLessThan((await page.getByRole("button", { name: t("uiWorklist.approve"), exact: true }).boundingBox())!.y);
+  await expect(page.getByText(t("approvals.viewer.opinionHint"), { exact: true })).toBeVisible();
+});
+
+test.describe("console look", () => {
+  test.use({ storageState: experienceState("console") });
+  for (const width of [1440, 390]) test(`Console titles the approval viewer with the module and the document as its h2 at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await mockScreen(page, screens[0], "empty");
+    await mockViewer(page);
+    await page.goto("/approvals/approval-1");
+    await expect(page.getByRole("heading", { level: 1, name: t("approvals.console.title"), exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: document.title, exact: true })).toBeVisible();
+    // The board draws a desk; a phone's approval page has none, so only the titles are pinned there.
+    if (width === 1440) {
+      await expect(page.getByRole("textbox", { name: t("approvals.viewer.opinion") })).toBeVisible();
+      await expect(page.getByText(t("approvals.viewer.opinionHint"), { exact: true })).toHaveCount(0);
+      const route = (await page.getByRole("region", { name: t("approvals.preview.route"), exact: true }).boundingBox())!;
+      const body = (await page.getByRole("region", { name: t("approvals.viewer.body"), exact: true }).boundingBox())!;
+      const decision = (await page.getByRole("button", { name: t("uiWorklist.approve"), exact: true }).boundingBox())!;
+      expect(route.x + route.width).toBeLessThanOrEqual(body.x);
+      expect(body.x + body.width).toBeLessThanOrEqual(decision.x);
+    }
+  });
+});
+
 test("approval viewer never infers decision controls from document status", async ({ page }) => {
   const mock = await mockScreen(page, screens[0], "empty");
   await mockViewer(page, { actions: false });
   await page.goto("/approvals/approval-1");
-  await expect(page.getByRole("heading", { level: 1, name: document.title, exact: true })).toBeVisible();
+  await expect(page.getByRole("main").getByRole("heading", { name: document.title, exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: /승인|반려|보완 요청/ })).toHaveCount(0);
   expect(mock.unexpected).toEqual([]);
 });
@@ -151,7 +187,8 @@ test("a changed approval is re-read before retrying with its latest fingerprint"
   await page.getByRole("button", { name: "승인", exact: true }).click();
   await expect.poll(reads).toBe(2);
   await expect(page.getByRole("region", { name: "문서 내용", exact: true })).toContainText("수정된 조직 개편안");
-  await expect(page.getByText("2차 상신", { exact: true })).toBeVisible();
+  // Console sets the revision in the route step's line, so the words are matched inside a longer run.
+  await expect(page.getByText(t("approvals.viewer.revision", { revision: 2 }))).toBeVisible();
   await expect(page.getByRole("alert")).toContainText("문서가 변경되었습니다");
   await page.getByRole("button", { name: "승인", exact: true }).click();
   await expect(page.locator("p[role=status]", { hasText: receipts.APPROVE })).toBeVisible();

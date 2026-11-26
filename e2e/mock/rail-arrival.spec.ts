@@ -4,6 +4,7 @@ import { loadCatalog, t } from "@console/i18n";
 import { fits } from "../a11y";
 import { clearShifts, expectStable, recordShifts } from "../stability";
 import { go } from "../flows";
+import { openNav } from "../shell";
 import { previewData } from "./onboarding";
 import { screens } from "../states/registry";
 import { authz, checklist, modules, screenAccess, user } from "./fixtures";
@@ -41,18 +42,24 @@ for (const width of [1440, 390]) for (const phase of ["OPERATING", "SETUP"] as c
     try {
       await page.goto("/people");
       await requested.promise;
-      if (width === 390) await page.getByRole("button", { name: t("shell.menu"), exact: true }).click();
       const rail = page.getByRole("navigation", { name: t("shell.nav") });
+      // Before the answer the rail may hold no links: open Classic's phone menu without waiting for one.
+      const menu = page.getByRole("banner").getByRole("button", { name: t("shell.menu"), exact: true });
+      await expect(rail.or(menu).filter({ visible: true }).first()).toBeVisible();
+      if (await menu.isVisible()) await menu.click();
       await expect(rail).toBeVisible();
       await page.evaluate(() => document.fonts.ready);
-      const snapshot = () => rail.getByRole("link").evaluateAll(links => links.map(link => ({
+      // The table's entries. Console's phone bar appends its own profile slot when the table has none.
+      const entries = rail.getByRole("link").and(page.locator(':not([href="/account"])'));
+      const snapshot = () => entries.evaluateAll(links => links.map(link => ({
         to: link.getAttribute("href"), y: link.getBoundingClientRect().y,
       })));
       const before = await snapshot();
       await page.evaluate(clearShifts);
       held.resolve();
+      if (width === 390) await openNav(page);
       await expect(rail.getByRole("link", { name: t("shell.link.people"), exact: true })).toBeVisible();
-      await expect(rail.getByRole("link")).toHaveCount(phase === "SETUP" ? 2 : 11);
+      await expect(entries).toHaveCount(phase === "SETUP" ? 2 : 11);
       const after = await snapshot();
       await info.attach("rail-entries", { body: JSON.stringify({ savedPhase, phase, before, after }), contentType: "application/json" });
       expect(before, "saved entries must wait for the current answer").toEqual([]);
@@ -122,10 +129,10 @@ for (const destination of ["/", "/org", "/setup/go-live"]) {
       await expectStable(page, "late phase answer");
       await page.setViewportSize({ width: 390, height: 900 });
       await page.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
-      await page.getByRole("button", { name: t("shell.menu"), exact: true }).click();
+      await openNav(page);
       await fits(page, `late phase ${destination} dark phone`);
       await page.screenshot({ path: info.outputPath("dark-phone.png"), fullPage: true });
-      await page.getByRole("button", { name: t("shell.menu"), exact: true }).click();
+      await page.keyboard.press("Escape");
       await page.setViewportSize({ width: 1440, height: 900 });
       await go(page, "/people");
       await expect(rail.getByRole("link", { name: t("shell.link.payroll"), exact: true })).toBeVisible();

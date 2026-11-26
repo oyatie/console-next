@@ -43,18 +43,28 @@ async function open(page: Page, data = queue()) {
     return { status: 204 };
   });
   await page.goto("/inbox");
-  return { mock, sent, row: (i: number) => page.locator(`[data-id="${data.items[i]!.id}"]`) };
+  return { mock, sent, snoozeOf: (i: number) => snoozeOf(page, data.items[i]!) };
+}
+
+/**
+ * The item's own postpone command, from its record: Console offers it only there (Classic also on the row), so the item
+ * is opened by its address first.
+ */
+async function snoozeOf(page: Page, item: { id: string; title: string }) {
+  await page.goto(`/inbox?sel=${encodeURIComponent(item.id)}`);
+  const record = page.getByRole("complementary", { name: t("home.inbox.record.title"), exact: true });
+  await expect(record).toContainText(item.title);
+  return { record, button: record.getByRole("button", { name: t("home.inbox.snooze"), exact: true }) };
 }
 
 for (const width of [1440, 390]) test(`a row is postponed to a preset day, a legal deadline holds later days back, and a decision others wait on offers none, at ${width}px`, async ({ page }, info) => {
   await page.setViewportSize({ width, height: 900 });
-  const { mock, sent, row } = await open(page);
-  const snooze = { name: t("home.inbox.snooze"), exact: true };
-  await expect(row(0).getByRole("button", snooze)).toBeVisible();
-  await expect(row(2).getByRole("button", snooze)).toHaveCount(0);
-  await expect(row(3).getByRole("button", snooze)).toHaveCount(0);
+  const { mock, sent, snoozeOf } = await open(page);
+  await expect((await snoozeOf(0)).button).toBeVisible();
+  await expect((await snoozeOf(2)).button).toHaveCount(0);
+  await expect((await snoozeOf(3)).button).toHaveCount(0);
 
-  await row(1).getByRole("button", snooze).click();
+  await (await snoozeOf(1)).button.click();
   const menu = page.getByRole("menu", { name: t("home.inbox.snooze"), exact: true });
   await expect(menu.getByRole("menuitem")).toHaveCount(4);
   await expect(menu.getByRole("menuitem", { name: new RegExp(t("home.inbox.snooze.short")) })).toBeEnabled();
@@ -67,7 +77,7 @@ for (const width of [1440, 390]) test(`a row is postponed to a preset day, a leg
   await page.screenshot({ path: info.outputPath(`inbox-snooze-menu-${width}.png`), fullPage: true });
   await page.keyboard.press("Escape");
 
-  await row(0).getByRole("button", snooze).click();
+  await (await snoozeOf(0)).button.click();
   await menu.getByRole("menuitem", { name: new RegExp(t("home.inbox.snooze.long")) }).click();
   await expect.poll(() => sent).toEqual([{ id: queue().items[0]!.id, until: "2026-11-20" }]);
   // The row leaves the list with its trigger, so focus lands on the list's title rather than the page.
@@ -76,8 +86,8 @@ for (const width of [1440, 390]) test(`a row is postponed to a preset day, a leg
 });
 
 test("a picked day stays inside its bounds before anything is sent", async ({ page }) => {
-  const { mock, sent, row } = await open(page);
-  await row(1).getByRole("button", { name: t("home.inbox.snooze"), exact: true }).click();
+  const { mock, sent, snoozeOf } = await open(page);
+  await (await snoozeOf(1)).button.click();
   await page.getByRole("menuitem", { name: t("home.inbox.snooze.pick") }).click();
   const dialog = page.getByRole("dialog", { name: t("home.inbox.snooze.pick"), exact: true });
   const day = dialog.getByRole("textbox", { name: new RegExp(t("home.inbox.snooze.until")) });
@@ -96,9 +106,9 @@ test("a picked day stays inside its bounds before anything is sent", async ({ pa
 });
 
 test("a day the server no longer takes is refused inside the picker", async ({ page }) => {
-  const { mock, row } = await open(page);
+  const { mock, snoozeOf } = await open(page);
   await mockRoute(page, "post", "/api/v1/me/action-inbox/items/{id}/snooze", { status: 422, json: failure("snooze_past") });
-  await row(0).getByRole("button", { name: t("home.inbox.snooze"), exact: true }).click();
+  await (await snoozeOf(0)).button.click();
   await page.getByRole("menuitem", { name: t("home.inbox.snooze.pick") }).click();
   const dialog = page.getByRole("dialog", { name: t("home.inbox.snooze.pick"), exact: true });
   const day = dialog.getByRole("textbox", { name: new RegExp(t("home.inbox.snooze.until")) });
@@ -111,11 +121,12 @@ test("a day the server no longer takes is refused inside the picker", async ({ p
 });
 
 test("a refused postponement says why in place and the item stays", async ({ page }) => {
-  const { mock, row } = await open(page);
+  const { mock, snoozeOf } = await open(page);
   await mockRoute(page, "post", "/api/v1/me/action-inbox/items/{id}/snooze", { status: 422, json: failure("snooze_past_legal_due") });
-  await row(0).getByRole("button", { name: t("home.inbox.snooze"), exact: true }).click();
+  const { record, button } = await snoozeOf(0);
+  await button.click();
   await page.getByRole("menuitem", { name: new RegExp(t("home.inbox.snooze.short")) }).click();
-  await expect(row(0)).toContainText(t("common.failed.code.snooze_past_legal_due"));
+  await expect(record).toContainText(t("common.failed.code.snooze_past_legal_due"));
   expect(mock.unexpected).toEqual([]);
 });
 

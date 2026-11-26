@@ -307,7 +307,7 @@ test("patterns P8-P11 support keyboard journeys and preserve baseline parity", a
   }
 });
 
-test("patterns P8-P11 preserve baseline layout and axe cleanliness when Console is off", async ({ page }) => {
+test("patterns P8-P11 preserve baseline layout and axe cleanliness when Console is off", { tag: "@baseline" }, async ({ page }) => {
   const fixture = await mockScreen(page, screens.find(screen => screen.key === "people")!, "populated");
   try {
     await page.setViewportSize({ width: 1440, height: 900 });

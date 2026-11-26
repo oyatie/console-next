@@ -6,13 +6,15 @@ import { acceptConsent, go, newContext, passkeyLogin, vendorPage } from "./flows
 import { inviteAccount } from "./access-flows";
 import { tenantWithExecutive } from "./setup-flows";
 import { openTenant } from "./helpers/tenant";
+import { accountEntry, barControl, openAccount } from "./shell";
+import { bootEn } from "../packages/i18n/src/catalogs/boot";
 
 // My account: a second passkey (step-up with the first), sign-in with the new one, then removing the old one.
 test("my account: add a second passkey, sign in with it, remove the first", { tag: "@auth" }, async ({ browser }) => {
   const admin = await openTenant(browser, "acctco", "계정주식회사");
   const c = clickCounter();
   // The signed-in name in the top bar opens My account.
-  await c.click(admin.getByRole("banner").locator('a[href="/account"]'));
+  await openAccount(admin, c.click);
   await expect(admin.getByRole("heading", { name: "내 계정", level: 1 })).toBeVisible();
   // Switching the language loads that locale's screen copy before the page re-renders in it.
   // The whole screen re-renders in the new language; focus stays on the language control (keyboard and screen-reader users keep their place).
@@ -20,7 +22,7 @@ test("my account: add a second passkey, sign in with it, remove the first", { ta
   await expect(admin.getByRole("heading", { name: "My account", level: 1 })).toBeVisible();
   await expect(admin.getByRole("heading", { name: "Passkeys" })).toBeVisible();
   await expect(admin.getByRole("main").getByLabel("Language")).toBeFocused();
-  await admin.getByRole("banner").getByLabel("Language").selectOption("ko");
+  await (await barControl(admin, bar => bar.getByRole("combobox", { name: bootEn["shell.locale"], exact: true }))).selectOption("ko");
   await expect(admin.getByRole("heading", { name: "내 계정", level: 1 })).toBeVisible();
   await expect(admin.getByRole("banner").getByLabel("언어")).toBeFocused();
   const main = admin.getByRole("main");
@@ -123,11 +125,12 @@ test("my account for the platform vendor shows its tier, passkey and consent wit
   // The cached vendor page carries layout history from other tests' tenant setup.
   await vendor.goto("/account");
   const main = vendor.getByRole("main");
-  const accountLink = vendor.getByRole("banner").locator('a[href="/account"]');
+  const accountLink = accountEntry(vendor);
   await expect(accountLink).toBeVisible();
   await expect(accountLink).toHaveAccessibleName(/\S/);
   await expect(accountLink).not.toContainText(/Cold Start Admin|Name not set/);
-  const label = (await accountLink.innerText()).trim();
+  // Its name: Console's trigger is labelled with it beside an initial; Classic's link is the name itself.
+  const label = (await accountLink.evaluate(entry => entry.getAttribute("aria-label") ?? entry.textContent ?? "")).trim();
   await expect(main.getByRole("region", { name: "프로필", exact: true }).locator("dd").first()).toContainText(label);
   await expect(main.getByRole("heading", { name: "내 계정", level: 1 })).toBeVisible();
   await expect(main.getByText("플랫폼 운영")).toBeVisible();

@@ -4,12 +4,13 @@ import { go, koDate } from "./flows";
 import { openTenant } from "./helpers/tenant";
 import { setupCompany } from "./setup-flows";
 import { openAsOf } from "./dates";
+import { setLocale } from "./shell";
 
 test("the entities as-of field uses Korean format with an en-US browser locale", { tag: ["@org", "@regression"] }, async ({ browser }) => {
   const page = await openTenant(browser, "date-locale", "날짜 서식", "en-US");
   expect(await page.evaluate(() => navigator.language)).toBe("en-US");
-  await page.getByRole("banner").getByLabel(/^(언어|Language)$/).selectOption("ko");
-  await expect(page.locator("html")).toHaveAttribute("lang", "ko");
+  // The browser asked for English; the screen is switched to Korean from the bar, whichever language it opened in.
+  await setLocale(page, "ko");
 
   await setupCompany(page, "날짜 서식", "본점");
   await go(page, "/org/entities");

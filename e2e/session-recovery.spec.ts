@@ -11,6 +11,7 @@ import { clearShifts, forgetResize } from "./stability";
 import { authenticatorOf } from "./auth";
 import { apiOf, bearerOf } from "./helpers/api";
 import { cellOf, officeSchedule, openMonth, pastWorkDay } from "./helpers/attendance-records";
+import { signOut } from "./shell";
 
 const REFRESH = "**/api/v1/auth/token/refresh";
 const REPORT = "**/api/v1/hr/exit-cases";
@@ -105,7 +106,7 @@ test("company record without a draft never offers an empty copy after a sibling 
 
   const sibling = await page.context().newPage();
   await sibling.goto("/");
-  await sibling.getByRole("button", { name: "로그아웃", exact: true }).click();
+  await signOut(sibling);
   await expect(sibling).toHaveURL(/\/login/);
   const recovery = page.getByRole("dialog", { name: "다시 로그인" });
   await expect(recovery).toContainText("다른 곳에서 로그아웃했습니다");
@@ -185,7 +186,7 @@ test("attendance drafts never cross accounts after same-tab sign-out and passkey
   const stored = () => admin.evaluate(() => Object.keys(sessionStorage).filter(k => k.startsWith("console.draft:") || k.startsWith("console.attendance.drafts:")));
   await expect.poll(stored).toHaveLength(1);
   await expect.poll(() => admin.evaluate(() => Object.values(sessionStorage).some(value => value.includes("9-18") && value.includes("9-17")))).toBe(true);
-  await admin.getByRole("button", { name: "로그아웃", exact: true }).click();
+  await signOut(admin);
   await expect(admin).toHaveURL(/\/login/);
   expect(await stored()).toEqual([]);
   const authn = authenticatorOf(admin);

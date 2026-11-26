@@ -1,7 +1,7 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "./a11y";
-import { tenantOnboardSubmit, tenantSlugField, firstSignIn, go, koDate, kstDate, option, takeCode, unique, vendorPage } from "./flows";
+import { tenantNameField, tenantOnboardSubmit, tenantSlugField, firstSignIn, go, koDate, kstDate, option, takeCode, unique, vendorPage } from "./flows";
 import { registerEntity } from "./setup-flows";
 
 test.beforeAll(() => loadCatalog("ko"));
@@ -14,7 +14,7 @@ async function admin(browser: Browser, name: string, slug: string): Promise<Page
   const v = await vendorPage(browser);
   await go(v, "/platform");
   await v.getByRole("button", { name: "고객 계정 개설" }).click();
-  await v.getByLabel("고객 이름").fill(name);
+  await tenantNameField(v).fill(name);
   await tenantSlugField(v).fill(unique(slug));
   await tenantOnboardSubmit(v).click();
   return firstSignIn(browser, await takeCode(v));
