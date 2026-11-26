@@ -83,7 +83,7 @@ export function buildFilingColumns(onInspect: (id: string) => void): LongColumn<
     {
       id: "employee_number",
       header: t("statutory.employeeNumber"),
-      card: "omit",
+      card: "fact",
       minWidth: 96,
       cell: (r) => r.employee_number ?? "",
     },
@@ -125,6 +125,7 @@ export function buildFilingColumns(onInspect: (id: string) => void): LongColumn<
     },
     {
       id: "action",
+      type: "action",
       header: <bdi className="sr-only">{t("statutory.openCol")}</bdi>,
       card: "action",
       minWidth: 72,
