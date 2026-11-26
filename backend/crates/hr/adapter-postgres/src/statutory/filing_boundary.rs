@@ -10,6 +10,16 @@ use sqlx::{Postgres, Row, Transaction};
 use time::{Date, Duration};
 use uuid::Uuid;
 
+// Match statutory::assess for event-based losses. Birthdays select their rule separately.
+macro_rules! filing_rule_periods {
+    () => {
+        "(SELECT r.*, CASE WHEN r.filing_rule->>'filing_kind'='LOSE' \
+          THEN COALESCE((r.filing_rule->>'loss_offset_days')::int,0) ELSE 0 END AS policy_offset_days \
+          FROM lifecycle_filing_rules r)"
+    };
+}
+pub(super) use filing_rule_periods;
+
 pub(super) async fn load(tx: &mut Transaction<'_, Postgres>, org: Uuid) -> Result<Value, HrError> {
     let go_live: Date = sqlx::query_scalar(
         "SELECT min((COALESCE(p.go_live_at,now()) AT TIME ZONE z.time_zone)::date) \
@@ -22,12 +32,12 @@ pub(super) async fn load(tx: &mut Transaction<'_, Postgres>, org: Uuid) -> Resul
     .fetch_one(tx.as_mut())
     .await?;
     // Discard archived versions before decoding and inverting the register clocks.
-    let rows = sqlx::query("WITH source_bounds AS MATERIALIZED (SELECT min(on_date) AS first_on,max(on_date) AS last_on FROM ( \
+    let rows = sqlx::query(concat!("WITH source_bounds AS MATERIALIZED (SELECT min(on_date) AS first_on,max(on_date) AS last_on FROM ( \
       SELECT effective_date::date AS on_date FROM employee_lifecycle_events WHERE org_id=$1 UNION ALL \
       SELECT anchor_on FROM insurance_filing_requests WHERE org_id=$1 AND filing_kind<>'ACQUIRE_REQUESTED') sources) \
-      SELECT r.code,r.effective_from,r.filing_rule FROM lifecycle_filing_rules r CROSS JOIN source_bounds b WHERE r.filing_rule IS NOT NULL \
-        AND (r.filing_rule->>'age_trigger_years' IS NOT NULL OR (r.effective_from<=b.last_on+COALESCE((r.filing_rule->>'loss_offset_days')::int,0) \
-          AND (r.effective_to_exclusive IS NULL OR b.first_on+COALESCE((r.filing_rule->>'loss_offset_days')::int,0)<r.effective_to_exclusive)))")
+      SELECT r.code,r.effective_from,r.filing_rule,r.policy_offset_days FROM ", filing_rule_periods!(), " r CROSS JOIN source_bounds b WHERE r.filing_rule IS NOT NULL \
+        AND (r.filing_rule->>'age_trigger_years' IS NOT NULL OR (r.effective_from<=b.last_on+r.policy_offset_days \
+          AND (r.effective_to_exclusive IS NULL OR b.first_on+r.policy_offset_days<r.effective_to_exclusive)))"))
         .bind(org).fetch_all(tx.as_mut()).await?;
     let mut bounds = Vec::with_capacity(rows.len());
     for row in rows {
@@ -35,17 +45,21 @@ pub(super) async fn load(tx: &mut Transaction<'_, Postgres>, org: Uuid) -> Resul
             .map_err(|e| HrError::internal(e.to_string()))?;
         bounds.push(json!({"code":row.try_get::<String,_>("code")?,
             "effective_from":row.try_get::<Date,_>("effective_from")?.to_string(),
-            "earliest_event_on":earliest_event_on(&rule, go_live)?.map(|d|d.to_string())}));
+            "earliest_event_on":earliest_event_on(&rule, go_live, row.try_get("policy_offset_days")?)?.map(|d|d.to_string())}));
     }
     Ok(Value::Array(bounds))
 }
 
-fn earliest_event_on(rule: &FilingRule, go_live: Date) -> Result<Option<Date>, HrError> {
+fn earliest_event_on(
+    rule: &FilingRule,
+    go_live: Date,
+    policy_offset_days: i32,
+) -> Result<Option<Date>, HrError> {
     // Birthdays and requests have independent anchors; only their exact assessment can exclude them.
     if rule.age_trigger_years.is_some() || rule.deadline.anchor == FilingAnchor::RequestDate {
         return Ok(None);
     }
-    let offset = Duration::days(i64::from(rule.loss_offset_days.max(0)));
+    let offset = Duration::days(i64::from(policy_offset_days.max(0)));
     let from = parse_yyyy_mm_dd(&rule.effective_from)? - offset;
     let due = |on: Date| -> Result<Option<Date>, HrError> {
         // The transfer A-side exit can only precede these event-owned anchors.

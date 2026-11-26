@@ -14,7 +14,8 @@ async fn hire_trail_writes_are_batched(pool: PgPool) {
     let f = fixture::fixture(pool.clone()).await;
     let mut body = f.body("hire-cost", "REGULAR");
     body.home_branch_id = None;
-    body.hire_date = Some(console_hr_adapter_postgres::clock::today_kst().to_string());
+    let today = console_hr_adapter_postgres::clock::today_kst();
+    body.hire_date = Some(today.to_string());
     let queries = trail_queries::Queries::default();
     let store = PgLeaveStore::new(f.rt.clone(), Arc::new(PgInboxStore::new(f.rt.clone())));
     let start = Instant::now();
@@ -60,26 +61,35 @@ async fn hire_trail_writes_are_batched(pool: PgPool) {
     let full = console_platform_db::statutory_read::load_statutory_register(&mut conn)
         .await
         .unwrap();
-    let today = console_hr_adapter_postgres::clock::today_kst();
-    let expected: Vec<_> = full
+    let scoped: Vec<_> = full
         .filing_rules()
         .iter()
-        .filter(|rule| {
-            codes.contains(&rule.code)
-                && (rule.in_force(today).unwrap()
-                    || !full.filing_rules().iter().any(|earlier| {
-                        earlier.code == rule.code && earlier.effective_from < rule.effective_from
-                    }))
-        })
-        .cloned()
+        .filter(|rule| codes.contains(&rule.code))
         .collect();
-    // The shared register now returns numeric rules and scoped filing rules together.
-    let expected_rows = full.rules().len() - full.filing_rules().len() + expected.len();
+    // The batch covers the case date through every registered loss-date offset.
+    let (from, through) = scoped
+        .iter()
+        .map(|rule| rule.loss_on(today).unwrap())
+        .fold((today, today), |(from, through), on| {
+            (from.min(on), through.max(on))
+        });
+    let expected_filings = scoped
+        .iter()
+        .filter(|rule| {
+            let start = console_hr_domain::text::parse_yyyy_mm_dd(&rule.effective_from).unwrap();
+            rule.in_force(from).unwrap()
+                || (from..=through).contains(&start)
+                || !scoped.iter().any(|earlier| {
+                    earlier.code == rule.code && earlier.effective_from < rule.effective_from
+                })
+        })
+        .count();
+    let expected_rows = full.rules().len() - full.filing_rules().len() + expected_filings;
     let filing_reads = queries.statutory_register_reads();
     assert_eq!(filing_reads.len(), 1);
     assert!(
         filing_reads[0].contains(&format!("rows_returned={} ", expected_rows)),
-        "a hire loads numeric rules and the case's rule periods and first filing dates: {}",
+        "expected {expected_rows} numeric, applicable and first-period rows in one read: {}",
         filing_reads[0]
     );
     let stored: Vec<(String, serde_json::Value)> = sqlx::query_as("SELECT i.due_rule_ref,i.due_basis->'dates' FROM lifecycle_case_items i JOIN lifecycle_cases c ON c.org_id=i.org_id AND c.id=i.case_id WHERE c.org_id=$1 AND c.kind='HIRE' AND i.kind='FIL'")
