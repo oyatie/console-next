@@ -57,9 +57,8 @@ for (const path of ["/login", "/setup-passkey", "/people"]) for (const width of 
         await expect(page.locator("[data-marker]")).toHaveText(t("uiField.required"));
         await expect(page.locator("body")).not.toContainText("uiField.");
       } else {
-        // The theme control in the catalog's words: Classic's toggle in the bar, Console's pair in the account menu.
-        await expect(await barControl(page, bar => bar.getByRole("button", { name: t(theme === "dark" ? "shell.theme.toLight" : "shell.theme.toDark"), exact: true })
-          .or(bar.getByRole("button", { name: t(theme === "dark" ? "shell.theme.dark" : "shell.theme.light"), exact: true })))).toBeVisible();
+        // The theme control in the catalog's words: both bars use the same toggle.
+        await expect(await barControl(page, bar => bar.getByRole("button", { name: t(theme === "dark" ? "shell.theme.toLight" : "shell.theme.toDark"), exact: true }))).toBeVisible();
         await page.keyboard.press("Escape");
       }
       await expect(page.locator("html")).toHaveAttribute("data-theme", theme);

@@ -119,24 +119,23 @@ export async function openNav(page: Page) {
   return nav;
 }
 
-/** Sets the colour theme from the chrome: Classic's toggle, named for the theme it turns to; Console's account menu. */
+/** Sets the colour theme from the chrome: The toggle is named for the theme it turns to. */
 export async function setTheme(page: Page, theme: "light" | "dark") {
   const html = page.locator("html");
-  const { console, words } = await chrome(page);
+  const { words } = await chrome(page);
   if ((await html.getAttribute("data-theme")) !== theme) {
-    const name = words[console ? `shell.theme.${theme}` as const : theme === "dark" ? "shell.theme.toDark" : "shell.theme.toLight"];
+    const name = words[theme === "dark" ? "shell.theme.toDark" : "shell.theme.toLight"];
     await (await barControl(page, bar => bar.getByRole("button", { name, exact: true }))).click();
   }
   await expect(html).toHaveAttribute("data-theme", theme);
 }
 
-/** Sets the language from the chrome: Classic's select; Console's account menu. */
+/** Sets the language from the chrome: Both styles use the language select. */
 export async function setLocale(page: Page, locale: "ko" | "en") {
   const html = page.locator("html");
-  const { console, words } = await chrome(page);
+  const { words } = await chrome(page);
   if ((await html.getAttribute("lang")) !== locale) {
-    if (console) await (await barControl(page, bar => bar.getByRole("button", { name: words[`shell.locale.${locale}`], exact: true }))).click();
-    else await (await barControl(page, bar => bar.getByRole("combobox", { name: words["shell.locale"], exact: true }))).selectOption(locale);
+    await (await barControl(page, bar => bar.getByRole("combobox", { name: words["shell.locale"], exact: true }))).selectOption(locale);
   }
   await expect(html).toHaveAttribute("lang", locale);
 }

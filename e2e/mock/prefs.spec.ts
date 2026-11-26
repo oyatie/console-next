@@ -95,9 +95,8 @@ for (const from of ["a stored theme", "the system"] as const) test(`the shell ke
   else await page.addInitScript(() => localStorage.setItem("console.theme", "dark"));
   const writes = await themeWrites(page);
   await page.goto("/people");
-  // The shell's own switch: it has mounted, and it holds the theme the page began with. Classic's toggle is in the bar,
-  // Console's pair in the account menu.
-  await expect(await barControl(page, bar => bar.getByRole("button", { name: t("shell.theme.toLight"), exact: true }).or(bar.getByRole("button", { name: t("shell.theme.dark"), exact: true })))).toBeVisible();
+  // The shell's own switch: it has mounted, and it holds the theme the page began with. Console keeps the toggle in its account menu.
+  await expect(await barControl(page, bar => bar.getByRole("button", { name: t("shell.theme.toLight"), exact: true }))).toBeVisible();
   const html = page.locator("html");
   await expect(html).toHaveAttribute("data-theme", "dark");
   expect(await writes()).toEqual(["dark"]);
