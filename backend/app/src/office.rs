@@ -689,12 +689,9 @@ struct CallbackClaims {
 }
 
 fn sign_hs256<T: Serialize>(secret: &str, claims: &T) -> Result<String, OfficeError> {
-    encode(
-        &Header::new(Algorithm::HS256),
-        claims,
-        &EncodingKey::from_secret(secret.as_bytes()),
-    )
-    .map_err(|e| OfficeError::internal(format!("sign token: {e}")))
+    EncodingKey::from_secret(secret.as_bytes())
+        .and_then(|key| encode(&Header::new(Algorithm::HS256), claims, &key))
+        .map_err(|e| OfficeError::internal(format!("sign token: {e}")))
 }
 
 fn verify_hs256<T: DeserializeOwned>(
@@ -711,19 +708,17 @@ fn verify_hs256<T: DeserializeOwned>(
     // independent of T) but never REQUIRED — ONLYOFFICE's payload otherwise
     // carries no standard registered claims.
     validation.required_spec_claims = HashSet::new();
-    decode::<T>(
-        token,
-        &DecodingKey::from_secret(secret.as_bytes()),
-        &validation,
-    )
-    .map(|data| data.claims)
-    .map_err(|_| OfficeError {
-        status: StatusCode::UNAUTHORIZED,
-        code: "invalid_token",
-        message: "token signature verification failed".to_owned(),
-        errors: None,
-        retryable_conflict: false,
-    })
+    // An empty secret is refused here too, so verification fails closed.
+    DecodingKey::from_secret(secret.as_bytes())
+        .and_then(|key| decode::<T>(token, &key, &validation))
+        .map(|data| data.claims)
+        .map_err(|_| OfficeError {
+            status: StatusCode::UNAUTHORIZED,
+            code: "invalid_token",
+            message: "token signature verification failed".to_owned(),
+            errors: None,
+            retryable_conflict: false,
+        })
 }
 
 /// Derive a stable, editor-safe `document.key`. A NEW version ⇒ a new key ⇒ the
