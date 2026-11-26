@@ -671,7 +671,7 @@ export function saeonEmployeeFacets(): S["EmployeeFacets"] {
 function rowToEmployee(
   row: SaeonRosterRow,
   overrides: Partial<S["Employee"]> = {},
-): S["Employee"] & { missing_code?: SaeonMissingCode | null } {
+): S["Employee"] {
   const unplaced = row.place === "";
   return {
     id: row.id,
@@ -697,7 +697,6 @@ function rowToEmployee(
     failed_event: null,
     created_at: SAEON_AT,
     updated_at: SAEON_AT,
-    missing_code: row.missingCode,
     ...overrides,
   };
 }

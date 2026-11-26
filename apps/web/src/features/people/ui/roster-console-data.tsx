@@ -25,6 +25,14 @@ function hangulInitial(name: string): string | null {
   return CHOSUNG_MAP[Math.floor((code - 0xac00) / 588)] ?? null;
 }
 
+/** The roster's gap tag. The list row says only that some register item is missing, never which one. */
+export function missingLabel(e: Employee): string | null {
+  if (e.register_review_required) return t("people.missing.register");
+  if (e.identity_review_required) return t("people.identityReview");
+  if (!e.employment_type) return t("roster.type.missing");
+  return null;
+}
+
 export function toOrderField(sort: RosterOrder): { field: "name" | "employee_number" | "hire_date"; direction: "asc" | "desc" } {
   const desc = sort.startsWith("-");
   const raw = desc ? sort.slice(1) : sort;
@@ -36,20 +44,14 @@ export function filterConsoleRows(
   rows: readonly Employee[],
   {
     empTypes,
-    addressMissingOnly,
-    probationOnly,
     activeChosung,
   }: {
     empTypes: ReadonlySet<EmpType>;
-    addressMissingOnly: boolean;
-    probationOnly: boolean;
     activeChosung: string | null;
   },
 ) {
   return rows.filter(row => {
     if (empTypes.size > 0 && (!row.employment_type || !empTypes.has(row.employment_type as EmpType))) return false;
-    if (addressMissingOnly && !row.register_review_required) return false;
-    if (probationOnly && row.next_event?.event_type !== "PROMOTE") return false;
     if (activeChosung && hangulInitial(row.name) !== activeChosung) return false;
     return true;
   });

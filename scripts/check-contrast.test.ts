@@ -280,5 +280,6 @@ test("the colour test recognises the light value of every token the base's dark 
     if (decl.parent.selector !== ":root") dark.push(decl.prop);
   });
   expect(dark.length).toBeGreaterThan(50);
-  expect(dark.filter((name) => !literalColour(light[name]))).toEqual([]);
+  // A select's chevron is an image, its colour drawn inside it; the chevron's own browser test reads it in each theme.
+  expect(dark.filter((name) => !literalColour(light[name]))).toEqual(["--select-chevron"]);
 });
