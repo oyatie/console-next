@@ -43,6 +43,12 @@
   border-block-start: 1px solid var(--border-soft);
 }
 
+/* One panel whose top edge holds still: content that arrives grows it downward. */
+:where([data-experience]:not([data-experience="baseline"])) .root {
+  align-items: start;
+  padding-block-start: var(--panel-top);
+}
+
 :where([data-experience]:not([data-experience="baseline"])) .card {
   border-color: var(--border-strong);
   border-radius: var(--radius);
@@ -54,7 +60,8 @@
 }
 
 @media (--phone) {
-  .root {
+  .root,
+  :where([data-experience]:not([data-experience="baseline"])) .root {
     padding: var(--space-3);
   }
 

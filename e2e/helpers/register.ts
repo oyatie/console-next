@@ -1,8 +1,9 @@
 import { expect, type Locator, type Page } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 
 // The 직원 등록 sheet (spec employee-ux E3), driven as a person does: typing is free, picks are clicks.
 
-type C = { click: (l: Locator) => Promise<void> };
+type C = { click: (l: Locator) => Promise<void>; select?: (l: Locator, v: string) => Promise<void> };
 const plain: C = { click: (l) => l.click() };
 
 /** The registration sheet, opened over the roster. */
@@ -29,7 +30,12 @@ export async function fillRegister(page: Page, p: Person, c: C = plain) {
   if (p.workplace) await c.click(s.getByRole("radiogroup", { name: /^어느 사업장 소속입니까/ }).getByText(new RegExp(p.workplace)));
   await s.getByRole("textbox", { name: /^입사일/ }).fill(p.hired);
   await s.getByRole("textbox", { name: /^입사일/ }).blur();
-  await c.click(s.getByRole("radiogroup", { name: /^고용형태/ }).getByText(p.type ?? (p.contractEnd ? "계약직" : "정규직"), { exact: true }));
+  await loadCatalog("ko");
+  // The type keeps its label in both styles: Classic draws its options as chips, Console as a list box.
+  const type = p.type ?? (p.contractEnd ? "계약직" : "정규직");
+  const types = s.getByRole("radiogroup", { name: t("register.type") }).or(s.getByRole("combobox", { name: t("register.type") }));
+  if (await types.evaluate(field => field instanceof HTMLSelectElement)) await (c.select ?? ((l, v) => l.selectOption(v).then(() => undefined)))(types, type);
+  else await c.click(types.getByText(type, { exact: true }));
   if (p.contractEnd) {
     await s.getByLabel(/^계약 종료일/).fill(p.contractEnd);
     await s.getByLabel(/^계약 종료일/).blur();
@@ -39,9 +45,13 @@ export async function fillRegister(page: Page, p: Person, c: C = plain) {
   await s.getByRole("textbox", { name: /^기본급/ }).fill("3000000");
 }
 
-/** 「등록하고 닫기」 (or 「등록하고 다음 사람」 with `next`). */
-export const pressRegister = (page: Page, next = false, c: C = plain) =>
-  c.click(registerSheet(page).getByRole("button", { name: next ? /^직원 등록 1명 적용 · 다음 직원/ : /^직원 등록 1명 적용(?: ⌘|$)/ }));
+/** The sheet's commit for one person, or with `next` the one that keeps the sheet open for the next person. */
+export async function pressRegister(page: Page, next = false, c: C = plain) {
+  await loadCatalog("ko");
+  const label = t("composer.commit.count", { action: t("composer.action.registration"), count: 1, unit: t("composer.unit.people"), verb: t("composer.verb.apply") });
+  // The plain commit's name is part of the next-person commit's, so it is matched whole.
+  await c.click(registerSheet(page).getByRole("button", next ? { name: t("composer.commit.next", { label }) } : { name: label, exact: true }));
+}
 
 /** The receipt a registration leaves (in the sheet while it stays open, on the roster once it closes). */
 export const receiptOf = (page: Page, name: string) => page.getByRole("status").filter({ hasText: new RegExp(`${name}.* 등록했습니다 · 사번 `) }).first();

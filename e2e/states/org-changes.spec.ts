@@ -55,9 +55,10 @@ for (const screen of orgChangeScreens) for (const state of Object.keys(screen.st
       } else {
         const record = orgChange(state);
         await expect(main.getByRole("heading", { level: 1 })).toHaveText(t("orgChange.title.create", { name: state === "long" ? LONG_NAME.repeat(3) : "검증부서 1" }));
-        await expect(main.locator("header")).toContainText(t(`enum.orgChangeStatus.${record.status}`));
+        await expect(main.getByRole("heading", { level: 1 }).locator("xpath=ancestor::header[1]")).toContainText(t(`enum.orgChangeStatus.${record.status}`));
         await expect(main.getByRole("region", { name: t("orgChange.proposal"), exact: true })).toContainText(state === "long" ? LONG_NAME.repeat(8) : "조직 운영 개선");
-        const history = main.getByRole("complementary", { name: t("orgChange.history"), exact: true });
+        // A side panel in Classic, a section of the document rail in Console.
+        const history = main.getByRole("complementary", { name: t("orgChange.history"), exact: true }).or(main.getByRole("region", { name: t("orgChange.history"), exact: true }));
         await expect(history.getByRole("listitem")).toHaveCount(Math.min(record.events.length, 50));
         if (state === "large") {
           const pager = history.getByRole("navigation", { name: t("common.page.label"), exact: true });
@@ -69,7 +70,7 @@ for (const screen of orgChangeScreens) for (const state of Object.keys(screen.st
           await expect(pager).toContainText(t("common.page.range", { from: 1, to: 50, total: record.events.length }));
         }
         if (state === "draft" || state === "prechecked") await expect(main.getByRole("region", { name: "사전 점검", exact: true })).toContainText("통과");
-        if (state === "approval") await expect(main.getByRole("region", { name: t("orgChange.next.title") })).toContainText(t("orgChange.turn", { role: "인사" }));
+        if (state === "approval") await expect(main.getByRole("region", { name: t("orgChange.next.title") }).or(main.getByRole("complementary", { name: t("orgChange.next.title") }))).toContainText(t("orgChange.turn", { role: "인사" }));
         if (state === "rejected") await expect(main).toContainText("시행일을 다시 검토해 주십시오");
         if (state === "settling") await expect(main).toContainText("직책 정리");
       }

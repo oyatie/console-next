@@ -65,3 +65,10 @@ test("URL ids filter exposes ids, marks filtered/customFilters, and clears ids o
   const navigation = state.navigate.mock.calls.at(-1)![0];
   expect(navigation.search(state.search)).toMatchObject({ ids: undefined, status: undefined, unit: undefined });
 });
+
+test("applying a saved view clears the previous roster's employee ID filter", () => {
+  state.search = { ids: "00000000-0000-4000-8000-000000000001" };
+  render().applyView({ status: "ON_LEAVE" });
+  const navigation = state.navigate.mock.calls.at(-1)![0];
+  expect(navigation.search(state.search)).toMatchObject({ ids: undefined, status: "ON_LEAVE" });
+});

@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Page } from "@playwright/test";
 import { PORTS } from "./slot";
+import { ko } from "../packages/i18n/src/catalogs/ko";
 import { apiAs } from "./chaos";
 import type { Org, OpsRecoveryRead } from "../apps/web/src/features/platform/api";
 import { expectAccessible } from "./a11y";
-import { tenantOnboardSubmit, firstSignIn, go, takeCode, tenantSlugField, unique, vendorPage, vendorStepUp } from "./flows";
+import { tenantNameField, tenantOnboardSubmit, firstSignIn, go, takeCode, tenantSlugField, unique, vendorPage, vendorStepUp } from "./flows";
 import { clearShifts, forgetResize, recordShifts } from "./stability";
 
 async function selectTenant(page: Page, slug: string) {
@@ -40,7 +41,7 @@ test("governed ops recovery: two operators, tenant veto, hold and once-only reen
   const company = unique("복구 고객");
   await go(vendor, "/platform");
   await vendor.getByRole("button", { name: "고객 계정 개설", exact: true }).click();
-  await vendor.getByLabel("고객 이름").fill(company);
+  await tenantNameField(vendor).fill(company);
   await tenantSlugField(vendor).fill(slug);
   await tenantOnboardSubmit(vendor).click();
   const holder = await firstSignIn(browser, await takeCode(vendor));
@@ -100,9 +101,10 @@ test("governed ops recovery: two operators, tenant veto, hold and once-only reen
 test("regression: a tenant's late ops-recovery read keeps available panel buttons still", { tag: ["@auth", "@regression"] }, async ({ browser }) => {
   const vendor = await vendorPage(browser);
   const slug = unique("ops-panel");
+  const name = unique("패널 고객");
   await go(vendor, "/platform");
   await vendor.getByRole("button", { name: "고객 계정 개설", exact: true }).click();
-  await vendor.getByLabel("고객 이름").fill(unique("패널 고객"));
+  await tenantNameField(vendor).fill(name);
   await tenantSlugField(vendor).fill(slug);
   await tenantOnboardSubmit(vendor).click();
   await takeCode(vendor);
@@ -122,9 +124,9 @@ test("regression: a tenant's late ops-recovery read keeps available panel button
     await vendor.evaluate(recordShifts);
     await vendor.evaluate(clearShifts);
     await row.click();
-    const panel = vendor.getByRole("complementary").filter({ has: vendor.locator("#tenant-status") });
+    const panel = vendor.getByRole("complementary", { name, exact: true });
     const controls = panel.getByRole("button");
-    await expect(panel.locator("#tenant-status")).toBeVisible();
+    await expect(controls.first()).toBeVisible();
     await vendor.evaluate(() => document.fonts.ready);
     const positions = () => controls.evaluateAll(buttons => buttons.map(button => ({
       name: button.getAttribute("aria-label") ?? button.textContent, rect: button.getBoundingClientRect().toJSON(),
@@ -134,7 +136,7 @@ test("regression: a tenant's late ops-recovery read keeps available panel button
     await expect(vendor.getByRole("region", { name: "운영 계정(ops) 복구", exact: true })).toBeVisible();
     const after = await positions();
     for (const button of before) expect(after.find(next => next.name === button.name)).toEqual(button);
-    await expect(panel.locator("section").last()).toHaveAttribute("aria-labelledby", "tenant-remove");
+    await expect(panel.locator("section").last()).toHaveAccessibleName(ko["tenants.section.remove"]);
     await expectAccessible(vendor, "tenant panel after a late ops-recovery read");
   } finally {
     held.resolve();

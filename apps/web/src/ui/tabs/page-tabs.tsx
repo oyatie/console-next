@@ -8,6 +8,10 @@ import s from "./tabs.module.css";
 
 type PageTabItem = TabItem & { disabledReason?: ReactNode };
 
+// A page whose views each draw this strip in their own head mounts a new strip on every choice: the choice made from
+// a focused link is carried to the new strip's current link, so keyboard focus is not dropped to the page.
+let carry: { label: string; id: string } | null = null;
+
 /** Links for URL views; omit children for a strip placed by a page pattern. Overflow follows measured labels. */
 export function PageTabs({ label, items, selected, onSelect, href, renderList, children }: {
   label: string; items: readonly PageTabItem[]; selected: string;
@@ -18,6 +22,16 @@ export function PageTabs({ label, items, selected, onSelect, href, renderList, c
   const row = useRef<HTMLElement>(null);
   const measure = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState<readonly string[]>(items.map(i => i.id));
+  const mounted = useRef(false);
+  useLayoutEffect(() => {
+    const first = !mounted.current;
+    mounted.current = true;
+    if (carry?.label !== label) return;
+    const { id } = carry;
+    carry = null;
+    // A strip that stayed mounted kept its focus; a new one takes it only from nowhere, never from another control.
+    if (first && id === current?.id && (document.activeElement ?? document.body) === document.body) row.current?.querySelector<HTMLElement>('[aria-current="page"]')?.focus();
+  }, [current?.id, label]);
   useLayoutEffect(() => {
     if (!items.length) return;
     const fit = () => {
@@ -50,6 +64,7 @@ export function PageTabs({ label, items, selected, onSelect, href, renderList, c
     <a key={item.id} className={s.tab} href={href(item.id)} aria-current={item.id === current?.id ? "page" : undefined} onClick={event => {
       if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       event.preventDefault();
+      carry = item.id !== current?.id && event.currentTarget === document.activeElement ? { label, id: item.id } : null;
       onSelect(item.id);
       close?.();
     }}>{content(item)}</a>;

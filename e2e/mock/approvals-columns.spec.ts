@@ -48,8 +48,8 @@ for (const theme of ["light", "dark"]) test(`the document opens beside the list,
   await expect(page).toHaveURL(/sel=approval-1/);
   await expect(column(page).getByRole("heading", { name: "조직 개편안 1", exact: true })).toBeVisible();
   // Same order as the full page: the 결재선 first, then the document.
-  const chain = column(page).getByRole("region", { name: t("approvals.preview.route"), exact: true });
-  const body = column(page).getByRole("region", { name: t("approvals.viewer.body"), exact: true });
+  const chain = column(page).getByRole("list", { name: t("approvals.preview.route"), exact: true });
+  const body = column(page).getByRole("heading", { name: t("approvals.viewer.body"), exact: true });
   expect((await chain.boundingBox())!.y).toBeLessThan((await body.boundingBox())!.y);
   await expect(row(1)).toBeVisible();
   // A row says when its document takes effect, beside the title; a document with no date says nothing.
@@ -63,7 +63,7 @@ for (const theme of ["light", "dark"]) test(`the document opens beside the list,
   await page.keyboard.press("j");
   await expect(page).toHaveURL(/sel=approval-2/);
   await expect(column(page).getByRole("heading", { name: "조직 개편안 2", exact: true })).toBeVisible();
-  await expect(column(page).getByRole("link", { name: t("approvals.openSource"), exact: true })).toHaveAttribute("href", "/org/changes/change-2");
+  await expect(column(page).getByRole("link", { name: t("approvals.openSource") })).toHaveAttribute("href", "/org/changes/change-2");
   expect(screen.reads.list, "selecting a document leaves the list as it is").toBe(listReads);
   await page.keyboard.press("k");
   await expect(page).toHaveURL(/sel=approval-1/);
@@ -94,8 +94,9 @@ test("a shared link opens a document the loaded list does not hold", async ({ pa
   await mock(page);
   await page.goto("/approvals?sel=approval-9");
   await expect(column(page).getByRole("heading", { name: "조직 개편안 9", exact: true })).toBeVisible();
-  await expect(column(page).getByText("AP-2026-009", { exact: true }).first()).toBeVisible();
-  await expect(column(page).getByRole("link", { name: t("approvals.openSource"), exact: true })).toHaveAttribute("href", "/org/changes/change-9");
+  // Console sets the number inside the column's heading and names the source link after its kind too.
+  await expect(column(page).getByText("AP-2026-009").first()).toBeVisible();
+  await expect(column(page).getByRole("link", { name: t("approvals.openSource") })).toHaveAttribute("href", "/org/changes/change-9");
 });
 
 test("the decision panel works in the column and an open reason form keeps Escape", async ({ page }) => {
@@ -135,7 +136,7 @@ for (const theme of ["light", "dark"]) test(`at phone width the document replace
   await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
   await mock(page);
   await page.goto("/approvals?sel=approval-1");
-  await expect(column(page).getByRole("region", { name: t("approvals.preview.route"), exact: true })).toBeVisible();
+  await expect(column(page).getByRole("list", { name: t("approvals.preview.route"), exact: true })).toBeVisible();
   await expect(page.getByRole("row", { name: /조직 개편안 2/ })).toBeHidden();
   await fits(page, "approval document column");
   await expectAxe(page, `approval document column 390px ${theme}`);

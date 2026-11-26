@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
 import { fits } from "./a11y";
-import { firstSignIn, go, option, takeCode, tenantOnboardSubmit, tenantSlugField, unique, vendorPage } from "./flows";
-import { fillEntity, finishWorkplace, startOperations, typeBusiness, typeCertificate, workplaceSheet } from "./setup-flows";
+import { tenantNameField, firstSignIn, go, option, takeCode, tenantOnboardSubmit, tenantSlugField, unique, vendorPage } from "./flows";
+import { wizardBrn, fillEntity, finishWorkplace, startOperations, typeBusiness, typeCertificate, workplaceSheet } from "./setup-flows";
 import { forgetResize } from "./stability";
 import { addDepartments } from "./structure-flows";
 
@@ -10,7 +10,7 @@ test("a solo administrator fixes a missing business registration before starting
   const vendor = await vendorPage(browser);
   await go(vendor, "/platform");
   await vendor.getByRole("button", { name: "고객 계정 개설" }).click();
-  await vendor.getByLabel("고객 이름").fill("등록준비");
+  await tenantNameField(vendor).fill("등록준비");
   await tenantSlugField(vendor).fill(unique("registration"));
   await tenantOnboardSubmit(vendor).click();
   const admin = await firstSignIn(browser, await takeCode(vendor));
@@ -18,7 +18,7 @@ test("a solo administrator fixes a missing business registration before starting
   await fillEntity(admin, "등록준비");
   await admin.getByRole("button", { name: "이전", exact: true }).click();
   await admin.getByRole("button", { name: "이전", exact: true }).click();
-  await admin.getByLabel("사업자등록번호").fill("");
+  await wizardBrn(admin).fill("");
   await admin.getByRole("button", { name: "다음: 등기·대표자" }).click();
   await admin.getByRole("button", { name: "다음", exact: true }).click();
   await admin.getByRole("button", { name: "법인만 등록", exact: true }).click();

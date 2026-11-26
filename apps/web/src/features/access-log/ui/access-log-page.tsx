@@ -203,8 +203,8 @@ export function AccessLogPage() {
           <StatRow
             label={t("accessLog.summary")}
             items={[
-              { key: "events", label: t("accessLog.all"), value: fmtNumber(first.totals.events), active: all, onPress: () => void navigate({ search: s => ({ ...s, view: "all" }), replace: true }) },
-              { key: "flagged", label: t("accessLog.flagged"), value: fmtNumber(first.totals.flagged), active: !all, onPress: () => void navigate({ search: s => ({ ...s, view: undefined }), replace: true }) },
+              { key: "events", label: t("accessLog.all"), value: fmtNumber(first.totals.events), active: all, onPress: () => void navigate({ search: s => ({ ...s, view: "all" }) }) },
+              { key: "flagged", label: t("accessLog.flagged"), value: fmtNumber(first.totals.flagged), active: !all, onPress: () => void navigate({ search: s => ({ ...s, view: undefined }) }) },
             ]}
           />
         ) : undefined

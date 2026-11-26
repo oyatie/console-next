@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { tenantOnboardSubmit, tenantSlugField, firstSignIn, go, passkeyLogin, takeCode, unique, vendorPage, vendorStepUp } from "./flows";
+import { signOut } from "./shell";
 
 test("company domain: deliberate opening, safe rename, old-domain sign-in notice and support request", { tag: "@auth" }, async ({ browser }) => {
   const old = unique("domain-before");
@@ -59,7 +60,7 @@ test("company domain: deliberate opening, safe rename, old-domain sign-in notice
   await expect(rename.getByRole("button", { name: "회사 도메인 변경", exact: true })).toBeDisabled();
   await rename.getByRole("button", { name: "돌아가기" }).click();
 
-  await admin.getByRole("button", { name: "로그아웃", exact: true }).click();
+  await signOut(admin);
   await admin.getByRole("textbox", { name: "아이디", exact: true }).fill(oldId);
   await admin.getByRole("button", { name: "아이디로 계속", exact: true }).click();
   await passkeyLogin(admin);

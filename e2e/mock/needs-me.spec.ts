@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { shell } from "../shell";
+import { expectSignedIn, needsMe, openNav, shell } from "../shell";
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { fmtNumber } from "@console/i18n/format";
@@ -11,12 +11,15 @@ import { failure, inbox, screenAccess, token } from "./fixtures";
 import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
 import { EXPERIENCE_KEY } from "../../apps/web/src/lib/prefs";
+import { experienceState } from "../experience";
 
 test.beforeAll(() => loadCatalog("ko"));
 
+// Populated and zero pin Classic's task button and its panel. Inexact and the unknown states keep running in the shipped
+// style: Console's link drops the "+" of an inexact count and reads plain to-dos while the count is unknown.
 for (const width of [1440, 1024, 390]) for (const theme of ["light", "dark"]) {
   for (const state of ["populated", "zero", "inexact", "failed", "refused"] as const) {
-    test(`header task panel ${state} at ${width}px ${theme}`, async ({ page }, info) => {
+    test(`header task panel ${state} at ${width}px ${theme}${state === "populated" || state === "zero" ? " @baseline" : ""}`, async ({ page }, info) => {
       test.slow(state === "populated", "Checks three tenant pages and their panels.");
       await page.setViewportSize({ width, height: 900 });
       await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
@@ -90,6 +93,41 @@ for (const width of [1440, 1024, 390]) for (const theme of ["light", "dark"]) {
   }
 }
 
+// d-home.dc.html:34 draws Console's count on the bar's to-do link, which opens the to-do list. 1024 has no board and
+// pins the render; no board draws an admin's bar at 390.
+test.describe("console bar", () => {
+  test.use({ storageState: experienceState("console") });
+  for (const width of [1440, 1024]) for (const state of ["populated", "zero"] as const) {
+    test(`console bar to-do link reads the ${state} count at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      const mock = await mockScreen(page, screens[0], "populated");
+      const queue = inbox(state === "zero" ? 0 : 3);
+      queue.counts.turn = { total: queue.total, total_is_exact: true };
+      // Other lanes and returned row counts must never inflate the turn badge.
+      queue.counts.waiting = { total: 40, total_is_exact: true };
+      let reads = 0;
+      await mockRoute(page, "get", "/api/v1/me/action-inbox", request => {
+        if (new URL(request.url()).searchParams.get("filter") === "turn") reads++;
+        return { status: 200, json: queue };
+      });
+      for (const path of state === "populated" ? ["/", "/people", "/org"] : ["/people"]) {
+        reads = 0;
+        await page.goto(path);
+        await expect(page.locator("main h1").first()).toBeVisible({ timeout: 20_000 });
+        const link = needsMe(page);
+        await expect(link).toHaveAccessibleName(state === "zero" ? t("shell.link.todo") : t("shell.needsMe.count", { count: 3 }));
+        await expect(link.locator("data")).toHaveText(state === "zero" ? [] : ["3"]);
+        await expect(link).toHaveAttribute("href", "/");
+        if (width === 1440) expect(await shell(page).searchText.evaluate(el => el.clientWidth / el.scrollWidth)).toBeGreaterThanOrEqual(1);
+        expect(reads).toBe(1);
+        await fits(page, `console bar ${state} ${path}`);
+        expect(await shell(page).banner.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+        await expectAxe(page, `console bar ${state} ${path}`);
+      }
+      expect(mock.unexpected).toEqual([]);
+    });
+  }
+});
 
 test("platform header never mounts or reads the tenant task panel", async ({ page }) => {
   const mock = await mockScreen(page, screens[0], "populated");
@@ -107,9 +145,9 @@ test("platform header never mounts or reads the tenant task panel", async ({ pag
     if (/\/assets\/needs-me-[^/]+\.js$/.test(path)) chunks.push(path);
   });
   await page.goto("/platform");
-  await expect(shell(page).banner.getByRole("button", { name: t("shell.logout"), exact: true })).toBeVisible();
+  await expectSignedIn(page);
   await page.waitForLoadState("networkidle");
-  await expect(page.locator("#top-needs-me")).toHaveCount(0);
+  await expect(needsMe(page)).toHaveCount(0);
   expect(chunks).toEqual([]);
   expect(reads).toBe(0);
   expect(mock.unexpected).toEqual([]);
@@ -136,10 +174,10 @@ test("Home shares its arrival read and refreshes held work after attention chang
   await mockRoute(page, "get", "/api/v1/me/action-inbox", () => { reads++; return { status: 200, json: queue }; });
   await page.goto("/");
   await expect(page.locator("main h1")).toBeVisible({ timeout: 20_000 });
-  const trigger = page.locator("#top-needs-me");
+  const trigger = needsMe(page);
   await expect(trigger).toHaveAccessibleName(t("shell.needsMe.count", { count: 3 }));
   expect(reads).toBe(1);
-  await page.getByRole("group", { name: "확인 필요", exact: true }).getByRole("button", { name: /^결재/ }).click();
+  await page.getByRole("group", { name: t("home.attention.label"), exact: true }).getByRole("button", { name: t("home.attention.approvals") }).click();
   await expect.poll(() => reads).toBe(2);
   queue.counts.turn = { total: 7, total_is_exact: true };
   await page.evaluate(() => window.dispatchEvent(new Event("inbox-arrival")));
@@ -148,7 +186,7 @@ test("Home shares its arrival read and refreshes held work after attention chang
   expect(mock.unexpected).toEqual([]);
 });
 
-for (const experience of ["baseline", "console"] as const) test(`the task count never steps back to an older copy while a page re-reads it in ${experience}`, async ({ page }) => {
+for (const experience of ["baseline", "console"] as const) test(`the task count never steps back to an older copy while a page re-reads it in ${experience}${experience === "baseline" ? " @baseline" : ""}`, async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.addInitScript(recordShifts);
   if (experience === "console") await page.addInitScript(key => localStorage.setItem(key, "console"), EXPERIENCE_KEY);
@@ -205,8 +243,8 @@ for (const experience of ["baseline", "console"] as const) test(`the task count 
 });
 
 // 참조 and 완료 are lists of their own: the page keeps my turn read, so the badge shares it. Old 전체 links land on my turn.
-for (const [tab, filter] of [["all", "turn"], ["waiting", "waiting"], ["scheduled", "scheduled"], ["turn", "turn"], ["reference", "turn"], ["done", "turn"]] as const) {
-  test(`inbox ${tab} shares arrival counts and opens only my turn in the header panel`, async ({ page }) => {
+for (const [tab, filter] of [["all", "turn"], ["waiting", "waiting"], ["scheduled", "scheduled"], ["turn", "turn"], ["reference", "turn"], ["done", "turn"]] as const) for (const headerPanel of [false, true]) {
+  test(headerPanel ? `inbox ${tab} shares arrival counts and opens only my turn in the header panel @baseline` : `inbox ${tab} shares arrival counts with the to-do entry`, async ({ page }) => {
     const mock = await mockScreen(page, screens[0], "populated");
     const reads: string[] = [];
     await mockRoute(page, "get", "/api/v1/me/action-inbox/reference", { status: 200, json: { items: [], next_cursor: null } });
@@ -219,12 +257,16 @@ for (const [tab, filter] of [["all", "turn"], ["waiting", "waiting"], ["schedule
     });
     await page.goto(`/inbox?tab=${tab}`);
     await expect(page.locator("main h1")).toBeVisible({ timeout: 20_000 });
-    const trigger = page.locator("#top-needs-me");
+    const trigger = needsMe(page);
     await expect(trigger).toHaveAccessibleName(t("shell.needsMe.count", { count: 3 }));
     // 참조 also reads the notices view for the grants I have not confirmed; it never feeds the badge.
     const queueReads = () => reads.filter(read => read !== "notices");
     expect(queueReads()).toEqual([filter]);
     expect(reads.includes("notices")).toBe(tab === "reference");
+    if (!headerPanel) {
+      expect(mock.unexpected).toEqual([]);
+      return;
+    }
     await trigger.click();
     const panel = page.getByRole("dialog", { name: t("shell.needsMe"), exact: true });
     await expect(panel.getByRole("link", { name: /검증직원/ })).toHaveCount(3);
@@ -248,14 +290,14 @@ test("header reserves its space before the task menu loads", async ({ page }) =>
     await page.evaluate(() => document.fonts.ready);
     await page.evaluate(() => window.__shifts?.splice(0));
   } finally { release(); }
-  await expect(page.locator("#top-needs-me")).toHaveAccessibleName(t("shell.needsMe.count", { count: 3 }));
+  await expect(needsMe(page)).toHaveAccessibleName(t("shell.needsMe.count", { count: 3 }));
   await fits(page, "late task menu");
   await expectStable(page, "late task menu");
   expect(mock.unexpected).toEqual([]);
 });
 
 for (const width of [641, 700, 767, 768, 769, 1024, 1279]) for (const theme of ["light", "dark"]) {
-  test(`tablet header uses available width at ${width}px ${theme}`, async ({ page }, info) => {
+  test(`tablet header uses available width at ${width}px ${theme} @baseline`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const mock = await mockScreen(page, screens[0], "populated");
@@ -284,7 +326,7 @@ for (const width of [641, 700, 767, 768, 769, 1024, 1279]) for (const theme of [
 }
 
 for (const width of [768, 769]) {
-  test(`tablet header fits prompt with fallback font at ${width}px dark`, async ({ page }) => {
+  test(`tablet header fits prompt with fallback font at ${width}px dark @baseline`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), "dark");
     const mock = await mockScreen(page, screens[0], "populated");
@@ -315,6 +357,30 @@ for (const width of [768, 769]) {
   });
 }
 
+// No board draws the bar between 390 and 1440, so this pins Console's render: its phone bar below 768 and its desk bar,
+// with the search control, from 768. The render shortens the search hint with an ellipsis there, so it is not pinned whole.
+test.describe("console tablet bar", () => {
+  test.use({ storageState: experienceState("console") });
+  for (const [width, fallback] of [[641, false], [700, false], [767, false], [768, false], [769, false], [1024, false], [1279, false], [768, true], [769, true]] as const) {
+    test(`console tablet bar fits at ${width}px${fallback ? " with fallback font" : ""}`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      const mock = await mockScreen(page, screens[0], "populated");
+      if (fallback) await page.route("**/*.woff2", route => route.abort());
+      await page.goto("/people");
+      if (fallback) await expect(page.locator("html")).toHaveAttribute("data-font-fallback", "");
+      await expect(needsMe(page).locator("data")).toHaveText("3", { timeout: 20_000 });
+      if (width >= 768) {
+        await expect(shell(page).searchText).toBeVisible();
+        await expect(shell(page).search.locator("svg")).toBeVisible();
+        expect((await shell(page).search.boundingBox())!.width).toBeGreaterThanOrEqual(40);
+      }
+      await fits(page, `console tablet bar ${width}`);
+      expect(await shell(page).banner.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+      expect(mock.unexpected).toEqual([]);
+    });
+  }
+});
+
 for (const width of [1440, 1024, 390]) for (const theme of ["light", "dark"]) {
   test(`task count is loading until answered at ${width}px ${theme}`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 });
@@ -343,7 +409,7 @@ for (const width of [1440, 1024, 390]) for (const theme of ["light", "dark"]) {
   });
 }
 
-test("task badge survives navigation without rereading and loads panel code only when opened", async ({ page }) => {
+for (const headerPanel of [false, true]) test(headerPanel ? "task badge survives navigation without rereading and loads panel code only when opened @baseline" : "task badge survives navigation without rereading", async ({ page }) => {
   await page.clock.install();
   const mock = await mockScreen(page, screens[0], "populated");
   const people = screenAccess("/people"), org = screenAccess("/org");
@@ -364,19 +430,20 @@ test("task badge survives navigation without rereading and loads panel code only
     if (/\/assets\/needs-me-panel-[^/]+\.js$/.test(path)) chunks.push(request.url());
   });
   await page.goto("/");
-  const trigger = page.locator("#top-needs-me");
+  const trigger = needsMe(page);
   await expect(trigger).toHaveAccessibleName(t("shell.needsMe.count", { count: 3 }));
   expect(chunks).toEqual([]);
   const badge = await trigger.elementHandle();
+  const link = async (path: "/people" | "/org") => (await openNav(page)).getByRole("link", { name: t(path === "/org" ? "shell.link.org" : "shell.link.people"), exact: true });
   try {
-    await page.locator('#rail a[href="/people"]').click();
+    await (await link("/people")).click();
     await expect(page).toHaveURL(/\/people$/);
     await expect(page.locator("main h1").first()).toBeVisible();
     await expect(trigger).toHaveAccessibleName(t("shell.needsMe.count", { count: 3 }));
     expect(reads).toBe(2);
   } finally { release(); }
-  for (const path of ["/org", "/people"]) {
-    await page.locator(`#rail a[href="${path}"]`).click();
+  for (const path of ["/org", "/people"] as const) {
+    await (await link(path)).click();
     await expect(page).toHaveURL(new RegExp(`${path}$`));
     await expect(page.locator("main h1").first()).toBeVisible();
     await page.clock.runFor(1_000);
@@ -385,6 +452,10 @@ test("task badge survives navigation without rereading and loads panel code only
     await expect(trigger).toHaveAccessibleName(t("shell.needsMe.count", { count: 3 }));
   }
   expect(chunks).toEqual([]);
+  if (!headerPanel) {
+    expect(mock.unexpected).toEqual([]);
+    return;
+  }
   await trigger.click();
   const panel = page.getByRole("dialog", { name: t("shell.needsMe"), exact: true });
   await expect(panel.getByRole("link", { name: /검증직원/ })).toHaveCount(3);

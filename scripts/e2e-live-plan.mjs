@@ -7,8 +7,12 @@ import { listedTests, plan, readTimings } from "./e2e-timings.mjs";
 export function livePlan(report, timings = {}) {
   if (report.errors?.length) throw new Error("LIVE_DISCOVERY_FAILED");
   const tests = listedTests(report);
-  if (!tests.length || new Set(tests.map(test => test.project)).size !== 1) throw new Error("LIVE_INVALID_INVENTORY");
-  const shards = plan(tests, timings, { target: 2400, boot: 300, workers: 2, strict: true, minShards: 8 });
+  // A shard lists bare spec paths, which run a file's tests in every project listing them: a test in two projects (two
+  // browsers in one inventory) would run twice. Projects that split a file's tests (the mock suite's styles) plan as one.
+  const ids = tests.map(test => test.key.slice(test.key.indexOf(" › ")));
+  if (!tests.length || new Set(ids).size !== ids.length) throw new Error("LIVE_INVALID_INVENTORY");
+  const project = [...new Set(tests.map(test => test.project))].join("+");
+  const shards = plan(tests.map(test => ({ ...test, project })), timings, { target: 2400, boot: 300, workers: 2, strict: true, minShards: 8 });
   if (shards.length !== 8) throw new Error("LIVE_SHARD_CAPACITY: expected eight nonempty shards within 40 minutes");
   // Explicitly skipped files must remain visible in the live reports.
   const planned = new Set(shards.flatMap(shard => shard.files));

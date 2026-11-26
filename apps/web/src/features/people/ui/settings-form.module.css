@@ -2,3 +2,8 @@
 :where([data-experience]:not([data-experience="baseline"])) .narrowFields.narrowFields :is(input, textarea) {
   max-width: min(100%, var(--dialog-w-md));
 }
+
+/* A long name without spaces (keep-all Korean, or one long word) wraps inside its cell instead of widening the table. */
+.wrap {
+  overflow-wrap: anywhere;
+}

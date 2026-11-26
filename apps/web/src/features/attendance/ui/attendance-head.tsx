@@ -1,12 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
-import { get } from "../../../lib/query";
 import { PageHead } from "../../../ui/page-head/page-head";
-import { PhaseLine } from "../../../ui/page-head/phase-line";
 import { tabClass } from "../../../ui/tabs/tab-class";
 import { TabNav } from "../../../ui/tabs/tabs";
 import type { Tab } from "./attendance-page";
+import { useAttendancePhaseLine } from "./use-attendance-phase-line";
 import s from "./attendance-console.module.css";
 
 /**
@@ -27,13 +25,6 @@ export function AttendanceTabNav({ tab }: { tab: Tab }) {
 }
 
 export function AttendanceHead({ tab }: { tab: Tab }) {
-  const me = useQuery(get("/api/v1/users/me"));
-  const phase = me.data?.tenant?.phase;
-  return (
-    <PageHead
-      title={t("attendance.title")}
-      meta={phase && <PhaseLine phase={phase === "OPERATING" ? "operating" : "setup"}>{t(phase === "OPERATING" ? "attendance.phase.operating" : "attendance.phase.setup")}</PhaseLine>}
-      tabs={<AttendanceTabNav tab={tab} />}
-    />
-  );
+  const phaseLine = useAttendancePhaseLine();
+  return <PageHead title={t("attendance.title")} meta={phaseLine} tabs={<AttendanceTabNav tab={tab} />} />;
 }

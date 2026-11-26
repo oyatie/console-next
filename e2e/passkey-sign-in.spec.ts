@@ -4,6 +4,7 @@ import { expect, test } from "@playwright/test";
 import { bootKo } from "../packages/i18n/src/catalogs/boot";
 import { passkeyLogin } from "./flows";
 import { openTenant } from "./helpers/tenant";
+import { expectSignedIn, signOut } from "./shell";
 
 const tags = { tag: ["@auth", "@journey:sign-in", "@tier:pr"] };
 
@@ -15,7 +16,7 @@ test("a refreshed signed-in session needs no passkey assertion", tags, async ({ 
   });
   await page.reload();
   await passkeyLogin(page);
-  await expect(page.getByRole("button", { name: bootKo["shell.logout"], exact: true })).toBeVisible();
+  await expectSignedIn(page);
   expect(requests).toEqual([]);
 });
 
@@ -25,8 +26,7 @@ test("passkey sign-in reports a missing sign-in screen or session", tags, async 
 
 test("an assertion already being verified completes sign-in exactly once", tags, async ({ browser }) => {
   const page = await openTenant(browser, "passkeyverify", "인증 확인");
-  const logout = page.getByRole("button", { name: bootKo["shell.logout"], exact: true });
-  await logout.click();
+  await signOut(page);
   const button = page.getByRole("button", { name: bootKo["auth.login.passkey"], exact: true });
   const finish = "**/api/v1/auth/passkey/login/finish";
   let assertions = 0;
@@ -39,6 +39,6 @@ test("an assertion already being verified completes sign-in exactly once", tags,
   await Promise.all([page.waitForRequest(finish), button.click()]);
   await expect(button).toBeDisabled();
   await passkeyLogin(page);
-  await expect(logout).toBeVisible();
+  await expectSignedIn(page);
   expect(assertions).toBe(1);
 });

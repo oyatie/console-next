@@ -4,7 +4,7 @@ import { expectAccessible } from "./a11y";
 import { clickCounter } from "./clicks";
 import { go, option, routeReady } from "./flows";
 import { openTenant } from "./helpers/tenant";
-import { REGISTRATION_FIXTURES, registerEntity, CRN_BAD_CHECK } from "./setup-flows";
+import { wizardBrn, REGISTRATION_FIXTURES, registerEntity, CRN_BAD_CHECK } from "./setup-flows";
 
 // 법인 추가 (spec S4), from an empty tenant through the UI only: the quick two-input sheet with its undo, the
 // certificate wizard with its refusals (a taken BRN, a future opening date) and its one warning (the CRN check
@@ -79,7 +79,7 @@ test("the certificate wizard refuses a taken number and a future date, warns on 
   const foot = admin.getByText(/수정할 칸/);
 
   // R: the number is already on 새온정밀's certificate; the field says where and offers both ways out.
-  await admin.getByLabel("사업자등록번호").fill(REGISTRATION_FIXTURES.primary.brn);
+  await wizardBrn(admin).fill(REGISTRATION_FIXTURES.primary.brn);
   await expect(admin.getByText(/이 번호는 이미 주식회사 새온정밀/)).toBeVisible();
   await expect(admin.getByRole("link", { name: "그 등록증 열기" })).toBeVisible();
   // R: a future 개업연월일. The foot counts and names both, and nothing can go on.
@@ -91,7 +91,7 @@ test("the certificate wizard refuses a taken number and a future date, warns on 
   await expectAccessible(admin, "S4 wizard: validation errors");
 
   await c.click(admin.getByRole("button", { name: "번호 다시 보기" }));
-  await admin.getByLabel("사업자등록번호").fill(REGISTRATION_FIXTURES.second.brn);
+  await wizardBrn(admin).fill(REGISTRATION_FIXTURES.second.brn);
   await fillDate(admin, "2024-09-01", "개업연월일");
   await expect(foot).toBeHidden();
   // W: a CRN whose check digit does not match only warns, and saving stays possible.

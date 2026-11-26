@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
+import { experienceState } from "../experience";
 import { screens } from "../states/registry";
 import { checklist, failure, inbox } from "./fixtures";
 import { mockRoute } from "./route";
@@ -18,6 +19,9 @@ const rows = () => {
   });
   return data;
 };
+/** The queue's rows: Classic's column list, or Console's worklist grid (its deadline strip repeats the same ids). */
+const queueRows = (page: Page) => page.locator("[data-flexible-columns] [data-id]")
+  .or(page.getByRole("grid", { name: t("home.inbox.title"), exact: true }).locator("[data-id]"));
 
 for (const path of ["/", "/inbox"]) {
   test(`columns follow keyboard selection and survive reload on ${path}`, async ({ page }) => {
@@ -29,7 +33,7 @@ for (const path of ["/", "/inbox"]) {
     const pane = page.getByRole("complementary", { name: t("home.inbox.record.title"), exact: true });
     await expect(pane).toContainText(data.items[0]!.title);
     const history = await page.evaluate(() => window.history.length);
-    const listRows = page.locator("[data-flexible-columns] [data-id]");
+    const listRows = queueRows(page);
     await listRows.first().focus();
     for (const key of ["j", "ArrowDown", "k", "ArrowUp"]) {
       await page.keyboard.press(key);
@@ -90,7 +94,11 @@ for (const path of ["/", "/inbox"]) {
         }
       } else if (state === "missing" || state === "missing-empty") {
         await expect(pane.getByRole("heading", { name: t("common.read.notFound.title"), exact: true })).toBeVisible();
-      } else if (state === "populated") await expect(page.locator("main [data-id]")).toHaveCount(path === "/" ? 5 : 8);
+      } else if (state === "populated") {
+        // How many rows Home previews is each style's own (pinned below); the inbox lists them all.
+        if (path === "/inbox") await expect(queueRows(page)).toHaveCount(8);
+        else await expect(queueRows(page).first()).toBeVisible();
+      }
       else if (state === "empty") await expect(page.getByRole("heading", { name: t("home.noWork.title"), exact: true })).toBeVisible();
       else if (state === "failed") {
         await expect(page.getByRole("heading", { name: t("common.loadFailed.title"), exact: true })).toBeVisible({ timeout: 20_000 });
@@ -184,7 +192,7 @@ for (const path of ["/", "/inbox"]) for (const width of [1440, 390]) {
     const data = rows();
     await mockRoute(page, "get", "/api/v1/me/action-inbox", { status: 200, json: data });
     await page.goto(path);
-    const listRows = page.locator("[data-flexible-columns] [data-id]");
+    const listRows = queueRows(page);
     const first = listRows.first();
     await expect(first).toBeVisible();
     await first.focus();
@@ -252,7 +260,8 @@ test("setup rows ignore a record selection at phone width", async ({ page }) => 
   expect(mock.unexpected).toEqual([]);
 });
 
-for (const path of ["/", "/inbox"]) test(`folds expand in place and only their leaves select on ${path}`, async ({ page }) => {
+/** A queue whose first two items fold under one row, opened and expanded on `path`; the first leaf is then selected. */
+async function openFolds(page: Page, path: string) {
   const mock = await mockScreen(page, screens[0], "populated");
   const data = inbox(3);
   data.items = data.items.map((item, i) => ({ ...item, fold_key: i < 2 ? "contract-group" : undefined }));
@@ -262,8 +271,48 @@ for (const path of ["/", "/inbox"]) test(`folds expand in place and only their l
   await expect(page).not.toHaveURL(/sel=/);
   await page.locator(`[data-id="${data.items[0]!.id}"]`).click();
   await expect(page.getByRole("complementary", { name: t("home.inbox.record.title"), exact: true })).toContainText(data.items[0]!.title);
+  return { mock, data };
+}
+
+for (const path of ["/", "/inbox"]) test(`folds expand in place and only their leaves select on ${path}`, async ({ page }) => {
+  const { mock } = await openFolds(page, path);
+  expect(mock.unexpected).toEqual([]);
+});
+
+// Classic keeps an expanded fold as its own row above its leaves; Console heads the fold with its first leaf's row. No
+// board draws the queue's folds, so the Console value is the render's.
+for (const path of ["/", "/inbox"]) test(`Classic's expanded fold row selects nothing on ${path}`, { tag: "@baseline" }, async ({ page }) => {
+  const { data } = await openFolds(page, path);
   await page.locator(`[data-id="fold:${data.items[0]!.id}"]`).focus();
   await page.keyboard.press("Enter");
   expect(new URL(page.url()).searchParams.get("sel")).toBe(data.items[0]!.id);
-  expect(mock.unexpected).toEqual([]);
+});
+
+test.describe("console look", () => {
+  test.use({ storageState: experienceState("console") });
+  for (const path of ["/", "/inbox"]) test(`Console heads an expanded fold with its first leaf on ${path}`, async ({ page }) => {
+    const { data } = await openFolds(page, path);
+    await expect(page.locator(`[data-id="fold:${data.items[0]!.id}"]`)).toHaveCount(0);
+    await expect(page.locator(`[data-id="${data.items[0]!.id}"]`).getByRole("button", { expanded: true })).toHaveCount(1);
+  });
+});
+
+// Home previews the queue's first rows: five in Classic; ten in Console, as d-home draws them before its more button.
+async function openHome(page: Page) {
+  await mockScreen(page, screens[0], "populated");
+  await mockRoute(page, "get", "/api/v1/me/action-inbox", { status: 200, json: inbox(12) });
+  await page.goto("/");
+}
+
+test("Classic Home previews five queue rows", { tag: "@baseline" }, async ({ page }) => {
+  await openHome(page);
+  await expect(page.getByRole("region", { name: t("home.inbox.title"), exact: true }).locator("[data-id]")).toHaveCount(5);
+});
+
+test.describe("console look", () => {
+  test.use({ storageState: experienceState("console") });
+  test("Console Home lists ten queue rows", async ({ page }) => {
+    await openHome(page);
+    await expect(page.getByRole("grid", { name: t("home.inbox.title"), exact: true }).locator("[data-id]")).toHaveCount(10);
+  });
 });

@@ -4,6 +4,7 @@ import { loadCatalog, t } from "@console/i18n";
 import { fits } from "../a11y";
 import { todayKst } from "../../apps/web/src/lib/pure/today";
 import { routeReady } from "../flows";
+import { openNav } from "../shell";
 import { attendanceBoardScreens } from "../states/attendance";
 import { checklist, id } from "./fixtures";
 import { mockRoute } from "./route";
@@ -25,7 +26,8 @@ test("attendance starts its phase read while its screen chunk is held", async ({
     await page.goto(attendanceBoardScreens[0].path, { waitUntil: "commit" });
     await chunks.requested;
     await expect.poll(() => reads, { message: "the phase read must not wait for the attendance chunk" }).toBe(1);
-    await expect(page.getByRole("button", { name: t("shell.menu"), exact: true })).toBeVisible();
+    await openNav(page);
+    await page.keyboard.press("Escape");
     const loading = page.locator('main [data-read-layout="list"][aria-busy="true"]');
     await expect(loading).toBeVisible();
     for (const theme of ["light", "dark"]) {
@@ -73,7 +75,8 @@ for (const search of [undefined, "", `&wp=${id(4)}&unit=${id(5)}`]) {
     try {
       await page.goto(search === undefined ? "/attendance" : `${attendanceBoardScreens[0].path}${search}`, { waitUntil: "commit" });
       await requested.promise;
-      await expect(page.getByRole("button", { name: t("shell.menu"), exact: true })).toBeVisible();
+      await openNav(page);
+      await page.keyboard.press("Escape");
       expect(reads, "the month read belongs to the lazy attendance screen").toHaveLength(0);
       held.resolve();
       await routeReady(page);

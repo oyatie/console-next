@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { fits } from "../a11y";
 import { go } from "../flows";
+import { openNav } from "../shell";
 import { clearShifts, expectStable, recordShifts } from "../stability";
 import { screens } from "../states/registry";
 import { screenAccess } from "./fixtures";
@@ -75,7 +76,7 @@ for (const destination of ["/", "/org"]) for (const revoked of [false, true]) {
       }
       await page.setViewportSize({ width: 390, height: 900 });
       await page.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
-      await page.getByRole("button", { name: t("shell.menu"), exact: true }).click();
+      await openNav(page);
       await fits(page, "access snapshot dark phone");
       await page.screenshot({ path: info.outputPath("dark-phone.png"), fullPage: true });
       expect(fixture.unexpected).toEqual([]);

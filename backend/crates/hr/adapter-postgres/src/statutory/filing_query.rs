@@ -35,8 +35,8 @@ const FROM: &str = " FROM sources l \
    AND a.superseded_at IS NULL AND a.valid_from<l.effective_date::date AND l.to_workplace_id IS NOT NULL ORDER BY a.valid_from DESC LIMIT 1) previous ON true \
  CROSS JOIN LATERAL (SELECT DISTINCT r.filing_kind AS k,r.insurer,r.recording_held, \
    r.earliest_event_on FROM rules r \
-   WHERE ((r.effective_from<=l.effective_date::date+r.loss_days \
-     AND (r.effective_to_exclusive IS NULL OR l.effective_date::date+r.loss_days<r.effective_to_exclusive)) OR r.is_age) \
+   WHERE ((r.effective_from<=l.effective_date::date+r.policy_offset_days \
+     AND (r.effective_to_exclusive IS NULL OR l.effective_date::date+r.policy_offset_days<r.effective_to_exclusive)) OR r.is_age) \
      AND (NOT r.requires_workplace_change OR (previous.workplace_id IS DISTINCT FROM l.to_workplace_id AND l.to_workplace_id IS NOT NULL)) \
      AND (l.event_type=ANY(r.trigger_event_kinds) OR (l.event_type='STATUTORY_REQUEST' AND r.filing_kind=l.request_kind))) rule \
  CROSS JOIN LATERAL (SELECT rule.k) kind CROSS JOIN LATERAL (SELECT rule.insurer) agency \
@@ -102,7 +102,7 @@ pub(super) async fn query_rows(
         "WITH boundary AS MATERIALIZED (SELECT tenant.id AS org_id,COALESCE(phase.go_live_at,now()) AS go_live_at,min((COALESCE(phase.go_live_at,now()) AT TIME ZONE zones.time_zone)::date) AS go_live_on \
          FROM (SELECT ",
     );
-    q.push_bind(*principal.org_id.as_uuid()).push(
+    q.push_bind(*principal.org_id.as_uuid()).push(concat!(
         "::uuid AS id) tenant LEFT JOIN tenant_phase phase ON phase.org_id=tenant.id \
          CROSS JOIN LATERAL (SELECT time_zone FROM lifecycle_country_packs WHERE is_default \
            UNION SELECT time_zone FROM workplaces WHERE org_id=tenant.id \
@@ -121,14 +121,16 @@ pub(super) async fn query_rows(
            CASE WHEN r.filing_rule->>'age_trigger_years' IS NULL THEN r.effective_to_exclusive END AS effective_to_exclusive, \
            r.recording_held,r.requires_workplace_change,r.trigger_event_kinds, \
            r.filing_rule->>'filing_kind' AS filing_kind,r.filing_rule->>'insurer' AS insurer, \
-           CASE WHEN r.filing_rule->>'age_trigger_years' IS NULL THEN COALESCE((r.filing_rule->>'loss_offset_days')::int,0) ELSE 0 END AS loss_days,r.filing_rule->>'age_trigger_years' IS NOT NULL AS is_age, \
+           r.policy_offset_days,r.filing_rule->>'age_trigger_years' IS NOT NULL AS is_age, \
            cutoff.earliest_event_on \
-           FROM lifecycle_filing_rules r JOIN jsonb_to_recordset(",
-    );
+           FROM ",
+        super::filing_boundary::filing_rule_periods!(),
+        " r JOIN jsonb_to_recordset(",
+    ));
     q.push_bind(bounds).push(
         ") AS cutoff(code text,effective_from date,earliest_event_on date) ON cutoff.code=r.code AND cutoff.effective_from=r.effective_from CROSS JOIN source_bounds b WHERE r.filing_rule IS NOT NULL \
-             AND (r.filing_rule->>'age_trigger_years' IS NOT NULL OR (r.effective_from<=b.last_on+COALESCE((r.filing_rule->>'loss_offset_days')::int,0) \
-               AND (r.effective_to_exclusive IS NULL OR b.first_on+COALESCE((r.filing_rule->>'loss_offset_days')::int,0)<r.effective_to_exclusive)))), \
+             AND (r.filing_rule->>'age_trigger_years' IS NOT NULL OR (r.effective_from<=b.last_on+r.policy_offset_days \
+               AND (r.effective_to_exclusive IS NULL OR b.first_on+r.policy_offset_days<r.effective_to_exclusive)))), \
       filtered AS (SELECT l.id,l.org_id,l.created_at AS source_created_at, \
       'insurance_filing_' || kind.k || '_' || agency.insurer || ':' || l.id AS inbox_id,l.employee_id, \
       kind.k AS kind,agency.insurer AS insurer,rule.recording_held, \

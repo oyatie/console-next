@@ -68,7 +68,7 @@ for (const width of [1440, 390]) {
     });
     try {
       await page.goto(orgChangeScreens[1].path);
-      const panel = page.getByRole("region", { name: t("orgChange.next.title"), exact: true });
+      const panel = page.getByRole("region", { name: t("orgChange.next.title"), exact: true }).or(page.getByRole("complementary", { name: t("orgChange.next.title"), exact: true }));
       const confirm = panel.getByRole("button", { name: commitLabel({ kind: "orgChange", mode: "schedule" }), exact: true });
       await confirm.click();
       await expect(panel.getByRole("alert")).toContainText(t("org_change.refuse.missing_grant"));

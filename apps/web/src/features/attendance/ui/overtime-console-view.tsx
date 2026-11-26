@@ -14,6 +14,7 @@ import { RecordBannerBand } from "../../../ui/patterns/record-banner-band";
 import { acknowledgeWeek52, week52Query, type Week52Row } from "../api";
 import { dateText } from "../present";
 import { AttendanceTabNav } from "./attendance-head";
+import { useAttendancePhaseLine } from "./use-attendance-phase-line";
 import { OvertimeAckBar } from "./overtime-ack-bar";
 import { PeriodStepper } from "./period-stepper";
 import { ScopePicker } from "./scope-picker";
@@ -51,6 +52,7 @@ export function OvertimeConsoleView({ baseline }: { baseline: () => React.ReactN
     UNKNOWN: items.filter(r => r.tone === "UNKNOWN").length,
   };
 
+  const phaseLine = useAttendancePhaseLine();
   return (
     <ListRecord
       q={board}
@@ -58,11 +60,12 @@ export function OvertimeConsoleView({ baseline }: { baseline: () => React.ReactN
       head={{
         title: t("attendance.title"),
         titleId: "attendance-overtime-title",
+        meta: phaseLine,
         asOf: board.data ? dateText(board.data.week_start) : undefined,
       }}
       filters={
         <div className={s.filterPair}>
-          <PeriodStepper unit="week" variant="boxed" showCurrent={false} value={date} onChange={nextDate => go({ date: nextDate })} />
+          <PeriodStepper unit="week" variant="boxed" value={date} onChange={nextDate => go({ date: nextDate })} />
           <ScopePicker compact value={search.wp} onChange={wp => go({ wp, unit: undefined })} />
         </div>
       }

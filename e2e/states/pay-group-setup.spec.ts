@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { mockNavigate } from "../mock/navigation";
-import { expect, test, type Locator } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import type { components } from "@console/api";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
@@ -12,9 +12,26 @@ import { commitLabel } from "../../apps/web/src/ui/composer/actions";
 
 test.beforeAll(() => loadCatalog("ko"));
 const label = (key: string) => t(key as Parameters<typeof t>[0]);
+const groupName = "모의 신규 그룹";
+const save = () => ({ name: commitLabel({ kind: "payGroup", mode: "save" }), exact: true });
+// Matched as a substring: Classic writes it beside its effects heading in one block.
+const consequence = () => t("payroll.setup.consequence", { entity: payGroups.legal_entities.find(entity => entity.id === id(801))!.name!, name: groupName });
+
+/** The pay-group form: Classic opens it in a sheet from the setup page; Console's setup page is the form itself. */
+async function setupForm(page: Page) {
+  const main = page.getByRole("main");
+  const add = main.getByRole("button", { name: t("payroll.setup.add"), exact: true });
+  await expect(add.or(main.getByRole("button", save())).first()).toBeVisible();
+  if (!(await add.count())) return main;
+  await add.click();
+  const sheet = page.getByRole("dialog", { name: t("payroll.setup.add"), exact: true });
+  await expect(sheet).toBeVisible();
+  return sheet;
+}
 async function fill(sheet: Locator, numeric = false, withBases = true) {
-  await sheet.getByLabel(t("payroll.entity"), { exact: false }).selectOption(id(801));
-  await sheet.getByLabel(t("payroll.setup.name"), { exact: false }).fill("모의 신규 그룹");
+  // By role: Console's form section "entity and name" carries the entity label too.
+  await sheet.getByRole("combobox", { name: t("payroll.entity"), exact: false }).selectOption(id(801));
+  await sheet.getByLabel(t("payroll.setup.name"), { exact: false }).fill(groupName);
   const pay = sheet.getByRole("group", { name: t("payroll.payDateRule"), exact: false });
   await pay.getByLabel(t("payroll.setup.month"), { exact: false }).selectOption("1");
   await pay.getByLabel(t("payroll.setup.day"), { exact: false }).selectOption(numeric ? "31" : "LAST_DAY");
@@ -52,44 +69,42 @@ for (const [width, colorScheme] of [[1440, "light"], [390, "dark"]] as const) te
     await rail.getByRole("link", { name: t("payroll.setup.add"), exact: true }).click();
     await expect(page).toHaveURL(/\/payroll\/setup$/);
     await expect(page.getByRole("main").getByText(t("payroll.setup.groupCount", { count: 0 }), { exact: true })).toBeVisible();
-    await expect(page.getByText(t("payroll.setup.explicit"), { exact: true })).toHaveCount(0);
-    await page.getByRole("main").getByRole("button", { name: t("payroll.setup.add"), exact: true }).click();
-    const sheet = page.getByRole("dialog", { name: t("payroll.setup.add"), exact: true });
-    await expect(sheet).toBeVisible();
+    const sheet = await setupForm(page);
     await expect(page.getByText(t("payroll.setup.explicit"), { exact: true })).toHaveCount(1);
-    await expect(sheet.getByRole("heading", { name: t("composer.section.effects"), exact: true })).toHaveCount(0);
+    await expect(sheet.getByText(consequence())).toHaveCount(0);
     const choices = sheet.getByRole("combobox");
     for (const choice of await choices.all()) await expect(choice).toHaveValue("");
     await expect(sheet.getByRole("checkbox", { checked: true })).toHaveCount(0);
-    await sheet.getByRole("button", { name: commitLabel({ kind: "payGroup", mode: "save" }), exact: true }).click();
+    await sheet.getByRole("button", save()).click();
     await expect(sheet.getByRole("alert")).toHaveText(t("payroll.setup.required"));
     await expect(page.getByText(t("payroll.setup.explicit"), { exact: true })).toHaveCount(1);
-    await expect(sheet.getByRole("heading", { name: t("composer.section.effects"), exact: true })).toHaveCount(0);
+    await expect(sheet.getByText(consequence())).toHaveCount(0);
     expect(writes).toEqual([]);
     await fits(page, `pay-group-setup/invalid/${width}`);
     await expectAxe(page, `pay-group-setup/invalid/${width}`);
     await page.screenshot({ path: test.info().outputPath(`pay-group-setup-invalid-${width}.png`) });
     await fill(sheet, width === 390, false);
-    await sheet.getByRole("button", { name: commitLabel({ kind: "payGroup", mode: "save" }), exact: true }).click();
+    await sheet.getByRole("button", save()).click();
     await expect(sheet.getByText(t("payroll.setup.basisRequired"), { exact: true })).toBeVisible();
     expect(writes).toEqual([]);
     await sheet.getByRole("checkbox", { name: t("payroll.rule.MONTHLY"), exact: true }).press("Space");
     await sheet.getByRole("checkbox", { name: t("payroll.rule.HOURLY"), exact: true }).press("Space");
-    await expect(sheet.getByRole("heading", { name: t("composer.section.effects"), exact: true })).toBeVisible();
+    await expect(sheet.getByText(consequence())).toBeVisible();
     await expect(sheet.getByRole("alert")).toHaveCount(0);
     await fits(page, `pay-group-setup/${width}`);
     await expectAxe(page, `pay-group-setup/${width}`);
     await page.screenshot({ path: test.info().outputPath(`pay-group-setup-${width}.png`) });
-    await sheet.getByRole("button", { name: commitLabel({ kind: "payGroup", mode: "save" }), exact: true }).click();
-    await expect(sheet).toHaveCount(0);
+    await sheet.getByRole("button", save()).click();
+    await expect.poll(() => writes.length).toBe(1);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
     expect(writes).toEqual([{
-      legal_entity_id: id(801), name: "모의 신규 그룹",
+      legal_entity_id: id(801), name: groupName,
       pay_date_rule: { day: width === 390 ? 31 : "LAST_DAY", month_offset: 1, non_business_day: "NEXT" },
       base_period: { start_day: width === 390 ? 28 : "FIRST", month_offset: 0 }, variable_period: { start_day: 16, month_offset: -1 },
       proration: "SCHEDULED_WORKDAYS", channel: "FILE_GENERIC", sensitive: width !== 390, pay_basis_allowed: ["MONTHLY", "HOURLY"],
     }]);
     await page.getByRole("main").getByRole("link", { name: t("payroll.title"), exact: true }).click();
-    const card = page.getByRole("region", { name: "모의 신규 그룹", exact: true });
+    const card = page.getByRole("region", { name: groupName, exact: true });
     await expect(card).toContainText("모의상사 해외법인");
     for (const key of ["sensitive", "payBasisAllowed", "rule.MONTHLY", "rule.HOURLY", width === 390 ? "rule.sensitive.false" : "rule.sensitive.true"])
       await expect(card).toContainText(label(`payroll.${key}`));
@@ -107,15 +122,15 @@ test("server refusal preserves all choices and cancel sends no additional comman
   });
   try {
     await page.goto("/payroll/setup");
-    await page.getByRole("main").getByRole("button", { name: t("payroll.setup.add"), exact: true }).click();
-    const sheet = page.getByRole("dialog");
+    const sheet = await setupForm(page);
     await fill(sheet);
-    await sheet.getByRole("button", { name: commitLabel({ kind: "payGroup", mode: "save" }), exact: true }).click();
+    await sheet.getByRole("button", save()).click();
     await expect(sheet.getByRole("alert")).toBeVisible();
     await expect(sheet.getByRole("alert")).toContainText("forbidden");
-    await expect(sheet.getByLabel(t("payroll.setup.name"), { exact: false })).toHaveValue("모의 신규 그룹");
+    await expect(sheet.getByLabel(t("payroll.setup.name"), { exact: false })).toHaveValue(groupName);
     await expect(sheet.getByLabel(t("payroll.sensitive"), { exact: false })).toHaveValue("true");
     const close = sheet.getByRole("button", { name: t("uiSheet.close"), exact: true });
+    await expect(close).toBeVisible();
     await close.click();
     await expect(sheet.getByRole("status")).toHaveText(t("composer.unsaved"));
     await close.click();
@@ -185,4 +200,19 @@ test("the payroll gallery opens the same blank setup sheet", async ({ page }) =>
   for (const control of await sheet.getByRole("combobox").all()) await expect(control).toHaveValue("");
   await sheet.getByRole("button", { name: t("uiSheet.close"), exact: true }).click();
   await expect(sheet).toHaveCount(0);
+});
+
+test("the Classic setup page keeps the explicit hint and the effects in its sheet @baseline", async ({ page }) => {
+  const fixture = await mockScreen(page, payrollScreens[0], "populated");
+  try {
+    await page.goto("/payroll/setup");
+    await expect(page.getByRole("main").getByRole("button", { name: t("payroll.setup.add"), exact: true })).toBeVisible();
+    await expect(page.getByText(t("payroll.setup.explicit"), { exact: true })).toHaveCount(0);
+    const sheet = await setupForm(page);
+    await expect(sheet.getByText(t("payroll.setup.explicit"), { exact: true })).toBeVisible();
+    await expect(sheet.getByRole("heading", { name: t("composer.section.effects"), exact: true })).toHaveCount(0);
+    await fill(sheet);
+    await expect(sheet.getByRole("heading", { name: t("composer.section.effects"), exact: true })).toBeVisible();
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
 });

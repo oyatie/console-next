@@ -6,6 +6,8 @@ import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
 import { expectAxe, fits } from "../a11y";
+import { setLocale } from "../shell";
+import { experienceState } from "../experience";
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -38,7 +40,48 @@ test("org: a held date read keeps the chart mounted and busy @ui-state", async (
   } finally { held.resolve(); await page.close(); fixture.release(); }
 });
 
-for (const width of [1440, 390]) test(`org: a failed dated read keeps an accessible chart at ${width}px @ui-state`, async ({ page }) => {
+// Console draws the fresh chart with no frame and dashes it once the dated read fails; the boards do not draw the org
+// screens, so that is the render's value. At 390 it owes only the invariants: the structure and the warning stay.
+test.describe(() => {
+  test.use({ storageState: experienceState("console") });
+  for (const width of [1440, 390]) test(`org: a failed dated read keeps the last structure at ${width}px in console @ui-state`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const fixture = await mockScreen(page, screens[2], "populated");
+    try {
+      await page.goto("/org");
+      const main = page.getByRole("main");
+      // Named before the locale switch; after it the chart carries its English name.
+      const tree = main.getByRole("tree");
+      const kept = main.getByRole("tree").or(main.getByRole("grid")).first();
+      if (width === 390) await expect(kept).toBeVisible();
+      else await expect(main.getByRole("tree", { name: t("structure.chart.label") })).toBeVisible();
+      const canvas = tree.locator("xpath=ancestor::section[1]");
+      const frame = () => canvas.evaluate((el) => {
+        const style = getComputedStyle(el);
+        return { borderTopStyle: style.borderTopStyle, backgroundColor: style.backgroundColor, borderTopColor: style.borderTopColor };
+      });
+      await expect(page.locator("[data-dimmed]")).toHaveCount(0);
+      const fresh = width === 390 ? undefined : await frame();
+      if (fresh) expect(fresh.borderTopStyle).toBe("none");
+      await mockRoute(page, "get", "/api/v1/org-structure", { status: 503, json: failure("service_unavailable") });
+      await setLocale(page, "en");
+      await expect(page.locator('[data-read-region] [data-tone="warn"][role="status"]')).toBeVisible({ timeout: 15_000 });
+      await expect(width === 390 ? kept : tree).toBeVisible();
+      if (fresh) {
+        await expect(page.locator("[data-dimmed]")).toHaveCount(1);
+        const stale = await frame();
+        expect(stale.borderTopStyle).toBe("dashed");
+        expect(stale.backgroundColor).not.toBe(fresh.backgroundColor);
+        expect(stale.borderTopColor).not.toBe(fresh.borderTopColor);
+      }
+      await expectAxe(page, `org/kept-error/${width}/console`);
+      await fits(page, `org/kept-error/${width}/console`);
+      expect(fixture.unexpected).toEqual([]);
+    } finally { await page.close(); fixture.release(); }
+  });
+});
+
+for (const width of [1440, 390]) test(`org: a failed dated read keeps an accessible chart at ${width}px @ui-state @baseline`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 });
   const fixture = await mockScreen(page, screens[2], "populated");
   try {
@@ -53,7 +96,7 @@ for (const width of [1440, 390]) test(`org: a failed dated read keeps an accessi
       return { backgroundColor: style.backgroundColor, borderTopColor: style.borderTopColor };
     });
     await mockRoute(page, "get", "/api/v1/org-structure", { status: 503, json: failure("service_unavailable") });
-    await page.getByRole("combobox", { name: t("shell.locale"), exact: true }).selectOption("en");
+    await setLocale(page, "en");
     await expect(page.locator('[data-read-region] [data-tone="warn"][role="status"]')).toBeVisible({ timeout: 15_000 });
     const dimmed = page.locator("[data-dimmed]");
     await expect(dimmed).toHaveCount(1);

@@ -5,7 +5,7 @@ import { expectAccessible } from "./a11y";
 import { clearShifts, forgetResize } from "./stability";
 import { apiOf, bearerOf } from "./helpers/api";
 import { cellOf, officeSchedule, openMonth, pastWorkDay } from "./helpers/attendance-records";
-import { chooseRadio, firstSignIn, go, kstDate, registerEmployee, takeCode, tenantOnboardSubmit, tenantSlugField, unique, vendorPage } from "./flows";
+import { tenantNameField, chooseRadio, firstSignIn, go, kstDate, registerEmployee, takeCode, tenantOnboardSubmit, tenantSlugField, unique, vendorPage } from "./flows";
 import { SETUP_DEPARTMENT, setupCompany, startOperations } from "./setup-flows";
 
 test.beforeAll(() => loadCatalog("ko"));
@@ -15,7 +15,7 @@ test("unapproved worked time is recognised immediately for a solo administrator"
   const vendor = await vendorPage(browser);
   await go(vendor, "/platform");
   await vendor.getByRole("button", { name: "고객 계정 개설" }).click();
-  await vendor.getByLabel("고객 이름").fill("근로시간인정주식회사");
+  await tenantNameField(vendor).fill("근로시간인정주식회사");
   await tenantSlugField(vendor).fill(unique("attpaid"));
   await tenantOnboardSubmit(vendor).click();
   const admin = await firstSignIn(browser, await takeCode(vendor));

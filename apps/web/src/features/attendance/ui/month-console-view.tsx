@@ -18,7 +18,9 @@ import type { GridRow } from "../api";
 import { hours } from "../domain/day";
 import { duration } from "../domain/minutes";
 import type { PageState } from "../domain/month-state";
+import { refusalText } from "../present";
 import { AttendanceTabNav } from "./attendance-head";
+import { useAttendancePhaseLine } from "./use-attendance-phase-line";
 import { MonthConsoleBottom } from "./month-console-bottom";
 import { summarizeDailyFooter, type MonthFilter, type OpenIssueRow, type summarizeMonth } from "../domain/month-console-summary";
 import { MonthGridView, type GridAct } from "./month-grid-view";
@@ -142,17 +144,20 @@ export function MonthConsoleView({
     </Button>
   );
 
+  const phaseLine = useAttendancePhaseLine();
   return (
     <MonthGridPattern
       q={grid}
+      own={refusalText}
       tabs={<AttendanceTabNav tab="month" />}
       head={{
         title: t("attendance.title"),
         titleId: "attendance-month-title",
+        meta: phaseLine,
         filters: !empty ? (
           <>
             <div className={s.filterPair}>
-              <PeriodStepper unit="month" variant="boxed" showCurrent={false} value={month} onChange={(m) => onGo({ month: m })} />
+              <PeriodStepper unit="month" variant="boxed" value={month} onChange={(m) => onGo({ month: m })} />
               <ScopePicker compact value={wp} onChange={(nextWp) => onGo({ wp: nextWp, unit: undefined })} />
             </div>
             <Segmented

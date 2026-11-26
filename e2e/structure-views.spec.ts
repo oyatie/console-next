@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { bootKo } from "../packages/i18n/src/catalogs/boot";
 import { expectAccessible } from "./a11y";
 import { clickCounter } from "./clicks";
-import { tenantOnboardSubmit, tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
+import { tenantNameField, tenantOnboardSubmit, tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
 import { setupCompany } from "./setup-flows";
 import { box, leaveScreen } from "./structure-flows";
 
@@ -16,7 +16,7 @@ test("jump, outline, paste, list and export work on one structure", { tag: "@org
   const v = await vendorPage(browser);
   await go(v, "/platform");
   await v.getByRole("button", { name: "고객 계정 개설" }).click();
-  await v.getByLabel("고객 이름").fill("한울그룹");
+  await tenantNameField(v).fill("한울그룹");
   await tenantSlugField(v).fill(unique("hanul"));
   await tenantOnboardSubmit(v).click();
   const admin = await firstSignIn(browser, await takeCode(v));

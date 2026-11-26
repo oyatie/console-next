@@ -1,13 +1,39 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
+import { experienceState } from "../experience";
 import { mockScreen } from "../mock/screen";
 import { id } from "../mock/fixtures";
 import { mockPayroll, payGroups, rate } from "../mock/payroll";
 import { payrollScreens, type PayrollState } from "./payroll";
 
 test.beforeAll(() => loadCatalog("ko"));
+type PayGroup = (typeof payGroups.items)[number];
+const entityOf = (group: PayGroup) => payGroups.legal_entities.find(entity => entity.id === group.legal_entity_id)!.name!;
+const runsOf = (page: Page, group: PayGroup) => page.getByRole("main").getByRole("grid", { name: t("payroll.runs", { name: group.name }), exact: true });
+
+/** A pay group's card on the payroll home: Classic draws every group's card; Console the one chosen in its group list. */
+async function groupCard(page: Page, group: PayGroup) {
+  const main = page.getByRole("main");
+  const card = main.getByRole("region", { name: group.name, exact: true });
+  const choice = main.getByRole("navigation", { name: t("payroll.home.groups"), exact: true }).getByRole("button", { name: `${group.name} · ${entityOf(group)}`, exact: true });
+  await expect(card.or(choice).first()).toBeVisible();
+  if (await choice.count() && (await choice.getAttribute("aria-pressed")) !== "true") await choice.click();
+  await expect(card).toBeVisible();
+  return card;
+}
+
+/** Chooses a legal entity on the reference page: Console lists them at desk widths; Classic opens its select. */
+async function chooseEntity(page: Page, name: string) {
+  const main = page.getByRole("main");
+  const list = main.getByRole("navigation", { name: t("payroll.reference.entities"), exact: true });
+  const select = main.getByRole("button", { name: t("payroll.entity"), exact: false });
+  await expect(list.or(select).first()).toBeVisible();
+  if (await list.count()) return list.getByRole("button", { name, exact: true }).click();
+  await select.click();
+  await page.getByRole("option", { name, exact: true }).click();
+}
 for (const screen of payrollScreens) for (const state of Object.keys(screen.states) as PayrollState[]) for (const width of [1440, 390]) {
   if (screen.key === "payroll" && (state === "held" || state === "unsupported")) continue;
   test(`${screen.key}: ${state} at ${width}px @ui-state`, async ({ page }) => {
@@ -48,17 +74,16 @@ for (const screen of payrollScreens) for (const state of Object.keys(screen.stat
         await expect(main.getByRole("region", { name: t("payroll.setup.title") })).toBeVisible();
       } else {
         for (const group of payGroups.items) {
-          const card = main.getByRole("region", { name: group.name, exact: true });
-          await expect(card).toBeVisible();
+          const card = await groupCard(page, group);
           for (const field of ["basePeriod", "variablePeriod", "payDateRule", "proration", "channel"] as const)
             await expect(card.getByText(t(`payroll.${field}`), { exact: true })).toBeVisible();
           await expect(card.getByText(t(`payroll.rule.${group.proration}`), { exact: true })).toBeVisible();
           await expect(card.getByText(t(`payroll.rule.${group.channel}`), { exact: true })).toBeVisible();
         }
-        const overseas = main.getByRole("region", { name: payGroups.items[2]!.name, exact: true });
+        const overseas = await groupCard(page, payGroups.items[2]!);
         await expect(overseas).toContainText("모의상사 해외법인");
-        await expect(overseas).toContainText(t("payroll.run.VOID"));
-        await expect(overseas).not.toContainText(t("payroll.run.STAGED"));
+        await expect(runsOf(page, payGroups.items[2]!)).toContainText(t("payroll.run.VOID"));
+        await expect(runsOf(page, payGroups.items[2]!)).not.toContainText(t("payroll.run.STAGED"));
       }
       await fits(page, `${screen.key}/${state}/${width}`);
       await expectAxe(page, `${screen.key}/${state}/${width}`);
@@ -80,9 +105,7 @@ test("reference selection keeps unsupported entities separate and payroll readin
   const fixture = await mockScreen(page, screen, "populated");
   await page.goto(screen.path);
   const main = page.getByRole("main");
-  await expect(main.getByText(t("payroll.reference.pick"), { exact: true }).last()).toBeVisible();
-  await main.getByRole("button", { name: t("payroll.entity"), exact: false }).click();
-  await page.getByRole("option", { name: "모의상사 해외법인", exact: true }).click();
+  await chooseEntity(page, payGroups.legal_entities[1]!.name!);
   await expect(main.getByText(t("payroll.reference.noPack"), { exact: true })).toBeVisible();
   await expect(main.getByText(rate.value, { exact: true })).toHaveCount(0);
   const rail = page.getByRole("navigation", { name: t("shell.nav") });
@@ -106,12 +129,12 @@ test("an unknown reference entity makes no rates request and can be replaced wit
     await page.goto(`${screen.path}?entity=${id(899)}`);
     const main = page.getByRole("main");
     await expect(main.getByText(t("payroll.reference.pickReason"), { exact: true })).toBeVisible();
-    const picker = main.getByRole("button", { name: t("payroll.entity"), exact: false });
-    await expect(picker).toContainText(t("payroll.reference.pick"));
+    // No entity is chosen: the page asks for one, and Console's list presses none.
+    await expect(main.getByText(t("payroll.reference.pick"), { exact: true }).first()).toBeVisible();
+    await expect(main.locator('[aria-pressed="true"]')).toHaveCount(0);
     await expect(main.getByText(rate.value, { exact: true })).toHaveCount(0);
     expect(reads).toEqual([]);
-    await picker.click();
-    await page.getByRole("option", { name: payGroups.legal_entities[0]!.name!, exact: true }).click();
+    await chooseEntity(page, payGroups.legal_entities[0]!.name!);
     await expect(main.getByText(rate.value, { exact: true })).toBeVisible();
     await expect(page).toHaveURL(`${new URL(screen.path, page.url())}?entity=${id(800)}`);
     expect(reads).toEqual([id(800)]);
@@ -151,9 +174,8 @@ test("payroll home paginates over 100 runs with server pay_group_id filter @ui-s
   });
   try {
     await page.goto("/payroll");
-    const card = page.getByRole("region", { name: payGroups.items[0]!.name, exact: true });
-    await expect(card).toBeVisible();
-    const grid = card.getByRole("grid");
+    await groupCard(page, payGroups.items[0]!);
+    const grid = runsOf(page, payGroups.items[0]!);
     await expect(grid).toBeVisible();
     await grid.evaluate((el) => { el.scrollTop = el.scrollHeight; });
     await expect.poll(() => seenOffsets).toContain(50);
@@ -161,4 +183,56 @@ test("payroll home paginates over 100 runs with server pay_group_id filter @ui-s
     await expect.poll(() => seenOffsets).toContain(100);
     expect(fixture.unexpected).toEqual([]);
   } finally { await page.close(); fixture.release(); }
+});
+
+for (const width of [1440, 390]) test(`the Classic payroll home draws every pay group's card with its runs at ${width}px @baseline`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
+  const fixture = await mockScreen(page, payrollScreens[0], "populated");
+  try {
+    await page.goto("/payroll");
+    for (const group of payGroups.items) {
+      const card = page.getByRole("main").getByRole("region", { name: group.name, exact: true });
+      await expect(card).toBeVisible();
+      if (group === payGroups.items[2]) await expect(card.getByRole("grid", { name: t("payroll.runs", { name: group.name }), exact: true })).toBeVisible();
+    }
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});
+
+test("the Classic reference page asks for an entity before it reads any rates @baseline", async ({ page }) => {
+  const fixture = await mockScreen(page, payrollScreens[1], "populated");
+  await page.goto(payrollScreens[1].path);
+  const main = page.getByRole("main");
+  await expect(main.getByText(t("payroll.reference.pick"), { exact: true }).last()).toBeVisible();
+  await expect(main.getByText(rate.value, { exact: true })).toHaveCount(0);
+  expect(fixture.unexpected).toEqual([]);
+});
+
+// The payroll home and the reference page are not drawn on a board, so these values are the Console render's.
+test.describe("console payroll home and reference", () => {
+  test.use({ storageState: experienceState("console") });
+
+  test("the Console payroll home shows one pay group at a time, the first chosen", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const fixture = await mockScreen(page, payrollScreens[0], "populated");
+    try {
+      await page.goto("/payroll");
+      const main = page.getByRole("main");
+      const groups = main.getByRole("navigation", { name: t("payroll.home.groups"), exact: true }).getByRole("button");
+      await expect(groups).toHaveText(payGroups.items.map(group => `${group.name} · ${entityOf(group)}`));
+      await expect(groups.first()).toHaveAttribute("aria-pressed", "true");
+      await expect(main.getByRole("region", { name: payGroups.items[0]!.name, exact: true })).toBeVisible();
+      for (const group of payGroups.items.slice(1)) await expect(main.getByRole("region", { name: group.name, exact: true })).toHaveCount(0);
+      expect(fixture.unexpected).toEqual([]);
+    } finally { await page.close(); fixture.release(); }
+  });
+
+  test("the Console reference page opens on the first entity", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const fixture = await mockScreen(page, payrollScreens[1], "populated");
+    await page.goto(payrollScreens[1].path);
+    const entities = page.getByRole("main").getByRole("navigation", { name: t("payroll.reference.entities"), exact: true }).getByRole("button");
+    await expect(entities.and(page.locator('[aria-pressed="true"]'))).toHaveText([payGroups.legal_entities[0]!.name!]);
+    expect(fixture.unexpected).toEqual([]);
+  });
 });

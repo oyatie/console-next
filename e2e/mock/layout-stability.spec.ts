@@ -241,7 +241,10 @@ for (const width of [1440, 390]) {
       await requested.promise;
       await Promise.all(answered);
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-      await expect(page.getByRole("status").filter({ hasText: t("common.loading") })).toHaveAttribute("aria-busy", "true");
+      // The page's own loading status, named by its text or by its label (the shell's navigation has its own).
+      const main = page.getByRole("main");
+      await expect(main.getByRole("status").filter({ hasText: t("common.loading") }).or(main.getByRole("status", { name: t("common.loading"), exact: true })))
+        .toHaveAttribute("aria-busy", "true");
       await expect(page.getByRole("button", { name: t("uiRecord.markOf", { field: t("empCard.f.grade"), mark: t("uiRecord.edit") }), exact: true })).toHaveCount(0);
       await page.evaluate(clearShifts);
       held.resolve();

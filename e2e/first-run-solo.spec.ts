@@ -5,7 +5,7 @@ import { resolveFilingNotApplicable } from "./helpers/statutory";
 import { expectAccessible } from "./a11y";
 import { fillRegister, openRegistered, pressRegister, receiptOf, registerSheet } from "./helpers/register";
 import { clickCounter } from "./clicks";
-import { tenantOnboardSubmit, tenantSlugField, chooseRadio, firstSignIn, go, kstDate, routeReady, takeCode, unique, vendorPage, vendorStepUp } from "./flows";
+import { tenantNameField, tenantOnboardSubmit, tenantSlugField, chooseRadio, firstSignIn, go, kstDate, routeReady, takeCode, unique, vendorPage, vendorStepUp } from "./flows";
 import { cellOf, officeSchedule, openMonth } from "./helpers/attendance-records";
 import { homeRail, registerBranch, registerEntity, registerWorkplace, startOperations, REGISTRATION_FIXTURES, brnDisplay } from "./setup-flows";
 import { addDepartments, findBox, findPressable } from "./structure-flows";
@@ -27,7 +27,7 @@ test("a solo administrator goes from an empty tenant to operating", { tag: ["@fi
     const v = await vendorPage(browser);
     await go(v, "/platform");
     await c.click(v.getByRole("button", { name: "고객 계정 개설" }));
-    await v.getByLabel("고객 이름").fill("가나솔루션");
+    await tenantNameField(v).fill("가나솔루션");
     await tenantSlugField(v).fill(companyDomain);
     await c.click(tenantOnboardSubmit(v));
     const code = await takeCode(v);

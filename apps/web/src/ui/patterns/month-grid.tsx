@@ -21,6 +21,10 @@ export function MonthGridPattern({
   facts: _facts,
   overlays,
   statusSegments,
+  keepOnLoss,
+  back,
+  own,
+  removed,
   baseline,
   ...panes
 }: MonthGridPatternProps) {
@@ -35,6 +39,10 @@ export function MonthGridPattern({
       queryLayout="grid"
       detailActive={Boolean(panes.record)}
       statusSegments={statusSegments}
+      keepOnLoss={keepOnLoss}
+      back={back}
+      own={own}
+      removed={removed}
       baseline={baseline}
     >
       {() => (

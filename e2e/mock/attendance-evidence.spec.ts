@@ -5,13 +5,13 @@ import { expectAxe, fits } from "../a11y";
 import { chooseRadio } from "../flows";
 import { attendanceBoardScreens } from "../states/attendance";
 import { mockScreen } from "./screen";
-import { attendancePerson } from "./attendance-board";
+import { attendancePerson, phoneDayPane } from "./attendance-board";
 import { AT, id } from "./fixtures";
 
 test.beforeAll(() => loadCatalog("ko"));
 
 for (const [kind, text] of [["WORK_OUTPUT", "작업 기록 · 결과물"], ["FUTURE_EVIDENCE", "확인되지 않은 항목"]] as const) {
-  test(`source and history tolerate evidence kind ${kind}`, async ({ page }) => {
+  test(`source and history tolerate evidence kind ${kind}`, async ({ page, storageState }) => {
     await page.setViewportSize({ width: 390, height: 900 });
     await page.addInitScript(() => localStorage.setItem("console.theme", "dark"));
     const screen = attendanceBoardScreens.find(s => s.key === "attendance-day")!;
@@ -21,7 +21,7 @@ for (const [kind, text] of [["WORK_OUTPUT", "작업 기록 · 결과물"], ["FUT
     await page.route(url => url.pathname === `/api/v1/attendance/people/${id(100)}/month`, route => route.fulfill({ json: { ...attendancePerson, days: [day], history: [{ date: day.date, entry }] } }));
     await page.goto(screen.path);
     await page.getByRole("button", { name: t("attendanceRecords.board.open"), exact: true }).first().click();
-    const dock = page.getByRole("dialog");
+    const dock = phoneDayPane(page, storageState, day.date);
     for (const tab of ["source", "history"] as const) {
       await dock.getByRole("tab", { name: t(`attendanceRecords.day.tab.${tab}`), exact: true }).click();
       await expect(dock.getByRole("list", { name: t("attendanceRecords.day.historyLabel") })).toContainText(text);

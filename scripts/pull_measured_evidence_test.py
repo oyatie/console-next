@@ -18,7 +18,7 @@ class PullMeasuredEvidenceTest(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        self.run = {"databaseId": 123, "headSha": "a" * 40, "headBranch": "dev", "event": "push"}
+        self.run = {"databaseId": 123, "headSha": "a" * 40, "headBranch": "dev", "event": "push", "status": "completed"}
         self.jobs = {RELEASE_JOB: "success"}
         self.data = {"commit": self.run["headSha"], "run_at": datetime.now(timezone.utc).isoformat(),
                      "source_command": "proof", "rows": [{"status": "fail"}, {"status": "unknown"}]}
@@ -35,21 +35,29 @@ if __name__ == '__main__':
 import json, os, sys
 from pathlib import Path
 args = sys.argv[1:]
+runs = json.loads(os.environ['RUNS'])
+run_ids = [str(run['databaseId']) for run in runs]
 assert args[args.index('--repo') + 1] == 'sample/console' if '--repo' in args else True
 if args[:2] == ['run', 'list']:
-    assert '--status' in args and args[args.index('--status') + 1] == 'completed'
     assert args[args.index('--workflow') + 1] == 'ci.yml'
-    print(os.environ['RUN'])
+    if '--status' in args: runs = []
+    limit = int(args[args.index('--limit') + 1]) if '--limit' in args else 20
+    fields = args[args.index('--json') + 1].split(',')
+    print(json.dumps([{{key: run[key] for key in fields}} for run in runs[:limit]]))
 elif args[0] == 'api':
     assert '--paginate' in args and '--slurp' in args
-    if args[1] == 'repos/sample/console/actions/runs/123/jobs':
+    run_path, resource = args[1].rsplit('/', 1)
+    assert run_path in ['repos/sample/console/actions/runs/' + run_id for run_id in run_ids]
+    if resource == 'jobs':
         print(json.dumps([{{'jobs': [{{'name': name, 'conclusion': conclusion}}]}}
                           for name, conclusion in json.loads(os.environ['JOBS']).items()]))
     else:
-        assert args[1] == 'repos/sample/console/actions/runs/123/artifacts'
+        assert resource == 'artifacts'
         print(json.dumps([{{'artifacts': [{{'name': name}} for name in json.loads(os.environ['ARTIFACTS'])]}}]))
 elif args[:2] == ['run', 'download']:
-    assert args[2] == '123'
+    assert args[2] in run_ids
+    with Path(__file__).with_name('downloads').open('a') as log:
+        print(args[2], file=log)
     artifact = args[args.index('--name') + 1]
     assert artifact in json.loads(os.environ['ARTIFACTS'])
     Path(args[args.index('--dir') + 1]).mkdir()
@@ -65,14 +73,17 @@ else: sys.exit('unexpected gh invocation: ' + repr(args))
         self.env = {**os.environ, "PATH": str(self.root) + os.pathsep + os.environ["PATH"],
                     "INGEST_LOG": str(self.root / "ingested"), "ARTIFACTS": json.dumps(["d7-evidence"])}
 
-    def invoke(self):
-        self.env.update(RUN=json.dumps([self.run] if self.run else []), DATA=json.dumps(self.data), JOBS=json.dumps(self.jobs))
+    def invoke(self, runs=None):
+        if runs is None: runs = [self.run] if self.run else []
+        self.env.update(RUNS=json.dumps(runs), DATA=json.dumps(self.data), JOBS=json.dumps(self.jobs))
         return subprocess.run(["bash", "scripts/pull-measured-evidence.sh", str(self.root), "sample/console"],
                               env=self.env, capture_output=True, text=True)
 
-    def test_latest_set_keeps_failed_and_unknown_rows(self):
-        result = self.invoke()
+    def test_newest_completed_run_supplies_failed_and_unknown_rows(self):
+        runs = [dict(self.run, databaseId=124, status="in_progress"), self.run, dict(self.run, databaseId=122)]
+        result = self.invoke(runs)
         self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((self.root / "downloads").read_text().splitlines(), [str(self.run["databaseId"])])
         records = [json.loads(line) for line in (self.root / "ingested").read_text().splitlines()]
         self.assertEqual([name for name, _ in records], ["e2e.json", "nextest.json"])
         self.assertTrue(all(data == self.data for _, data in records))

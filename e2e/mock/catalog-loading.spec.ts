@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { fits } from "../a11y";
 import { routeReady } from "../flows";
+import { barControl } from "../shell";
 import { screens } from "../states/registry";
 import { mockScreen } from "./screen";
 import { mockRoute } from "./route";
@@ -55,7 +56,11 @@ for (const path of ["/login", "/setup-passkey", "/people"]) for (const width of 
         await expect(page.getByRole("checkbox")).toHaveCount(2);
         await expect(page.locator("[data-marker]")).toHaveText(t("uiField.required"));
         await expect(page.locator("body")).not.toContainText("uiField.");
-      } else await expect(page.getByRole("button", { name: t("shell.theme.toDark"), exact: true }).or(page.getByRole("button", { name: t("shell.theme.toLight"), exact: true }))).toBeVisible();
+      } else {
+        // The theme control in the catalog's words: both bars use the same toggle.
+        await expect(await barControl(page, bar => bar.getByRole("button", { name: t(theme === "dark" ? "shell.theme.toLight" : "shell.theme.toDark"), exact: true }))).toBeVisible();
+        await page.keyboard.press("Escape");
+      }
       await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
       if (path !== "/people") expect(await page.evaluate(() => document.scrollingElement!.scrollWidth <= innerWidth)).toBe(true);
       else await fits(page, `${path} ${width}px ${theme}`);

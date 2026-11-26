@@ -181,8 +181,12 @@ for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as 
       const main = page.getByRole("main");
       await expect(main.getByText("ACC-0001", { exact: true }).first()).toBeVisible();
       const grid = main.getByRole("grid");
+      const firstPage = await grid.evaluate(el => el.scrollHeight);
       await grid.evaluate(el => { el.scrollTop = el.scrollHeight; });
-      await expect(main.getByText("ACC-0101", { exact: true }).first()).toBeVisible();
+      // The next page lands below the rows in view, so the list is scrolled on to its new end once it has grown.
+      await expect.poll(() => grid.evaluate(el => el.scrollHeight)).toBeGreaterThan(firstPage);
+      await grid.evaluate(el => { el.scrollTop = el.scrollHeight; });
+      await expect(main.getByText("ACC-0200", { exact: true }).first()).toBeVisible();
       await main.getByRole("searchbox").fill("ACC-1500");
       await expect(main.getByText("ACC-1500", { exact: true }).first()).toBeVisible();
       await expect(main.getByText(t("access.grant.role"), { exact: true }).first()).toBeVisible();

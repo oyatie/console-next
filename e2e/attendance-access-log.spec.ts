@@ -1,7 +1,7 @@
 import { inlineUnitDetails } from "./structure-flows";
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
-import { firstSignIn, go, kstDate, registerEmployee, takeCode, tenantOnboardSubmit, tenantSlugField, unique, vendorPage } from "./flows";
+import { tenantNameField, firstSignIn, go, kstDate, registerEmployee, takeCode, tenantOnboardSubmit, tenantSlugField, unique, vendorPage } from "./flows";
 import { apiOf, bearerOf } from "./helpers/api";
 import { openUnit, sheet } from "./helpers/structure";
 import { psql, settled } from "./idle-fixture";
@@ -12,7 +12,7 @@ test("attendance reads commit one access row naming the people returned", { tag:
   const vendor = await vendorPage(browser);
   await go(vendor, "/platform");
   await vendor.getByRole("button", { name: "고객 계정 개설" }).click();
-  await vendor.getByLabel("고객 이름").fill("근태접속기록");
+  await tenantNameField(vendor).fill("근태접속기록");
   const slug = unique("attaccess");
   await tenantSlugField(vendor).fill(slug);
   await tenantOnboardSubmit(vendor).click();

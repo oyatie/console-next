@@ -9,6 +9,7 @@ import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
 import { orgWorkScreens, type OrgWorkState } from "./org-work";
+import { setTheme } from "../shell";
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -149,7 +150,7 @@ for (const dark of [false, true]) test(`org move offers only server-permitted de
   await orgWorkReads(page, "operating");
   await mockRoute(page, "get", "/api/v1/org-units", { status: 200, json: { items: [], draftableIds: [id(100), id(101)] } });
   await page.goto(`/org/move?ids=${id(100)}`);
-  if (dark) await page.getByRole("button", { name: "어두운 화면으로 전환" }).click();
+  if (dark) await setTheme(page, "dark");
   const tree = page.getByRole("treegrid", { name: "어디로" });
   await expect(tree.getByRole("row", { name: /^검증부서 3/ })).toHaveCount(0);
   await expect(tree.getByRole("row", { name: /^본사/ })).toHaveAttribute("aria-disabled", "true");

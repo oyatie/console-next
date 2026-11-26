@@ -38,21 +38,26 @@ for (const path of ["/", "/inbox"]) for (const width of [1440, 390]) for (const 
     });
     try {
       await page.goto(selected ? `${path}?sel=${encodeURIComponent(queue.items[0]!.id)}` : path);
-      const list = page.getByRole("region", { name: t("home.inbox.title"), exact: true });
+      // Classic's list is the to-do card region; Console's is the to-do grid, with the held-change status just before it.
+      const list = page.getByRole("region", { name: t("home.inbox.title"), exact: true }).or(page.getByRole("grid", { name: t("home.inbox.title"), exact: true }));
       const row = list.locator("[data-row-id], [data-id]").first();
-      await expect(row).toBeAttached();
-      if (!selected) await expect(row).toBeVisible();
+      // An open record covers the list: Classic keeps it mounted and hidden, Console unmounts it.
+      if (selected) await expect(page.getByRole("complementary", { name: t("home.inbox.record.title"), exact: true })).toBeVisible();
+      await expect(row).toBeVisible({ visible: !selected });
       await page.evaluate(() => document.fonts.ready);
-      const before = await row.boundingBox();
+      const before = selected ? null : await row.boundingBox();
       const initialReads = reads;
-      const column = list.locator('[data-flexible-columns] > div').first();
-      const status = list.locator('[data-flexible-columns] > div').first().locator(':scope > [role="status"]:not([aria-busy])');
-      await expect(status).toHaveText("");
-      if (selected) await expect(column).toBeHidden();
-      await status.evaluate(el => { el.dataset.sameNode = "yes"; });
+      // The list's held-change status is the nearest live status before its first row, mounted empty. It is marked, and
+      // found by its mark from here on, since the rows it is found by empty while the list refreshes.
+      if (!selected) {
+        const empty = row.locator('xpath=preceding::*[@role="status" and not(@aria-busy)][1]');
+        await expect(empty).toHaveText("");
+        await empty.evaluate(el => { el.dataset.sameNode = "yes"; });
+      }
+      const status = page.locator('[role="status"][data-same-node="yes"]');
       await page.screenshot({ path: info.outputPath(`before-${path === "/" ? "home" : "inbox"}-${width}-${theme}.png`), fullPage: true });
       await page.evaluate(() => window.dispatchEvent(new Event("list-change")));
-      const chip = (selected ? page : list).getByRole("button", { name: t("live.list.new_rows", { count: 1 }), exact: true });
+      const chip = (selected ? page : status).getByRole("button", { name: t("live.list.new_rows", { count: 1 }), exact: true });
       await expect(chip).toBeVisible();
       await expect(page.getByRole("button", { name: t("live.list.new_rows", { count: 1 }), exact: true })).toHaveCount(1);
       // Floating notices share the fixed dock; list chips stay sticky inside their own list.
@@ -91,11 +96,11 @@ for (const path of ["/", "/inbox"]) for (const width of [1440, 390]) for (const 
       refreshing = true;
       await chip.click();
       await expect.poll(() => reads).toBe(initialReads + 1);
-      await expect(status).toHaveAttribute("data-same-node", "yes");
+      await expect(status).toHaveCount(1);
       await expect(row).toHaveCount(0);
       release();
       await expect(chip).toHaveCount(0);
-      await expect(status).toHaveAttribute("data-same-node", "yes");
+      await expect(status).toHaveCount(1);
       await expect(row).toBeFocused();
       expect(reads).toBe(initialReads + 1);
       expect(mock.unexpected).toEqual([]);

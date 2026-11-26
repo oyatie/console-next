@@ -2,7 +2,7 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "./a11y";
-import { tenantOnboardSubmit, tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
+import { tenantNameField, tenantOnboardSubmit, tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
 import { pickKind, registerEntity, registerWorkplace, typeAddress } from "./setup-flows";
 import { box, leaveScreen, revealUnit } from "./structure-flows";
 
@@ -12,7 +12,7 @@ async function emptyEntity(browser: Browser, slug: string, width = 1280, height 
   const vendor = await vendorPage(browser);
   await go(vendor, "/platform");
   await vendor.getByRole("button", { name: "고객 계정 개설" }).click();
-  await vendor.getByLabel("고객 이름").fill("자녀추가");
+  await tenantNameField(vendor).fill("자녀추가");
   await tenantSlugField(vendor).fill(unique(slug));
   await tenantOnboardSubmit(vendor).click();
   const page = await firstSignIn(browser, await takeCode(vendor));
