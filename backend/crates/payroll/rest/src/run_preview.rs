@@ -17,13 +17,16 @@ pub(crate) async fn preview(
     input: Result<Query<RunRequest>, axum::extract::rejection::QueryRejection>,
 ) -> Result<Json<RunPreview>, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
-    let Query(input) = input.map_err(|_| {
-        RestError::new(
-            StatusCode::UNPROCESSABLE_ENTITY,
-            "validation",
-            "supply only pay_group_id and a valid run kind",
-        )
-    })?;
+    let Query(input) = input
+        .ok()
+        .filter(|Query(input)| input.expected_attribution_month.is_none())
+        .ok_or_else(|| {
+            RestError::new(
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "validation",
+                "supply only pay_group_id and a valid run kind",
+            )
+        })?;
     state
         .store
         .preview_run(principal.org_id, principal.user_id, input)
@@ -42,7 +45,7 @@ pub(crate) async fn create(
         RestError::new(
             StatusCode::UNPROCESSABLE_ENTITY,
             "validation",
-            "supply only pay_group_id and a valid run kind",
+            "supply pay_group_id, a valid run kind, and optionally the reviewed month in YYYY-MM format",
         )
     })?;
     state

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Privacy-rights clocks and append-only decisions; authorization belongs to Cedar.
-mod input;
+pub mod input;
 mod reason;
 #[cfg(test)]
 mod tests;

@@ -3592,6 +3592,7 @@ dependencies = [
  "hex",
  "hmac 0.13.0",
  "infer",
+ "quick-xml",
  "reqwest",
  "serde",
  "sha2 0.11.1",

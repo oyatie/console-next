@@ -427,6 +427,7 @@ async fn executive_drives_full_lifecycle_with_audit_readback(pool: PgPool) {
 
     register_release_gate(&pool, run).await;
 
+    issue_revocation::assert_missing_recipient(&pool, org, run).await;
     issue_revocation::assert_second_gate(&pool, &rt, &keys, org, submitter, run, &submitter_token)
         .await;
     let (status, issued) = send(

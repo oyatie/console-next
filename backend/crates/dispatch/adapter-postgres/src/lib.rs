@@ -892,7 +892,7 @@ impl PgDispatchStore {
                         a.dispatch_id::text || ':' || a.id::text
                     )
                 FROM claimable c
-                WHERE a.id = c.id
+                WHERE a.id = c.id AND a.status = 'PENDING'
                 RETURNING a.id, a.dispatch_id, a.recipient_user_id,
                           a.lease_token, a.idempotency_key
             )
@@ -1061,7 +1061,7 @@ impl PgDispatchStore {
                         a.dispatch_id::text || ':' || a.id::text
                     )
                 FROM claimable c
-                WHERE a.id = c.id
+                WHERE a.id = c.id AND a.status = 'PENDING'
                 RETURNING a.id, a.dispatch_id, a.recipient_user_id, a.created_at,
                           a.lease_token, a.idempotency_key
             )

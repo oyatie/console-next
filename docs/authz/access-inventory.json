@@ -1103,7 +1103,13 @@
       "model": "matrix",
       "file": "backend/crates/finance-gl/rest/src/lib.rs",
       "kind": "reference",
-      "count": 14
+      "count": 8
+    },
+    {
+      "model": "matrix",
+      "file": "backend/crates/finance-gl/rest/src/listing.rs",
+      "kind": "reference",
+      "count": 6
     },
     {
       "model": "matrix",

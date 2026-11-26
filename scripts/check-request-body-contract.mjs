@@ -43,9 +43,9 @@ const CENSUS_FLOOR = 291;
 const ENUM_RESOLVED_FLOOR = 7;
 const BODY_UNDECIDABLE_MAX = 238;
 const ENUM_UNDECIDABLE_MAX = 15;
-const REVIEWED_RESOLVED_BODY_FLOOR = 48;
+const REVIEWED_RESOLVED_BODY_FLOOR = 65;
 const REVIEWED_NO_JSON_BODY_FLOOR = 1;
-const REVIEWED_RESOLVED_ENUM_FLOOR = 1;
+const REVIEWED_RESOLVED_ENUM_FLOOR = 15;
 const REGISTER_VERSION = 1;
 const REGISTER_PATH = "scripts/request-body-contract-undecidable.json";
 const HTTP_METHODS = ["get", "put", "post", "delete", "options", "head", "patch", "trace"];
@@ -81,8 +81,8 @@ const INERT_MODULE_ATTRIBUTES = new Set([
 
 // These expressions intentionally cover the concrete first-party route and handler forms. Any
 // new syntax falls into the exact undecidable register instead of being guessed.
-const CONST_PATH = /pub const ([A-Z0-9_]+): &str =\s*"([^"]+)"/g;
-const ROUTE = /\.route\(\s*(?:"([^"\\\r\n]*)"|([A-Z0-9_]+))\s*,([\s\S]*?)\)\s*,?\s*\)/g;
+const CONST_PATH = /\b(?:pub(?:\(\w+\))?\s+)?const ([A-Z0-9_]+): &str =\s*"([^"]+)"/g;
+const ROUTE = /\.route\(\s*(?:"([^"\\\r\n]*)"|((?:(?:crate|self|super)::)*[A-Z0-9_]+))\s*,([\s\S]*?)\)\s*,?\s*\)/g;
 const METHOD = /\b(get|post|put|patch|delete)\(\s*((?:[a-z0-9_]+::)*[a-z0-9_]+)/g;
 const HANDLER = /async fn ([a-z0-9_]+)\s*\(([\s\S]*?)\)\s*->/g;
 const JSON_BODY = /Json\(\s*(?:mut\s+)?\w+\s*\)\s*:\s*Json<\s*((?:[A-Za-z_][A-Za-z0-9_]*::)*[A-Za-z_][A-Za-z0-9_]*)\s*>/;
@@ -994,6 +994,10 @@ export function resolveHandler(handlers, route) {
 function bodyBinding(params, wrappers = new Set()) {
   const direct = params.match(JSON_BODY)?.[1];
   if (direct) return direct;
+  // A named extractor still deserializes the inner JSON type. Option permits an absent
+  // request body and Result lets the handler translate Axum's rejection.
+  const named = params.match(/(?:^|,)\s*\w+\s*:\s*(?:Json<\s*([\w:]+)\s*>|Option<\s*Json<\s*([\w:]+)\s*>\s*>|Result<\s*Json<\s*([\w:]+)\s*>\s*,\s*(?:axum::extract::rejection::)?JsonRejection\s*>)\s*(?=,|$)/);
+  if (named) return named[1] ?? named[2] ?? named[3];
   const bound = [...params.matchAll(/\b([A-Z][A-Za-z0-9_]*)\(\s*(?:mut\s+)?\w+\s*\)\s*:\s*([A-Z][A-Za-z0-9_]*)<\s*((?:[A-Za-z_][A-Za-z0-9_]*::)*[A-Za-z_][A-Za-z0-9_]*)\s*>/g)]
     .filter(([, pattern, type]) => pattern === type && wrappers.has(type));
   return bound.length === 1 ? bound[0][3] : null;
@@ -1028,7 +1032,9 @@ function collectSources(repoRoot) {
     const identityKey = sourceIdentityKey(identity);
     for (const match of source.matchAll(CONST_PATH)) {
       const candidates = consts.get(match[1]) ?? [];
-      candidates.push({ file, identityKey, path: match[2] });
+      candidates.push({
+        ...identity, name: match[1], identityKey, path: match[2], public: match[0].startsWith("pub const"),
+      });
       consts.set(match[1], candidates);
     }
     structs.push(...items.structs);
@@ -1063,11 +1069,18 @@ function collectSources(repoRoot) {
     }
   }
 
+  const pathConstants = [...consts.values()].flat();
+  Object.defineProperty(pathConstants, "reexports", { value: reexports });
   const routes = rawRoutes.map((route) => {
     const candidates = consts.get(route.constName) ?? [];
     const local = candidates.filter((candidate) => candidate.identityKey === route.identityKey);
+    const visible = local.length ? local : candidates.filter((candidate) => candidate.public);
+    const qualified = route.constName?.includes("::")
+      ? resolvePath(pathConstants, route, route.constName.split("::")).value
+      : null;
     const path = route.literalPath
-      ?? (local.length === 1 ? local[0].path : candidates.length === 1 ? candidates[0].path : null);
+      ?? qualified?.path
+      ?? (visible.length === 1 ? visible[0].path : null);
     const handler = resolveHandler(handlers, route);
     return {
       ...route,

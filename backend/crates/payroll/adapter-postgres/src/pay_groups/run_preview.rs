@@ -38,8 +38,33 @@ impl RunKind {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct RunRequest {
+    #[serde(
+        default,
+        deserialize_with = "expected_month",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub expected_attribution_month: Option<String>,
     pub pay_group_id: Uuid,
     pub kind: RunKind,
+}
+
+fn expected_month<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<String>, D::Error> {
+    let month = String::deserialize(deserializer)?;
+    let date = format!("{month}-01");
+    if month.len() != 7
+        || Date::parse(
+            &date,
+            time::macros::format_description!("[year]-[month]-[day]"),
+        )
+        .is_err()
+    {
+        return Err(serde::de::Error::custom(
+            "expected a payroll month in YYYY-MM format",
+        ));
+    }
+    Ok(Some(month))
 }
 
 #[derive(Debug, Serialize)]
@@ -61,44 +86,9 @@ pub struct RunPreview {
     pub variable_period_end: Date,
 }
 
-#[derive(Debug, Clone, Serialize)]
-pub struct PayrollRunSummary {
-    pub id: Uuid,
-    pub legal_entity_id: Option<Uuid>,
-    pub pay_group_id: Option<Uuid>,
-    pub kind: Option<String>,
-    pub attribution_month: Option<String>,
-    #[serde(with = "date::option")]
-    pub pay_date: Option<Date>,
-    #[serde(with = "date")]
-    pub period_start: Date,
-    #[serde(with = "date")]
-    pub period_end: Date,
-    #[serde(with = "date::option")]
-    pub variable_period_start: Option<Date>,
-    #[serde(with = "date::option")]
-    pub variable_period_end: Option<Date>,
-    pub source_label: String,
-    pub status: String,
-    pub calculation_enabled: bool,
-    pub created_by: Option<Uuid>,
-    pub approved_by: Option<Uuid>,
-    #[serde(with = "time::serde::rfc3339::option")]
-    pub approved_at: Option<OffsetDateTime>,
-    pub close_receipt: Option<serde_json::Value>,
-    pub submitted_by: Option<Uuid>,
-    #[serde(with = "time::serde::rfc3339::option")]
-    pub submitted_at: Option<OffsetDateTime>,
-    pub decided_by: Option<Uuid>,
-    #[serde(with = "time::serde::rfc3339::option")]
-    pub decided_at: Option<OffsetDateTime>,
-    pub decision_reason: Option<String>,
-    pub approval_ref: Option<Uuid>,
-    #[serde(with = "time::serde::rfc3339")]
-    pub created_at: OffsetDateTime,
-    #[serde(with = "time::serde::rfc3339")]
-    pub updated_at: OffsetDateTime,
-}
+#[path = "run_summary.rs"]
+mod run_summary;
+pub use run_summary::PayrollRunSummary;
 
 impl PgPayrollStore {
     pub async fn preview_run(
@@ -134,6 +124,9 @@ impl PgPayrollStore {
         with_audits(&self.pool, org, move |tx| {
             Box::pin(async move {
                 let preview = loader.derive_run_in_tx(tx, org, actor, &input).await?;
+                if input.expected_attribution_month.as_ref().is_some_and(|expected| expected != &preview.attribution_month) {
+                    return Err(KernelError::conflict("payroll run preview month changed").with_code("payroll_preview_changed").into());
+                }
                 let phase: Option<String> = sqlx::query_scalar(
                     "SELECT phase FROM tenant_phase WHERE org_id=$1 FOR SHARE",
                 )

@@ -26,12 +26,12 @@ const fixtureRoots = [];
 // and source-derived re-export/Option resolution. Any route, body, or accepted enum value change fails
 // until this snapshot is deliberately re-derived.
 const LIVE_CENSUS = Object.freeze({
-  population: 446,
-  resolved: 198,
-  skipped: 248,
-  enumCandidates: 92,
-  enumResolved: 73,
-  enumSkipped: 19,
+  population: 463,
+  resolved: 228,
+  skipped: 235,
+  enumCandidates: 110,
+  enumResolved: 95,
+  enumSkipped: 15,
 });
 
 const handoverAnchor = "POST /api/v1/equipment-3r/rental-cases/{case_id}/handover";
@@ -413,6 +413,34 @@ describe("request body contract gate", () => {
     assert.equal(report.resolved, 1);
     assert.equal(report.skipped, 0);
     assert.deepEqual(report.findings, []);
+  });
+
+  it("follows qualified route constants and recognizes named JSON extractors", () => {
+    for (const extractor of [
+      "Json<ConsumeWidgetBody>",
+      "Option<Json<ConsumeWidgetBody>>",
+      "Result<Json<ConsumeWidgetBody>, axum::extract::rejection::JsonRejection>",
+      "Result<Json<ConsumeWidgetBody>, OtherError>",
+    ]) {
+      const root = widgetFixture({
+        derive: camelDeny,
+        fields: "    quantity_consumed_milli: i64,",
+        required: ["quantityConsumedMilli", "ghostField"],
+        properties: "quantityConsumedMilli: { type: integer }, ghostField: { type: string }",
+      });
+      const router = join(root, "backend/crates/widget/rest/src/lib.rs");
+      const source = readFileSync(router, "utf8")
+        .replace(".route(WIDGET_CONSUME_PATH,", ".route(crate::WIDGET_CONSUME_PATH,")
+        .replace("Json(body): Json<ConsumeWidgetBody>", `body: ${extractor}`);
+      writeFileSync(router, source);
+      const report = evaluateRequestBodyContract({ repoRoot: root });
+      if (extractor.includes("OtherError")) {
+        assert.equal(report.observedRegister.body[0]?.reason, "no_direct_json_binding");
+      } else {
+        assert.equal(report.resolved, 1, extractor);
+        assert.match(report.findings[0]?.message, /ghostField/);
+      }
+    }
   });
 
   it("binds a first-party extractor whose own FromRequest impl re-wraps Json<T>", () => {

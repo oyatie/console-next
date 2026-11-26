@@ -41,6 +41,7 @@ export const enPayroll = {
   "payroll.create.saved": "Payroll registered.",
   "payroll.create.noGroups": "No pay group is available",
   "payroll.create.noGroupsReason": "Create a pay group first.",
+  "payroll.create.refuse.payroll_preview_changed": "The payroll month changed. Review the refreshed dates before creating the run.",
   "payroll.create.refuse.regular_run_exists": "A regular payroll run already exists for this pay group and attribution month.",
   "payroll.create.refuse.forbidden": "You do not have payroll permission to register this pay group.",
   "payroll.create.refuse.run_kind_unsupported": "Only regular payroll runs can be created at this time.",

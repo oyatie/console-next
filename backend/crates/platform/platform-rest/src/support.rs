@@ -57,6 +57,7 @@ struct DecisionBody {
     step_up: Option<MobilePasskeyStepUpEnvelope>,
 }
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(super) struct Target {
     pub(super) org_id: Uuid,
 }

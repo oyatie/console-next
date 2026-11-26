@@ -3500,23 +3500,6 @@ const UNCLASSIFIED_TABLE_BASELINE: &[(&str, &[&str])] = &[
         ],
     ),
     (
-        "payroll_line_calculations",
-        &[
-            "created_at",
-            "deductions",
-            "gross_won",
-            "id",
-            "line_id",
-            "net_won",
-            "org_id",
-            "payable",
-            "run_id",
-            "tax_table_version",
-            "total_deductions_won",
-            "version",
-        ],
-    ),
-    (
         "payroll_payslip_deliveries",
         &[
             "employee_id",

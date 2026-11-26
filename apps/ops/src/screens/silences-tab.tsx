@@ -10,6 +10,7 @@ import { useOpsContext } from "../lib/ops-context";
 import { hasWatchdogMatcher, parseMatcherLines, validateSilenceDraft } from "../lib/validation";
 import { CompactTable, type TableColumn } from "../ui/compact-table";
 import { DisabledReason } from "../ui/disabled-reason";
+import { SilenceAuditNotice } from "../ui/silence-audit-notice";
 import { InlineError } from "../ui/inline-error";
 import { O0State } from "../ui/o0-state";
 import { ObservedValue } from "../ui/observed-value";
@@ -161,7 +162,7 @@ export function SilencesTab({
         <button
           type="button"
           className="btn btn--sm btn--danger"
-          disabled={!canSilence || expireMut.isPending}
+          disabled={!canSilence || expireMut.isPending || (expireMut.data?.deleted && expireMut.data.silence_id === r.id)}
           title={!canSilence ? COPY.alertActions.requiresSilenceGrant : undefined}
           onClick={() => expireMut.mutate(r.id)}
         >
@@ -190,6 +191,8 @@ export function SilencesTab({
           </div>
         }
       />
+      <SilenceAuditNotice receipt={createMut.data} />
+      <SilenceAuditNotice receipt={expireMut.data} />
       {expireMut.error ? <div className={s.formPanel}><InlineError error={expireMut.error} /></div> : null}
       {createOpen ? (
         <form className={s.formPanel} onSubmit={submitCreate}>

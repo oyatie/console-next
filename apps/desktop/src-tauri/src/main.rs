@@ -70,8 +70,8 @@ fn main() {
                 // install() exits the process on success, before the plugin's own save on RunEvent::Exit.
                 let _ = app.save_window_state(StateFlags::all());
                 // Windows: starts the installer (passive, may ask for elevation) and exits.
-                if let Err(e) = update.install(bytes) {
-                    config::diag(&format!("update install failed: {e}"));
+                if update.install(bytes).is_err() {
+                    config::diag("update install failed");
                 }
             }
         });
@@ -101,10 +101,8 @@ fn window(app: &AppHandle, console: Url, start: Url) -> tauri::Result<()> {
 
 /// Hands a link to the default browser; always returns false so the webview does not navigate.
 fn open_external(url: &Url) -> bool {
-    if config::external(url)
-        && let Err(e) = tauri_plugin_opener::open_url(url.as_str(), None::<&str>)
-    {
-        config::diag(&format!("open {url}: {e}"));
+    if config::external(url) && tauri_plugin_opener::open_url(url.as_str(), None::<&str>).is_err() {
+        config::diag("external browser hand-off failed");
     }
     false
 }
@@ -147,8 +145,8 @@ fn check_update(app: AppHandle, url: Url) {
             }
             Ok::<_, tauri_plugin_updater::Error>(())
         };
-        if let Err(e) = run.await {
-            config::diag(&format!("update check failed: {e}"));
+        if run.await.is_err() {
+            config::diag("update check or download failed");
         }
     });
 }

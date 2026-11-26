@@ -3,7 +3,9 @@
 //! Transition routes carry no `branchId`: the branch is read from the locked
 //! row and authorized in-transaction.
 mod openapi;
+mod rental_bodies;
 pub use openapi::OPENAPI_FRAGMENT;
+use rental_bodies::{ApprovalBody, AssessmentBody, InspectionBody, QuoteBody};
 
 use axum::{
     Json, Router,
@@ -171,17 +173,6 @@ async fn unit_history(
     Ok(Json(view))
 }
 
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct QuoteBody {
-    branch_id: Uuid,
-    unit_id: Uuid,
-    customer_name: String,
-    site_reference: String,
-    monthly_rate_minor: i64,
-    duration_months: i32,
-    currency_code: String,
-}
 async fn quote_case(
     State(s): State<EquipmentRestState>,
     h: HeaderMap,
@@ -250,12 +241,6 @@ async fn case_detail(
     Ok(Json(view))
 }
 
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct ApprovalBody {
-    decision: String,
-    reason: Option<String>,
-}
 async fn decide_approval(
     State(s): State<EquipmentRestState>,
     h: HeaderMap,
@@ -340,13 +325,6 @@ async fn handover_case(
     Ok(Json(view))
 }
 
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct InspectionBody {
-    outcome: String,
-    findings: String,
-    maintenance_note: Option<String>,
-}
 async fn inspect_case(
     State(s): State<EquipmentRestState>,
     h: HeaderMap,
@@ -397,13 +375,6 @@ async fn return_case(
     Ok(Json(view))
 }
 
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct AssessmentBody {
-    condition_grade: String,
-    findings: String,
-    disposition: String,
-}
 async fn assess_return(
     State(s): State<EquipmentRestState>,
     h: HeaderMap,

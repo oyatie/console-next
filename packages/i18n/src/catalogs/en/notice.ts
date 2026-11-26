@@ -23,6 +23,7 @@ export const enNotice = {
   "notice.print": "Print · save as PDF",
   "notice.copy": "Copy as text",
   "notice.copied": "Copied as text",
+  "notice.copyFailed": "Couldn’t copy the notice. Select the notice text and copy it manually.",
   "notice.list": "Earlier notices",
   "notice.list.empty": "No notice yet",
   "notice.list.col.no": "Notice no.",

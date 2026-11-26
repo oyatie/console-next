@@ -54,7 +54,9 @@ export function checkApiSchema({ repo, ref = "HEAD", out, runtimeOut, jobTitleOu
     if (jobTitleOut) {
       const document = yaml.load(spec.stdout);
       const selected = Object.fromEntries([["create", "/api/v1/job-titles", "post"], ["update", "/api/v1/job-titles/{id}", "patch"]].map(([name, route, method]) => {
-        const schema = document.paths[route]?.[method]?.requestBody?.content["application/json"]?.schema;
+        const pathItem = document.paths[route];
+        const operation = pathItem && Object.hasOwn(pathItem, method) ? pathItem[method] : undefined;
+        const schema = operation?.requestBody?.content["application/json"]?.schema;
         if (!schema) throw new Error(`Missing runtime schema: ${method} ${route}`);
         return [name, schema];
       }));

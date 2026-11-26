@@ -9,6 +9,9 @@
 //! a reversal creates a NEW contra voucher.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
+mod summaries;
+use summaries::{load_summaries, load_summary};
+
 use console_finance_gl_application::{
     AccountDrillEntry, CreateVoucherDraftCommand, CreateVoucherDraftFromSourceCommand,
     ReverseVoucherCommand, VoucherLineInput, VoucherLineSummary, VoucherSourceRef, VoucherSummary,
@@ -273,20 +276,32 @@ impl PgVoucherStore {
         branch_id: Option<BranchId>,
         status: Option<VoucherStatus>,
     ) -> Result<Vec<VoucherSummary>, PgVoucherError> {
+        Ok(self.list_page(branch_id, status, None).await?.0)
+    }
+
+    pub async fn list_page(
+        &self,
+        branch_id: Option<BranchId>,
+        status: Option<VoucherStatus>,
+        after: Option<Uuid>,
+    ) -> Result<(Vec<VoucherSummary>, Option<Uuid>), PgVoucherError> {
         let org = current_org().map_err(KernelError::from)?;
-        with_org_conn::<_, Vec<VoucherSummary>, PgVoucherError>(&self.pool, org, move |tx| {
+        with_org_conn::<_, _, PgVoucherError>(&self.pool, org, move |tx| {
             Box::pin(async move {
-                let ids: Vec<Uuid> = sqlx::query(
+                let mut ids: Vec<Uuid> = sqlx::query(
                     r#"
                     SELECT id FROM finance_gl_vouchers
                     WHERE ($1::uuid IS NULL OR branch_id = $1)
                       AND ($2::text IS NULL OR status = $2)
+                      AND ($3::uuid IS NULL OR (created_at, id) <
+                          (SELECT created_at, id FROM finance_gl_vouchers WHERE id = $3))
                     ORDER BY created_at DESC, id DESC
-                    LIMIT 500
+                    LIMIT 501
                     "#,
                 )
                 .bind(branch_id.map(|b| *b.as_uuid()))
                 .bind(status.map(|s| s.as_db_str()))
+                .bind(after)
                 .fetch_all(tx.as_mut())
                 .await
                 .map_err(DbError::Sqlx)?
@@ -294,11 +309,10 @@ impl PgVoucherStore {
                 .map(|row| row.get::<Uuid, _>("id"))
                 .collect();
 
-                let mut out = Vec::with_capacity(ids.len());
-                for id in ids {
-                    out.push(load_summary(tx, VoucherId::from_uuid(id)).await?);
-                }
-                Ok(out)
+                let more = ids.len() > 500;
+                ids.truncate(500);
+                let next = ids.last().copied().filter(|_| more);
+                Ok((load_summaries(tx, &ids).await?, next))
             })
         })
         .await
@@ -310,9 +324,17 @@ impl PgVoucherStore {
         &self,
         account_code: &str,
     ) -> Result<Vec<AccountDrillEntry>, PgVoucherError> {
+        Ok(self.account_page(account_code, None).await?.0)
+    }
+
+    pub async fn account_page(
+        &self,
+        account_code: &str,
+        after: Option<Uuid>,
+    ) -> Result<(Vec<AccountDrillEntry>, Option<Uuid>), PgVoucherError> {
         let org = current_org().map_err(KernelError::from)?;
         let account_code = account_code.to_owned();
-        with_org_conn::<_, Vec<AccountDrillEntry>, PgVoucherError>(&self.pool, org, move |tx| {
+        with_org_conn::<_, _, PgVoucherError>(&self.pool, org, move |tx| {
             Box::pin(async move {
                 let rows = sqlx::query(
                     r#"
@@ -322,11 +344,17 @@ impl PgVoucherStore {
                     FROM finance_gl_voucher_lines AS l
                     JOIN finance_gl_vouchers AS v ON v.id = l.voucher_id
                     WHERE l.account_code = $1
-                    ORDER BY v.created_at DESC, l.line_no ASC
-                    LIMIT 1000
+                      AND ($2::uuid IS NULL OR (v.created_at, -l.line_no, l.id) <
+                          (SELECT prev.created_at, -line.line_no, line.id
+                           FROM finance_gl_voucher_lines line
+                           JOIN finance_gl_vouchers prev ON prev.id = line.voucher_id
+                           WHERE line.id = $2 AND line.account_code = $1))
+                    ORDER BY v.created_at DESC, l.line_no ASC, l.id DESC
+                    LIMIT 1001
                     "#,
                 )
                 .bind(&account_code)
+                .bind(after)
                 .fetch_all(tx.as_mut())
                 .await
                 .map_err(DbError::Sqlx)?;
@@ -346,7 +374,10 @@ impl PgVoucherStore {
                         entry_at: row.get::<OffsetDateTime, _>("created_at"),
                     });
                 }
-                Ok(out)
+                let more = out.len() > 1000;
+                out.truncate(1000);
+                let next = out.last().map(|entry| entry.line_id).filter(|_| more);
+                Ok((out, next))
             })
         })
         .await
@@ -699,105 +730,6 @@ async fn set_voucher_status(
     .await
     .map_err(DbError::Sqlx)?;
     Ok(())
-}
-
-async fn load_summary(
-    tx: &mut Transaction<'_, Postgres>,
-    voucher_id: VoucherId,
-) -> Result<VoucherSummary, PgVoucherError> {
-    let row = sqlx::query(
-        r#"
-        SELECT id, voucher_no, branch_id, status, memo,
-               source_object_type, source_object_id,
-               reversal_of_voucher_id, reversed_by_voucher_id,
-               created_by, approved_by, posted_at, created_at, updated_at,
-               -- Same-org correlated lookups (RLS-scoped to app.current_org,
-               -- exactly like the LEFT JOIN they stand in for) — resolve the
-               -- branch/user display names so the inspector never has to show
-               -- a raw id. NULL only for a deleted row (branches never are,
-               -- via FK RESTRICT; a deleted user leaves NULL, same as
-               -- support's assignee_name).
-               (SELECT b.name FROM branches b
-                 WHERE b.id = finance_gl_vouchers.branch_id) AS branch_name,
-               (SELECT u.display_name FROM users u
-                 WHERE u.id = finance_gl_vouchers.created_by) AS created_by_name,
-               (SELECT u.display_name FROM users u
-                 WHERE u.id = finance_gl_vouchers.approved_by) AS approved_by_name
-        FROM finance_gl_vouchers
-        WHERE id = $1
-        "#,
-    )
-    .bind(*voucher_id.as_uuid())
-    .fetch_optional(tx.as_mut())
-    .await
-    .map_err(DbError::Sqlx)?
-    .ok_or_else(|| KernelError::not_found("voucher was not found"))?;
-
-    let line_rows = sqlx::query(
-        r#"
-        SELECT id, line_no, account_code, side, amount_won, memo
-        FROM finance_gl_voucher_lines
-        WHERE voucher_id = $1
-        ORDER BY line_no ASC
-        "#,
-    )
-    .bind(*voucher_id.as_uuid())
-    .fetch_all(tx.as_mut())
-    .await
-    .map_err(DbError::Sqlx)?;
-
-    let mut lines = Vec::with_capacity(line_rows.len());
-    let mut debit_total_won: i64 = 0;
-    let mut credit_total_won: i64 = 0;
-    for lr in line_rows {
-        let side = DebitCredit::from_db_str(&lr.get::<String, _>("side"))?;
-        let amount_won = lr.get::<i64, _>("amount_won");
-        match side {
-            DebitCredit::Debit => {
-                debit_total_won = debit_total_won.saturating_add(amount_won);
-            }
-            DebitCredit::Credit => {
-                credit_total_won = credit_total_won.saturating_add(amount_won);
-            }
-        }
-        lines.push(VoucherLineSummary {
-            id: lr.get::<Uuid, _>("id"),
-            line_no: lr.get::<i32, _>("line_no"),
-            account_code: lr.get::<String, _>("account_code"),
-            side,
-            amount_won,
-            memo: lr.get::<String, _>("memo"),
-        });
-    }
-
-    Ok(VoucherSummary {
-        id: VoucherId::from_uuid(row.get::<Uuid, _>("id")),
-        voucher_no: row.get::<String, _>("voucher_no"),
-        branch_id: BranchId::from_uuid(row.get::<Uuid, _>("branch_id")),
-        branch_name: row.get::<Option<String>, _>("branch_name"),
-        status: VoucherStatus::from_db_str(&row.get::<String, _>("status"))?,
-        memo: row.get::<String, _>("memo"),
-        source_object_type: row.get::<Option<String>, _>("source_object_type"),
-        source_object_id: row.get::<Option<String>, _>("source_object_id"),
-        reversal_of_voucher_id: row
-            .get::<Option<Uuid>, _>("reversal_of_voucher_id")
-            .map(VoucherId::from_uuid),
-        reversed_by_voucher_id: row
-            .get::<Option<Uuid>, _>("reversed_by_voucher_id")
-            .map(VoucherId::from_uuid),
-        debit_total_won,
-        credit_total_won,
-        lines,
-        created_by: UserId::from_uuid(row.get::<Uuid, _>("created_by")),
-        created_by_name: row.get::<Option<String>, _>("created_by_name"),
-        approved_by: row
-            .get::<Option<Uuid>, _>("approved_by")
-            .map(UserId::from_uuid),
-        approved_by_name: row.get::<Option<String>, _>("approved_by_name"),
-        posted_at: row.get::<Option<OffsetDateTime>, _>("posted_at"),
-        created_at: row.get::<OffsetDateTime, _>("created_at"),
-        updated_at: row.get::<OffsetDateTime, _>("updated_at"),
-    })
 }
 
 fn source_ref(object_type: Option<String>, object_id: Option<String>) -> Option<VoucherSourceRef> {

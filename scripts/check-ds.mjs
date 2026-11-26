@@ -21,6 +21,7 @@
 //   node scripts/check-ds.mjs --lower      rewrite pins that went down (never raises one)
 //   node scripts/check-ds.mjs --admit f…   pin the named files at their current counts (INTEG only, for a branch
 //                                          that was READY before this gate; the diff shows each admitted file)
+import { own } from "./own-property.mjs";
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -190,7 +191,7 @@ export function frozenTokens(beforeCss, nowCss, allowed = {}) {
   for (const theme of ["light", "dark"]) for (const [name, value] of Object.entries(before[theme])) {
     const was = flat(before[theme], value);
     const is = now[theme][name] === undefined ? undefined : flat(now[theme], now[theme][name]);
-    if (is === was || (is !== undefined && is === allowed[name]?.[theme]?.toLowerCase())) continue;
+    if (is === was || (is !== undefined && is === own(own(allowed, name), theme)?.toLowerCase())) continue;
     problems.push(`${TOKENS}: ${name} (${theme}) was ${was}, now ${is ?? "removed"} — today's look may not change here; set a new style's value in its own file, or record an intended change in ${TOKEN_CHANGES}`);
   }
   return problems;

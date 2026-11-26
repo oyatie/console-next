@@ -62,3 +62,76 @@ async fn delivery_uses_the_account_contact_instead_of_the_person_phone(pool: PgP
         assert_eq!(manager, "SKIPPED", "the human phone does not make an account contactable");
     }).await;
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn concurrent_claims_respect_the_first_delivery_lease(pool: PgPool) {
+    console_platform_request_context::scope_org(OrgId::one(), async move {
+        let seeded = seed_dispatch_context(&pool).await;
+        let store = PgDispatchStore::new(pool.clone());
+        let now = datetime!(2026-06-12 09:00 UTC);
+        let timers = DispatchTimerConfig::default();
+        let started = store
+            .start_dispatch(
+                StartP1DispatchCommand {
+                    actor: seeded.receptionist,
+                    work_order_id: seeded.work_order_id,
+                    incident_location: None,
+                    include_region: false,
+                    trace: TraceContext::generate(),
+                    occurred_at: now,
+                },
+                timers,
+            )
+            .await
+            .unwrap();
+        let due = now + timers.alimtalk_no_ack_after;
+        store
+            .mark_alimtalk_no_ack(ExpireP1DispatchCommand {
+                dispatch_id: started.id,
+                trace: TraceContext::generate(),
+                occurred_at: due,
+            })
+            .await
+            .unwrap();
+
+        // Keep the winning transaction uncommitted until both claim statements see PENDING.
+        let mut winner = pool.begin().await.unwrap();
+        let won: Vec<String> = sqlx::query_scalar(
+            "UPDATE p1_dispatch_alerts SET status='SENDING', lease_token=gen_random_uuid(),
+                    lease_expires_at=$2 WHERE dispatch_id=$1 AND status='PENDING' RETURNING alert_type",
+        )
+        .bind(started.id.as_uuid())
+        .bind(due + console_dispatch_adapter_postgres::ALERT_LEASE_TTL)
+        .fetch_all(winner.as_mut())
+        .await
+        .unwrap();
+        for kind in ["FCM_PUSH", "ALIMTALK_NO_ACK"] {
+            assert!(won.iter().any(|alert| alert == kind));
+        }
+
+        let (push, alimtalk, ()) = tokio::join!(
+            store.claim_fcm_pushes(started.id, "FCM_PUSH", due),
+            store.claim_alimtalk_no_ack_alerts(started.id, due),
+            async {
+                tokio::time::timeout(std::time::Duration::from_secs(10), async {
+                    loop {
+                        let waiting: i64 = sqlx::query_scalar(
+                            "SELECT count(*) FROM pg_stat_activity WHERE datname=current_database()
+                             AND wait_event_type='Lock' AND query LIKE '%WITH claimable AS%'",
+                        ).fetch_one(&pool).await.unwrap();
+                        if waiting == 2 {
+                            break;
+                        }
+                        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+                    }
+                })
+                .await
+                .expect("both claim statements should reach the locked alerts");
+                winner.commit().await.unwrap();
+            }
+        );
+        assert!(push.unwrap().is_empty());
+        assert!(alimtalk.unwrap().is_empty());
+    })
+    .await;
+}

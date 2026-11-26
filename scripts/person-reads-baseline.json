@@ -19,7 +19,6 @@
   "backend/crates/evaluation/adapter-postgres/src/lib.rs:employees.name:6756dc717a542424e66b": 1,
   "backend/crates/evaluation/adapter-postgres/src/lib.rs:employees.name:8fccc7422cdb106e4bd2": 1,
   "backend/crates/evaluation/adapter-postgres/src/lib.rs:employees.name:f409ee3d06f4e7c93af2": 1,
-  "backend/crates/finance-gl/adapter-postgres/src/lib.rs:users.display_name:491294a15b0cbcde2ed2": 1,
   "backend/crates/hr/adapter-postgres/src/certificates/facts.rs:employees.birth_date,employees.name:c23d0653abd530567359": 1,
   "backend/crates/hr/adapter-postgres/src/corrections/head.rs:employees.birth_date,employees.name:b63170090dd8e738f3ec": 1,
   "backend/crates/hr/adapter-postgres/src/exits/queries.rs:employees.name:3d8fc1375490890600c6": 1,

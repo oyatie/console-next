@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { own } from "./own-property.mjs";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
@@ -13,7 +14,10 @@ function resolve(spec, schema) {
   while (schema?.$ref) {
     if (seen.has(schema.$ref)) throw new Error(`Cyclic schema reference ${schema.$ref}`);
     seen.add(schema.$ref);
-    const resolved = schema.$ref.split("/").slice(1).reduce((node, key) => node?.[key.replaceAll("~1", "/").replaceAll("~0", "~")], spec);
+    const resolved = schema.$ref.split("/").slice(1).reduce((node, segment) => {
+      const key = segment.replaceAll("~1", "/").replaceAll("~0", "~");
+      return node != null && Object.hasOwn(node, key) ? node[key] : undefined;
+    }, spec);
     if (!resolved) throw new Error(`Unresolved schema ${schema.$ref}`);
     schema = resolved;
   }
@@ -40,7 +44,7 @@ export function timestampProblems(spec, schema, value, location = "$") {
       if (value && type === "object") {
         return (resolved.required ?? []).every(key => Object.hasOwn(value, key)) && Object.entries(resolved.properties ?? {}).every(([key, property]) => {
           const child = resolve(spec, property);
-          return !(key in value) || ((!Object.hasOwn(child, "const") || child.const === value[key]) && (!child.enum || child.enum.includes(value[key])));
+          return !Object.hasOwn(value, key) || ((!Object.hasOwn(child, "const") || child.const === value[key]) && (!child.enum || child.enum.includes(value[key])));
         });
       }
       return true;
@@ -53,7 +57,7 @@ export function timestampProblems(spec, schema, value, location = "$") {
   if (Array.isArray(value) && schema.items) value.forEach((item, index) => problems.push(...timestampProblems(spec, schema.items, item, `${location}[${index}]`)));
   if (value && typeof value === "object" && !Array.isArray(value)) {
     for (const [key, item] of Object.entries(value)) {
-      const child = schema.properties?.[key] ?? (typeof schema.additionalProperties === "object" ? schema.additionalProperties : undefined);
+      const child = own(schema.properties, key) ?? (typeof schema.additionalProperties === "object" ? schema.additionalProperties : undefined);
       if (child) problems.push(...timestampProblems(spec, child, item, `${location}.${key}`));
     }
   }
@@ -67,8 +71,9 @@ export function responseTimestampProblems(spec, route, method, status, body) {
     const parts = candidate.split("/");
     return parts.length === segments.length && parts.every((part, index) => part === segments[index] || (part.startsWith("{") && part.endsWith("}")));
   });
-  const operation = resolve(spec, spec.paths[template]?.[method.toLowerCase()]);
-  const response = resolve(spec, operation?.responses?.[status] ?? operation?.responses?.default);
+  if (template === undefined) return [];
+  const operation = resolve(spec, own(spec.paths[template], method.toLowerCase()));
+  const response = resolve(spec, own(operation?.responses, status) ?? own(operation?.responses, "default"));
   const schema = response?.content?.["application/json"]?.schema;
   if (!schema) return [];
   return timestampProblems(spec, schema, body);

@@ -26,7 +26,9 @@ use time::format_description::well_known::Rfc3339;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 
+mod purge;
 mod replica;
+mod replication_worker;
 mod sigv4;
 
 pub type StorageFuture<'a, T> = Pin<Box<dyn Future<Output = Result<T, StorageError>> + Send + 'a>>;
@@ -41,6 +43,16 @@ pub enum StorageError {
 
     #[error("S3 operation failed: {0}")]
     S3(String),
+
+    #[error("S3 {operation} failed with HTTP {status} ({code})")]
+    Response {
+        operation: String,
+        status: u16,
+        code: String,
+    },
+
+    #[error("object version is under active retention")]
+    Retained,
 
     #[error("presigning failed: {0}")]
     Presign(String),
@@ -252,6 +264,11 @@ pub trait S3ObjectStore: Send + Sync {
         content_type: String,
         body: Vec<u8>,
     ) -> StorageFuture<'_, ()>;
+
+    /// Remove every eligible version of this exact key and verify completion.
+    fn purge_object(&self, _bucket: String, _key: String) -> StorageFuture<'_, ()> {
+        Box::pin(async { Err(StorageError::S3("object purge is unsupported".into())) })
+    }
 
     /// Delete an object (the staging original, after a successful transcode).
     fn delete_object(&self, bucket: String, key: String) -> StorageFuture<'_, ()>;
@@ -938,6 +955,10 @@ impl S3ObjectStore for SeaweedS3Storage {
         Box::pin(async move { self.put_bytes(&bucket, &key, &content_type, body).await })
     }
 
+    fn purge_object(&self, bucket: String, key: String) -> StorageFuture<'_, ()> {
+        Box::pin(async move { self.purge_key(&bucket, &key).await })
+    }
+
     fn delete_object(&self, bucket: String, key: String) -> StorageFuture<'_, ()> {
         Box::pin(async move { SeaweedS3Storage::delete_object(self, &bucket, &key).await })
     }
@@ -1546,216 +1567,6 @@ where
             })
         })
         .await
-    }
-
-    pub async fn replicate_once(
-        &self,
-        media_id: EvidenceId,
-        trace: TraceContext,
-        occurred_at: Timestamp,
-    ) -> Result<ReplicationOutcome, StorageError> {
-        let media = evidence_media_by_id(&self.pool, media_id).await?;
-        if media.worm_replica_status == WormReplicaStatus::Verified {
-            return Ok(ReplicationOutcome {
-                media_id,
-                status: WormReplicaStatus::Verified,
-                retry_count: media.retry_count,
-            });
-        }
-
-        let result = self
-            .copy_and_verify_replica(&media, occurred_at)
-            .await
-            .map(|()| WormReplicaStatus::Verified);
-        match result {
-            Ok(status) => self
-                .record_replication_success(media, trace, occurred_at)
-                .await
-                .map(|media| ReplicationOutcome {
-                    media_id,
-                    status,
-                    retry_count: media.retry_count,
-                }),
-            Err(err) => {
-                let message = err.to_string();
-                tracing::error!(
-                    media_id = %media_id,
-                    work_order_id = %media.work_order_id,
-                    retry_count = media.retry_count + 1,
-                    error = %message,
-                    "evidence WORM replication attempt failed"
-                );
-                self.record_replication_failure(media, message, trace, occurred_at)
-                    .await
-            }
-        }
-    }
-
-    async fn copy_and_verify_replica(
-        &self,
-        media: &EvidenceMedia,
-        now: Timestamp,
-    ) -> Result<(), StorageError> {
-        // The object store reports whole seconds. Round up to cover the entire policy period.
-        let deadline = now + self.replication.retention_period;
-        let retain_until = deadline
-            + Duration::nanoseconds(i64::from(
-                (1_000_000_000 - deadline.nanosecond()) % 1_000_000_000,
-            ));
-        self.object_store
-            .copy_object(CopyObjectRequest {
-                source_bucket: self.primary_bucket.clone(),
-                source_key: media.s3_key.clone(),
-                destination_bucket: self.replica_bucket.clone(),
-                destination_key: media.s3_key.clone(),
-                retain_until: Some(retain_until),
-            })
-            .await?;
-        let head = self
-            .object_store
-            .head_object(self.replica_bucket.clone(), media.s3_key.clone())
-            .await?;
-        if head.size_bytes != media.size_bytes {
-            return Err(StorageError::Verification(format!(
-                "replica size mismatch: expected {}, got {}",
-                media.size_bytes, head.size_bytes
-            )));
-        }
-        if let (Some(expected), Some(actual)) = (
-            media.checksum_sha256.as_deref(),
-            head.checksum_sha256.as_deref(),
-        ) && expected != actual
-        {
-            return Err(StorageError::Verification(
-                "replica checksum_sha256 mismatch".to_owned(),
-            ));
-        }
-        let retention = self
-            .object_store
-            .get_object_retention(self.replica_bucket.clone(), media.s3_key.clone())
-            .await?;
-        let retention_mode = retention.mode.or(head.object_lock_mode);
-        if retention_mode.as_deref() != Some("COMPLIANCE") {
-            return Err(StorageError::Verification(
-                "replica object is not under COMPLIANCE retention".to_owned(),
-            ));
-        }
-        let actual = retention.retain_until.or(head.retain_until);
-        if actual.and_then(|date| Timestamp::parse(&date, &Rfc3339).ok()) != Some(retain_until) {
-            return Err(StorageError::Verification(
-                "replica retain-until differs from the requested deadline".to_owned(),
-            ));
-        }
-        Ok(())
-    }
-
-    async fn record_replication_success(
-        &self,
-        media: EvidenceMedia,
-        trace: TraceContext,
-        occurred_at: Timestamp,
-    ) -> Result<EvidenceMedia, StorageError> {
-        let org = current_org().map_err(KernelError::from)?;
-        let branch_id = branch_for_work_order(&self.pool, media.work_order_id).await?;
-        let event = evidence_audit_event(
-            "evidence.verify",
-            None,
-            branch_id,
-            media.id,
-            trace,
-            occurred_at,
-        )?
-        .with_org(org);
-        with_audit::<_, EvidenceMedia, StorageError>(&self.pool, event, |tx| {
-            Box::pin(async move {
-                sqlx::query(
-                    r#"
-                    UPDATE evidence_media
-                    SET worm_replica_status = 'VERIFIED',
-                        verified_at = $2,
-                        last_error = NULL,
-                        next_retry_at = $2,
-                        updated_at = $2
-                    WHERE id = $1
-                    "#,
-                )
-                .bind(*media.id.as_uuid())
-                .bind(occurred_at)
-                .execute(tx.as_mut())
-                .await?;
-                evidence_media_by_id_tx(tx, media.id).await
-            })
-        })
-        .await
-    }
-
-    async fn record_replication_failure(
-        &self,
-        media: EvidenceMedia,
-        error: String,
-        trace: TraceContext,
-        occurred_at: Timestamp,
-    ) -> Result<ReplicationOutcome, StorageError> {
-        let org = current_org().map_err(KernelError::from)?;
-        let branch_id = branch_for_work_order(&self.pool, media.work_order_id).await?;
-        let next_retry_count = media.retry_count + 1;
-        let next_status = if next_retry_count >= self.replication.max_retries {
-            WormReplicaStatus::Failed
-        } else {
-            WormReplicaStatus::Pending
-        };
-        let next_retry_at = if next_status == WormReplicaStatus::Failed {
-            occurred_at
-        } else {
-            occurred_at + retry_delay(next_retry_count, &self.replication)
-        };
-        if next_status == WormReplicaStatus::Failed {
-            tracing::error!(
-                media_id = %media.id,
-                work_order_id = %media.work_order_id,
-                retry_count = next_retry_count,
-                "evidence WORM replication reached max retries and is visible in admin queue"
-            );
-        }
-        let event = evidence_audit_event(
-            "evidence.verify",
-            None,
-            branch_id,
-            media.id,
-            trace,
-            occurred_at,
-        )?
-        .with_org(org);
-        with_audit::<_, (), StorageError>(&self.pool, event, |tx| {
-            Box::pin(async move {
-                sqlx::query(
-                    r#"
-                    UPDATE evidence_media
-                    SET worm_replica_status = $2,
-                        retry_count = $3,
-                        next_retry_at = $4,
-                        last_error = $5,
-                        updated_at = $6
-                    WHERE id = $1
-                    "#,
-                )
-                .bind(*media.id.as_uuid())
-                .bind(next_status.as_db_str())
-                .bind(next_retry_count)
-                .bind(next_retry_at)
-                .bind(error)
-                .bind(occurred_at)
-                .execute(tx.as_mut())
-                .await?;
-                Ok(())
-            })
-        })
-        .await?;
-        Ok(ReplicationOutcome {
-            media_id: media.id,
-            status: next_status,
-            retry_count: next_retry_count,
-        })
     }
 }
 
@@ -2716,11 +2527,23 @@ async fn ensure_success(operation: &str, response: reqwest::Response) -> Result<
 
 async fn s3_response_error(operation: &str, response: reqwest::Response) -> StorageError {
     let status = response.status();
-    let body = response
+    #[derive(serde::Deserialize)]
+    struct ServiceError {
+        #[serde(rename = "Code")]
+        code: String,
+    }
+    let code = response
         .text()
         .await
-        .unwrap_or_else(|err| format!("<failed to read body: {err}>"));
-    StorageError::S3(format!("{operation} failed with {status}: {body}"))
+        .ok()
+        .and_then(|body| quick_xml::de::from_str::<ServiceError>(&body).ok())
+        .map(|error| error.code)
+        .unwrap_or_default();
+    StorageError::Response {
+        operation: operation.to_owned(),
+        status: status.as_u16(),
+        code,
+    }
 }
 
 fn reqwest_error(value: reqwest::Error) -> StorageError {
@@ -2825,17 +2648,20 @@ mod tests {
     #[derive(Debug, Clone)]
     struct StaticObjectStore {
         copy_errors: Arc<Mutex<Vec<String>>>,
+        copied_deadline: Option<Arc<Mutex<Option<String>>>>,
     }
 
     impl StaticObjectStore {
         fn ok() -> Self {
             Self {
+                copied_deadline: None,
                 copy_errors: Arc::new(Mutex::new(Vec::new())),
             }
         }
 
         fn fail_copy(errors: Vec<&str>) -> Self {
             Self {
+                copied_deadline: None,
                 copy_errors: Arc::new(Mutex::new(
                     errors.into_iter().map(ToOwned::to_owned).collect(),
                 )),
@@ -2864,10 +2690,15 @@ mod tests {
             })
         }
 
-        fn copy_object(&self, _request: CopyObjectRequest) -> StorageFuture<'_, ()> {
+        fn copy_object(&self, request: CopyObjectRequest) -> StorageFuture<'_, ()> {
             Box::pin(async move {
                 let mut errors = self.copy_errors.lock().unwrap();
                 if errors.is_empty() {
+                    if let Some(deadline) = &self.copied_deadline {
+                        *deadline.lock().unwrap() = request
+                            .retain_until
+                            .map(|date| date.format(&Rfc3339).unwrap());
+                    }
                     Ok(())
                 } else {
                     Err(StorageError::S3(errors.remove(0)))
@@ -2882,7 +2713,10 @@ mod tests {
                     e_tag: Some("\"etag\"".to_owned()),
                     checksum_sha256: None,
                     object_lock_mode: Some("COMPLIANCE".to_owned()),
-                    retain_until: Some("2026-06-13T00:00:00Z".to_owned()),
+                    retain_until: self.copied_deadline.as_ref().map_or_else(
+                        || Some("2026-06-13T00:00:00Z".to_owned()),
+                        |value| value.lock().unwrap().clone(),
+                    ),
                 })
             })
         }
@@ -2895,7 +2729,10 @@ mod tests {
             Box::pin(async {
                 Ok(RetentionInfo {
                     mode: Some("COMPLIANCE".to_owned()),
-                    retain_until: Some("2026-06-13T00:00:00Z".to_owned()),
+                    retain_until: self.copied_deadline.as_ref().map_or_else(
+                        || Some("2026-06-13T00:00:00Z".to_owned()),
+                        |value| value.lock().unwrap().clone(),
+                    ),
                 })
             })
         }
@@ -3002,6 +2839,36 @@ mod tests {
             assert_eq!(stored.retry_count, 1);
         })
         .await;
+    }
+
+    #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+    async fn worker_retries_only_confirmed_due_unleased_replicas(pool: PgPool) {
+        console_platform_request_context::scope_org(OrgId::one(), async {
+            let seeded = seed_work_order(&pool).await;
+            let mut store = StaticObjectStore::fail_copy(vec!["transient"]);
+            store.copied_deadline = Some(Arc::new(Mutex::new(None)));
+            let service = EvidenceService::new(pool.clone(),store,"primary".into(),"replica".into());
+            let now = Timestamp::now_utc();
+            let ticket = service.issue_presigned_upload(EvidenceUploadCommand {
+                actor: seeded.uploaded_by,work_order_id:seeded.work_order_id,stage:AttachmentStage::After,
+                content_type:"image/jpeg".to_owned(),size_bytes:1024,checksum_sha256:None,
+                trace: TraceContext::generate(),occurred_at:now,
+            }).await.unwrap();
+            let id = ticket.media.id;
+            service.retry_due_replicas(OrgId::one()).await.unwrap();
+            assert_eq!(evidence_media_by_id(&pool,id).await.unwrap().retry_count,0);
+            service.confirm_upload(id,seeded.uploaded_by,TraceContext::generate(),now).await.unwrap();
+            service.retry_due_replicas(OrgId::one()).await.unwrap();
+            assert_eq!(evidence_media_by_id(&pool,id).await.unwrap().retry_count,1);
+            sqlx::query("UPDATE evidence_media SET next_retry_at=now(), replica_lease_until=now()+interval '1 hour' WHERE id=$1")
+                .bind(id.as_uuid()).execute(&pool).await.unwrap();
+            service.retry_due_replicas(OrgId::one()).await.unwrap();
+            assert_eq!(evidence_media_by_id(&pool,id).await.unwrap().worm_replica_status,WormReplicaStatus::Pending);
+            sqlx::query("UPDATE evidence_media SET replica_lease_until=now()-interval '1 second' WHERE id=$1")
+                .bind(id.as_uuid()).execute(&pool).await.unwrap();
+            service.retry_due_replicas(OrgId::one()).await.unwrap();
+            assert_eq!(evidence_media_by_id(&pool,id).await.unwrap().worm_replica_status,WormReplicaStatus::Verified);
+        }).await;
     }
 
     #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

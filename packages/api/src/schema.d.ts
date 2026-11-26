@@ -19571,6 +19571,7 @@ export interface components {
         CreatePayrollRun: {
             pay_group_id: components["schemas"]["Uuid"];
             kind: components["schemas"]["PayrollRunKind"];
+            expected_attribution_month?: string;
         };
         CreatePeriodLockRequest: {
             /** @enum {string} */
@@ -46274,7 +46275,10 @@ export interface operations {
     };
     accountDrill: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Cursor from the preceding X-Next-Cursor response header. */
+                after?: string;
+            };
             header?: never;
             path: {
                 account_code: string;
@@ -46286,6 +46290,8 @@ export interface operations {
             /** @description Account entries. */
             200: {
                 headers: {
+                    /** @description Continuation cursor when more rows are available. */
+                    "X-Next-Cursor"?: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -46299,6 +46305,8 @@ export interface operations {
     listVouchers: {
         parameters: {
             query?: {
+                /** @description Cursor from the preceding X-Next-Cursor response header. */
+                after?: string;
                 branch_id?: components["schemas"]["Uuid"];
                 status?: components["schemas"]["VoucherStatus"];
             };
@@ -46311,6 +46319,8 @@ export interface operations {
             /** @description Vouchers visible to the caller. */
             200: {
                 headers: {
+                    /** @description Continuation cursor when more rows are available. */
+                    "X-Next-Cursor"?: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -56864,7 +56874,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description phase_not_operating during tenant setup; regular_run_exists for an occupied regular group/month; pay_group_roster_ambiguous when the group's legal entity has more than one pay group, so its members are not known; idempotency_key_reused for a changed body; command_processing or command_applied for an unavailable replay. */
+            /** @description phase_not_operating during tenant setup; payroll_preview_changed when the reviewed month is stale; regular_run_exists for an occupied regular group/month; pay_group_roster_ambiguous when the group's legal entity has more than one pay group, so its members are not known; idempotency_key_reused for a changed body; command_processing or command_applied for an unavailable replay. */
             409: {
                 headers: {
                     [name: string]: unknown;

@@ -23,6 +23,7 @@ import { PayrollRunCreateConsole } from "./run-create-console";
 
 const kinds = payGroupSchemas.PayrollRunKind.enum.filter(kind => kind === "REGULAR");
 const refusal = (code: string) => ({
+  payroll_preview_changed: t("payroll.create.refuse.payroll_preview_changed"),
   regular_run_exists: t("payroll.create.refuse.regular_run_exists"),
   forbidden: t("payroll.create.refuse.forbidden"),
   run_kind_unsupported: t("payroll.create.refuse.run_kind_unsupported"),
@@ -56,7 +57,10 @@ function RunPreview({ input }: { input: CreatePayrollRun }) {
     announce: () => t("payroll.create.saved"),
     onSuccess: run => navigate({ to: "/payroll/runs/$id", params: { id: run.id } }),
   });
-  return <QueryState q={preview} layout="form">{facts => <Form className="form" onSubmit={() => create.mutate(input)}>
+  const canSubmit = preview.isSuccess && preview.fetchStatus === "idle" && !preview.isPlaceholderData && !create.isPending;
+  return <QueryState q={preview} layout="form">{facts => <Form className="form" onSubmit={() => {
+    if (canSubmit) create.mutate({ ...input, expected_attribution_month: facts.attribution_month });
+  }}>
     <KeyValue readOnly label={t("payroll.create.preview")} items={[
       { key: "month", label: t("payroll.create.month"), value: facts.attribution_month },
       { key: "payDate", label: t("payroll.create.payDate"), value: fmtDate(facts.pay_date) },
@@ -64,6 +68,6 @@ function RunPreview({ input }: { input: CreatePayrollRun }) {
       { key: "variable", label: t("payroll.variablePeriod"), value: `${fmtDate(facts.variable_period_start)} – ${fmtDate(facts.variable_period_end)}` },
     ]} />
     <CommandError error={create.error} own={refusal} recover={false} />
-    <div className="form__actions"><Button type="submit" variant="primary" disabled={create.isPending}>{t("payroll.create.submit")}</Button></div>
+    <div className="form__actions"><Button type="submit" variant="primary" disabled={!canSubmit}>{t("payroll.create.submit")}</Button></div>
   </Form>}</QueryState>;
 }

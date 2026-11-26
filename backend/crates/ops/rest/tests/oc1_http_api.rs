@@ -314,3 +314,6 @@ async fn incidents_optimistic_concurrency_postmortem_public_draft_and_home_merge
     assert!(work.iter().any(|w: &Value| w["next"]["href"] == "/actions"));
     Ok(())
 }
+
+#[path = "oc1_http_api/silence_recovery.rs"]
+mod silence_recovery;

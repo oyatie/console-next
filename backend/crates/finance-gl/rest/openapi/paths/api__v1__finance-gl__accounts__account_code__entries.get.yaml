@@ -5,6 +5,10 @@ summary: Account drill — voucher lines for an account with voucher/source link
 security:
 - bearerAuth: []
 parameters:
+- name: after
+  in: query
+  description: Cursor from the preceding X-Next-Cursor response header.
+  schema: {type: string, format: uuid}
 - name: account_code
   in: path
   required: true
@@ -13,6 +17,10 @@ parameters:
 responses:
   '200':
     description: Account entries.
+    headers:
+      X-Next-Cursor:
+        description: Continuation cursor when more rows are available.
+        schema: {type: string, format: uuid}
     content:
       application/json:
         schema:

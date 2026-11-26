@@ -226,7 +226,7 @@ async fn two_operator_crypto_shred_survives_pitr_and_cleans_s3(owner: PgPool) {
     let sink = LogSink::default();
     let sub = tracing_subscriber::fmt().with_writer(sink.clone()).finish();
     let _guard = tracing::subscriber::set_default(sub);
-    let (emitted, _) = PlatformProvisioner::emit_erase_witnesses_after(&a.rt, 0)
+    let emitted = PlatformProvisioner::emit_pending_erase_witnesses(&a.rt)
         .await
         .unwrap();
     assert_eq!(emitted, 1);

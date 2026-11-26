@@ -8,6 +8,8 @@
 //! dedicated `VoucherManage` feature is a clean follow-up for the wire step.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
+mod listing;
+use listing::{account_entries, list_vouchers};
 mod openapi;
 pub use openapi::OPENAPI_FRAGMENT;
 
@@ -100,12 +102,6 @@ pub fn router(state: FinanceGlRestState) -> Router {
 }
 
 #[derive(Debug, Deserialize)]
-struct ListVouchersQuery {
-    branch_id: Option<BranchId>,
-    status: Option<VoucherStatus>,
-}
-
-#[derive(Debug, Deserialize)]
 struct CreateVoucherRequest {
     branch_id: BranchId,
     #[serde(default)]
@@ -128,28 +124,6 @@ struct ErrorBody {
 struct ErrorPayload {
     code: &'static str,
     message: String,
-}
-
-async fn list_vouchers(
-    State(state): State<FinanceGlRestState>,
-    headers: HeaderMap,
-    Query(query): Query<ListVouchersQuery>,
-) -> Result<impl IntoResponse, RestError> {
-    let principal = principal_from_headers(&state, &headers).await?;
-    // A branch-scoped listing authorizes against that branch; an org-wide listing
-    // requires org-wide authority (RLS still confines rows to the tenant).
-    match query.branch_id {
-        Some(branch_id) => authorize(&principal, Action::new(VOUCHER_FEATURE), branch_id)
-            .map_err(RestError::from_kernel)?,
-        None => authorize_org_wide(&principal, Action::new(VOUCHER_FEATURE))
-            .map_err(RestError::from_kernel)?,
-    }
-    let vouchers = state
-        .store
-        .list(query.branch_id, query.status)
-        .await
-        .map_err(RestError::from_store)?;
-    Ok(Json(vouchers))
 }
 
 async fn create_draft(
@@ -284,22 +258,6 @@ async fn reverse_voucher(
         .await
         .map_err(RestError::from_store)?;
     Ok((StatusCode::CREATED, Json(contra)))
-}
-
-async fn account_entries(
-    State(state): State<FinanceGlRestState>,
-    headers: HeaderMap,
-    Path(account_code): Path<String>,
-) -> Result<impl IntoResponse, RestError> {
-    let principal = principal_from_headers(&state, &headers).await?;
-    // Account drill spans branches — org-wide read authority.
-    authorize_org_wide(&principal, Action::new(VOUCHER_FEATURE)).map_err(RestError::from_kernel)?;
-    let entries = state
-        .store
-        .account_drill(&account_code)
-        .await
-        .map_err(RestError::from_store)?;
-    Ok(Json(entries))
 }
 
 async fn principal_from_headers(

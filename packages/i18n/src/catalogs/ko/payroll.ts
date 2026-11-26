@@ -42,6 +42,7 @@ export const koPayroll: Record<keyof typeof enPayroll, string> = {
   "payroll.create.saved": "급여를 등록했습니다.",
   "payroll.create.noGroups": "등록할 급여 그룹이 없습니다",
   "payroll.create.noGroupsReason": "급여 그룹을 먼저 등록하십시오.",
+  "payroll.create.refuse.payroll_preview_changed": "급여 귀속월이 변경되었습니다. 새로 고친 미리 보기의 날짜를 확인하십시오.",
   "payroll.create.refuse.regular_run_exists": "이 급여 그룹과 귀속월의 정기 급여가 이미 등록되어 있습니다.",
   "payroll.create.refuse.forbidden": "이 급여 그룹을 등록할 급여 권한이 없습니다.",
   "payroll.create.refuse.run_kind_unsupported": "현재 정기 급여만 등록할 수 있습니다.",

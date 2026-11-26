@@ -92,7 +92,7 @@ function readEscapeString(sql, i) {
         i += 1 + oct.length;
         continue;
       }
-      if (next in ESCAPE_MAP) { value += ESCAPE_MAP[next]; i += 2; continue; }
+      if (Object.hasOwn(ESCAPE_MAP, next)) { value += ESCAPE_MAP[next]; i += 2; continue; }
       if (next === "\n") lines++;
       value += next;
       i += 2;

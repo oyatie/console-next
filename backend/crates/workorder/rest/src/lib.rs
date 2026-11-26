@@ -7,6 +7,7 @@
 
 mod mobile_sync_authz;
 mod openapi;
+mod storage_error;
 pub use openapi::OPENAPI_FRAGMENT;
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -1160,17 +1161,6 @@ impl RestError {
         match error {
             PgWorkOrderError::Domain(error) => Self::from_kernel(error),
             PgWorkOrderError::Db(error) => Self::from_db(error),
-        }
-    }
-
-    fn from_storage(error: StorageError) -> Self {
-        match error {
-            StorageError::Domain(error) => Self::from_kernel(error),
-            StorageError::Db(error) => Self::from_db(error),
-            StorageError::S3(message)
-            | StorageError::Presign(message)
-            | StorageError::Verification(message)
-            | StorageError::Processing(message) => Self::internal(message),
         }
     }
 

@@ -43,6 +43,10 @@ impl LifecycleScheduleHandle {
 
 pub(crate) struct S3PurgeTargets {
     pub store: std::sync::Arc<dyn console_platform_storage::S3ObjectStore>,
+    #[cfg(feature = "workorder")]
+    pub evidence: Option<
+        console_platform_storage::EvidenceService<console_platform_storage::SeaweedS3Storage>,
+    >,
     pub primary_bucket: String,
     pub replica_bucket: Option<String>,
 }
@@ -69,7 +73,6 @@ pub fn spawn(
     tokio::spawn(async move {
         // LC-B3: the day the case clock tick last finished in every tenant.
         let mut case_clock_day: Option<Date> = None;
-        let mut last_witness_seq: i64 = 0;
         let mut ticker = tokio::time::interval(period);
         ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         loop {
@@ -130,22 +133,7 @@ pub fn spawn(
                     // MR-26: voided registrations past people.void_pii_retention
                     // become tombstones. Worker role only (lane correction #14).
                     if worker {
-                        if let Some(force_pool) = &force_pool {
-                            match console_platform_provisioning::PlatformProvisioner::run_due_tenant_erases(force_pool).await {
-                                Ok(erased) => {
-                                    metrics::counter!("console_platform_tenant_erase_total", "action" => "run").increment(erased.cast_unsigned());
-                                    if erased > 0 {
-                                        match console_platform_provisioning::PlatformProvisioner::emit_erase_witnesses_after(&pool, last_witness_seq).await {
-                                            Ok((_, max_seq)) => {
-                                                last_witness_seq = max_seq;
-                                            }
-                                            Err(error) => tracing::warn!(%error, "tenant erasure witness log emission failed"),
-                                        }
-                                    }
-                                }
-                                Err(error) => tracing::error!(%error,"tenant erasure worker failed"),
-                            }
-                        }
+                        run_tenant_erase_tick(&pool, force_pool.as_ref()).await;
                         if let Some(targets) = &s3_purge_targets {
                             match console_platform_provisioning::PlatformProvisioner::drain_erased_tenant_objects(
                                 &pool,
@@ -163,6 +151,10 @@ pub fn spawn(
                                     "erased tenant S3 outbox pass complete"
                                 ),
                                 Err(error) => tracing::warn!(%error, "erased tenant S3 outbox drain failed"),
+                            }
+                            #[cfg(feature = "workorder")]
+                            if let Some(evidence) = &targets.evidence {
+                                drain_replica_retries(&pool, evidence).await;
                             }
                         }
                         match console_hr_adapter_postgres::HrService::new(pool.clone())
@@ -215,6 +207,53 @@ pub fn spawn(
         }
     });
     LifecycleScheduleHandle { shutdown_tx }
+}
+
+async fn run_tenant_erase_tick(pool: &sqlx::PgPool, force_pool: Option<&sqlx::PgPool>) {
+    use console_platform_provisioning::PlatformProvisioner;
+    if let Some(force_pool) = force_pool {
+        match PlatformProvisioner::run_due_tenant_erases(force_pool).await {
+            Ok(erased) => {
+                metrics::counter!("console_platform_tenant_erase_total", "action" => "run")
+                    .increment(erased.cast_unsigned())
+            }
+            Err(error) => tracing::error!(%error, "tenant erasure worker failed"),
+        }
+    }
+    if let Err(error) = PlatformProvisioner::emit_pending_erase_witnesses(pool).await {
+        tracing::warn!(%error, "tenant erasure witness log emission failed");
+    }
+}
+
+#[cfg(all(test, feature = "test-postgres"))]
+mod tenant_erase_tests;
+
+#[cfg(feature = "workorder")]
+async fn drain_replica_retries(
+    pool: &sqlx::PgPool,
+    service: &console_platform_storage::EvidenceService<console_platform_storage::SeaweedS3Storage>,
+) {
+    let tenants = sqlx::query_scalar::<_, uuid::Uuid>(
+        "SELECT id FROM platform_list_organizations() ORDER BY id",
+    )
+    .fetch_all(pool) // rls-arming: ok platform tenant enumeration, followed by scoped replica reads.
+    .await;
+    match tenants {
+        Ok(tenants) => {
+            for id in tenants {
+                let org = console_kernel_core::OrgId::from_uuid(id);
+                if let Err(error) = console_platform_request_context::scope_org(
+                    org,
+                    service.retry_due_replicas(org),
+                )
+                .await
+                {
+                    tracing::warn!(%error, "evidence replica retry failed");
+                }
+            }
+        }
+        Err(error) => tracing::warn!(%error, "replica retry tenant enumeration failed"),
+    }
 }
 
 async fn run_case_clock_tick(pool: &sqlx::PgPool, today: Date) -> Result<usize, String> {

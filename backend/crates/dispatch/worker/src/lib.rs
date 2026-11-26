@@ -109,9 +109,7 @@ impl DispatchWorker {
                 occurred_at: job.scheduled_for,
             })
             .await?;
-        self.deliver_manager_force_alerts(job.dispatch_id, job.scheduled_for)
-            .await?;
-        Ok(())
+        self.deliver_manager_force_alerts(job.dispatch_id).await
     }
 
     async fn handle_alimtalk_no_ack(
@@ -125,9 +123,8 @@ impl DispatchWorker {
                 occurred_at: job.scheduled_for,
             })
             .await?;
-        self.deliver_alimtalk_no_ack_alerts_at(job.dispatch_id, job.scheduled_for)
-            .await?;
-        Ok(())
+        self.deliver_alimtalk_no_ack_alerts_at(job.dispatch_id, time::OffsetDateTime::now_utc())
+            .await
     }
 
     async fn handle_manual_call_required(
@@ -186,21 +183,24 @@ impl DispatchWorker {
     async fn deliver_manager_force_alerts(
         &self,
         dispatch_id: console_kernel_core::P1DispatchId,
-        now: time::OffsetDateTime,
     ) -> Result<(), DispatchWorkerError> {
         let Some(notifier) = self.push_notifier.as_ref() else {
             return Ok(());
         };
         let pushes = self
             .store
-            .claim_fcm_pushes(dispatch_id, "MANAGER_FORCE_ASSIGN", now)
+            .claim_fcm_pushes(
+                dispatch_id,
+                "MANAGER_FORCE_ASSIGN",
+                time::OffsetDateTime::now_utc(),
+            )
             .await?;
         for push in pushes {
             self.send_manager_push(notifier.as_ref(), push).await?;
         }
         let fallback_alerts = self
             .store
-            .claim_manager_force_alimtalks(dispatch_id, now)
+            .claim_manager_force_alimtalks(dispatch_id, time::OffsetDateTime::now_utc())
             .await?;
         for alert in fallback_alerts {
             if self.alimtalk_policy.is_enabled() {

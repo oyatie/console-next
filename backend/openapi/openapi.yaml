@@ -14540,6 +14540,10 @@ paths:
       security:
       - bearerAuth: []
       parameters:
+      - name: after
+        in: query
+        description: Cursor from the preceding X-Next-Cursor response header.
+        schema: {type: string, format: uuid}
       - name: account_code
         in: path
         required: true
@@ -14548,6 +14552,10 @@ paths:
       responses:
         '200':
           description: Account entries.
+          headers:
+            X-Next-Cursor:
+              description: Continuation cursor when more rows are available.
+              schema: {type: string, format: uuid}
           content:
             application/json:
               schema:
@@ -14567,6 +14575,10 @@ paths:
       security:
       - bearerAuth: []
       parameters:
+      - name: after
+        in: query
+        description: Cursor from the preceding X-Next-Cursor response header.
+        schema: {type: string, format: uuid}
       - name: branch_id
         in: query
         required: false
@@ -14580,6 +14592,10 @@ paths:
       responses:
         '200':
           description: Vouchers visible to the caller.
+          headers:
+            X-Next-Cursor:
+              description: Continuation cursor when more rows are available.
+              schema: {type: string, format: uuid}
           content:
             application/json:
               schema:
@@ -25642,7 +25658,7 @@ paths:
               schema: {$ref: '#/components/schemas/PayrollRunSummary'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {description: Cedar refuses pay-group edit or sensitive edit clearance. Unknown and foreign groups also refuse.}
-        '409': {description: "phase_not_operating during tenant setup; regular_run_exists for an occupied regular group/month; pay_group_roster_ambiguous when the group's legal entity has more than one pay group, so its members are not known; idempotency_key_reused for a changed body; command_processing or command_applied for an unavailable replay."}
+        '409': {description: "phase_not_operating during tenant setup; payroll_preview_changed when the reviewed month is stale; regular_run_exists for an occupied regular group/month; pay_group_roster_ambiguous when the group's legal entity has more than one pay group, so its members are not known; idempotency_key_reused for a changed body; command_processing or command_applied for an unavailable replay."}
         '422': {description: "run_kind_unsupported for non-REGULAR kinds; Missing, malformed or extra fields, an invalid run kind, or invalid_request_key."}
         '503': {description: holiday_calendar_missing when the applicable calendar is unavailable; or unavailable Cedar facts.}
   /api/v1/payroll/runs/preview:
@@ -42275,6 +42291,7 @@ components:
       properties:
         pay_group_id: {$ref: '#/components/schemas/Uuid'}
         kind: {$ref: '#/components/schemas/PayrollRunKind'}
+        expected_attribution_month: {type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"}
     CreatePeriodLockRequest:
       type: object
       required:
