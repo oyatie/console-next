@@ -69,6 +69,26 @@
   min-width: 0;
 }
 
+/* The floor fits a failed recovery read whose reason takes one line (title, reason, then retry beside its two-line
+   reference), so such a failure above a short answer does not move deletion. */
+.readSlot {
+  min-block-size: calc(4lh + var(--target) + var(--space-2) * 5);
+}
+
+/* Until the read answers, its loading or failure sits over a hidden copy of a typical answer, which sets the height. */
+.readHold {
+  display: grid;
+}
+
+.readHold > * {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+.readPlaceholder {
+  visibility: hidden;
+}
+
 .reasonStack {
   display: flex;
   flex-direction: column;

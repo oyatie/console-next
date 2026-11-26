@@ -8,11 +8,14 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 // oxlint-disable-next-line no-restricted-imports -- Exercise the existing read boundary with a transport refusal.
 import { ApiError } from "@console/api";
 import { loadCatalog } from "@console/i18n";
-import { beforeAll, expect, test } from "vitest";
+import { beforeAll, expect, test, vi } from "vitest";
 import type { ReadState } from "../../lib/react/query-view";
 import { ListRecord } from "./list-record";
 import { listRecordOptionalRegions } from "./list-record-contract";
 import { PageMain } from "../page/page-main";
+
+const style = vi.hoisted(() => ({ id: "baseline" as "baseline" | "console" }));
+vi.mock("../../experience/dom", async original => ({ ...(await original<typeof import("../../experience/dom")>()), useActiveExperienceId: () => style.id }));
 
 beforeAll(() => loadCatalog("ko"));
 const registerLink = "Register link";
@@ -98,4 +101,23 @@ test("ListRecord renders baseline fallback when baseline prop is supplied in bas
   );
   expect(html).toContain('data-baseline-fallback="true"');
   expect(html).not.toContain('data-contract-region="list"');
+});
+
+const failure = { ...read, data: undefined, error: new ApiError(503, "service_unavailable", "", [], "pattern-failure") };
+const why = "Load the roster to register.";
+const register = "Register";
+const ownPrimary = (q: ReadState) => <ListRecord q={q} list={mark("list")} failedActions={<span id="why">{why}</span>}
+  head={{ title: "Roster", primary: <button type="button" aria-disabled="true" aria-describedby="why">{register}</button> }} />;
+
+test.each(["baseline", "console"] as const)("%s: a screen's own primary takes the primary slot and its failure actions sit in the list failure's alert", async id => {
+  style.id = id;
+  try {
+    const failed = await markup(ownPrimary(failure));
+    expect(failed).toContain('<button type="button" aria-disabled="true" aria-describedby="why">Register</button>');
+    expect(failed.split("Load the roster to register.")).toHaveLength(2);
+    expect(failed.slice(failed.indexOf('role="alert"'))).toContain('<span id="why">Load the roster to register.</span>');
+    const ready = await markup(ownPrimary(read));
+    expect(ready).toContain(">Register</button>");
+    expect(ready).not.toContain("Load the roster to register.");
+  } finally { style.id = "baseline"; }
 });

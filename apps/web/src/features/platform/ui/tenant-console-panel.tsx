@@ -6,12 +6,13 @@ import { fmtDateTime, fmtNumber } from "@console/i18n/format";
 import { TENANT_LIFECYCLE, TENANT_STATUS } from "../../../lib/labels";
 import { QueryState } from "../../../lib/react/query-state";
 import { queryView } from "../../../lib/react/query-view";
+import { useOnline } from "../../../lib/react/use-online";
 import { Button } from "../../../ui/button/button";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { EnumValue } from "../../../ui/enum-value";
 import { KeyValue, type KeyValueItem } from "../../../ui/key-value/key-value";
-import { RecordIdentityBar, RecordPaneSection } from "../../../ui/patterns/list-record-parts";
-import { eraseQuery, recoveryQuery, supportSessionsQuery, type EraseRead, type Health, type Issued, type Org, type Recorded } from "../api";
+import { RecordIdentityBar, RecordPaneGroup, RecordPaneSection, RecordPaneState } from "../../../ui/patterns/list-record-parts";
+import { eraseQuery, recoveryQuery, supportSessionsQuery, type EraseRead, type Health, type Issued, type OpsRecoveryRead, type Org, type Recorded } from "../api";
 import { MOVES, type Move } from "../domain/tenants";
 import { DomainDialog } from "./domain-dialog";
 import { OpsRecovery } from "./ops-recovery";
@@ -20,6 +21,10 @@ import { RemoveDialog } from "./remove-dialog";
 import { StatusDialog } from "./status-dialog";
 import { EraseControls, type EraseRenderSlots } from "./tenant-erase";
 import s from "./platform-console.module.css";
+
+/** A tenant with no recovery under way: its sections hold the room while the recovery read is out. */
+const NO_RECOVERY: OpsRecoveryRead = { request: null, state: null, recovery_available: false, ops_has_passkey: false, ops_enrolled: false,
+  second_operator_available: true, active_accounts: 0, hold_hours: 24, code_ttl_minutes: 10 };
 
 export function TenantConsolePanel({
   org,
@@ -40,6 +45,8 @@ export function TenantConsolePanel({
   const erase = useQuery(eraseQuery(org.id));
   const support = useQuery({ ...supportSessionsQuery(org.id), enabled: org.status === "ACTIVE", retry: false });
   const eraseView = queryView(erase);
+  const answered = recovery.data !== undefined && ["ready", "stale", "offline"].includes(queryView(recovery));
+  const online = useOnline();
   const [domainOpen, setDomainOpen] = useState(false);
   const [move, setMove] = useState<Move | null>(null);
   const [removing, setRemoving] = useState<"guarded" | null>(null);
@@ -88,6 +95,14 @@ export function TenantConsolePanel({
       : []),
   ];
 
+  const recoveryState = <QueryState q={recovery} compact failedTitle={t("tenants.recoveryFailed")}>{() => null}</QueryState>;
+  const recoverySections = (data: OpsRecoveryRead) => <>
+    {org.status === "ACTIVE" ? <RecordPaneSection title={t("tenants.section.code")}>
+      <Reissue embedded org={org} enrolled={data.ops_enrolled} onEnrolled={() => void recovery.refetch()} onIssued={onIssued} />
+    </RecordPaneSection> : null}
+    <RecordPaneSection title={t("opsRecovery.title")}><OpsRecovery embedded org={org} data={data} onIssued={onIssued} /></RecordPaneSection>
+  </>;
+
   const moves = MOVES[org.status].filter((m) => m !== "archive" || org.removable === true);
   const supportSessions = support.data?.sessions ?? [];
   const activeSupport = supportSessions.filter((item) => item.state === "ACTIVE").length;
@@ -126,29 +141,18 @@ export function TenantConsolePanel({
         <KeyValue density="dense" items={overviewItems} />
       </RecordPaneSection>
 
-      {org.status === "ACTIVE" && !recovery.isError ? (
-        <RecordPaneSection title={t("tenants.section.code")}>
-          <QueryState q={recovery} compact failedTitle={t("tenants.recoveryFailed")}>
-            {(data) => (
-              <Reissue
-                embedded
-                org={org}
-                enrolled={data.ops_enrolled}
-                onEnrolled={() => {
-                  void recovery.refetch();
-                }}
-                onIssued={onIssued}
-              />
-            )}
-          </QueryState>
-        </RecordPaneSection>
-      ) : null}
-
-      <RecordPaneSection title={t("opsRecovery.title")}>
-        <QueryState q={recovery} compact failedTitle={t("tenants.recoveryFailed")}>
-          {(data) => <OpsRecovery embedded org={org} data={data} onIssued={onIssued} />}
-        </QueryState>
-      </RecordPaneSection>
+      {/* One read fills both sections: until it answers, its loading or failure shows once over room held for a new tenant's
+          answer, and that room stays (an established tenant's answer is shorter), so deletion moves only for a taller answer
+          or refusal. Offline, the page's own notice says so. */}
+      <RecordPaneGroup held={!answered} shape={org.status} className={s.readSlot}>
+        {answered && recovery.data ? <>
+          <RecordPaneState>{online ? recoveryState : null}</RecordPaneState>
+          {recoverySections(recovery.data)}
+        </> : <div className={s.readHold}>
+          <div className={s.readPlaceholder} aria-hidden inert>{recoverySections(NO_RECOVERY)}</div>
+          <RecordPaneState>{recoveryState}</RecordPaneState>
+        </div>}
+      </RecordPaneGroup>
 
       {org.status === "ACTIVE" && supportSessions.length > 0 ? (
         <RecordPaneSection
@@ -185,9 +189,7 @@ export function TenantConsolePanel({
             onRemove={() => setRemoving("guarded")}
             onArchive={archive}
           />
-          <QueryState q={erase} loading={null} failedTitle={t("tenants.eraseFailed")}>
-            {() => null}
-          </QueryState>
+          {online || erase.data === undefined ? <QueryState q={erase} loading={null} failedTitle={t("tenants.eraseFailed")}>{() => null}</QueryState> : null}
         </div>
       </RecordPaneSection>
 

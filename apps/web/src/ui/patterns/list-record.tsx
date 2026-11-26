@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useContext } from "react";
+import { isValidElement, useContext } from "react";
 import { useActiveExperienceId } from "../../experience/dom";
 import { QueryState } from "../../lib/react/query-state";
 import { queryView } from "../../lib/react/query-view";
@@ -43,6 +43,7 @@ export function ListRecord({
   overlays,
   statusSegments,
   baseline,
+  failedActions,
   facts: _facts,
   ...columns
 }: ListRecordProps) {
@@ -56,6 +57,10 @@ export function ListRecord({
 
   if (useBaselineFallback && baseline) return <>{baseline()}</>;
 
+  const primary = head.primary && (isValidElement(head.primary)
+    ? head.primary
+    : <Button variant="primary" onClick={head.primary.onAction}>{head.primary.label}</Button>);
+
   const secondary = scope.embedded || level === 2;
   const Root = scope.landmark || secondary ? "div" : "main";
   const panes = columns;
@@ -67,7 +72,7 @@ export function ListRecord({
         <PageReadGate q={q} head={available => available || !secondary ? <Band className={s.head}>
           <PageHeadingLevel value={secondary ? 2 : 1}><PageHead title={head.title} titleId={head.titleId}
             asOf={available ? head.asOf : undefined}
-            primary={available && head.primary && <Button variant="primary" onClick={head.primary.onAction}>{head.primary.label}</Button>}
+            primary={available && primary}
             actions={available && <>{head.actions}{head.commands && <PageHeadActions {...head.commands} />}</>}
             tabs={available && shown(views) ? views : undefined}
           /></PageHeadingLevel>
@@ -75,7 +80,7 @@ export function ListRecord({
           {shown(find) || shown(tools) ? <div className={s.controls}>{find}{tools}</div> : null}
           {filters}
           {overlays}
-          <PageHeadingLevel value={2}><QueryState q={q} layout="list">{() => <>
+          <PageHeadingLevel value={2}><QueryState q={q} layout="list" failedActions={failedActions}>{() => <>
             {notes}
             <FlexibleColumns {...panes} />
             {foot}
@@ -110,12 +115,7 @@ export function ListRecord({
                   {find}
                 </div>
               ) : undefined;
-            const primaryNode =
-              available && head.primary ? (
-                <Button variant="primary" onClick={head.primary.onAction}>
-                  {head.primary.label}
-                </Button>
-              ) : undefined;
+            const primaryNode = available ? primary : undefined;
             const actionsNode =
               available && (head.actions || head.commands) ? (
                 <>
@@ -143,7 +143,7 @@ export function ListRecord({
         >
           {overlays}
           <PageHeadingLevel value={2}>
-            <QueryState q={q} layout="list">
+            <QueryState q={q} layout="list" failedActions={failedActions}>
               {() => (
                 <>
                   {shown(stats) ? <div className={s.statsBand}>{stats}</div> : null}
