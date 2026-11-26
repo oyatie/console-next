@@ -6,15 +6,17 @@ import { dirname, join, matchesGlob, relative, resolve } from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { test } from 'node:test';
 import yaml from 'js-yaml';
+import { dockerfileStages } from '../../scripts/quality/tooling-inventory.mjs';
 
 const root = resolve(process.env.PLATFORM_REPO_ROOT ?? '.');
 const read = path => readFileSync(join(root, path), 'utf8');
 const tracked = execFileSync('git', ['ls-files', '-z'], {cwd:root,encoding:'utf8'}).split('\0').filter(Boolean);
-const copies = [...read('deploy/images/console.Dockerfile').matchAll(/^COPY (?!\-\-from=)(.+)$/gm)].map(m => m[1].split(/\s+/));
+const dockerfile = 'deploy/images/console.Dockerfile';
+const stages = dockerfileStages(read(dockerfile), dockerfile);
 const ignores = read('deploy/images/console.Dockerfile.dockerignore').split('\n').filter(l => l && !l.startsWith('#'));
 const admitted = path => ignores.reduce((included, pattern) => matchesGlob(path, pattern.replace(/^!/, '')) ? pattern.startsWith('!') : included, true);
-const backendCopies = [...read('deploy/images/console.Dockerfile').split(' AS backend')[1].split(/^FROM /m)[0].matchAll(/^COPY (?!\-\-from=)(.+)$/gm)].map(m => m[1].split(/\s+/));
-const copied = path => backendCopies.some(parts => parts.slice(0,-1).some(src => path === src || path.startsWith(`${src}/`)));
+const backendSources = stages.find(stage => stage.name === 'backend').contextSources;
+const copied = path => backendSources.some(src => path === src || path.startsWith(`${src}/`));
 
 test('the actual native-build guard accepts each runner and refuses the opposite architecture', () => {
   const workflow = yaml.load(read('.github/workflows/platform.yml'));
@@ -27,7 +29,7 @@ test('the actual native-build guard accepts each runner and refuses the opposite
 });
 
 test('every Docker COPY source exists in the tracked, admitted context', () => {
-  for (const parts of copies) for (const src of parts.slice(0,-1)) {
+  for (const src of stages.flatMap(stage => stage.contextSources)) {
     assert.ok(tracked.some(p => (p === src || p.startsWith(`${src}/`)) && admitted(p)), `missing COPY source: ${src}`);
   }
 });

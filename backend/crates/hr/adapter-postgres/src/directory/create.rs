@@ -6,9 +6,9 @@ use console_kernel_core::{KernelError, OrgId, UserId};
 use console_leave_adapter_postgres::PgLeaveStore;
 use console_ontology_canonical_adapter_postgres::employment;
 use console_platform_authz::{Feature, Principal};
-use console_platform_db::{with_audits, with_org_conn};
+use console_platform_db::with_audits;
 use http::StatusCode;
-use sqlx::{PgPool, Postgres};
+use sqlx::Postgres;
 use uuid::Uuid;
 
 use crate::authz::{authorize_hr_place, hr_reach};
@@ -24,6 +24,7 @@ use crate::directory::create_guard::registration_key_reused;
 use crate::directory::create_placement::place_registration;
 use crate::directory::home_branch::assign_home_branch_if_unset;
 use crate::directory::normalize::normalize_create_employee_request;
+use crate::directory::read_warnings::{same_name_in_unit, visible_warnings};
 use crate::directory::types::{
     CreateEmployeeRequest, EmployeeCreateWarning, EmployeeDetailResponse,
     NormalizedCreateEmployeeRequest,
@@ -89,30 +90,6 @@ pub fn employee_create_db_error(error: sqlx::Error) -> HrError {
 pub use super::employee_number::{
     format_employee_number, next_employee_number, next_employee_sequence, sequence_of,
 };
-
-/// Other non-exited employees bound to `org_unit_id` with exactly this name.
-pub async fn same_name_in_unit_warning(
-    pool: &PgPool,
-    org: OrgId,
-    employee_id: Uuid,
-    name: &str,
-    org_unit_id: Option<Uuid>,
-) -> Result<Vec<EmployeeCreateWarning>, HrError> {
-    let name = name.to_owned();
-    with_org_conn::<_, _, HrError>(pool, org, move |tx| {
-        Box::pin(async move {
-            super::read_warnings::same_name_in_unit(
-                tx,
-                *org.as_uuid(),
-                employee_id,
-                &name,
-                org_unit_id,
-            )
-            .await
-        })
-    })
-    .await
-}
 
 /// The registration transaction of `POST /api/v1/employees` (everything but
 /// the audit row and the post-commit home-branch routing): the BW-19 checks,
@@ -204,28 +181,37 @@ impl HrService {
         // Workforce creation. The first home-branch routing authority is established
         // post-commit by [`assign_home_branch_if_unset`], exactly like the recruiting
         // hire handshake.
-        let (created, replayed, hire_warning) =
-            with_audits::<_, _, HrError>(&self.pool, org, |tx| {
-                Box::pin(async move {
-                    // AX-5: the place registered into, inside the grant set.
-                    let place = (
-                        request.legal_entity_id,
-                        request.workplace_id,
-                        request.org_unit_id,
-                    );
-                    let manage = Feature::EmployeeDirectoryManage;
-                    authorize_hr_place(tx, &principal, manage, place).await?;
-                    let (detail, replayed, warning) =
-                        register_in_tx(tx, org, actor, &request, employee_id).await?;
-                    let audits = if replayed {
-                        Vec::new()
-                    } else {
-                        vec![employee_create_audit(org, actor, &request, &detail)?]
-                    };
-                    Ok(((detail, replayed, warning), audits))
-                })
+        let (created, replayed, warnings) = with_audits::<_, _, HrError>(&self.pool, org, |tx| {
+            Box::pin(async move {
+                let place = (
+                    request.legal_entity_id,
+                    request.workplace_id,
+                    request.org_unit_id,
+                );
+                let manage = Feature::EmployeeDirectoryManage;
+                authorize_hr_place(tx, &principal, manage, place).await?;
+                let (detail, replayed, hire_warning) =
+                    register_in_tx(tx, org, actor, &request, employee_id).await?;
+                let employee = &detail.employee;
+                let mut warnings = same_name_in_unit(
+                    tx,
+                    *org.as_uuid(),
+                    employee.id,
+                    &employee.name,
+                    employee.org_unit_id,
+                )
+                .await?;
+                warnings.extend(hire_warning);
+                visible_warnings(tx, &principal, &mut warnings).await?;
+                let audits = if replayed {
+                    Vec::new()
+                } else {
+                    vec![employee_create_audit(org, actor, &request, &detail)?]
+                };
+                Ok(((detail, replayed, warnings), audits))
             })
-            .await?;
+        })
+        .await?;
 
         let employee_id = created.employee_id();
         let mut detail = if let Some(home_branch_id) = home_branch_id {
@@ -242,16 +228,8 @@ impl HrService {
         } else {
             created
         };
-        detail.warnings = same_name_in_unit_warning(
-            &self.pool,
-            org,
-            employee_id,
-            &detail.employee.name,
-            detail.employee.org_unit_id,
-        )
-        .await?;
-        detail.warnings.extend(hire_warning);
-        super::read_warnings::cap_warnings(&mut detail.warnings);
+        // Only the registration transaction checked which namesakes the creator may see.
+        detail.warnings = warnings;
         detail
             .warnings
             .extend(kind.and_then(|kind| minimum_wage_warning(kind, &facts, hire_date)));

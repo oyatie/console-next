@@ -3,9 +3,9 @@
     "apps/web/src/features/payroll/ui/employee-pay-console.tsx#EmployeePayConsole": 25,
     "apps/web/src/features/payroll/ui/payroll-home-console.tsx#PayrollHomeConsole": 21,
     "apps/web/src/features/payroll/ui/payroll-setup-console.tsx#PayrollSetupConsole": 37,
-    "apps/web/src/features/payroll/ui/reference-console.tsx#PayrollReferenceConsole": 16,
+    "apps/web/src/features/payroll/ui/reference-console.tsx#PayrollReferenceConsole": 15,
     "apps/web/src/features/payroll/ui/run-create-console.tsx#PayrollRunCreateConsole": 31,
-    "apps/web/src/features/statutory/ui/statutory-console.tsx#StatutoryConsole": 49
+    "apps/web/src/features/statutory/ui/statutory-console.tsx#StatutoryConsole": 48
   },
   "newScreens": {
     "apps/web/src/features/payroll/ui/employee-pay-console.tsx#EmployeePayConsole": {
@@ -34,7 +34,7 @@
     },
     "apps/web/src/features/payroll/ui/reference-console.tsx#PayrollReferenceConsole": {
       "FACT": 10,
-      "REFUSAL": 4,
+      "REFUSAL": 3,
       "EMPTY": 2,
       "LEGAL": 0,
       "RECEIPT": 0,
@@ -50,7 +50,7 @@
     },
     "apps/web/src/features/statutory/ui/statutory-console.tsx#StatutoryConsole": {
       "FACT": 29,
-      "REFUSAL": 6,
+      "REFUSAL": 5,
       "EMPTY": 2,
       "LEGAL": 6,
       "RECEIPT": 6,

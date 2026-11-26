@@ -63,6 +63,9 @@ test("base and Console token files define the frame roles, bar insets, kbd sizin
     "--chrome-warn-bg",
     "--chrome-warn-bd",
     "--chrome-scheme",
+    "--chrome-chevron",
+    "--select-chevron",
+    "--select-chevron-on-dark",
     "--space-half",
     "--space-1-5",
     "--radius-full",
@@ -113,6 +116,7 @@ test("base and Console token files define the frame roles, bar insets, kbd sizin
   expect(cr.dark["--chrome-danger-bg"]).toBeDefined();
   expect(cr.dark["--chrome-warn-bg"]).toBeDefined();
   expect(cr.light["--chrome-scheme"]).toBe("dark");
+  expect(cr.light["--chrome-chevron"]).toBe("var(--select-chevron-on-dark)");
   expect(cr.light["--radius-avatar"]).toBe("2px");
   expect(cr.light["--kbd-h"]).toBe("16px");
   expect(cr.light["--kbd-min-w"]).toBe("16px");

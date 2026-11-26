@@ -15,6 +15,7 @@ import type { RosterOrder } from "../domain/roster-order";
 import type { ColumnId } from "../domain/columns";
 import { Meter } from "../../../ui/meter/meter";
 import { nextText } from "../present";
+import { missingLabel } from "./roster-console-data";
 import s from "./roster.module.css";
 import { Muted } from "../../../ui/muted/muted";
 
@@ -46,18 +47,7 @@ function splitPosition(pos?: string | null): { grade: string; role: string } {
 }
 
 function MissingBadge({ e }: { e: Employee }) {
-  const missingAddr = (e as Employee & { missing_code?: string | null }).missing_code;
-  const labelText = missingAddr === "GENDER"
-    ? t("people.missing.gender")
-    : missingAddr === "ADDRESS"
-      ? t("people.missing.address")
-      : e.register_review_required
-        ? t("people.missing.address")
-        : e.identity_review_required
-          ? t("people.identityReview")
-          : !e.employment_type
-            ? t("roster.type.missing")
-            : null;
+  const labelText = missingLabel(e);
   if (!labelText) return null;
   return (
     <Chip tone="warn">

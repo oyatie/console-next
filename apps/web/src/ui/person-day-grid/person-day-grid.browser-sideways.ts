@@ -42,7 +42,15 @@ export function sidewaysCases(view: () => MonthView, widths: readonly string[]) 
     await element(grid.locator('td[aria-selected="true"]')).toHaveCount(31);
     expect(await active()).toBe("1,30");
     expect(await scrollLeft(grid)).toBe(kept);
-    // A press on the part of a cell that shows brings the rest of it into view, and selects that cell alone.
+    // A press on the part of a cell that shows brings the rest of it into view, and selects that cell alone. The box is
+    // first moved so that a day shows its left half beside the sticky total, whatever width the look draws a day at.
+    await dayCell(2, 1).locator("..").evaluate(tr => {
+      const box = tr.closest("table")!.parentElement!, cells = [...tr.querySelectorAll("td")];
+      const sticky = cells.filter(cell => getComputedStyle(cell).position === "sticky").map(cell => cell.getBoundingClientRect().left);
+      const edge = Math.min(box.getBoundingClientRect().left + box.clientWidth, ...sticky);
+      const day = cells.map(cell => cell.getBoundingClientRect()).find(b => b.right > edge)!;
+      box.scrollLeft += day.left + day.width / 2 - edge;
+    });
     const cut = await cutDay(dayCell(2, 1).locator(".."));
     expect(cut).toBeGreaterThan(0);
     await dayCell(2, cut + 1).click({ position: { x: 6, y: 10 } });

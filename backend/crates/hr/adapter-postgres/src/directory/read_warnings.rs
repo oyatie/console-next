@@ -42,7 +42,7 @@ pub(crate) fn build_name_warning(
     })
 }
 
-pub(crate) fn cap_warnings(warnings: &mut [EmployeeCreateWarning]) {
+fn cap_warnings(warnings: &mut [EmployeeCreateWarning]) {
     for warning in warnings.iter_mut() {
         if warning.code == "pay_below_minimum_wage" {
             continue;

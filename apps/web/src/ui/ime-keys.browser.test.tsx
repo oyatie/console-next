@@ -142,6 +142,13 @@ test.each(Object.keys(ACTED).flatMap(which => COMPOSING.map(state => ({ which, s
     await element(ACTED[which]!()).toHaveCount(1);
   });
 
+test("the find box takes the keys as soon as it is drawn: Enter acts with no click or Tab first", async () => {
+  await open("palette");
+  await element(page.getByRole("searchbox", { name: "Find a person" })).toBeFocused();
+  await page.keyboard.press("Enter");
+  await element(page.locator("#acted")).toHaveText("1");
+});
+
 test("dirty: an open combobox keeps its Escape, and an expanded disclosure button does not", async () => {
   await open("dirty");
   await page.getByRole("combobox", { name: "Pick" }).press("Escape");
