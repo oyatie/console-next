@@ -12,8 +12,10 @@ import { screens } from "./registry";
 
 test.beforeAll(() => loadCatalog("ko"));
 
-for (const width of [1440, 390]) for (const empty of [false, true]) {
-  test(`org: setup has one starting action without a second checklist (${empty ? "empty" : "populated"}, ${width}px) @ui-state`, async ({ page }) => {
+// The org screens are drawn for desk widths only: at 390 they owe the invariants (no sideways scroll, one main and one
+// h1, whole targets, nothing lost), and Classic's 390 layout (the tree, cards) is its own pin.
+for (const width of [1440, 390]) for (const empty of [false, true]) for (const classic of width === 390 && !empty ? [false, true] : [false]) {
+  test(`org: setup has one starting action without a second checklist (${empty ? "empty" : "populated"}, ${width}px)${classic ? " with the tree" : ""} @ui-state${classic ? " @baseline" : ""}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     const fixture = await mockScreen(page, screens[2], "populated");
     const tree = structure(empty ? 0 : 3);
@@ -37,7 +39,7 @@ for (const width of [1440, 390]) for (const empty of [false, true]) {
         await expect(main.getByRole("heading", { name: t("structure.first.title"), exact: true })).toHaveAttribute("id", "first-run-title");
         await expect(main.locator(".state .btn--primary")).toHaveCount(1);
         await expect(main.getByRole("link", { name: t("structure.first.addEntity"), exact: true })).toHaveAttribute("href", "/org/entities/new");
-      } else {
+      } else if (width > 390 || classic) {
         await expect(main.getByRole("tree")).toBeVisible();
         await expect(main.getByText(/기준 구조입니다|고용형태와 관계없이|Shift 클릭/)).toHaveCount(0);
         // The explainer is named by the text it shows, so speech input can press it by what is on it.
@@ -59,7 +61,7 @@ for (const width of [1440, 390]) for (const empty of [false, true]) {
   });
 }
 
-test("org: structure list becomes readable cards at 390px @ui-state", async ({ page }) => {
+test("org: structure list becomes readable cards at 390px @ui-state @baseline", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 });
   const fixture = await mockScreen(page, screens[2], "populated");
   const tree = structure(3);
@@ -91,7 +93,27 @@ test("org: structure list becomes readable cards at 390px @ui-state", async ({ p
   } finally { await page.close(); fixture.release(); }
 });
 
-test("org: entity list becomes readable cards at 390px @ui-state", async ({ page }) => {
+test("org: structure list keeps the phone invariants at 390px @ui-state", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  const fixture = await mockScreen(page, screens[2], "populated");
+  await mockRoute(page, "get", "/api/v1/org-structure", { status: 200, json: structure(3) });
+  try {
+    await page.goto("/org?view=list");
+    const main = page.getByRole("main");
+    await expect(main.getByRole("heading", { level: 1 })).toHaveCount(1);
+    const grid = main.getByRole("grid", { name: t("structure.list.label"), exact: true });
+    await expect(grid.getByRole("rowheader").first()).toBeVisible();
+    await expect(page.getByRole("searchbox", { name: t("structure.find.label"), exact: true })).toHaveCount(1);
+    for (const theme of ["light", "dark"]) {
+      await page.evaluate(theme => { document.documentElement.dataset.theme = theme; }, theme);
+      await fits(page, `org structure list invariants/390/${theme}`);
+      await expectAxe(page, `org structure list invariants/390/${theme}`);
+    }
+    expect(fixture.unexpected).toEqual([]);
+  } finally { await page.close(); fixture.release(); }
+});
+
+for (const classic of [false, true]) test(`org: entity list ${classic ? "becomes readable cards" : "stays readable"} at 390px @ui-state${classic ? " @baseline" : ""}`, async ({ page }) => {
   const fixture = await mockScreen(page, screens[2], "populated");
   await mockRoute(page, "get", "/api/v1/legal-entities", { status: 200, json: { items: [entityRecord("populated")] } });
   try {
@@ -99,7 +121,7 @@ test("org: entity list becomes readable cards at 390px @ui-state", async ({ page
       await page.setViewportSize({ width, height: 900 });
       await page.goto("/org?tab=entities");
       const grid = page.getByRole("grid", { name: t("entity.list.table"), exact: true });
-      if (width === 390) {
+      if (width === 390 && classic) {
         await expect(grid).toHaveAttribute("data-layout", "cards");
         await expect(grid.locator("dt").filter({ hasText: t("entity.col.brn") })).toBeVisible();
         await expect(grid.locator("dt").filter({ hasText: t("entity.col.people") })).toBeVisible();

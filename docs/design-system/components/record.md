@@ -802,7 +802,7 @@ Also accepts the attributes of `InputHTMLAttributes` (`@types/react`), except `c
 | `--shadow` | `box-shadow` |
 | `--space-1` | `column-gap`, `gap`, `height`, `margin-left`, `margin-top`, `min-height`, `padding`, `padding-top` |
 | `--space-2` | `gap`, `margin`, `margin-top`, `padding`, `padding-inline`, `padding-top` |
-| `--space-3` | `gap`, `grid-template-columns`, `height`, `margin`, `margin-top`, `padding`, `padding-bottom`, `padding-left`, `padding-right`, `width` |
+| `--space-3` | `gap`, `grid-template-columns`, `height`, `margin`, `margin-inline`, `margin-top`, `padding`, `padding-bottom`, `padding-inline`, `padding-left`, `padding-right`, `width` |
 | `--space-4` | `height`, `margin`, `min-width`, `padding`, `padding-left`, `padding-right`, `scroll-margin-top`, `top` |
 | `--space-5` | `height`, `min-height`, `min-width` |
 | `--space-6` | `column-gap`, `grid-template-columns`, `height`, `min-height` |

@@ -51,7 +51,7 @@ function ConsoleAccountSlot({
   return (
     <Suspense
       fallback={
-        <Link to="/account" className={s.accountBtn} aria-label={name}>
+        <Link to="/account" className={s.accountBtn} aria-label={compact ? name : undefined}>
           <Avatar name={name} size="sm" tone="accent" />
           {!compact ? <bdi className={s.accountName}>{name}</bdi> : null}
         </Link>
@@ -128,6 +128,8 @@ export function ConsoleTopBar({
                     className={props.className}
                     activeOptions={{ exact: item.href !== currentModuleTo }}
                     aria-current={props["aria-current"]}
+                    aria-label={props["aria-label"]}
+                    aria-describedby={props["aria-describedby"]}
                   >
                     {props.children}
                   </Link>
@@ -147,6 +149,7 @@ export function ConsoleTopBar({
                 className={s.searchField}
                 onClick={onSearch}
                 aria-describedby={searchScopeId}
+                aria-haspopup="dialog"
                 aria-keyshortcuts={singleKeys ? "Meta+K Control+K /" : "Meta+K Control+K"}
               >
                 <Search size={14} aria-hidden="true" />

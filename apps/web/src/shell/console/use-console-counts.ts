@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
 import { useLocation } from "@tanstack/react-router";
+import { t } from "@console/i18n";
 import { inboxReadFilter, inboxView } from "../../features/home/domain/inbox-filter";
 import { cursorPages } from "../../lib/query";
 import { countRead, useNewestPage } from "../top-bar/inbox-count";
@@ -28,10 +29,18 @@ export function useConsoleCounts(enabled: boolean) {
   const firstPage = useNewestPage(inbox);
   const turn = firstPage?.counts?.turn;
   const approvalsFilter = firstPage?.attention_filters?.find(entry => entry.key === "approvals");
+  const total = turn?.total;
+  const exact = turn?.total_is_exact ?? true;
 
   return {
-    inboxCount: turn?.total && turn.total > 0 ? turn.total : undefined,
-    inboxExact: turn?.total_is_exact ?? true,
+    inboxCount: total && total > 0 ? total : undefined,
+    inboxExact: exact,
+    // While the count loads or cannot be read the badge shows nothing, so the to-do link's name says so, in Classic's
+    // words. A shown count names the link itself, as drawn; its meaning is the description.
+    inboxName: total == null ? t(inbox.isPending ? "shell.needsMe.loading" : "shell.needsMe.unknown") : undefined,
+    inboxDescription: total
+      ? t(exact ? "shell.needsMe.countDescription" : "shell.needsMe.countMoreDescription", { count: total })
+      : undefined,
     approvalsCount: approvalsFilter?.total && approvalsFilter.total > 0 ? approvalsFilter.total : undefined,
   };
 }

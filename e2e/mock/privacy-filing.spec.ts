@@ -4,6 +4,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { fits, expectAxe } from "../a11y";
 import { mockScreen } from "./screen";
 import { chooseRadio } from "../flows";
+import { setLocale } from "../shell";
 import { screens } from "../states/registry";
 import { user } from "./fixtures";
 
@@ -81,7 +82,7 @@ test("passkey cancellation and reload keep the draft; submit binds the exact pay
   await expect(page.getByRole("radio", { name: /내 인사 정보/ })).toBeChecked();
   await page.evaluate(() => sessionStorage.removeItem("cancel-passkey"));
   await page.getByRole("button", { name: "요구 접수", exact: true }).click();
-  const panel = page.locator("[data-side-panel]");
+  const panel = page.getByRole("complementary", { name: receipt.receipt_no, exact: true });
   await expect(panel.getByRole("heading", { name: receipt.receipt_no, exact: true })).toBeVisible();
   await expect(panel.getByText("D-17", { exact: true })).toBeVisible();
   expect(fixture.writes).toHaveLength(1);
@@ -118,7 +119,7 @@ for (const code of ["passkey_step_up_failed", "no_employee_record", "request_kin
 
 test("code-only options use the English catalog after a language change", async ({ page }) => {
   await filing(page);
-  await page.getByRole("combobox", { name: "언어", exact: true }).selectOption("en");
+  await setLocale(page, "en");
   await expect(page.getByRole("radio", { name: /My HR information/ })).toBeVisible();
   await expect(page.getByRole("checkbox", { name: "Access · View your recorded information", exact: true })).toBeVisible();
   await expect(page.getByRole("checkbox", { name: "Consent withdrawal · Withdraw consent to information processing", exact: true })).toBeVisible();

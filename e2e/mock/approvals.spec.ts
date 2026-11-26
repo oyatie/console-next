@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible, expectAxe, fits } from "../a11y";
+import { experienceState } from "../experience";
+import { openNav } from "../shell";
 import { recordShifts } from "../stability";
 import { failure } from "./fixtures";
 import { mockScreen } from "./screen";
@@ -46,11 +48,11 @@ for (const { code, message } of [
   await page.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
   await page.getByRole("row", { name: /영업 조직 개편안/ }).click();
   const panel = column(page);
-  const facts = panel.getByRole("region", { name: t("approvals.preview.facts"), exact: true });
-  await expect(facts.getByText(t("approvals.field.verification"), { exact: true })).toHaveCount(1);
-  await expect(facts.getByText(t(message), { exact: true })).toBeVisible();
-  await expect(panel.getByRole("region", { name: t("approvals.preview.route"), exact: true })).not.toContainText("내 차례");
-  await expect(panel.getByRole("link", { name: "원본 기록 열기", exact: true })).toHaveAttribute("href", "/org/changes/change-1");
+  await expect(panel.getByText(t("approvals.field.verification"), { exact: true })).toHaveCount(1);
+  await expect(panel.getByText(t(message), { exact: true })).toBeVisible();
+  await expect(panel.getByRole("list", { name: t("approvals.preview.route"), exact: true })).not.toContainText(item.route[2].meta);
+  // Console names the link after the source kind too; the shared label stays inside it.
+  await expect(panel.getByRole("link", { name: t("approvals.openSource") })).toHaveAttribute("href", "/org/changes/change-1");
   await expect(panel.getByRole("link", { name: "결재 문서 열기", exact: true })).toHaveCount(0);
   await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
   await page.screenshot({ path: info.outputPath(`approval-blocked-${width}-${theme}.png`), fullPage: true });
@@ -64,6 +66,10 @@ const documentOf = (source: object) => ({ ...source, body: [{ key: "change", lab
 const mockDocument = (page: Page, source: object = item) => page.route(url => /^\/api\/v1\/approvals\/[^/]+$/.test(url.pathname),
   route => route.fulfill({ status: 200, json: documentOf({ ...source, id: decodeURIComponent(new URL(route.request().url()).pathname.split("/").pop()!) }) }));
 const column = (page: Page) => page.getByRole("complementary", { name: "결재 문서", exact: true });
+/** The decision commands by their exact names: a source filter's name may hold the same words. */
+const decisionButtons = (scope: Page | Locator) => scope.getByRole("button", { name: t("uiWorklist.approve"), exact: true })
+  .or(scope.getByRole("button", { name: t("uiApprovalCard.reject"), exact: true }))
+  .or(scope.getByRole("button", { name: t("uiApprovalCard.return"), exact: true }));
 
 async function mockApprovals(page: Page, reply: "ready" | "failed" | "refused" = "ready") {
   const queries: URLSearchParams[] = [];
@@ -88,16 +94,16 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await mockDocument(page);
     await page.goto("/approvals");
     await expect(page.getByRole("heading", { level: 1, name: t("approvals.title"), exact: true })).toBeVisible();
-    if (width === 390) await page.getByRole("button", { name: t("shell.menu"), exact: true }).click();
-    await expect(page.getByRole("navigation", { name: t("shell.nav") }).getByRole("link", { name: new RegExp(`^${t("approvals.title")}`) })).toBeVisible();
-    if (width === 390) await page.getByRole("button", { name: t("shell.menu"), exact: true }).click();
+    await expect((await openNav(page)).getByRole("link", { name: new RegExp(`^${t("approvals.title")}`) })).toBeVisible();
+    await page.keyboard.press("Escape");
     const tabs = page.getByRole("navigation", { name: t("approvals.tabs"), exact: true });
     await expect(tabs.getByRole("link")).toHaveCount(5);
     await expect(tabs.getByRole("link", { name: /대기/ })).toHaveAttribute("aria-current", "page");
     const row = page.getByRole("row", { name: /영업 조직 개편안/ });
-    await expect(row.getByText(item.document_no, { exact: true })).toBeVisible();
+    // At phone width Console sets the number and the requester inside the row's one-line summary.
+    await expect(row.getByText(item.document_no).filter({ visible: true }).first()).toBeVisible();
     if (width === 390) expect((await row.boundingBox())!.height).toBeLessThanOrEqual(280);
-    await expect(row.getByText("김기안", { exact: true })).toBeVisible();
+    await expect(row.getByText(item.requester.name).filter({ visible: true }).first()).toBeVisible();
     await expectAccessible(page, `approval list ${width}px ${theme}`);
     if (width === 390) await fits(page, "approval list");
     await page.screenshot({ path: info.outputPath(`approvals-${width}-${theme}-before.png`), fullPage: true });
@@ -106,30 +112,16 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await expect(panel.getByRole("heading", { name: "영업 조직 개편안", exact: true })).toBeVisible();
     await expect(panel.getByText(t("enum.orgChangeStatus.IN_APPROVAL"), { exact: true })).toBeVisible();
     await expect(panel.getByText(/hr|executive|IN_APPROVAL/, { exact: true })).toHaveCount(0);
-    await expect(panel.getByText(new RegExp(t("enum.approvalRole.executive")))).toBeVisible();
+    await expect(panel.getByText(new RegExp(t("enum.approvalRole.executive"))).first()).toBeVisible();
     const chain = panel.getByRole("list", { name: "결재선", exact: true });
     await expect(chain.getByRole("listitem")).toHaveCount(item.route.length);
-    await expect(chain.locator('[aria-current="step"]')).toContainText(`${t("enum.approvalRole.legal")} · 박결재`);
-    if (width === 1440) {
-      const rowHeight = await row.evaluate(el => parseFloat(getComputedStyle(el).getPropertyValue("--row-h")));
-      expect((await row.boundingBox())!.height).toBeLessThanOrEqual(rowHeight + 1);
-      for (const text of [item.document_no]) {
-        const metrics = await row.getByText(text, { exact: true }).evaluate(el => {
-          const range = document.createRange();
-          range.selectNodeContents(el);
-          return { height: range.getBoundingClientRect().height, lineHeight: parseFloat(getComputedStyle(el).lineHeight) };
-        });
-        expect(metrics.height, `${text} stays on one line in the split list`).toBeLessThanOrEqual(metrics.lineHeight + 1);
-      }
-    }
-    if (width === 1440) {
-      // The row carries the 결재선 as chips: the steps around the current one, the rest counted.
-      const chips = row.getByRole("list", { name: "결재선", exact: true });
-      await expect(chips.locator('[aria-current="step"]')).toContainText(`${t("enum.approvalRole.legal")} · 박결재`);
-      await expect(chips.getByRole("listitem").last()).toHaveText("+2");
-    }
-    await expect(panel.getByRole("link", { name: "원본 기록 열기", exact: true })).toHaveAttribute("href", "/org/changes/change-1");
-    await expect(page.getByRole("button", { name: /승인|반려|보완 요청/ })).toHaveCount(0);
+    // How a step joins its role and assignee is each style's own; the split list's row and its route chips are Classic's
+    // (pinned below).
+    const current = item.route.find(step => step.state === "current")!;
+    await expect(chain.locator('[aria-current="step"]')).toContainText(t("enum.approvalRole.legal"));
+    await expect(chain.locator('[aria-current="step"]')).toContainText(current.assignee);
+    await expect(panel.getByRole("link", { name: t("approvals.openSource") })).toHaveAttribute("href", "/org/changes/change-1");
+    await expect(decisionButtons(page)).toHaveCount(0);
     await page.screenshot({ path: info.outputPath(`approvals-${width}-${theme}-preview.png`), fullPage: true });
     // Preview opening inherits a shell shift; keep its axe audit separate from the list arrival audit.
     await expectAxe(page, `approval inbox ${width}px ${theme}`);
@@ -147,13 +139,39 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
   });
 }
 
+// Classic keeps the split list's row to one line and carries the route as chips: the steps around the current one, the
+// rest counted. No board draws the approvals list.
+test("Classic's split approval list keeps one-line rows with the route as chips", { tag: "@baseline" }, async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await mockScreen(page, screens[0], "empty");
+  await mockApprovals(page);
+  await mockDocument(page);
+  await page.goto("/approvals");
+  const row = page.getByRole("row", { name: /영업 조직 개편안/ });
+  await row.click();
+  await expect(column(page).getByRole("heading", { name: item.title, exact: true })).toBeVisible();
+  const rowHeight = await row.evaluate(el => parseFloat(getComputedStyle(el).getPropertyValue("--row-h")));
+  expect((await row.boundingBox())!.height).toBeLessThanOrEqual(rowHeight + 1);
+  const metrics = await row.getByText(item.document_no, { exact: true }).evaluate(el => {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    return { height: range.getBoundingClientRect().height, lineHeight: parseFloat(getComputedStyle(el).lineHeight) };
+  });
+  expect(metrics.height, `${item.document_no} stays on one line in the split list`).toBeLessThanOrEqual(metrics.lineHeight + 1);
+  const chips = row.getByRole("list", { name: t("approvals.preview.route"), exact: true });
+  await expect(chips.locator('[aria-current="step"]')).toContainText(`${t("enum.approvalRole.legal")} · ${item.route[2].assignee}`);
+  await expect(chips.getByRole("listitem").last()).toHaveText("+2");
+});
+
+const longItem = {
+  ...item,
+  title: "전사 영업 조직 개편 및 인사 운영 체계 변경 승인요청",
+  document_no: "OC-2026-HR-1103-001",
+};
+
+// The readable-content measurements read Classic's list cells (the title's span, the --row-h row height).
 for (const width of [1280, 1440]) for (const theme of ["light", "dark"]) {
-  test(`approval columns preserve readable content at ${width}px ${theme}`, async ({ page }, info) => {
-    const longItem = {
-      ...item,
-      title: "전사 영업 조직 개편 및 인사 운영 체계 변경 승인요청",
-      document_no: "OC-2026-HR-1103-001",
-    };
+  test(`approval columns preserve readable content at ${width}px ${theme}`, { tag: "@baseline" }, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const mock = await mockScreen(page, screens[0], "empty");
@@ -228,17 +246,42 @@ for (const width of [1280, 1440]) for (const theme of ["light", "dark"]) {
   });
 }
 
+async function openLongList(page: Page, width: number) {
+  await page.setViewportSize({ width, height: 900 });
+  await mockScreen(page, screens[0], "empty");
+  await page.route(url => url.pathname === "/api/v1/approvals", route => route.fulfill({
+    json: { ...response(), items: [longItem] },
+  }));
+  await page.goto("/approvals");
+  return page.getByRole("grid", { name: t("approvals.list"), exact: true }).getByRole("columnheader");
+}
+
+// No board draws the approvals list, so these are the render's columns: status first and the open command last, with the
+// number, route, requester and date only where the desk is wide.
+test.describe("console look", () => {
+  test.use({ storageState: experienceState("console") });
+  for (const width of [1280, 1440]) test(`Console approval list columns at ${width}px`, async ({ page }) => {
+    const wide = width === 1440 ? [t("approvals.field.documentNo")] : [];
+    const wideTail = width === 1440 ? [t("approvals.preview.route"), t("approvals.col.requester"), t("approvals.col.requestedAt")] : [];
+    await expect(await openLongList(page, width)).toHaveText([
+      t("approvals.col.status"), ...wide, t("approvals.col.title"), t("approvals.col.source"), ...wideTail, t("home.worklist.col.action"),
+    ]);
+  });
+});
+
 test("approval rows keep absent document numbers and routes unknown", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const mock = await mockScreen(page, screens[0], "empty");
   await page.route(url => url.pathname === "/api/v1/approvals", route => route.fulfill({ status: 200,
     json: { ...response(), items: [{ ...item, document_no: null, route: [], requester: null }] },
   }));
+  // Console also reads the first document while the list is open.
+  await mockDocument(page, { ...item, document_no: null, route: [], requester: null });
   await page.goto("/approvals");
   const row = page.getByRole("row", { name: /영업 조직 개편안/ });
   await expect(row.getByRole("gridcell", { name: "—", exact: true })).toHaveCount(3);
   await expect(row.getByRole("list")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /승인|반려|보완 요청/ })).toHaveCount(0);
+  await expect(decisionButtons(page)).toHaveCount(0);
   expect(mock.unexpected).toEqual([]);
 });
 

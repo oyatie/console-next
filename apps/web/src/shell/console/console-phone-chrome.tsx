@@ -46,6 +46,7 @@ export function ConsolePhoneTop({
                 type="button"
                 className={s.phoneIconBtn}
                 aria-label={t("shell.jumpLabel")}
+                aria-haspopup="dialog"
                 onClick={onSearch}
               >
                 <Search size={18} aria-hidden="true" />
@@ -73,15 +74,23 @@ const CERTIFICATES = "/account?sheet=certificates";
 export function ConsolePhoneBottom({
   links,
   inboxCount,
+  inboxExact = true,
+  inboxName,
+  inboxDescription,
   approvalsCount,
   platform,
   mode,
   unlinked,
   activeId,
   onNavigate,
+  menuAway = false,
 }: {
   links: readonly NavLink[];
   inboxCount?: number;
+  inboxExact?: boolean;
+  /** The to-do link's name and count description, which say the count's state when the badge cannot. */
+  inboxName?: string;
+  inboxDescription?: string;
   approvalsCount?: number;
   platform: boolean;
   mode?: "self-service";
@@ -89,6 +98,11 @@ export function ConsolePhoneBottom({
   unlinked?: boolean;
   activeId?: string;
   onNavigate: (href: string) => void;
+  /**
+   * The menu is still loading, or its read failed: My profile takes the last of the bar's five places, where a
+   * five-place menu leaves it.
+   */
+  menuAway?: boolean;
 }) {
   const items: PhoneNavItem[] =
     !platform && mode === "self-service"
@@ -99,13 +113,11 @@ export function ConsolePhoneBottom({
           ...(unlinked ? [] : [{ id: CERTIFICATES, href: CERTIFICATES, label: t("shell.link.certificates"), icon: FileText }]),
           { id: "/account", href: "/account", label: t("shell.link.profile"), icon: UserRound },
         ]
-      : links.map(link => ({
-          id: link.to,
-          href: link.to,
-          label: t(link.label),
-          icon: link.icon,
-          count: link.countKey === "inbox" ? inboxCount : link.countKey === "approvals" ? approvalsCount : undefined,
-        }));
+      : links.map(link =>
+          link.countKey === "inbox"
+            ? { id: link.to, href: link.to, label: t(link.label), icon: link.icon, count: inboxCount, countMore: !inboxExact, name: inboxName, description: inboxDescription }
+            : { id: link.to, href: link.to, label: t(link.label), icon: link.icon, count: link.countKey === "approvals" ? approvalsCount : undefined },
+        );
   const here = useLocation({ select: location => location.href });
   if (!platform && mode !== "self-service" && !items.some(item => item.id === "/account")) {
     items.push({ id: "/account", href: "/account", label: t("shell.profile"), icon: UserRound });
@@ -113,6 +125,9 @@ export function ConsolePhoneBottom({
   return (
     <PhoneBottomNav
       items={items}
+      // shortcut: a shorter menu widens My profile's slot when it lands (the slot still covers this place), and a longer
+      // one puts More here with My profile inside; holding the right place needs the menu's size before the menu itself.
+      reserve={menuAway ? 5 : undefined}
       activeId={activeId}
       onNavigate={item => onNavigate(item.href)}
       renderLink={(item, props) => (
@@ -124,6 +139,8 @@ export function ConsolePhoneBottom({
           className={props.className}
           activeOptions={{ exact: item.href !== activeId }}
           aria-current={props["aria-current"]}
+          aria-label={props["aria-label"]}
+          aria-describedby={props["aria-describedby"]}
         >
           {props.children}
         </Link>

@@ -39,6 +39,7 @@ import { buildConsoleStatusSegments, buildStatItems, CHOSUNG, filterConsoleRows,
 import { RosterConsoleRail } from "./roster-console-rail";
 import { RosterEmpty } from "./roster-empty";
 import { RosterFirstRun } from "./roster-first-run";
+import { RosterSavedViews } from "./roster-saved-views";
 import { RosterTable } from "./roster-table";
 import { RosterUnitPanel } from "./roster-unit-panel";
 import { BULK_MAX } from "./use-roster";
@@ -60,7 +61,7 @@ export function RosterConsole({
     contractWindow, soonDays, search, navigate, today, status, review, unit, ids, open, openUnit, select, selectRelated,
     full, expand, restore, unitTrigger, unitItems, selectedUnit, sort, q, exitView, setExitView, sel, setSel,
     recorded, batch, setBatch, rescinding, setRescinding, setRecorded, rescindReady, r, view, prefetch, setFilter,
-    find, reset, closePaste, bulkDone, openRecord, scroller, scrollRef, onRowFocus, filtered, customFilters, sameName, onRowAction,
+    find, reset, viewFilters, applyView, closePaste, bulkDone, openRecord, scroller, scrollRef, onRowFocus, filtered, customFilters, sameName, onRowAction,
   } = screen;
 
   const consoleNavigate = useNavigate();
@@ -103,7 +104,8 @@ export function RosterConsole({
 
   const voided = status === "EXITED" && exitView === "voided";
   const firstRun = !r.loading && !r.list.error && !filtered && (r.status.totals.all ?? total) === 0 && !r.changed;
-  const resetAll = () => { setEmpTypes(new Set()); setActiveChosung(null); reset(); };
+  const clearLocalFilters = () => { setEmpTypes(new Set()); setActiveChosung(null); };
+  const resetAll = () => { clearLocalFilters(); reset(); };
   const toggleEntityExpand = (id: string) => setExpandedEntities(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   const activeFilterCount = (unit ? 1 : 0) + (ids.length > 0 ? 1 : 0) + empTypes.size + review.length + (activeChosung ? 1 : 0);
   const registerMissingCount = r.review.totals.register ?? 0;
@@ -126,6 +128,8 @@ export function RosterConsole({
       onChange={next => setFilter({ sort: (next.direction === "desc" ? `-${next.field}` : next.field) as RosterOrder })}
     />
   );
+  // In the head it stays outside the list's read: kept in place when the list fails, offered only with the list it filters.
+  const savedViews = <RosterSavedViews unavailable={!!r.list.error && r.list.data === undefined} filters={viewFilters} onApply={filters => { clearLocalFilters(); applyView(filters); }} />;
 
   return (
     <ListRecord
@@ -145,9 +149,10 @@ export function RosterConsole({
         primary: manage ? { id: "register", label: t("people.tools.add"), onAction: () => void consoleNavigate({ to: "/people/new", search: {} }) } : undefined,
       }}
       find={<div ref={findInputRef} className={s.consoleFind} data-list-find=""><WorklistSearchField label={t("people.find.placeholder")} value={q} onChange={find} /></div>}
-      tools={<div className={s.consoleDesktopSort}>{sortControl}</div>}
+      // A phone moves the sort and saved views together to the filter bar, which comes with the read list, so the head keeps one row.
+      tools={<div className={s.consoleDesktopTools}>{sortControl}{savedViews}</div>}
       stats={!firstRun ? <StatRow label={t("people.stat.label")} items={buildStatItems({ status, review, statusTotals: r.status.totals, registerMissingCount, setFilter })} /> : undefined}
-      rail={!firstRun ? <RosterConsoleRail entities={entities} facets={r.facets} unit={unit} idsActive={ids.length > 0} expandedEntities={expandedEntities} toggleEntityExpand={toggleEntityExpand} empTypes={empTypes} setEmpTypes={setEmpTypes} review={review} registerMissingCount={registerMissingCount} soonDays={soonDays} contractSoonCount={contractSoonCount} activeFilterCount={activeFilterCount} q={q} status={status} setFilter={setFilter} resetAll={resetAll} phoneTools={sortControl} /> : undefined}
+      rail={!firstRun ? <RosterConsoleRail entities={entities} facets={r.facets} unit={unit} idsActive={ids.length > 0} expandedEntities={expandedEntities} toggleEntityExpand={toggleEntityExpand} empTypes={empTypes} setEmpTypes={setEmpTypes} review={review} registerMissingCount={registerMissingCount} soonDays={soonDays} contractSoonCount={contractSoonCount} activeFilterCount={activeFilterCount} q={q} status={status} setFilter={setFilter} resetAll={resetAll} phoneTools={<>{sortControl}{savedViews}</>} /> : undefined}
       indexBar={!voided && !firstRun ? <IndexBar label={t("people.index.label")} items={CHOSUNG.map(ch => ({ id: ch, label: ch }))} active={activeChosung} onSelect={setActiveChosung} range={displayedRows.length > 0 ? t("people.index.range", { start: rangeStart, end: rangeEnd, total: rangeTotal }) : undefined} prev={{ label: t("people.index.prev"), disabled: hasClientFilter || firstOffset <= 0, onPress: () => scroller.current?.scrollBy({ top: -400, behavior: "smooth" }) }} next={{ label: t("people.index.next"), disabled: hasClientFilter || !r.list.hasNextPage, onPress: () => { if (r.list.hasNextPage && !r.list.isFetchingNextPage) void r.list.fetchNextPage(); } }} /> : undefined}
       notes={
         <>

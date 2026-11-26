@@ -2,6 +2,7 @@
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { fits } from "../a11y";
+import { experienceState } from "../experience";
 import { expectStable, recordShifts } from "../stability";
 import { accountScreens } from "../states/account";
 import { accountReads } from "./account";
@@ -30,7 +31,7 @@ for (const read of ["/api/v1/auth/privacy-consent/status", "/api/v1/onboarding/t
         await page.goto("/account");
         await requested.promise;
         const main = page.getByRole("main");
-        await expect(main.getByRole("heading", { level: 1 })).toBeVisible();
+        await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
         const privacy = main.getByRole("link", { name: t("account.privacy.title"), exact: true });
         await expect(privacy).toBeVisible();
         await expect(main.getByRole("heading", { name: t("account.access.title"), exact: true })).toBeVisible();
@@ -59,6 +60,23 @@ for (const read of ["/api/v1/auth/privacy-consent/status", "/api/v1/onboarding/t
     });
   }
 }
+
+// Where /account puts its one page title at phone width: Classic in main; Console in the bar, as the phone profile
+// board draws it. The title's words are left to the owner's ruling on the page name.
+for (const style of ["baseline", "console"] as const) test.describe(`${style} account title`, () => {
+  test.use({ storageState: experienceState(style) });
+  test(`/account titles the page in the ${style === "baseline" ? "main" : "banner"} landmark at 390px`, style === "baseline" ? { tag: "@baseline" } : {}, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 900 });
+    const fixture = await mockScreen(page, accountScreens[0], "populated");
+    await accountReads(page, "save-unchanged");
+    try {
+      await page.goto("/account");
+      await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+      await expect(page.getByRole(style === "baseline" ? "main" : "banner").getByRole("heading", { level: 1 })).toBeVisible();
+      expect(fixture.unexpected).toEqual([]);
+    } finally { await page.close(); fixture.release(); }
+  });
+});
 
 for (const read of ["/api/v1/auth/privacy-consent/status", "/api/v1/onboarding/terms"]) {
   for (const retryAfter of [false, true]) test(`/account stays usable during ${read} backoff with Retry-After ${retryAfter} @ui-state`, async ({ page }) => {

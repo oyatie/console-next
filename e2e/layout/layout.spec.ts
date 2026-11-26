@@ -1,22 +1,38 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { mockNavigate } from "../mock/navigation";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+import { experienceState } from "../experience";
+
+async function openGallery(page: Page, width: number, theme: string) {
+  await page.setViewportSize({ width, height: width === 1280 ? 720 : 1080 });
+  await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
+  // Other gallery entries may read access facts; no live API participates in this component proof.
+  await page.route("**/api/**", route => route.fulfill({ status: 403, json: { error: { code: "forbidden", message: "" } } }));
+  await mockNavigate(page, "/_gallery");
+  // The lazy gallery route must mount before the table assertions use their own budget.
+  await expect(page.getByRole("heading", { name: "컴포넌트 갤러리", level: 1, includeHidden: true })).toBeVisible({ timeout: 15_000 });
+  if (width === 390) {
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.getByRole("dialog").getByRole("button", { name: "닫기", exact: true }).click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+  }
+  return (name: string) => page.locator(`[data-column-contract="${name}"]`);
+}
+
+// Desk row height is a look: Classic's 32 px rows (one more for the rule); Console's 28 px, the board's grid row.
+for (const [style, rows] of [["baseline", 32], ["console", 28]] as const) test.describe(`${style} table rows`, () => {
+  test.use({ storageState: experienceState(style) });
+  for (const width of [1280, 1440, 1920]) test(`table rows are ${rows}px in ${style} at ${width}px`, style === "baseline" ? { tag: "@baseline" } : {}, async ({ page }) => {
+    const state = await openGallery(page, width, "light");
+    const height = await state("populated").getByRole("grid").locator("tbody tr").first().evaluate(el => el.getBoundingClientRect().height);
+    expect(height).toBeGreaterThanOrEqual(rows);
+    expect(height).toBeLessThanOrEqual(rows + 1);
+  });
+});
 
 for (const width of [390, 1280, 1440, 1920]) for (const theme of ["light", "dark"]) {
   test(`table contract at ${width}px in ${theme}`, async ({ page }, testInfo) => {
-    await page.setViewportSize({ width, height: width === 1280 ? 720 : 1080 });
-    await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
-    // Other gallery entries may read access facts; no live API participates in this component proof.
-    await page.route("**/api/**", route => route.fulfill({ status: 403, json: { error: { code: "forbidden", message: "" } } }));
-    await mockNavigate(page, "/_gallery");
-    // The lazy gallery route must mount before the table assertions use their own budget.
-    await expect(page.getByRole("heading", { name: "컴포넌트 갤러리", level: 1, includeHidden: true })).toBeVisible({ timeout: 15_000 });
-    if (width === 390) {
-      await expect(page.getByRole("dialog")).toBeVisible();
-      await page.getByRole("dialog").getByRole("button", { name: "닫기", exact: true }).click();
-      await expect(page.getByRole("dialog")).toHaveCount(0);
-    }
-    const state = (name: string) => page.locator(`[data-column-contract="${name}"]`);
+    const state = await openGallery(page, width, theme);
     const populated = state("populated");
     const table = populated.getByRole("grid");
     await expect(table).toBeVisible();
@@ -32,9 +48,6 @@ for (const width of [390, 1280, 1440, 1920]) for (const theme of ["light", "dark
       await expect(populated.getByRole("columnheader", { name: "인원", exact: true })).toHaveCSS("text-align", "end");
       await expect(table.locator('td[data-type="money"]')).toHaveCSS("font-variant-numeric", "tabular-nums");
       await expect(table.locator('td[data-type="code"]')).toHaveCSS("text-align", "start");
-      const height = await table.locator("tbody tr").first().evaluate(el => el.getBoundingClientRect().height);
-      expect(height).toBeGreaterThanOrEqual(32);
-      expect(height).toBeLessThanOrEqual(33);
       const name = table.locator('td[data-type="text"]');
       await expect(name).toHaveAttribute("title", await name.innerText());
     }

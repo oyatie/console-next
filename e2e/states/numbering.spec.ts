@@ -24,7 +24,7 @@ for (const state of Object.keys(screen.states) as NumberingState[]) for (const w
         await expect(page.getByRole("main").getByRole("status", { name: t("common.loading"), exact: true })).toHaveAttribute("aria-busy", "true");
         fixture.releasePhase();
       }
-      const main = page.getByRole("main").locator(".page").filter({ has: page.getByRole("heading", { level: 1, name: t("identifiers.numbering.title"), exact: true }) });
+      const main = page.getByRole("main");
       await expect(main.getByRole("heading", { level: 1, name: t("identifiers.numbering.title"), exact: true })).toBeVisible();
       const card = main.getByRole("region", { name: t("identifiers.renumber.title"), exact: true });
       const after = main.getByText(t("identifiers.renumber.whyAfter"), { exact: true });

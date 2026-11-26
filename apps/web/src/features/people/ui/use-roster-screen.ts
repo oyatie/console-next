@@ -2,8 +2,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
+import type { EmployeeViewFilters } from "@console/api/pending";
 import { rosterWindowQuery } from "../api/roster";
 import { FOCUS_SETTLE_MS, editable, rowById } from "../../../ui/long-table/row-keys";
+import { whenRowsDrawn } from "../../../ui/long-table/rows-drawn";
 import { NO_SELECTION, type Selection } from "../../../ui/long-table/selection";
 import { focusSoon } from "../../../lib/react/announce";
 import { columnSelection } from "../../../lib/react/use-column-selection";
@@ -99,6 +101,14 @@ export function useRosterScreen() {
     setFilter({ status: "current", review: [], unit: null, ids: null });
     focusSoon("people-title");
   };
+  // A saved view holds the URL filters; applying one starts over from them, as a reset does.
+  const viewFilters: EmployeeViewFilters = { status, review: joinReview(review), unit, sort };
+  const applyView = (filters: EmployeeViewFilters) => {
+    setSel(NO_SELECTION);
+    find("");
+    setFilter({ status: parseStatus(filters.status), review: parseReview(filters.review), unit: filters.unit ?? null, ids: null, sort: parseOrder(filters.sort) });
+    focusSoon("people-title");
+  };
   const closePaste = () => void navigate({ search: (prev) => ({ ...prev, bulk: undefined }), replace: true });
   const bulkDone = (message: string, recordedBatch?: { id: string; count: number }) => {
     setSel(NO_SELECTION);
@@ -127,11 +137,14 @@ export function useRosterScreen() {
   useEffect(() => {
     const el = scroller.current;
     if (restored.current || !back || !rowCount || !el) return;
-    restored.current = true;
-    el.scrollTop = back.top;
-    if (back.row) requestAnimationFrame(() => {
-      // A delayed arrival read must not take focus from a search the user already started.
-      if (!editable(document.activeElement)) rowById(el, back.row!)?.focus();
+    // The row is focused a frame after the scroll, once the grid has seen it: focus re-applies the grid's last seen position.
+    return whenRowsDrawn(el, () => {
+      restored.current = true;
+      el.scrollTop = back.top;
+      if (back.row) requestAnimationFrame(() => {
+        // A delayed arrival read must not take focus from a search the user already started.
+        if (!editable(document.activeElement)) rowById(el, back.row!)?.focus();
+      });
     });
   }, [back, rowCount]);
   const scrollRef = (el: HTMLElement | null) => {
@@ -160,7 +173,7 @@ export function useRosterScreen() {
     open, openUnit, select, selectRelated, full, expand, restore, unitTrigger, unitItems, selectedUnit,
     sort, q, exitView, setExitView, findSlot, setFindSlot, sel, setSel,
     recorded, batch, setBatch, rescinding, setRescinding, setRecorded, rescindReady,
-    r, view, prefetch, setFilter, find, reset, closePaste, bulkDone, openRecord,
+    r, view, prefetch, setFilter, find, reset, viewFilters, applyView, closePaste, bulkDone, openRecord,
     scroller, rowCount, scrollRef, onRowFocus, filtered, customFilters, sameName,
     onRowAction: (id: string) => (id === open ? openRecord(id) : (remember(key, q, { row: id }), select(id))),
   };

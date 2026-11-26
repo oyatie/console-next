@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import type { components } from "@console/api";
 import { tenantBeforeSetup } from "../setup-flows";
+import { setTheme } from "../shell";
 import { chooseWorkbook } from "../helpers/import";
 import ExcelJS from "exceljs";
 import { readFileSync } from "node:fs";
@@ -32,9 +33,7 @@ test("unconfirmed restricted and ordinary columns wait for a person's mapping @h
   const { admin } = await tenantBeforeSetup(browser, "confirmcolumns", "Column confirmation", false, "none");
   await admin.setViewportSize({ width: 390, height: 900 });
   await admin.emulateMedia({ colorScheme: "dark" });
-  if (await admin.locator("html").getAttribute("data-theme") !== "dark") {
-    await admin.getByRole("button", { name: t("shell.theme.toDark"), exact: true }).click();
-  }
+  await setTheme(admin, "dark");
   const preview = await upload(admin);
   await expect(admin.locator("html")).toHaveAttribute("data-theme", "dark");
   expect(preview.input_rows).toBe(0);

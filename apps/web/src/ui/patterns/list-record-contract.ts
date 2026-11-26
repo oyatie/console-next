@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import type { ComponentProps, ReactNode } from "react";
+import type { ComponentProps, ReactElement, ReactNode } from "react";
 import type { ReadState } from "../../lib/react/query-view";
 import type { FlexibleColumns } from "../flexible-columns/flexible-columns";
 import type { MenuAction } from "../menu/action-menu";
@@ -25,12 +25,15 @@ export type ListRecordPane = SidePaneSpec & {
  */
 export type ListRecordProps = Pick<ComponentProps<typeof FlexibleColumns>, "list" | "full" | "onFull" | "onSelect" | "onOpen" | "onFind"> & {
   q: ReadState;
-  head: Pick<PageHeadProps, "title" | "titleId" | "asOf" | "actions"> & {
-    primary?: MenuAction;
+  head: Pick<PageHeadProps, "title" | "titleId" | "meta" | "asOf" | "actions"> & {
+    /** The one primary action, or the screen's own button when it has a state of its own (waiting, or unavailable with a reason). */
+    primary?: MenuAction | ReactElement;
     commands?: { label: string; items: readonly MenuAction[] };
   };
   record?: ListRecordPane | false | "" | null;
   related?: ListRecordPane | false | "" | null;
   statusSegments?: Parameters<typeof useScreenStatusBar>[0];
+  /** Beside the retry when the list read fails: what that failure stops, such as the primary's reason. */
+  failedActions?: ReactNode;
   baseline?: () => ReactNode;
 } & Partial<Record<"tabs" | "views" | "find" | "filters" | "tools" | "stats" | "rail" | "indexBar" | "notes" | "foot" | "facts" | "overlays", ReactNode>>;

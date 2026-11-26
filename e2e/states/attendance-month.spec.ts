@@ -25,7 +25,10 @@ for (const state of ["populated", "empty", "failed", "refused", "loading"] as co
 }
 
 const monthScreen = attendanceBoardScreens.find(screen => screen.key === "attendance-month")!;
-for (const experience of ["baseline", "warm-clear"]) for (const [label, path] of [["tab=month", monthScreen.path], ["no-tab", "/attendance?month=2026-10"]] as const) for (const [width, colorScheme] of [[1440, "light"], [390, "dark"]] as const) test(`the ${experience} month board (${label}) is the only vertical scroller and keeps 400 rows reachable at ${width}px ${colorScheme}`, async ({ page }, testInfo) => {
+// The baseline legs run in the baseline project, which seeds Classic. Console's leg is desk-only, as no board draws this screen
+// at 390; the board draws the month grid at 1440 but not how it scrolls, so its values are the render's.
+const monthLegs = [["baseline", [[1440, "light"], [390, "dark"]]], ["warm-clear", [[1440, "light"], [390, "dark"]]], ["console", [[1440, "light"]]]] as const;
+for (const [experience, sizes] of monthLegs) for (const [label, path] of [["tab=month", monthScreen.path], ["no-tab", "/attendance?month=2026-10"]] as const) for (const [width, colorScheme] of sizes) test(`the ${experience} month board (${label}) is the only vertical scroller and keeps 400 rows reachable at ${width}px ${colorScheme}${experience === "baseline" ? " @baseline" : ""}`, async ({ page }, testInfo) => {
   if (experience !== "baseline") await page.addInitScript(value => localStorage.setItem("console.experience", value), experience);
   await page.emulateMedia({ colorScheme });
   await page.setViewportSize({ width, height: 640 });

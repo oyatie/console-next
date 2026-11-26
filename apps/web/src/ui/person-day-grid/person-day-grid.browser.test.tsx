@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { expect as element } from "@playwright/test";
 import { AxeBuilder } from "@axe-core/playwright";
 import { createServer, type ViteDevServer } from "vite";
-import { browserTestOptimizeDeps, chromium, type Browser, type Page } from "../../lib/browser-test";
+import { browserTestOptimizeDeps, chromium, openBrowserTestPage, type Browser, type Page } from "../../lib/browser-test";
 import { editingCases, paste } from "./person-day-grid.browser-editing";
 import { sidewaysCases } from "./person-day-grid.browser-sideways";
 
@@ -42,11 +42,10 @@ afterAll(async () => { await browser?.close(); await server?.close(); });
 
 // The base token's 32 px, then a smaller and a larger row, as a visual style or a container would set them.
 test.each([null, 24, 40])("virtual rows are placed by the compact row height the CSS gives (%s px)", async row => {
-  await page.goto(`${server.resolvedUrls!.local[0]}grid-test${row ? `?row=${row}` : ""}`);
   const height = row ?? 32;
   const grid = page.getByRole("grid", { name: "October" });
   const scroller = grid.locator("..");
-  await element(grid.getByText("Person 1", { exact: true })).toBeVisible();
+  await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}grid-test${row ? `?row=${row}` : ""}`, grid.getByText("Person 1", { exact: true }));
   const measure = () => scroller.evaluate(el => ({
     scroll: el.scrollHeight,
     head: el.querySelector("thead")!.getBoundingClientRect().height,

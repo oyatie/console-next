@@ -7,7 +7,7 @@ export type Certificate = components["schemas"]["Certificate"];
 export type CertificateSettings = components["schemas"]["CertificateSettings"];
 export type IssueCertificate = components["schemas"]["IssueCertificateRequest"];
 export const certificateQuery = (id: string) => get("/api/v1/hr/certificates/{id}", { params: { path: { id } } });
-export const certificatesQuery = (employee_id?: string, cursor?: string) => get("/api/v1/hr/certificates", { params: { query: { employee_id, cursor } } });
+export const certificatesQuery = (employee_id?: string) => get("/api/v1/hr/certificates", { params: { query: { employee_id } } });
 export const certificatePreconditionQuery = (employee_id: string) => get("/api/v1/hr/certificates/precondition", { params: { query: { employee_id } } });
 export const certificateSettingsQuery = read<components["schemas"]["CertificateSettingsView"]>("/api/v1/hr/certificate-settings", () => unwrap(api.GET("/api/v1/hr/certificate-settings")));
 export const issueCertificate = (body: IssueCertificate, key: string) => unwrap(api.POST("/api/v1/hr/certificates", { body, params: { header: { "Idempotency-Key": key } } }));

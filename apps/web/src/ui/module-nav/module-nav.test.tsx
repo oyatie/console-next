@@ -52,6 +52,27 @@ test("ModuleNavBar renders a labelled navigation landmark, marks current page, a
   expect(markup).not.toContain('value="0"');
 });
 
+test("a count's meaning reaches the link as its description, a lower bound reads with a plus, and a name stands in where the badge says nothing", () => {
+  const items: readonly ModuleNavItem[] = [
+    { id: "/", label: "To-dos", href: "/", count: 1234, countMore: true, description: "1,234 or more to-dos" },
+    { id: "/people", label: "People", href: "/people", name: "People · loading" },
+  ];
+  for (const markup of [
+    html(<ModuleNavBar label="Main menu" items={items} />),
+    html(<ModuleNavBar label="Main menu" items={items} renderLink={(_, props) => <a {...props}>{props.children}</a>} />),
+  ]) {
+    const todo = markup.match(/<a [^>]*>(?=<bdi>To-dos<\/bdi>)/)?.[0] ?? "";
+    // The shown count names the link itself.
+    expect(todo).not.toContain("aria-label");
+    const describedBy = todo.match(/aria-describedby="([^"]+)"/)?.[1];
+    expect(describedBy).toBeTruthy();
+    expect(markup).toContain(`<bdi id="${describedBy}" class="sr-only">1,234 or more to-dos</bdi>`);
+    expect(markup).toContain('data-tone="attention">1,234+</data>');
+    // A name with no count to describe carries no description.
+    expect(markup).toMatch(/<a [^>]*aria-label="People · loading"(?![^>]*aria-describedby)[^>]*>/);
+  }
+});
+
 test("ModuleNavBar supports custom router link rendering and renders nothing when items is empty", () => {
   expect(html(<ModuleNavBar label="Empty" items={[]} />)).toBe("");
   const custom = html(

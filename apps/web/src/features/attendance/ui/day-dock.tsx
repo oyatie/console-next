@@ -70,7 +70,9 @@ export function DayDock({ employeeId, date, own, variant = "dock", mode: control
     </div>
   );
   const body = (
-    <QueryState q={month} own={refusalText}>
+    // The person's month is the whole pane, so its refusal says who can grant and offers the request, as a page does;
+    // the screen beside a pane stays open, so the pane's refusal names the item, not the screen.
+    <QueryState q={month} own={refusalText} deniedTitle={variant === "pane" ? t("common.denied.panel") : undefined}>
       {() => (
         <Tabs
           label={t("attendanceRecords.day.tabs")}

@@ -5,6 +5,7 @@ import { expectAxe } from "../a11y";
 import { accountSecurityPasskey } from "../mock/account-security";
 import { authz, token, user } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
+import { expectSignedIn } from "../shell";
 
 test.beforeAll(() => loadCatalog("ko"));
 for (const mode of ["login", "autofill", "enroll", "reauth"] as const) for (const width of [1440, 390]) {
@@ -22,8 +23,10 @@ for (const mode of ["login", "autofill", "enroll", "reauth"] as const) for (cons
         }, JSON.stringify([authz.org_id, user.id]));
       }
       const region = mode === "reauth" ? page.getByRole("dialog") : page.getByRole("main");
-      const container = region.locator(mode === "enroll" ? ".auth__content" : mode === "reauth" ? ".dialog__body" : ".auth__card").last();
-      const button = region.getByRole("button", { name: t(mode === "enroll" ? "auth.setup.register" : mode === "reauth" ? "idle.reauth.signIn" : "auth.login.passkey"), exact: true });
+      const command = page.getByRole("button", { name: t(mode === "enroll" ? "auth.setup.register" : mode === "reauth" ? "idle.reauth.signIn" : "auth.login.passkey"), exact: true });
+      const button = region.locator(command);
+      // Whichever style draws it, the card that holds the command is marked busy while it waits.
+      const busy = region.locator('[aria-busy="true"]', { has: command });
       const idField = region.getByRole("textbox", { name: t("auth.login.id"), exact: true });
       await expect(button).toBeEnabled();
       await page.evaluate(() => document.fonts.ready);
@@ -34,15 +37,15 @@ for (const mode of ["login", "autofill", "enroll", "reauth"] as const) for (cons
       if (mode === "autofill") {
         await idField.focus();
         await expect(button).toBeEnabled();
-        await expect(container).not.toHaveAttribute("aria-busy", "true");
+        await expect(busy).toHaveCount(0);
       } else {
-        await expect(container).toHaveAttribute("aria-busy", "true");
+        await expect(busy).toHaveCount(1);
         for (const control of await region.locator("button").all()) await expect(control).toBeDisabled();
         for (const input of await region.locator("input").all()) await expect(input).not.toBeEditable();
       }
       await page.evaluate(() => window.dispatchEvent(new Event("test-passkey-select")));
       await expect.poll(fixture.attempts).toBe(1);
-      await expect(container).toHaveAttribute("aria-busy", "true");
+      await expect(busy).toHaveCount(1);
       for (const control of await region.locator("button").all()) await expect(control).toBeDisabled();
       for (const input of await region.locator("input").all()) await expect(input).not.toBeEditable();
       if (mode === "autofill") await expect(idField).toBeFocused();
@@ -57,7 +60,7 @@ for (const mode of ["login", "autofill", "enroll", "reauth"] as const) for (cons
       expect(fixture.unexpected).toEqual([]);
       fixture.release();
       await expect(button).toBeEnabled();
-      await expect(container).not.toHaveAttribute("aria-busy", "true");
+      await expect(busy).toHaveCount(0);
       if (mode === "autofill") await expect(idField).toBeFocused();
     } finally { await page.close(); fixture.release(); }
   });
@@ -71,7 +74,7 @@ test("manual sign-in stays busy when it aborts passive autofill", async ({ page 
     await expect(page.locator("html")).toHaveAttribute("data-passkey-sheet", "get");
     const button = page.getByRole("button", { name: t("auth.login.passkey"), exact: true });
     await button.click();
-    await expect(page.locator(".auth__card")).toHaveAttribute("aria-busy", "true");
+    await expect(page.getByRole("main").locator('[aria-busy="true"]', { has: button })).toHaveCount(1);
     await expect(button).toBeDisabled();
     await expect(page.locator("html")).toHaveAttribute("data-passkey-sheet", "get");
     await page.evaluate(() => window.dispatchEvent(new Event("test-passkey-select")));
@@ -93,7 +96,7 @@ test("explicit sign-in completes while autofill is pending and discards a late s
     await page.getByRole("button", { name: t("auth.login.passkey"), exact: true }).click();
     await expect(sheet).toHaveAttribute("data-passkey-sheet", "get");
     await page.evaluate(() => window.dispatchEvent(new Event("test-passkey-select")));
-    await expect(page.getByRole("button", { name: t("shell.logout"), exact: true })).toBeVisible();
+    await expectSignedIn(page);
 
     const lateSubmissions = await page.evaluate(async path => {
       let submissions = 0;

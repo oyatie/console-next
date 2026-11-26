@@ -88,6 +88,8 @@
   min-width: 0;
   margin: 0;
   padding: 0;
+  /* The room held for items still to come, set from the item count. */
+  padding-inline-start: var(--held, 0%);
   list-style: none;
 }
 
@@ -151,6 +153,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
+  order: -1;
   color: var(--steel);
 }
 

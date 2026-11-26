@@ -78,7 +78,8 @@ export function supportReferenceTest(route: string, state: State) {
       }
       if (route === "/account") {
         await expect(main).toHaveAttribute("data-floorplan", "P-05");
-        await expect(frame).toHaveCount(0);
+        // Console's page frame repeats the route's floorplan inside main; no frame there may declare another.
+        await expect(main.locator('[data-floorplan]:not([data-floorplan="P-05"])')).toHaveCount(0);
       }
       if (route === "/people") await expect(frame).toHaveAttribute("data-floorplan", "P-01");
       settled = true;

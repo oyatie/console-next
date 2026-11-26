@@ -60,6 +60,7 @@ Nothing changes; the pill keeps its compact height and tabular digits at 390 px.
 | Prop | Required | Type | Default | Description |
 | --- | --- | --- | --- | --- |
 | `count` | yes | `number` |  | Numeric count formatted with locale separators. |
+| `more` | no | `boolean` | `false` | The count is a lower bound (the server stopped counting), so it reads with a plus. |
 | `tone` | no | `BadgeTone` | `"neutral"` | `attention` for actionable frame counts, `inverse` inside a primary button, `neutral` elsewhere. |
 
 <!-- /ds:props -->

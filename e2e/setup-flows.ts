@@ -1,11 +1,13 @@
 import { expect, type Browser, type Locator, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
+import { loadCatalog, t } from "@console/i18n";
+import { ko } from "../packages/i18n/src/catalogs/ko";
 import { expectStatus, expectSuccess } from "./helpers/setup-response";
 import { expectAccessible } from "./a11y";
 import type { clickCounter } from "./clicks";
 import { inviteAccount, type Access } from "./access-flows";
 import { addDepartments } from "./structure-flows";
-import { tenantOnboardSubmit, firstSignIn, go, option, plain, routeReady, takeCode, tenantSlugField, unique, vendorPage } from "./flows";
+import { tenantNameField, tenantOnboardSubmit, firstSignIn, go, option, plain, routeReady, takeCode, tenantSlugField, unique, vendorPage } from "./flows";
 
 type C = Pick<ReturnType<typeof clickCounter>, "click">;
 type RegistrationIds = { brn: string; crn: string };
@@ -67,23 +69,27 @@ export async function typeAddress(page: Page, group: string, road: string, zip: 
   await pressUntil(c, g.getByRole("button", { name: "이 주소로 저장" }), g.getByRole("button", { name: "주소 다시 찾기" }));
 }
 
-/** An entity's registration facts typed by hand (the certificate's sections), shared by an entity and a branch. */
+/** A workplace's own registration facts typed by hand in the add-workplace sheet (the certificate's sections). */
 export async function typeCertificate(page: Page, f: { brn: string | null; name: string; road: string; zip: string }, c: C = plain) {
-  if (f.brn === null) await page.getByRole("checkbox", { name: "신규 사업자등록 신청 중", exact: true }).check();
-  else await page.getByLabel("사업자등록번호").fill(f.brn);
-  await page.getByLabel("법인명(단체명)").fill(f.name);
-  await page.getByLabel("개업연월일").fill("2020-03-02");
+  await loadCatalog("ko");
+  const form = workplaceSheet(page);
+  if (f.brn === null) await form.getByRole("checkbox", { name: t("entity.field.brnPending"), exact: true }).check();
+  else await form.getByRole("textbox", { name: t("entity.field.brn") }).fill(f.brn);
+  await form.getByRole("textbox", { name: t("entity.field.corpName") }).fill(f.name);
+  await form.getByRole("textbox", { name: t("entity.field.openedOn") }).fill("2020-03-02");
   await typeAddress(page, "사업장 소재지", f.road, f.zip, c);
 }
 
-/** The certificate's business and tax sections (no NTS list loaded on this server: the office is taken as printed). */
+/** The certificate's business and tax sections in the add-workplace sheet (no NTS list on this server: the office is taken as printed). */
 export async function typeBusiness(page: Page, c: C = plain) {
-  await page.getByRole("textbox", { name: /^업태/ }).fill("정보통신업");
-  await page.getByRole("textbox", { name: /^종목/ }).fill("응용 소프트웨어 개발");
+  await loadCatalog("ko");
+  const form = workplaceSheet(page);
+  await form.getByRole("textbox", { name: t("entity.field.sector") }).fill("정보통신업");
+  await form.getByRole("textbox", { name: t("entity.field.item") }).fill("응용 소프트웨어 개발");
   // The radio first: in Firefox a press right after a native select's change can start without committing.
   await pressUntil(c, option(page, "사업자 단위 과세 적용", "적용 안 함"), page.getByRole("radiogroup", { name: /사업자 단위 과세 적용/ }).getByRole("radio", { name: "적용 안 함", checked: true }));
-  await page.getByLabel("과세유형").selectOption({ label: "일반과세자" });
-  await page.getByLabel("관할 세무서 (등록증 표기)").fill("삼성세무서");
+  await form.getByRole("combobox", { name: t("entity.field.taxType") }).selectOption({ label: "일반과세자" });
+  await form.getByRole("textbox", { name: t("entity.field.taxOfficePrinted") }).fill("삼성세무서");
 }
 
 /** A second corporation of the same tenant: its own numbers. */
@@ -110,10 +116,17 @@ export async function registerEntity(page: Page, name: string, audit = false, c:
   await expect(page.getByRole("heading", { name: new RegExp(name), level: 1 })).toBeVisible();
 }
 
+/** The entity wizard's business registration number, found in the page body: the bar's search names that field among what it finds. */
+export const wizardBrn = (page: Page) => page.getByRole("main").getByRole("textbox", { name: ko["entityCreate.field.brn"] });
+
 /** The wizard filled as registerEntity does, up to its review step, not yet saved. */
 export async function fillEntity(page: Page, name: string, c: C = plain, ids: RegistrationIds = REGISTRATION_FIXTURES.primary, upload?: { name: string; mimeType: string; buffer: Buffer }) {
+  await loadCatalog("ko");
+  // Fields are found inside the wizard, never among the bar's controls.
+  const form = page.getByRole("main");
+  const box = (key: Parameters<typeof t>[0], values?: Parameters<typeof t>[1]) => form.getByRole("textbox", { name: t(key, values) });
   await c.click(option(page, "사업자 구분", "법인사업자"));
-  await page.getByLabel("법인명(단체명)").fill(`주식회사 ${name}`);
+  await box("entityCreate.field.corpName").fill(`주식회사 ${name}`);
   await c.click(page.getByRole("button", { name: "다음", exact: true }));
   if (upload) {
     const uploaded = answer(page, "POST", /^\/api\/v1\/entity-documents$/);
@@ -121,21 +134,22 @@ export async function fillEntity(page: Page, name: string, c: C = plain, ids: Re
     await expectStatus(uploaded, 201, "certificate upload");
     await expect(page.getByText(upload.name)).toBeVisible();
   }
-  await page.getByLabel("사업자등록번호").fill(ids.brn);
-  await page.getByRole("textbox", { name: /^법인등록번호/ }).fill(ids.crn);
-  await page.getByRole("textbox", { name: /^대표자/ }).fill("홍길동");
-  await page.getByLabel("개업연월일").fill("2020-03-02");
+  await wizardBrn(page).fill(ids.brn);
+  await box("entityCreate.field.crn").fill(ids.crn);
+  await box("entityCreate.field.representative").fill("홍길동");
+  await box("entityCreate.field.openedOn").fill("2020-03-02");
   await typeAddress(page, "사업장 소재지", "서울특별시 강남구 테헤란로 152", "06236", c);
-  await pressUntil(c, page.getByLabel("본점 소재지가 사업장 소재지와 같음"), page.getByRole("checkbox", { name: "본점 소재지가 사업장 소재지와 같음", checked: true }));
-  await page.getByRole("textbox", { name: /^업태/ }).first().fill("정보통신업");
-  await page.getByRole("textbox", { name: /^종목/ }).first().fill("응용 소프트웨어 개발");
+  const sameAddress = (checked?: true) => form.getByRole("checkbox", { name: t("entityCreate.field.headOfficeSame"), checked });
+  await pressUntil(c, sameAddress(), sameAddress(true));
+  await box("entityCreate.business.sectorOf", { n: 1 }).fill("정보통신업");
+  await box("entityCreate.business.itemOf", { n: 1 }).fill("응용 소프트웨어 개발");
   const radio = (group: string, name: string) => page.getByRole("radiogroup", { name: new RegExp(group) }).getByRole("radio", { name, checked: true });
   await pressUntil(c, option(page, "과세유형", "일반과세자"), radio("과세유형", "일반과세자"));
   await pressUntil(c, option(page, "사업자 단위 과세 적용", "부"), radio("사업자 단위 과세 적용", "부"));
-  await page.getByLabel("관할 세무서").fill("삼성세무서");
+  await box("entityCreate.field.taxOffice").fill("삼성세무서");
   if (upload) {
     await c.click(option(page, "발급 사유", "신규"));
-    await page.getByLabel("발급일").fill("2020-03-02");
+    await box("entityCreate.field.certIssuedOn").fill("2020-03-02");
   }
   await c.click(page.getByRole("button", { name: "다음: 등기·대표자" }));
   await c.click(page.getByRole("button", { name: "다음", exact: true }));
@@ -264,7 +278,8 @@ export async function startOperations(admin: Page, audit = false, c: C = plain) 
   await expect(start).toBeVisible();
   await acceptSetupTerms(admin, c);
   if (audit) await expectAccessible(admin, "go-live preview");
-  const sole = admin.getByLabel(/본인뿐인 채로 운영을 시작합니다/);
+  await loadCatalog("ko");
+  const sole = admin.getByRole("main").getByRole("checkbox", { name: t("setup.golive.soleHolder") });
   if (await sole.isVisible()) await c.click(sole);
   await expect(start).toBeEnabled();
   // The passkey, then the go-live command (1.6–4.2 s server-side at load 40, against a 5 s wait for Home that failed).
@@ -288,7 +303,7 @@ export async function tenantBeforeSetup(browser: Browser, slug: string, name: st
   await expect(v.getByRole("button", { name: "고객 계정 개설" })).toBeVisible();
   if (audit) await expectAccessible(v, "platform tenants");
   await v.getByRole("button", { name: "고객 계정 개설" }).click();
-  await v.getByLabel("고객 이름").fill(name);
+  await tenantNameField(v).fill(name);
   await tenantSlugField(v).fill(unique(slug));
   await tenantOnboardSubmit(v).click();
   const admin = await firstSignIn(browser, await takeCode(v, audit), undefined, audit);

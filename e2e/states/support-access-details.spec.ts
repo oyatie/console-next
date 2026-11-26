@@ -6,6 +6,8 @@ import { AT, checklist, failure, id } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
+import { bootKo } from "../../packages/i18n/src/catalogs/boot";
+import { accountControl, openNav } from "../shell";
 
 const session: components["schemas"]["SupportSession"] = {
   id: id(5001), operator_label: "공급사 · 지원 운영자", ticket_ref: "HELP-123", reason_code: "DIAGNOSE",
@@ -177,8 +179,7 @@ for (const width of [390, 1440]) test(`ended support history stays a list on pla
   await mockRoute(page, "get", "/api/v1/support-sessions", { status: 200, json: { can_approve: true, sessions } });
   await page.setViewportSize({ width, height: 844 });
   await page.goto("/");
-  if (width === 390) await page.getByRole("button", { name: "메뉴", exact: true }).click();
-  await page.getByRole("navigation").getByRole("link", { name: "감사 기록", exact: true }).click();
+  await (await openNav(page)).getByRole("link", { name: bootKo["shell.link.audit"], exact: true }).click();
   await expect(page.getByRole("grid", { name: "지원 접근", exact: true })).toBeVisible();
   await expect(page.getByRole("complementary")).toHaveCount(0);
   await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -243,7 +244,7 @@ for (const width of [390, 1440]) test(`support indicator fits the header at ${wi
   await expect(indicator).toBeInViewport({ ratio: 1 });
   for (const theme of ["light", "dark"]) {
     await page.locator("html").evaluate((el, value) => el.dataset.theme = value, theme);
-    await expect(page.getByRole("button", { name: "로그아웃", exact: true })).toBeInViewport({ ratio: 1 });
+    await expect(accountControl(page)).toBeInViewport({ ratio: 1 });
     await fits(page, `support indicator/${width}/${theme}`);
     await page.screenshot({ path: info.outputPath(`support-header-${width}-${theme}.png`) });
   }

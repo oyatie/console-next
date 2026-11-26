@@ -25,6 +25,7 @@ vi.mock("@tanstack/react-router", () => ({
   Outlet: () => null,
   useNavigate: () => vi.fn(),
   useLocation: () => ({ pathname: locationState.pathname }),
+  useRouterState: ({ select }: { select: (state: { status: string }) => unknown }) => select({ status: "idle" }),
   useRouter: () => ({
     routesByPath: Object.fromEntries(
       [

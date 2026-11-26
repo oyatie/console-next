@@ -10,7 +10,6 @@ import { useCommand } from "../../../lib/react/command";
 import { readGroup } from "../../../lib/react/query-view";
 import { useIsDesktop } from "../../../lib/react/use-desktop";
 import { branchesQuery } from "../../../reference/org/api";
-import { Button } from "../../../ui/button/button-base";
 import { Chip } from "../../../ui/chip";
 import { KeyValue, StatRow } from "../../../ui/key-value/key-value";
 import { LongTable, type LongColumn } from "../../../ui/long-table/long-table";
@@ -18,6 +17,7 @@ import { ListRecord } from "../../../ui/patterns/list-record";
 import { RecordIdentityBar, RecordPaneSection } from "../../../ui/patterns/list-record-parts";
 import { closesQuery, preflightClose, type AttendanceMonthCloseItem, type ClosePreflight } from "../api";
 import { AttendanceTabNav } from "./attendance-head";
+import { useAttendancePhaseLine } from "./use-attendance-phase-line";
 import { CloseConsoleActions } from "./close-console-actions";
 import { PeriodStepper } from "./period-stepper";
 import { ScopePicker } from "./scope-picker";
@@ -82,6 +82,7 @@ export function CloseConsoleView({ baseline }: { baseline: () => React.ReactNode
   const totalOpenExceptions = displayItems.reduce((sum, r) => sum + r.open_exceptions, 0);
   const totalPendingLeave = displayItems.reduce((sum, r) => sum + r.pending_leave, 0);
 
+  const phaseLine = useAttendancePhaseLine();
   return (
     <ListRecord
       q={combined}
@@ -89,10 +90,11 @@ export function CloseConsoleView({ baseline }: { baseline: () => React.ReactNode
       head={{
         title: t("attendance.title"),
         titleId: "attendance-close-title",
+        meta: phaseLine,
       }}
       filters={
         <div className={s.filterPair}>
-          <PeriodStepper unit="month" variant="boxed" showCurrent={false} value={month} onChange={nextMonth => go({ month: nextMonth })} />
+          <PeriodStepper unit="month" variant="boxed" value={month} onChange={nextMonth => go({ month: nextMonth })} />
           <ScopePicker compact value={search.wp} onChange={wp => go({ wp, unit: undefined })} />
         </div>
       }
@@ -167,25 +169,6 @@ export function CloseConsoleView({ baseline }: { baseline: () => React.ReactNode
                     } satisfies LongColumn<AttendanceMonthCloseItem>,
                   ]
                 : []),
-              {
-                id: "action",
-                header: t("settingsHub.reasons.actionsCol"),
-                type: "action",
-                card: "action",
-                cell: row => (
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className={s.nowrap}
-                    onClick={() => {
-                      setDismissedAuto(false);
-                      setSelectedScope(row.branch_scope);
-                    }}
-                  >
-                    {t("attendance.close.openRow")}
-                  </Button>
-                ),
-              },
             ]}
           />
         </div>

@@ -61,7 +61,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          prev="$(gh run list -R "${GITHUB_REPOSITORY}" --workflow probe.yml --status completed --limit 1 --json conclusion --jq '.[0].conclusion // "success"')"
+          # The listing's status filter can omit a finished run.
+          prev="$(gh run list -R "${GITHUB_REPOSITORY}" --workflow probe.yml --json status,conclusion \
+            --jq 'map(select(.status == "completed"))[0].conclusion // "success"')"
           if [[ "${prev}" != failure || "$(date -u +%M)" -lt 10 ]]; then echo "page=true" >>"${GITHUB_OUTPUT}"; fi
 
   notify:

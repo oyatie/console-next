@@ -153,7 +153,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       await expect(actor).toHaveValue(id(101));
       await expect(page.getByLabel("종료일", { exact: true })).toHaveValue("2026. 10. 20.");
       await page.getByRole("button", { name: "닫기", exact: true }).click();
-      await page.getByRole("link", { name: /^확인 대상/ }).click();
+      await page.getByRole("button", { name: t("accessLog.flagged"), exact: true }).click();
       await expect.poll(() => fixture.requests.at(-1)!.get("flagged")).toBe("true");
       expect(fixture.requests.at(-1)!.get("action")).toBe("employee.export");
       await page.getByRole("button", { name: "필터 선택", exact: true }).click();

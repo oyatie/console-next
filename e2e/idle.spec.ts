@@ -1,10 +1,11 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "./a11y";
-import { tenantOnboardSubmit, tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
+import { tenantNameField, tenantOnboardSubmit, tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
 import { idleOnServer, psql, settled, sinceServerInput } from "./idle-fixture";
 import { tenantInSetup } from "./setup-flows";
 import { box, revealUnit } from "./structure-flows";
+import { expectSignedIn, signOut } from "./shell";
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -22,7 +23,7 @@ async function tenantAdmin(browser: Browser, slug: string, name: string) {
   const v = await vendorPage(browser);
   await go(v, "/platform");
   await v.getByRole("button", { name: "고객 계정 개설" }).click();
-  await v.getByLabel("고객 이름").fill(name);
+  await tenantNameField(v).fill(name);
   const id = unique(slug);
   await tenantSlugField(v).fill(id);
   await tenantOnboardSubmit(v).click();
@@ -72,7 +73,7 @@ test("a session that ends in use signs back in over the same screen, the draft i
   // The session ends server-side (here: signed out in another tab; an idle timeout ends it the same way).
   const other = await page.context().newPage();
   await other.goto("/");
-  await other.getByRole("button", { name: "로그아웃" }).click();
+  await signOut(other);
   await expect(other).toHaveURL(/\/login$/);
   await other.close();
 
@@ -101,7 +102,7 @@ test("a refresh that fails for a server fault or a dropped connection never sign
     await expect(page).not.toHaveURL(/\/login/);
     await page.unroute("**/api/v1/auth/token/refresh");
     await page.getByRole("button", { name: "페이지 새로 고침" }).click();
-    await expect(page.getByRole("button", { name: "로그아웃" })).toBeVisible();
+    await expectSignedIn(page);
     await expect(page).not.toHaveURL(/\/login/);
   }
 });
@@ -156,7 +157,7 @@ test("the event stream is not activity: an idle minute sends no request, and sig
   const streamed = page.waitForResponse((r) => new URL(r.url()).pathname === STREAM && r.status() === 200);
   await page.reload();
   await streamed;
-  await expect(page.getByRole("button", { name: "로그아웃" })).toBeVisible();
+  await expectSignedIn(page);
 
   // Walk gate (decision #27): with the stream open and no input, a minute passes without one request: no poll,
   // no keep-alive, no reconnect. (The screen's own first reads land first, however slow the engine.)
@@ -166,7 +167,7 @@ test("the event stream is not activity: an idle minute sends no request, and sig
   expect(sent.slice(idle), "requests in an idle minute").toEqual([]);
 
   // Signing out closes the stream, and the signed-out bearer no longer opens one (BW-24 / INF-03).
-  await page.getByRole("button", { name: "로그아웃" }).click();
+  await signOut(page);
   await expect(page).toHaveURL(/\/login$/);
   const out = sent.length;
   const refused = await page.request.get(STREAM, { headers: { authorization: bearer, accept: "text/event-stream" }, timeout: 10_000 });
@@ -228,7 +229,7 @@ test("in use past the timeout the session slides: input moves the server's recor
   const rotated = page.waitForResponse((r) => new URL(r.url()).pathname === "/api/v1/auth/token/refresh");
   await page.reload();
   expect((await rotated).status()).toBe(200);
-  await expect(page.getByRole("button", { name: "로그아웃" })).toBeVisible();
+  await expectSignedIn(page);
   await expect(page).not.toHaveURL(/\/login/);
 });
 
@@ -300,7 +301,7 @@ test("refresh and logout commit allowed audit rows tied to their session family"
   const rotation = page.waitForResponse((r) => new URL(r.url()).pathname === "/api/v1/auth/token/refresh");
   await page.reload();
   expect((await rotation).status()).toBe(200);
-  await page.getByRole("button", { name: "로그아웃" }).click();
+  await signOut(page);
   await expect(page).toHaveURL(/\/login$/);
   const rows = refreshAuditRows(slug);
   expect(rows.map((row) => row.action)).toEqual(expect.arrayContaining(["auth.refresh", "auth.logout"]));

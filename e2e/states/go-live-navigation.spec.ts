@@ -8,6 +8,7 @@ import { previewData } from "../mock/onboarding";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { homeSetupChecklist, homeSetupScreen } from "./home-setup";
+import { openNav } from "../shell";
 
 for (const leave of [false, true]) test(`go-live readiness ${leave ? "respects a rail click" : "keeps launch busy"} @ui-state`, async ({ page }) => {
   const fixture = await mockScreen(page, homeSetupScreen, "empty");
@@ -48,8 +49,7 @@ for (const leave of [false, true]) test(`go-live readiness ${leave ? "respects a
     await page.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
     await fits(page, "go-live/readiness/390/dark");
     if (leave) {
-      await page.getByRole("button", { name: t("shell.menu"), exact: true }).click();
-      await page.getByRole("navigation", { name: t("shell.nav") }).getByRole("link", { name: t("shell.link.org"), exact: true }).click();
+      await (await openNav(page)).getByRole("link", { name: t("shell.link.org"), exact: true }).click();
       await expect(page).toHaveURL(/\/org$/);
     }
     const refreshed = page.waitForResponse("**/api/v1/access/me");

@@ -6,6 +6,7 @@ import { employees, facets } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
+import { experienceState } from "../experience";
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -36,7 +37,9 @@ async function directory(page: Page, holdSort = false) {
 }
 
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
-  test(`directory filters replace server pages and stay removable ${width} ${theme} @ui-state`, async ({ page }) => {
+  // Classic's views, review chips and foot note. Console has none of them (it filters from its rail), so these server
+  // filter steps have no Console leg; the paging, search and sort read are shared in the tests below.
+  test(`directory filters replace server pages and stay removable ${width} ${theme} @ui-state @baseline`, async ({ page }) => {
     test.setTimeout(120_000);
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
@@ -113,21 +116,53 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     expect(fixture.unexpected).toEqual([]);
   });
 
+  test(`directory search stays out of the address and reset clears it ${width} ${theme} @ui-state`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
+    const fixture = await directory(page);
+    await page.goto("/people");
+    const grid = page.getByRole("grid", { name: t("people.table"), exact: true });
+    const rows = grid.getByRole("rowheader").filter({ hasText: /UI-\d+/ });
+    const reset = page.getByRole("button", { name: t("people.filter.reset"), exact: true });
+    await expect(rows.first()).toBeVisible();
+    await expect(reset).toHaveCount(0);
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+    expect(await grid.getByRole("row").count()).toBeLessThan(60);
+    await grid.evaluate(el => { el.scrollTop = el.scrollHeight; });
+    await expect.poll(() => fixture.requests.some(query => query.has("cursor"))).toBe(true);
+    // Found by role so the rest runs in either style; the shared name is held softly (Console names it otherwise).
+    const find = page.getByRole("main").getByRole("searchbox");
+    await expect.soft(page.getByRole("searchbox", { name: t("roster.find") }), "the roster search carries the shared name").toHaveCount(1);
+    await find.fill("Nobody");
+    await find.press("Enter");
+    await expect(page.getByText(t("roster.empty.q", { q: "Nobody" }), { exact: true })).toBeVisible();
+    await expect(page).not.toHaveURL(/Nobody|search=/);
+    await expect(reset).toHaveCount(1);
+    await reset.click();
+    await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
+    await expect(find).toHaveValue("");
+    await expect(rows.first()).toBeVisible();
+    await fits(page, `directory search ${width} ${theme}`);
+    await expectAxe(page, `directory search ${width} ${theme}`);
+    expect(fixture.unexpected).toEqual([]);
+  });
+
+  // The count readout is the style's: Classic's foot note is pinned in the filters test above, Console's readout below.
   test(`directory keeps rows during a sort read ${width} ${theme} @ui-state`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const fixture = await directory(page, true);
     await page.goto("/people");
     const grid = page.getByRole("grid", { name: t("people.table"), exact: true });
-    const foot = page.getByRole("note", { name: t("roster.foot.label") });
-    await expect(foot).toContainText(t("roster.foot.range", { shown: 100, total: fixture.count }));
     const rows = grid.getByRole("rowheader").filter({ hasText: /UI-\d+/ });
+    await expect(rows.first()).toBeVisible();
     const before = await rows.allTextContents();
     expect(before.length).toBeGreaterThan(0);
-    if (width === 390) await page.getByRole("combobox", { name: t("uiLongTable.sort"), exact: true }).selectOption("number");
+    if (width === 390) await page.getByRole("combobox", { name: t("uiLongTable.sort"), exact: true }).selectOption({ label: t("people.col.number") });
     else await grid.getByRole("columnheader", { name: t("people.col.number"), exact: true }).click();
     await expect.poll(() => fixture.requests.some(query => query.get("sort") === "employee_number")).toBe(true);
-    await expect(rows).toHaveText(before);
+    // The rows shown stay while the sort read is held; a virtual list may draw more below them as it measures.
+    await expect.poll(async () => (await rows.allTextContents()).slice(0, before.length)).toEqual(before);
     await expect(grid.getByText(t("uiLongTable.loading"), { exact: true })).toHaveCount(0);
     await grid.evaluate(el => { el.scrollTop = el.scrollHeight; });
     await expect(grid.getByText(t("uiLongTable.loadingMore"), { exact: true })).toHaveCount(0);
@@ -136,7 +171,8 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     const sorted = page.waitForResponse(response => new URL(response.url()).searchParams.get("sort") === "employee_number");
     fixture.release();
     expect((await sorted).ok()).toBe(true);
-    await expect(foot).toContainText(t("roster.foot.range", { shown: 100, total: fixture.count }));
+    // The mock serves one order for every sort, so the sorted page opens on the same first row.
+    await expect(rows.first()).toHaveText(before[0]!);
     await expect(page).toHaveURL(/sort=employee_number/);
     await fits(page, `directory sorting ${width} ${theme}`);
     await expectAxe(page, `directory sorting ${width} ${theme}`);
@@ -144,3 +180,17 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     expect(fixture.unexpected).toEqual([]);
   });
 }
+
+// Console counts the rows read in the index bar's range readout, as d-people draws it at 1440, not in Classic's foot note.
+test.describe(() => {
+  test.use({ storageState: experienceState("console") });
+  test("directory range readout counts the first server page at 1440 in console @ui-state", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const fixture = await directory(page);
+    await page.goto("/people");
+    await expect(page.getByRole("grid", { name: t("people.table"), exact: true })).toBeVisible();
+    await expect(page.getByRole("region", { name: t("people.index.label"), exact: true })).toContainText(t("people.index.range", { start: 1, end: 100, total: fixture.count }));
+    await expect(page.getByRole("note", { name: t("roster.foot.label") })).toHaveCount(0);
+    expect(fixture.unexpected).toEqual([]);
+  });
+});

@@ -23,6 +23,11 @@
     min-height: 0;
     overflow: hidden;
   }
+  /* Only the pane grid gives up height: a scrolling strip above it (lanes, tabs) would otherwise shrink to its border
+     while a loading list fills the frame, and grow back, moving the controls below it, once the rows arrive. */
+  :where([data-experience]:not([data-experience="baseline"])) .frame > * {
+    flex-shrink: 0;
+  }
   :where([data-experience]:not([data-experience="baseline"])) .frame :global([data-pane-grid]) {
     flex: 1 1 0%;
     min-height: 0;

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { fits } from "../a11y";
+import { scroller } from "../shell";
 import { clearShifts, expectStable, recordShifts } from "../stability";
 import { commitLabel } from "../../apps/web/src/ui/composer/actions";
 import { AT, authz, id, user } from "./fixtures";
@@ -12,6 +13,10 @@ import { orgChangeScreens } from "../states/registry";
 import type { components } from "@console/api/schema";
 
 test.beforeAll(() => loadCatalog("ko"));
+
+/** The change's history by its name: Classic draws it as a side panel, Console as a section of the document's rail. */
+const changeHistory = (page: Page) => page.getByRole("complementary", { name: t("orgChange.history"), exact: true })
+  .or(page.getByRole("region", { name: t("orgChange.history"), exact: true }));
 
 for (const width of [1280, 1440, 390]) for (const theme of ["light", "dark"]) {
   test(`org summary keeps its content and desktop position after rejection at ${width}px ${theme}`, async ({ page }) => {
@@ -51,17 +56,17 @@ for (const width of [1280, 1440, 390]) for (const theme of ["light", "dark"]) {
       await expect(reject).toBeEnabled();
       await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
       await expect(proposal).toContainText(record.reason);
-      const history = page.getByRole("complementary", { name: t("orgChange.history"), exact: true });
+      const history = changeHistory(page);
       const rows = history.getByRole("listitem");
       await expect(rows).toHaveCount(record.events.length);
       await expect(rows.first()).toContainText(t("orgChange.event.submit", { actor: "김기안" }));
       const rowPositions = () => rows.evaluateAll(elements => elements.map(el => ({ text: el.textContent, y: el.getBoundingClientRect().top })));
-      const position = () => page.evaluate(desktop => {
-        const main = document.getElementById("main")!;
-        const proposal = document.getElementById("proposal")!.parentElement!.getBoundingClientRect();
-        const history = document.getElementById("history")!.parentElement!.getBoundingClientRect();
-        return [proposal.height, ...(desktop ? [proposal.top + main.scrollTop, history.top + main.scrollTop] : [])];
-      }, width === 1440);
+      const scrolled = await scroller(page);
+      const position = async () => {
+        const top = await scrolled.evaluate(element => element.scrollTop);
+        const [summary, log] = [(await proposal.boundingBox())!, (await history.boundingBox())!];
+        return [summary.height, ...(width === 1440 ? [summary.y + top, log.y + top] : [])];
+      };
       const before = await position();
       await reject.click();
       await page.getByLabel(t("orgChange.decide.reject.reason")).fill("시행일 재검토");
@@ -85,11 +90,10 @@ for (const width of [1280, 1440, 390]) for (const theme of ["light", "dark"]) {
       if (width === 390) {
         const dock = page.locator("[data-status-dock]");
         // Clearance must exist before scrolling, including receipts that wrap after they mount.
-        await expect.poll(() => rows.last().evaluate(row => {
-          const main = document.getElementById("main")!;
-          return row.getBoundingClientRect().bottom - (main.scrollHeight - main.clientHeight - main.scrollTop);
-        })).toBeLessThanOrEqual((await dock.boundingBox())!.y);
-        await page.locator("#main").evaluate(main => { main.scrollTop = main.scrollHeight; });
+        const main = await scrolled.elementHandle();
+        await expect.poll(() => rows.last().evaluate((row, main) =>
+          row.getBoundingClientRect().bottom - (main!.scrollHeight - main!.clientHeight - main!.scrollTop), main)).toBeLessThanOrEqual((await dock.boundingBox())!.y);
+        await scrolled.evaluate(main => { main.scrollTop = main.scrollHeight; });
         await expect.poll(async () => (await rows.last().boundingBox())!.y + (await rows.last().boundingBox())!.height)
           .toBeLessThanOrEqual((await dock.boundingBox())!.y);
       }
@@ -138,7 +142,7 @@ test("org history opens newest-first and keeps an older page anchored on refresh
   await mockRoute(page, "get", "/api/v1/org-changes/{id}", () => ({ status: 200, json: record }));
   try {
     await page.goto(screen.path);
-    const history = page.getByRole("complementary", { name: t("orgChange.history"), exact: true });
+    const history = changeHistory(page);
     const rows = history.getByRole("listitem");
     await expect(rows).toHaveCount(50);
     await expect(rows.first()).toContainText("기록자 1999님");

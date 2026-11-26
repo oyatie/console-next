@@ -20,9 +20,10 @@ import { RecordBannerBand } from "../../../ui/patterns/record-banner-band";
 import { dayBoardQuery } from "../api";
 import { baseOf, ledgerParts } from "../domain/grid";
 import { pageState } from "../domain/month-state";
-import { dateText, dayPaneHead, monthText, type DayDockMode } from "../present";
+import { dateText, dayPaneHead, monthText, refusalText, type DayDockMode } from "../present";
 import type { AssignTarget } from "./assign-sheet";
 import { AttendanceTabNav } from "./attendance-head";
+import { useAttendancePhaseLine } from "./use-attendance-phase-line";
 import { DayBars } from "./day-bar";
 import { DayConsoleRail, DayGroupSections, DayLedgerStats, DayOpenPaneBody, DaySavePaneBody } from "./day-console-rail";
 import { DayDetail } from "./day-detail";
@@ -78,20 +79,23 @@ export function DayConsoleView({ baseline }: { baseline: () => React.ReactNode }
     </Button>
   );
 
+  const phaseLine = useAttendancePhaseLine();
   return (
     <PatternShell
       pattern="worklist"
       floorplan="P-03"
       q={board}
+      own={refusalText}
       tabs={<AttendanceTabNav tab="day" />}
       queryLayout="grid"
       detailActive={Boolean(save || open)}
       head={{
         title: t("attendance.title"),
         titleId: "attendance-day-title",
+        meta: phaseLine,
         filters: !empty ? (
           <div className={s.filterPair}>
-            <PeriodStepper unit="day" variant="boxed" showCurrent={false} value={date} onChange={nextDate => go({ date: nextDate })} />
+            <PeriodStepper unit="day" variant="boxed" value={date} onChange={nextDate => go({ date: nextDate })} />
             <ScopePicker compact value={search.wp} onChange={wp => go({ wp, unit: undefined })} />
             <Segmented
               label={t("attendance.dayConsole.filter.label")}

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
+import { ko } from "../packages/i18n/src/catalogs/ko";
 import { go, option } from "./flows";
 import { openTenant } from "./helpers/tenant";
 import { brnDisplay, pickKind, registerEntity, typeAddress, workplaceSheet } from "./setup-flows";
@@ -20,7 +21,7 @@ async function wizardCertificate(page: Page, brn: string) {
 }
 
 async function certificate(page: Page, name: string, brn: string) {
-  await page.getByLabel("사업자등록번호").fill(brn);
+  await workplaceSheet(page).getByRole("textbox", { name: ko["entity.field.brn"] }).fill(brn);
   await page.getByRole("textbox", { name: /^상호/ }).fill(name);
   await page.getByLabel("개업연월일").fill("2020-03-02");
   await typeAddress(page, "사업장 소재지", "서울특별시 강남구 테헤란로 152", "06236");

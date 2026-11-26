@@ -6,31 +6,37 @@ import { employees, id } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
+import { experienceState } from "../experience";
 
 test.beforeAll(() => loadCatalog("ko"));
 
-test("the roster search shortcut returns to people search after a successful retry @ui-state", async ({ page }) => {
-  const fixture = await mockScreen(page, screens.find(screen => screen.key === "people")!, "failed");
-  try {
-    await page.goto("/people");
-    const retry = page.getByRole("button", { name: t("common.retry"), exact: true });
-    await expect(retry).toBeVisible({ timeout: 20_000 });
-    await page.keyboard.press("ControlOrMeta+k");
-    await expect(page.getByRole("dialog", { name: t("shell.jumpLabel"), exact: true })).toBeVisible();
-    await page.keyboard.press("Escape");
+// Classic's failed roster leaves the shortcut to the shell's search; Console's roster keeps its people search mounted
+// through the failure, so the same keys open it before the retry too. No board draws it: the render's value.
+for (const experience of ["baseline", "console"] as const) test.describe(() => {
+  test.use({ storageState: experienceState(experience) });
+  test(`the roster search shortcut returns to people search after a successful retry in ${experience} @ui-state${experience === "baseline" ? " @baseline" : ""}`, async ({ page }) => {
+    const fixture = await mockScreen(page, screens.find(screen => screen.key === "people")!, "failed");
+    try {
+      await page.goto("/people");
+      const retry = page.getByRole("button", { name: t("common.retry"), exact: true });
+      await expect(retry).toBeVisible({ timeout: 20_000 });
+      await page.keyboard.press("ControlOrMeta+k");
+      await expect(page.getByRole("dialog", { name: t(experience === "baseline" ? "shell.jumpLabel" : "peopleJump.label"), exact: true })).toBeVisible();
+      await page.keyboard.press("Escape");
 
-    const items = employees(fixture.count);
-    await mockRoute(page, "get", "/api/v1/employees", { status: 200, json: { items, total: items.length, offset: 0, limit: 100, next_cursor: null } });
-    await retry.click();
-    await expect(page.getByRole("grid", { name: t("people.table") })).toBeVisible();
-    await page.keyboard.press("ControlOrMeta+k");
-    await expect(page.getByRole("dialog", { name: t("peopleJump.label"), exact: true })).toBeVisible();
-    expect(fixture.unexpected).toEqual([]);
-  } finally { fixture.release(); }
+      const items = employees(fixture.count);
+      await mockRoute(page, "get", "/api/v1/employees", { status: 200, json: { items, total: items.length, offset: 0, limit: 100, next_cursor: null } });
+      await retry.click();
+      await expect(page.getByRole("grid", { name: t("people.table") })).toBeVisible();
+      await page.keyboard.press("ControlOrMeta+k");
+      await expect(page.getByRole("dialog", { name: t("peopleJump.label"), exact: true })).toBeVisible();
+      expect(fixture.unexpected).toEqual([]);
+    } finally { fixture.release(); }
+  });
 });
 
 for (const width of [1440, 390]) {
-  test(`list-record baseline: populated at ${width}px @ui-state`, async ({ page }, info) => {
+  test(`list-record baseline: populated at ${width}px @ui-state @baseline`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 });
     const fixture = await mockScreen(page, screens.find(screen => screen.key === "people")!, "populated");
     await page.goto("/_review/patterns/list-record");
@@ -80,7 +86,7 @@ for (const width of [1440, 390]) {
   });
 }
 
-test("list-record baseline: refused at 390px @ui-state", async ({ page }, info) => {
+test("list-record baseline: refused at 390px @ui-state @baseline", async ({ page }, info) => {
   await page.setViewportSize({ width: 390, height: 900 });
   const fixture = await mockScreen(page, screens.find(screen => screen.key === "people")!, "populated");
   await page.goto("/_review/patterns/list-record?state=refused");

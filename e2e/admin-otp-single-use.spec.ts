@@ -5,6 +5,7 @@ import { inviteAccount } from "./access-flows";
 import { acceptConsent, newContext, openCodeSignIn, vendorPage } from "./flows";
 import { tenantBeforeSetup } from "./setup-flows";
 import { clearShifts } from "./stability";
+import { expectSignedIn } from "./shell";
 
 test("admin-issued code rejects replay while its winning session can finish enrollment", { tag: "@auth" }, async ({ browser }) => {
   const { admin, exec } = await tenantBeforeSetup(browser, "singleuse", "일회용코드상사", false, "none");
@@ -27,7 +28,7 @@ test("admin-issued code rejects replay while its winning session can finish enro
   }
   await acceptConsent(page);
   await page.getByRole("button", { name: /동의하고 패스키 등록|패스키 등록/, disabled: false }).click();
-  await expect(page.getByRole("button", { name: "로그아웃" })).toBeVisible({ timeout: 20_000 });
+  await expectSignedIn(page, { timeout: 20_000 });
   await context.close();
   await admin.context().close();
   await exec.context().close();

@@ -35,12 +35,18 @@ export function useNonModalSurroundings(input: RefObject<HTMLInputElement | null
     const observer = new MutationObserver((changes) => {
       for (const change of changes) {
         const el = change.target as Element;
+        if (change.type === "childList") {
+          // A loading rail can gain its first link after the picker has hidden it.
+          const hidden = el.closest('[aria-hidden="true"]');
+          if (hidden && change.addedNodes.length) expose(hidden);
+          continue;
+        }
         if (change.oldValue === "false" && el.getAttribute("aria-hidden") !== "true") restoreHidden.current.delete(el);
         expose(el);
       }
     });
     outsideObserver.current = observer;
-    observer.observe(body, { attributes: true, attributeOldValue: true, subtree: true, attributeFilter: ["aria-hidden"] });
+    observer.observe(body, { childList: true, attributes: true, attributeOldValue: true, subtree: true, attributeFilter: ["aria-hidden"] });
     // A picker inside a Sheet: when the Sheet itself unmounts (Back, route change) its overlay's inert must not return.
     const host = input.current!.closest('[role="dialog"]');
     return () => {

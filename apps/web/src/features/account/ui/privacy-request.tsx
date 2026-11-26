@@ -20,17 +20,12 @@ import s from "./account.module.css";
 
 export function PrivacyRequest({
   onFiled,
-  hideWhenUnavailable = false,
   sectionLayout = false,
 }: {
   onFiled: (receipt: PrivacyRightsReceipt) => void;
-  hideWhenUnavailable?: boolean;
   sectionLayout?: boolean;
 }) {
   const q = useQuery({ ...privacyFilingOptionsQuery, retry: false });
-  if (hideWhenUnavailable && q.data && q.data.controllers.length === 0) {
-    return null;
-  }
   const body = (
     <QueryState q={q} layout="record">
       {options =>

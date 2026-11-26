@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { go, kstDate, option } from "./flows";
 import { openTenant } from "./helpers/tenant";
-import { typeAddress } from "./setup-flows";
+import { wizardBrn, typeAddress } from "./setup-flows";
 import { fillDate } from "./sheet";
 import { shot } from "./shots";
 
@@ -17,7 +17,7 @@ test("regression: a flagged field is one press away from any step, and 설립등
   await option(a, "사업자 구분", "법인사업자").click();
   await a.getByLabel("법인명(단체명)").fill("주식회사 마법정밀");
   await a.getByRole("button", { name: "다음", exact: true }).click();
-  await a.getByLabel("사업자등록번호").fill("0008162516");
+  await wizardBrn(a).fill("0008162516");
   await expect(a.getByText(/검증 숫자가 맞지 않습니다/).first()).toBeVisible();
   await a.getByRole("button", { name: "이전", exact: true }).click();
   await expect(a.getByRole("heading", { name: "기본", level: 2 })).toBeVisible();
@@ -26,7 +26,7 @@ test("regression: a flagged field is one press away from any step, and 설립등
   await expectAccessible(a, "wizard: a flagged field on a later step");
   await shot(a, "after-company-04-wizard-foot-jump");
   await a.getByRole("button", { name: /^등록번호 수정$/ }).first().click();
-  await expect(a.getByLabel("사업자등록번호")).toBeFocused();
+  await expect(wizardBrn(a)).toBeFocused();
 
   // company-05: 설립 중, then its 설립등기 3 days ago; the record shows the number and the date.
   await a.getByRole("button", { name: "이전", exact: true }).click();

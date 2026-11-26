@@ -24,8 +24,16 @@ test("live discovery errors cannot produce an executable plan", () => {
 test("empty and mixed-browser inventories cannot produce an executable plan", () => {
   expect(() => livePlan(inventory(0))).toThrow("LIVE_INVALID_INVENTORY");
   const report = inventory();
-  report.suites[0].specs[0].tests[0].projectName = "firefox";
+  report.suites[0].specs[0].tests.push({ projectName: "firefox", expectedStatus: "passed" });
   expect(() => livePlan(report)).toThrow("LIVE_INVALID_INVENTORY");
+});
+
+test("projects that split a file's tests plan each file once", () => {
+  const report = inventory();
+  for (const suite of report.suites) suite.specs[0].tests[0].projectName = "baseline";
+  const shards = livePlan(report);
+  expect(shards).toHaveLength(8);
+  expect(shards.flatMap(shard => shard.files).sort()).toEqual(report.suites.map(suite => suite.file).sort());
 });
 
 test("capacity mismatches and an oversized fixture fail before browsers start", () => {

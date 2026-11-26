@@ -60,7 +60,8 @@ for (const locale of LOCALES) for (const state of ["populated", "empty", "loadin
       context: { unlock: { domain: "payroll", periodStart: "2026-06-01", periodEnd: "2026-06-30", requester: "해제 요청자", reason_code: "RETRO_CORRECTION" } } };
     await mockRoute(page, "get", "/api/v1/me/action-inbox", { status: 200, json: data });
     await page.goto("/inbox");
-    const item = page.locator(`[data-id="${data.items[0]!.id}"]`);
+    // Console's inbox lists the item again in its month table, after the worklist row.
+    const item = page.locator(`[data-id="${data.items[0]!.id}"]`).first();
     await expect(item).toContainText("해제 요청자");
     await expect(item.getByRole("link").first()).toHaveAttribute("href", `/people/period-locks?review=${id(900)}`);
     await fits(page, `period unlock inbox/${state}`);

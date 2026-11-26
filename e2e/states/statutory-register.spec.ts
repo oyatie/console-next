@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { AT, id, user } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
 import { expectAxe } from "../a11y";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 for (const width of [1440, 390]) test(`the register renders the server's classified masks at ${width}px`, async ({ page }) => {
   const fixture = await mockScreen(page, screens[2], "populated");
@@ -17,11 +20,12 @@ for (const width of [1440, 390]) test(`the register renders the server's classif
     items: [{ employee_id: id(100), cells: ["MASK-1", "김명부", "", "••••-••-••", "", "010-••••-5821"], missing: ["address"] }],
   } });
   await page.goto(`/statutory?tab=register&site=${id(4)}&date=2026-09-02`);
-  const table = page.getByRole("table", { name: "근로자 명부" });
+  // Classic draws the register as a table of cells, Console as a grid of gridcells.
+  const table = page.getByRole("table", { name: t("statutory.register") }).or(page.getByRole("grid", { name: t("statutory.register") }));
   await expect(table).toContainText("••••-••-••");
   await expect(table).toContainText("010-••••-5821");
   await expect(table.getByRole("link", { name: "김명부", exact: true })).toHaveAttribute("href", `/people/${id(100)}`);
-  await expect(table.getByRole("cell", { name: "—", exact: true })).toHaveCount(2);
+  await expect(table.getByRole("cell", { name: "—", exact: true }).or(table.getByRole("gridcell", { name: "—", exact: true }))).toHaveCount(2);
   await expectAxe(page, "masked worker register");
   expect(fixture.unexpected).toEqual([]);
 });
