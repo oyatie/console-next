@@ -31,7 +31,7 @@ use crate::directory::create_guard::{
 use crate::directory::create_onboard::{RegistrationOnboard, record_registration_onboard};
 use crate::directory::create_rehire_input::{RehireEmployeeRequest, normalize_rehire};
 use crate::directory::normalize::normalize_phone_e164;
-use crate::directory::read_detail::load_employee_detail;
+use crate::directory::read_detail::detail_with_visible_warnings;
 use crate::directory::types::EmployeeDetailResponse;
 use crate::{HrError, HrService};
 
@@ -225,7 +225,7 @@ impl HrService {
                     if done != employee_id {
                         return Err(registration_key_reused());
                     }
-                    let detail = load_employee_detail(tx, org_uuid, done).await?;
+                    let detail = detail_with_visible_warnings(tx, &principal, done).await?;
                     return Ok(((true, detail), Vec::new()));
                 }
                 let head = lock_exited_head(tx, org_uuid, employee_id).await?;
@@ -319,7 +319,7 @@ impl HrService {
                         "acknowledge_open_exit_case": request.acknowledge_open_exit_case,
                     })),
                 );
-                let detail = load_employee_detail(tx, org_uuid, employee_id).await?;
+                let detail = detail_with_visible_warnings(tx, &principal, employee_id).await?;
                 Ok(((false, detail), vec![audit]))
             })
         })

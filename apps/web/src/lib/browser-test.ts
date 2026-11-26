@@ -25,3 +25,7 @@ export async function waitForBrowserTestPage(page: Page, ready: Locator) {
 
 /** Loads every UI face, drawn or not: text that first asks for a face later would be measured in a fallback it then leaves. */
 export const settleFonts = (page: Page) => page.evaluate(async () => { await Promise.allSettled([...document.fonts].map(face => face.load())); });
+
+/** The trigger of the `SelectField` with this label: its name is the shown value, a space, then the label. */
+export const selectTrigger = (page: Page, label: string) =>
+  page.getByRole("button", { name: new RegExp(` ${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`) });

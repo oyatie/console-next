@@ -6,7 +6,7 @@ import { join, resolve } from 'node:path';
 import assert from 'node:assert/strict';
 import yaml from 'js-yaml';
 import { rolloutProgressDeadlineSeconds } from './rollout-deadline.mjs';
-import { readEnvironment } from './promote.mjs';
+import { readEnvironment } from './environment.mjs';
 
 const header = '# SPDX-License-Identifier: LicenseRef-Proprietary\n';
 const [environment, image, output] = process.argv.slice(2);

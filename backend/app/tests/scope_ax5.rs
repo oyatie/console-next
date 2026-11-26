@@ -32,6 +32,8 @@ mod go_live;
 mod refusals;
 #[path = "support/http.rs"]
 mod support;
+#[path = "scope_ax5/warnings.rs"]
+mod warnings;
 #[path = "scope_ax5/world.rs"]
 mod world;
 
@@ -187,9 +189,32 @@ async fn regression_a_legal_entity_grant_reaches_its_people_and_only_them(pool: 
     assert_eq!(b_body, none_body, "no existence leak");
 
     // Registration into A, never into B (nothing written).
-    let into_a = employee_body("A-101", &w.branch_a, &w.dept_x);
+    let (status, other) = w
+        .ops
+        .call("GET", &format!("/api/v1/employees/{}", w.b1), None)
+        .await;
+    assert_eq!(status, StatusCode::OK, "{other}");
+    let mut into_a = employee_body("A-101", &w.branch_a, &w.dept_x);
+    into_a["name"] = other["employee"]["name"].clone();
+    into_a["hire_date"] = other["employee"]["hire_date"].clone();
+    into_a["phone"] = json!("010-2345-6789");
     let (status, made) = hr.call("POST", "/api/v1/employees", Some(into_a)).await;
     assert_eq!(status, StatusCode::CREATED, "{made}");
+    assert!(
+        made["warnings"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .all(|w| w["code"] != "same_name_same_hire_date"),
+        "a namesake outside the grant must stay private: {made}"
+    );
+    let person = format!(
+        "/api/v1/employees/{}",
+        made["employee"]["id"].as_str().unwrap()
+    );
+    let (status, visible) = w.ops.call("GET", &person, None).await;
+    assert_eq!(status, StatusCode::OK, "{visible}");
+    assert_eq!(visible["warnings"][0]["matches"][0]["id"], w.b1);
     let before = count(&w.pool, "employees", w.org).await;
     let into_b = employee_body("B-101", &w.branch_b, &w.dept_b);
     refused(

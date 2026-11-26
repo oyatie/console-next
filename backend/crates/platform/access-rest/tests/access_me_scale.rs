@@ -3,10 +3,14 @@
 //! `/access/me` decides tenant commands without loading the tenant's org tree.
 mod support;
 
-use axum::http::{Method, StatusCode};
+use axum::body::Body;
+use axum::http::{Request, StatusCode, header};
+use console_platform_access_rest::ACCESS_ME_PATH;
+use console_platform_test_support::json_response::json_response;
 use serde_json::json;
 use sqlx::PgPool;
 use support::{grant_op, world};
+use tower::ServiceExt;
 use tracing::instrument::WithSubscriber;
 
 #[path = "../../../hr/adapter-postgres/tests/support/trail_queries.rs"]
@@ -37,11 +41,25 @@ async fn access_me_decision_does_not_scan_the_org_tree_at_two_thousand_employees
         .await
         .unwrap();
 
+        let token = w.token(w.hr).await;
+        let request = Request::get(ACCESS_ME_PATH)
+            .header(header::AUTHORIZATION, format!("Bearer {token}"))
+            .body(Body::empty())
+            .unwrap();
+        // Each new runtime connection runs SET ROLE. Finish that setup outside the observer.
+        let mut connections = Vec::new();
+        for _ in 0..w.rt.options().get_max_connections() {
+            connections.push(w.rt.acquire().await.unwrap());
+        }
+        drop(connections);
         let queries = trail_queries::Queries::default();
-        let (status, me) = w
-            .call(Method::GET, "/api/v1/access/me", w.hr, None)
+        let response = w
+            .router()
+            .oneshot(request)
             .with_subscriber(queries.clone())
-            .await;
+            .await
+            .unwrap();
+        let (status, me) = json_response(response).await;
         assert_eq!(status, StatusCode::OK, "{me}");
         assert_eq!(me["decisions"]["bulk_appointment"], true, "{me}");
         let statements = queries.statements();
