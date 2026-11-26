@@ -49,7 +49,7 @@ test.each(["complete", "SIGINT", "SIGTERM", "SIGKILL"] as const)("Vite stops whe
   });
   children.push(child);
   let output = "";
-  const exited = new Promise(resolve => child.once("exit", (code, signal) => resolve({ code, signal })));
+  const closed = new Promise(resolve => child.once("close", (code, signal) => resolve({ code, signal })));
   let group: number | undefined;
   const ready = new Promise<void>((resolve, reject) => {
     const observe = (data: Buffer) => {
@@ -71,7 +71,7 @@ test.each(["complete", "SIGINT", "SIGTERM", "SIGKILL"] as const)("Vite stops whe
       expect(liveGroup(group!), output).not.toEqual([]);
       child.kill(reason);
     }
-    const result = await exited;
+    const result = await closed;
     if (reason === "complete") expect(result, output).toEqual({ code: 0, signal: null });
     await expect.poll(() => liveGroup(group!), { timeout: 5_000 }).toEqual([]);
     await expect.poll(() => new Promise<boolean>((resolve, reject) => {
