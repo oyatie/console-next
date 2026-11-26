@@ -5,7 +5,7 @@ app/src/collaboration.rs	1499
 app/src/hr.rs	3157
 app/src/hr/attendance_import_resolve.rs	328
 app/src/objects.rs	2007
-app/src/office.rs	891
+app/src/office.rs	885
 app/src/privacy/decide.rs	306
 app/src/workbench.rs	650
 app/src/workflow_object_context.rs	460

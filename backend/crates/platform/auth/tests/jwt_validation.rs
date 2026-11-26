@@ -83,7 +83,7 @@ fn corpus(settings: &JwtSettings) -> Corpus {
         token: encode(
             &Header::new(Algorithm::HS256),
             &claims,
-            &EncodingKey::from_secret(b"test-only-hmac-secret"),
+            &EncodingKey::from_secret(b"test-only-hmac-secret").unwrap(),
         )
         .unwrap(),
         accepted: false,
@@ -104,6 +104,14 @@ fn corpus(settings: &JwtSettings) -> Corpus {
     cases.push(Case {
         name: "tampered signature".into(),
         token: format!("{signed}.{}", URL_SAFE_NO_PAD.encode(signature)),
+        accepted: false,
+    });
+    // Accepted through jsonwebtoken 11; 12 rejects critical header parameters it does not implement.
+    let mut critical = header.clone();
+    critical.crit = Some(vec!["urn:example:unimplemented".into()]);
+    cases.push(Case {
+        name: "unknown critical header".into(),
+        token: encode(&critical, &claims, &key).unwrap(),
         accepted: false,
     });
     Corpus { public_pem, cases }

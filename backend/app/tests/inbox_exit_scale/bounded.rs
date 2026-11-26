@@ -236,11 +236,14 @@ async fn scoped_reported_authorization_is_flat_and_does_not_leak_other_departmen
                 .filter(|l| l.kind == "employee")
                 .all(|l| allowed.contains(&l.id.parse().unwrap()))
         );
-        counts.push(queries.statements().len());
-        eprintln!(
-            "hr_exit reported={count} statements={}",
-            queries.statements().len()
-        );
+        // A new test-pool connection runs SET ROLE before executing the source queries.
+        let statements = queries
+            .statements()
+            .iter()
+            .filter(|sql| !sql.contains(r#"summary="SET ROLE console_rt""#))
+            .count();
+        counts.push(statements);
+        eprintln!("hr_exit reported={count} statements={statements}");
         if count == 20 {
             assert_eq!(
                 counts[0], counts[1],
