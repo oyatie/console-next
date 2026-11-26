@@ -108,11 +108,10 @@ pub(super) async fn load(
             .as_ref()
             .is_none_or(|after| compare(position, after).is_gt())
     });
-    positions.sort_by(compare);
     let mut items = Vec::new();
     let mut exact = true;
     let mut scanned = 0;
-    for batch in positions.chunks(limit.saturating_add(1)) {
+    for batch in ranked_batches(&mut positions, limit.saturating_add(1)) {
         scanned += batch.len();
         let ids: Vec<_> = batch.iter().map(|(_, _, id)| id.clone()).collect();
         let rows = query_rows(
@@ -201,10 +200,47 @@ fn due(on: Option<&str>) -> Result<Option<OffsetDateTime>, HrError> {
     .transpose()
 }
 
+/// Rank the first hydration batch up front. Sort the rest only if hydration needs another batch.
+fn ranked_batches(positions: &mut [Position], size: usize) -> impl Iterator<Item = &[Position]> {
+    let split = size.min(positions.len());
+    if split < positions.len() {
+        positions.select_nth_unstable_by(split, compare);
+    }
+    let (first, rest) = positions.split_at_mut(split);
+    [first, rest].into_iter().flat_map(move |part| {
+        part.sort_unstable_by(compare);
+        part.chunks(size)
+    })
+}
+
 fn compare(a: &Position, b: &Position) -> std::cmp::Ordering {
     a.0.is_none()
         .cmp(&b.0.is_none())
         .then_with(|| a.0.cmp(&b.0))
         .then_with(|| a.1.cmp(&b.1))
         .then_with(|| a.2.cmp(&b.2))
+}
+
+#[test]
+fn hydration_batches_follow_the_full_cursor_order_even_when_the_first_batch_is_insufficient() {
+    let early = OffsetDateTime::UNIX_EPOCH;
+    let late = early + time::Duration::days(1);
+    let positions = vec![
+        (None, early, "a".to_owned()),
+        (Some(late), early, "b".to_owned()),
+        (Some(early), late, "c".to_owned()),
+        (Some(early), early, "e".to_owned()),
+        (Some(early), early, "d".to_owned()),
+    ];
+    let mut expected = positions.clone();
+    expected.sort_by(compare);
+    for size in [1, 2, positions.len(), positions.len() + 1] {
+        let mut input = positions.clone();
+        let actual: Vec<_> = ranked_batches(&mut input, size)
+            .flatten()
+            .cloned()
+            .collect();
+        assert_eq!(actual, expected);
+    }
+    assert!(ranked_batches(&mut [], 2).next().is_none());
 }
