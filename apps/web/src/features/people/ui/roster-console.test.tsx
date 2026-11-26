@@ -45,9 +45,9 @@ async function render(listFailed: boolean, viewsRead: boolean) {
   return renderToStaticMarkup(<QueryClientProvider client={client}><RosterConsole manage screen={screen(listFailed)} /></QueryClientProvider>);
 }
 
-// Saved views are the same control in both styles: one button in the roster's head (beside the sort, both in the filter bar
-// on a phone), kept in place while its read is pending and while the roster's own read has failed, and offered once both
-// the views and the roster they filter are read.
+// Saved views are the same control in both styles: one button in the roster's head, kept in place while its read is
+// pending and while the roster's own read has failed, and offered once both the views and the roster they filter are read.
+// A phone draws it beside the sort in the filter bar instead, which comes with the read list.
 test.each([
   { listFailed: false, viewsRead: false, offered: false },
   { listFailed: true, viewsRead: true, offered: false },
