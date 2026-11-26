@@ -73,6 +73,7 @@ The Console shell pins both bars while the page scrolls (`position: sticky` at `
 | `moreLabel` | no | `string` |  | Label for the fifth overflow slot when `items.length > 5`; defaults to `shell.nav.more`. |
 | `onNavigate` | no | `(item: PhoneNavItem) => void` |  | Invoked when a plain primary click or overflow menu selection activates an item. |
 | `renderLink` | no | `(item: PhoneNavItem, props: PhoneNavLinkRenderProps) => ReactNode` |  | Optional custom link renderer for router integration; falls back to a native `<a>` element. |
+| `reserve` | no | `number` |  | While the rest of the items are still coming, the bar keeps this many slots' room and draws the items it has in the last of them, so they need not move when the rest arrive. |
 
 ### PhoneTopBar
 
@@ -95,6 +96,7 @@ The Console shell pins both bars while the page scrolls (`position: sticky` at `
 | `--border` | `border-block-end`, `border-block-start` |
 | `--fw-medium` | `font-weight` |
 | `--fw-strong` | `font-weight` |
+| `--held` | `padding-inline-start` |
 | `--ink` | `color` |
 | `--muted` | `background` |
 | `--phone-nav-h` | `min-height` |

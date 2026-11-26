@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { lazy, Suspense, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { lazy, Suspense, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Ellipsis } from "lucide-react";
 import { t } from "@console/i18n";
 import { chunk } from "../../lib/chunk-guard";
@@ -20,11 +20,19 @@ export type ModuleNavItem = {
   href: string;
   /** Positive actionable count shown beside the module label. */
   count?: number;
+  /** The count is a lower bound, so its badge reads with a plus. */
+  countMore?: boolean;
+  /** The link's name when the badge cannot say the count's state (loading, unreadable); it starts with the label. */
+  name?: string;
+  /** What the count means, read after the name. */
+  description?: string;
 };
 
 type ModuleNavLinkRenderProps = {
   className: string;
   "aria-current"?: "page";
+  "aria-label"?: string;
+  "aria-describedby"?: string;
   children: ReactNode;
 };
 
@@ -55,6 +63,7 @@ export function ModuleNavBar({
 }) {
   const navRef = useRef<HTMLElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
+  const descriptionId = useId();
   const activeIndex = activeId !== undefined ? items.findIndex(item => item.id === activeId) : -1;
   const [overflowState, setOverflowState] = useState<{
     count: number;
@@ -104,15 +113,17 @@ export function ModuleNavBar({
   const renderContent = (item: ModuleNavItem) => (
     <>
       <bdi>{item.label}</bdi>
-      {item.count !== undefined && item.count > 0 ? <Badge count={item.count} tone="attention" /> : null}
+      {item.count !== undefined && item.count > 0 ? <Badge count={item.count} more={item.countMore} tone="attention" /> : null}
     </>
   );
 
-  const renderItem = (item: ModuleNavItem) => {
+  const renderItem = (item: ModuleNavItem, idx: number) => {
     const isCurrent = item.id === activeId;
     const linkProps: ModuleNavLinkRenderProps = {
       className: s.link!,
       "aria-current": isCurrent ? "page" : undefined,
+      "aria-label": item.name,
+      "aria-describedby": item.description ? `${descriptionId}-${idx}` : undefined,
       children: renderContent(item),
     };
     if (renderLink) return renderLink(item, linkProps);
@@ -121,6 +132,8 @@ export function ModuleNavBar({
         href={item.href}
         className={linkProps.className}
         aria-current={linkProps["aria-current"]}
+        aria-label={linkProps["aria-label"]}
+        aria-describedby={linkProps["aria-describedby"]}
         onClick={
           onNavigate
             ? event => {
@@ -155,7 +168,8 @@ export function ModuleNavBar({
           const item = items[idx]!;
           return (
             <li key={item.id} className={s.entry}>
-              {renderItem(item)}
+              {renderItem(item, idx)}
+              {item.description ? <bdi id={`${descriptionId}-${idx}`} className="sr-only">{item.description}</bdi> : null}
             </li>
           );
         })}

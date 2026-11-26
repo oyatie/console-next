@@ -25,6 +25,11 @@ export type WorkspaceTab = {
   count?: number;
   /** Whether the tab cannot be closed; the first tab (`index === 0`) is always pinned. */
   pinned?: boolean;
+  /**
+   * The tab shows a stand-in title until its record's own lands. Its close and the strip's new-tab button sit after
+   * that title and would move when it grows, so they wait for it.
+   */
+  pending?: boolean;
 };
 
 type WorkspaceTabLinkRenderProps = {
@@ -185,6 +190,7 @@ export function WorkspaceTabs({
   );
 
   const isClosable = (tab: WorkspaceTab, index: number) => Boolean(onClose) && index > 0 && !tab.pinned;
+  const titlePending = tabs.some(tab => tab.pending);
 
   const handleClose = (tabId: string, visiblePosition: number) => {
     if (!onClose) return;
@@ -274,7 +280,7 @@ export function WorkspaceTabs({
                   {linkProps.children}
                 </a>
               )}
-              {closable ? (
+              {closable && !tab.pending ? (
                 <button
                   type="button"
                   className={s.close}
@@ -290,12 +296,12 @@ export function WorkspaceTabs({
       </ul>
 
       <div className={s.tail}>
-        {onAdd ? (
+        {onAdd && !titlePending ? (
           <button type="button" className={s.addBtn} aria-label={resolvedNewLabel} onClick={onAdd}>
             <Plus size={14} aria-hidden="true" />
           </button>
         ) : null}
-        {overflowIndices.length > 0 ? (
+        {overflowIndices.length > 0 && !titlePending ? (
           <div className={s.moreWrap}>
             <Suspense fallback={null}>
               <BarOverflowLinks

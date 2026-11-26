@@ -217,7 +217,7 @@ for (const experience of ["baseline", "console"] as const) test(`the task count 
   const trigger = page.locator("#top-needs-me");
   const shows = (count: number, options?: { timeout: number }) => experience === "baseline"
     ? expect(trigger).toHaveAccessibleName(t(count < 100 ? "shell.needsMe.count" : "shell.needsMe.countMore", { count }), options)
-    : expect(nav.getByRole("link", { name: t("shell.link.todo") }).getByText(fmtNumber(count), { exact: true })).toBeVisible(options);
+    : expect(nav.getByRole("link", { name: t("shell.link.todo") }).getByText(count < 100 ? fmtNumber(count) : `${fmtNumber(count)}+`, { exact: true })).toBeVisible(options);
   await page.goto("/people");
   await shows(5, { timeout: 20_000 });
   turn = 125;

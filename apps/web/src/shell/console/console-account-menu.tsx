@@ -59,12 +59,13 @@ export function ConsoleAccountMenu({
 
   return (
     <div ref={wrapRef} className={m.accountWrap}>
+      {/* The name shows beside the initial; only the bare initial needs the name said for it. */}
       <button
         ref={btnRef}
         id={id}
         type="button"
         className={m.accountBtn}
-        aria-label={name}
+        aria-label={compact ? name : undefined}
         aria-expanded={open}
         onClick={() => setOpen(prev => !prev)}
       >

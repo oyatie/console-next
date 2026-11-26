@@ -33,7 +33,7 @@ beforeAll(async () => {
           hits: [{ key: 'road', road: 'HR Road', jibun: 'HR Lot', zip: '03154' }] })
         : h(UnitPicker, { labelText: 'Unit', units, options: units, value: value ?? '', onChange });
       return h('main', null,
-        h('button', { id: 'before' }, 'Before'),
+        h('nav'), h('button', { id: 'before' }, 'Before'),
         h('section', { id: 'hidden', 'aria-hidden': true }, 'Decoration'),
         h('div', { id: 'restricted', inert: true }, h('button', null, 'Unavailable')),
         picker, h('button', { id: 'after' }, 'After'));
@@ -67,3 +67,22 @@ for (const kind of ["code", "address", "unit"]) test.each([1440, 390])(
     await expectElement(page.locator("#restricted")).toHaveJSProperty("inert", true);
   }, 30_000,
 );
+
+test("navigation links that arrive while a picker is open remain accessible", async () => {
+  await page.goto(`${server.resolvedUrls!.local[0]}reference-picker-test?kind=code`);
+  const input = page.getByRole("combobox");
+  await input.fill("HR");
+  await page.getByRole("option").first().waitFor();
+  const nav = page.locator("nav");
+  await expectElement(nav).toHaveAttribute("aria-hidden", "true");
+  await nav.evaluate(el => {
+    const link = document.createElement("a");
+    link.href = "/account";
+    link.textContent = "Account";
+    el.append(link);
+  });
+  await expectElement(page.getByRole("link", { name: "Account" })).toBeVisible();
+  await input.press("Shift+Tab");
+  await expectElement(input).toHaveAttribute("aria-expanded", "false");
+  await expectElement(page.getByRole("link", { name: "Account" })).toBeVisible();
+});

@@ -39,6 +39,28 @@ test("WorkspaceTabs pins the first tab and any pinned tab, placing close buttons
   expect(markup).not.toMatch(/<a\b[^>]*>(?:(?!<\/a>)[\s\S])*<button\b/);
 });
 
+test("a tab whose title is still on its way draws no close, and the strip no new-tab button, until the title lands", () => {
+  const strip = (pending: boolean) => html(
+    <WorkspaceTabs
+      tabs={[{ id: "home", label: "To-dos", href: "/" }, { id: "record", label: "Entity", href: "/org/entities/1", pending }]}
+      activeId="record"
+      closeTabLabel={name => `Close ${name}`}
+      newTabLabel="New tab"
+      onClose={() => {}}
+      onAdd={() => {}}
+    />,
+  );
+  // Both sit after the title and would move when the longer title lands, so they wait for it. The strip's rule after
+  // the tabs stays drawn.
+  const held = strip(true);
+  expect(held).not.toContain('aria-label="Close Entity"');
+  expect(held).not.toContain('aria-label="New tab"');
+  expect(held).toMatch(/<\/ul><div class="[^"]*"><\/div><\/nav>$/);
+  const settled = strip(false);
+  expect(settled).toContain('aria-label="Close Entity"');
+  expect(settled).toContain('aria-label="New tab"');
+});
+
 test("WorkspaceTabs renders nothing when tabs is empty and adds zero standing-text blocks", () => {
   expect(html(<WorkspaceTabs tabs={[]} />)).toBe("");
   const source = readFileSync("apps/web/src/ui/workspace-tabs/workspace-tabs.tsx", "utf8");

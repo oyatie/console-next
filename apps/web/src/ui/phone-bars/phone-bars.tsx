@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { lazy, Suspense, type ReactNode } from "react";
+import { lazy, Suspense, useId, type ReactNode } from "react";
 import { ChevronLeft, Ellipsis, type LucideIcon } from "lucide-react";
 import { t } from "@console/i18n";
 import { chunk } from "../../lib/chunk-guard";
@@ -86,11 +86,19 @@ export type PhoneNavItem = {
   icon: LucideIcon;
   /** Optional positive count displayed beside the icon. */
   count?: number;
+  /** The count is a lower bound, so its badge reads with a plus. */
+  countMore?: boolean;
+  /** The slot's name when the badge cannot say the count's state (loading, unreadable); it starts with the label. */
+  name?: string;
+  /** What the count means, read after the name. */
+  description?: string;
 };
 
 type PhoneNavLinkRenderProps = {
   className: string;
   "aria-current"?: "page";
+  "aria-label"?: string;
+  "aria-describedby"?: string;
   children: ReactNode;
 };
 
@@ -105,6 +113,7 @@ export function PhoneBottomNav({
   moreLabel,
   onNavigate,
   renderLink,
+  reserve,
 }: {
   /** Accessible name of the bottom navigation landmark; defaults to `shell.nav`. */
   label?: string;
@@ -118,7 +127,13 @@ export function PhoneBottomNav({
   onNavigate?: (item: PhoneNavItem) => void;
   /** Optional custom link renderer for router integration; falls back to a native `<a>` element. */
   renderLink?: (item: PhoneNavItem, props: PhoneNavLinkRenderProps) => ReactNode;
+  /**
+   * While the rest of the items are still coming, the bar keeps this many slots' room and draws the items it has in
+   * the last of them, so they need not move when the rest arrive.
+   */
+  reserve?: number;
 }) {
+  const descriptionId = useId();
   if (items.length === 0) return null;
 
   const resolvedLabel = label ?? t("shell.nav");
@@ -135,27 +150,34 @@ export function PhoneBottomNav({
     </>
   );
 
+  // The label comes first in the content, so the slot is named label then count as the desk bar is; the icon row is
+  // still drawn above it.
   const renderSlotContent = (item: PhoneNavItem) => {
     const Icon = item.icon;
     return (
       <>
+        <bdi className={s.label}>{item.label}</bdi>
         <div className={s.iconRow}>
           <Icon size={20} aria-hidden="true" />
-          {item.count !== undefined && item.count > 0 ? <Badge count={item.count} tone="attention" /> : null}
+          {item.count !== undefined && item.count > 0 ? <Badge count={item.count} more={item.countMore} tone="attention" /> : null}
         </div>
-        <bdi className={s.label}>{item.label}</bdi>
       </>
     );
   };
 
   return (
     <nav aria-label={resolvedLabel} className={s.bottomNav}>
-      <ul className={s.list}>
-        {inlineItems.map(item => {
+      <ul
+        className={s.list}
+        ref={el => el?.style.setProperty("--held", reserve && reserve > items.length ? `${((reserve - items.length) / reserve) * 100}%` : "0%")}
+      >
+        {inlineItems.map((item, idx) => {
           const isCurrent = item.id === activeId;
           const linkProps: PhoneNavLinkRenderProps = {
             className: s.slot!,
             "aria-current": isCurrent ? "page" : undefined,
+            "aria-label": item.name,
+            "aria-describedby": item.description ? `${descriptionId}-${idx}` : undefined,
             children: renderSlotContent(item),
           };
           return (
@@ -167,6 +189,8 @@ export function PhoneBottomNav({
                   href={item.href}
                   className={linkProps.className}
                   aria-current={linkProps["aria-current"]}
+                  aria-label={linkProps["aria-label"]}
+                  aria-describedby={linkProps["aria-describedby"]}
                   onClick={
                     onNavigate
                       ? event => {
@@ -182,6 +206,7 @@ export function PhoneBottomNav({
                   {linkProps.children}
                 </a>
               )}
+              {item.description ? <bdi id={`${descriptionId}-${idx}`} className="sr-only">{item.description}</bdi> : null}
             </li>
           );
         })}
