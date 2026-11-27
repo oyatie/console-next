@@ -19,7 +19,8 @@ const monthName = (m: string) => new Intl.DateTimeFormat("ko-KR", { timeZone: "U
 // Period locks: nothing preselected, a month lock derived from the month, an overlapping window blocked
 // with its fixes before the server is asked, and a time-boxed unlock with a reason and a passkey that leaves a receipt.
 test("period locks: month lock, overlap blocked with fixes, unlock with a reason", { tag: "@hr" }, async ({ browser }) => {
-  const { admin: operator } = await tenantInSetup(browser, "lockco", "마감주식회사", false, "본사", "none");
+  const slug = "lockco";
+  const { admin: operator } = await tenantInSetup(browser, slug, "마감주식회사", false, "본사", "none");
   await registerEmployee(operator, { name: "마감담당", unit: SETUP_DEPARTMENT });
   await operator.getByRole("button", { name: "계정 초대" }).click();
   await stepUp(operator.getByRole("dialog", { name: "계정 초대" }), "패스키로 확인하고 계정 초대", operator.getByLabel("일회용 코드"));
@@ -28,7 +29,7 @@ test("period locks: month lock, overlap blocked with fixes, unlock with a reason
   await go(admin, "/", true);
   await confirmGrantNotice(admin, "full");
   await admin.reload();
-  letGrantsAge(unique("lockco"), "마감담당");
+  letGrantsAge(unique(slug), "마감담당");
   await startOperations(operator);
   const c = clickCounter();
   const nav = operator.getByRole("navigation", { name: "주 메뉴" });
