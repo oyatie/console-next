@@ -161,6 +161,7 @@ export const bootKo: Record<BootMessageId, string> = {
   "common.denied.reason.COVER": "다른 사람 업무 대행",
   "common.denied.reason.NEEDED_NOW": "지금 처리할 일이 있음",
   "common.denied.reason.OTHER": "기타",
+  "live.noticesLabel": "서비스 안내",
   "live.statusPage": "상태 페이지 보기",
   "live.crashed.inputKept": "작성 중이던 내용은 이 탭을 닫기 전까지 유지됩니다.",
   ...bootIdleKo,

@@ -24,6 +24,22 @@ const saveWorkspaceLayout = (layout: Record<string, unknown>) =>
 
 type LocalProblem = "unsaved" | "storage" | null;
 
+let persistedStorageFailure = false;
+const storageFailureListeners = new Set<() => void>();
+
+function setPersistedStorageFailure(next: boolean) {
+  if (persistedStorageFailure === next) return;
+  persistedStorageFailure = next;
+  for (const listener of storageFailureListeners) listener();
+}
+
+function subscribeStorageFailure(listener: () => void) {
+  storageFailureListeners.add(listener);
+  return () => {
+    storageFailureListeners.delete(listener);
+  };
+}
+
 function formatOptionLabel(id: string) {
   const experience = resolveExperience(id);
   return experience.listing === "preview"
@@ -64,7 +80,12 @@ function DeviceExperienceChooser({ id }: { id: string }) {
 }
 
 function TenantExperienceChooser({ id }: { id: string }) {
-  const [problem, setProblem] = useState<LocalProblem>(null);
+  const [unsavedProblem, setUnsavedProblem] = useState(false);
+  const storageProblem = useSyncExternalStore(
+    subscribeStorageFailure,
+    () => persistedStorageFailure,
+    () => false,
+  );
   const activeId = useActiveExperienceId();
   const workspace = useQuery(workspaceQuery);
   const settings = useQuery(settingsQuery);
@@ -89,7 +110,7 @@ function TenantExperienceChooser({ id }: { id: string }) {
     awaitFirstRead: true,
     onSuccess: (_response, input) => {
       const stored = writeStoredExperience(input.id, input.source);
-      setProblem(stored ? null : "storage");
+      setPersistedStorageFailure(!stored);
       applyDomExperience(input.id, input.source);
     },
   });
@@ -99,14 +120,15 @@ function TenantExperienceChooser({ id }: { id: string }) {
     <SelectInput id={id} data-experience-ignore-dirty aria-label={t("account.experience")} aria-describedby={`${id}-hint`}
       value={resolved.choice} onChange={event => {
         if (hasUnsavedInput(document, event.currentTarget)) {
-          setProblem("unsaved");
+          setUnsavedProblem(true);
           return;
         }
         const raw = event.target.value;
         const choice: ExperienceChoice = raw === "tenant" ? "tenant" : resolveExperience(raw).id;
         const nextId = choice === "tenant" ? resolved.tenantId : choice;
         const nextSource: ExperienceSource = choice === "tenant" ? "tenant" : "personal";
-        setProblem(null);
+        setUnsavedProblem(false);
+        setPersistedStorageFailure(false);
         save.reset();
         save.mutate({ layout: mergeWorkspaceExperience(layout, choice), id: nextId, source: nextSource });
       }}>
@@ -116,8 +138,8 @@ function TenantExperienceChooser({ id }: { id: string }) {
       </option>)}
     </SelectInput>
     <p id={`${id}-hint`} className="muted">{t("account.experience.personal")}</p>
-    {problem === "unsaved" && <span role="alert">{t("account.experience.unsaved")}</span>}
-    {problem === "storage" && <span role="alert">{t("account.experience.failed")}</span>}
+    {unsavedProblem && <span role="alert">{t("account.experience.unsaved")}</span>}
+    {!unsavedProblem && storageProblem && <span role="alert">{t("account.experience.failed")}</span>}
     <CommandError error={save.error} />
   </>;
 }

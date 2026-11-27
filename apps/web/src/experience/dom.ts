@@ -56,7 +56,7 @@ export function writeStoredExperience(
 ): boolean {
   if (!storage) return false;
   try {
-    if (source === "tenant" && id === "baseline") {
+    if (source === "tenant" && id === "console") {
       storage.removeItem(EXPERIENCE_KEY);
       storage.removeItem(EXPERIENCE_SOURCE_KEY);
     } else {
@@ -93,7 +93,7 @@ export function resolveEffectiveExperience({
 } {
   const settingRow = settingsItems?.find(item => item.key === "display.experience");
   const normalizedSetting = settingRow ? normalizeExperienceId(settingRow.value) : undefined;
-  const tenantId: ExperienceId = isKnownExperienceId(normalizedSetting) ? normalizedSetting : "baseline";
+  const tenantId: ExperienceId = isKnownExperienceId(normalizedSetting) ? normalizedSetting : "console";
   const rawChoice = workspaceLayout && Object.hasOwn(workspaceLayout, "experience")
     ? normalizeExperienceId(workspaceLayout.experience)
     : undefined;
@@ -107,24 +107,24 @@ export function resolveEffectiveExperience({
   if (storedDevice.id !== null && storedDevice.source !== "tenant") {
     return { id: storedDevice.id, choice: storedDevice.id, tenantId, source: "personal" };
   }
-  const id: ExperienceId = settingsItems !== undefined ? tenantId : (storedDevice.id ?? "baseline");
+  const id: ExperienceId = settingsItems !== undefined ? tenantId : (storedDevice.id ?? "console");
   return { id, choice: "tenant", tenantId, source: "tenant" };
 }
 
 export function readDomExperienceId(): ExperienceId {
-  return resolveExperience(typeof document === "undefined" ? undefined : document.documentElement?.dataset.experience).id;
+  const raw = typeof document === "undefined" ? undefined : document.documentElement?.dataset.experience;
+  return raw ? resolveExperience(raw).id : "baseline";
 }
 
 // Read at each call, so a date drawn after a style switch takes the new style.
 i18n.dateStyle = () => (readDomExperienceId() === "console" ? "iso" : "locale");
 
 export function applyDomExperience(id: ExperienceId, source: ExperienceSource): void {
+  void source;
   if (typeof document === "undefined") return;
   const root = document.documentElement;
   const previous = root.dataset.experience;
-  if (source === "tenant" && id === "baseline") {
-    if (previous !== undefined) delete root.dataset.experience;
-  } else if (previous !== id) {
+  if (previous !== id) {
     root.dataset.experience = id;
   }
   if (root.dataset.experience !== previous && typeof window !== "undefined") {

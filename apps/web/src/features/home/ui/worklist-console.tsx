@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState, type AnyRouter } from "@tanstack/react-router";
 import type { Checklist } from "@console/api/pending";
 import { t } from "@console/i18n";
@@ -26,6 +26,7 @@ import { InboxTabs } from "./inbox-tabs";
 import { QuietQueue } from "./quiet-queue";
 import { SnoozeMenu, SnoozedList } from "./snooze";
 import { useInboxRead } from "./use-inbox-read";
+import { useWorklistDecisionFocus } from "./use-worklist-decision-focus";
 import { WorklistColumnsDialog } from "./worklist-columns-dialog";
 import s from "./worklist-console.module.css";
 import { WorklistLower } from "./worklist-lower";
@@ -46,7 +47,12 @@ export type WorklistConsoleProps = {
   setupPending?: boolean;
   receipt?: ReactNode;
   action?: RowAction;
-  inlineRowAction?: (item: AttentionInboxItem, focusAfter: string, onSelectReject: () => void) => ReactNode;
+  inlineRowAction?: (
+    item: AttentionInboxItem,
+    focusAfter: string,
+    onSelectReject: () => void,
+    onDecided?: () => void,
+  ) => ReactNode;
   recordBody?: (item: AttentionInboxItem) => ReactNode;
   recordFooter?: (item: AttentionInboxItem, focusAfter: string, onDecided: () => void) => ReactNode;
   orgNeed?: AccessRequirement;
@@ -66,7 +72,6 @@ export function WorklistConsole({
   const { sel, select } = columnSelection(search, options => navigate<AnyRouter, string>(options));
 
   const [foundSelection, setFoundSelection] = useState<string>();
-  const restoreList = useRef(false);
   const [opened] = useState(Date.now);
   const [caughtUp, setCaughtUp] = useState(false);
   const [statutoryOnly, setStatutoryOnly] = useState(false);
@@ -110,21 +115,29 @@ export function WorklistConsole({
   else if (foundSelection && foundSelection !== sel) setFoundSelection(undefined);
   const removed = Boolean(sel) && foundSelection === sel && inbox.isSuccess && !inbox.isPlaceholderData && !selectedItem;
 
-  useEffect(() => {
-    if (removed) {
-      restoreList.current = true;
-      select(undefined);
-    } else if (!sel && restoreList.current) {
-      let nextFrame = 0;
-      const frame = requestAnimationFrame(() => {
-        nextFrame = requestAnimationFrame(() => {
-          restoreList.current = false;
-          surfaceRef.current?.querySelector<HTMLElement>("[data-id], a[href], button")?.focus();
-        });
-      });
-      return () => { cancelAnimationFrame(frame); cancelAnimationFrame(nextFrame); };
-    }
-  }, [removed, sel, select]);
+  const normalizedQuery = findQuery.trim().toLowerCase();
+  const hasClientFilter = Boolean(normalizedQuery || statutoryOnly);
+  const filteredItems = allItems.filter(item => {
+    if (statutoryOnly && !isStatutoryDeadline(item)) return false;
+    if (!normalizedQuery) return true;
+    const taskTitle = t(taskTitleKey(item));
+    return [taskTitle, item.title, item.ref, item.site, item.who, ...reasonLines(item)].filter(Boolean).join(" ").toLowerCase().includes(normalizedQuery);
+  });
+  const sortedItems = sortWorklistItems(filteredItems, sort.field, sort.direction, item =>
+    hasDistinctTaskLead(item) ? item.title.trim() : t(taskTitleKey(item)),
+  );
+  const visibleRows = mode === "home" ? sortedItems.slice(0, homeRowLimit) : sortedItems;
+  const { onItemDecided } = useWorklistDecisionFocus({
+    surfaceRef,
+    visibleRows,
+    selectedItem,
+    sel,
+    select,
+    removed,
+    dataUpdatedAt: inbox.dataUpdatedAt,
+    isFetching: inbox.isFetching,
+    titleId,
+  });
 
   if (isNonQueueView) {
     return (
@@ -142,19 +155,6 @@ export function WorklistConsole({
       />
     );
   }
-
-  const normalizedQuery = findQuery.trim().toLowerCase();
-  const hasClientFilter = Boolean(normalizedQuery || statutoryOnly);
-  const filteredItems = allItems.filter(item => {
-    if (statutoryOnly && !isStatutoryDeadline(item)) return false;
-    if (!normalizedQuery) return true;
-    const taskTitle = t(taskTitleKey(item));
-    return [taskTitle, item.title, item.ref, item.site, item.who, ...reasonLines(item)].filter(Boolean).join(" ").toLowerCase().includes(normalizedQuery);
-  });
-  const sortedItems = sortWorklistItems(filteredItems, sort.field, sort.direction, item =>
-    hasDistinctTaskLead(item) ? item.title.trim() : t(taskTitleKey(item)),
-  );
-  const visibleRows = mode === "home" ? sortedItems.slice(0, homeRowLimit) : sortedItems;
   const visibleIdSet = new Set(visibleRows.map(row => row.id));
   const activeCheckedIds = new Set([...checkedIds].filter(id => visibleIdSet.has(id)));
   const remainingCount = mode === "home"
@@ -250,7 +250,11 @@ export function WorklistConsole({
                 onToggleAll={next => setCheckedIds(next ? new Set(visibleRows.map(row => row.id)) : new Set())}
                 shownCols={shownCols}
                 action={action}
-                inlineRowAction={inlineRowAction ? (item, onSelectReject) => inlineRowAction(item, titleId, onSelectReject) : undefined}
+                inlineRowAction={
+                  inlineRowAction
+                    ? (item, onSelectReject) => inlineRowAction(item, titleId, onSelectReject, () => onItemDecided(item.id))
+                    : undefined
+                }
                 focusAfter={titleId}
                 moreCount={remainingCount}
                 moreLink={inboxLink}
@@ -285,7 +289,9 @@ export function WorklistConsole({
         openInTab: openHref ? { href: openHref, label: selectedItem.title } : undefined,
         onClose: () => select(undefined),
         returnFocus: () => surfaceRef.current?.querySelector<HTMLElement>(`[data-id="${CSS.escape(sel)}"]`),
-        footer: isInlineApproval && recordFooter ? recordFooter(selectedItem, titleId, () => select(undefined)) : undefined,
+        footer: isInlineApproval && recordFooter
+          ? recordFooter(selectedItem, titleId, () => onItemDecided(selectedItem.id))
+          : undefined,
         children: isInlineApproval && recordBody ? recordBody(selectedItem) : <InboxRecord item={selectedItem} action={action} extra={snooze} focusAfter={titleId} onBack={() => select(undefined)} />,
       } : null}
       statusSegments={!loading && !meError && !inbox.error && first && !inSetup ? [

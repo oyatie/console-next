@@ -189,6 +189,8 @@ export const enPayroll = {
   "payroll.run.statDeductions": "- Total deductions",
   "payroll.run.statNet": "= Total net",
   "payroll.run.precheckTitle": "Pre-approval check",
+  "payroll.run.attendanceNotClosedChip": "Attendance open",
+  "payroll.run.attendanceNotClosedNote": "Close or review attendance exceptions for this pay group before finalizing approval.",
   "payroll.run.missingBankChip": "{count, number} missing account",
   "payroll.run.missingBankNote": "Payment is held only for these {missing, number} employees. The remaining {ready, number} can proceed to approval.",
   "payroll.run.attentionChip": "{count, number} needs check",

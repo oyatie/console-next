@@ -190,6 +190,8 @@ export const koPayroll: Record<keyof typeof enPayroll, string> = {
   "payroll.run.statDeductions": "- 공제 합계",
   "payroll.run.statNet": "= 실지급 합계",
   "payroll.run.precheckTitle": "결재 전 점검",
+  "payroll.run.attendanceNotClosedChip": "근태 마감 전",
+  "payroll.run.attendanceNotClosedNote": "이 급여 그룹의 근태 마감과 예외 항목을 결재 전에 확인하십시오.",
   "payroll.run.missingBankChip": "계좌 미등록 {count, number}명",
   "payroll.run.missingBankNote": "이 {missing, number}명의 지급만 보류됩니다. 나머지 {ready, number}명은 결재 요청할 수 있습니다.",
   "payroll.run.attentionChip": "확인 필요 {count, number}건",

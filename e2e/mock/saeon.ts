@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import type { components } from "@console/api";
 import type { PayGroups } from "@console/api/pending";
-import { t } from "@console/i18n";
+import { createT } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
+import { en } from "../../packages/i18n/src/catalogs/en";
+import { ko } from "../../packages/i18n/src/catalogs/ko";
 import raw from "./saeon-universe.json" with { type: "json" };
+
+const t = createT({ en, ko });
 import {
   brnChecksumValid,
   crnChecksumValid,
@@ -923,7 +927,7 @@ export function saeonPayGroups(): PayGroups {
     items: saeonUniverse.entities.map((entity, index) => ({
       id: `00000000-0000-4000-8500-${padDigits(index + 1, 12)}`,
       legal_entity_id: entity.id,
-      name: `${entity.prefix} ${t("payroll.group")}`,
+      name: `${entity.name.replace(/^\([^)]+\)|\([^)]+\)$/g, "").trim()} ${t("payroll.group")}`,
       pay_date_rule: { day: 25 as const, month_offset: 1 as const, non_business_day: "PREVIOUS" as const },
       base_period: { start_day: "FIRST" as const, month_offset: 0 as const },
       variable_period: { start_day: 16 as const, month_offset: -1 as const },

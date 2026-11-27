@@ -16,9 +16,9 @@ const optionText = (experience: ReturnType<typeof offeredExperiences>[number]) =
   experience.listing === "preview" ? t("account.experience.preview", { style: t(experience.label) }) : t(experience.label);
 const tenantOptionText = (styleId: string) =>
   t("account.experience.organizationDefault", { style: styleId === "console" ? t("account.experience.console") : t("account.experience.baseline") });
-// The style with nothing chosen. No attribute on <html> draws Classic, as the stylesheets do.
+// The style with nothing chosen. public/prefs.js stamps the shipped default ("console") before frame 0.
 const shipped = resolveExperience().id;
-const painted = (id: string | null | undefined) => id ?? "baseline";
+const painted = (id: string | null | undefined) => id ?? shipped;
 
 // Start on a fresh device to exercise the default before switching styles.
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -132,7 +132,7 @@ test("unsaved input on the account page refuses a style switch without losing th
     const nameInput = dialog.getByLabel(t("account.field.name"));
     await nameInput.fill("Updated Name");
     await chooser.evaluate((el: HTMLSelectElement) => {
-      el.value = "console";
+      el.value = "baseline";
       el.dispatchEvent(new Event("change", { bubbles: true }));
     });
     await expect(chooser).toHaveValue("tenant");

@@ -14,6 +14,8 @@ export type Column<R> = CardColumn & {
   width?: "code" | "status" | "summary" | "datetime";
   emphasis?: "strong";
   cellTone?: (r: R) => "danger" | "warn" | "ok" | undefined;
+  /** Pins trailing columns to the inline-end edge when wide tables scroll horizontally above phone width. */
+  pin?: "end";
 };
 type TableColumnGroup = { key: string; label?: ReactNode; span: number };
 type TableFooterCell = {
@@ -23,9 +25,27 @@ type TableFooterCell = {
   type?: ColumnType;
   emphasis?: "strong";
   card?: "label" | "value" | "meta" | "omit";
+  pin?: "end";
 };
 type TableFooterRow = { key?: string; cells: readonly TableFooterCell[] };
 const cls = (c: { fit?: boolean; wide?: boolean }) => [c.fit && "fit", c.wide && "wide-only"].filter(Boolean).join(" ") || undefined;
+
+function computeGroupPins<R>(
+  columnGroups: readonly TableColumnGroup[] | undefined,
+  columns: readonly Column<R>[],
+): readonly { pin?: "end"; pinFirst?: "true" }[] {
+  if (!columnGroups?.length) return [];
+  const out: { pin?: "end"; pinFirst?: "true" }[] = [];
+  let colIdx = 0;
+  for (const g of columnGroups) {
+    const slice = columns.slice(colIdx, colIdx + g.span);
+    const allPinned = slice.length > 0 && slice.every(c => c.pin === "end");
+    const pinFirst = allPinned && columns[colIdx - 1]?.pin !== "end" ? ("true" as const) : undefined;
+    out.push({ pin: allPinned ? ("end" as const) : undefined, pinFirst });
+    colIdx += g.span;
+  }
+  return out;
+}
 
 /**
  * List table. With `onSelect` it is an ARIA grid with a roving row focus: J/K or arrows move focus
@@ -61,13 +81,39 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, onOp
   const tableRef = useRef<HTMLTableElement>(null);
   const [active, setActive] = useState<string>();
   const [hasEditor, setHasEditor] = useState(false);
-  const [scrollState, setScrollState] = useState({ overflows: false, clipped: false, focusable: false });
+  const [scrollState, setScrollState] = useState({ overflows: false, clipped: false, focusable: false, phone: false });
   const rowsOnPhone = mobileLayout === "rows" || (mobileLayout !== "cards" && mobileLayout !== "compact" && hasEditor);
   const compactOnPhone = mobileLayout === "compact";
+  const hasPinnedEnd = columns.some(c => c.pin === "end");
   useLayoutEffect(() => {
     const table = tableRef.current;
     if (!table) return;
     const sync = () => {
+      const phone = (containerRef.current?.clientWidth ?? 1440) <= 480;
+      const headPinned = [...table.querySelectorAll<HTMLElement>('thead tr:last-child > [data-pin="end"]')];
+      if (phone || headPinned.length === 0) {
+        for (const el of table.querySelectorAll<HTMLElement>('[data-pin="end"]')) {
+          if (el.style.insetInlineEnd) el.style.insetInlineEnd = "";
+        }
+      } else {
+        const offsets = new Array<number>(headPinned.length).fill(0);
+        let acc = 0;
+        for (let i = headPinned.length - 1; i >= 0; i--) {
+          offsets[i] = acc;
+          acc += Math.round(headPinned[i]!.getBoundingClientRect().width);
+        }
+        for (const row of table.querySelectorAll("thead tr, tbody tr, tfoot tr")) {
+          const cells = [...row.querySelectorAll<HTMLElement>(':scope > [data-pin="end"]')];
+          if (cells.length === headPinned.length) {
+            cells.forEach((cell, idx) => {
+              const val = `${offsets[idx]}px`;
+              if (cell.style.insetInlineEnd !== val) cell.style.insetInlineEnd = val;
+            });
+          } else if (cells.length === 1) {
+            if (cells[0]!.style.insetInlineEnd !== "0px") cells[0]!.style.insetInlineEnd = "0px";
+          }
+        }
+      }
       const field = table.querySelector('tbody :is(input:not([type="checkbox"]), select, textarea, [contenteditable]:not([contenteditable="false"]))');
       const inlineCheck = table.querySelector('tbody input[type="checkbox"]') && !table.querySelector('thead input[type="checkbox"]');
       const editor = Boolean(field || inlineCheck);
@@ -76,7 +122,11 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, onOp
       const overflows = Boolean(scroller && scroller.scrollWidth > scroller.clientWidth + 1);
       const clipped = Boolean(overflows && scroller && scroller.scrollLeft + scroller.clientWidth < scroller.scrollWidth - 1);
       const focusable = editor || Boolean(table.querySelector('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'));
-      setScrollState(prev => prev.overflows === overflows && prev.clipped === clipped && prev.focusable === focusable ? prev : { overflows, clipped, focusable });
+      setScrollState(prev =>
+        prev.overflows === overflows && prev.clipped === clipped && prev.focusable === focusable && prev.phone === phone
+          ? prev
+          : { overflows, clipped, focusable, phone },
+      );
     };
     const observer = new MutationObserver(sync);
     observer.observe(table, { childList: true, subtree: true });
@@ -134,7 +184,8 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, onOp
       >
         {columns.map((c, i) => {
           const value = c.cell(r);
-          return <td role={onSelect ? "gridcell" : "cell"} key={i} className={cls(c)} data-type={c.type} data-emphasis={c.emphasis} data-cell-tone={c.cellTone?.(r)} data-card={roles[i]} data-label={typeof c.header === "string" ? c.header : undefined} title={typeof value === "string" ? value : undefined}>{value}</td>;
+          const pinFirst = c.pin === "end" && columns[i - 1]?.pin !== "end" ? "true" : undefined;
+          return <td role={onSelect ? "gridcell" : "cell"} key={i} className={cls(c)} data-type={c.type} data-emphasis={c.emphasis} data-cell-tone={c.cellTone?.(r)} data-pin={c.pin} data-pin-first={pinFirst} data-card={roles[i]} data-label={typeof c.header === "string" ? c.header : undefined} title={typeof value === "string" ? value : undefined}>{value}</td>;
         })}
       </tr>
       {more != null && more !== false && (
@@ -146,6 +197,7 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, onOp
     );
   });
   const fixedTyped = columns.some(c => c.type) && scrollLayout !== "auto";
+  const groupPins = computeGroupPins(columnGroups, columns);
   const table = (
     // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Overflowing read-only tables without focusable cells need keyboard scroll access.
     <table ref={tableRef} tabIndex={scrollableReadOnly ? 0 : undefined} className={`table ${rowsOnPhone ? cards.rows : compactOnPhone ? cards.compact : cards.short} ${cards.surface} ${types.surface} ${types.native}${tableClassName ? ` ${tableClassName}` : ""}`} data-typed={columns.some(c => c.type) || undefined} data-scroll-layout={scrollLayout} data-density={density} data-compact-rows={compactOnPhone || undefined} data-fixed={columns.some(c => c.width !== undefined) || undefined} data-selectable={Boolean(onSelect)} {...grid}>
@@ -154,14 +206,14 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, onOp
       <thead>
         {columnGroups?.length ? (
           <tr className={groupedStyles?.groupRow}>
-            {columnGroups.map(g => (
+            {columnGroups.map((g, gi) => (
               g.label != null
-                ? <th key={g.key} scope="colgroup" colSpan={g.span} className={groupedStyles?.groupCell}>{g.label}</th>
-                : <td key={g.key} colSpan={g.span} className={groupedStyles?.groupBlank} aria-hidden="true" />
+                ? <th key={g.key} scope="colgroup" colSpan={g.span} data-pin={groupPins[gi]?.pin} data-pin-first={groupPins[gi]?.pinFirst} className={groupedStyles?.groupCell}>{g.label}</th>
+                : <td key={g.key} colSpan={g.span} data-pin={groupPins[gi]?.pin} data-pin-first={groupPins[gi]?.pinFirst} className={groupedStyles?.groupBlank} aria-hidden="true" />
             ))}
           </tr>
         ) : null}
-        <tr>{columns.map((c, i) => <th key={i} scope="col" className={cls(c)} data-type={c.type} data-width={c.width}>{c.header}</th>)}</tr>
+        <tr>{columns.map((c, i) => <th key={i} scope="col" className={cls(c)} data-type={c.type} data-width={c.width} data-pin={c.pin} data-pin-first={c.pin === "end" && columns[i - 1]?.pin !== "end" ? "true" : undefined}>{c.header}</th>)}</tr>
       </thead>
       {groups ? groups.map(g => (
         <tbody key={g.id}>
@@ -172,20 +224,22 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, onOp
       {footerRow && footerRow.cells.length > 0 && (
         <tfoot>
           <tr key={footerRow.key ?? "footer"} className={groupedStyles?.footerRow}>
-            {footerRow.cells.map((cell, i) => (
-              i === 0
-                ? <th key={cell.key} scope="row" colSpan={cell.span} data-type={cell.type} data-emphasis={cell.emphasis} data-card={cell.card}>{cell.content}</th>
-                : <td key={cell.key} colSpan={cell.span} data-type={cell.type} data-emphasis={cell.emphasis} data-card={cell.card}>{cell.content}</td>
-            ))}
+            {footerRow.cells.map((cell, i) => {
+              const pinFirst = cell.pin === "end" && footerRow.cells[i - 1]?.pin !== "end" ? "true" : undefined;
+              return i === 0
+                ? <th key={cell.key} scope="row" colSpan={cell.span} data-type={cell.type} data-emphasis={cell.emphasis} data-pin={cell.pin} data-pin-first={pinFirst} data-card={cell.card}>{cell.content}</th>
+                : <td key={cell.key} colSpan={cell.span} data-type={cell.type} data-emphasis={cell.emphasis} data-pin={cell.pin} data-pin-first={pinFirst} data-card={cell.card}>{cell.content}</td>;
+            })}
           </tr>
         </tfoot>
       )}
     </table>
   );
+  const showScrollCue = scrollState.clipped && (!hasPinnedEnd || scrollState.phone);
   return (
     <div ref={containerRef} className={cards.container}>
       <div ref={scrollerRef} className={rowsOnPhone || scrollState.overflows ? cards.scroll : undefined}>{table}</div>
-      {scrollState.clipped && <span className={cards.scrollCue} data-scroll-cue aria-hidden="true" />}
+      {showScrollCue && <span className={cards.scrollCue} data-scroll-cue aria-hidden="true" />}
     </div>
   );
 }
