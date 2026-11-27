@@ -16,7 +16,10 @@ max-threads = 1
 # covered all of them. With binary() the same three report 4/4, 1/1 and 9/9.
 [[profile.default.overrides]]
 filter = '''
-  binary(leave_migration_expand_contract)
+  binary(owner_only_acl_postgres18)
+  + test(=corrects_stored_phones_and_preserves_revision_history)
+  + test(=baseline_upgrade_preserves_keys_and_denies_unknown_codec)
+  + binary(leave_migration_expand_contract)
   + binary(key_revision_migration_upgrade)
   + binary(attendance_console_migration_contract)
   + binary(apalis_adapter)
