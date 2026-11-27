@@ -29,9 +29,9 @@ export function CompanyDomain({ signInId, ops }: { signInId: string | null | und
   const valid = validCompanyDomain(requested) && requested !== domain;
   const card = <Card title={t("account.domain.title")}>
     <p className="code">{t("account.domain.current", { slug: domain ?? "—" })}</p>
-    {pending.data?.pending_domain && <Banner tone="ok">{t("account.domain.pending", { slug: pending.data.pending_domain })}</Banner>}
     {!ops && <p>{t("account.domain.opsOnly")}</p>}
     <Button disabled={!domain || !ops || Boolean(pending.error)} onClick={() => setOpen(true)}>{t("account.domain.request")}</Button>
+    {pending.data?.pending_domain && <Banner tone="ok">{t("account.domain.pending", { slug: pending.data.pending_domain })}</Banner>}
     <Dialog open={open} title={t("account.domain.request")} onClose={() => setOpen(false)} dismissable={!requested}>
       <Banner>{t("account.domain.requestHint")}</Banner>
       <Field label={t("account.domain.requested")} required error={requested && !valid ? t("tenants.form.slugPattern") : undefined}>

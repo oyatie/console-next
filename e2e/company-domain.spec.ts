@@ -1,7 +1,10 @@
 import { expect, test } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "./a11y";
 import { tenantOnboardSubmit, tenantSlugField, firstSignIn, go, passkeyLogin, takeCode, unique, vendorPage, vendorStepUp } from "./flows";
 import { signOut } from "./shell";
+
+test.beforeAll(() => loadCatalog("ko"));
 
 test("company domain: deliberate opening, safe rename, old-domain sign-in notice and support request", { tag: "@auth" }, async ({ browser }) => {
   const old = unique("domain-before");
@@ -18,7 +21,7 @@ test("company domain: deliberate opening, safe rename, old-domain sign-in notice
   await domain.fill("platform");
   await expect(domain).toHaveAttribute("aria-invalid", "true");
   await domain.fill("");
-  await opening.getByLabel("고객이 제공한 홈페이지 또는 업무용 이메일 (선택)").fill(`https://${old}.com`);
+  await opening.getByRole("textbox", { name: t("tenants.form.website") }).fill(`https://${old}.com`);
   await opening.getByRole("button", { name: `${old} 사용` }).click();
   await expect(domain).toHaveValue(old);
   await expect(opening).toContainText(`hong@${old}`);
@@ -58,7 +61,7 @@ test("company domain: deliberate opening, safe rename, old-domain sign-in notice
   await tenantSlugField(rename).fill(old);
   await expect(rename).toContainText("이미 쓰거나 이전에 쓴 회사 도메인");
   await expect(rename.getByRole("button", { name: "회사 도메인 변경", exact: true })).toBeDisabled();
-  await rename.getByRole("button", { name: "돌아가기" }).click();
+  await rename.getByRole("button", { name: t("common.cancel"), exact: true }).click();
 
   await signOut(admin);
   await admin.getByRole("textbox", { name: "아이디", exact: true }).fill(oldId);
