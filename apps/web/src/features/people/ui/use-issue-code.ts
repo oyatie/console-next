@@ -3,7 +3,15 @@ import { useCommand } from "../../../lib/react/command";
 import { issueSignInCode } from "../api";
 
 /** A one-time code to hand over: a first sign-in (invite) or the sign-in after a passkey reset. */
-export type Issued = components["schemas"]["AdminIssueOtpResponse"] & { name: string; userId: string; reset?: boolean; signInId?: string | null };
+export type Issued = components["schemas"]["AdminIssueOtpResponse"] & {
+  name: string;
+  userId: string;
+  reset?: boolean;
+  signInId?: string | null;
+  delivered_to_recovery_contact?: boolean;
+  masked_contact?: string | null;
+  grantedCount?: number;
+};
 
 /**
  * Issues a single-use sign-in code once the admin has confirmed it is them with their own passkey (step-up).

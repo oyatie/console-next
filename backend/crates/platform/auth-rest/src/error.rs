@@ -202,6 +202,23 @@ impl RestError {
                 Self::conflict(error.to_string())
             }
             ProvisioningError::NotFound(_) => Self::not_found(error.to_string()),
+            ProvisioningError::Forbidden(ref code) if code == "tenant_inactive" => {
+                Self::tenant_inactive()
+            }
+            ProvisioningError::Forbidden(ref code) if code == "ops_holder_only" => Self {
+                status: StatusCode::FORBIDDEN,
+                code: "ops_holder_only",
+                message: "only an active ops account holder may perform this action".to_owned(),
+            },
+            ProvisioningError::Forbidden(msg) => Self::forbidden(msg),
+            ProvisioningError::InvalidInput(msg) => Self::validation(msg),
+            ProvisioningError::Conflict(ref code) if code == "ops_recovery_contact_missing" => {
+                Self {
+                    status: StatusCode::CONFLICT,
+                    code: "ops_recovery_contact_missing",
+                    message: "register a recovery contact first".to_owned(),
+                }
+            }
             ProvisioningError::Conflict(_) | ProvisioningError::SlugTaken => {
                 Self::conflict(error.to_string())
             }

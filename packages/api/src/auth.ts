@@ -3,6 +3,11 @@ import type { components } from "./schema";
 import { authPost, clearStoredRefresh, session, storedRefresh, type TokenPair } from "./session";
 import { platform, type PasskeyGet } from "./platform";
 
+let notifyRecovery: ((next: boolean) => void) | undefined;
+export const setRecoveryNotifier = (fn: (next: boolean) => void) => {
+  notifyRecovery = fn;
+};
+
 type Ceremony = components["schemas"]["PasskeyLoginStartResponse"];
 type Assertion = components["schemas"]["PasskeyStepUpAssertion"];
 // webauthn-rs serialises challenges as `{ publicKey: {...} }` with base64url fields.
@@ -51,6 +56,7 @@ export async function loginWithPasskey(opts: { identifier?: string; onStart?: (e
   const done = await authPost<TokenPair>("/api/v1/auth/passkey/login/finish", assertion);
   signedInAs = identifier;
   signInProfile = done.passkey_profile;
+  notifyRecovery?.(Boolean(done.cancelled_recovery_request));
   session.set(done);
   const rpId = (start.challenge as WebauthnJson<"publicKey", PublicKeyCredentialRequestOptionsJSON>).publicKey.rpId;
   if (rpId && signInProfile) {
@@ -104,6 +110,7 @@ export async function registerPasskey(opts: { stepUp?: boolean; label?: string }
 export async function logout() {
   signedInAs = undefined;
   signInProfile = undefined;
+  notifyRecovery?.(false);
   // Native: the server revokes the refresh family only when the token is in the body (web: the cookie).
   await authPost("/api/v1/auth/logout", { refresh_token: await storedRefresh() }).catch(() => undefined);
   await clearStoredRefresh();

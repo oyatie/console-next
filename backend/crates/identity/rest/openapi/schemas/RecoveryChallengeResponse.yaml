@@ -1,0 +1,9 @@
+type: object
+required:
+- sent
+- expires_at
+properties:
+  sent:
+    type: boolean
+  expires_at:
+    $ref: '#/components/schemas/Timestamp'

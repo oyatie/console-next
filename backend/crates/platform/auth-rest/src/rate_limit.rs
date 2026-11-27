@@ -25,6 +25,8 @@ pub(crate) enum RateLimitEndpoint {
     Refresh,
     AdminOtpIssue,
     AdminCredentialReset,
+    RecoveryChallenge,
+    RecoveryRedeem,
 }
 
 impl RateLimitEndpoint {
@@ -41,6 +43,8 @@ impl RateLimitEndpoint {
             Self::Refresh => "refresh",
             Self::AdminOtpIssue => "admin_otp_issue",
             Self::AdminCredentialReset => "admin_credential_reset",
+            Self::RecoveryChallenge => "recovery_challenge",
+            Self::RecoveryRedeem => "recovery_redeem",
         }
     }
 
@@ -58,7 +62,8 @@ impl RateLimitEndpoint {
             Self::LoginStart
             | Self::DeviceLoginStart
             | Self::DeviceLoginApprove
-            | Self::LoginFinish => (RATE_LIMIT_LOGIN_START_PER_IP, 30, 20_000),
+            | Self::LoginFinish
+            | Self::RecoveryChallenge => (RATE_LIMIT_LOGIN_START_PER_IP, 30, 20_000),
             // A waiting desktop polls about every two seconds; 1 200/min per IP
             // lets ~40 desktops behind one NAT wait at once.
             Self::DeviceLoginPoll => (1_200, 60, 20_000),
@@ -67,7 +72,7 @@ impl RateLimitEndpoint {
         // A guessable secret (OTP): key IPv6 per /56, so
         // one /48 holder gets 256 buckets instead of 65 536.
         let ipv6_prefix = match self {
-            Self::OtpRedeem => 56,
+            Self::OtpRedeem | Self::RecoveryRedeem => 56,
             _ => 64,
         };
         Caps {

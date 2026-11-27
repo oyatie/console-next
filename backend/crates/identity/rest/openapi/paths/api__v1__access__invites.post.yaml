@@ -1,0 +1,46 @@
+tags:
+- access
+operationId: createAccessInvite
+summary: Atomically invite an account, apply initial role grants, and mint a first sign-in code
+description: Creates the account, applies all initial role/scope grants, and issues the first sign-in one-time code in one atomic database transaction under a single passkey step-up assertion. Any refusal rolls back every write.
+security:
+- bearerAuth: []
+parameters:
+- in: header
+  name: Idempotency-Key
+  required: true
+  schema:
+    type: string
+    minLength: 16
+    maxLength: 200
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/CreateAccessInviteRequest'
+responses:
+  '200':
+    description: Idempotent replay of a previously committed invite (otp is null on replay).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/CreateAccessInviteResponse'
+  '201':
+    description: Newly created account, applied grants, and one-time sign-in code.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/CreateAccessInviteResponse'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '428':
+    $ref: '#/components/responses/PreconditionRequired'

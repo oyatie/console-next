@@ -1,0 +1,14 @@
+type: object
+additionalProperties: false
+properties:
+  target_account_id:
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  reason:
+    type:
+    - string
+    - 'null'
+    maxLength: 200
+  step_up:
+    $ref: '#/components/schemas/PasskeyStepUpAssertion'

@@ -271,6 +271,10 @@ pub(crate) async fn admin_credential_reset(
     )
     .await?;
 
+    if crate::admin_ops_reset::target_is_ops_holder(&state, principal.org_id, body.user_id).await? {
+        return crate::admin_ops_reset::reset_other_ops_holder(&state, &principal, body).await;
+    }
+
     // Resolve the TARGET's real roles inside the CALLER's tenant (IDOR / cross-org
     // guard): a user in another org is not visible under the caller's org GUC and
     // surfaces as the same generic 403 as a missing/inactive target.
@@ -354,5 +358,7 @@ pub(crate) async fn admin_credential_reset(
         user_id: issue.user_id,
         otp: issue.token.as_str().to_owned(),
         expires_at: issue.expires_at,
+        delivered_to_recovery_contact: false,
+        masked_contact: None,
     }))
 }

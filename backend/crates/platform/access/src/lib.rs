@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 //! Tenant roles, grants and effective access — the use cases and their store
 //! (decision #26 pilot roles slice; access-model AX-6 subset). The REST face
 //! is `console-platform-access-rest`.
@@ -17,8 +18,10 @@ mod grant_ops;
 mod grant_types;
 pub mod grants;
 mod grants_store;
+pub mod invites;
 pub mod log_review;
 pub mod notice;
+pub mod ops_holders;
 pub mod pending;
 pub mod requests;
 mod role_requests;
@@ -29,6 +32,7 @@ pub use dto::{GrantOut, LineIn, LineOut, RoleOut, ScopeIn, ScopeOut, StepUp};
 pub use error::{AccessError, AccessResult, Refusal};
 
 use console_platform_auth::PasskeyService;
+use console_platform_provisioning::BootstrapCredentialStore;
 use sqlx::PgPool;
 
 /// What the use cases run on.
@@ -37,12 +41,28 @@ pub struct AccessService {
     pool: PgPool,
     /// Verifies the passkey step-up that granting access needs. `None` refuses it.
     step_up: Option<PasskeyService>,
+    /// Issues first-sign-in bootstrap OTPs inside atomic invite transactions.
+    bootstrap: BootstrapCredentialStore,
 }
 
 impl AccessService {
     #[must_use]
-    pub const fn new(pool: PgPool, step_up: Option<PasskeyService>) -> Self {
-        Self { pool, step_up }
+    pub fn new(pool: PgPool, step_up: Option<PasskeyService>) -> Self {
+        #[cfg(debug_assertions)]
+        let bootstrap = BootstrapCredentialStore::default();
+        #[cfg(not(debug_assertions))]
+        let bootstrap = BootstrapCredentialStore::unconfigured();
+        Self {
+            pool,
+            step_up,
+            bootstrap,
+        }
+    }
+
+    #[must_use]
+    pub fn with_bootstrap_credentials(mut self, bootstrap: BootstrapCredentialStore) -> Self {
+        self.bootstrap = bootstrap;
+        self
     }
 
     #[must_use]

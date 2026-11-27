@@ -6086,6 +6086,24 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/access/invites",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__access__invites.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/access/invites/preview",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__access__invites__preview.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/access/me",
         operations: &[Operation {
             method: "get",
@@ -6097,6 +6115,24 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
         operations: &[Operation {
             method: "get",
             body: include_str!("../../identity/rest/openapi/paths/api__v1__access__ops.get.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/access/ops/holders",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__access__ops__holders.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/access/ops/holders/release",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__access__ops__holders__release.post.yaml"
+            ),
         }],
     },
     PathItem {
@@ -6375,6 +6411,51 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
             method: "post",
             body: include_str!(
                 "../../identity/rest/openapi/paths/api__v1__auth__privacy-consent__status.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/auth/recovery/challenge",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__auth__recovery__challenge.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/auth/recovery/codes/generate",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__auth__recovery__codes__generate.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/auth/recovery/contact",
+        operations: &[Operation {
+            method: "put",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__auth__recovery__contact.put.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/auth/recovery/redeem",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__auth__recovery__redeem.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/auth/recovery/status",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__auth__recovery__status.get.yaml"
             ),
         }],
     },
@@ -7563,6 +7644,88 @@ const IDENTITY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "OpsAccount",
         body: include_str!("../../identity/rest/openapi/schemas/OpsAccount.yaml"),
+    },
+    NamedYaml {
+        name: "OpsHolderSummary",
+        body: include_str!("../../identity/rest/openapi/schemas/OpsHolderSummary.yaml"),
+    },
+    NamedYaml {
+        name: "DesignateOpsHolderRequest",
+        body: include_str!("../../identity/rest/openapi/schemas/DesignateOpsHolderRequest.yaml"),
+    },
+    NamedYaml {
+        name: "ReleaseOpsHolderRequest",
+        body: include_str!("../../identity/rest/openapi/schemas/ReleaseOpsHolderRequest.yaml"),
+    },
+    NamedYaml {
+        name: "AccessInviteGrantLineInput",
+        body: include_str!("../../identity/rest/openapi/schemas/AccessInviteGrantLineInput.yaml"),
+    },
+    NamedYaml {
+        name: "PreviewAccessInviteRequest",
+        body: include_str!("../../identity/rest/openapi/schemas/PreviewAccessInviteRequest.yaml"),
+    },
+    NamedYaml {
+        name: "PreviewAccessInviteItem",
+        body: include_str!("../../identity/rest/openapi/schemas/PreviewAccessInviteItem.yaml"),
+    },
+    NamedYaml {
+        name: "PreviewAccessInviteResponse",
+        body: include_str!("../../identity/rest/openapi/schemas/PreviewAccessInviteResponse.yaml"),
+    },
+    NamedYaml {
+        name: "CreateAccessInviteRequest",
+        body: include_str!("../../identity/rest/openapi/schemas/CreateAccessInviteRequest.yaml"),
+    },
+    NamedYaml {
+        name: "CreateAccessInviteResponse",
+        body: include_str!("../../identity/rest/openapi/schemas/CreateAccessInviteResponse.yaml"),
+    },
+    NamedYaml {
+        name: "RecoveryChannel",
+        body: include_str!("../../identity/rest/openapi/schemas/RecoveryChannel.yaml"),
+    },
+    NamedYaml {
+        name: "RecoveryContactStatus",
+        body: include_str!("../../identity/rest/openapi/schemas/RecoveryContactStatus.yaml"),
+    },
+    NamedYaml {
+        name: "RecoveryCodesSummary",
+        body: include_str!("../../identity/rest/openapi/schemas/RecoveryCodesSummary.yaml"),
+    },
+    NamedYaml {
+        name: "RecoveryStatusResponse",
+        body: include_str!("../../identity/rest/openapi/schemas/RecoveryStatusResponse.yaml"),
+    },
+    NamedYaml {
+        name: "UpsertRecoveryContactRequest",
+        body: include_str!("../../identity/rest/openapi/schemas/UpsertRecoveryContactRequest.yaml"),
+    },
+    NamedYaml {
+        name: "GenerateRecoveryCodesRequest",
+        body: include_str!("../../identity/rest/openapi/schemas/GenerateRecoveryCodesRequest.yaml"),
+    },
+    NamedYaml {
+        name: "GenerateRecoveryCodesResponse",
+        body: include_str!(
+            "../../identity/rest/openapi/schemas/GenerateRecoveryCodesResponse.yaml"
+        ),
+    },
+    NamedYaml {
+        name: "RecoveryChallengeRequest",
+        body: include_str!("../../identity/rest/openapi/schemas/RecoveryChallengeRequest.yaml"),
+    },
+    NamedYaml {
+        name: "RecoveryChallengeResponse",
+        body: include_str!("../../identity/rest/openapi/schemas/RecoveryChallengeResponse.yaml"),
+    },
+    NamedYaml {
+        name: "RecoveryRedeemRequest",
+        body: include_str!("../../identity/rest/openapi/schemas/RecoveryRedeemRequest.yaml"),
+    },
+    NamedYaml {
+        name: "RecoveryRedeemResponse",
+        body: include_str!("../../identity/rest/openapi/schemas/RecoveryRedeemResponse.yaml"),
     },
     NamedYaml {
         name: "OpsRecoveryCancelRequest",

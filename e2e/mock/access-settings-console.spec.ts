@@ -71,7 +71,15 @@ async function applySaeonAccessFixtures(page: Page) {
     granted_at: AT,
   }));
   await mockRoute(page, "get", "/api/v1/org-structure", { status: 200, json: saeonOrgStructure() });
-  await mockRoute(page, "get", "/api/v1/access/ops", { status: 200, json: { account_id: id(20), display_name: saeon.accessConsole.opsAccountName } });
+  await mockRoute(page, "get", "/api/v1/access/ops", {
+    status: 200,
+    json: {
+      account_id: id(20),
+      display_name: saeon.accessConsole.opsAccountName,
+      max_holders: 2,
+      holders: [{ account_id: id(20), display_name: saeon.accessConsole.opsAccountName, has_passkey: true, has_recovery_contact: true, recovery_codes_remaining: 10, designated_at: AT }],
+    },
+  });
   await mockRoute(page, "get", "/api/v1/access/roles", { status: 200, json: [{ ...accessRole, name_ko: saeon.accessConsole.readOnlyRole, holder_count: accounts.length }] });
   await mockRoute(page, "get", "/api/v1/access/grants", async (request) => {
     const query = new URL(request.url()).searchParams;

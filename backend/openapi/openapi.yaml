@@ -3257,6 +3257,86 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+  /api/v1/access/invites:
+    post:
+      tags:
+      - access
+      operationId: createAccessInvite
+      summary: Atomically invite an account, apply initial role grants, and mint a first sign-in code
+      description: Creates the account, applies all initial role/scope grants, and issues the first sign-in one-time code in one atomic database transaction under a single passkey step-up assertion. Any refusal rolls back every write.
+      security:
+      - bearerAuth: []
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        required: true
+        schema:
+          type: string
+          minLength: 16
+          maxLength: 200
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAccessInviteRequest'
+      responses:
+        '200':
+          description: Idempotent replay of a previously committed invite (otp is null on replay).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateAccessInviteResponse'
+        '201':
+          description: Newly created account, applied grants, and one-time sign-in code.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateAccessInviteResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '428':
+          $ref: '#/components/responses/PreconditionRequired'
+  /api/v1/access/invites/preview:
+    post:
+      tags:
+      - access
+      operationId: previewAccessInvite
+      summary: Preview an account invite together with optional initial role and scope grants
+      description: Validates account invite fields and dry-runs each initial role/scope grant against the caller's authority and grantor ceiling without writing any row.
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PreviewAccessInviteRequest'
+      responses:
+        '200':
+          description: Dry-run preview outcome.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PreviewAccessInviteResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /api/v1/access/me:
     get:
       tags:
@@ -3333,6 +3413,70 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /api/v1/access/ops/holders:
+    post:
+      tags:
+      - access
+      operationId: designateOpsAccountHolder
+      summary: Designate a second ops account holder (at most 2 per tenant)
+      description: Only an active ops account holder may designate another active account (with an enrolled passkey and zero active role grants) as a second ops account holder. Requires a fresh passkey step-up assertion.
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DesignateOpsHolderRequest'
+      responses:
+        '200':
+          description: Updated ops account holders summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpsAccount'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '428':
+          $ref: '#/components/responses/PreconditionRequired'
+  /api/v1/access/ops/holders/release:
+    post:
+      tags:
+      - access
+      operationId: releaseSelfOpsAccountHolder
+      summary: Release the caller's own ops account holder status
+      description: Self-only release of ops account holder status when a second active ops account holder remains. Revokes any unconsumed recovery codes of the releasing holder. Requires a fresh passkey step-up assertion.
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReleaseOpsHolderRequest'
+      responses:
+        '200':
+          description: Updated ops account holders summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpsAccount'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '428':
+          $ref: '#/components/responses/PreconditionRequired'
   /api/v1/access/people/{id}:
     get:
       # SPDX-License-Identifier: LicenseRef-Proprietary
@@ -5395,6 +5539,130 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PrivacyConsentStatusResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/auth/recovery/challenge:
+    post:
+      tags:
+      - auth
+      operationId: startRecoveryChallenge
+      summary: Send a verification code to an ops holder recovery contact
+      description: Pre-authentication anti-enumeration endpoint that dispatches a short-lived verification code when the identifier resolves to an active ops holder with a registered recovery contact and remaining recovery codes.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecoveryChallengeRequest'
+      responses:
+        '200':
+          description: Uniform dispatch acknowledgement.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecoveryChallengeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/v1/auth/recovery/codes/generate:
+    post:
+      tags:
+      - auth
+      operationId: generateRecoveryCodes
+      summary: Generate 10 single-use recovery codes for an ops account holder
+      description: Revokes any previous unconsumed batch and returns 10 fresh single-use recovery codes once; only keyed HMAC-SHA256 digests are stored. Requires a passkey step-up assertion once a passkey is enrolled.
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateRecoveryCodesRequest'
+      responses:
+        '200':
+          description: Newly issued 10 single-use recovery codes (shown once).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerateRecoveryCodesResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '428':
+          $ref: '#/components/responses/PreconditionRequired'
+  /api/v1/auth/recovery/contact:
+    put:
+      tags:
+      - auth
+      operationId: upsertRecoveryContact
+      summary: Register or update the ops holder recovery contact
+      description: Seals the recovery contact using AWS-ESDK-v2 key-committing envelope encryption. Requires a passkey step-up assertion once a passkey is enrolled.
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertRecoveryContactRequest'
+      responses:
+        '200':
+          description: Masked recovery contact status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecoveryContactStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '428':
+          $ref: '#/components/responses/PreconditionRequired'
+  /api/v1/auth/recovery/redeem:
+    post:
+      tags:
+      - auth
+      operationId: redeemRecoveryCode
+      summary: Redeem one saved recovery code and recovery-contact verification code
+      description: Atomically consumes one saved recovery code and one out-of-band contact verification code, revokes lost passkeys and sessions, cancels any open ops recovery request on an active tenant, and mints a passkey-enrollment session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecoveryRedeemRequest'
+      responses:
+        '200':
+          description: Enrollment session token pair.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecoveryRedeemResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/v1/auth/recovery/status:
+    get:
+      tags:
+      - auth
+      operationId: getRecoveryStatus
+      summary: Read ops holder recovery contact and recovery code status
+      description: Available to both full sessions and initial passkey-enrollment sessions. Non-ops accounts receive eligible=false.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Recovery contact and single-use recovery code status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecoveryStatusResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
   /api/v1/auth/token/refresh:
@@ -35985,6 +36253,28 @@ components:
           maxItems: 5
           items:
             type: string
+    AccessInviteGrantLineInput:
+      type: object
+      required:
+      - role_id
+      - scope
+      additionalProperties: false
+      properties:
+        role_id:
+          $ref: '#/components/schemas/Uuid'
+        scope:
+          $ref: '#/components/schemas/AccessScope'
+        valid_from:
+          oneOf:
+          - $ref: '#/components/schemas/Timestamp'
+          - type: 'null'
+        valid_to:
+          oneOf:
+          - $ref: '#/components/schemas/Timestamp'
+          - type: 'null'
+        effective_in_setup:
+          type: boolean
+          default: false
     AccessLevel:
       type: string
       description: View `view` · create/edit `edit` · approve `approve` · export `export`. edit/approve/export imply view.
@@ -37112,6 +37402,12 @@ components:
           type: string
         expires_at:
           $ref: '#/components/schemas/Timestamp'
+        delivered_to_recovery_contact:
+          type: boolean
+        masked_contact:
+          type:
+          - string
+          - 'null'
     AdminIssueOtpRequest:
       type: object
       required:
@@ -41351,6 +41647,65 @@ components:
     CoverageStatus:
       type: string
       enum: [ACTIVE, RETIRED]
+    CreateAccessInviteRequest:
+      type: object
+      required:
+      - display_name
+      additionalProperties: false
+      properties:
+        display_name:
+          type: string
+        employee_id:
+          oneOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        phone:
+          type:
+          - string
+          - 'null'
+        sign_in_id:
+          type:
+          - string
+          - 'null'
+        grants:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/AccessInviteGrantLineInput'
+        reason_code:
+          type:
+          - string
+          - 'null'
+        reason_note:
+          type:
+          - string
+          - 'null'
+          maxLength: 500
+        step_up:
+          $ref: '#/components/schemas/PasskeyStepUpAssertion'
+    CreateAccessInviteResponse:
+      type: object
+      required:
+      - user
+      - grants
+      - otp
+      - otp_expires_at
+      - operation_id
+      properties:
+        user:
+          $ref: '#/components/schemas/UserSummary'
+        grants:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccessGrant'
+        otp:
+          type:
+          - string
+          - 'null'
+        otp_expires_at:
+          $ref: '#/components/schemas/Timestamp'
+        operation_id:
+          $ref: '#/components/schemas/Uuid'
     CreateAccessRequest:
       type: object
       additionalProperties: false
@@ -43561,6 +43916,16 @@ components:
       enum:
       - STRAIGHT_LINE
       - DECLINING_BALANCE
+    DesignateOpsHolderRequest:
+      type: object
+      required:
+      - account_id
+      additionalProperties: false
+      properties:
+        account_id:
+          $ref: '#/components/schemas/Uuid'
+        step_up:
+          $ref: '#/components/schemas/PasskeyStepUpAssertion'
     DeviceLoginApproveRequest:
       type: object
       required:
@@ -49473,6 +49838,29 @@ components:
         gates:
           type: array
           items: { type: object, additionalProperties: true }  # per-gate { gate, status }
+    GenerateRecoveryCodesRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        step_up:
+          $ref: '#/components/schemas/PasskeyStepUpAssertion'
+    GenerateRecoveryCodesResponse:
+      type: object
+      required:
+      - batch_id
+      - codes
+      - generated_at
+      properties:
+        batch_id:
+          $ref: '#/components/schemas/Uuid'
+        codes:
+          type: array
+          minItems: 10
+          maxItems: 10
+          items:
+            type: string
+        generated_at:
+          $ref: '#/components/schemas/Timestamp'
     GoLiveFactsSnapshotV1:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       # Frozen receipt v1: additions to live SetupFacts require a new receipt version.
@@ -55248,11 +55636,23 @@ components:
       required:
       - account_id
       - display_name
+      - max_holders
+      - holders
       properties:
         account_id:
           $ref: '#/components/schemas/Uuid'
         display_name:
           type: string
+        max_holders:
+          type: integer
+          minimum: 1
+          maximum: 2
+        holders:
+          type: array
+          minItems: 1
+          maxItems: 2
+          items:
+            $ref: '#/components/schemas/OpsHolderSummary'
     OpsEquipmentStatus:
       type: object
       required:
@@ -55306,6 +55706,33 @@ components:
           type: integer
           format: int32
           minimum: 0
+    OpsHolderSummary:
+      type: object
+      required:
+      - account_id
+      - display_name
+      - has_passkey
+      - has_recovery_contact
+      - recovery_codes_remaining
+      - designated_at
+      properties:
+        account_id:
+          $ref: '#/components/schemas/Uuid'
+        display_name:
+          type: string
+        sign_in_id:
+          type:
+          - string
+          - 'null'
+        has_passkey:
+          type: boolean
+        has_recovery_contact:
+          type: boolean
+        recovery_codes_remaining:
+          type: integer
+          minimum: 0
+        designated_at:
+          $ref: '#/components/schemas/Timestamp'
     OpsMechanicLoad:
       type: object
       required:
@@ -60320,6 +60747,100 @@ components:
           type: integer
           format: int64
           minimum: 1
+    PreviewAccessInviteItem:
+      type: object
+      required:
+      - index
+      - op
+      - outcome
+      - enforcement_after
+      properties:
+        index:
+          type: integer
+          minimum: 0
+        op:
+          type: string
+          enum:
+          - grant
+        outcome:
+          type: string
+          enum:
+          - OK
+          - REFUSED
+        refusal:
+          type:
+          - object
+          - 'null'
+          required:
+          - code
+          - message
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+        enforcement_after:
+          oneOf:
+          - $ref: '#/components/schemas/AccessEnforcement'
+          - type: 'null'
+        activates_at:
+          $ref: '#/components/schemas/Timestamp'
+    PreviewAccessInviteRequest:
+      type: object
+      required:
+      - display_name
+      additionalProperties: false
+      properties:
+        display_name:
+          type: string
+        employee_id:
+          oneOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        phone:
+          type:
+          - string
+          - 'null'
+        sign_in_id:
+          type:
+          - string
+          - 'null'
+        grants:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/AccessInviteGrantLineInput'
+        reason_code:
+          type:
+          - string
+          - 'null'
+        reason_note:
+          type:
+          - string
+          - 'null'
+          maxLength: 500
+    PreviewAccessInviteResponse:
+      type: object
+      required:
+      - phase
+      - step_up_required
+      - refused
+      - items
+      properties:
+        phase:
+          type: string
+          enum:
+          - SETUP
+          - OPERATING
+        step_up_required:
+          type: boolean
+        refused:
+          type: integer
+          minimum: 0
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PreviewAccessInviteItem'
     PreviewScheduleRequest:
       type: object
       required: [cron_expr]
@@ -61294,6 +61815,131 @@ components:
           - 'null'
           maxLength: 2000
           description: Required when kind is CUSTOMER_DECLINED; it becomes the customer-visible comment on the reopen.
+    RecoveryChallengeRequest:
+      type: object
+      required:
+      - identifier
+      additionalProperties: false
+      properties:
+        identifier:
+          type: string
+    RecoveryChallengeResponse:
+      type: object
+      required:
+      - sent
+      - expires_at
+      properties:
+        sent:
+          type: boolean
+        expires_at:
+          $ref: '#/components/schemas/Timestamp'
+    RecoveryChannel:
+      type: string
+      enum:
+      - EMAIL
+      - PHONE
+    RecoveryCodesSummary:
+      type: object
+      required:
+      - total
+      - remaining
+      - generated_at
+      properties:
+        total:
+          type: integer
+          minimum: 0
+        remaining:
+          type: integer
+          minimum: 0
+        generated_at:
+          oneOf:
+          - $ref: '#/components/schemas/Timestamp'
+          - type: 'null'
+    RecoveryContactStatus:
+      type: object
+      required:
+      - channel
+      - masked_value
+      - confirmed_at
+      - notice_version
+      - review_pending
+      properties:
+        channel:
+          $ref: '#/components/schemas/RecoveryChannel'
+        masked_value:
+          type: string
+        confirmed_at:
+          $ref: '#/components/schemas/Timestamp'
+        notice_version:
+          type: string
+        review_pending:
+          type: boolean
+    RecoveryRedeemRequest:
+      type: object
+      required:
+      - recovery_code
+      - contact_code
+      additionalProperties: false
+      properties:
+        recovery_code:
+          type: string
+        contact_code:
+          type: string
+    RecoveryRedeemResponse:
+      type: object
+      required:
+      - access_token
+      - token_type
+      - refresh_expires_at
+      - requires_passkey_setup
+      - privacy_consent_accepted
+      - cancelled_recovery_request
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type:
+          - string
+          - 'null'
+        token_type:
+          type: string
+          enum:
+          - Bearer
+        refresh_expires_at:
+          $ref: '#/components/schemas/Timestamp'
+        requires_passkey_setup:
+          type: boolean
+        privacy_consent_accepted:
+          type: boolean
+        cancelled_recovery_request:
+          type: boolean
+    RecoveryStatusResponse:
+      type: object
+      required:
+      - eligible
+      - is_tenant_ops
+      - holder_count
+      - max_holders
+      - contact
+      - codes
+      properties:
+        eligible:
+          type: boolean
+        is_tenant_ops:
+          type: boolean
+        holder_count:
+          type: integer
+          minimum: 0
+        max_holders:
+          type: integer
+          minimum: 1
+          maximum: 2
+        contact:
+          oneOf:
+          - $ref: '#/components/schemas/RecoveryContactStatus'
+          - type: 'null'
+        codes:
+          $ref: '#/components/schemas/RecoveryCodesSummary'
     RecruitAmountPeriod:
       type: string
       enum: [MONTHLY, DAILY]
@@ -62775,6 +63421,21 @@ components:
         memo:
           type: string
           minLength: 1
+    ReleaseOpsHolderRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        target_account_id:
+          oneOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        reason:
+          type:
+          - string
+          - 'null'
+          maxLength: 200
+        step_up:
+          $ref: '#/components/schemas/PasskeyStepUpAssertion'
     ReleaseProductionPlan:
       type: object
       required: [expected_version, approval_ref, idempotency_key]
@@ -66496,6 +67157,9 @@ components:
           description: True when the refreshed session belongs to an OTP-signed-in user who still has no passkey. Web clients
             must keep routing this session to initial passkey enrollment after a reload; passkey-authenticated sessions return
             false.
+        cancelled_recovery_request:
+          type: boolean
+          description: True when signing in as an active ops account holder automatically cancelled an open ops recovery request on an active tenant.
     TransitionLifecycleRequest:
       type: object
       required:
@@ -67286,6 +67950,22 @@ components:
           description: Required when scope is category; must be absent otherwise.
         link:
           $ref: '#/components/schemas/NotificationLink'
+    UpsertRecoveryContactRequest:
+      type: object
+      required:
+      - channel
+      - value
+      - consent_accepted
+      additionalProperties: false
+      properties:
+        channel:
+          $ref: '#/components/schemas/RecoveryChannel'
+        value:
+          type: string
+        consent_accepted:
+          type: boolean
+        step_up:
+          $ref: '#/components/schemas/PasskeyStepUpAssertion'
     UserPage:
       type: object
       required:

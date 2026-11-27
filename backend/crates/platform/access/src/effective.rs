@@ -164,24 +164,64 @@ pub async fn me(s: &AccessService, p: Principal) -> AccessResult<Value> {
     Ok(out)
 }
 
+pub(crate) async fn ops_in_tx(
+    tx: &mut Transaction<'_, Postgres>,
+    org: OrgId,
+) -> AccessResult<Value> {
+    let rows = sqlx::query(
+        "SELECT u.id, u.display_name,
+                (SELECT s.login || '@' || o.slug
+                   FROM user_sign_in_ids s
+                   JOIN organizations o ON o.id = s.org_id
+                  WHERE s.org_id = u.org_id AND s.user_id = u.id AND s.retired_at IS NULL
+                  LIMIT 1) AS sign_in_id,
+                EXISTS (SELECT 1 FROM auth_webauthn_credentials c WHERE c.user_id = u.id) AS has_passkey,
+                EXISTS (SELECT 1 FROM recovery_contacts rc WHERE rc.org_id = u.org_id AND rc.user_id = u.id) AS has_recovery_contact,
+                (SELECT count(*) FROM recovery_codes rcode
+                  WHERE rcode.org_id = u.org_id AND rcode.user_id = u.id
+                    AND rcode.consumed_at IS NULL AND rcode.revoked_at IS NULL) AS recovery_codes_remaining,
+                COALESCE((SELECT h.designated_at FROM ops_account_holders h
+                           WHERE h.org_id = u.org_id AND h.user_id = u.id AND h.released_at IS NULL
+                           ORDER BY h.designated_at DESC LIMIT 1), u.created_at) AS designated_at
+           FROM person_accounts_current u
+          WHERE u.org_id = $1 AND u.is_tenant_ops AND u.is_active
+          ORDER BY u.created_at, u.id",
+    )
+    .bind(org.as_uuid())
+    .fetch_all(tx.as_mut())
+    .await?;
+    let Some(first) = rows.first() else {
+        return Err(AccessError::not_found(
+            "ops_account_missing",
+            "this tenant has no ops account",
+        ));
+    };
+    let holders = rows
+        .iter()
+        .map(|r| {
+            Ok(json!({
+                "account_id": r.try_get::<Uuid, _>("id")?,
+                "display_name": r.try_get::<String, _>("display_name")?,
+                "sign_in_id": r.try_get::<Option<String>, _>("sign_in_id")?,
+                "has_passkey": r.try_get::<bool, _>("has_passkey")?,
+                "has_recovery_contact": r.try_get::<bool, _>("has_recovery_contact")?,
+                "recovery_codes_remaining": r.try_get::<i64, _>("recovery_codes_remaining")?,
+                "designated_at": rfc3339(r.try_get("designated_at")?)?,
+            }))
+        })
+        .collect::<AccessResult<Vec<_>>>()?;
+    Ok(json!({
+        "account_id": first.try_get::<Uuid, _>("id")?,
+        "display_name": first.try_get::<String, _>("display_name")?,
+        "max_holders": 2,
+        "holders": holders,
+    }))
+}
+
 pub async fn ops(s: &AccessService, p: Principal) -> AccessResult<Value> {
     read_actor(s, &p).await?.require_access(Level::View)?;
     let out = with_org_conn::<_, _, AccessError>(&s.pool, p.org_id, move |tx| {
-        Box::pin(async move {
-            let row = sqlx::query(
-                "SELECT id, display_name FROM users WHERE org_id = $1 AND is_tenant_ops",
-            )
-            .bind(p.org_id.as_uuid())
-            .fetch_optional(tx.as_mut())
-            .await?
-            .ok_or_else(|| {
-                AccessError::not_found("ops_account_missing", "this tenant has no ops account")
-            })?;
-            Ok(json!({
-                "account_id": row.try_get::<Uuid, _>("id")?,
-                "display_name": row.try_get::<String, _>("display_name")?,
-            }))
-        })
+        Box::pin(async move { ops_in_tx(tx, p.org_id).await })
     })
     .await?;
     Ok(out)

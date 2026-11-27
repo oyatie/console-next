@@ -125,6 +125,7 @@ pub(crate) async fn refresh_token(
             requires_passkey_setup,
             privacy_consent_accepted,
             passkey_profile: None,
+            cancelled_recovery_request: false,
         })
         .into_response();
         Ok(with_refresh_cookie(response, cookie))
@@ -137,6 +138,7 @@ pub(crate) async fn refresh_token(
             requires_passkey_setup,
             privacy_consent_accepted,
             passkey_profile: None,
+            cancelled_recovery_request: false,
         })
         .into_response())
     }

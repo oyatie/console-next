@@ -223,7 +223,15 @@ if (SHOT_DIR) {
 
         // 7. access-review
         await mockRoute(page, "get", "/api/v1/access/roles", { status: 200, json: [] });
-        await mockRoute(page, "get", "/api/v1/access/ops", { status: 200, json: { account_id: id(20), display_name: saeon.accessConsole.opsAccountName } });
+        await mockRoute(page, "get", "/api/v1/access/ops", {
+          status: 200,
+          json: {
+            account_id: id(20),
+            display_name: saeon.accessConsole.opsAccountName,
+            max_holders: 2,
+            holders: [{ account_id: id(20), display_name: saeon.accessConsole.opsAccountName, has_passkey: true, has_recovery_contact: true, recovery_codes_remaining: 10, designated_at: "2026-01-01T00:00:00Z" }],
+          },
+        });
         const wps = saeonUniverse.entities[0]!.workplaces;
         await mockRoute(page, "get", "/api/v1/access/grants", {
           status: 200,

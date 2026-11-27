@@ -34,10 +34,11 @@ const OTHER = "OTHER";
  * "from setup" is chosen. Nobody grants to themselves and the ops account already holds everything: both are refused
  * here before any request. Picking a line's scope turns this sheet into the scope view and back (mockup M3).
  */
-export function GrantSheet({ account, me, ops, cat, roles, setup, onClose, onGranted }: {
+export function GrantSheet({ account, me, ops: primaryOps, opsIds, cat, roles, setup, onClose, onGranted }: {
   account: Account | null;
   me: string | undefined;
   ops: string | undefined;
+  opsIds?: ReadonlySet<string>;
   cat: AccessCatalog;
   roles: readonly AccessRole[];
   setup: boolean;
@@ -88,6 +89,8 @@ export function GrantSheet({ account, me, ops, cat, roles, setup, onClose, onGra
     );
   const gaps = lines.map((l) => missing(l, lines, today));
   const refused = refusalsOf(error);
+  const isTargetOps = Boolean(account.is_tenant_ops) || account.id === primaryOps || Boolean(opsIds?.has(account.id));
+  const ops = isTargetOps ? account.id : primaryOps;
   const blocked = account.id === me ? "self" : account.id === ops ? "ops" : null;
   const problems = gaps.some((g) => g.length) || (setup && !when) || (!setup && startProblem(start, today)) || reasonProblem(reason, OTHER) !== null;
   const from = !setup && start.when === "DATE" ? start.date : null;

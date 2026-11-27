@@ -126,7 +126,7 @@ export function GrantsPage({ role }: { role?: string }) {
       {!pageRead.error && <AccessRequests accounts={ctx.accounts} onGrant={setGranting} />}
       {picking && <Dialog open title={t("access.grants.new")} onClose={() => setPicking(false)}>
         <QueryState q={ctx.q} layout="list">{() => <AccountPick
-          accounts={ctx.accounts} ops={ctx.ops} loading={ctx.accountsQ.isFetching}
+          accounts={ctx.accounts} ops={ctx.opsIds} loading={ctx.accountsQ.isFetching}
           onPick={account => { returnToAction.current = true; setPicking(false); setGranting(account); }}
         />}</QueryState>
         <Button variant="ghost" onClick={() => setPicking(false)}>{t("common.cancel")}</Button>
@@ -136,6 +136,7 @@ export function GrantsPage({ role }: { role?: string }) {
           account={granting}
           me={ctx.me}
           ops={ctx.ops}
+          opsIds={ctx.opsIds}
           cat={ctx.cat.data}
           roles={ctx.roles}
           setup={ctx.setup}

@@ -1,0 +1,16 @@
+tags:
+- auth
+operationId: getRecoveryStatus
+summary: Read ops holder recovery contact and recovery code status
+description: Available to both full sessions and initial passkey-enrollment sessions. Non-ops accounts receive eligible=false.
+security:
+- bearerAuth: []
+responses:
+  '200':
+    description: Recovery contact and single-use recovery code status.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/RecoveryStatusResponse'
+  '401':
+    $ref: '#/components/responses/Unauthorized'

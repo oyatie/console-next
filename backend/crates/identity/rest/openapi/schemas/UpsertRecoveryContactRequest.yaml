@@ -1,0 +1,15 @@
+type: object
+required:
+- channel
+- value
+- consent_accepted
+additionalProperties: false
+properties:
+  channel:
+    $ref: '#/components/schemas/RecoveryChannel'
+  value:
+    type: string
+  consent_accepted:
+    type: boolean
+  step_up:
+    $ref: '#/components/schemas/PasskeyStepUpAssertion'

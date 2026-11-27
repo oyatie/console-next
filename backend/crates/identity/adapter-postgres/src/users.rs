@@ -1,6 +1,6 @@
 mod account_link;
 mod activate;
-mod create;
+pub mod create;
 mod deactivate;
 mod directory;
 pub(crate) mod read;

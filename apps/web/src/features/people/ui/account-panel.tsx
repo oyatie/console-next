@@ -210,11 +210,17 @@ function EmployeeLink({ u, admin, onRecorded }: { u: User; admin: boolean; onRec
 /** Passkey reset and (de)activation: each confirms its consequence, and the irreversible ones ask for the admin's passkey. */
 function Danger({ u, onIssued, onRecorded }: { u: User; onIssued: (r: Issued) => void; onRecorded: (m: string) => void }) {
   const [open, setOpen] = useState<"reset" | "deactivate" | null>(null);
+  const meQ = useQuery({ ...get("/api/v1/users/me"), enabled: Boolean(u.is_tenant_ops && u.id !== mySub()) });
+  const peerOpsForbidden = Boolean(u.is_tenant_ops && u.id !== mySub() && meQ.data && !meQ.data.is_tenant_ops);
+  const resetDoneMessage = (r: Issued) =>
+    r.delivered_to_recovery_contact
+      ? t("accounts.reset.peerDelivered", { name: personName(u.display_name), masked: r.masked_contact ?? "—" })
+      : t("accounts.reset.done", { name: personName(u.display_name) });
   const reset = useCommand({
     run: async (): Promise<Issued> => ({ name: personName(u.display_name), userId: u.id, reset: true, signInId: u.sign_in_id, ...(await resetPasskeys(u.id)) }),
     invalidates: INVALIDATES,
-    onSuccess: (r) => (setOpen(null), onIssued(r), onRecorded(t("accounts.reset.done", { name: personName(u.display_name) }))),
-    announce: () => t("accounts.reset.done", { name: personName(u.display_name) }),
+    onSuccess: (r) => (setOpen(null), onIssued(r), onRecorded(resetDoneMessage(r))),
+    announce: (r) => resetDoneMessage(r),
     forget: true,
   });
   const toggle = useCommand({
@@ -237,6 +243,11 @@ function Danger({ u, onIssued, onRecorded }: { u: User; onIssued: (r: Issued) =>
           <DisabledReason
             reason={t("accounts.reset.own")}
             remedy={<Link to="/account">{t("accounts.reset.ownFix")}</Link>}
+            control={(c) => <Button variant="ghost-danger" {...c}>{t("accounts.reset")}</Button>}
+          />
+        ) : peerOpsForbidden ? (
+          <DisabledReason
+            reason={t("accounts.reset.peerOpsOnly")}
             control={(c) => <Button variant="ghost-danger" {...c}>{t("accounts.reset")}</Button>}
           />
         ) : <Button variant="ghost-danger" onClick={() => setOpen("reset")}>{t("accounts.reset")}</Button>)}

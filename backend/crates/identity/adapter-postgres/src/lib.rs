@@ -13,6 +13,7 @@ pub mod account_link_solo;
 mod employee_views;
 mod error;
 mod me_access_log;
+pub mod ops_holders;
 mod org_structure;
 mod policy;
 pub mod second_person;
@@ -21,7 +22,7 @@ pub mod self_binding_inbox;
 mod self_binding_prepare;
 mod self_binding_receipt;
 pub mod self_binding_review;
-mod users;
+pub mod users;
 
 pub use error::PgOrgError;
 pub use users::sign_in_id;

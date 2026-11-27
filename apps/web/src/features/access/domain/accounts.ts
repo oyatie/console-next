@@ -1,9 +1,14 @@
 // Who a grant can go to (people-self-47): active accounts, never the ops account, and one entry per person — an
 // employee with two accounts (a lost code reissued) is offered once, by the account that can sign in.
-type Acc = { id: string; is_active: boolean; has_passkey: boolean; employee_id?: string | null };
+type Acc = { id: string; is_active: boolean; has_passkey: boolean; employee_id?: string | null; is_tenant_ops?: boolean };
 
-export function pickable<A extends Acc>(accounts: readonly A[], ops: string | undefined): A[] {
-  const live = accounts.filter((a) => a.is_active && a.id !== ops);
+export function pickable<A extends Acc>(
+  accounts: readonly A[],
+  ops: string | ReadonlySet<string> | undefined,
+): A[] {
+  const isOps = (a: A) =>
+    Boolean(a.is_tenant_ops) || (typeof ops === "string" ? a.id === ops : Boolean(ops?.has(a.id)));
+  const live = accounts.filter((a) => a.is_active && !isOps(a));
   const best = new Map<string, A>();
   for (const a of live) {
     const key = a.employee_id ?? a.id;

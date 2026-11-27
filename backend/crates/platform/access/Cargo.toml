@@ -14,11 +14,13 @@ e2e-test-support = []
 [dependencies]
 console-identity-application.workspace = true
 console-identity-adapter-postgres.workspace = true
+console-identity-domain.workspace = true
 console-settings-adapter-postgres = { path = "../../settings/adapter-postgres" }
 console-kernel-core.workspace = true
 console-platform-auth = { path = "../auth" }
 console-platform-authz.workspace = true
 console-platform-db.workspace = true
+console-platform-provisioning = { path = "../provisioning" }
 console-platform-request-context.workspace = true
 console-settings-domain = { path = "../../settings/domain" }
 hex.workspace = true

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import { KeyRound } from "lucide-react";
 import { ApiError, bootstrapCodeExpiresAt, lastSignInId, lastSignInProfile, loginWithPasskey, logout, passkeyAutofill, redeemOtp, session } from "@console/api";
@@ -17,6 +17,9 @@ import { consentDestination } from "../lib/react/session";
 import { IDLE_EXPIRED } from "./idle";
 import { autofillPaused, rememberDomain, rememberedDomains, resumeAutofill } from "./sign-in-id";
 import { parseSignInId } from "./sign-in-id-input";
+import { chunk } from "../lib/chunk-guard";
+
+const RecoveryLoginBody = lazy(() => chunk(import("./LoginRecovery")).then((m) => ({ default: m.RecoveryLoginBody })));
 
 export { SetupPasskey } from "./SetupPasskey";
 
@@ -115,6 +118,7 @@ export function Login() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [recovery, setRecovery] = useState<Recovery>(null);
+  const [recoveryOpen, setRecoveryOpen] = useState(false);
   // A reload (or a new tab) after the server ended the session for inactivity lands here: say why.
   const idle = useSyncExternalStore(session.subscribe, () => session.ended === IDLE_EXPIRED);
 
@@ -222,31 +226,49 @@ export function Login() {
   );
   const showCodeDisclosure = Boolean(code || codeFromHash);
   const secondary = (
-    <details open={showCodeDisclosure || undefined}>
-      <summary>{t(showCodeDisclosure ? "auth.login.code" : "auth.login.or")}</summary>
-      <Form className="form" data-code-summary={showCodeDisclosure || undefined} onSubmit={submitOtp}>
-        <Field label={t("auth.login.code")} required={null} hint={isOperatorInvite ? undefined : t("auth.login.codeHint", { count: otp.replaceAll("-", "").length, length: OTP_LENGTH })}>
-          {/* Enter submits only this code form; the server also accepts outstanding legacy codes. */}
-          {(p) => (
-            <TextInput
-              {...p}
-              aria-label={t("auth.login.code")}
-              readOnly={busy}
-              className="code"
-              ref={codeInput}
-              autoComplete="one-time-code"
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              value={otp}
-              onChange={(e) => setOtp(normalizeOtp(e.target.value))}
-              onKeyDown={(e) => e.key === "Enter" && !(e.nativeEvent.isComposing || e.keyCode === 229) && !busy && submitOtp()}
+    <>
+      <details open={showCodeDisclosure || undefined}>
+        <summary>{t(showCodeDisclosure ? "auth.login.code" : "auth.login.or")}</summary>
+        <Form className="form" data-code-summary={showCodeDisclosure || undefined} onSubmit={submitOtp}>
+          <Field label={t("auth.login.code")} required={null} hint={isOperatorInvite ? undefined : t("auth.login.codeHint", { count: otp.replaceAll("-", "").length, length: OTP_LENGTH })}>
+            {/* Enter submits only this code form; the server also accepts outstanding legacy codes. */}
+            {(p) => (
+              <TextInput
+                {...p}
+                aria-label={t("auth.login.code")}
+                readOnly={busy}
+                className="code"
+                ref={codeInput}
+                autoComplete="one-time-code"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                value={otp}
+                onChange={(e) => setOtp(normalizeOtp(e.target.value))}
+                onKeyDown={(e) => e.key === "Enter" && !(e.nativeEvent.isComposing || e.keyCode === 229) && !busy && submitOtp()}
+              />
+            )}
+          </Field>
+          <Button type="submit" disabled={busy || !otp.trim()}>{t("auth.login.submitCode")}</Button>
+        </Form>
+      </details>
+      <details onToggle={(e) => e.currentTarget.open && setRecoveryOpen(true)}>
+        <summary>{t("auth.recovery.open")}</summary>
+        {recoveryOpen && (
+          <Suspense fallback={null}>
+            <RecoveryLoginBody
+              defaultId={id}
+              busy={busy}
+              setBusy={setBusy}
+              abortAutofill={abortAutofill}
+              onError={setError}
+              normalizeCode={normalizeOtp}
+              runRedeem={(fn) => void run(fn, codeRecovery, t("auth.login.pending"))}
             />
-          )}
-        </Field>
-        <Button type="submit" disabled={busy || !otp.trim()}>{t("auth.login.submitCode")}</Button>
-      </Form>
-    </details>
+          </Suspense>
+        )}
+      </details>
+    </>
   );
 
   return (

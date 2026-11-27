@@ -1,0 +1,28 @@
+tags:
+- auth
+operationId: upsertRecoveryContact
+summary: Register or update the ops holder recovery contact
+description: Seals the recovery contact using AWS-ESDK-v2 key-committing envelope encryption. Requires a passkey step-up assertion once a passkey is enrolled.
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/UpsertRecoveryContactRequest'
+responses:
+  '200':
+    description: Masked recovery contact status.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/RecoveryContactStatus'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '428':
+    $ref: '#/components/responses/PreconditionRequired'

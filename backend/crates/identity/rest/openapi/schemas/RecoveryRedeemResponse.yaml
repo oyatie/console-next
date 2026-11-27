@@ -1,0 +1,27 @@
+type: object
+required:
+- access_token
+- token_type
+- refresh_expires_at
+- requires_passkey_setup
+- privacy_consent_accepted
+- cancelled_recovery_request
+properties:
+  access_token:
+    type: string
+  refresh_token:
+    type:
+    - string
+    - 'null'
+  token_type:
+    type: string
+    enum:
+    - Bearer
+  refresh_expires_at:
+    $ref: '#/components/schemas/Timestamp'
+  requires_passkey_setup:
+    type: boolean
+  privacy_consent_accepted:
+    type: boolean
+  cancelled_recovery_request:
+    type: boolean

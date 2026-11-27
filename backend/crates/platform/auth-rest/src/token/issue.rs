@@ -32,6 +32,7 @@ impl IssuedTokenPair {
             requires_passkey_setup: false,
             privacy_consent_accepted: self.privacy_consent_accepted,
             passkey_profile: None,
+            cancelled_recovery_request: false,
         }
     }
 }
