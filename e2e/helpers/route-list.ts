@@ -15,9 +15,12 @@ export const redirectTargets: Readonly<Record<string, string>> = {
 const paths = [
   "/",
   "/access",
+  "/access/check",
   "/access/grants",
   "/access/grants/bulk",
   "/access/people/$accountId",
+  "/access/policies",
+  "/access/policies/$draftId",
   "/access/ready",
   "/access/review",
   "/access/roles",

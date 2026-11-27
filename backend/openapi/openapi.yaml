@@ -3471,6 +3471,245 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationError'
+  /api/v1/access/reviews:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "access:view", "scope": "tenant"}
+      tags: [access]
+      operationId: listAccessReviews
+      summary: List quarterly periodic access review cycles
+      description: Lists active, completed, and upcoming quarterly access review cycles for the tenant.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Periodic access review cycles.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AccessReviewSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/access/reviews/{period}:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "access:view", "scope": "tenant"}
+      tags: [access]
+      operationId: getAccessReview
+      summary: Read one quarterly periodic access review cycle and its frozen items
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: period
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[0-9]{4}-Q[1-4]$'
+      responses:
+        '200':
+          description: Periodic access review detail.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessReviewDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/access/reviews/{period}/complete:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "access:edit", "scope": "tenant"}
+      tags: [access]
+      operationId: completeAccessReview
+      summary: Sign off a quarterly access review and apply revocations with passkey step-up
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 16
+          maxLength: 200
+      - name: period
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[0-9]{4}-Q[1-4]$'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                step_up:
+                  $ref: '#/components/schemas/PasskeyLoginFinishRequest'
+      responses:
+        '200':
+          description: Completed quarterly access review detail.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessReviewDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '428':
+          description: passkey_step_up_required — passkey step-up assertion required to sign off.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/access/reviews/{period}/decisions:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "access:edit", "scope": "tenant"}
+      tags: [access]
+      operationId: recordAccessReviewDecision
+      summary: Record a KEEP or REVOKE decision for one frozen grant in an access review
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 16
+          maxLength: 200
+      - name: period
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[0-9]{4}-Q[1-4]$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccessReviewDecisionInput'
+      responses:
+        '200':
+          description: Updated quarterly access review detail.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessReviewDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/access/reviews/{period}/export.csv:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "access:view", "scope": "tenant"}
+      tags: [access]
+      operationId: exportAccessReviewCsv
+      summary: Export frozen grants and review decisions for a quarterly cycle as CSV
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: period
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[0-9]{4}-Q[1-4]$'
+      - name: export_purpose
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 300
+      responses:
+        '200':
+          description: CSV export of the quarterly access review cycle.
+          content:
+            text/csv:
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/access/reviews/{period}/start:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "access:edit", "scope": "tenant"}
+      tags: [access]
+      operationId: startAccessReview
+      summary: Start and freeze a quarterly periodic access review cycle
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 16
+          maxLength: 200
+      - name: period
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[0-9]{4}-Q[1-4]$'
+      responses:
+        '200':
+          description: Started or existing quarterly access review detail.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessReviewDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/access/roles:
     get:
       x-console-authz: {"permission": "access:view", "scope": "any"}
@@ -26573,6 +26812,7 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
   /api/v1/policy/authorize:
     post:
+      x-console-authz: {"permission": "access:edit", "scope": "tenant"}
       operationId: authorizePolicyDecision
       summary: Live Cedar authorization decision
       description: The live point decision (the same fail-closed evaluator the guardrail gate calls), optionally scoped to one object
@@ -26623,6 +26863,7 @@ paths:
               schema: { $ref: '#/components/schemas/ErrorBody' }
   /api/v1/policy/catalog:
     get:
+      x-console-authz: {"permission": "access:edit", "scope": "tenant"}
       operationId: listPolicyCatalog
       summary: List Cedar policy catalog entries
       description: Lists the tenant's Cedar policy catalog entries (enforced / shadow / draft / …), optionally filtered by status.
@@ -26668,6 +26909,7 @@ paths:
               schema: { type: array, items: { $ref: '#/components/schemas/DecisionLogRow' } }
   /api/v1/policy/drafts:
     get:
+      x-console-authz: {"permission": "access:edit", "scope": "tenant"}
       operationId: listPolicyDrafts
       summary: List no-code policy drafts
       description: Lists the tenant's no-code Cedar policy drafts and their review status.
@@ -26726,6 +26968,7 @@ paths:
           $ref: '#/components/responses/ServiceUnavailable'
   /api/v1/policy/drafts/{draft_id}:
     get:
+      x-console-authz: {"permission": "access:edit", "scope": "tenant"}
       operationId: getPolicyDraft
       summary: Get a policy draft
       tags:
@@ -36265,6 +36508,149 @@ components:
       - COVER
       - NEEDED_NOW
       - OTHER
+    AccessReviewDecisionInput:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required:
+      - item_id
+      - decision
+      properties:
+        item_id:
+          $ref: '#/components/schemas/Uuid'
+        decision:
+          type: string
+          enum: [KEEP, REVOKE]
+        reason_code:
+          type: string
+          nullable: true
+        reason_note:
+          type: string
+          maxLength: 1000
+          nullable: true
+    AccessReviewDetail:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required:
+      - summary
+      - items
+      properties:
+        summary:
+          $ref: '#/components/schemas/AccessReviewSummary'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccessReviewItem'
+    AccessReviewItem:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - grant_id
+      - account_id
+      - account_name
+      - role_id
+      - role_name_ko
+      - scope_kind
+      - scope_label
+      - valid_from
+      - signals
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        grant_id:
+          $ref: '#/components/schemas/Uuid'
+        account_id:
+          $ref: '#/components/schemas/Uuid'
+        account_name:
+          type: string
+        employee_number:
+          type: string
+          nullable: true
+        unit_name:
+          type: string
+          nullable: true
+        role_id:
+          $ref: '#/components/schemas/Uuid'
+        role_name_ko:
+          type: string
+        scope_kind:
+          type: string
+        scope_label:
+          type: string
+        valid_from:
+          $ref: '#/components/schemas/Timestamp'
+        valid_to:
+          $ref: '#/components/schemas/Timestamp'
+          nullable: true
+        last_used_at:
+          $ref: '#/components/schemas/Timestamp'
+          nullable: true
+        signals:
+          type: array
+          items:
+            type: string
+        decision:
+          type: string
+          enum: [KEEP, REVOKE]
+          nullable: true
+        reason_code:
+          type: string
+          nullable: true
+        reason_note:
+          type: string
+          nullable: true
+        decided_by:
+          $ref: '#/components/schemas/Uuid'
+          nullable: true
+        decided_by_name:
+          type: string
+          nullable: true
+        decided_at:
+          $ref: '#/components/schemas/Timestamp'
+          nullable: true
+        applied_at:
+          $ref: '#/components/schemas/Timestamp'
+          nullable: true
+    AccessReviewSummary:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required:
+      - period
+      - state
+      - due_at
+      - frozen_count
+      - decided_count
+      - keep_count
+      - revoke_count
+      - reviewer_count
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        period:
+          type: string
+        state:
+          type: string
+          enum: [UNSTARTED, UPCOMING, OPEN, COMPLETE]
+        due_at:
+          $ref: '#/components/schemas/Timestamp'
+        frozen_count:
+          type: integer
+        decided_count:
+          type: integer
+        keep_count:
+          type: integer
+        revoke_count:
+          type: integer
+        reviewer_count:
+          type: integer
+        started_at:
+          $ref: '#/components/schemas/Timestamp'
+        completed_at:
+          $ref: '#/components/schemas/Timestamp'
     AccessRole:
       type: object
       required:

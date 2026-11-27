@@ -1,0 +1,71 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+required:
+- id
+- grant_id
+- account_id
+- account_name
+- role_id
+- role_name_ko
+- scope_kind
+- scope_label
+- valid_from
+- signals
+properties:
+  id:
+    $ref: '#/components/schemas/Uuid'
+  grant_id:
+    $ref: '#/components/schemas/Uuid'
+  account_id:
+    $ref: '#/components/schemas/Uuid'
+  account_name:
+    type: string
+  employee_number:
+    type: string
+    nullable: true
+  unit_name:
+    type: string
+    nullable: true
+  role_id:
+    $ref: '#/components/schemas/Uuid'
+  role_name_ko:
+    type: string
+  scope_kind:
+    type: string
+  scope_label:
+    type: string
+  valid_from:
+    $ref: '#/components/schemas/Timestamp'
+  valid_to:
+    $ref: '#/components/schemas/Timestamp'
+    nullable: true
+  last_used_at:
+    $ref: '#/components/schemas/Timestamp'
+    nullable: true
+  signals:
+    type: array
+    items:
+      type: string
+  decision:
+    type: string
+    enum: [KEEP, REVOKE]
+    nullable: true
+  reason_code:
+    type: string
+    nullable: true
+  reason_note:
+    type: string
+    nullable: true
+  decided_by:
+    $ref: '#/components/schemas/Uuid'
+    nullable: true
+  decided_by_name:
+    type: string
+    nullable: true
+  decided_at:
+    $ref: '#/components/schemas/Timestamp'
+    nullable: true
+  applied_at:
+    $ref: '#/components/schemas/Timestamp'
+    nullable: true

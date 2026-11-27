@@ -71,6 +71,7 @@ export async function mockAccessScreen(page: Page, screen: AccessScreen, state: 
     levels: ["view", "edit"] as ("view" | "edit")[], scope_kinds: [{ kind: "TENANT" as const, enforceable: true, descendants_only: true }], reason_domain: "role_change" as const,
   } });
   await mockRoute(page, "get", "/api/v1/access/requests", { status: 200, json: [] });
+  await mockRoute(page, "get", "/api/v1/access/reviews", { status: 200, json: [] });
   await mockRoute(page, "get", "/api/v1/reason-codes", { status: 200, json: { domain: "role_change", items: [{ code: "OTHER", system: true, requires_note: false, involuntary: false, notice_required: false, active: true, label_ko: "Other", label_en: "Other" }] } });
   await mockRoute(page, "get", "/api/v1/users", async request => {
     const failed = await beforeReply("/api/v1/users");

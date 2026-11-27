@@ -150,6 +150,24 @@
     "/api/v1/access/requests/{requestId}/close": [
       "post"
     ],
+    "/api/v1/access/reviews": [
+      "get"
+    ],
+    "/api/v1/access/reviews/{period}": [
+      "get"
+    ],
+    "/api/v1/access/reviews/{period}/complete": [
+      "post"
+    ],
+    "/api/v1/access/reviews/{period}/decisions": [
+      "post"
+    ],
+    "/api/v1/access/reviews/{period}/export.csv": [
+      "get"
+    ],
+    "/api/v1/access/reviews/{period}/start": [
+      "post"
+    ],
     "/api/v1/access/roles": [
       "get",
       "post"
@@ -493,6 +511,10 @@
     "AccessPerson",
     "AccessRequest",
     "AccessRequestReason",
+    "AccessReviewDecisionInput",
+    "AccessReviewDetail",
+    "AccessReviewItem",
+    "AccessReviewSummary",
     "AccessRole",
     "AccessRoleLine",
     "AccessRoleLineInput",

@@ -3,8 +3,9 @@ import { session } from "@console/api";
 import { activeDrafts } from "../lib/react/draft-owner";
 
 const CONTAINER_SELECTOR = '[data-sheet-layer], dialog[open], [role="dialog"], form, .form, [data-composer-root]';
-const TRACKED_SELECTOR = 'input:not([type="search"]):not([type="file"]):not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([role="searchbox"]):not([role="combobox"]):not([role="switch"]), select, textarea, [contenteditable="true"], [data-form-value]';
-const STANDALONE_TEXT_SELECTOR = 'main textarea, main input:not([type="checkbox"]):not([type="radio"]):not([type="search"]):not([type="file"]):not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([role="searchbox"]):not([role="combobox"]):not([role="switch"])';
+const NON_TEXT_INPUT = ':not([type="search"]):not([type="file"]):not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([role="searchbox"]):not([role="combobox"]):not([role="switch"])';
+const TRACKED_SELECTOR = `input${NON_TEXT_INPUT}, select, textarea, [contenteditable="true"], [data-form-value]`;
+const STANDALONE_TEXT_SELECTOR = `main textarea, main input:not([type="checkbox"]):not([type="radio"])${NON_TEXT_INPUT}`;
 
 const installedDocuments = new WeakSet<Document>();
 const initialValues = new WeakMap<Element, string>();

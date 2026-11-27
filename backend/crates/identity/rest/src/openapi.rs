@@ -505,6 +505,56 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/access/reviews",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__access__reviews.get.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/access/reviews/{period}",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__access__reviews__period.get.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/access/reviews/{period}/complete",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__access__reviews__period__complete.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/access/reviews/{period}/decisions",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__access__reviews__period__decisions.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/access/reviews/{period}/export.csv",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../openapi/paths/api__v1__access__reviews__period__export.csv.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/access/reviews/{period}/start",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__access__reviews__period__start.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/access/roles",
         operations: &[
             Operation {
@@ -1468,6 +1518,22 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "AccessRequestReason",
         body: include_str!("../openapi/schemas/AccessRequestReason.yaml"),
+    },
+    NamedYaml {
+        name: "AccessReviewDecisionInput",
+        body: include_str!("../openapi/schemas/AccessReviewDecisionInput.yaml"),
+    },
+    NamedYaml {
+        name: "AccessReviewDetail",
+        body: include_str!("../openapi/schemas/AccessReviewDetail.yaml"),
+    },
+    NamedYaml {
+        name: "AccessReviewItem",
+        body: include_str!("../openapi/schemas/AccessReviewItem.yaml"),
+    },
+    NamedYaml {
+        name: "AccessReviewSummary",
+        body: include_str!("../openapi/schemas/AccessReviewSummary.yaml"),
     },
     NamedYaml {
         name: "AccessRole",

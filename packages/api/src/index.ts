@@ -3,7 +3,7 @@ export * from "./client";
 export * from "./auth";
 export * from "./step-up";
 export type { Platform } from "./platform";
-export type { paths, components } from "./schema";
+export type { paths, components, operations } from "./schema";
 export * from "./me-access-log";
 export * from "./me-profile";
 export * from "./leave-self-service";

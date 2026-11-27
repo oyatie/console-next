@@ -72,7 +72,8 @@ async function applySaeonAccessFixtures(page: Page) {
   }));
   await mockRoute(page, "get", "/api/v1/org-structure", { status: 200, json: saeonOrgStructure() });
   await mockRoute(page, "get", "/api/v1/access/ops", { status: 200, json: { account_id: id(20), display_name: saeon.accessConsole.opsAccountName } });
-  await mockRoute(page, "get", "/api/v1/access/roles", { status: 200, json: [{ ...accessRole, name_ko: saeon.accessConsole.readOnlyRole, holder_count: accounts.length }] });
+  await mockRoute(page, "get", "/api/v1/access/reviews", { status: 200, json: [] });
+  await mockRoute(page, "get", "/api/v1/access/roles", { status: 200, json: [{ ...accessRole, version: 6, lines: [{ domain: "hr_basic", levels: ["view", "edit"] }, { domain: "audit", levels: ["view", "approve", "export"] }], name_ko: saeon.accessConsole.readOnlyRole, holder_count: accounts.length }] });
   await mockRoute(page, "get", "/api/v1/access/grants", async (request) => {
     const query = new URL(request.url()).searchParams;
     return { status: 200, json: grants.filter((g) => !query.has("role_id") || g.role_id === query.get("role_id")) };
@@ -427,4 +428,139 @@ test("tenant CodeDialog renders #otp= invite link (not ?otp=) and lazy QR SVG", 
   await expect(dialog.getByText(/\?otp=/)).toHaveCount(0);
   await expect(dialog.locator(`svg[role="img"][aria-label="${t("common.inviteQrLabel")}"]`)).toBeVisible();
   expect(fixture.unexpected).toEqual([]);
+});
+
+test("Wave 3 access review cycle, Cedar policy studio, and access check render cleanly", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await setConsoleExperience(page);
+  const fixture = await mockAccessScreen(page, accessScreens[0], "populated", "OPERATING");
+  try {
+    await applySaeonAccessFixtures(page);
+    await mockRoute(page, "get", "/api/v1/access/me", {
+      status: 200,
+      json: { account_id: saeonActorUser().id, is_ops: true, phase: "OPERATING", as_of: AT, entries: [], decisions: {} },
+    });
+    const reviewSummary = {
+      id: id(701),
+      period: "2026-Q4",
+      state: "OPEN" as const,
+      due_at: "2026-11-16T00:00:00+09:00",
+      frozen_count: 1,
+      decided_count: 0,
+      keep_count: 0,
+      revoke_count: 0,
+      reviewer_count: 0,
+      started_at: AT,
+    };
+    const reviewDetail = {
+      summary: reviewSummary,
+      items: [
+        {
+          id: id(702),
+          grant_id: id(3001),
+          account_id: id(100),
+          account_name: saeon.hero.name,
+          employee_number: saeon.hero.employeeNumber,
+          unit_name: saeon.hero.shortPlace,
+          role_id: accessRole.id,
+          role_name_ko: saeon.accessConsole.roleName,
+          scope_kind: "TENANT",
+          scope_label: "TENANT",
+          valid_from: AT,
+          signals: ["wide_scope", "unused_90d"],
+        },
+      ],
+    };
+    await mockRoute(page, "get", "/api/v1/access/reviews", { status: 200, json: [reviewSummary] });
+    await mockRoute(page, "get", "/api/v1/access/reviews/{period}", { status: 200, json: reviewDetail });
+    await mockRoute(page, "get", "/api/v1/reason-codes", {
+      status: 200,
+      json: {
+        domain: "role_change",
+        items: [
+          {
+            code: "OTHER",
+            system: true,
+            requires_note: false,
+            involuntary: false,
+            notice_required: false,
+            active: true,
+            label_ko: "Other",
+            label_en: "Other",
+          },
+        ],
+      },
+    });
+
+    await page.goto("/access/review");
+    const cycleSelect = page.getByRole("button", { name: new RegExp(t("accessReview.cycle.label")) });
+    await expect(cycleSelect).toBeVisible();
+    await cycleSelect.click();
+    await page.getByRole("option", { name: /2026-Q4/ }).click();
+    await expect(page.getByText(t("accessReview.signal.wide_scope"))).toBeVisible();
+    await page.getByText(saeon.hero.name).first().click();
+    await expect(page.getByRole("heading", { name: t("accessReview.decision.section") })).toBeVisible();
+    await fits(page, "access-review-cycle/1440");
+    await expectAxe(page, "access-review-cycle/1440");
+
+    const draftId = id(710);
+    const draft = {
+      id: draftId,
+      draft_key: "hr-self-read",
+      title: "Employee self profile read",
+      status: "review_pending",
+      validation_status: "valid",
+      author_note: null,
+      blocks: { effect: "permit", action: "view", resource_type: "employee", conditions: [] },
+    };
+    await mockRoute(page, "get", "/api/v1/policy/catalog", {
+      status: 200,
+      json: [{ policy_id: "pol-1", title: "Default HR baseline", status: "enforced", effect: "permit", updated_at: AT }],
+    });
+    await mockRoute(page, "get", "/api/v1/policy/drafts", { status: 200, json: [draft] });
+    await mockRoute(page, "get", "/api/v1/policy/drafts/{draft_id}", { status: 200, json: draft });
+    await mockRoute(page, "post", "/api/v1/policy/simulate", {
+      status: 200,
+      json: { outcome: { effect: "allow", determining_policies: ["draft:hr-self-read"], errors: [], reason: "matched" } },
+    });
+    await mockRoute(page, "post", "/api/v1/policy/authorize", {
+      status: 200,
+      json: { outcome: { effect: "allow", determining_policies: ["pol-1"], errors: [], reason: "matched" } },
+    });
+    await mockRoute(page, "post", "/api/v1/policy/authorize/bulk", {
+      status: 200,
+      json: {
+        decisions: [
+          { effect: "allow", determining_policies: ["pol-1"], errors: [], reason: "matched" },
+          { effect: "deny", determining_policies: [], errors: [], reason: "default" },
+          { effect: "allow", determining_policies: ["pol-1"], errors: [], reason: "matched" },
+          { effect: "deny", determining_policies: [], errors: [], reason: "default" },
+          { effect: "deny", determining_policies: [], errors: [], reason: "default" },
+        ],
+      },
+    });
+
+    await page.goto("/access/policies");
+    await expect(page.locator('[data-pattern="list-record"]')).toBeVisible();
+    await expect(page.getByText("Default HR baseline")).toBeVisible();
+    await fits(page, "access-policies/1440");
+    await expectAxe(page, "access-policies/1440");
+
+    await page.goto(`/access/policies/${draftId}`);
+    await expect(page.locator('[data-pattern="document-decision"]')).toBeVisible();
+    await page.getByRole("button", { name: t("accessPolicies.draft.simulate"), exact: true }).click();
+    await expect(page.getByText(t("accessPolicies.sim.result", { effect: "allow" }))).toBeVisible();
+    await fits(page, "access-policy-draft/1440");
+    await expectAxe(page, "access-policy-draft/1440");
+
+    await page.goto("/access/check");
+    await expect(page.locator('[data-pattern="form"]')).toBeVisible();
+    await page.getByRole("button", { name: t("accessCheck.runSingle"), exact: true }).click();
+    await expect(page.getByText("pol-1")).toBeVisible();
+    await page.getByRole("button", { name: t("accessCheck.runBulk"), exact: true }).click();
+    await fits(page, "access-check/1440");
+    await expectAxe(page, "access-check/1440");
+  } finally {
+    fixture.release();
+  }
 });

@@ -43,5 +43,8 @@ const person = createRoute({
 });
 const ready = createRoute({ getParentRoute: () => app, path: "/access/ready", staticData: { access: readRequirement("/access/ready") }, component: lazyRouteComponent(screen(load), "ReadyScreen") });
 const review = createRoute({ getParentRoute: () => app, path: "/access/review", staticData: { access: readRequirement("/access/review"), floorplan: "P-01" }, component: lazyRouteComponent(screen(() => import("../features/access/ui/access-review-page")), "AccessReviewPage") });
+const policies = createRoute({ getParentRoute: () => app, path: "/access/policies", staticData: { access: readRequirement("/access/policies"), floorplan: "P-01", pattern: "list-record" }, component: lazyRouteComponent(screen(() => import("../features/access/ui/policies-page")), "PoliciesPage") });
+const policyDraft = createRoute({ getParentRoute: () => app, path: "/access/policies/$draftId", staticData: { access: readRequirement("/access/policies/$draftId"), floorplan: "P-02", pattern: "document-decision" }, component: lazyRouteComponent(screen(() => import("../features/access/ui/policy-draft-page")), "PolicyDraftPage") });
+const check = createRoute({ getParentRoute: () => app, path: "/access/check", staticData: { access: readRequirement("/access/check"), floorplan: "P-04", pattern: "form" }, component: lazyRouteComponent(screen(() => import("../features/access/ui/access-check-page")), "AccessCheckPage") });
 
-export const accessRoutes = [home, roles, roleNew, role, grants, bulk, person, ready, review];
+export const accessRoutes = [home, roles, roleNew, role, grants, bulk, person, ready, review, policies, policyDraft, check];

@@ -18,6 +18,7 @@ export type ReviewComposerMode = "start" | "record" | "complete";
 const ownReviewError = (code: string) => {
   if (code === "review_incomplete") return t("accessLog.review.error.incomplete");
   if (code === "scope_tenant_wide_only") return t("accessLog.review.error.tenantOnly");
+  if (code === "self_review_forbidden") return t("accessLog.review.error.selfReview");
   return undefined;
 };
 

@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+required:
+- period
+- state
+- due_at
+- frozen_count
+- decided_count
+- keep_count
+- revoke_count
+- reviewer_count
+properties:
+  id:
+    $ref: '#/components/schemas/Uuid'
+  period:
+    type: string
+  state:
+    type: string
+    enum: [UNSTARTED, UPCOMING, OPEN, COMPLETE]
+  due_at:
+    $ref: '#/components/schemas/Timestamp'
+  frozen_count:
+    type: integer
+  decided_count:
+    type: integer
+  keep_count:
+    type: integer
+  revoke_count:
+    type: integer
+  reviewer_count:
+    type: integer
+  started_at:
+    $ref: '#/components/schemas/Timestamp'
+  completed_at:
+    $ref: '#/components/schemas/Timestamp'

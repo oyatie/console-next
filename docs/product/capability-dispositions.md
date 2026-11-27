@@ -61,18 +61,18 @@ Partially exposed operations keep their current route and component; their refus
 | `GET /api/v1/me/workspace` | exposed | expose | `/account` · `ExperienceChooser` reads the signed-in user's workspace preferences, including personal screen style override. |
 | `PUT /api/v1/me/workspace` | exposed | expose | `/account` · `ExperienceChooser` persists the signed-in user's personal screen style override without clobbering other workspace layout keys. |
 | `GET /api/v1/policy/assignments` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `GET /api/v1/policy/audit-events` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/policy/authorize` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/policy/authorize/bulk` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `GET /api/v1/policy/catalog` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `GET /api/v1/policy/decisions` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `GET /api/v1/policy/drafts` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/policy/drafts` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `GET /api/v1/policy/drafts/{draft_id}` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `PUT /api/v1/policy/drafts/{draft_id}` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/policy/drafts/{draft_id}/review` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/policy/drafts/{draft_id}/submit` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/policy/drafts/{draft_id}/validate` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
+| `GET /api/v1/policy/audit-events` | exposed | expose | `/access/policies` · `PoliciesPage` displays policy governance audit events. |
+| `POST /api/v1/policy/authorize` | exposed | expose | `/access/check` · `AccessCheckPage` runs interactive point authorization checks. |
+| `POST /api/v1/policy/authorize/bulk` | exposed | expose | `/access/check` · `AccessCheckPage` runs standard multi-action authorization matrix checks. |
+| `GET /api/v1/policy/catalog` | exposed | expose | `/access/policies` · `PoliciesPage` lists Cedar policy catalog entries. |
+| `GET /api/v1/policy/decisions` | exposed | expose | `/access/policies` · `PoliciesPage` displays recorded Cedar authorization decisions. |
+| `GET /api/v1/policy/drafts` | exposed | expose | `/access/policies` · `PoliciesPage` lists no-code Cedar policy drafts. |
+| `POST /api/v1/policy/drafts` | exposed | expose | `/access/policies` · `PoliciesPage` creates a new Cedar policy draft. |
+| `GET /api/v1/policy/drafts/{draft_id}` | exposed | expose | `/access/policies/$draftId` · `PolicyDraftPage` loads a Cedar policy draft for editing and review. |
+| `PUT /api/v1/policy/drafts/{draft_id}` | exposed | expose | `/access/policies/$draftId` · `PolicyDraftPage` updates a Cedar policy draft's no-code blocks. |
+| `POST /api/v1/policy/drafts/{draft_id}/review` | exposed | expose | `/access/policies/$draftId` · `PolicyDraftPage` records four-eyes approve or reject review decisions. |
+| `POST /api/v1/policy/drafts/{draft_id}/submit` | exposed | expose | `/access/policies/$draftId` · `PolicyDraftPage` submits a validated draft for four-eyes review. |
+| `POST /api/v1/policy/drafts/{draft_id}/validate` | exposed | expose | `/access/policies/$draftId` · `PolicyDraftPage` validates Cedar draft syntax and schema rules. |
 | `GET /api/v1/policy/features` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `GET /api/v1/policy/role-templates` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `GET /api/v1/policy/roles` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
@@ -80,7 +80,7 @@ Partially exposed operations keep their current route and component; their refus
 | `PATCH /api/v1/policy/roles/{id}` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `PATCH /api/v1/policy/roles/{id}/status` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `POST /api/v1/policy/roles/{id}/status-preview` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/policy/simulate` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
+| `POST /api/v1/policy/simulate` | exposed | expose | `/access/policies/$draftId` · `PolicyDraftPage` runs Cedar draft sandbox simulations before submission. |
 | `POST /api/v1/policy/users/{id}/assignment-preview` | hidden | allow-list | Access management: Policy preview has no rendered caller. Deliver assignment impact review on the person access screen before MVP release. Release gate: mvp. |
 | `PUT /api/v1/policy/users/{id}/assignments` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `POST /api/v1/regions` | hidden | allow-list | Organization structure: Separate branch and region drafting is retired under the workplace model. Workplace changes own placement; retain these protocol URLs until compatibility retirement. Release gate: place-model compatibility retirement. |

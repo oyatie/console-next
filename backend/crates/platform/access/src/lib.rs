@@ -8,6 +8,7 @@
 //! ops account passes by the platform policy. Nothing here names a role.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
+pub mod access_review;
 mod actor;
 pub mod caveats;
 mod dto;

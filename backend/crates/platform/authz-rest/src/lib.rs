@@ -12,9 +12,11 @@
 //! [`authoring::simulate`]: console_platform_authz::cedar_pbac::authoring::simulate
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
+mod auth;
 mod bulk;
 mod limits;
 mod store;
+use auth::authorize_admin;
 use bulk::authorize_bulk;
 
 pub use store::{
@@ -29,11 +31,11 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use console_kernel_core::{ErrorKind, KernelError};
 use console_platform_auth::JwtVerifier;
+use console_platform_authz::Principal;
 use console_platform_authz::cedar_pbac::authoring::{
     AuthoredPolicy, NoCodeBlocks, SimRequest, SimResource, SimSubject, SimulationOutcome,
     simulate as simulate_policies,
 };
-use console_platform_authz::{Action, Feature, Principal, authorize_org_wide};
 use console_platform_db::DbError;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -373,24 +375,8 @@ fn decision_entry(request: &SimRequest, outcome: &SimulationOutcome) -> Decision
 // Auth + errors (mirrors governance/rest)
 // ---------------------------------------------------------------------------
 
-async fn authorize_admin(
-    state: &CedarPolicyRestState,
-    headers: &HeaderMap,
-) -> Result<Principal, RestError> {
-    let verifier = state.jwt_verifier.as_ref().ok_or_else(|| {
-        RestError::unavailable("JWT verification is not configured for policy API")
-    })?;
-    let principal =
-        console_platform_request_context::resolve_principal(verifier, state.store.pool(), headers)
-            .await
-            .map_err(rest_error_from_request_context)?;
-    authorize_org_wide(&principal, Action::new(Feature::RoleManage))
-        .map_err(RestError::from_kernel)?;
-    Ok(principal)
-}
-
 #[derive(Debug)]
-struct RestError {
+pub(crate) struct RestError {
     code: Option<&'static str>,
     status: StatusCode,
     kind: ErrorKind,
@@ -487,7 +473,7 @@ impl RestError {
     }
 }
 
-fn rest_error_from_request_context(
+pub(crate) fn rest_error_from_request_context(
     err: console_platform_request_context::RequestContextError,
 ) -> RestError {
     use console_platform_request_context::RequestContextError as E;

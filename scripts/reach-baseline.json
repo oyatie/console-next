@@ -535,31 +535,6 @@
    "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
-  "GET /api/v1/policy/audit-events": {
-   "lane": "K4",
-   "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/v1/policy/catalog": {
-   "lane": "K2",
-   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/v1/policy/decisions": {
-   "lane": "MAT-ACC",
-   "reason": "MAT-ACC owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/v1/policy/drafts": {
-   "lane": "K2",
-   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/v1/policy/drafts/{draft_id}": {
-   "lane": "K2",
-   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
   "GET /api/v1/policy/features": {
    "lane": "K2",
    "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
@@ -825,36 +800,6 @@
    "reason": "O4b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
-  "POST /api/v1/policy/authorize": {
-   "lane": "K2",
-   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/policy/authorize/bulk": {
-   "lane": "K2",
-   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/policy/drafts": {
-   "lane": "K2",
-   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/policy/drafts/{draft_id}/review": {
-   "lane": "K2",
-   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/policy/drafts/{draft_id}/submit": {
-   "lane": "K2",
-   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/policy/drafts/{draft_id}/validate": {
-   "lane": "K2",
-   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
   "POST /api/v1/policy/roles": {
    "lane": "K2",
    "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
@@ -863,11 +808,6 @@
   "POST /api/v1/policy/roles/{id}/status-preview": {
    "lane": "K2",
    "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/policy/simulate": {
-   "lane": "MAT-ACC",
-   "reason": "MAT-ACC owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
   "POST /api/v1/workflow-tasks/{task_id}/claim": {
@@ -904,11 +844,6 @@
    "lane": "MAT-PARITY",
    "reason": "Notification centre is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
    "when": "ideal"
-  },
-  "PUT /api/v1/policy/drafts/{draft_id}": {
-   "lane": "K2",
-   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
   },
   "PUT /api/v1/policy/users/{id}/assignments": {
    "lane": "K2",
