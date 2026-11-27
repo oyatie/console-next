@@ -98,7 +98,7 @@ test.each([1012, 1172, 760, 390].flatMap(width => ["light", "dark"].map(theme =>
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
-test.each([1012, 390].flatMap(width => ["light", "dark"].map(theme => ({ width, theme }))))("a unit-filtered roster loading zero rows keeps its filter band at $width px in $theme", async ({ width, theme }) => {
+test.each([1012, 880, 390].flatMap(width => ["light", "dark"].map(theme => ({ width, theme }))))("a unit-filtered roster loading zero rows keeps its filter band at $width px in $theme", async ({ width, theme }) => {
   let release!: () => void;
   const pending = new Promise<void>(resolve => { release = resolve; });
   const respond = async (route: Route) => {
@@ -128,12 +128,15 @@ test.each([1012, 390].flatMap(width => ["light", "dark"].map(theme => ({ width, 
     const filters = page.getByRole("group", { name: t("people.filter.label"), exact: true });
     await dom(filters).not.toHaveAttribute("data-pending", "true");
     const before = await filters.boundingBox();
+    const density = page.getByRole("group", { name: t("roster.columns.density"), exact: true });
+    const densityBefore = await density.boundingBox();
     const resetBefore = await reset.boundingBox();
     release();
     await dom(page.getByRole("heading", { name: t("people.noMatch.title"), exact: true })).toBeVisible();
     await dom(page.getByRole("searchbox", { name: t("roster.find"), exact: true })).toBeVisible();
     expect(await filters.boundingBox()).toEqual(before);
     await dom(reset).toHaveCount(1);
+    expect(await density.boundingBox()).toEqual(densityBefore);
     expect(await reset.boundingBox()).toEqual(resetBefore);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await reset.click();
