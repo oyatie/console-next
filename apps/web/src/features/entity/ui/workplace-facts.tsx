@@ -5,7 +5,7 @@ import type { LegalEntity, Workplace } from "@console/api/pending";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { codeText, labeled, RECORD_STATUS } from "../../../lib/labels";
-import { Button } from "../../../ui/button/button";
+import { Button, ToggleButton } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
 import { RowActions } from "../../../ui/record-actions/record-actions";
 import { useRecordLock } from "./use-record-lock";
@@ -28,6 +28,7 @@ import { Muted } from "../../../ui/muted/muted";
 type Open = { k: "info"; field: InfoKey; clear?: boolean } | { k: "move" | "status" | "attach" | "code" | "changeReg" } | { k: "kind" | "primary" };
 
 export function WorkplaceFacts({ e, w, place, onAct }: { e: LegalEntity; w: Workplace; place?: Place; onAct?: (a: StructureAct) => void }) {
+  const [ordering, setOrdering] = useState(false);
   const [state, setOpen] = useState<Open | null>(null);
   const navigate = useNavigate();
   // Kind and primary/head-office are structure acts: their sheets live with the org chart (one host); from the entity page the row's
@@ -121,7 +122,12 @@ export function WorkplaceFacts({ e, w, place, onAct }: { e: LegalEntity; w: Work
     !!place && siblings.length > 1 && {
       label: t("orgStructure.order.field"),
       value: t("orgStructure.order.place", { n: siblings.findIndex((x) => x.id === place.node.id) + 1, of: siblings.length, entity: place.entity.name }),
-      act: manage && !why ? <OrderButtons parent={place.entity} node={place.node} kind="WORKPLACE" /> : null,
+      act: manage && !why ? (
+        <>
+          <ToggleButton size="sm" pressed={ordering} onClick={() => setOrdering(!ordering)}>{t("orgStructure.order.field")}</ToggleButton>
+          <OrderButtons parent={place.entity} node={place.node} kind="WORKPLACE" editing={ordering} />
+        </>
+      ) : null,
     },
     row(t("workplace.code.field"), w.code ? <span className="num">{w.code}</span> : <Muted>{t("workplace.code.none")}</Muted>, { k: "code" }),
     {
