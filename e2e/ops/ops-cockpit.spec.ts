@@ -109,6 +109,25 @@ test.describe("Stage-0 Ops Cockpit", () => {
     expect(mock.unexpected).toEqual([]);
   });
 
+  for (const failure of ["unavailable", "denied"] as const) {
+    test(`External URL copy reports clipboard failure (${failure}) and allows retry`, async ({ page }) => {
+      await mountOpsMock(page, "paging");
+      await page.goto("/alerts/HighErrorRate%C3%97api");
+      const button = page.locator("aside").getByRole("button", { name: /Copy:/ }).first();
+      const row = button.locator("..");
+      await page.evaluate(mode => Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: mode === "unavailable" ? undefined : { writeText: async () => { throw new Error("Denied"); } },
+      }), failure);
+      await button.click();
+      await expect(row.getByRole("status")).toHaveText("Copy failed. Select the text and copy it manually.");
+      await expect(row.locator("code")).toBeVisible();
+      await page.evaluate(() => Object.defineProperty(navigator, "clipboard", { value: { writeText: async () => {} } }));
+      await button.click();
+      await expect(row.getByRole("status")).toHaveText("Copied");
+    });
+  }
+
   test("Alerts supports URL-synced filters, encoded key detail in 11-item order, Silences single-active tab, and plain-text ExternalUrl", async ({ page }) => {
     const requestedUrls: string[] = [];
     const mock = await mountOpsMock(page, "paging", {

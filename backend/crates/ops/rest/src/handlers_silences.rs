@@ -5,7 +5,8 @@ use axum::extract::{Path, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::Response;
 use console_ops_application::alert_actions::{
-    AlertAckRecord, AlertAckStore, AlertActionsService, resolve_silence_target_severity,
+    AlertAckRecord, AlertAckStore, AlertActionsService, AppliedSilence,
+    resolve_silence_target_severity,
 };
 use console_ops_application::events::OpsEvent;
 use console_ops_application::obligations::{Context, Error as SpoolError};
@@ -23,6 +24,8 @@ struct SilenceCreateResponse {
     #[serde(with = "time::serde::rfc3339")]
     evaluated_at: time::OffsetDateTime,
     silence_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    audit_recovery_ref: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -30,7 +33,16 @@ struct SilenceDeleteResponse {
     #[serde(with = "time::serde::rfc3339")]
     evaluated_at: time::OffsetDateTime,
     silence_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    audit_recovery_ref: Option<String>,
     deleted: bool,
+}
+
+fn audit_recovery_ref(applied: &AppliedSilence, ctx: &Context, action: &str) -> Option<String> {
+    let error = applied.audit_error.as_ref()?;
+    tracing::error!(?error, action, silence_id = %applied.silence_id, support_ref = %ctx.support_ref,
+        "Alertmanager applied the silence change but its audit outcome requires reconciliation");
+    Some(ctx.support_ref.clone())
 }
 
 struct DummyAckStore;
@@ -103,11 +115,13 @@ pub async fn create_silence(
         am_writer,
     };
     let ctx = op_context(&op, now, sref.clone());
-    let silence_id = svc
+    let applied = svc
         .create_silence_with_details(&input, &groups, Some(&alert_details), &ctx)
         .await
         .map_err(|e| from_alert_action_error(e, sref, ROUTE))?;
 
+    let audit_recovery_ref = audit_recovery_ref(&applied, &ctx, "silence_created");
+    let silence_id = applied.silence_id;
     let (group_ev, home_snap) = {
         let guard = state.snapshots.read().await;
         let g = input
@@ -143,6 +157,7 @@ pub async fn create_silence(
         SilenceCreateResponse {
             evaluated_at: now,
             silence_id,
+            audit_recovery_ref,
         },
     ))
 }
@@ -186,10 +201,12 @@ pub async fn delete_silence(
     };
     let now = (state.clock)();
     let ctx = op_context(&op, now, sref.clone());
-    svc.delete_silence(&id, &ctx)
+    let applied = svc
+        .delete_silence(&id, &ctx)
         .await
         .map_err(|e| from_alert_action_error(e, sref, ROUTE))?;
 
+    let audit_recovery_ref = audit_recovery_ref(&applied, &ctx, "silence_expired");
     let home_snap = state.snapshots.read().await.snapshot.home.clone();
     state
         .emit_events(vec![
@@ -211,5 +228,6 @@ pub async fn delete_silence(
         evaluated_at: now,
         silence_id: id,
         deleted: true,
+        audit_recovery_ref,
     }))
 }

@@ -2,9 +2,8 @@
 //! Attendance persistence proven as the non-owner runtime role: tenant isolation
 //! and least privilege are exercised rather than inferred from DDL.
 
-#[path = "../../../../test_support/governed_erase.rs"]
-mod governed_erase;
 use console_kernel_core::UserId;
+use console_platform_test_support::governed_erase;
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use sqlx::{PgPool, Row};
 use std::str::FromStr;

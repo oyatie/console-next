@@ -82,6 +82,7 @@ export const COPY_OC1 = {
     silenceTtl4hError: "Page alert silences cannot exceed 4 hours.",
     silenceTtl72hError: "Ticket alert silences cannot exceed 72 hours.",
     expireButton: "Expire",
+    auditRecovery: "Alertmanager applied this change. Give support these references to reconcile the audit record.",
     requiresAckGrant: "Requires alert.ack grant",
     requiresSilenceGrant: "Requires alert.silence grant",
   },

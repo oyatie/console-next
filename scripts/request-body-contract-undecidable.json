@@ -5,15 +5,15 @@
       "operation": "DELETE /api/platform/orgs/{id}",
       "rust_file": "backend/crates/platform/platform-rest/src/lib.rs",
       "handler": "delete_org",
-      "body_type": null,
-      "reason": "no_direct_json_binding"
+      "body_type": "PlatformStepUpRequest",
+      "reason": "rust_struct_not_strict"
     },
     {
       "operation": "DELETE /api/v1/auth/passkeys/{id}",
       "rust_file": "backend/crates/platform/auth-rest/src/lib.rs",
       "handler": "delete_self_passkey",
-      "body_type": null,
-      "reason": "no_direct_json_binding"
+      "body_type": "DeletePasskeyRequest",
+      "reason": "rust_struct_not_strict"
     },
     {
       "operation": "DELETE /api/v1/legal-entities/{entityId}/close",
@@ -255,22 +255,48 @@
       "operation": "POST /api/platform/orgs/{id}/admin-otp",
       "rust_file": "backend/crates/platform/platform-rest/src/lib.rs",
       "handler": "reissue_org_admin_otp",
-      "body_type": null,
-      "reason": "no_direct_json_binding"
-    },
-    {
-      "operation": "POST /api/platform/tenant-context",
-      "rust_file": "backend/crates/platform/platform-rest/src/view_as.rs",
-      "handler": "start_tenant_context",
-      "body_type": "TenantContextStartRequest",
+      "body_type": "AdminOtpReissueRequest",
       "reason": "rust_struct_not_strict"
     },
     {
-      "operation": "POST /api/platform/view-as",
-      "rust_file": "backend/crates/platform/platform-rest/src/view_as.rs",
-      "handler": "start_view_as",
-      "body_type": "ViewAsStartRequest",
-      "reason": "rust_struct_not_strict"
+      "operation": "POST /api/platform/orgs/{id}/erase",
+      "rust_file": "backend/crates/platform/platform-rest/src/tenant_erase.rs",
+      "handler": "open",
+      "body_type": "OpenRequest",
+      "body_struct_file": "backend/crates/platform/platform-rest/src/tenant_erase.rs",
+      "body_struct": "OpenRequest",
+      "schema_sha256": "c695f3c71505a4e41ce25f56a3dfdccc29749c7b821259df97918f5e84a9aa2e",
+      "status": "resolved"
+    },
+    {
+      "operation": "POST /api/platform/orgs/{id}/erase/{rid}/approve",
+      "rust_file": "backend/crates/platform/platform-rest/src/tenant_erase.rs",
+      "handler": "decide",
+      "body_type": "DecisionRequest",
+      "body_struct_file": "backend/crates/platform/platform-rest/src/tenant_erase.rs",
+      "body_struct": "DecisionRequest",
+      "schema_sha256": "659d427d03797c8d26c1056f1cd735d63c02b5f66bb75bf36f4be088fb5a4a7c",
+      "status": "resolved"
+    },
+    {
+      "operation": "POST /api/platform/orgs/{id}/erase/{rid}/cancel",
+      "rust_file": "backend/crates/platform/platform-rest/src/tenant_erase.rs",
+      "handler": "decide",
+      "body_type": "DecisionRequest",
+      "body_struct_file": "backend/crates/platform/platform-rest/src/tenant_erase.rs",
+      "body_struct": "DecisionRequest",
+      "schema_sha256": "659d427d03797c8d26c1056f1cd735d63c02b5f66bb75bf36f4be088fb5a4a7c",
+      "status": "resolved"
+    },
+    {
+      "operation": "POST /api/platform/support-sessions/{id}/end",
+      "rust_file": "backend/crates/platform/platform-rest/src/support.rs",
+      "handler": "store::end",
+      "body_type": "super::support::Target",
+      "body_struct_file": "backend/crates/platform/platform-rest/src/support.rs",
+      "body_struct": "Target",
+      "schema_sha256": "1a7d7ecdf17736b193a86979df1bafdaffff55b03c9dca792037aa8d23bded74",
+      "status": "resolved"
     },
     {
       "operation": "POST /api/target-change-requests/{requestId}/review",
@@ -278,6 +304,16 @@
       "handler": "review_target_change",
       "body_type": "ReviewTargetChangeRequestBody",
       "reason": "rust_struct_not_strict"
+    },
+    {
+      "operation": "POST /api/v1/access/access-log/reviews/{period}/complete",
+      "rust_file": "backend/crates/platform/access-rest/src/lib.rs",
+      "handler": "h::complete_access_log_review",
+      "body_type": "record::CompleteInput",
+      "body_struct_file": "backend/crates/platform/access/src/log_review/complete.rs",
+      "body_struct": "CompleteInput",
+      "schema_sha256": "ea7ac9c02f21e68657d2ff036f4b6f604060b62d8034d3af049128c8870eaef1",
+      "status": "resolved"
     },
     {
       "operation": "POST /api/v1/analytics/projection",
@@ -353,8 +389,11 @@
       "operation": "POST /api/v1/auth/passkey/login/start",
       "rust_file": "backend/crates/platform/auth-rest/src/lib.rs",
       "handler": "start_login",
-      "body_type": null,
-      "reason": "no_direct_json_binding"
+      "body_type": "LoginStartRequest",
+      "body_struct_file": "backend/crates/platform/auth-rest/src/dto/passkey.rs",
+      "body_struct": "LoginStartRequest",
+      "schema_sha256": "553c8f0e0683e1ac9f2c434b8213ba366bf461cecde467fe5bf3475643a16419",
+      "status": "resolved"
     },
     {
       "operation": "POST /api/v1/auth/passkey/register/finish",
@@ -526,14 +565,14 @@
     },
     {
       "operation": "POST /api/v1/employees/import",
-      "rust_file": "backend/app/src/hr.rs",
+      "rust_file": "backend/app/src/hr/lane_routes.rs",
       "handler": "import_employees",
       "body_type": null,
       "status": "no_json_body"
     },
     {
       "operation": "POST /api/v1/employees/import/preview",
-      "rust_file": "backend/app/src/hr.rs",
+      "rust_file": "backend/app/src/hr/lane_routes.rs",
       "handler": "preview_employee_import",
       "body_type": null,
       "reason": "non_json_request_body"
@@ -552,8 +591,11 @@
       "operation": "POST /api/v1/employees/import/{run_id}/dry-run",
       "rust_file": "backend/app/src/hr.rs",
       "handler": "dry_run_employee_import",
-      "body_type": null,
-      "reason": "no_direct_json_binding"
+      "body_type": "ImportDryRunRequest",
+      "body_struct_file": "backend/crates/hr/adapter-postgres/src/import/types.rs",
+      "body_struct": "ImportDryRunRequest",
+      "schema_sha256": "5119953028972675ab71a091411900c9e4717dea759f40cbf696b8e7bed14b77",
+      "status": "resolved"
     },
     {
       "operation": "POST /api/v1/employees/{id}/contracts",
@@ -601,6 +643,16 @@
       "reason": "non_json_request_body"
     },
     {
+      "operation": "POST /api/v1/entity-identifier-corrections/{id}/review",
+      "rust_file": "backend/app/src/entity_wiring/correction_register.rs",
+      "handler": "review",
+      "body_type": "ReviewRequest",
+      "body_struct_file": "backend/app/src/entity_wiring/correction_register.rs",
+      "body_struct": "ReviewRequest",
+      "schema_sha256": "03aa98fa8237941cf6f08aca97c4b9366637a3cf05b9e33ec54512b94b8b267b",
+      "status": "resolved"
+    },
+    {
       "operation": "POST /api/v1/entity-setup/batches",
       "rust_file": "backend/crates/entity/rest/src/lib.rs",
       "handler": "setup_batches::run",
@@ -630,7 +682,7 @@
     },
     {
       "operation": "POST /api/v1/equipment/import",
-      "rust_file": "backend/crates/registry/rest/src/lib.rs",
+      "rust_file": "backend/crates/registry/rest/src/routes.rs",
       "handler": "import_master_list",
       "body_type": null,
       "reason": "non_json_request_body"
@@ -806,6 +858,16 @@
       "reason": "rust_struct_not_strict"
     },
     {
+      "operation": "POST /api/v1/governed-exceptions/{id}/decide",
+      "rust_file": "backend/app/src/entity_wiring/exceptions.rs",
+      "handler": "decide_exception",
+      "body_type": "DecideExceptionRequest",
+      "body_struct_file": "backend/app/src/entity_wiring/exceptions.rs",
+      "body_struct": "DecideExceptionRequest",
+      "schema_sha256": "47ce4da07253fc0113e456f2a3ab13c0b8293350ce244a16aa4e9b44de1bde96",
+      "status": "resolved"
+    },
+    {
       "operation": "POST /api/v1/group-admin/tenant-context",
       "rust_file": "backend/crates/platform/auth-rest/src/lib.rs",
       "handler": "start_group_admin_tenant_context",
@@ -821,7 +883,7 @@
     },
     {
       "operation": "POST /api/v1/hr/attendance-import/preview",
-      "rust_file": "backend/app/src/hr.rs",
+      "rust_file": "backend/app/src/hr/lane_routes.rs",
       "handler": "preview_attendance_import",
       "body_type": null,
       "reason": "non_json_request_body"
@@ -830,8 +892,8 @@
       "operation": "POST /api/v1/hr/attendance-import/{run_id}/apply",
       "rust_file": "backend/app/src/hr.rs",
       "handler": "apply_attendance_import",
-      "body_type": null,
-      "reason": "no_direct_json_binding"
+      "body_type": "ImportApplyRequest",
+      "reason": "rust_struct_not_strict"
     },
     {
       "operation": "POST /api/v1/hr/attendance-records/me",
@@ -877,7 +939,7 @@
       "body_type": "ConfirmEmployeeExitCaseRequest",
       "body_struct_file": "backend/crates/hr/adapter-postgres/src/exits/types.rs",
       "body_struct": "ConfirmEmployeeExitCaseRequest",
-      "schema_sha256": "a67ecbb0aebd69fa0dae734818d6332443cb7e7c287fa01fecbb9de8cc215a50",
+      "schema_sha256": "9fa3570e1569d0fe26f305f762c45b675d009d1bd974b1a592c73a4e3a49b32f",
       "status": "resolved"
     },
     {
@@ -970,6 +1032,16 @@
       "handler": "h::create_workplace",
       "body_type": "CreateWorkplace",
       "reason": "openapi_schema_composition_unsupported"
+    },
+    {
+      "operation": "POST /api/v1/lifecycle-cases/{id}/items/{item_id}/complete",
+      "rust_file": "backend/crates/hr/rest/src/cases.rs",
+      "handler": "complete",
+      "body_type": "CompleteItem",
+      "body_struct_file": "backend/crates/hr/adapter-postgres/src/cases/types.rs",
+      "body_struct": "CompleteItem",
+      "schema_sha256": "bf6879b74f1d80e54c07c98f7bf2fea84fb9a264074ab926d3f699acbf2c092f",
+      "status": "resolved"
     },
     {
       "operation": "POST /api/v1/lifecycles/{objectType}/{objectId}/hold",
@@ -1357,8 +1429,18 @@
       "operation": "POST /api/v1/payroll/pay-groups",
       "rust_file": "backend/crates/payroll/rest/src/pay_groups.rs",
       "handler": "create",
-      "body_type": null,
-      "reason": "no_direct_json_binding"
+      "body_type": "CreatePayGroup",
+      "reason": "openapi_schema_composition_unsupported"
+    },
+    {
+      "operation": "POST /api/v1/payroll/runs",
+      "rust_file": "backend/crates/payroll/rest/src/pay_groups.rs",
+      "handler": "create_run",
+      "body_type": "RunRequest",
+      "body_struct_file": "backend/crates/payroll/adapter-postgres/src/pay_groups/run_preview.rs",
+      "body_struct": "RunRequest",
+      "schema_sha256": "f609431f385ed03273ad2e2c5e81a92add0fd482c3fc6a1443776e6c17d6f314",
+      "status": "resolved"
     },
     {
       "operation": "POST /api/v1/payroll/runs/{id}/close-attendance",
@@ -1501,6 +1583,36 @@
       "body_struct_file": "backend/crates/identity/rest/src/policy/dto.rs",
       "body_struct": "ReplacePolicyRoleAssignmentsRequest",
       "schema_sha256": "52225f32e4ee5da068398bd9e7409906afb8209d877c962f67bff0dce97f24e5",
+      "status": "resolved"
+    },
+    {
+      "operation": "POST /api/v1/privacy/rights-requests/received",
+      "rust_file": "backend/app/src/privacy.rs",
+      "handler": "intake::receive_off_app",
+      "body_type": "OffAppReceipt",
+      "body_struct_file": "backend/crates/compliance/domain/src/rights/input.rs",
+      "body_struct": "OffAppReceipt",
+      "schema_sha256": "4d397c3a15063502e2f62b7bc2ba3370215bfaaea6c87873d375bec2d0b94517",
+      "status": "resolved"
+    },
+    {
+      "operation": "POST /api/v1/privacy/rights-requests/{id}/decide",
+      "rust_file": "backend/app/src/privacy.rs",
+      "handler": "decide::decide",
+      "body_type": "DecideBody",
+      "body_struct_file": "backend/app/src/privacy/decision_body.rs",
+      "body_struct": "DecideBody",
+      "schema_sha256": "713759bcf7ff819d3ae5142ed78c06de1d20c2fd93629636f2ad50f4234f9a4a",
+      "status": "resolved"
+    },
+    {
+      "operation": "POST /api/v1/privacy/rights-requests/{id}/postpone",
+      "rust_file": "backend/app/src/privacy.rs",
+      "handler": "decide::postpone",
+      "body_type": "PostponeBody",
+      "body_struct_file": "backend/app/src/privacy/decision_body.rs",
+      "body_struct": "PostponeBody",
+      "schema_sha256": "5d837a3b5c11e64debf7340a3bedf9fa2b4d4e588bb365e401f280f6361308e3",
       "status": "resolved"
     },
     {
@@ -1805,8 +1917,11 @@
       "operation": "POST /api/v1/users/{id}/deactivate",
       "rust_file": "backend/crates/identity/rest/src/lib.rs",
       "handler": "deactivate_user",
-      "body_type": null,
-      "reason": "no_direct_json_binding"
+      "body_type": "DeactivateUserRequest",
+      "body_struct_file": "backend/crates/identity/rest/src/users/dto.rs",
+      "body_struct": "DeactivateUserRequest",
+      "schema_sha256": "c603ac524de0a2537f3d45678116b32924885821c5b02d19d3a40a0ec8d1d9b6",
+      "status": "resolved"
     },
     {
       "operation": "POST /api/v1/work-orders/{workOrderId}/p1-dispatch",
@@ -2022,8 +2137,8 @@
       "operation": "PUT /api/platform/groups/{id}/organizations/{org_id}",
       "rust_file": "backend/crates/platform/platform-rest/src/lib.rs",
       "handler": "assign_org_to_group",
-      "body_type": null,
-      "reason": "no_direct_json_binding"
+      "body_type": "PlatformStepUpRequest",
+      "reason": "rust_struct_not_strict"
     },
     {
       "operation": "PUT /api/v1/business-registrations/{registrationId}",
@@ -2047,11 +2162,24 @@
       "reason": "rust_struct_not_strict"
     },
     {
+      "operation": "PUT /api/v1/employees/import/{run_id}/rows/{source_key}/identifier",
+      "rust_file": "backend/crates/hr/rest/src/identity.rs",
+      "handler": "import_row_identifier",
+      "body_type": "ImportRowIdentifierRequest",
+      "body_struct_file": "backend/crates/hr/adapter-postgres/src/import/row_identifier_stage.rs",
+      "body_struct": "ImportRowIdentifierRequest",
+      "schema_sha256": "dd148bf2af02f34c12bb48900710901cb0bd6f9e5a70b8fbe80871498f7c236c",
+      "status": "resolved"
+    },
+    {
       "operation": "PUT /api/v1/employees/{id}/rrn",
       "rust_file": "backend/crates/hr/rest/src/identity.rs",
       "handler": "rrn_record",
-      "body_type": null,
-      "reason": "no_direct_json_binding"
+      "body_type": "RrnRecordRequest",
+      "body_struct_file": "backend/crates/hr/adapter-postgres/src/rrn/record.rs",
+      "body_struct": "RrnRecordRequest",
+      "schema_sha256": "dd148bf2af02f34c12bb48900710901cb0bd6f9e5a70b8fbe80871498f7c236c",
+      "status": "resolved"
     },
     {
       "operation": "PUT /api/v1/financial/purchase-requests/preferences",
@@ -2178,6 +2306,14 @@
   ],
   "enum": [
     {
+      "operation": "POST /api/v1/access/access-log/reviews/{period}/findings",
+      "wire_field": "disposition",
+      "rust_file": "backend/crates/platform/access/src/log_review/finding.rs",
+      "body_type": "FindingInput",
+      "rust_type": "String",
+      "reason": "string_backed_spec_enum"
+    },
+    {
       "operation": "POST /api/v1/attendance/exceptions",
       "wire_field": "kind",
       "rust_file": "backend/crates/attendance/rest/src/lib.rs",
@@ -2220,44 +2356,62 @@
       "status": "resolved"
     },
     {
-      "operation": "POST /api/v1/equipment-3r/rental-cases",
-      "wire_field": "currencyCode",
-      "rust_file": "backend/crates/equipment/rest/src/lib.rs",
-      "body_type": "QuoteBody",
+      "operation": "POST /api/v1/employees/{id}/rehire",
+      "wire_field": "pay_unit",
+      "rust_file": "backend/crates/hr/adapter-postgres/src/directory/create_rehire_input.rs",
+      "body_type": "RehireEmployeeRequest",
       "rust_type": "String",
       "reason": "string_backed_spec_enum"
+    },
+    {
+      "operation": "POST /api/v1/equipment-3r/rental-cases",
+      "wire_field": "currencyCode",
+      "rust_file": "backend/crates/equipment/rest/src/rental_bodies.rs",
+      "body_type": "QuoteBody",
+      "rust_type": "String",
+      "enum_file": "backend/crates/equipment/rest/src/rental_bodies.rs",
+      "enum_type": "deserialize_currency",
+      "status": "resolved"
     },
     {
       "operation": "POST /api/v1/equipment-3r/rental-cases/{case_id}/approval",
       "wire_field": "decision",
-      "rust_file": "backend/crates/equipment/rest/src/lib.rs",
+      "rust_file": "backend/crates/equipment/rest/src/rental_bodies.rs",
       "body_type": "ApprovalBody",
       "rust_type": "String",
-      "reason": "string_backed_spec_enum"
+      "enum_file": "backend/crates/equipment/rest/src/rental_bodies.rs",
+      "enum_type": "deserialize_approval",
+      "status": "resolved"
     },
     {
       "operation": "POST /api/v1/equipment-3r/rental-cases/{case_id}/assessment",
       "wire_field": "conditionGrade",
-      "rust_file": "backend/crates/equipment/rest/src/lib.rs",
+      "rust_file": "backend/crates/equipment/rest/src/rental_bodies.rs",
       "body_type": "AssessmentBody",
       "rust_type": "String",
-      "reason": "string_backed_spec_enum"
+      "enum_file": "backend/crates/equipment/rest/src/rental_bodies.rs",
+      "enum_type": "deserialize_condition_grade",
+      "status": "resolved"
     },
     {
       "operation": "POST /api/v1/equipment-3r/rental-cases/{case_id}/assessment",
       "wire_field": "disposition",
-      "rust_file": "backend/crates/equipment/rest/src/lib.rs",
+      "rust_file": "backend/crates/equipment/rest/src/rental_bodies.rs",
       "body_type": "AssessmentBody",
       "rust_type": "String",
-      "reason": "string_backed_spec_enum"
+      "enum_file": "backend/crates/equipment/rest/src/rental_bodies.rs",
+      "enum_type": "deserialize_disposition",
+      "status": "resolved"
     },
     {
       "operation": "POST /api/v1/equipment-3r/rental-cases/{case_id}/inspections",
       "wire_field": "outcome",
-      "rust_file": "backend/crates/equipment/rest/src/lib.rs",
+      "rust_file": "backend/crates/equipment/rest/src/rental_bodies.rs",
       "body_type": "InspectionBody",
       "rust_type": "String",
-      "reason": "string_backed_spec_enum"
+      "enum_file": "backend/crates/equipment/rest/src/rental_bodies.rs",
+      "enum_type": "deserialize_inspection_outcome",
+      "status": "resolved"
     },
     {
       "operation": "POST /api/v1/facilities/cases/{case_id}/acceptance",
@@ -2266,6 +2420,16 @@
       "body_type": "AcceptanceBody",
       "rust_type": "String",
       "reason": "string_backed_spec_enum"
+    },
+    {
+      "operation": "POST /api/v1/governed-exceptions/{id}/decide",
+      "wire_field": "decision",
+      "rust_file": "backend/app/src/entity_wiring/exceptions.rs",
+      "body_type": "DecideExceptionRequest",
+      "rust_type": "ExceptionDecisionInput",
+      "enum_file": "backend/app/src/entity_wiring/exceptions.rs",
+      "enum_type": "ExceptionDecisionInput",
+      "status": "resolved"
     },
     {
       "operation": "POST /api/v1/inventory/items/{item_id}/consumptions",
@@ -2280,6 +2444,102 @@
       "wire_field": "decision",
       "rust_file": "backend/crates/leave/rest/src/lib.rs",
       "body_type": "DecideRequestV1",
+      "rust_type": "String",
+      "reason": "string_backed_spec_enum"
+    },
+    {
+      "operation": "POST /api/v1/policy/drafts/{draft_id}/review",
+      "wire_field": "decision",
+      "rust_file": "backend/crates/platform/authz-rest/src/request_bodies.rs",
+      "body_type": "ReviewBody",
+      "rust_type": "ReviewDecision",
+      "enum_file": "backend/crates/platform/authz/src/cedar_pbac/authoring/review.rs",
+      "enum_type": "ReviewDecision",
+      "status": "resolved"
+    },
+    {
+      "operation": "POST /api/v1/privacy/rights-requests",
+      "wire_field": "controller",
+      "rust_file": "backend/app/src/privacy.rs",
+      "body_type": "File",
+      "rust_type": "Controller",
+      "enum_file": "backend/crates/compliance/domain/src/rights/mod.rs",
+      "enum_type": "Controller",
+      "status": "resolved"
+    },
+    {
+      "operation": "POST /api/v1/privacy/rights-requests/received",
+      "wire_field": "channel",
+      "rust_file": "backend/crates/compliance/domain/src/rights/input.rs",
+      "body_type": "OffAppReceipt",
+      "rust_type": "OffAppChannel",
+      "enum_file": "backend/crates/compliance/domain/src/rights/input.rs",
+      "enum_type": "OffAppChannel",
+      "status": "resolved"
+    },
+    {
+      "operation": "POST /api/v1/privacy/rights-requests/received",
+      "wire_field": "controller",
+      "rust_file": "backend/crates/compliance/domain/src/rights/input.rs",
+      "body_type": "OffAppReceipt",
+      "rust_type": "OffAppController",
+      "enum_file": "backend/crates/compliance/domain/src/rights/input.rs",
+      "enum_type": "OffAppController",
+      "status": "resolved"
+    },
+    {
+      "operation": "POST /api/v1/privacy/rights-requests/{id}/decide",
+      "wire_field": "kind",
+      "rust_file": "backend/app/src/privacy/decision_body.rs",
+      "body_type": "DecideBody",
+      "rust_type": "DecisionKind",
+      "enum_file": "backend/app/src/privacy/decision_body.rs",
+      "enum_type": "DecisionKind",
+      "status": "resolved"
+    },
+    {
+      "operation": "POST /api/v1/privacy/rights-requests/{id}/decide",
+      "wire_field": "outcome",
+      "rust_file": "backend/app/src/privacy/decision_body.rs",
+      "body_type": "DecideBody",
+      "rust_type": "FinalOutcome",
+      "enum_file": "backend/app/src/privacy/decision_body.rs",
+      "enum_type": "FinalOutcome",
+      "status": "resolved"
+    },
+    {
+      "operation": "POST /api/v1/privacy/rights-requests/{id}/objection",
+      "wire_field": "channel",
+      "rust_file": "backend/crates/compliance/domain/src/rights/input.rs",
+      "body_type": "ObjectionInput",
+      "rust_type": "Channel",
+      "enum_file": "backend/crates/compliance/domain/src/rights/mod.rs",
+      "enum_type": "Channel",
+      "status": "resolved"
+    },
+    {
+      "operation": "POST /api/v1/privacy/rights-requests/{id}/postpone",
+      "wire_field": "kind",
+      "rust_file": "backend/app/src/privacy/decision_body.rs",
+      "body_type": "PostponeBody",
+      "rust_type": "DecisionKind",
+      "enum_file": "backend/app/src/privacy/decision_body.rs",
+      "enum_type": "DecisionKind",
+      "status": "resolved"
+    },
+    {
+      "operation": "POST /api/v1/settings/{key}",
+      "wire_field": "expected_version",
+      "rust_file": "backend/crates/settings/rest/src/lib.rs",
+      "body_type": "ChangeRequest",
+      "rust_type": "SettingVersionId",
+      "reason": "tagged_or_data_enum"
+    },
+    {
+      "operation": "POST /api/v1/support-sessions/{id}/decision",
+      "wire_field": "decision",
+      "rust_file": "backend/crates/platform/platform-rest/src/support_tenant.rs",
+      "body_type": "DecisionBody",
       "rust_type": "String",
       "reason": "string_backed_spec_enum"
     },
@@ -2304,6 +2564,14 @@
       "wire_field": "decision",
       "rust_file": "backend/crates/leave/rest/src/lib.rs",
       "body_type": "DecideRequestV2",
+      "rust_type": "String",
+      "reason": "string_backed_spec_enum"
+    },
+    {
+      "operation": "PUT /api/v1/employees/{id}/rrn",
+      "wire_field": "id_type",
+      "rust_file": "backend/crates/hr/adapter-postgres/src/rrn/record.rs",
+      "body_type": "RrnRecordRequest",
       "rust_type": "String",
       "reason": "string_backed_spec_enum"
     }

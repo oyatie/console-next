@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Privacy rights decision, postponement step-up SoD, and objection intake.
+use super::decision_body::{DecideBody, PostponeBody};
 use super::intake::{Receipt, forbidden, missing};
 use super::{PrivacyState, store_error, unavailable};
 use crate::http::error::ApiError;
@@ -9,7 +10,7 @@ use axum::{
     http::StatusCode,
 };
 use console_compliance_adapter_postgres::rights::{
-    self, DecideInput, Kind, ObjectionInput, Outcome, PostponeInput, wire_date,
+    self, DecideInput, Kind, ObjectionInput, PostponeInput,
 };
 use console_platform_auth::{
     MobilePasskeyStepUpBinding, MobilePasskeyStepUpEnvelope, MobileStepUpActionKind,
@@ -21,35 +22,8 @@ use console_platform_authz::{
         visible::{EmployeePlacement, load_facts},
     },
 };
-use serde::Deserialize;
 use serde_json::Value;
-use time::Date;
 use uuid::Uuid;
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(super) struct DecideBody {
-    kind: Kind,
-    outcome: Outcome,
-    #[serde(default)]
-    reason: Option<String>,
-    #[serde(default)]
-    note: Option<String>,
-    #[serde(default, with = "wire_date::option")]
-    decided_on: Option<Date>,
-    step_up: Option<MobilePasskeyStepUpEnvelope>,
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(super) struct PostponeBody {
-    kind: Kind,
-    reason: String,
-    note: String,
-    #[serde(default, with = "wire_date::option")]
-    decided_on: Option<Date>,
-    step_up: Option<MobilePasskeyStepUpEnvelope>,
-}
 
 async fn verify_decide_step_up(
     state: &PrivacyState,
@@ -208,8 +182,8 @@ pub(super) async fn decide(
     Json(body): Json<DecideBody>,
 ) -> Result<Json<Value>, ApiError> {
     let input = DecideInput {
-        kind: body.kind,
-        outcome: body.outcome,
+        kind: body.kind.into(),
+        outcome: body.outcome.into(),
         reason: body.reason,
         note: body.note,
         decided_on: body.decided_on,
@@ -237,7 +211,7 @@ pub(super) async fn postpone(
     Json(body): Json<PostponeBody>,
 ) -> Result<Json<Value>, ApiError> {
     let input = PostponeInput {
-        kind: body.kind,
+        kind: body.kind.into(),
         reason: body.reason,
         note: body.note,
         decided_on: body.decided_on,

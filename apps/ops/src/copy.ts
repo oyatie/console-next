@@ -191,6 +191,7 @@ export const COPY = {
       changes: "Changes in preceding 2h", noChanges: "No recorded changes in the preceding 2h",
       links: "Links", noLinks: "No runbook or dashboard links attached", footerKey: "Group key",
       fingerprint: "Fingerprint", labels: "Labels", copy: "Copy", copied: "Copied",
+      copyFailed: "Copy failed. Select the text and copy it manually.",
     },
     silences: {
       countLabel: "Active silences",

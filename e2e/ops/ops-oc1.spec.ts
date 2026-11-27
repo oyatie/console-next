@@ -87,6 +87,32 @@ test.describe("Stage-1 OC1 Ops Cockpit", () => {
     expect(brokenMock.unexpected).toEqual([]);
   });
 
+  test("applied silence changes show the upstream ID and audit recovery reference", async ({ page }) => {
+    await mountOpsMock(page, "paging");
+    let reportPartial = false;
+    await page.route("**/api/ops/v1/silences", async (route) => {
+      if (route.request().method() !== "POST" || !reportPartial) return route.fallback();
+      return route.fulfill({ status: 201, json: { evaluated_at: new Date().toISOString(), silence_id: "sil-2", audit_recovery_ref: "ref-create" } });
+    });
+    await page.route("**/api/ops/v1/silences/sil-1", (route) =>
+      route.fulfill({ json: { evaluated_at: new Date().toISOString(), silence_id: "sil-1", deleted: true, audit_recovery_ref: "ref-expire" } }),
+    );
+    await page.goto('/alerts/silence?matcher=alertname%3D%22HighErrorRate%22');
+    await page.getByLabel(/Comment/).fill("Silencing during maintenance");
+    await page.locator("form").getByRole("button", { name: "Create silence" }).click();
+    const expire = page.getByRole("button", { name: "Expire" });
+    await expire.click();
+    await expect(page.getByRole("alert").filter({ hasText: "ref-expire" })).toContainText("sil-1");
+    await expect(expire).toBeDisabled();
+
+    reportPartial = true;
+    await page.getByRole("button", { name: "Create silence" }).click();
+    await page.getByLabel(/Comment/).fill("Second maintenance window");
+    await page.locator("form").getByRole("button", { name: "Create silence" }).click();
+    await expect(page.getByRole("alert").filter({ hasText: "ref-create" })).toContainText("sil-2");
+    await expect(page.locator("form")).toHaveCount(0);
+  });
+
   test("Alerting ack/silence, render.jq deep links, Watchdog guard, and 390px Jobs Line 2 + Rerun", async ({ page }) => {
     const mock = await mountOpsMock(page, "paging", {
       extraAlertKeys: ["Watchdog×monitoring"],
@@ -225,7 +251,7 @@ test.describe("Stage-1 OC1 Ops Cockpit", () => {
     await shotOps(page, "changes");
 
     await page.goto("/promote");
-    await expect(page.getByText("Blocked by open P0/P1 feedback or missing release gates")).toBeVisible();
+    await expect(page.getByText("Check release gates, blocked signoffs and open P0/P1 feedback")).toBeVisible();
     await expect(page.getByRole("button", { name: "Request promotion" })).toBeDisabled();
 
     // Triage P1 feedback -> Watching -> Signoff ready -> Ready -> Promote

@@ -314,6 +314,7 @@ test("an intended change passes only at the value recorded for it", () => {
   expect(frozenTokens(BASE_TOKENS, now)).toHaveLength(2);
   const allowed = { "--row-h": { light: "calc(36px + 4px)", dark: "calc(36px + 4px)" } };
   expect(frozenTokens(BASE_TOKENS, now, allowed)).toEqual([]);
+  expect(frozenTokens(BASE_TOKENS, now, Object.create(allowed))).toHaveLength(2);
   expect(frozenTokens(BASE_TOKENS, now.replace("36px + 4px", "30px + 4px"), allowed)).toHaveLength(2);
 });
 

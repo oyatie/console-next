@@ -203,10 +203,11 @@ an exclusive statutory algorithm list or evidence of this build's certification.
     witness entry to `erasure_ledger` alongside `tenant_erase_requests` witness
     columns (`erasure_witness_seq`, `erasure_witness_hash`,
     `shredded_key_fingerprint`) and `audit_events`.
-  - Even if database or storage snapshots from prior to erasure are restored,
-    erased tenant ciphertexts remain permanently unrecoverable without the shredded
-    tenant DEKs, while `erasure_ledger` hash-chain verification and out-of-process
-    witness logs (`console.erasure_ledger.witness`) attest the erasure event.
+  - A pre-erasure database snapshot can restore wrapped tenant DEKs and roll back
+    the local ledger. Recovery operators withhold application traffic until the
+    recovered ledger matches the independently held erasure witness and the tenant
+    and its wrapped keys are absent. The disposable platform drill checks both sides
+    of that WAL boundary. [Recovery drill and ownership](../../deploy/README.md)
   - `PlatformProvisioner::drain_erased_tenant_objects` drains
     `tenant_erase_s3_outbox` post-commit without holding DB transactions across
     HTTP object-store calls, treating `404`/`NoSuchKey` as purged and deferring

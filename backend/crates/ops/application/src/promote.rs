@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+use std::collections::{BTreeMap, BTreeSet};
+
 use console_ops_domain::Observed;
 use console_ops_domain::UtcTimestamp;
 use console_ops_domain::changes::{CmdHandOff, is_valid_sha256_digest};
@@ -41,6 +43,7 @@ pub struct FeedbackTriage {
 }
 
 pub trait PromotionStore: Send + Sync {
+    /// History in ascending spool sequence order.
     fn list_signoffs(&self) -> Result<Vec<PromotionSignoff>, SpoolError>;
     fn record_signoff(
         &self,
@@ -52,6 +55,7 @@ pub trait PromotionStore: Send + Sync {
 }
 
 pub trait FeedbackStore: Send + Sync {
+    /// History in ascending spool sequence order.
     fn list_feedback(&self) -> Result<Vec<FeedbackTriage>, SpoolError>;
     fn record_triage(
         &self,
@@ -114,29 +118,42 @@ impl<'a> PromoteService<'a> {
                 .is_some_and(|v| v.iter().any(|s| s.value > 0.0))
         });
 
-        let has_open_blocker = feedback
-            .iter()
-            .any(|f| matches!(f.severity.as_str(), "P0" | "P1") && f.disposition == "open");
-        let has_signoff = preview_digest.as_deref().is_some_and(|d| {
-            signoffs
-                .iter()
-                .any(|s| s.digest == d && s.verdict == "ready")
-        });
-        let gates_ok = preview_digest.as_deref().is_some_and(|d| {
-            self.releases
-                .and_then(|r| r.get_gates(d).ok().flatten())
-                .is_some()
-        });
-
-        let state_val = if !preview_running || preview_digest.is_none() {
-            None
-        } else if has_open_blocker || !gates_ok {
-            Some(Promotion::Blocked)
-        } else if has_signoff {
-            Some(Promotion::Ready)
-        } else {
-            Some(Promotion::Watching)
-        };
+        let state_val = preview_digest
+            .as_deref()
+            .filter(|_| preview_running)
+            .map(|digest| {
+                // The console-gates/v1 producer emits one outcome for each required check.
+                const REQUIRED: [&str; 5] = ["code-gates", "api-compat", "sbom", "scan", "smoke"];
+                let gates_ok = self
+                    .releases
+                    .and_then(|r| r.get_gates(digest).ok().flatten())
+                    .is_some_and(|statement| {
+                        let gates = &statement.predicate.gates;
+                        gates.len() == REQUIRED.len()
+                            && REQUIRED.iter().all(|name| {
+                                gates.iter().any(|g| g.name == *name && g.result == "pass")
+                            })
+                    });
+                let mut seen_feedback = BTreeSet::new();
+                let has_open_blocker = feedback
+                    .iter()
+                    .rev()
+                    .filter(|f| seen_feedback.insert(&f.feedback_id))
+                    .any(|f| matches!(f.severity.as_str(), "P0" | "P1") && f.disposition == "open");
+                let current_verdicts: BTreeMap<_, _> = signoffs
+                    .iter()
+                    .filter(|s| s.digest == digest)
+                    .map(|s| (&s.operator, s.verdict.as_str()))
+                    .collect();
+                if !gates_ok || has_open_blocker || current_verdicts.values().any(|v| *v != "ready")
+                {
+                    Promotion::Blocked
+                } else if current_verdicts.is_empty() {
+                    Promotion::Watching
+                } else {
+                    Promotion::Ready
+                }
+            });
 
         Ok(PromoteView {
             evaluated_at: now,

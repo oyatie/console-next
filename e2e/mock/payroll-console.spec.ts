@@ -14,6 +14,7 @@ import {
   saeonAdminUser,
   saeonPayGroups,
   saeonPayrollRates,
+  saeonPayrollRunDetail,
   saeonUniverse,
 } from "./saeon";
 import { captureBuiltConsoleShot, enableConsole } from "./saeon-mod5-6";
@@ -38,9 +39,9 @@ function combinedPayrollAccess(path = "/payroll") {
 
 async function setupSaeonPayroll(
   page: Page,
-  opts?: { theme?: "light" | "dark"; totalRuns?: number; createConflict?: boolean; refuse?: boolean; failState?: { fail: boolean } },
+  opts?: { baseline?: boolean; theme?: "light" | "dark"; totalRuns?: number; createConflict?: boolean; refuse?: boolean; failState?: { fail: boolean } },
 ) {
-  await enableConsole(page, opts?.theme ?? "light");
+  if (!opts?.baseline) await enableConsole(page, opts?.theme ?? "light");
   const fixture = await mockScreen(page, payrollScreens[0], "populated");
   const groups = saeonPayGroups();
 
@@ -224,6 +225,57 @@ test("Console /payroll/setup enforces zero preselection and /payroll/runs/new su
     fixture.release();
   }
 });
+
+for (const baseline of [false, true]) {
+  test(`payroll creation checks the refreshed preview month before retry${baseline ? " @baseline" : ""}`, async ({ page }) => {
+    const { fixture, groups } = await setupSaeonPayroll(page, { baseline });
+    const initial = saeonRunPreview(groups.items[0]!.id);
+    const next = { ...initial, attribution_month: "2026-12", pay_date: "2026-12-25",
+      period_start: "2026-12-01", period_end: "2026-12-31", variable_period_start: "2026-11-16", variable_period_end: "2026-12-15" };
+    const detail = saeonPayrollRunDetail();
+    const created = { ...detail.run, ...next };
+    const submitted: unknown[] = [];
+    const refresh = Promise.withResolvers<void>();
+    await mockRoute(page, "get", "/api/v1/payroll/runs/{id}", { status: 200, json: { ...detail, run: created } });
+    await mockRoute(page, "get", "/api/v1/payroll/runs/preview", async () => {
+      if (!submitted.length) return { status: 200, json: initial };
+      await refresh.promise;
+      return { status: 200, json: next };
+    });
+    await mockRoute(page, "post", "/api/v1/payroll/runs", request => {
+      submitted.push(request.postDataJSON());
+      if (submitted.length === 1) return { status: 409, json: failure("payroll_preview_changed") };
+      return { status: 201, json: created };
+    });
+
+    try {
+      await page.goto("/payroll/runs/new");
+      await page.getByText(new RegExp(groups.items[0]!.name)).click();
+      await page.getByText(t("payroll.create.kind.REGULAR"), { exact: true }).click();
+      const main = page.getByRole("main");
+      const submit = page.getByRole("button", { name: t("payroll.create.submit"), exact: true });
+      await expect(main.getByText(initial.attribution_month, { exact: true }).first()).toBeVisible();
+      await submit.click();
+      await expect(page.getByRole("alert")).toContainText(t("payroll.create.refuse.payroll_preview_changed"));
+      const fields = { pay_group_id: initial.pay_group_id, kind: initial.kind };
+      expect(submitted).toEqual([{ ...fields, expected_attribution_month: initial.attribution_month }]);
+      await expect(submit).toBeDisabled();
+      refresh.resolve();
+      await expect(main.getByText(next.attribution_month, { exact: true }).first()).toBeVisible();
+      await submit.click();
+      await expect(page).toHaveURL(new RegExp(`/payroll/runs/${created.id}$`));
+      expect(submitted).toEqual([
+        { ...fields, expected_attribution_month: initial.attribution_month },
+        { ...fields, expected_attribution_month: next.attribution_month },
+      ]);
+      expect(fixture.unexpected).toEqual([]);
+    } finally {
+      refresh.resolve();
+      await page.close();
+      fixture.release();
+    }
+  });
+}
 
 test("Console /payroll distinguishes 403 refusal from 503 retry recovery", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });

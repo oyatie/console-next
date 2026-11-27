@@ -86,3 +86,31 @@ pub(super) async fn assert_second_gate(
     pay_view::grant_manage(pool, org, actor, None).await;
     // The caller retries with renewed authority and proves delivery is deduplicated.
 }
+
+pub(super) async fn assert_missing_recipient(pool: &PgPool, org: OrgId, run: Uuid) {
+    let mut tx = pool.begin().await.unwrap();
+    // rls-arming: ok owner adds an unlinked calculation alongside the journey's linked recipient.
+    let line: Uuid = sqlx::query_scalar(
+        "INSERT INTO payroll_draft_lines(org_id,run_id,employee_source_key,employee_display_name,employee_company)
+         VALUES ($1,$2,'unlinked','Unlinked','Company') RETURNING id"
+    ).bind(org.as_uuid()).bind(run).fetch_one(tx.as_mut()).await.unwrap();
+    sqlx::query("INSERT INTO payroll_line_calculations(org_id,run_id,line_id,version,gross_won,deductions,total_deductions_won,net_won,tax_table_version)
+                 VALUES ($1,$2,$3,1,100,'[]',0,100,'fixture')")
+        .bind(org.as_uuid()).bind(run).bind(line).execute(tx.as_mut()).await.unwrap();
+    sqlx::query("SET LOCAL ROLE console_rt")
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    sqlx::query("SELECT set_config('app.current_org',$1,true)")
+        .bind(org.to_string())
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    let result =
+        console_payroll_adapter_postgres::lifecycle::load_payslip_issuance_in_tx(&mut tx, run)
+            .await;
+    assert!(
+        matches!(result, Err(console_payroll_adapter_postgres::lifecycle::LifecycleError::InvalidState(message)) if message.contains("1 calculated payroll line"))
+    );
+    tx.rollback().await.unwrap();
+}

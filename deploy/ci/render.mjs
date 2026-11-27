@@ -90,7 +90,12 @@ if(environment==='exit-test') {
  cluster.metadata.name='console-restore';delete cluster.spec.plugins;delete cluster.spec.managed;
  cluster.spec.bootstrap={recovery:{source:'console-db'}};
  cluster.spec.externalClusters=[{name:'console-db',plugin:{name:'barman-cloud.cloudnative-pg.io',parameters:{barmanObjectName:'console-backup',serverName:'console-db'}}}];
- groups['tests/restore']=[cluster];
+ // The runner inspects both copies through the local socket. Neither may accept application traffic.
+ cluster.spec.postgresql={...cluster.spec.postgresql,pg_hba:['host console all all reject', ...(cluster.spec.postgresql?.pg_hba ?? [])]};
+ const stale=structuredClone(cluster);
+ stale.metadata.name='console-restore-before-erase';
+ stale.spec.bootstrap.recovery.recoveryTarget={targetLSN:'${BEFORE_ERASURE_LSN}'};
+ groups['tests/restore']=[cluster,stale];
  groups['tests/backup']=[{apiVersion:'postgresql.cnpg.io/v1',kind:'Backup',metadata:{name:'console-exit-backup',namespace:'console'},spec:{cluster:{name:'console-db'},method:'plugin',pluginConfiguration:{name:'barman-cloud.cloudnative-pg.io'}}}];
 }
 for (const [group, resources] of Object.entries(groups)) {

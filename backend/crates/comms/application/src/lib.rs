@@ -1266,9 +1266,7 @@ impl std::fmt::Debug for FetchedAttachment {
 }
 
 /// Maximum bytes of a single inbound attachment to mirror into storage. Larger
-/// parts are recorded with their metadata but their bytes are skipped (the part
-/// is persisted with `upload_state = 'PENDING'` carrying zero bytes), so a
-/// hostile/huge attachment can't exhaust storage in one pass.
+/// parts are skipped during sync.
 pub const MAX_INBOUND_ATTACHMENT_BYTES: usize = 25 * 1024 * 1024;
 
 /// The decrypted IMAP transport config for one sync pass. The password lives in
@@ -1308,15 +1306,18 @@ pub trait ImapSession: Send {
         imap_path: &'a str,
     ) -> MailFuture<'a, Result<ImapSelect, MailServiceError>>;
 
-    /// `UID FETCH` the messages with UID strictly greater than `since_uid`
-    /// (capped at `limit`), against the currently selected folder, using
-    /// `BODY.PEEK[]` so no `\Seen` flag is set. Returns the parsed messages in
-    /// ascending UID order.
-    fn fetch_since<'a>(
-        &'a mut self,
+    /// Return the lowest UIDs above the cursor in ascending order, without bodies.
+    fn uids_since(
+        &mut self,
         since_uid: u32,
         limit: u32,
-    ) -> MailFuture<'a, Result<Vec<FetchedMessage>, MailServiceError>>;
+    ) -> MailFuture<'_, Result<Vec<u32>, MailServiceError>>;
+
+    /// Fetch one body without changing its seen flag. A vanished UID has no body.
+    fn fetch_message(
+        &mut self,
+        uid: u32,
+    ) -> MailFuture<'_, Result<Option<FetchedMessage>, MailServiceError>>;
 
     /// Best-effort logout. Errors here are ignored by the engine.
     fn logout(&mut self) -> MailFuture<'_, ()>;
@@ -1449,12 +1450,11 @@ pub struct InboundUpsert {
     pub message: FetchedMessage,
     /// The normalized subject (the thread's subject-fallback grouping key).
     pub normalized_subject: String,
-    /// Attachments that were uploaded to storage, with their final keys.
+    /// Attachment metadata and proposed keys for a newly inserted message.
     pub stored_attachments: Vec<StoredAttachment>,
 }
 
-/// An attachment already uploaded to storage, ready to record in
-/// `email_attachments`.
+/// An attachment to record in `email_attachments`.
 #[derive(Debug, Clone)]
 pub struct StoredAttachment {
     pub s3_key: String,
@@ -1514,275 +1514,8 @@ pub enum AddressLookup {
     Ambiguous,
 }
 
-// ---------------------------------------------------------------------------
-// Inbound store port (extends MailStore conceptually; kept a separate trait so
-// the send-only B-mail-2 surface is unchanged and the read API is cohesive).
-// ---------------------------------------------------------------------------
-
-/// Persistence port for the inbound sync engine + the read API. Every method is
-/// org-scoped in the adapter (`with_org_conn`/`with_audit` armed to the org). The
-/// sync methods are driven by the background worker; the read methods back the
-/// REST GET endpoints.
-pub trait MailReadStore: Send + Sync {
-    /// Ensure the folder rows exist for `account` (upsert on `(org, account,
-    /// imap_path)`) and return them as cursors. Arms the account's org.
-    fn upsert_folders<'a>(
-        &'a self,
-        org: OrgId,
-        account: EmailAccountId,
-        folders: &'a [ImapFolder],
-    ) -> MailFuture<'a, Result<Vec<FolderCursor>, MailServiceError>>;
-
-    /// Reset a folder's cursor to 0 and stamp the new UIDVALIDITY (called when the
-    /// server's UIDVALIDITY no longer matches the persisted one — the stored UIDs
-    /// are stale). Arms the account's org.
-    fn reset_folder_cursor<'a>(
-        &'a self,
-        org: OrgId,
-        folder_id: uuid::Uuid,
-        uid_validity: i64,
-    ) -> MailFuture<'a, Result<(), MailServiceError>>;
-
-    /// Idempotently UPSERT one inbound message into its thread/folder under the
-    /// armed org, returning whether a NEW row was inserted (`true`) or an existing
-    /// row was refreshed (`false`, a re-sync of the same UID). Maintains the
-    /// thread aggregate (last_message_at / counts / has_attachments) and the
-    /// folder's `last_seen_uid` high-water mark.
-    fn upsert_inbound<'a>(
-        &'a self,
-        org: OrgId,
-        upsert: InboundUpsert,
-    ) -> MailFuture<'a, Result<bool, MailServiceError>>;
-
-    /// Stamp the account's sync lifecycle (last_sync_at / sync_status / error)
-    /// AND release the scheduler's claim lease — but only if `claim_token` still
-    /// matches the row's live token (a fenced compare-and-clear). A worker whose
-    /// lease was already reclaimed by another worker (a newer token) clears
-    /// nothing, so it cannot wipe the reclaimer's fresh lease. Arms the account's
-    /// org.
-    fn record_sync_result<'a>(
-        &'a self,
-        org: OrgId,
-        account: EmailAccountId,
-        claim_token: uuid::Uuid,
-        status: &'a str,
-        error: Option<&'a str>,
-    ) -> MailFuture<'a, Result<(), MailServiceError>>;
-
-    /// Release the scheduler's claim lease WITHOUT touching the sync lifecycle —
-    /// no `last_sync_at`/`sync_status`/`last_sync_error`/auth-failure-count
-    /// write. Used by the early-exit paths (the account vanished, was paused, or
-    /// changed identity since enumeration) where no sync attempt was actually
-    /// made, so nothing should be recorded as a completed pass. Fenced by
-    /// `claim_token` exactly like `record_sync_result`: only the worker still
-    /// holding the matching token clears the lease. Arms the account's org.
-    fn release_claim<'a>(
-        &'a self,
-        org: OrgId,
-        account: EmailAccountId,
-        claim_token: uuid::Uuid,
-    ) -> MailFuture<'a, Result<(), MailServiceError>>;
-
-    /// Owner-conn enumeration of accounts DUE for a sync pass (last_sync_at older
-    /// than the cadence, status ACTIVE). Reads ONLY (org_id, account_id) and is
-    /// NOT armed to any single org — it is the scheduler tick that drives the
-    /// per-tenant arming, so it must see across tenants. The adapter runs it on a
-    /// dedicated owner connection that bypasses RLS for this id-only read.
-    /// `limit` MUST be the number of sync passes the caller can start
-    /// immediately (e.g. the concurrency permits already acquired) — claiming
-    /// more than that stamps a 600s lease on accounts that then sit queued
-    /// before their pass even begins, eating into the lease before the sync
-    /// timeout clock (which only starts once the pass runs) has a chance to
-    /// bound it.
-    fn list_due_accounts(
-        &self,
-        now: Timestamp,
-        limit: i32,
-    ) -> MailFuture<'_, Result<Vec<DueAccount>, MailServiceError>>;
-
-    /// Resolve the account whose `email_address` matches `address`. Like
-    /// [`list_due_accounts`] this is an id-only lookup on an owner connection
-    /// that must see ACROSS tenants — the mox delivery webhook has no request
-    /// principal, so the recipient address is the only tenant selector. A
-    /// [`AddressLookup::Found`] result arms the resolved org for the actual
-    /// ingest; [`AddressLookup::Ambiguous`] (the address exists under more than
-    /// one org) MUST deliver to none of them. Reads NO message content.
-    fn find_account_by_address<'a>(
-        &'a self,
-        address: &'a str,
-    ) -> MailFuture<'a, Result<AddressLookup, MailServiceError>>;
-
-    // --- READ API (backs the REST GET endpoints; all org-armed) -------------
-
-    /// List the account's folders (for the folder rail).
-    fn list_folders<'a>(
-        &'a self,
-        org: OrgId,
-        account: EmailAccountId,
-    ) -> MailFuture<'a, Result<Vec<FolderView>, MailServiceError>>;
-
-    /// Page the account's threads (newest first), optionally filtered to unread
-    /// and/or a full-text `q`. `before` is the keyset cursor (last seen
-    /// `last_message_at`); `limit` is capped by the adapter.
-    fn list_threads<'a>(
-        &'a self,
-        org: OrgId,
-        account: EmailAccountId,
-        query: &'a ThreadQuery,
-    ) -> MailFuture<'a, Result<Vec<ThreadView>, MailServiceError>>;
-
-    /// Fetch one thread's messages (oldest first), or `None` if the thread is not
-    /// visible under the armed org.
-    fn get_thread<'a>(
-        &'a self,
-        org: OrgId,
-        thread_id: uuid::Uuid,
-    ) -> MailFuture<'a, Result<Option<ThreadDetail>, MailServiceError>>;
-
-    /// Fetch one message (with its attachments), or `None`.
-    fn get_message<'a>(
-        &'a self,
-        org: OrgId,
-        message_id: EmailMessageId,
-    ) -> MailFuture<'a, Result<Option<MessageView>, MailServiceError>>;
-
-    /// Resolve a stored attachment's (s3_key, filename, content_type) within the
-    /// armed org, or `None` if it is not visible. Used to issue a presigned GET.
-    fn get_attachment_key<'a>(
-        &'a self,
-        org: OrgId,
-        attachment_id: uuid::Uuid,
-    ) -> MailFuture<'a, Result<Option<AttachmentRef>, MailServiceError>>;
-
-    /// Set every inbound message in a visible thread to read/unread and
-    /// recompute thread/folder unread aggregates. Returns `false` when the
-    /// thread is not visible under the armed org.
-    fn set_thread_seen<'a>(
-        &'a self,
-        org: OrgId,
-        thread_id: uuid::Uuid,
-        seen: bool,
-        audit: AuditEvent,
-    ) -> MailFuture<'a, Result<bool, MailServiceError>>;
-}
-
-/// Forward the read store through a shared reference, so a `&R` satisfies a
-/// generic `R: MailReadStore` bound (mirrors the `&C: CredentialCipher` blanket
-/// impl). Lets a caller pass `&store` without moving it (the worker passes owned
-/// values; tests and the REST layer pass references).
-impl<R: MailReadStore + ?Sized> MailReadStore for &R {
-    fn upsert_folders<'a>(
-        &'a self,
-        org: OrgId,
-        account: EmailAccountId,
-        folders: &'a [ImapFolder],
-    ) -> MailFuture<'a, Result<Vec<FolderCursor>, MailServiceError>> {
-        (**self).upsert_folders(org, account, folders)
-    }
-
-    fn reset_folder_cursor<'a>(
-        &'a self,
-        org: OrgId,
-        folder_id: uuid::Uuid,
-        uid_validity: i64,
-    ) -> MailFuture<'a, Result<(), MailServiceError>> {
-        (**self).reset_folder_cursor(org, folder_id, uid_validity)
-    }
-
-    fn upsert_inbound<'a>(
-        &'a self,
-        org: OrgId,
-        upsert: InboundUpsert,
-    ) -> MailFuture<'a, Result<bool, MailServiceError>> {
-        (**self).upsert_inbound(org, upsert)
-    }
-
-    fn record_sync_result<'a>(
-        &'a self,
-        org: OrgId,
-        account: EmailAccountId,
-        claim_token: uuid::Uuid,
-        status: &'a str,
-        error: Option<&'a str>,
-    ) -> MailFuture<'a, Result<(), MailServiceError>> {
-        (**self).record_sync_result(org, account, claim_token, status, error)
-    }
-
-    fn release_claim<'a>(
-        &'a self,
-        org: OrgId,
-        account: EmailAccountId,
-        claim_token: uuid::Uuid,
-    ) -> MailFuture<'a, Result<(), MailServiceError>> {
-        (**self).release_claim(org, account, claim_token)
-    }
-
-    fn list_due_accounts(
-        &self,
-        now: Timestamp,
-        limit: i32,
-    ) -> MailFuture<'_, Result<Vec<DueAccount>, MailServiceError>> {
-        (**self).list_due_accounts(now, limit)
-    }
-
-    fn find_account_by_address<'a>(
-        &'a self,
-        address: &'a str,
-    ) -> MailFuture<'a, Result<AddressLookup, MailServiceError>> {
-        (**self).find_account_by_address(address)
-    }
-
-    fn list_folders<'a>(
-        &'a self,
-        org: OrgId,
-        account: EmailAccountId,
-    ) -> MailFuture<'a, Result<Vec<FolderView>, MailServiceError>> {
-        (**self).list_folders(org, account)
-    }
-
-    fn list_threads<'a>(
-        &'a self,
-        org: OrgId,
-        account: EmailAccountId,
-        query: &'a ThreadQuery,
-    ) -> MailFuture<'a, Result<Vec<ThreadView>, MailServiceError>> {
-        (**self).list_threads(org, account, query)
-    }
-
-    fn get_thread<'a>(
-        &'a self,
-        org: OrgId,
-        thread_id: uuid::Uuid,
-    ) -> MailFuture<'a, Result<Option<ThreadDetail>, MailServiceError>> {
-        (**self).get_thread(org, thread_id)
-    }
-
-    fn get_message<'a>(
-        &'a self,
-        org: OrgId,
-        message_id: EmailMessageId,
-    ) -> MailFuture<'a, Result<Option<MessageView>, MailServiceError>> {
-        (**self).get_message(org, message_id)
-    }
-
-    fn get_attachment_key<'a>(
-        &'a self,
-        org: OrgId,
-        attachment_id: uuid::Uuid,
-    ) -> MailFuture<'a, Result<Option<AttachmentRef>, MailServiceError>> {
-        (**self).get_attachment_key(org, attachment_id)
-    }
-
-    fn set_thread_seen<'a>(
-        &'a self,
-        org: OrgId,
-        thread_id: uuid::Uuid,
-        seen: bool,
-        audit: AuditEvent,
-    ) -> MailFuture<'a, Result<bool, MailServiceError>> {
-        (**self).set_thread_seen(org, thread_id, seen, audit)
-    }
-}
+mod read_store;
+pub use read_store::MailReadStore;
 
 /// Query parameters for the paginated thread list.
 #[derive(Debug, Clone, Default)]
@@ -1905,11 +1638,11 @@ pub fn thread_grouping_key(message: &FetchedMessage, normalized_subject: &str) -
 // ---------------------------------------------------------------------------
 
 /// Drives a single account's incremental sync: connect → list/select folders →
-/// fetch new UIDs → upload attachments → idempotent UPSERT → advance cursor.
+/// fetch new UIDs → reserve message and keys → upload attachments → advance cursor.
 pub struct SyncService<R, I, A, C> {
     store: R,
     imap: I,
-    attachments: A,
+    attachments: std::sync::Arc<A>,
     cipher: C,
 }
 
@@ -1917,14 +1650,14 @@ impl<R, I, A, C> SyncService<R, I, A, C>
 where
     R: MailReadStore,
     I: ImapClient,
-    A: MailAttachmentStore,
+    A: MailAttachmentStore + 'static,
     C: CredentialCipher,
 {
     pub fn new(store: R, imap: I, attachments: A, cipher: C) -> Self {
         Self {
             store,
             imap,
-            attachments,
+            attachments: std::sync::Arc::new(attachments),
             cipher,
         }
     }
@@ -2009,15 +1742,28 @@ where
                 0
             };
 
-            let fetched = session.fetch_since(since_uid, SYNC_BATCH_LIMIT).await?;
-            for message in fetched {
-                let inserted = self
-                    .persist_message(account, cursor.folder_id, validity, message)
-                    .await?;
-                if inserted {
-                    outcome.messages_upserted += 1;
-                } else {
-                    outcome.messages_skipped_duplicate += 1;
+            let mut floor = since_uid;
+            let mut remaining = SYNC_BATCH_LIMIT;
+            while remaining > 0 {
+                let uids = session.uids_since(floor, remaining).await?;
+                let last_page = uids.len() < remaining as usize;
+                for uid in uids {
+                    floor = uid;
+                    let Some(message) = session.fetch_message(uid).await? else {
+                        continue;
+                    };
+                    remaining -= 1;
+                    let inserted = self
+                        .persist_message(account, cursor.folder_id, validity, message)
+                        .await?;
+                    if inserted {
+                        outcome.messages_upserted += 1;
+                    } else {
+                        outcome.messages_skipped_duplicate += 1;
+                    }
+                }
+                if last_page {
+                    break;
                 }
             }
         }
@@ -2029,21 +1775,17 @@ where
         account: &StoredAccount,
         folder_id: uuid::Uuid,
         validity: i64,
-        message: FetchedMessage,
+        mut message: FetchedMessage,
     ) -> Result<bool, MailServiceError> {
         let message_id = EmailMessageId::new();
         let normalized = console_comms_domain::normalize_subject(&message.subject);
 
-        // Upload attachments under org-prefixed keys BEFORE the UPSERT so the
-        // recorded rows always reference an object that exists.
-        let mut stored = Vec::new();
-        let mut sort_order: i16 = 1;
-        for attachment in &message.attachments {
-            // Bound a single attachment's bytes; oversized parts are recorded
-            // (metadata only) but their bytes are not mirrored.
-            if attachment.bytes.len() > MAX_INBOUND_ATTACHMENT_BYTES {
-                continue;
-            }
+        message
+            .attachments
+            .retain(|part| part.bytes.len() <= MAX_INBOUND_ATTACHMENT_BYTES);
+        let mut stored = Vec::with_capacity(message.attachments.len());
+        for (index, attachment) in message.attachments.iter().enumerate() {
+            let sort_order = i16::try_from(index + 1).map_err(|_| MailServiceError::Store)?;
             let key = mail_attachment_key(
                 account.org_id,
                 account.id,
@@ -2051,13 +1793,6 @@ where
                 sort_order,
                 &attachment.filename,
             );
-            self.attachments
-                .put(
-                    key.clone(),
-                    attachment.content_type.clone(),
-                    attachment.bytes.clone(),
-                )
-                .await?;
             stored.push(StoredAttachment {
                 s3_key: key,
                 filename: attachment.filename.clone(),
@@ -2067,7 +1802,6 @@ where
                 is_inline: attachment.is_inline,
                 sort_order,
             });
-            sort_order = sort_order.saturating_add(1);
         }
 
         let upsert = InboundUpsert {
@@ -2079,7 +1813,9 @@ where
             normalized_subject: normalized,
             stored_attachments: stored,
         };
-        self.store.upsert_inbound(account.org_id, upsert).await
+        self.store
+            .sync_inbound(account.org_id, upsert, self.attachments.clone())
+            .await
     }
 
     /// Probe the IMAP server (connect + auth + disconnect) with the stored
@@ -2569,18 +2305,28 @@ mod tests {
             })
         }
 
-        fn fetch_since<'a>(
-            &'a mut self,
+        fn uids_since(
+            &mut self,
             since_uid: u32,
-            _limit: u32,
-        ) -> MailFuture<'a, Result<Vec<FetchedMessage>, MailServiceError>> {
-            let out: Vec<FetchedMessage> = self
+            limit: u32,
+        ) -> MailFuture<'_, Result<Vec<u32>, MailServiceError>> {
+            let mut uids: Vec<_> = self
                 .messages
                 .iter()
-                .filter(|m| m.imap_uid > since_uid)
-                .cloned()
+                .map(|m| m.imap_uid)
+                .filter(|uid| *uid > since_uid)
                 .collect();
-            Box::pin(async move { Ok(out) })
+            uids.sort_unstable();
+            uids.truncate(limit as usize);
+            Box::pin(async move { Ok(uids) })
+        }
+
+        fn fetch_message(
+            &mut self,
+            uid: u32,
+        ) -> MailFuture<'_, Result<Option<FetchedMessage>, MailServiceError>> {
+            let message = self.messages.iter().find(|m| m.imap_uid == uid).cloned();
+            Box::pin(async move { Ok(message) })
         }
 
         fn logout(&mut self) -> MailFuture<'_, ()> {
@@ -2644,6 +2390,15 @@ mod tests {
                 *self.threads.lock().unwrap().entry(key).or_insert(0) += 1;
             }
             Box::pin(async move { Ok(is_new) })
+        }
+
+        fn sync_inbound<'a>(
+            &'a self,
+            org: OrgId,
+            upsert: InboundUpsert,
+            _storage: std::sync::Arc<dyn MailAttachmentStore>,
+        ) -> MailFuture<'a, Result<bool, MailServiceError>> {
+            self.upsert_inbound(org, upsert)
         }
 
         fn record_sync_result<'a>(
@@ -2843,251 +2598,5 @@ mod tests {
             outcome.messages_upserted, 0,
             "with a matching UIDVALIDITY, only UID > last_seen is fetched"
         );
-    }
-
-    // Preserve the rc-side test inputs alongside the prep-side tests.
-    mod rc_conflict_behavior {
-        use super::*;
-        fn sample_send(kind: SendKind) -> SendMessageCommand {
-            SendMessageCommand {
-                operation_id: uuid::Uuid::new_v4(),
-                actor: UserId::new(),
-                kind,
-                to: vec![MessageAddress::new("x-007@example.com").unwrap()],
-                cc: vec![],
-                bcc: vec![],
-                subject: "hi".to_owned(),
-                body_text: "body".to_owned(),
-                attachments: vec![],
-                in_reply_to: Some("<m@h>".to_owned()),
-                references: vec![],
-                trace: TraceContext::generate(),
-                occurred_at: Timestamp::now_utc(),
-            }
-        }
-        fn sample_stored() -> StoredAccount {
-            let sealed = SealedCredential {
-                ciphertext: vec![1, 2, 3],
-                nonce: vec![0; 24],
-                dek_wrapped: vec![0; 48],
-                dek_nonce: vec![0; 24],
-                key_version: 1,
-                alg_id: None,
-                kek_id: None,
-                msg_id: None,
-                commitment_tag: None,
-            };
-            StoredAccount {
-                id: EmailAccountId::new(),
-                org_id: OrgId::one(),
-                display_name: "Example Logistics".to_owned(),
-                email_address: "xxx-002@example.com".to_owned(),
-                from_name: Some("Example Ops".to_owned()),
-                imap_host: "imap.example.com".to_owned(),
-                imap_port: 993,
-                imap_security: MailSecurity::SslTls,
-                imap_username: "ops".to_owned(),
-                smtp_host: "smtp.example.com".to_owned(),
-                smtp_port: 587,
-                smtp_security: MailSecurity::StartTls,
-                smtp_username: "ops".to_owned(),
-                smtp_password: sealed.clone(),
-                imap_password: sealed,
-                status: "ACTIVE".to_owned(),
-            }
-        }
-        fn fetched(uid: u32, subject: &str) -> FetchedMessage {
-            FetchedMessage {
-                imap_uid: uid,
-                message_id: Some(format!("<m{uid}@h>")),
-                in_reply_to: None,
-                references: vec![],
-                from: MessageAddress::new("xxxxxx-001@example.com").ok(),
-                to: vec![MessageAddress::new("xxx-002@example.com").unwrap()],
-                cc: vec![],
-                subject: subject.to_owned(),
-                body_text: Some("body".to_owned()),
-                body_html: None,
-                seen: false,
-                flagged: false,
-                answered: false,
-                draft: false,
-                received_at: Timestamp::now_utc(),
-                attachments: vec![],
-            }
-        }
-
-        #[test]
-        fn send_rejects_empty_to_and_over_cap() {
-            let mut cmd = sample_send(SendKind::New);
-            cmd.to.clear();
-            assert!(validate_send_command(&cmd).is_err());
-
-            let mut cmd = sample_send(SendKind::New);
-            cmd.to = (0..MAX_RECIPIENTS + 1)
-                .map(|i| MessageAddress::new(format!("user{i}@example.com")).unwrap())
-                .collect();
-            assert!(validate_send_command(&cmd).is_err());
-        }
-
-        #[test]
-        fn request_digest_ignores_retry_trace_but_binds_content_and_attachment_bytes() {
-            let account = EmailAccountId::new();
-            let mut command = sample_send(SendKind::New);
-            command.attachments = vec![OutboundAttachment {
-                filename: "quote.pdf".to_owned(),
-                content_type: "application/pdf".to_owned(),
-                bytes: b"first".to_vec(),
-            }];
-            let original = outbound_request_hash(&command, account, "xxx-002@example.com").unwrap();
-            command.trace = TraceContext::generate();
-            command.occurred_at = Timestamp::now_utc();
-            assert_eq!(
-                outbound_request_hash(&command, account, "xxx-002@example.com").unwrap(),
-                original
-            );
-            command.attachments[0].bytes = b"second".to_vec();
-            assert_ne!(
-                outbound_request_hash(&command, account, "xxx-002@example.com").unwrap(),
-                original
-            );
-            command.operation_id = uuid::Uuid::nil();
-            assert!(validate_send_command(&command).is_err());
-        }
-
-        #[tokio::test]
-        async fn failed_preparation_admission_returns_unknown_without_egress() {
-            use std::sync::atomic::{AtomicUsize, Ordering};
-
-            struct FailingAdmissionStore;
-
-            impl MailStore for FailingAdmissionStore {
-                fn get_account(
-                    &self,
-                ) -> MailFuture<'_, Result<Option<StoredAccount>, MailServiceError>>
-                {
-                    Box::pin(async { Ok(Some(sample_stored())) })
-                }
-
-                fn upsert_account(
-                    &self,
-                    _upsert: AccountUpsert,
-                    _audit: AuditEvent,
-                ) -> MailFuture<'_, Result<StoredAccount, MailServiceError>> {
-                    Box::pin(async { Err(MailServiceError::Store) })
-                }
-
-                fn prepare_outbound(
-                    &self,
-                    _preparation: OutboundPreparation,
-                    _audit: AuditEvent,
-                ) -> MailFuture<'_, Result<(), MailServiceError>> {
-                    Box::pin(async { Err(MailServiceError::Store) })
-                }
-
-                fn increment_send_rate(
-                    &self,
-                    _actor: UserId,
-                    _endpoint: &'static str,
-                    _window_start: Timestamp,
-                ) -> MailFuture<'_, Result<i64, MailServiceError>> {
-                    Box::pin(async { Ok(1) })
-                }
-            }
-
-            struct RecordingSender(std::sync::Arc<AtomicUsize>);
-
-            impl SmtpSender for RecordingSender {
-                fn prepare(
-                    &self,
-                    _config: &SmtpTransportConfig,
-                    _message: &SendMessageCommand,
-                    _from_address: &str,
-                ) -> Result<PreparedOutbound, MailServiceError> {
-                    self.0.fetch_add(1, Ordering::SeqCst);
-                    Ok(PreparedOutbound {
-                        format: PreparedFormat::SmtpMime,
-                        bytes: b"test MIME".to_vec(),
-                        rfc_message_id: Some("<xxxx-014@example.com>".to_owned()),
-                    })
-                }
-
-                fn test_connection<'a>(
-                    &'a self,
-                    _config: &'a SmtpTransportConfig,
-                ) -> MailFuture<'a, Result<TestConnectionResult, MailServiceError>>
-                {
-                    Box::pin(async {
-                        Ok(TestConnectionResult {
-                            ok: true,
-                            error_code: None,
-                        })
-                    })
-                }
-            }
-
-            struct NoopNotifier;
-
-            impl MailNotifier for NoopNotifier {
-                fn notify_posted(&self, _account_id: EmailAccountId) -> MailFuture<'_, ()> {
-                    Box::pin(async {})
-                }
-            }
-
-            let sends = std::sync::Arc::new(AtomicUsize::new(0));
-            let service = SendService::new(
-                FailingAdmissionStore,
-                RecordingSender(sends.clone()),
-                FakeCipher,
-                NoopNotifier,
-            );
-            let result = service.send(sample_send(SendKind::New)).await;
-
-            assert!(matches!(
-                result,
-                Err(MailServiceError::AdmissionUnknown { .. })
-            ));
-            assert_eq!(
-                sends.load(Ordering::SeqCst),
-                1,
-                "preparation occurs locally; no network send method exists on the port"
-            );
-        }
-
-        #[test]
-        fn references_group_a_korean_reply_with_stripped_headers() {
-            // A reply whose client dropped References still groups by normalized
-            // subject after the Korean prefix is stripped.
-            let original = fetched(20, "견적 문의");
-            let reply = fetched(21, "회신: 견적 문의");
-            let orig_norm = console_comms_domain::normalize_subject(&original.subject);
-            let reply_norm = console_comms_domain::normalize_subject(&reply.subject);
-            assert_eq!(
-                thread_grouping_key(&original, &orig_norm),
-                thread_grouping_key(&reply, &reply_norm),
-                "a header-less Korean reply must share the original's thread key"
-            );
-        }
-
-        #[test]
-        fn mail_attachment_key_is_org_prefixed_and_sanitized() {
-            let org = OrgId::one();
-            let account = EmailAccountId::new();
-            let message = EmailMessageId::new();
-            let key = mail_attachment_key(org, account, message, 1, "../../etc/passwd");
-            let prefix = format!("orgs/{}/mail/{}/{}/1-", org.as_uuid(), account, message);
-            assert!(key.starts_with(&prefix));
-            // The security property is that path SEPARATORS in the filename are
-            // neutralized, so the filename can never escape its org-scoped key prefix:
-            // beyond the fixed prefix there are NO further '/' separators (a traversal
-            // like `/etc/` is impossible). A residual `..` without a separator is inert.
-            let filename_part = &key[prefix.len()..];
-            assert!(
-                !filename_part.contains('/'),
-                "the sanitized filename must contain no path separator: {filename_part:?}"
-            );
-            assert!(!key.contains("/etc/"));
-            assert_eq!(sanitize_filename("../../etc/passwd"), "_.._etc_passwd");
-        }
     }
 }

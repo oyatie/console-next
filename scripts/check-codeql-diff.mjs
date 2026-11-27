@@ -32,7 +32,11 @@ for (const file of files) {
   for (const run of sarif.runs) {
     const rules = [run.tool.driver, ...(run.tool.extensions ?? [])].flatMap((component) => component.rules ?? []);
     for (const result of run.results ?? []) {
-      const rule = result.ruleId ? rules.find((candidate) => candidate.id === result.ruleId) : run.tool.driver.rules?.[result.ruleIndex];
+      const driverRules = run.tool.driver.rules;
+      const index = result.ruleIndex;
+      const indexedRule = Array.isArray(driverRules) && Number.isSafeInteger(index) && index >= 0 && Object.hasOwn(driverRules, index)
+        ? driverRules[index] : undefined;
+      const rule = result.ruleId ? rules.find((candidate) => candidate.id === result.ruleId) : indexedRule;
       if (!rule) throw new Error("SARIF result has no matching rule");
       const score = rule.properties?.["security-severity"];
       if (score === undefined) continue;

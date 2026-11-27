@@ -216,3 +216,6 @@ fn fs_incident_store_mutate_rejects_declared_and_expected_seq_zero() -> TestResu
     );
     Ok(())
 }
+
+#[path = "oc1_stores/promote.rs"]
+mod promote;

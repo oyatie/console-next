@@ -137,6 +137,31 @@ for (const width of [1440, 390] as const) {
   }
 }
 
+for (const failure of ["unavailable", "denied"] as const) {
+  test(`Appointment notice copy reports clipboard failure (${failure}) and allows retry`, async ({ page }) => {
+    const fixture = await setupConsoleSaeonPeople(page);
+    try {
+      await page.goto(`/people/notices/${SAEON_NOTICE_ID}`);
+      const main = page.getByRole("main");
+      const copy = main.getByRole("button", { name: t("notice.copy") });
+      await page.evaluate(mode => Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: mode === "unavailable" ? undefined : { writeText: async () => { throw new Error("Denied"); } },
+      }), failure);
+      await copy.click();
+      await expect(main.getByRole("status").filter({ hasText: t("notice.copyFailed") })).toBeVisible();
+      await expect(main.getByRole("article")).toBeVisible();
+      await page.evaluate(() => Object.defineProperty(navigator, "clipboard", { value: { writeText: async () => {} } }));
+      await copy.click();
+      await expect(main.getByRole("status").filter({ hasText: t("notice.copied") })).toBeVisible();
+      await expect(main.getByText(t("notice.copyFailed"))).toHaveCount(0);
+    } finally {
+      await page.close();
+      fixture.release();
+    }
+  });
+}
+
 test("Console handles 403 refusal and preserves baseline on notices/exits/certificates", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const refused = await setupConsoleSaeonPeople(page, { experience: "console", canManage: false });

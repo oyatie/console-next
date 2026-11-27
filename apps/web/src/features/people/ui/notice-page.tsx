@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { Copy, Printer } from "lucide-react";
@@ -32,7 +32,7 @@ export function NoticePage() {
   const { noticeId } = route.useParams();
   const q = useQuery(noticeQuery(noticeId));
   const entitiesQ = useQuery(entitiesRef);
-  const [copied, setCopied] = useState(false);
+  const [copyMessage, setCopyMessage] = useState<"notice.copied" | "notice.copyFailed">();
   const view = queryView(q);
   const n = view === "denied" || view === "not-found" ? undefined : q.data;
   const entity = entityName(entitiesQ.data?.items[0]);
@@ -45,7 +45,15 @@ export function NoticePage() {
         t("notice.doc.foot", { date: day(n.notice_date), entity }),
       ].join("\n")
     : "";
-  const copy = () => void navigator.clipboard.writeText(text).then(() => setCopied(true));
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyMessage("notice.copied");
+    } catch {
+      setCopyMessage("notice.copyFailed");
+    }
+  };
+  const feedback = copyMessage && <span className={s.muted} role="status">{t(copyMessage)}</span>;
 
   const renderBaseline = () => (
     <div className="page">
@@ -53,7 +61,7 @@ export function NoticePage() {
         <PageHead crumbs={<Crumbs items={[<Link key="people" to="/people" search={{}}>{t("people.title")}</Link>, <Link key="notices" to="/people/notices">{t("notice.crumb")}</Link>]} />} title={t("notice.title")} />
       </div>
       <QueryState q={q} back={{ to: "/people/notices", label: t("notice.crumb") }} layout="record">
-        {(loaded) => <Doc n={loaded} entity={entity} copied={copied} onCopy={copy} />}
+        {(loaded) => <Doc n={loaded} entity={entity} feedback={feedback} onCopy={copy} />}
       </QueryState>
     </div>
   );
@@ -74,7 +82,7 @@ export function NoticePage() {
           </>
         ) : undefined,
       }}
-      notes={copied ? <div className={s.muted} role="status">{t("notice.copied")}</div> : undefined}
+      notes={feedback}
       sections={
         n ? (
           <FormSection>
@@ -119,7 +127,7 @@ function NoticeArticle({ n, parts, entity }: { n: Notice; parts: ReturnType<type
   );
 }
 
-function Doc({ n, entity, copied, onCopy }: { n: Notice; entity: string; copied: boolean; onCopy: () => void }) {
+function Doc({ n, entity, feedback, onCopy }: { n: Notice; entity: string; feedback: ReactNode; onCopy: () => void }) {
   const parts = sections(n.lines);
   return (
     <>
@@ -128,7 +136,7 @@ function Doc({ n, entity, copied, onCopy }: { n: Notice; entity: string; copied:
         <span className={s.grow} />
         <Button onClick={onCopy}><Copy size={16} aria-hidden />{t("notice.copy")}</Button>
         <Button variant="primary" onClick={() => window.print()}><Printer size={16} aria-hidden />{t("notice.print")}</Button>
-        {copied && <span role="status" className={s.muted}>{t("notice.copied")}</span>}
+        {feedback}
       </div>
       <NoticeArticle n={n} parts={parts} entity={entity} />
     </>

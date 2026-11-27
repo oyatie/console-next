@@ -35,7 +35,7 @@ One resolution in `src-tauri/src/config.rs`. For each field, the first valid val
 
 Example `config.json`: `{ "consoleUrl": "https://console.example.test" }`. It survives updates (update mode does not uninstall) and uninstall (the uninstaller removes only its own files).
 
-Invalid values are skipped silently in the UI. Every skipped value, update failure and failed browser hand-off is appended to `%LOCALAPPDATA%\CossKorea\Console\shell.log` (restarts past 1 MiB), because release builds have no console.
+Invalid values are skipped silently in the UI. The name of each skipped field and the stage of any update or browser hand-off failure are appended to `%LOCALAPPDATA%\CossKorea\Console\shell.log` (restarts past 1 MiB), because release builds have no console.
 
 WebAuthn checks the exact origin, so an override only works for hosts the backend already accepts (`extra_allowed_origins` is empty today).
 

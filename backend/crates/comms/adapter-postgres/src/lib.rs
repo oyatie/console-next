@@ -19,9 +19,9 @@
 use console_comms_application::{
     AccountUpsert, AddressAccount, AddressLookup, AttachmentRef, AttachmentView, DueAccount,
     EmailAccountId, EmailMessageId, FolderCursor, FolderView, ImapFolder, InboundUpsert,
-    MailReadStore, MailServiceError, MailStore, MessageView, OutboundPreparation, StoredAccount,
-    StoredAttachment, ThreadDetail, ThreadQuery, ThreadView, address_ambiguous_audit_event,
-    thread_grouping_key,
+    MailAttachmentStore, MailReadStore, MailServiceError, MailStore, MessageView,
+    OutboundPreparation, StoredAccount, StoredAttachment, ThreadDetail, ThreadQuery, ThreadView,
+    address_ambiguous_audit_event, thread_grouping_key,
 };
 use console_comms_domain::MessageAddress;
 use console_kernel_core::{
@@ -41,6 +41,8 @@ pub enum PgMailError {
     Db(#[from] DbError),
     #[error(transparent)]
     Domain(#[from] KernelError),
+    #[error(transparent)]
+    AttachmentUpload(MailServiceError),
     #[error("mail operation conflicts with an earlier request")]
     OperationConflict,
 }
@@ -50,6 +52,7 @@ impl PgMailError {
     pub fn kind(&self) -> ErrorKind {
         match self {
             Self::Domain(error) => error.kind,
+            Self::AttachmentUpload(err) => err.kind(),
             Self::OperationConflict => ErrorKind::Conflict,
             Self::Db(DbError::Sqlx(sqlx::Error::Database(error)))
                 if error.code().is_some_and(|code| code == "23505") =>
@@ -76,6 +79,7 @@ impl From<PgMailError> for MailServiceError {
     fn from(value: PgMailError) -> Self {
         match value {
             PgMailError::Domain(err) => MailServiceError::Domain(err),
+            PgMailError::AttachmentUpload(err) => err,
             PgMailError::OperationConflict => MailServiceError::OperationConflict,
             // Db errors are server-internal; the application surface collapses
             // them into a coarse, caller-safe variant.
@@ -393,105 +397,6 @@ impl PgMailStore {
                 .execute(tx.as_mut())
                 .await?;
                 Ok(())
-            })
-        })
-        .await
-    }
-
-    async fn upsert_inbound_inner(
-        &self,
-        org: OrgId,
-        upsert: InboundUpsert,
-    ) -> Result<bool, PgMailError> {
-        // Build the audit BEFORE the transaction so `with_audit` arms the org.
-        let audit = console_comms_application::inbound_sync_audit_event(
-            upsert.id,
-            console_kernel_core::TraceContext::generate(),
-            Timestamp::now_utc(),
-        )
-        .map_err(PgMailError::Domain)?
-        .with_org(org);
-
-        with_audit::<_, bool, PgMailError>(&self.pool, audit, move |tx| {
-            Box::pin(async move {
-                let org_uuid = *org.as_uuid();
-                let account_uuid = *upsert.account_id.as_uuid();
-
-                // 1. Idempotency gate on the IMAP identity: if a row already
-                // exists for (account, folder, uid_validity, uid), this is a
-                // re-sync — refresh its mutable flags and return `false` (no dup).
-                let existing: Option<uuid::Uuid> = sqlx::query_scalar(
-                    r#"
-                    SELECT id FROM email_messages
-                    WHERE account_id = $1 AND folder_id = $2
-                      AND imap_uid_validity = $3 AND imap_uid = $4
-                    LIMIT 1
-                    "#,
-                )
-                .bind(account_uuid)
-                .bind(upsert.folder_id)
-                .bind(upsert.uid_validity)
-                .bind(i64::from(upsert.message.imap_uid))
-                .fetch_optional(tx.as_mut())
-                .await?;
-
-                if let Some(existing_id) = existing {
-                    sqlx::query(
-                        r#"
-                        UPDATE email_messages
-                        SET seen = $2, flagged = $3, answered = $4, draft = $5, updated_at = now()
-                        WHERE id = $1
-                        "#,
-                    )
-                    .bind(existing_id)
-                    .bind(upsert.message.seen)
-                    .bind(upsert.message.flagged)
-                    .bind(upsert.message.answered)
-                    .bind(upsert.message.draft)
-                    .execute(tx.as_mut())
-                    .await?;
-                    return Ok(false);
-                }
-
-                // 2. Secondary dedupe on Message-ID within the account: a message
-                // already mirrored under another folder (e.g. a Sent copy) is not
-                // re-inserted; we still return `false`.
-                if let Some(ref mid) = upsert.message.message_id
-                    && message_id_seen(tx, account_uuid, mid).await?
-                {
-                    return Ok(false);
-                }
-
-                // 3. Resolve the thread by the References/subject grouping key.
-                let thread_id =
-                    resolve_inbound_thread_tx(tx, org_uuid, account_uuid, &upsert).await?;
-
-                // 4. Insert the IN message. If a concurrent webhook redelivery won
-                // the same IMAP-identity race, the insert is an idempotent no-op
-                // and the handler reports `ingested=false` instead of surfacing
-                // a unique-constraint service error.
-                if !insert_inbound_message_tx(tx, org_uuid, account_uuid, thread_id, &upsert)
-                    .await?
-                {
-                    return Ok(false);
-                }
-
-                // 5. Insert its attachment rows.
-                for att in &upsert.stored_attachments {
-                    insert_attachment_tx(tx, org_uuid, *upsert.id.as_uuid(), att).await?;
-                }
-
-                // 6. Maintain the thread aggregate + the folder high-water mark.
-                update_thread_aggregate_tx(tx, thread_id, &upsert).await?;
-                advance_folder_cursor_tx(
-                    tx,
-                    upsert.folder_id,
-                    upsert.uid_validity,
-                    upsert.message.imap_uid,
-                )
-                .await?;
-
-                Ok(true)
             })
         })
         .await
@@ -836,7 +741,7 @@ impl PgMailStore {
         with_org_conn::<_, Option<AttachmentRef>, PgMailError>(&self.pool, org, move |tx| {
             Box::pin(async move {
                 let row = sqlx::query(
-                    "SELECT s3_key, filename, content_type FROM email_attachments WHERE id = $1",
+                    "SELECT s3_key, filename, content_type FROM email_attachments WHERE id = $1 AND upload_state = 'CONFIRMED'",
                 )
                 .bind(attachment_id)
                 .fetch_optional(tx.as_mut())
@@ -944,7 +849,21 @@ impl MailReadStore for PgMailStore {
         upsert: InboundUpsert,
     ) -> console_comms_application::MailFuture<'a, Result<bool, MailServiceError>> {
         Box::pin(async move {
-            self.upsert_inbound_inner(org, upsert)
+            self.upsert_inbound_inner(org, upsert, false)
+                .await
+                .map(|(inserted, _)| inserted)
+                .map_err(Into::into)
+        })
+    }
+
+    fn sync_inbound<'a>(
+        &'a self,
+        org: OrgId,
+        upsert: InboundUpsert,
+        storage: std::sync::Arc<dyn MailAttachmentStore>,
+    ) -> console_comms_application::MailFuture<'a, Result<bool, MailServiceError>> {
+        Box::pin(async move {
+            self.sync_inbound_inner(org, upsert, storage)
                 .await
                 .map_err(Into::into)
         })
@@ -1291,13 +1210,14 @@ async fn insert_attachment_tx(
     org_uuid: uuid::Uuid,
     message_uuid: uuid::Uuid,
     att: &StoredAttachment,
+    state: &str,
 ) -> Result<(), PgMailError> {
     sqlx::query(
         r#"
         INSERT INTO email_attachments (
             org_id, message_id, s3_key, filename, content_type,
             size_bytes, content_id, is_inline, upload_state, sort_order
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'CONFIRMED', $9)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $10, $9)
         ON CONFLICT (org_id, message_id, sort_order) DO NOTHING
         "#,
     )
@@ -1310,6 +1230,7 @@ async fn insert_attachment_tx(
     .bind(att.content_id.as_deref())
     .bind(att.is_inline)
     .bind(att.sort_order)
+    .bind(state)
     .execute(tx.as_mut())
     .await?;
     Ok(())
@@ -1348,14 +1269,15 @@ async fn update_thread_aggregate_tx(
 async fn advance_folder_cursor_tx(
     tx: &mut Transaction<'_, Postgres>,
     folder_id: uuid::Uuid,
-    uid_validity: i64,
+    uid_validity: Option<i64>,
     imap_uid: u32,
 ) -> Result<(), PgMailError> {
     sqlx::query(
         r#"
         UPDATE email_folders
-        SET uid_validity = $2,
-            last_seen_uid = GREATEST(last_seen_uid, $3),
+        SET uid_validity = COALESCE(uid_validity, $2),
+            last_seen_uid = CASE WHEN $2 IS NOT NULL AND (uid_validity IS NULL OR uid_validity = $2)
+                THEN GREATEST(last_seen_uid, $3) ELSE last_seen_uid END,
             unread_count = (
                 SELECT COUNT(*) FROM email_messages
                 WHERE folder_id = $1 AND seen = FALSE
@@ -1432,7 +1354,7 @@ async fn load_attachments_tx(
         r#"
         SELECT id, filename, content_type, size_bytes, is_inline
         FROM email_attachments
-        WHERE message_id = $1
+        WHERE message_id = $1 AND upload_state = 'CONFIRMED'
         ORDER BY sort_order ASC
         "#,
     )
@@ -1490,6 +1412,7 @@ fn addresses_json(addresses: &[MessageAddress]) -> Result<serde_json::Value, PgM
 }
 
 mod account_sql;
+mod inbound;
 mod notifier;
 pub mod reseal;
 pub mod reseal_census;

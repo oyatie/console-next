@@ -30,8 +30,8 @@ use axum::{Json, Router};
 use console_kernel_core::{ErrorKind, KernelError};
 use console_platform_auth::JwtVerifier;
 use console_platform_authz::cedar_pbac::authoring::{
-    AuthoredPolicy, NoCodeBlocks, ReviewDecision, SimRequest, SimResource, SimSubject,
-    SimulationOutcome, simulate as simulate_policies,
+    AuthoredPolicy, NoCodeBlocks, SimRequest, SimResource, SimSubject, SimulationOutcome,
+    simulate as simulate_policies,
 };
 use console_platform_authz::{Action, Feature, Principal, authorize_org_wide};
 use console_platform_db::DbError;

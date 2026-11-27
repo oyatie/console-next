@@ -171,9 +171,9 @@ test("each Rust gate propagates a tool failure", () => {
   try {
     const bin = path.join(root, "bin");
     mkdirSync(bin);
-    for (const tool of ["cargo-deny", "cargo-audit"]) {
+    for (const [name, tool] of [["cargo-deny", "cargo-deny"], ["Windows desktop dependency advisories", "cargo-deny"], ["cargo-audit", "cargo-audit"]]) {
       writeFileSync(path.join(bin, tool), '#!/bin/sh\nprintf "%s\\n" "$*" >> "$COMMAND_LOG"\nexit "${TOOL_EXIT:-0}"\n', { mode: 0o755 });
-      const step = job.steps.find((s) => s.name === tool);
+      const step = job.steps.find((s) => s.name === name);
       assert.ok(step, `${tool} must run without continue-on-error`);
       assert.ok(!step["continue-on-error"]);
       if (tool === "cargo-audit") assert.equal(step.if, "${{ !cancelled() }}");
@@ -184,7 +184,9 @@ test("each Rust gate propagates a tool failure", () => {
         assert.equal(result.status, status, result.stderr);
       }
     }
-    assert.match(readFileSync(path.join(root, "calls"), "utf8"), /--manifest-path backend\/Cargo.toml --locked check/);
+    const calls = readFileSync(path.join(root, "calls"), "utf8");
+    assert.match(calls, /--manifest-path backend\/Cargo.toml --locked check/);
+    assert.match(calls, /--manifest-path apps\/desktop\/src-tauri\/Cargo.toml --locked check advisories/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

@@ -24,6 +24,7 @@ console-kernel-core = { workspace = true }
 console-platform-db = { workspace = true }
 console-platform-request-context = { workspace = true }
 console-workorder-domain = { workspace = true }
+quick-xml = { version = "0.41", features = ["serialize", "overlapped-lists"] }
 reqwest = { workspace = true, features = ["rustls"] }
 serde = { workspace = true }
 sha2 = { workspace = true }

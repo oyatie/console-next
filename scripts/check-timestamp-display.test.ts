@@ -99,3 +99,9 @@ it("still rejects tuples and fractional numbers in nullable integer-or-timestamp
   const schema = { anyOf: [{ type: "integer" }, { $ref: "#/components/schemas/Instant" }, { type: "null" }] };
   expect(timestampProblems(spec, schema, 1.5)).toHaveLength(1);
 });
+
+it("resolves owned array elements in JSON pointers and refuses inherited schema fields", () => {
+  const choices = { schemas: [{ type: "string", format: "date-time" }] };
+  expect(timestampProblems(choices, { $ref: "#/schemas/0" }, "")).toHaveLength(1);
+  expect(() => timestampProblems(Object.create(choices), { $ref: "#/schemas/0" }, "")).toThrow("Unresolved schema");
+});

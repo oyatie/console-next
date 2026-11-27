@@ -31,9 +31,16 @@ pub(super) struct EntityWiringState {
 }
 
 #[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+enum ExceptionDecisionInput {
+    Approve,
+    Decline,
+}
+
+#[derive(Debug, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 struct DecideExceptionRequest {
-    decision: String,
+    decision: ExceptionDecisionInput,
     reason_code: String,
     note: Option<String>,
     step_up: Option<serde_json::Value>,
@@ -57,15 +64,9 @@ async fn decide_exception(
                 .into_response();
         }
     };
-    let decision = match body.decision.trim() {
-        "APPROVE" | "approve" => Decision::Approve,
-        "DECLINE" | "decline" => Decision::Decline,
-        _ => {
-            return (
-                StatusCode::UNPROCESSABLE_ENTITY,
-                Json(serde_json::json!({"error": {"code": "validation_failed", "message": "invalid decision"}})),
-            ).into_response();
-        }
+    let decision = match body.decision {
+        ExceptionDecisionInput::Approve => Decision::Approve,
+        ExceptionDecisionInput::Decline => Decision::Decline,
     };
 
     let result: Result<_, PgGovernanceError> = console_platform_db::with_audits(

@@ -1,13 +1,12 @@
 //! Real removal owners, row-lock upgrades and auth/FK concurrency in disposable databases.
 //! This tests mechanical containment, not R4 authority or hard-deletion policy acceptance.
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-#[path = "../../../../test_support/governed_erase.rs"]
-mod governed_erase;
 use console_kernel_core::{OrgId, UserId};
 use console_platform_auth::{
     PasskeyRegistrationStart, PasskeyService, RefreshTokenStore, WebauthnSettings,
 };
 use console_platform_provisioning::{PlatformProvisioner, ProvisioningError, TenantRemovalOutcome};
+use console_platform_test_support::governed_erase;
 use sqlx::{PgPool, Postgres, Transaction, postgres::PgPoolOptions};
 use time::{Duration, OffsetDateTime};
 use tokio::time::{sleep, timeout};

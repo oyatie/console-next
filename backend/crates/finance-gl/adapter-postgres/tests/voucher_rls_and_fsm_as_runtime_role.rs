@@ -25,28 +25,13 @@ use console_finance_gl_application::{
 };
 use console_finance_gl_domain::{DebitCredit, VoucherId, VoucherStatus};
 use console_kernel_core::{BranchId, OrgId, TraceContext, UserId};
+use console_platform_test_support::runtime_role_pool;
 use sqlx::PgPool;
-use sqlx::postgres::PgPoolOptions;
 use time::macros::datetime;
 use uuid::Uuid;
 
 const ORG_A: Uuid = Uuid::from_u128(0x0A11_0A11_0A11_0A11_0A11_0A11_0A11_0A11);
 const ORG_B: Uuid = Uuid::from_u128(0x0B22_0B22_0B22_0B22_0B22_0B22_0B22_0B22);
-
-async fn runtime_role_pool(owner_pool: &PgPool) -> PgPool {
-    let options = owner_pool.connect_options().as_ref().clone();
-    PgPoolOptions::new()
-        .max_connections(4)
-        .after_connect(|conn, _meta| {
-            Box::pin(async move {
-                sqlx::query("SET ROLE console_rt").execute(conn).await?;
-                Ok(())
-            })
-        })
-        .connect_with(options)
-        .await
-        .unwrap()
-}
 
 async fn seed_org(owner_pool: &PgPool, org: Uuid, tag: &str) {
     sqlx::query("INSERT INTO organizations (id, slug, name) VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING")
@@ -673,3 +658,6 @@ async fn voucher_summary_resolves_branch_and_user_display_names(owner_pool: PgPo
     })
     .await;
 }
+
+#[path = "support/pagination.rs"]
+mod pagination;

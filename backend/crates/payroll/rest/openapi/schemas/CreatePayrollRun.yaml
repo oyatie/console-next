@@ -5,3 +5,4 @@ required: [pay_group_id, kind]
 properties:
   pay_group_id: {$ref: '#/components/schemas/Uuid'}
   kind: {$ref: '#/components/schemas/PayrollRunKind'}
+  expected_attribution_month: {type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"}

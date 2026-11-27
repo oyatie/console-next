@@ -29,6 +29,7 @@ import s from "./payroll-console.module.css";
 const kinds = payGroupSchemas.PayrollRunKind.enum.filter(kind => kind === "REGULAR");
 const refusal = (code: string) =>
   ({
+    payroll_preview_changed: t("payroll.create.refuse.payroll_preview_changed"),
     regular_run_exists: t("payroll.create.refuse.regular_run_exists"),
     forbidden: t("payroll.create.refuse.forbidden"),
     run_kind_unsupported: t("payroll.create.refuse.run_kind_unsupported"),
@@ -63,6 +64,7 @@ function PayrollRunCreateConsoleContent({ baseline }: { baseline: () => ReactNod
     onSuccess: run => navigate({ to: "/payroll/runs/$id", params: { id: run.id } }),
   });
 
+  const canSubmit = input && preview.isSuccess && preview.fetchStatus === "idle" && !preview.isPlaceholderData && !create.isPending;
   const items = groups.data?.items ?? [];
   const entities = groups.data?.legal_entities ?? [];
   const selectedGroup = items.find(g => g.id === payGroupId);
@@ -189,8 +191,8 @@ function PayrollRunCreateConsoleContent({ baseline }: { baseline: () => ReactNod
           <Button
             variant="primary"
             className={s.nowrap}
-            disabled={!input || !preview.isSuccess || create.isPending}
-            onClick={() => input && create.mutate(input)}
+            disabled={!canSubmit}
+            onClick={() => canSubmit && create.mutate({ ...input, expected_attribution_month: preview.data.attribution_month })}
           >
             {t("payroll.create.submit")}
           </Button>

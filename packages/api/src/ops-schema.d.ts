@@ -1534,11 +1534,15 @@ export interface components {
         SilenceCreateResponse: {
             evaluated_at: components["schemas"]["Timestamp"];
             silence_id: components["schemas"]["Text"];
+            /** @description Present when Alertmanager applied the change and the audit outcome needs reconciliation using this request reference. */
+            audit_recovery_ref?: string;
         };
         SilenceDeleteResponse: {
             evaluated_at: components["schemas"]["Timestamp"];
             silence_id: components["schemas"]["Text"];
             deleted: boolean;
+            /** @description Present when Alertmanager applied the change and the audit outcome needs reconciliation using this request reference. */
+            audit_recovery_ref?: string;
         };
         SilenceMatcherInput: {
             name: components["schemas"]["Text"];

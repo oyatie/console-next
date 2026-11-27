@@ -87,7 +87,7 @@ export function inventory(files, read) {
         if (!invoked) continue;
         const [, run, name] = invoked;
         if (!run && !["test", "start"].includes(name)) continue;
-        if (!(name in scripts)) throw new Error(`${caller}: missing npm script: ${name}`);
+        if (!Object.hasOwn(scripts, name)) throw new Error(`${caller}: missing npm script: ${name}`);
         if (seen.has(`npm:${name}`)) continue;
         seen.add(`npm:${name}`);
         command(scripts[name], `package.json#${name}`);
@@ -172,12 +172,12 @@ export function inventory(files, read) {
 export function inventoryProblems(rows, inherited, previous) {
   const dark = new Set(rows.filter(row => !row.callers.length).map(row => row.file));
   return [
-    ...[...dark].filter(file => !(file in inherited)).map(file => `${file}: no caller from a workflow`),
+    ...[...dark].filter(file => !Object.hasOwn(inherited, file)).map(file => `${file}: no caller from a workflow`),
     ...Object.entries(inherited).flatMap(([file, reason]) => [
       ...(!reason?.trim() ? [`${file}: orphan exception needs a reason`] : []),
       ...(!dark.has(file) ? [`${file}: remove stale orphan exception`] : []),
     ]),
-    ...Object.keys(inherited).filter(file => previous && !(file in previous)).map(file => `${file}: orphan catalog must only shrink`),
+    ...Object.keys(inherited).filter(file => previous && !Object.hasOwn(previous, file)).map(file => `${file}: orphan catalog must only shrink`),
   ];
 }
 
