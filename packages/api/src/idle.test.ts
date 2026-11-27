@@ -17,25 +17,32 @@ afterEach(() => {
   session.set(null);
 });
 
-test("every authenticated request carries the last interaction, on the server's clock", async () => {
+test("authenticated reads retry the same input timestamp even after a later response recalibrates the clock", async () => {
   signedIn();
   const sent: (string | null)[] = [];
   vi.stubGlobal("fetch", async (input: Request | string, init?: RequestInit) => {
     const req = new Request(input, init);
     sent.push(req.headers.get("x-last-interaction"));
-    // The server's clock runs 5 minutes ahead of this PC.
-    return json(200, { accepted: true }, { date: new Date(Date.now() + 300_000).toUTCString() });
+    // The initial response calibrates the clock; later reads observe a different offset.
+    const offset = sent.length === 1 ? 300_000 : 600_000;
+    const headers = { date: new Date(Date.now() + offset).toUTCString() };
+    if (sent.length === 2) return json(503, { error: { code: "service_unavailable", message: "retry" } }, headers);
+    return json(200, { accepted: true }, headers);
   });
   await unwrap(api.GET("/api/v1/users/me")); // before any input: no header (it would never advance activity)
   const at = Date.parse("2026-10-04T01:00:00Z");
   touch(at);
-  await unwrap(api.GET("/api/v1/users/me"));
+  await expect(unwrap(api.GET("/api/v1/users/me"))).rejects.toMatchObject({ status: 503 });
   await consentStatus(); // bearer auth calls too
   expect(sent[0]).toBeNull();
+  expect(sent[2]).toBe(sent[1]);
   for (const v of sent.slice(1)) {
     expect(v).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
     expect(Math.abs(Date.parse(v!) - (at + 300_000))).toBeLessThan(2_000);
   }
+  touch(at + 60_000);
+  await unwrap(api.GET("/api/v1/users/me"));
+  expect(Math.abs(Date.parse(sent[3]!) - (at + 60_000 + 600_000))).toBeLessThan(2_000);
 });
 
 for (const [what, fail] of [
