@@ -159,3 +159,29 @@ test("ConsoleShell renders distinct sub-route tab titles for /people/exits while
     client.clear();
   }
 });
+
+test.each(["already settled", "still pending"])("the rail finishes its identity read when its replacement is %s", async timing => {
+  const client = new QueryClient();
+  const original = Promise.withResolvers<string>();
+  const replacement = Promise.withResolvers<string>();
+  const read = vi.fn().mockReturnValueOnce(original.promise).mockReturnValue(replacement.promise);
+  const key = meQuery.queryKey;
+  const shared = vi.spyOn(client, "fetchQuery");
+  try {
+    renderToStaticMarkup(<QueryClientProvider client={client}><ShellFrame layout={() => null} /></QueryClientProvider>);
+    client.setQueryData(key, "previous");
+    const identity = client.fetchQuery({ queryKey: key, queryFn: read });
+    const rail = client.getQueryCache().find({ queryKey: navigationRead(meQuery).queryKey, exact: true })!;
+    const snapshot = rail.fetch();
+    const refreshing = client.refetchQueries({ queryKey: key, exact: true });
+    if (timing === "still pending") await vi.waitFor(() => expect(shared).toHaveBeenCalledTimes(3));
+    replacement.resolve("current");
+    original.resolve("previous");
+    await Promise.all([identity, refreshing]);
+    await expect(snapshot).resolves.toBe("current");
+    expect(rail.state.fetchStatus).toBe("idle");
+    expect(read).toHaveBeenCalledTimes(2);
+  } finally {
+    client.clear();
+  }
+});

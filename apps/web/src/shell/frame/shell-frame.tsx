@@ -4,7 +4,7 @@ import { ActiveSupportBanner } from "../../features/support-access/ui/support-ac
 import { DomainNotice } from "../../auth/domain-notice";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ComponentType, type ReactNode } from "react";
 import { Outlet, useLocation, useRouter } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { isCancelledError, useQuery, type QueryClient } from "@tanstack/react-query";
 import { refresh, session } from "@console/api";
 import { t } from "@console/i18n";
 import { ChangeNotice } from "../../ui/live/change-notice";
@@ -60,6 +60,21 @@ export interface ShellLayoutProps {
   };
 }
 
+async function readRailIdentity(client: QueryClient) {
+  for (;;) {
+    try {
+      return await client.fetchQuery({ ...meQuery, staleTime: 0, retry: false });
+    } catch (error) {
+      if (!isCancelledError(error) || !error.silent) throw error;
+      // A live invalidation replaced the shared identity request. Join its replacement or use its settled answer.
+      const latest = client.getQueryState<Awaited<ReturnType<typeof meQuery.queryFn>>>(meQuery.queryKey);
+      if (latest && latest.fetchStatus !== "idle") continue;
+      if (latest?.status === "success") return latest.data;
+      throw latest?.error ?? new Error("Identity read cancelled", { cause: error });
+    }
+  }
+}
+
 export function ShellFrame({ layout: Layout, children = <Outlet />, pending = false }: {
   layout: ComponentType<ShellLayoutProps>; children?: ReactNode; pending?: boolean;
 }) {
@@ -82,7 +97,7 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
   const support = useQuery({ ...activeSupportQuery, enabled: !platform && active });
   // Keep the rail snapshot separate, but share the identity request with the shell and page.
   // Allow fresh cache reuse on remount so an experience-pack swap on the same route does not duplicate /api/v1/users/me.
-  const me = useQuery({ ...navigationRead(meQuery), refetchOnMount: true, queryFn: ({ client }) => client.fetchQuery({ ...meQuery, staleTime: 0, retry: false }), enabled: !platform && active && !pending });
+  const me = useQuery({ ...navigationRead(meQuery), refetchOnMount: true, queryFn: ({ client }) => readRailIdentity(client), enabled: !platform && active && !pending });
   const phase = me.isSuccess ? me.data?.tenant?.phase : undefined;
   const checklist = useQuery({ ...checklistQuery, enabled: !platform && active && phase === "SETUP" && canReadSetupChecklist(access.data), retry: false });
   const modules = useQuery({ ...modulesQuery, enabled: !platform && active });
