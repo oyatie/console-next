@@ -68,8 +68,8 @@ function ColumnPane({ kind, pane, paneRef, listRef, onCloseRequest, full, onFull
   useMountFocus(pane.id, () => {
     const singleCol = listRef.current && getComputedStyle(listRef.current).display === "none";
     if (!singleCol && kind !== "related") return null;
-    // A record heading remains visible when rotating out of the single-column layout.
-    const heading = paneRef.current?.querySelector<HTMLElement>("h2[tabindex='-1']");
+    // A pane can nominate a focus target that stays visible across rotations.
+    const heading = paneRef.current?.querySelector<HTMLElement>("[data-pane-focus]");
     if (singleCol && heading) return heading;
     return backRef.current && getComputedStyle(backRef.current).display !== "none" ? backRef.current : titleRef.current ?? closeRef.current;
   });

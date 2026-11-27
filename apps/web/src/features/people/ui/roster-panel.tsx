@@ -76,7 +76,7 @@ function Peek({ d, today, unitTriggerRef, onOpenUnit }: { d: Detail; today: stri
       <div className={s.peekHead}>
         <Avatar name={e.name} />
         <div className="grow">
-          <h2 ref={heading} tabIndex={-1} className={s.peekName}>{e.name} <span className="code">{e.employee_number ?? t("people.number.none")}</span></h2>
+          <h2 ref={heading} data-pane-focus tabIndex={-1} className={s.peekName}>{e.name} <span className="code">{e.employee_number ?? t("people.number.none")}</span></h2>
           <span className={s.peekSub}>{sub}</span>
         </div>
         <StatusChip status={e.status} />

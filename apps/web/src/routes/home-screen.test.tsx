@@ -103,9 +103,9 @@ test("a go-live receipt still arriving holds Home: its counts and actions land a
 test("a receipt record the phase calls for once the band decides is still waited on: Home's arrival latches after the hold", () => {
   landed();
   const view = (settled: boolean) => renderToStaticMarkup(<PagePhase value={{ slot: null, settled }}><HomeScreen /></PagePhase>);
+  state.receiptArriving = true;
   expect(view(false)).toContain('data-pending="false"');
   expect(state.settled).toBe(false);
-  state.receiptArriving = true;
   expect(view(true)).toContain('data-pending="true"');
   state.receiptArriving = false;
   expect(view(true)).toContain('data-pending="false"');

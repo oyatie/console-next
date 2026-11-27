@@ -36,7 +36,7 @@ function HomeContent() {
   const receipt = useReceipt(RECEIPT_NEED, HISTORY_NEED);
   const [settled, setSettled] = useState(false);
   // Receipt (with its record), phase band and setup links arrive with the inbox; later refreshes keep Home visible.
-  const ready = inbox.isError || (!inbox.isPending && (!inbox.isFetching || inbox.isFetchedAfterMount) && !receipt.arriving && (!during || reads.some((q) => q.isError) || reads.every((q) => q.isSuccess && !q.isFetching)));
+  const ready = inbox.isError || (!inbox.isPending && (!inbox.isFetching || inbox.isFetchedAfterMount) && (!phase.settled || !receipt.arriving) && (!during || reads.some((q) => q.isError) || reads.every((q) => q.isSuccess && !q.isFetching)));
   const pending = !settled && !ready;
   // Under the phase band's hold Home lays out unseen; it latches its arrival only once the band decides, so a receipt
   // record that the decided phase calls for is still waited on before Home shows.
