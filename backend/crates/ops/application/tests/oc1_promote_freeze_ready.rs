@@ -130,8 +130,33 @@ impl ReleasesStore for AllGatesPass {
     }
 }
 
+struct SignedPromotions(String);
+impl PromotionStore for SignedPromotions {
+    fn list_signoffs(&self) -> Result<Vec<PromotionSignoff>, SpoolError> {
+        Ok(vec![PromotionSignoff {
+            seq: 1,
+            hash: "h1".into(),
+            support_ref: "sup-1".into(),
+            at: UtcTimestamp::new(datetime!(2026-11-20 00:00 UTC)),
+            operator: "op-1".into(),
+            digest: self.0.clone(),
+            verdict: "ready".into(),
+            note: "reviewed".into(),
+        }])
+    }
+    fn record_signoff(
+        &self,
+        _digest: &str,
+        _verdict: &str,
+        _note: &str,
+        _context: &Context,
+    ) -> Result<PromotionSignoff, SpoolError> {
+        Err(SpoolError::WriteFailed)
+    }
+}
+
 #[test]
-fn promote_service_marks_ready_without_signoffs_and_blocks_on_freeze() -> TestResult {
+fn promote_service_watches_without_signoffs_and_blocks_ready_on_freeze() -> TestResult {
     let now = datetime!(2026-11-20 00:00 UTC);
     let interval = NonZeroU64::new(60).ok_or("nonzero")?;
     let ctx = Context {
@@ -154,9 +179,16 @@ fn promote_service_marks_ready_without_signoffs_and_blocks_on_freeze() -> TestRe
     assert!(promote_svc.request_promote(&digest, "normal", &ctx).is_ok());
 
     let gates_store = AllGatesPass;
-    let ready_svc = PromoteService {
+    let watching_svc = PromoteService {
         releases: Some(&gates_store),
         promotions: &DummyPromotions,
+        feedback: &DummyFeedback,
+        actions: &actions,
+    };
+    let signed = SignedPromotions(digest.clone());
+    let ready_svc = PromoteService {
+        releases: Some(&gates_store),
+        promotions: &signed,
         feedback: &DummyFeedback,
         actions: &actions,
     };
@@ -188,13 +220,21 @@ fn promote_service_marks_ready_without_signoffs_and_blocks_on_freeze() -> TestRe
         ]),
         targets: vec![],
     });
+    let watching_view = watching_svc
+        .build_view(&promo_vm, now)
+        .map_err(|e| format!("{e:?}"))?;
+    assert_eq!(
+        watching_view.state.value(),
+        Some(&Promotion::Watching),
+        "0 signoffs with all 5 gates passing and no freeze/blocker must report Watching"
+    );
     let ready_view = ready_svc
         .build_view(&promo_vm, now)
         .map_err(|e| format!("{e:?}"))?;
     assert_eq!(
         ready_view.state.value(),
         Some(&Promotion::Ready),
-        "0 signoffs with all 5 gates passing and no freeze/blocker must report Ready"
+        "ready signoff with all 5 gates passing and no freeze/blocker must report Ready"
     );
 
     promo_vm.begin_read(now);

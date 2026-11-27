@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useState, type RefObject } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Building2, FileText, MoveRight, Pencil } from "lucide-react";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
@@ -12,6 +12,7 @@ import { accessRefusal } from "../../../reference/authz/domain/access";
 import { operationAccess } from "../../../reference/authz/domain/operation-access";
 import { moduleReady, modulesQuery } from "../../../reference/onboarding/api";
 import { Button } from "../../../ui/button/button";
+import { buttonClass } from "../../../ui/button/button-class";
 import { Chip } from "../../../ui/chip";
 import { RecordIdentityBar, RecordPaneSection } from "../../../ui/patterns/list-record-parts";
 import { Tabs, type TabItem } from "../../../ui/tabs/tabs";
@@ -22,6 +23,7 @@ import { rrnStatusQuery } from "../api/record";
 import { retirementDate } from "../domain/employment";
 import { offeredVerbs } from "../domain/roster";
 import { plannedWhat } from "../present";
+import { EndActions } from "./end-actions";
 import { ExitPeek } from "./exit-peek";
 import { buildPanelBasicItems, buildPanelSummaryItems } from "./roster-console-panel-data";
 import { RosterPanelTabBody } from "./roster-console-panel-tabs";
@@ -90,8 +92,8 @@ function ConsolePeek({
       moduleReady(modules.data, "payroll") &&
       accessRefusal(access.data, operationAccess["GET /api/v1/payroll/employees/{employeeId}/payslip-draft"]) === null,
   );
-  const attMonth = useQuery({ ...personMonthPeekQuery(e.id, month), enabled: canAttendance, retry: false });
-  const payDraft = useQuery({ ...payslipDraftPeekQuery(e.id, month, payDate), enabled: canPayroll, retry: false });
+  const attMonth = useQuery({ ...personMonthPeekQuery(e.id, month), enabled: canAttendance && tab === "attendance", retry: false });
+  const payDraft = useQuery({ ...payslipDraftPeekQuery(e.id, month, payDate), enabled: canPayroll && tab === "payroll", retry: false });
   const { linked } = useLinkedAccount(e, c.users);
 
   const placeParts = [c.place.entity, ...(e.workplace_id ? [c.place.workplace, ...c.place.path] : [t("empCard.unplaced")])].filter(Boolean);
@@ -177,28 +179,29 @@ function ConsolePeek({
           )
         }
         actions={
-          c.editable ? (
-            <>
-              {firstAct ? (
-                <Button size="sm" variant="secondary" onClick={() => openCard(firstAct)}>
-                  <MoveRight size={12} aria-hidden="true" />
-                  {t("people.panel.act.appoint")}
-                </Button>
-              ) : null}
-              <Button size="sm" variant="secondary" onClick={() => openCard("multi")}>
-                <Pencil size={12} aria-hidden="true" />
-                {t("people.panel.act.edit")}
-              </Button>
-              <Button size="sm" variant="secondary" onClick={() => openCard("cert")}>
-                <FileText size={12} aria-hidden="true" />
-                {t("people.panel.act.cert")}
-              </Button>
-            </>
-          ) : (
-            <Button size="sm" variant="secondary" onClick={() => openCard()}>
+          <>
+            <Link className={buttonClass("secondary", { size: "sm" })} to="/people/$id" params={{ id: e.id }}>
               {t("people.panel.open")}
-            </Button>
-          )
+            </Link>
+            {c.editable ? (
+              <>
+                {firstAct ? (
+                  <Button size="sm" variant="secondary" onClick={() => openCard(firstAct)}>
+                    <MoveRight size={12} aria-hidden="true" />
+                    {t("people.panel.act.appoint")}
+                  </Button>
+                ) : null}
+                <Button size="sm" variant="secondary" onClick={() => openCard("multi")}>
+                  <Pencil size={12} aria-hidden="true" />
+                  {t("people.panel.act.edit")}
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => openCard("cert")}>
+                  <FileText size={12} aria-hidden="true" />
+                  {t("people.panel.act.cert")}
+                </Button>
+              </>
+            ) : null}
+          </>
         }
       />
 
@@ -231,6 +234,12 @@ function ConsolePeek({
             />
           )}
         </Tabs>
+        {c.manage ? <QueryState q={c.register}>{() => null}</QueryState> : null}
+        {c.manage ? (
+          <nav className="row" aria-label={t("crud.person.ends")}>
+            <EndActions id={e.id} />
+          </nav>
+        ) : null}
       </div>
     </div>
   );

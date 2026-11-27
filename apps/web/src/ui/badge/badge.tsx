@@ -21,7 +21,7 @@ export function Badge({
   tone?: BadgeTone;
 }) {
   return (
-    <data value={String(count)} className={s.badge} data-tone={tone}>
+    <data value={String(count)} data-count="" className={s.badge} data-tone={tone}>
       {more ? `${fmtNumber(count)}+` : fmtNumber(count)}
     </data>
   );

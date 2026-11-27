@@ -18,7 +18,7 @@ const lists = {
 };
 
 /** Held changes overlay the list; the shell remains the fallback for other notice holds. */
-export function HeldNotice({ placement = "float" }: { placement?: "float" | "list" }) {
+export function HeldNotice({ placement = "float", align = "end" }: { placement?: "float" | "list"; align?: "start" | "end" }) {
   const count = useSyncExternalStore(liveHeld.subscribe, liveHeld.get, liveHeld.get);
   const visible = useSyncExternalStore(lists.subscribe, lists.get, lists.get);
   const notice = useRef<HTMLDivElement>(null);
@@ -51,7 +51,7 @@ export function HeldNotice({ placement = "float" }: { placement?: "float" | "lis
   if (placement === "float" && (visible || !count)) return null;
   const content = (
     <div ref={notice} className={placement === "list" ? s.list : `notice ${s.held}`} role="status">
-      {!!count && <Button variant="ghost" className={placement === "list" ? s.listChip : undefined} onClick={() => void apply()}>{t("live.list.new_rows", { count })}</Button>}
+      {!!count && <Button variant="ghost" className={placement === "list" ? `${s.listChip}${align === "start" ? ` ${s.listChipStart}` : ""}` : undefined} onClick={() => void apply()}>{t("live.list.new_rows", { count })}</Button>}
     </div>
   );
   return placement === "list" ? content : <StatusDock>{content}</StatusDock>;

@@ -134,7 +134,7 @@ for (const state of ["empty", "failed", "refused", "loading"] as const) for (con
       await expect(dock.getByText("분 단위 내역", { exact: true })).toHaveCount(0);
     }
     else if (state === "loading") await expect(dock.getByRole("status", { name: t("common.loading"), exact: true })).toBeVisible();
-    else await expect(dock.getByRole("heading", { name: t(state === "failed" ? "common.loadFailed.title" : "common.denied.title.plain"), exact: true })).toHaveCount(1, { timeout: 15_000 });
+    else await expect(dock.getByRole("heading", { name: t(state === "failed" ? "common.loadFailed.title" : (await dock.getAttribute("data-pane")) ? "common.denied.panel" : "common.denied.title.plain"), exact: true })).toHaveCount(1, { timeout: 15_000 });
     await fits(page, `overview-details/${state}/${width}`);
     await expectAxe(page, `overview-details/${state}/${width}`);
     if (state !== "empty") {

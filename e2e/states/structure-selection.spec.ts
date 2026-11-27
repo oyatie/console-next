@@ -421,7 +421,7 @@ test("org: post-go-live inline + add and rename in place carry 적용일 (defaul
     const datePop = page.getByRole("dialog", { name: t("orgUnit.gov.date"), exact: true });
     await datePop.getByRole("textbox", { name: new RegExp(`^${t("orgUnit.gov.date")}`) }).fill("20261201");
     await datePop.getByRole("textbox", { name: new RegExp(`^${t("orgUnit.gov.date")}`) }).press("Enter");
-    await expect(page.getByRole("button", { name: `${t("orgUnit.gov.date")} · ${fmtDate("2026-12-01")}`, exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: `${t("orgUnit.gov.date")} · ${fmtDate("2026-12-01")}`, exact: true }).or(page.getByRole("button", { name: `${t("orgUnit.gov.date")} · ${fmtDate("2026-12-01", { style: "iso" })}`, exact: true }))).toBeVisible();
     await addInput.fill("미래팀");
     await addInput.press("Enter");
     await expect.poll(() => createdPayloads.length).toBe(2);

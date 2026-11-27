@@ -93,7 +93,7 @@ export function WorkplaceFacts({ e, w, place, onAct }: { e: LegalEntity; w: Work
         none
       ),
       { k: "head" },
-      w.head ? undefined : { add: true },
+      w.head ? undefined : { enter: true },
     ),
     reg
       ? {

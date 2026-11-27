@@ -39,11 +39,11 @@ export function JobTitlesPage() {
   // Who may change the lists is the server's verdict on this user (Cedar job_title_manage, BE-EMP-UI §1).
   const manage = titles.data?.can_manage === true;
   const makeColumns = (onEdit?: (x: JobTitle) => void): Column<JobTitle>[] => [
-    { header: t("titles.col.kind"), cell: (x) => enumLabel(JOB_TITLE_KIND, x.kind), card: "fact", fit: Boolean(onEdit), width: onEdit ? undefined : "status" },
-    { header: t("titles.col.label"), cell: (x) => <bdi className={sf.wrap}>{x.label}</bdi>, card: "title", width: onEdit ? undefined : "summary" },
-    { header: t("titles.col.rank"), cell: (x) => (x.grade_rank === null ? t("titles.unranked") : <span className="num">{x.grade_rank}</span>), fit: Boolean(onEdit), width: onEdit ? undefined : "code" },
-    { header: t("titles.col.state"), cell: (x) => <EnumValue e={JOB_TITLE_STATUS} value={x.active ? "active" : "inactive"} />, fit: Boolean(onEdit), width: onEdit ? undefined : "status" },
-    ...(manage ? [{ header: t("titles.col.actions"), cell: (x: JobTitle) => <Toggle x={x} onEdit={onEdit} />, fit: Boolean(onEdit), card: "action" as const }] : []),
+    { header: t("titles.col.kind"), cell: (x) => enumLabel(JOB_TITLE_KIND, x.kind), card: "fact", width: "status" },
+    { header: t("titles.col.label"), cell: (x) => <bdi className={sf.wrap}>{x.label}</bdi>, card: "title", width: "summary" },
+    { header: t("titles.col.rank"), cell: (x) => (x.grade_rank === null ? t("titles.unranked") : <span className="num">{x.grade_rank}</span>), width: "code" },
+    { header: t("titles.col.state"), cell: (x) => <EnumValue e={JOB_TITLE_STATUS} value={x.active ? "active" : "inactive"} />, width: "status" },
+    ...(manage ? [{ header: t("titles.col.actions"), cell: (x: JobTitle) => <Toggle x={x} onEdit={onEdit} />, card: "action" as const }] : []),
   ];
   const editingEntry = titles.data?.items.find((x) => x.id === editingId) ?? null;
 
@@ -95,7 +95,7 @@ export function JobTitlesPage() {
             <section aria-labelledby="titles-list">
               <PaneHead titleId="titles-list" title={t("titles.list")} level={2} />
               {titles.data.items.length ? (
-                <Table mobileLayout="cards" label={t("titles.list")} rows={titles.data.items} rowId={(x) => x.id} columns={makeColumns((x) => setEditingId(x.id))} />
+                <Table scrollLayout="auto" mobileLayout="cards" label={t("titles.list")} rows={titles.data.items} rowId={(x) => x.id} columns={makeColumns((x) => setEditingId(x.id))} />
               ) : (
                 <FormSection>
                   <EmptyState title={t("titles.none.title")} reason={t(manage ? "titles.none.manage" : "titles.none.read")} />

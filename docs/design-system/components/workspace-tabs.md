@@ -100,7 +100,7 @@ Default labels read `shell.tabs.label`, `shell.tabs.closeOne`, `shell.tabs.new`,
 | `--space-half` | `border-block-start` |
 | `--steel` | `color` |
 | `--surface` | `background`, `border-block-end` |
-| `--target` | `height`, `width` |
+| `--target` | `height`, `min-height`, `min-width`, `width` |
 | `--text-sm` | `font-size` |
 
 <!-- /ds:tokens -->

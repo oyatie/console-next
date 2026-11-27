@@ -2,7 +2,7 @@
 import { get } from "../../lib/query";
 import { api, unwrap, type components } from "@console/api";
 import type { operations } from "@console/api/schema";
-export { payGroupSchemas } from "@console/api";
+export { payGroupSchemas } from "@console/api/pay-group-schema";
 export type { PayGroup, PayrollRate, PayrollRates, PayrollRun } from "@console/api/pending";
 export type CreatePayGroup = components["schemas"]["CreatePayGroup"];
 export type CreatePayrollRun = components["schemas"]["CreatePayrollRun"];

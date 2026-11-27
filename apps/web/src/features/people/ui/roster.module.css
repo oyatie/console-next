@@ -70,7 +70,7 @@
 .exitTabs { display: flex; gap: var(--space-1); }
 .voided { gap: var(--space-2); padding: var(--space-3) var(--space-5); }
 .listError { margin: var(--space-2) var(--space-4); }
-.consoleTools { display: inline-flex; align-items: center; gap: var(--space-1-5); flex-wrap: nowrap; }
+.consoleTools { display: inline-flex; align-items: center; gap: var(--space-1-5); flex-wrap: wrap; min-width: 0; max-width: 100%; }
 .consoleTools > * { white-space: nowrap; flex-shrink: 0; }
 .consoleDesktopTools { display: inline-flex; align-items: center; gap: var(--space-2); flex-shrink: 0; }
 .consoleFind { flex: 1 1 auto; min-width: 0; max-width: 100%; }

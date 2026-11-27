@@ -58,7 +58,7 @@ export function MonthGridBottomSplit({
   basisText: ReactNode;
   legendItems: readonly { key: string; glyph: ReactNode; text: ReactNode }[];
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   return (
     <div className={s.wrap}>
       <div className={s.phoneBar}>

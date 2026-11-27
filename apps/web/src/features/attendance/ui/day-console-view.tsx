@@ -175,12 +175,12 @@ export function DayConsoleView({ baseline }: { baseline: () => React.ReactNode }
         const openCount = b.marks.blocking + b.marks.decision;
         const blockingGroups = b.groups.filter(g => g.marks.blocking > 0);
         return (
-          <div className={s.dayMain}>
+          <div className={s.dayMain} data-day-board="">
             <DayLedgerStats ledger={b.ledger} />
 
             <PaneGrid
               main={
-                <div className={s.dayGroups}>
+                <div className={s.dayGroups} role="region" aria-label={t("attendance.tab.day")}>
                   {feedback ? <div role="status" aria-live="polite" className="muted t-sm">{feedback}</div> : null}
                   <MonthStateBanner state={pageState(b.groups.flatMap(g => g.rows.map(r => r.month_state)))} month={date.slice(0, 7)} />
                   {!b.judged && <RecordBannerBand tone="neutral">{t("attendanceRecords.board.notJudged")}</RecordBannerBand>}
@@ -243,19 +243,17 @@ export function DayConsoleView({ baseline }: { baseline: () => React.ReactNode }
                       />
                     </DayBars>
                   )}
+                  <DayConsoleRail
+                    peopleCount={b.ledger.people}
+                    openCount={openCount}
+                    blockingGroups={blockingGroups}
+                    date={date}
+                    drafts={store.drafts}
+                    onSetDrafts={store.set}
+                    onSetNote={setNote}
+                    onGoIssues={() => go({ issues: true, detail: undefined })}
+                  />
                 </div>
-              }
-              bottom={
-                <DayConsoleRail
-                  peopleCount={b.ledger.people}
-                  openCount={openCount}
-                  blockingGroups={blockingGroups}
-                  date={date}
-                  drafts={store.drafts}
-                  onSetDrafts={store.set}
-                  onSetNote={setNote}
-                  onGoIssues={() => go({ issues: true, detail: undefined })}
-                />
               }
               record={
                 save

@@ -97,22 +97,20 @@ export function OrgChangeConsole({
                 />
               </DocRailBody>
             </DocRailSection>
+            <aside aria-label={t("orgChange.history")}>
+              <PaneHead
+                title={t("orgChange.history")}
+                actions={st.place && <Link to="/org" search={st.place}>{t("orgChange.openUnit")}</Link>}
+              />
+              <DocRailBody>
+                <OrgChangeHistoryTimeline events={d.events} />
+              </DocRailBody>
+            </aside>
             {d.approvalSteps.length > 0 && (
               <DocRailSection label={t("orgChange.chain.title", { n: decidedCount, total: d.approvalSteps.length })}>
                 <PaneHead title={t("orgChange.chain.title", { n: decidedCount, total: d.approvalSteps.length })} />
                 <DocRailBody>
                   <ChangeChain d={d} flat />
-                </DocRailBody>
-              </DocRailSection>
-            )}
-            {d.events.length > 0 && (
-              <DocRailSection label={t("orgChange.history")}>
-                <PaneHead
-                  title={t("orgChange.history")}
-                  actions={st.place && <Link to="/org" search={st.place}>{t("orgChange.openUnit")}</Link>}
-                />
-                <DocRailBody>
-                  <OrgChangeHistoryTimeline events={d.events} />
                 </DocRailBody>
               </DocRailSection>
             )}
@@ -124,7 +122,6 @@ export function OrgChangeConsole({
           <>
             <DocHeader
               kicker={d.code}
-              title={st.title}
               meta={[
                 `${t("approvals.field.requester")} ${actor(d.draftedByName)}`,
                 `${t("approvals.field.requestedAt")} ${fmtDate(d.createdAt.slice(0, 10))}`,

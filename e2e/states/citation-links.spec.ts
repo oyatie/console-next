@@ -5,6 +5,7 @@ import { i18n, loadCatalog, LOCALES, t } from "@console/i18n";
 import { expect } from "@playwright/test";
 import { test } from "../locale-fixture";
 import { expectAxe, fits } from "../a11y";
+import { seededExperience } from "../experience";
 import { filingTask, mockFilings } from "../mock/filings";
 import { failure } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
@@ -12,7 +13,7 @@ import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
 
 for (const locale of LOCALES) for (const width of [1440, 390]) {
-  test(`citation destinations are inert and unsafe URLs are refused in ${locale} at ${width}px @ui-state`, async ({ page }, info) => {
+  test(`citation destinations are inert and unsafe URLs are refused in ${locale} at ${width}px @ui-state`, async ({ page, storageState }, info) => {
     await loadCatalog(locale); i18n.set(locale);
     await page.setViewportSize({ width, height: 1000 });
     await page.addInitScript(({ locale, width }) => {
@@ -29,12 +30,15 @@ for (const locale of LOCALES) for (const width of [1440, 390]) {
     try {
       await page.goto("/statutory");
       const row = page.getByRole("row").filter({ hasText: filingTask.name });
-      await row.getByText(t("statutory.basis"), { exact: true }).click();
-      await expect(row.getByRole("link", { name: /국민연금법/ })).toHaveCount(0);
-      await expect(row.getByText(`국민연금법 · 제21조 · ${new URL(citation.source_url).href}`, { exact: true })).toBeVisible();
-      await expect(row.getByRole("button", { name: t("uiField.copyUrl"), exact: true })).toHaveCount(1);
-      await expect(row.locator('[data-refusal-code="external_url_https_required"]')).toHaveCount(2);
-      for (const refusal of await row.locator('[data-refusal-code="external_url_https_required"]').all()) {
+      const inConsole = seededExperience(storageState) === "console";
+      if (inConsole) await row.getByRole("button", { name: t("statutory.openRow", { name: filingTask.name, insurer: t("statutory.NPS"), kind: t("statutory.ACQUIRE") }), exact: true }).click();
+      const surface = inConsole ? page.getByRole("complementary", { name: t("statutory.detailTitle"), exact: true }) : row;
+      await surface.getByText(t("statutory.basis"), { exact: true }).click();
+      await expect(surface.getByRole("link", { name: /국민연금법/ })).toHaveCount(0);
+      await expect(surface.getByText(`국민연금법 · 제21조 · ${new URL(citation.source_url).href}`, { exact: true })).toBeVisible();
+      await expect(surface.getByRole("button", { name: t("uiField.copyUrl"), exact: true })).toHaveCount(1);
+      await expect(surface.locator('[data-refusal-code="external_url_https_required"]')).toHaveCount(2);
+      for (const refusal of await surface.locator('[data-refusal-code="external_url_https_required"]').all()) {
         await expect(refusal.getByRole("button")).toHaveCount(0);
         await expect(refusal).toContainText(t("common.failed.code.external_url_https_required"));
       }

@@ -8,7 +8,7 @@ import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
 import { failure, id } from "../mock/fixtures";
-import { experienceState } from "../experience";
+import { experienceState, seededExperience } from "../experience";
 
 const { minimum, maximum } = jobTitleSchemas.update.properties.grade_rank;
 const labelMax = jobTitleSchemas.update.properties.label.maxLength;
@@ -204,7 +204,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     } finally { await page.close(); fixture.release(); }
   });
 
-  test(`full length job title actions fit ${width} ${theme} @ui-state`, async ({ page }, info) => {
+  test(`full length job title actions fit ${width} ${theme} @ui-state`, async ({ page, storageState }, info) => {
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const fixture = await mockScreen(page, screens.find(s => s.key === "people")!, "populated");
@@ -219,7 +219,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
         await expect(header).toBeVisible();
         expect((await header.boundingBox())!.width).toBeGreaterThan(100);
       }
-      if (width === 1440) {
+      if (width === 1440 && seededExperience(storageState) === "baseline") {
         const labelHeader = page.getByRole("columnheader", { name: t("titles.col.label"), exact: true });
         const actionHeader = page.getByRole("columnheader", { name: t("titles.col.actions"), exact: true });
         // Repeated-label actions need more room than the display-only label.

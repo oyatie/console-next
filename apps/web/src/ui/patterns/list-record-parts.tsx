@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useLayoutEffect, useRef, type ReactNode } from "react";
+import { useId, useLayoutEffect, useRef, type ReactNode } from "react";
 import s from "./list-record-parts.module.css";
 
 /** Compact bottom summary footer beneath a Console `ListRecord` table. */
-export function ListSummaryFooter({ start, end }: { start: ReactNode; end?: ReactNode }) {
+export function ListSummaryFooter({ label, start, end }: { label?: string; start: ReactNode; end?: ReactNode }) {
   return (
-    <footer className={s.footBar}>
+    <footer className={s.footBar} role={label ? "note" : undefined} aria-label={label}>
       <div className={s.footStart}>{start}</div>
       {end != null ? <div className={s.footEnd}>{end}</div> : null}
     </footer>
@@ -36,10 +36,11 @@ export function RecordPaneSection({
   foot?: ReactNode;
   children: ReactNode;
 }) {
+  const id = useId();
   return (
-    <section className={s.paneSection}>
+    <section className={s.paneSection} aria-labelledby={id}>
       <header className={s.paneSectionHead}>
-        <h3 className={s.paneSectionTitle}>{title}</h3>
+        <h3 id={id} className={s.paneSectionTitle}>{title}</h3>
         {trailing != null ? <div className={s.paneSectionTrail}>{trailing}</div> : null}
       </header>
       <div className={padded ? s.paneSectionBody : undefined}>{children}</div>

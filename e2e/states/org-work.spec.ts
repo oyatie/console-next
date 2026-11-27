@@ -2,6 +2,7 @@
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
+import { seededDateStyle } from "../experience";
 import { orgPanelReads, orgWorkReads } from "../mock/org-work";
 import { id } from "../mock/fixtures";
 import { fmtDate } from "@console/i18n/format";
@@ -66,7 +67,7 @@ for (const screen of orgWorkScreens) for (const state of Object.keys(screen.stat
 }
 
 for (const width of [1440, 390]) {
-  test(`org: panel and sheet copy at ${width}px @ui-state`, async ({ page }) => {
+  test(`org: panel and sheet copy at ${width}px @ui-state`, async ({ page, storageState }) => {
     await page.setViewportSize({ width, height: 900 });
     const fixture = await mockScreen(page, screens[2], "populated");
     const { dept } = await orgPanelReads(page);
@@ -92,7 +93,7 @@ for (const width of [1440, 390]) {
     await sheet.getByRole("textbox", { name: /^부서 이름/ }).fill("새부서");
     await sheet.getByRole("textbox", { name: /^적용일/ }).fill("2099-11-01");
     await sheet.getByRole("textbox", { name: /^사유/ }).fill("조직 운영 개선");
-    await expect(sheet.getByText(t("orgUnit.gov.addConsequence", { name: "새부서", date: fmtDate("2099-11-01") }), { exact: true })).toBeVisible();
+    await expect(sheet.getByText(t("orgUnit.gov.addConsequence", { name: "새부서", date: fmtDate("2099-11-01", { style: seededDateStyle(storageState) }) }), { exact: true })).toBeVisible();
     await expect(sheet.getByText(/설정 단계였다면/)).toHaveCount(0);
     await fits(page, `department creation/${width}`);
     await expectAxe(page, `department creation/${width}`);

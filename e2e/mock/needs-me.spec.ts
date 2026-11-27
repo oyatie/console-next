@@ -19,7 +19,7 @@ test.beforeAll(() => loadCatalog("ko"));
 // style: Console's link drops the "+" of an inexact count and reads plain to-dos while the count is unknown.
 for (const width of [1440, 1024, 390]) for (const theme of ["light", "dark"]) {
   for (const state of ["populated", "zero", "inexact", "failed", "refused"] as const) {
-    test(`header task panel ${state} at ${width}px ${theme}${state === "populated" || state === "zero" ? " @baseline" : ""}`, async ({ page }, info) => {
+    test(`header task panel ${state} at ${width}px ${theme} @baseline`, async ({ page }, info) => {
       test.slow(state === "populated", "Checks three tenant pages and their panels.");
       await page.setViewportSize({ width, height: 900 });
       await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
@@ -382,7 +382,7 @@ test.describe("console tablet bar", () => {
 });
 
 for (const width of [1440, 1024, 390]) for (const theme of ["light", "dark"]) {
-  test(`task count is loading until answered at ${width}px ${theme}`, async ({ page }, info) => {
+  test(`task count is loading until answered at ${width}px ${theme} @baseline`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const mock = await mockScreen(page, screens[0], "populated");

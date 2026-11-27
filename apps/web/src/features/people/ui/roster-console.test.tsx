@@ -11,6 +11,7 @@ import type { useRosterScreen } from "./use-roster-screen";
 
 vi.mock("@tanstack/react-router", async original => ({
   ...await original<typeof import("@tanstack/react-router")>(),
+  getRouteApi: () => ({ useRouteContext: () => ({ peopleAccess: { unplaced: { domain: "hr_basic", level: "edit" } } }) }),
   useNavigate: () => () => {},
   Link: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
 }));

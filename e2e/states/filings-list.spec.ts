@@ -451,7 +451,7 @@ for (const width of [1280, 1440]) test(`closing filing basis restores the next r
 });
 
 // The open-basis leg grows Classic's rows; Console keeps the basis in the record pane, so only the closed leg is shared.
-for (const expanded of [false, true]) test(`mouse wheel reaches all 40 filings with a tall tail${expanded ? " and an open basis" : ""} @ui-state${expanded ? " @baseline" : ""}`, async ({ page }, info) => {
+for (const expanded of [false, true]) test(`mouse wheel reaches all 40 filings with a tall tail${expanded ? " and an open basis" : ""} @ui-state${expanded ? " @baseline" : ""}`, async ({ page, storageState }, info) => {
   await page.setViewportSize({ width: 1280, height: 580 });
   const fixture = await mockScreen(page, screens[2], "populated");
   await mockFilings(page);
@@ -482,10 +482,12 @@ for (const expanded of [false, true]) test(`mouse wheel reaches all 40 filings w
       // A virtual grid counts its rows (and its header row) in aria-rowcount; a table holds every row in the page.
       const rowCount = await table.getAttribute("aria-rowcount");
       expect(rowCount ? Number(rowCount) - 1 : await rows.count()).toBe(tasks.length);
-      const last = rows.filter({ hasText: tasks.at(-1)!.name });
+      const lastTask = tasks.at(-1)!;
+      const last = rows.filter({ hasText: lastTask.name });
       await expect(last).toBeAttached();
       await expect(last).toBeInViewport();
-      await expect(last.getByRole("button", { name: t("statutory.record"), exact: true })).toBeInViewport();
+      const inConsole = seededExperience(storageState) === "console";
+      await expect(last.getByRole("button", { name: inConsole ? t("statutory.openRow", { name: lastTask.name, insurer: t("statutory.NPS"), kind: t("statutory.ACQUIRE") }) : t("statutory.record"), exact: true })).toBeInViewport();
       await page.screenshot({ path: info.outputPath(`filings-end-${expanded ? "expanded" : "collapsed"}.png`), fullPage: true });
     }
     expect(fixture.unexpected).toEqual([]);

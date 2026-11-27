@@ -18,7 +18,7 @@ export function useAccessContext() {
     cat,
     roles: roles.data?.items ?? [],
     /** Wait for the arrival read before opening a sheet: cached empty roles would flash a notice. */
-    rolesLoaded: roles.isSuccess && roles.isFetchedAfterMount,
+    rolesLoaded: roles.isSuccess && (roles.isFetchedAfterMount || (roles.isFetching === false && roles.isStale === false)),
     accounts: account ? [account, ...(accounts.data?.items ?? []).filter(a => a.id !== account.id)] : accounts.data?.items ?? [],
     accountsQ: accounts,
     me: me.data?.account_id,

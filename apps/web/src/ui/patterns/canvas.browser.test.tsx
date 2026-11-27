@@ -21,6 +21,7 @@ test("Canvas pattern passes WCAG 2.2 AA matrix, fits 390px and 320px, zooms OrgC
   await expectFitsViewport(page, 320);
 
   await setConsoleViewport(page, 1440, 900);
+  await page.getByRole("button", { name: t("uiOrgCanvas.fit"), exact: true }).click();
   const zoomLive = page.locator('[role="group"][aria-label="' + t("uiOrgCanvas.zoom") + '"] [aria-live="polite"]');
   const initialZoom = await zoomLive.textContent();
   await page.getByRole("button", { name: t("uiOrgCanvas.zoomIn"), exact: true }).click();

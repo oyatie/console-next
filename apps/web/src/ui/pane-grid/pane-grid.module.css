@@ -81,7 +81,7 @@
   flex: 0 0 var(--space-1-5);
   margin-inline-start: calc(-1 * var(--space-half));
   margin-inline-end: calc(-1 * var(--space-1));
-  z-index: 1;
+  z-index: 3;
   cursor: col-resize;
   position: relative;
   touch-action: none;

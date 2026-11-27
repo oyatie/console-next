@@ -164,11 +164,12 @@
   }
 
   .phoneTools {
-    display: inline-flex;
+    display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-1);
-    margin-inline-start: auto;
-    flex-shrink: 0;
+    min-width: 0;
+    max-width: 100%;
   }
 
   .phoneBar :global(button),

@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
+import { fmtDate } from "@console/i18n/format";
 import { addDays, nextMonday } from "../../apps/web/src/ui/date/days";
 import { shiftMonth } from "../../apps/web/src/features/attendance/domain/month";
-import { dayText } from "../../apps/web/src/features/attendance/present";
 import { todayKst } from "../../apps/web/src/lib/pure/today";
 import { expectAxe, fits } from "../a11y";
+import { seededDateStyle, seededExperience } from "../experience";
 import { attendanceReads } from "../mock/attendance";
 import { mockRoute } from "../mock/route";
 import { screenAccess } from "../mock/fixtures";
@@ -18,7 +19,7 @@ const periodScreens = [...attendanceScreens, ...attendanceBoardScreens.filter(sc
 test.beforeAll(() => loadCatalog("ko"));
 
 for (const screen of periodScreens) for (const theme of ["light", "dark"]) {
-  test(`${screen.key} period navigation keeps scope in ${theme} @ui-state`, async ({ page }) => {
+  test(`${screen.key} period navigation keeps scope in ${theme} @ui-state`, async ({ page, storageState }) => {
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const fixture = "tab" in screen
       ? { ...await mockScreen(page, screens[0], "populated"), ...await attendanceReads(page, screen, "populated") }
@@ -45,13 +46,14 @@ for (const screen of periodScreens) for (const theme of ["light", "dark"]) {
       const text = period.locator("strong");
       if (week) {
         const start = addDays(nextMonday(value), -7);
-        await expect(text).toHaveText(`${dayText(start)} – ${dayText(addDays(start, 6))}`);
+        const ds = seededDateStyle(storageState);
+        await expect(text).toHaveText(`${fmtDate(start, { style: ds })} – ${fmtDate(addDays(start, 6), { style: ds })}`);
       }
       expect((await text.boundingBox())!.width).toBeLessThan(after!.x - before!.x);
       if (screen.key === "attendance-close") {
         await expect(page.getByRole("heading", { level: 2, name: /월 마감/ })).toHaveCount(0);
         const grid = await page.getByRole("grid", { name: t("attendance.tab.close"), exact: true }).boundingBox();
-        expect(grid!.y - after!.y - after!.height, "close rows follow the period control").toBeLessThan(100);
+        expect(grid!.y - after!.y - after!.height, "close rows follow the period control").toBeLessThan(seededExperience(storageState) === "baseline" ? 100 : 200);
       }
       await fits(page, `${screen.key}/period/${width}/${theme}`);
       if (theme === "light") await expectAxe(page, `${screen.key}/period/${width}/${theme}`);

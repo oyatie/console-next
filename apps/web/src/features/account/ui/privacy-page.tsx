@@ -11,7 +11,6 @@ import { buttonClass } from "../../../ui/button/button-class";
 import { EmptyState } from "../../../ui/empty-state";
 import { KeyValue } from "../../../ui/key-value/key-value";
 import { Page } from "../../../ui/page/page";
-import { RecordPaneSection } from "../../../ui/patterns/list-record-parts";
 import { RecordPattern } from "../../../ui/patterns/record";
 import { SettingsPattern } from "../../../ui/patterns/settings";
 import { ApiError, privacyReceipt, privacyRequestPages } from "../api";
@@ -83,9 +82,7 @@ export function PrivacyIntake() {
       strip={subjectStrip}
       sections={
         <>
-          <RecordPaneSection title={t("account.privacy.intake")} padded={false}>
-            {receipt}
-          </RecordPaneSection>
+          {receipt}
           {workbench}
         </>
       }

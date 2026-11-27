@@ -207,7 +207,7 @@ for (const width of [1440, 390] as const) {
         await armChunkLoadedBarrier(page);
         await page.goto("/login");
         await waitForChunkLoadedAndExhaustReload(page);
-        await page.locator("summary").click();
+        await page.locator("summary").first().click();
         await page.getByRole("textbox", { name: t("auth.login.code"), exact: true }).fill("ABCD-EFGH");
         await page.getByRole("button", { name: t("auth.login.submitCode"), exact: true }).click();
 
@@ -418,7 +418,7 @@ test("baseline experience remains completely unaltered under outage, SSE drop, a
     await armChunkLoadedBarrier(page);
     await page.goto("/login");
     await waitForChunkLoadedAndExhaustReload(page);
-    await page.locator("summary").click();
+    await page.locator("summary").first().click();
     await page.getByRole("textbox", { name: t("auth.login.code"), exact: true }).fill("ABCD-EFGH");
     await page.getByRole("button", { name: t("auth.login.submitCode"), exact: true }).click();
     await expect(page.getByRole("heading", { name: t("common.crashed.title"), exact: true })).toBeVisible();

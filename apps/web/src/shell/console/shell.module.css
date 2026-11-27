@@ -12,7 +12,14 @@
 .shell > :global(.main) {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  max-width: 100%;
   min-height: 0;
+}
+
+.shell > :global(.main) > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .shell > :global(.main) > :global(.page) {

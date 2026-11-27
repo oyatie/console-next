@@ -14,7 +14,8 @@ use std::collections::HashSet;
 /// two privacy reveal settings, the shared deadline display window, eleven access-review keys,
 /// the operational objection-review clock, the onboarding receipt window, payroll activation,
 /// the saved-view ceiling, the privacy filing detail limit, three excess-disposition settings,
-/// the two inbox snooze preset day counts, and the tenant default screen style.
+/// the two inbox snooze preset day counts, the tenant default screen style, and three
+/// attendance/HR policy keys (overtime recognition, console clock-out, fixed-term limit).
 const EXPECTED_KEYS: usize = 34
     + 17
     + 1
@@ -43,7 +44,8 @@ const EXPECTED_KEYS: usize = 34
     + 1
     + 3
     + 2
-    + 1;
+    + 1
+    + 3;
 
 #[test]
 fn roster_has_every_key_once_and_round_trips() {

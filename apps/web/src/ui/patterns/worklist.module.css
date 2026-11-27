@@ -89,7 +89,17 @@
 }
 
 @media (--phone) {
-  .frame[data-detail]:has([data-pane="record"]) > .head,
+  .frame[data-detail]:has([data-pane="record"]) > .head {
+    position: absolute;
+    width: 0;
+    height: 0;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    border: 0;
+  }
+
   .frame[data-detail]:has([data-pane="record"]) > .statsBand {
     display: none;
   }

@@ -147,7 +147,7 @@ test("the find box is a named search input with its icon hidden; an avatar is de
   expect(box).toMatch(/<input[^>]*type="search"/);
   expect(box).toContain('aria-label="x"');
   expect(box).toMatch(/<svg[^>]*aria-hidden="true"/);
-  expect(html(<Avatar name=" yoon" />)).toMatch(/aria-hidden="true"[^>]*>y</);
+  expect(html(<Avatar name=" yoon" />)).toMatch(/data-initial="y"[^>]*aria-hidden="true"/);
 });
 
 // Regression: features wrote className="btn--sm" in ~20 places while app.css never defined it (a silent no-op).

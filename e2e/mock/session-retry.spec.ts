@@ -53,9 +53,9 @@ for (const width of [1440, 390]) {
     await page.goto("/statutory");
     // Classic offers the request in the row; Console in the filing's record pane, opened from the row.
     const request = page.getByRole("button", { name: t("statutory.futureRequest"), exact: true });
-    const record = page.getByRole("button", { name: t("statutory.record"), exact: true });
-    await expect(request.or(record).first()).toBeVisible();
-    if (!(await request.isVisible())) await record.click();
+    const open = page.getByRole("button", { name: t("statutory.openRow", { name: filingTask.name, insurer: t("statutory.EI"), kind: t("statutory.ACQUIRE") }), exact: true });
+    await expect(request.or(open).first()).toBeVisible();
+    if (!(await request.isVisible())) await open.click();
     await request.click();
     const sheet = page.getByRole("dialog", { name: "김신고 · 신고 요청·근로월 기록" });
     await sheet.getByRole("button", { name: /신고 종류$/ }).click();

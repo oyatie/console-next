@@ -32,6 +32,7 @@ export function Worklist({
   tools,
   stats,
   notes,
+  recovery,
   list,
   schedule,
   bands,
@@ -73,6 +74,7 @@ export function Worklist({
         {tabs}
         <PageReadGate
           q={q}
+          recovery={recovery}
           head={available =>
             available || !secondary ? (
               <Band className={s.head}>
@@ -80,6 +82,7 @@ export function Worklist({
                   <PageHead
                     title={head.title}
                     titleId={head.titleId}
+                    meta={available ? head.meta : undefined}
                     asOf={available ? head.asOf : undefined}
                     filters={
                       available && hasFilters ? (

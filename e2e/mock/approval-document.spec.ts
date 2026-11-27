@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
+import { fmtDate } from "@console/i18n/format";
 import { expectAccessible, fits } from "../a11y";
-import { experienceState } from "../experience";
+import { experienceState, seededDateStyle } from "../experience";
 import { recordShifts } from "../stability";
 import { screens } from "../states/registry";
 import { mockScreen } from "./screen";
@@ -29,7 +30,8 @@ async function openDocument(page: Page) {
 }
 
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
-  test(`canonical approval document at ${width}px ${theme}`, async ({ page }, info) => {
+  test(`canonical approval document at ${width}px ${theme}`, async ({ page, storageState }, info) => {
+    const style = seededDateStyle(storageState);
     await page.addInitScript(recordShifts);
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
@@ -41,8 +43,8 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     const content = page.getByRole("region", { name: t("approvals.viewer.body"), exact: true }).or(page.getByRole("region", { name: t("approvals.field.proposal"), exact: true }));
     await expect(content).toContainText("고객지원부");
     await expect(content).toContainText("본점");
-    await expect(page.getByRole("region", { name: "문서 정보", exact: true })).toContainText("2026. 12. 01.");
-    await expect(page.locator("main")).not.toContainText("2026-12-01");
+    await expect(page.getByRole("region", { name: "문서 정보", exact: true })).toContainText(fmtDate("2026-12-01", { style }));
+    if (style !== "iso") await expect(page.locator("main")).not.toContainText("2026-12-01");
     await expect(page.getByRole("button", { name: /승인|반려|보완 요청/ })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "원본 기록 열기", exact: true })).toHaveAttribute("href", "/org/changes/document");
     await fits(page, "canonical approval document");

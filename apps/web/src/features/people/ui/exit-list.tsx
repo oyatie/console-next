@@ -191,7 +191,6 @@ export function ExitCaseListContent({ status, onStatus: pick, tabs }: { status?:
           head={{ title: t("exit.list.title") }}
           views={
             <WorklistSegmentBar
-              phoneSelect
               label={t("exit.list.chips")}
               size="sm"
               value={status ?? "__all__"}

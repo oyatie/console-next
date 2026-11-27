@@ -2,6 +2,7 @@
 import type { ComponentProps } from "react";
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
+import { Band } from "../../../ui/band/band";
 import { Button } from "../../../ui/button/button";
 import { ItemList } from "../../../ui/item-list/item-list";
 import { StatRow } from "../../../ui/key-value/key-value";
@@ -13,6 +14,7 @@ import type { DayDockMode } from "../present";
 import { DayDock } from "./day-dock";
 import { DayRow } from "./day-row";
 import { SaveDock } from "./save-dock";
+import r from "./records.module.css";
 import s from "./attendance-console.module.css";
 
 type DayGroup = DayBoard["groups"][number];
@@ -24,14 +26,14 @@ export function DayLedgerStats({ ledger }: { ledger: DayBoard["ledger"] }) {
   if (ledger.people <= 0) return null;
   return (
     <StatRow
-      label={t("attendance.tab.day")}
+      label={t("attendanceRecords.toolbar.label")}
       items={[
-        { key: "people", label: t("attendance.monthConsole.summary.scope"), value: t("attendance.people", { count: ledger.people }) },
-        { key: "normal", label: t("attendanceRecords.ledger.normal", { count: ledger.normal }), value: ledger.normal, tone: "ok" },
-        { key: "noRecord", label: t("attendanceRecords.mark.NO_RECORD"), value: ledger.no_record, tone: ledger.no_record > 0 ? "danger" : undefined },
-        { key: "missingOut", label: t("attendanceRecords.mark.MISSING_OUT"), value: ledger.missing_out, tone: ledger.missing_out > 0 ? "danger" : undefined },
-        { key: "lateEarly", label: t("attendanceRecords.ledger.late_or_early", { count: ledger.late_or_early }), value: ledger.late_or_early, tone: ledger.late_or_early > 0 ? "warn" : undefined },
-        { key: "unscheduled", label: t("attendanceRecords.mark.NO_SCHEDULE"), value: ledger.no_schedule, tone: ledger.no_schedule > 0 ? "warn" : undefined },
+        { key: "people", label: t("attendance.monthConsole.summary.scope"), value: t("attendanceRecords.board.ledgerHead", { people: ledger.people }) },
+        ...(ledger.normal > 0 ? [{ key: "normal", label: t("attendanceRecords.ledger.normal", { count: ledger.normal }), value: ledger.normal, tone: "ok" as const }] : []),
+        ...(ledger.no_record > 0 ? [{ key: "noRecord", label: t("attendanceRecords.mark.NO_RECORD"), value: ledger.no_record, tone: "danger" as const }] : []),
+        ...(ledger.missing_out > 0 ? [{ key: "missingOut", label: t("attendanceRecords.mark.MISSING_OUT"), value: ledger.missing_out, tone: "danger" as const }] : []),
+        ...(ledger.late_or_early > 0 ? [{ key: "lateEarly", label: t("attendanceRecords.ledger.late_or_early", { count: ledger.late_or_early }), value: ledger.late_or_early, tone: "warn" as const }] : []),
+        ...(ledger.no_schedule > 0 ? [{ key: "unscheduled", label: t("attendanceRecords.mark.NO_SCHEDULE"), value: ledger.no_schedule, tone: "warn" as const }] : []),
       ]}
     />
   );
@@ -58,6 +60,15 @@ export function DayGroupSections({
 }) {
   return (
     <>
+      <Band edge="bottom" className={r.boardHeadDock} data-board-head="">
+        <div className={r.boardHead}>
+          <div>{t("attendanceRecords.board.status")}</div>
+          <div>{t("attendanceRecords.board.person")}</div>
+          <div>{t("attendanceRecords.board.time")}</div>
+          <div>{t("attendanceRecords.board.result")}</div>
+          <div>{t("attendanceRecords.board.nextAction")}</div>
+        </div>
+      </Band>
       {groups.map(g => (
         <section key={`${g.workplace_id}-${g.unit_id}`} className={s.groupSection}>
           <div className={s.scheduleHeader}>

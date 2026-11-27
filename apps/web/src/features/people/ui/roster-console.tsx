@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { lazy, Suspense, useMemo, useRef, useState, type ReactNode } from "react";
+import { lazy, Suspense, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { HeartPulse, SlidersHorizontal, Upload } from "lucide-react";
@@ -9,10 +9,12 @@ import { chunk } from "../../../lib/chunk-guard";
 import { EMPLOYMENT_TYPE, label } from "../../../lib/labels";
 import { read } from "../../../lib/query";
 import { QueryState } from "../../../lib/react/query-state";
+import { myAccessQuery } from "../../../reference/authz/api";
+import { accessRefusal } from "../../../reference/authz/domain/access";
 import { entitiesRef } from "../../../reference/entity/api";
 import { unitsQuery } from "../../../reference/org/api";
 import { unitPath } from "../../../reference/org/present";
-import { Button } from "../../../ui/button/button";
+import { Button, ToggleButton } from "../../../ui/button/button";
 import { buttonClass } from "../../../ui/button/button-class";
 import { Dialog } from "../../../ui/dialog";
 import { EmptyState } from "../../../ui/empty-state";
@@ -48,9 +50,20 @@ import s from "./roster.module.css";
 
 const RosterConsolePanel = lazy(() => chunk(import("./roster-console-panel")).then(m => ({ default: m.RosterConsolePanel })));
 const RegisterExport = lazy(() => chunk(import("./register-export")).then(m => ({ default: m.RegisterExport })));
+const route = getRouteApi("/app/people");
 
 type Employee = components["schemas"]["Employee"];
 const EMPTY_EMPLOYEES: Employee[] = [];
+const PHONE_MQ = "(max-width: 767px)";
+const subscribePhone = (cb: () => void) => {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => {};
+  const mq = window.matchMedia(PHONE_MQ);
+  mq.addEventListener("change", cb);
+  return () => mq.removeEventListener("change", cb);
+};
+const getPhoneSnapshot = () =>
+  typeof window !== "undefined" && typeof window.matchMedia === "function" ? window.matchMedia(PHONE_MQ).matches : false;
+const getPhoneServerSnapshot = () => false;
 
 export function RosterConsole({
   manage, scoped = false, notice, actions, tabs, screen,
@@ -64,12 +77,16 @@ export function RosterConsole({
     find, reset, viewFilters, applyView, closePaste, bulkDone, openRecord, scroller, scrollRef, onRowFocus, filtered, customFilters, sameName, onRowAction,
   } = screen;
 
+  const isPhone = useSyncExternalStore(subscribePhone, getPhoneSnapshot, getPhoneServerSnapshot);
   const consoleNavigate = useNavigate();
   const [colsOpen, setColsOpen] = useState(false);
   const [expandedEntities, setExpandedEntities] = useState<Set<string>>(() => new Set());
   const [empTypes, setEmpTypes] = useState<Set<EmpType>>(() => new Set());
   const [activeChosung, setActiveChosung] = useState<string | null>(null);
   const findInputRef = useRef<HTMLDivElement>(null);
+  const access = useQuery(myAccessQuery);
+  const { peopleAccess } = route.useRouteContext();
+  const canUnplaced = Boolean(access.data && accessRefusal(access.data, peopleAccess.unplaced) === null);
   const entitiesQ = useQuery(entitiesRef);
   const unitsQ = useQuery(unitsQuery);
   const entities = entitiesQ.data?.items ?? [];
@@ -140,19 +157,20 @@ export function RosterConsole({
         titleId: "people-title",
         actions: (
           <div className={s.consoleTools}>
-            <Button size="sm" variant="secondary" onClick={() => setColsOpen(true)}><SlidersHorizontal size={13} aria-hidden="true" />{t("people.tools.columns")}</Button>
-            {manage ? <Link className={buttonClass("secondary", { size: "sm" })} to="/people/import"><Upload size={13} aria-hidden="true" />{t("roster.head.import")}</Link> : null}
+            {canUnplaced ? <ToggleButton size="sm" pressed={search.placement === "unplaced"} onClick={() => void navigate({ search: prev => ({ ...prev, placement: prev.placement === "unplaced" ? undefined : "unplaced", sel: undefined }), replace: true })}>{t("roster.view.unplaced")}</ToggleButton> : null}
+            <Button size="sm" variant="secondary" aria-label={t("people.tools.columns")} title={t("people.tools.columns")} onClick={() => setColsOpen(true)}><SlidersHorizontal size={13} aria-hidden="true" /><bdi className={s.consoleToolLabel}>{t("people.tools.columns")}</bdi></Button>
+            {manage ? <Link className={buttonClass("secondary", { size: "sm" })} to="/people/import" aria-label={t("roster.head.import")} title={t("roster.head.import")}><Upload size={13} aria-hidden="true" /><bdi className={s.consoleToolLabel}>{t("roster.head.import")}</bdi></Link> : null}
             <Link className={buttonClass("secondary", { size: "sm" })} to="/people/data-health" aria-label={dataHealthLabel} title={dataHealthLabel}><HeartPulse size={13} aria-hidden="true" /><bdi className={s.consoleToolLabel}>{dataHealthLabel}</bdi></Link>
             {actions}
           </div>
         ),
         primary: manage ? { id: "register", label: t("people.tools.add"), onAction: () => void consoleNavigate({ to: "/people/new", search: {} }) } : undefined,
       }}
-      find={<div ref={findInputRef} className={s.consoleFind} data-list-find=""><WorklistSearchField label={t("people.find.placeholder")} value={q} onChange={find} /></div>}
+      find={<div ref={findInputRef} className={s.consoleFind} data-list-find=""><WorklistSearchField label={t("roster.find")} value={q} onChange={find} /></div>}
       // A phone moves the sort and saved views together to the filter bar, which comes with the read list, so the head keeps one row.
-      tools={<div className={s.consoleDesktopTools}>{sortControl}{savedViews}</div>}
+      tools={!isPhone || (Boolean(r.list.error) && !r.list.data) ? <div className={s.consoleDesktopTools}>{!isPhone ? sortControl : null}{savedViews}</div> : undefined}
       stats={!firstRun ? <StatRow label={t("people.stat.label")} items={buildStatItems({ status, review, statusTotals: r.status.totals, registerMissingCount, setFilter })} /> : undefined}
-      rail={!firstRun ? <RosterConsoleRail entities={entities} facets={r.facets} unit={unit} idsActive={ids.length > 0} expandedEntities={expandedEntities} toggleEntityExpand={toggleEntityExpand} empTypes={empTypes} setEmpTypes={setEmpTypes} review={review} registerMissingCount={registerMissingCount} soonDays={soonDays} contractSoonCount={contractSoonCount} activeFilterCount={activeFilterCount} q={q} status={status} setFilter={setFilter} resetAll={resetAll} phoneTools={<>{sortControl}{savedViews}</>} /> : undefined}
+      rail={!firstRun ? <RosterConsoleRail entities={entities} facets={r.facets} unit={unit} idsActive={ids.length > 0} expandedEntities={expandedEntities} toggleEntityExpand={toggleEntityExpand} empTypes={empTypes} setEmpTypes={setEmpTypes} review={review} registerMissingCount={registerMissingCount} soonDays={soonDays} contractSoonCount={contractSoonCount} activeFilterCount={activeFilterCount} q={q} status={status} setFilter={setFilter} resetAll={resetAll} phoneTools={isPhone ? <>{sortControl}{savedViews}</> : undefined} /> : undefined}
       indexBar={!voided && !firstRun ? <IndexBar label={t("people.index.label")} items={CHOSUNG.map(ch => ({ id: ch, label: ch }))} active={activeChosung} onSelect={setActiveChosung} range={displayedRows.length > 0 ? t("people.index.range", { start: rangeStart, end: rangeEnd, total: rangeTotal }) : undefined} prev={{ label: t("people.index.prev"), disabled: hasClientFilter || firstOffset <= 0, onPress: () => scroller.current?.scrollBy({ top: -400, behavior: "smooth" }) }} next={{ label: t("people.index.next"), disabled: hasClientFilter || !r.list.hasNextPage, onPress: () => { if (r.list.hasNextPage && !r.list.isFetchingNextPage) void r.list.fetchNextPage(); } }} /> : undefined}
       notes={
         <>
@@ -209,14 +227,15 @@ export function RosterConsole({
       onSelect={select}
       onOpen={openRecord}
       onFind={() => findInputRef.current?.querySelector("input")?.focus()}
-      record={!voided && !firstRun && open ? { id: open, label: t("people.panel"), title: t("people.panel.cardTitle"), openInTab: openPerson ? { href: `/people/${open}`, label: openPerson.name } : undefined, closeLabel: t("roster.panel.close"), onClose: () => select(undefined), returnFocus: () => rowById(scroller.current, open), children: <Suspense fallback={<ReadSkeleton layout="record" />}><RosterConsolePanel id={open} today={today} unitTriggerRef={unitTrigger} onOpenUnit={selectRelated} /></Suspense> } : null}
+      record={!voided && !firstRun && open ? { id: open, label: t("people.panel"), title: openPerson?.name ?? t("people.panel.cardTitle"), openInTab: openPerson ? { href: `/people/${open}`, label: openPerson.name } : undefined, closeLabel: t("roster.panel.close"), onClose: () => select(undefined), returnFocus: () => rowById(scroller.current, open), children: <Suspense fallback={<ReadSkeleton layout="record" />}><RosterConsolePanel id={open} today={today} unitTriggerRef={unitTrigger} onOpenUnit={selectRelated} /></Suspense> } : null}
       related={!voided && !firstRun && open && openUnit ? { id: openUnit, label: t("roster.panel.unit"), title: selectedUnit?.name ?? t("roster.panel.unit"), meta: selectedUnit ? unitPath(unitItems, selectedUnit) : undefined, actions: <Link className={buttonClass("secondary", { size: "sm" })} to="/org" search={{ sel: openUnit, focus: openUnit }}>{t("roster.panel.openOrg")}</Link>, onClose: () => selectRelated(undefined), returnFocus: () => unitTrigger.current, children: <RosterUnitPanel unitId={openUnit} units={unitsQ.data?.items ?? unitItems} /> } : null}
       foot={
         !voided && !firstRun && displayedRows.length > 0 ? (
           <ListSummaryFooter
+            label={t("roster.foot.label")}
             start={
               <>
-                <strong>{t("people.foot.viewSummary", { count: displayedRows.length })}</strong>
+                <strong className={s.footRange}>{t("roster.foot.range", { shown: displayedRows.length, total: rangeTotal })}</strong>
                 <bdi>{t("people.foot.typeCount", { label: label(EMPLOYMENT_TYPE, "REGULAR"), count: displayedRows.filter(e => e.employment_type === "REGULAR").length })}</bdi>
                 <bdi>{t("people.foot.typeCount", { label: label(EMPLOYMENT_TYPE, "CONTRACT"), count: displayedRows.filter(e => e.employment_type === "CONTRACT").length })}</bdi>
                 <bdi>{t("people.foot.typeCount", { label: label(EMPLOYMENT_TYPE, "PART_TIME"), count: displayedRows.filter(e => e.employment_type === "PART_TIME").length })}</bdi>

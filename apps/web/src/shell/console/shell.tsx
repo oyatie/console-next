@@ -51,6 +51,7 @@ function ConsoleLayout({
   children,
   platform,
   restoring,
+  pending,
   tenantName,
   tenantPhase,
   userProfile,
@@ -78,9 +79,12 @@ function ConsoleLayout({
   const { inboxCount, inboxExact, inboxName, inboxDescription, approvalsCount } = useConsoleCounts(noticesActive && stream);
   // Watches the frame's own read of the reader without sending it again.
   const profileRead = useQuery({ ...meQuery, enabled: false });
+  const effectiveProfile = userProfile ?? profileRead.data;
+  const effectiveTenantName = tenantName ?? profileRead.data?.tenant?.name;
+  const effectiveTenantPhase = tenantPhase ?? profileRead.data?.tenant?.phase;
 
   const allLinks: readonly NavLink[] = useMemo(() => menu?.flatMap(group => group.links) ?? [], [menu]);
-  const showMyDesk = !platform && tenantPhase !== "SETUP" && userProfile?.employee_link_status === "LINKED";
+  const showMyDesk = !platform && effectiveTenantPhase !== "SETUP" && effectiveProfile?.employee_link_status === "LINKED";
   const currentModuleTo = useMemo(
     () =>
       (showMyDesk && (pathname === "/me/desk" || pathname.startsWith("/me/"))
@@ -171,12 +175,12 @@ function ConsoleLayout({
         },
   );
 
-  const rawName = (userProfile?.display_name?.trim() || claims?.name?.trim()) ?? "";
+  const rawName = (effectiveProfile?.display_name?.trim() || claims?.name?.trim()) ?? "";
   const shortName = personName(
     rawName,
     t(claims?.platform ? "account.name.unset.operator" : "account.name.unset"),
   );
-  const roleMeta = [userProfile?.employee_org_unit, userProfile?.employee_position]
+  const roleMeta = [effectiveProfile?.employee_org_unit, effectiveProfile?.employee_position]
     .map(part => part?.trim())
     .filter(Boolean)
     .join(" ");
@@ -199,7 +203,7 @@ function ConsoleLayout({
   const menuAway = !platform && navigationState !== "ready" && phoneHeader?.phoneNav !== "self-service";
   // With a session, a desktop bar draws once the reader's own read has settled too: the tenant's name sets the brand's
   // width, and the scope chip, the nav and the status segments sit after it.
-  const holding = restoring || (!platform && Boolean(session.token) && profileRead.isPending);
+  const holding = restoring || (Boolean(session.token) && !platform && !pending && profileRead.isPending);
 
   return (
     <PagePhoneHeader value={phoneHeaderValue}>
@@ -210,8 +214,8 @@ function ConsoleLayout({
               platform={platform}
               restoring={holding}
               defaultHref={defaultHref}
-              tenantName={tenantName}
-              tenantPhase={tenantPhase}
+              tenantName={effectiveTenantName}
+              tenantPhase={effectiveTenantPhase}
               navigationState={navigationState}
               navigationNotice={navigationNotice}
               navItems={navItems}
@@ -262,7 +266,7 @@ function ConsoleLayout({
                 <ConsolePhoneTop
                   title={phoneHeader?.title ?? currentTitle}
                   shellOwnsH1={phoneHeader?.shellOwnsH1}
-                  context={phoneHeader?.context ?? (!platform ? tenantName : undefined)}
+                  context={phoneHeader?.context ?? (!platform ? effectiveTenantName : undefined)}
                   back={phoneHeader?.back}
                   hideActions={phoneHeader?.hideActions}
                   platform={platform}
@@ -292,7 +296,7 @@ function ConsoleLayout({
             {!holding ? (
               <ConsoleStatusBar
                 platform={platform}
-                tenantName={tenantName}
+                tenantName={effectiveTenantName}
                 currentTitle={currentTitle}
                 inboxCount={inboxCount}
                 inboxExact={inboxExact}
@@ -313,7 +317,7 @@ function ConsoleLayout({
                 approvalsCount={approvalsCount}
                 platform={platform}
                 mode={phoneHeader?.phoneNav}
-                unlinked={userProfile?.employee_link_status === "UNLINKED"}
+                unlinked={effectiveProfile?.employee_link_status === "UNLINKED"}
                 activeId={phoneActiveId}
                 onNavigate={navigateToHref}
                 menuAway={menuAway}

@@ -156,6 +156,8 @@ impl<'a> PromoteService<'a> {
                     || current_verdicts.values().any(|v| *v != "ready")
                 {
                     Promotion::Blocked
+                } else if current_verdicts.is_empty() {
+                    Promotion::Watching
                 } else {
                     Promotion::Ready
                 }

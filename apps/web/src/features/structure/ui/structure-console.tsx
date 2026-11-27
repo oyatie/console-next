@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useState, useSyncExternalStore, type ReactNode, type RefObject } from "react";
+import { useState, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
@@ -8,6 +8,7 @@ import type { ReadState } from "../../../lib/react/query-view";
 import { HeadcountBasis } from "../../../reference/org/ui/headcount-basis";
 import { Segmented } from "../../../ui/button/segmented";
 import { Chip } from "../../../ui/chip";
+import { useNarrow } from "../../../ui/dock-sheet/use-narrow";
 import { EmptyState } from "../../../ui/empty-state";
 import type { SidePaneSpec } from "../../../ui/pane-grid/pane-grid-side";
 import { CanvasPattern } from "../../../ui/patterns/canvas";
@@ -27,16 +28,6 @@ import type { Commands } from "./use-structure-commands";
 
 type View = "chart" | "list" | "outline";
 const DEPTHS: readonly Depth[] = ["sites", "one", "all"];
-const PHONE_MQ = "(max-width: 719px)";
-const subscribePhone = (cb: () => void) => {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => {};
-  const mq = window.matchMedia(PHONE_MQ);
-  mq.addEventListener("change", cb);
-  return () => mq.removeEventListener("change", cb);
-};
-const getPhoneSnapshot = () =>
-  typeof window !== "undefined" && typeof window.matchMedia === "function" ? window.matchMedia(PHONE_MQ).matches : false;
-const getPhoneServerSnapshot = () => false;
 
 export function StructureConsole({
   s,
@@ -81,9 +72,10 @@ export function StructureConsole({
   side?: SidePaneSpec | false;
   sheets: ReactNode;
 }) {
-  const isPhone = useSyncExternalStore(subscribePhone, getPhoneSnapshot, getPhoneServerSnapshot);
-  const defaultView: View = isPhone ? "list" : "chart";
+  const defaultView: View = "chart";
   const activeView: View = view ?? defaultView;
+  const narrow = useNarrow();
+  const stacked = activeView === "chart" && narrow;
   const headSlot = useOrgHeadSlot();
   const [exportRows, setExportRows] = useState<readonly ChartNode[] | null>(null);
   const focusKey = focus ?? "tenant";
@@ -160,9 +152,9 @@ export function StructureConsole({
                       inline={inline}
                       parent={m.parent}
                       trailing={
-                        activeView === "chart" && focusNode ? (
+                        activeView === "chart" ? (
                           <div className="row">
-                            <HeadcountBasis>{t("structure.headcount.total", { count: focusNode.headcount })}</HeadcountBasis>
+                            {focusNode ? <HeadcountBasis>{t("structure.headcount.total", { count: focusNode.headcount })}</HeadcountBasis> : null}
                             <Segmented
                               size="sm"
                               label={t("structure.depth.label")}
@@ -177,6 +169,7 @@ export function StructureConsole({
                   ) : undefined
                 }
                 notes={!pageRead.error && dates.error ? <QueryState q={dates} inline own={() => t("asof.error")}>{() => null}</QueryState> : undefined}
+                toolbarOnInitialLoad
                 canvas={
                   !s ? null : empty ? (
                     s.readOnly ? <EmptyState title={t("asof.noRecords")} reason={null} /> : <FirstRun />
@@ -204,8 +197,8 @@ export function StructureConsole({
                     />
                   )
                 }
-                inspector={proposing ? proposal : side}
-                inspectorLabel={t("structure.side")}
+                inspector={proposing ? proposal : stacked ? (side ? side.children : null) : side}
+                inspectorLabel={proposing ? t("structure.side") : stacked ? undefined : side ? side.label : t("structure.side")}
                 foot={diff ? <CompareResults result={diff} /> : undefined}
                 overlays={!cmd.readOnly ? sheets : undefined}
                 statusSegments={

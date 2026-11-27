@@ -7,6 +7,7 @@ import { routeReady } from "../flows";
 import { clearShifts, expectStable, recordShifts } from "../stability";
 import { exitReasons } from "../mock/reasons";
 import { expectAxe, fits } from "../a11y";
+import { seededDateStyle } from "../experience";
 import { AT, authz, id, user } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { mockScreen } from "../mock/screen";
@@ -15,7 +16,7 @@ import { lifecycleSheetScreens } from "./lifecycle-sheets";
 test.beforeAll(() => loadCatalog("ko"));
 
 for (const step of ["report", "confirm"] as const) for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
-  test(`exit ${step} reasons keep their layout after input at ${width}px ${theme} @ui-state`, async ({ page }) => {
+  test(`exit ${step} reasons keep their layout after input at ${width}px ${theme} @ui-state`, async ({ page, storageState }) => {
     await page.setViewportSize({ width, height: 1000 });
     await page.addInitScript(theme => localStorage.setItem("console.theme", theme), theme);
     await page.addInitScript(recordShifts);
@@ -92,7 +93,7 @@ for (const step of ["report", "confirm"] as const) for (const width of [1440, 39
         await date.fill("2026-10-26");
         // The date commits on leaving the field: its echo lands in the line held for it, at its wrapped height.
         await date.blur();
-        const exitDay = fmtDate("2026-10-27");
+        const exitDay = fmtDate("2026-10-27", { style: seededDateStyle(storageState) });
         await expect(date).toHaveAccessibleDescription(`${t("exit.field.date.statutory")} ${exitDay} · ${t("exit.field.date.loss")} ${exitDay}`);
         expect((await chip.boundingBox())!.y, "the reasons stay put when the date's echo appears").toBe(before.y);
         await routeReady(page);

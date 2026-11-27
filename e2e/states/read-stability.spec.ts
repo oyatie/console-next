@@ -12,7 +12,7 @@ import { screens } from "./registry";
 test.beforeAll(() => loadCatalog("ko"));
 
 for (const path of ["/people?view=accounts", ...["wp-create", "wp-edit", "wp-close", "wp-move"].map(act => `/org?act=${act}`)]) {
-  for (const width of [1440, 390]) test(`${path}: failed reads retain the loading region and controls at ${width}px @ui-state`, async ({ page }) => {
+  for (const width of [1440, 390]) test(`${path}: failed reads retain the loading region and controls at ${width}px @ui-state @baseline`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(recordShifts);
     const fixture = await mockScreen(page, screens[2], "populated");
@@ -41,7 +41,7 @@ for (const path of ["/people?view=accounts", ...["wp-create", "wp-edit", "wp-clo
   });
 }
 
-test("/people: a roster read failing after first paint leaves the roster tools where they stood @ui-state", async ({ page }) => {
+test("/people: a roster read failing after first paint leaves the roster tools where they stood @ui-state @baseline", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.addInitScript(recordShifts);
   const fixture = await mockScreen(page, screens[1], "populated");
@@ -70,7 +70,7 @@ test("/people: a roster read failing after first paint leaves the roster tools w
   } finally { held.resolve(); await page.close(); fixture.release(); }
 });
 
-test("org: late fonts preserve loading and failed controls @ui-state", async ({ page }) => {
+test("org: late fonts preserve loading and failed controls @ui-state @baseline", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.addInitScript(recordShifts);
   const fixture = await mockScreen(page, screens[2], "populated");
@@ -100,7 +100,7 @@ test("org: late fonts preserve loading and failed controls @ui-state", async ({ 
   } finally { fonts.resolve(); read.resolve(); await page.close(); fixture.release(); }
 });
 
-for (const name of [user.display_name, "u01234567@platform", user.display_name.repeat(16)]) for (const path of ["/platform", "/org"]) for (const width of [1440, 1024, 800, 390]) test(`${path}: late fonts preserve ${name} and shell controls at ${width}px @ui-state`, async ({ page }) => {
+for (const name of [user.display_name, "u01234567@platform", user.display_name.repeat(16)]) for (const path of ["/platform", "/org"]) for (const width of [1440, 1024, 800, 390]) test(`${path}: late fonts preserve ${name} and shell controls at ${width}px @ui-state @baseline`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 });
   await page.addInitScript(recordShifts);
   const fixture = await mockScreen(page, screens[2], "populated");
@@ -148,7 +148,7 @@ for (const name of [user.display_name, "u01234567@platform", user.display_name.r
   } finally { fonts.resolve(); await page.close(); fixture.release(); }
 });
 
-for (const width of [1440, 1024, 390]) test(`org: populated, loading and failed heads share one action row at ${width}px @ui-state`, async ({ page }) => {
+for (const width of [1440, 1024, 390]) test(`org: populated, loading and failed heads share one action row at ${width}px @ui-state @baseline`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 });
   await page.addInitScript(recordShifts);
   const fixture = await mockScreen(page, screens[2], "populated");
@@ -210,7 +210,7 @@ for (const width of [1440, 1024, 390]) test(`org: populated, loading and failed 
   } finally { held.resolve(); await page.close(); fixture.release(); }
 });
 
-for (const width of [1440, 390]) test(`shell: failed session restore keeps recovery controls at ${width}px @ui-state`, async ({ page }) => {
+for (const width of [1440, 390]) test(`shell: failed session restore keeps recovery controls at ${width}px @ui-state @baseline`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 });
   const fixture = await mockScreen(page, screens[2], "populated");
   const held = Promise.withResolvers<void>();

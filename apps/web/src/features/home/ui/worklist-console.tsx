@@ -6,6 +6,7 @@ import { t } from "@console/i18n";
 import { fmtDateTime, fmtNumber } from "@console/i18n/format";
 import { AlertTriangle, SlidersHorizontal } from "lucide-react";
 import { liveApplying } from "../../../lib/live/live";
+import { QueryState } from "../../../lib/react/query-state";
 import { queryView, type ReadState } from "../../../lib/react/query-view";
 import { columnSelection } from "../../../lib/react/use-column-selection";
 import type { AccessRequirement } from "../../../reference/authz/domain/access";
@@ -88,7 +89,8 @@ export function WorklistConsole({
   if (!rereading && !inbox.isPending && !caughtUp) setCaughtUp(true);
   const mePending = mode === "inbox" && Boolean(meRead?.isPending);
   const meError = mode === "inbox" && meRead?.error ? meRead : undefined;
-  const loading = setupPending || rereading || applying || mePending;
+  const initialLoading = setupPending || rereading || mePending;
+  const loading = initialLoading || applying;
 
   const pages = (inbox.data?.pages ?? []) as AttentionInboxResponse[];
   const first = pages[0];
@@ -146,11 +148,11 @@ export function WorklistConsole({
         baseline={baseline}
         head={{
           title, titleId,
-          asOf: !loading && !meError && !inSetup && !inbox.isPending && !inbox.error && first?.as_of
+          meta: !loading && !meError && !inSetup && !inbox.isPending && !inbox.error && first?.as_of
             ? <time className="muted t-sm" dateTime={first.as_of}>{t("home.asOf", { time: fmtDateTime(first.as_of) })}</time>
             : undefined,
         }}
-        tabs={!loading && !meError && !inSetup && !inbox.isPending && !inbox.error ? <InboxTabs view={view} /> : undefined}
+        stats={!loading && !meError && !inSetup && !inbox.isPending && !inbox.error ? <InboxTabs view={view} /> : undefined}
         list={() => (view === "reference" ? <ReferenceList /> : view === "done" ? <DoneList /> : <SnoozedList />)}
       />
     );
@@ -163,7 +165,7 @@ export function WorklistConsole({
 
   const columnsEnabled = !inSetup;
   const recordVisible = !loading && !meError && inbox.data !== undefined && ["ready", "stale", "offline"].includes(queryView(inbox));
-  const showControls = !loading && !inSetup && !meError && !inbox.error && Boolean(first?.has_work || first?.available_filters.length);
+  const showControls = !initialLoading && !inSetup && !meError && !inbox.error && Boolean(first?.has_work || first?.available_filters.length);
   // Home's only way to the other lanes, the done list and rows it does not load: a steady way in once home has settled,
   // whatever the list holds.
   const inboxLink = mode === "home" && !loading && !inSetup && !meError && !inbox.error ? <Link to="/inbox">{t("home.inbox.viewInbox")}</Link> : undefined;
@@ -192,15 +194,15 @@ export function WorklistConsole({
 
   return (
     <Worklist
-      q={meError ? meError : loading ? { ...inbox, isPending: true, data: undefined } : inbox}
+      q={meError ? meError : initialLoading ? { ...inbox, isPending: true, data: undefined } : inbox}
       baseline={baseline}
       head={{
         title, titleId,
-        asOf: mode === "inbox" && !loading && !inSetup && !meError && !inbox.error && first?.as_of
+        meta: mode === "inbox" && !loading && !inSetup && !meError && !inbox.error && first?.as_of
           ? <time className="muted t-sm" dateTime={first.as_of}>{t("home.asOf", { time: fmtDateTime(first.as_of) })}</time>
           : undefined,
       }}
-      tabs={mode === "inbox" && !loading && !meError && !inSetup && !inbox.isPending && !inbox.error ? <InboxTabs view={view} /> : undefined}
+      stats={mode === "inbox" && !initialLoading && !meError && !inSetup && !inbox.isPending && !inbox.error ? <InboxTabs view={view} /> : undefined}
       views={showControls && mode === "home" && first?.attention_filters?.length ? (
         <WorklistSegmentBar
           label={t("home.attention.label")}
@@ -221,7 +223,8 @@ export function WorklistConsole({
           <Button size="sm" onClick={() => setColsOpen(true)}><SlidersHorizontal size={13} aria-hidden="true" />{t("home.worklist.columns")}</Button>
         </div>
       ) : undefined}
-      notes={<>{receipt}<HeldNotice placement="list" /></>}
+      notes={receipt}
+      recovery={receipt}
       list={() => {
         const noWork = !first?.has_work && unavailable.length === 0;
         if (mode === "inbox" && inSetup && !allItems.length && !unavailable.length && !inbox.hasNextPage) {
@@ -229,6 +232,8 @@ export function WorklistConsole({
         }
         return (
           <div ref={surfaceRef} className={s.tableWrap}>
+            {showControls && <HeldNotice placement="list" align="start" />}
+            <QueryState q={applying ? { ...inbox, isPending: true, data: undefined } : inbox} layout="list">{() => <>
             <UnavailableBanners unavailable={unavailable} onRetry={() => void inbox.refetch()} retrying={inbox.isFetching} />
             {checklist && setup?.(checklist)}
             {!checklist && noWork && (
@@ -250,13 +255,10 @@ export function WorklistConsole({
                 onToggleAll={next => setCheckedIds(next ? new Set(visibleRows.map(row => row.id)) : new Set())}
                 shownCols={shownCols}
                 action={action}
-                inlineRowAction={
-                  inlineRowAction
-                    ? (item, onSelectReject) => inlineRowAction(item, titleId, onSelectReject, () => onItemDecided(item.id))
-                    : undefined
-                }
+                inlineRowAction={inlineRowAction ? (item, onSelectReject) => inlineRowAction(item, titleId, onSelectReject, () => onItemDecided(item.id)) : undefined}
                 focusAfter={titleId}
                 moreCount={remainingCount}
+                moreLabel={mode === "inbox" ? t("home.inbox.more") : undefined}
                 moreLink={inboxLink}
                 morePending={inbox.isFetchingNextPage}
                 onMore={() => {
@@ -275,6 +277,7 @@ export function WorklistConsole({
               />
             ) : !checklist && !noWork && first && <QuietQueue page={first} filter={mode === "home" && attention !== "all" ? attention : view} partial={unavailable.length > 0} />}
             {visibleRows.length === 0 && inboxLink && <WorklistMoreBar>{inboxLink}</WorklistMoreBar>}
+            </>}</QueryState>
           </div>
         );
       }}
@@ -282,17 +285,17 @@ export function WorklistConsole({
       bands={!loading && !meError && !inbox.error && !inSetup && first?.has_work ? () => <WorklistLower items={unfilteredItems} asOf={first?.as_of} action={action} focusAfter={titleId} orgNeed={orgNeed} canOrgStructure={canOrgStructure} /> : undefined}
       onSelect={columnsEnabled ? selectItem : undefined}
       onOpen={columnsEnabled ? focusRecord : undefined}
-      record={columnsEnabled && recordVisible && !removed && sel && selectedItem ? {
+      record={columnsEnabled && recordVisible && !removed && sel ? {
         id: sel,
         label: t("home.inbox.record.title"),
-        title: selectedItem.ref ? `${t("home.worklist.selectedMeta")} · ${selectedItem.ref}` : t("home.worklist.selectedMeta"),
-        openInTab: openHref ? { href: openHref, label: selectedItem.title } : undefined,
+        title: selectedItem ? [t("home.worklist.selectedMeta"), selectedItem.title, selectedItem.ref].filter(Boolean).join(" · ") : t("home.worklist.selectedMeta"),
+        openInTab: openHref && selectedItem ? { href: openHref, label: selectedItem.title } : undefined,
         onClose: () => select(undefined),
         returnFocus: () => surfaceRef.current?.querySelector<HTMLElement>(`[data-id="${CSS.escape(sel)}"]`),
-        footer: isInlineApproval && recordFooter
+        footer: isInlineApproval && selectedItem && recordFooter
           ? recordFooter(selectedItem, titleId, () => onItemDecided(selectedItem.id))
           : undefined,
-        children: isInlineApproval && recordBody ? recordBody(selectedItem) : <InboxRecord item={selectedItem} action={action} extra={snooze} focusAfter={titleId} onBack={() => select(undefined)} />,
+        children: isInlineApproval && selectedItem && recordBody ? recordBody(selectedItem) : <InboxRecord item={selectedItem} action={action} extra={snooze} focusAfter={titleId} onBack={() => select(undefined)} />,
       } : null}
       statusSegments={!loading && !meError && !inbox.error && first && !inSetup ? [
         { id: "total", content: t("home.worklist.statusTotal", { count: first.total }) },

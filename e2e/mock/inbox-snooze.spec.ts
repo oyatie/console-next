@@ -6,6 +6,7 @@ import { mockScreen } from "./screen";
 import { mockRoute } from "./route";
 import { failure, inbox } from "./fixtures";
 import { expectAxe, fits } from "../a11y";
+import { seededDateStyle } from "../experience";
 import { screens } from "../states/registry";
 
 test.beforeAll(() => loadCatalog("ko"));
@@ -57,7 +58,8 @@ async function snoozeOf(page: Page, item: { id: string; title: string }) {
   return { record, button: record.getByRole("button", { name: t("home.inbox.snooze"), exact: true }) };
 }
 
-for (const width of [1440, 390]) test(`a row is postponed to a preset day, a legal deadline holds later days back, and a decision others wait on offers none, at ${width}px`, async ({ page }, info) => {
+for (const width of [1440, 390]) test(`a row is postponed to a preset day, a legal deadline holds later days back, and a decision others wait on offers none, at ${width}px`, async ({ page, storageState }, info) => {
+  const style = seededDateStyle(storageState);
   await page.setViewportSize({ width, height: 900 });
   const { mock, sent, snoozeOf } = await open(page);
   await expect((await snoozeOf(0)).button).toBeVisible();
@@ -68,10 +70,10 @@ for (const width of [1440, 390]) test(`a row is postponed to a preset day, a leg
   const menu = page.getByRole("menu", { name: t("home.inbox.snooze"), exact: true });
   await expect(menu.getByRole("menuitem")).toHaveCount(4);
   await expect(menu.getByRole("menuitem", { name: new RegExp(t("home.inbox.snooze.short")) })).toBeEnabled();
-  await expect(menu.getByRole("menuitem", { name: new RegExp(t("home.inbox.snooze.short")) })).toContainText(fmtDate("2026-11-14", { weekday: "short" }));
+  await expect(menu.getByRole("menuitem", { name: new RegExp(t("home.inbox.snooze.short")) })).toContainText(fmtDate("2026-11-14", { weekday: "short", style }));
   const later = menu.getByRole("menuitem", { name: new RegExp(t("home.inbox.snooze.next_week")) });
   await expect(later).toBeDisabled();
-  await expect(later).toContainText(t("home.inbox.snooze.latest", { date: fmtDate("2026-11-15") }));
+  await expect(later).toContainText(t("home.inbox.snooze.latest", { date: fmtDate("2026-11-15", { style }) }));
   await fits(page, `inbox snooze menu ${width}`);
   await expectAxe(page, `inbox snooze menu ${width}`);
   await page.screenshot({ path: info.outputPath(`inbox-snooze-menu-${width}.png`), fullPage: true });
@@ -85,7 +87,7 @@ for (const width of [1440, 390]) test(`a row is postponed to a preset day, a leg
   expect(mock.unexpected).toEqual([]);
 });
 
-test("a picked day stays inside its bounds before anything is sent", async ({ page }) => {
+test("a picked day stays inside its bounds before anything is sent", async ({ page, storageState }) => {
   const { mock, sent, snoozeOf } = await open(page);
   await (await snoozeOf(1)).button.click();
   await page.getByRole("menuitem", { name: t("home.inbox.snooze.pick") }).click();
@@ -94,7 +96,7 @@ test("a picked day stays inside its bounds before anything is sent", async ({ pa
   const submit = dialog.getByRole("button", { name: t("home.inbox.snooze"), exact: true });
   await day.fill("20261116");
   await day.blur();
-  await expect(dialog).toContainText(t("home.inbox.snooze.latest", { date: fmtDate("2026-11-15") }));
+  await expect(dialog).toContainText(t("home.inbox.snooze.latest", { date: fmtDate("2026-11-15", { style: seededDateStyle(storageState) }) }));
   await expect(submit).toBeDisabled();
   await day.fill("20261115");
   await day.blur();
@@ -130,7 +132,7 @@ test("a refused postponement says why in place and the item stays", async ({ pag
   expect(mock.unexpected).toEqual([]);
 });
 
-test("the snoozed chip opens what I postponed, with its day, and brings one back now", async ({ page }, info) => {
+test("the snoozed chip opens what I postponed, with its day, and brings one back now", async ({ page, storageState }, info) => {
   const data = queue();
   data.counts.snoozed = { total: 1, total_is_exact: true };
   const parked = inbox(1);
@@ -152,7 +154,7 @@ test("the snoozed chip opens what I postponed, with its day, and brings one back
   // The snoozed view is another card: the chip is drawn anew and keeps the focus.
   await expect(chip).toBeFocused();
   const row = page.locator(`[data-id="${parked.items[0]!.id}"]`);
-  await expect(row).toContainText(t("home.inbox.snooze.returns", { date: fmtDate("2026-11-20", { weekday: "short" }) }));
+  await expect(row).toContainText(t("home.inbox.snooze.returns", { date: fmtDate("2026-11-20", { weekday: "short", style: seededDateStyle(storageState) }) }));
   await expect(row.getByRole("button", { name: t("home.inbox.snooze"), exact: true })).toHaveCount(0);
   await fits(page, "inbox snoozed view");
   await expectAxe(page, "inbox snoozed view");

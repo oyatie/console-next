@@ -11,6 +11,7 @@ import {
   type RecoveryChannel,
 } from "@console/api/recovery";
 import { t } from "@console/i18n";
+import { tr } from "@console/i18n/auth-recovery";
 import { read } from "../lib/query";
 import { announce } from "../lib/react/announce";
 import { signInError } from "../lib/refusal";
@@ -72,28 +73,28 @@ export function SetupPasskeyRecovery({
         </Banner>
       )}
       {eligible && recStatus.data && (
-        <Card title={t("auth.setup.recovery.title")}>
+        <Card title={tr("auth.setup.recovery.title")}>
           <div className="form">
             {recStatus.data.contact && (
               <div className="row">
                 <span>
-                  {t("auth.setup.recovery.ready", {
+                  {tr("auth.setup.recovery.ready", {
                     masked: recStatus.data.contact.masked_value,
                     remaining: recStatus.data.codes.remaining,
                     total: recStatus.data.codes.total,
                   })}
                 </span>
-                {recStatus.data.contact.review_pending && <Chip>{t("auth.setup.recovery.reviewPending")}</Chip>}
+                {recStatus.data.contact.review_pending && <Chip>{tr("auth.setup.recovery.reviewPending")}</Chip>}
               </div>
             )}
             <ChoiceField
-              label={t("auth.setup.recovery.channel")}
+              label={tr("auth.setup.recovery.channel")}
               required={false}
-              options={(["EMAIL", "PHONE"] as const).map((k) => ({ value: k, label: t(`auth.setup.recovery.channel.${k}`) }))}
+              options={(["EMAIL", "PHONE"] as const).map((k) => ({ value: k, label: tr(`auth.setup.recovery.channel.${k}`) }))}
               value={channel}
               onChange={(v) => setChannel((v as RecoveryChannel) ?? "EMAIL")}
             />
-            <Field label={t("auth.setup.recovery.value")} required={false}>
+            <Field label={tr("auth.setup.recovery.value")} required={false}>
               {(p) => (
                 <TextInput
                   {...p}
@@ -108,35 +109,35 @@ export function SetupPasskeyRecovery({
               )}
             </Field>
             <Checks
-              label={t("auth.setup.recovery.title")}
-              items={[{ id: "recovery", label: t("auth.setup.recovery.consent"), description: recoveryConsentDesc }]}
+              label={tr("auth.setup.recovery.title")}
+              items={[{ id: "recovery", label: tr("auth.setup.recovery.consent"), description: recoveryConsentDesc }]}
               value={contactConsent}
               onChange={setContactConsent}
               isDisabled={busy}
             />
-            <p className="muted auth__terms" id={recoveryConsentDesc}>{t("auth.setup.recovery.consentBody")}</p>
+            <p className="muted auth__terms" id={recoveryConsentDesc}>{tr("auth.setup.recovery.consentBody")}</p>
             <Button disabled={busy || !contactValue.trim() || !contactConsent.includes("recovery")} onClick={() => void saveRecoveryAndIssue()}>
-              {t("auth.setup.recovery.saveAndIssue")}
+              {tr("auth.setup.recovery.saveAndIssue")}
             </Button>
           </div>
         </Card>
       )}
       {issuedCodes && (
-        <Dialog open title={t("auth.setup.recovery.codesTitle")} onClose={() => setIssuedCodes(null)} dismissable={false}>
-          <p className="muted">{t("auth.setup.recovery.codesOnce")}</p>
+        <Dialog open title={tr("auth.setup.recovery.codesTitle")} onClose={() => setIssuedCodes(null)} dismissable={false}>
+          <p className="muted">{tr("auth.setup.recovery.codesOnce")}</p>
           <pre className="secret">{issuedCodes.join("\n")}</pre>
           <div className="form__actions">
             <Button
               onClick={() =>
                 void navigator.clipboard
                   .writeText(issuedCodes.join("\n"))
-                  .then(() => announce(t("auth.setup.recovery.copiedAll")), () => announce(t("common.copyFailed")))
+                  .then(() => announce(tr("auth.setup.recovery.copiedAll")), () => announce(t("common.copyFailed")))
               }
             >
-              {t("auth.setup.recovery.copyAll")}
+              {tr("auth.setup.recovery.copyAll")}
             </Button>
             <Button variant="primary" onClick={() => setIssuedCodes(null)}>
-              {t("auth.setup.recovery.savedAck")}
+              {tr("auth.setup.recovery.savedAck")}
             </Button>
           </div>
         </Dialog>

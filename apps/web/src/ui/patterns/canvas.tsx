@@ -19,6 +19,7 @@ export function CanvasPattern({
   head,
   tabs,
   toolbar,
+  toolbarOnInitialLoad,
   notes,
   canvas,
   inspector,
@@ -45,6 +46,7 @@ export function CanvasPattern({
       head={head}
       tabs={tabs}
       toolbar={shownSlot(toolbar) ? <div className={s.toolbar}>{toolbar}</div> : null}
+      toolbarOnInitialLoad={toolbarOnInitialLoad}
       overlays={overlays}
       queryLayout="grid"
       detailActive={Boolean(paneInspector)}
@@ -71,9 +73,13 @@ export function CanvasPattern({
               />
             </div>
             {dockedInspector ? (
-              <aside className={s.inspectorAside} aria-label={inspectorLabel}>
-                {dockedInspector}
-              </aside>
+              inspectorLabel ? (
+                <aside className={s.inspectorAside} aria-label={inspectorLabel}>
+                  {dockedInspector}
+                </aside>
+              ) : (
+                <div className={s.inspectorAside}>{dockedInspector}</div>
+              )
             ) : null}
           </div>
         </div>

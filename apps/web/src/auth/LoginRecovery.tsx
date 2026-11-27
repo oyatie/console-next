@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { redeemRecoveryCode, startRecoveryChallenge } from "@console/api/recovery";
 import { t } from "@console/i18n";
+import { tr } from "@console/i18n/auth-recovery";
 import { signInError } from "../lib/refusal";
 import { Banner } from "../ui/banner/banner";
 import { Button, Form } from "../ui/button/button";
@@ -80,13 +81,13 @@ export function RecoveryLoginBody({
         )}
       </Field>
       <Button disabled={busy} onClick={() => void sendChallenge()}>
-        {t("auth.recovery.sendChallenge")}
+        {tr("auth.recovery.sendChallenge")}
       </Button>
       {challengeSent && (
         <>
-          <Banner live="polite">{t("auth.recovery.challengeSent")}</Banner>
+          <Banner live="polite">{tr("auth.recovery.challengeSent")}</Banner>
           <Form className="form" onSubmit={submitRecovery}>
-            <Field label={t("auth.recovery.code")} required={null}>
+            <Field label={tr("auth.recovery.code")} required={null}>
               {(p) => (
                 <TextInput
                   {...p}
@@ -100,7 +101,7 @@ export function RecoveryLoginBody({
                 />
               )}
             </Field>
-            <Field label={t("auth.recovery.contactCode")} required={null}>
+            <Field label={tr("auth.recovery.contactCode")} required={null}>
               {(p) => (
                 <TextInput
                   {...p}
@@ -117,7 +118,7 @@ export function RecoveryLoginBody({
               )}
             </Field>
             <Button type="submit" variant="primary" disabled={busy || !savedRecoveryCode.trim() || !contactCode.trim()}>
-              {t("auth.recovery.submit")}
+              {tr("auth.recovery.submit")}
             </Button>
           </Form>
         </>

@@ -278,12 +278,13 @@ export const en = {
   ...enDirectoryViews,
   ...enUiWorklist,
   ...enUiLedger,
-  ...enMe, ...enTeam, ...enShellRoutes, ...enAccessPolicies, ...enAccessCheck,
+  ...enMe, ...enTeam, ...enShellRoutes, ...enAccessPolicies, ...enAccessCheck, ...enAuth,
 } as const;
 
 export type ScreenMessageId = keyof typeof en;
 import { enAccessCheck } from "./en/access-check";
 import { enAccessPolicies } from "./en/access-policies";
+import { enAuth } from "./en/auth";
 import { enDirectoryViews } from "./en/directory-views";
 import { enSettingsHub } from "./en/settings-hub";
 import { enShellRoutes } from "./en/shell-routes";

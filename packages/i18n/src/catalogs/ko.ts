@@ -1,5 +1,6 @@
 import { koShellRoutes } from "./ko/shell-routes";
 import { koAccessCheck } from "./ko/access-check";
+import { koAuth } from "./ko/auth";
 import { koAccessPolicies } from "./ko/access-policies";
 import { koUiFlexibleColumns } from "./ko/ui-flexible-columns";
 import { koGovernanceRefusals } from "./ko/governance";
@@ -280,5 +281,5 @@ export const ko: Record<ScreenMessageId, string> = {
   ...koDirectoryViews,
   ...koUiWorklist,
   ...koUiLedger,
-  ...koMe, ...koTeam, ...koShellRoutes, ...koAccessPolicies, ...koAccessCheck,
+  ...koMe, ...koTeam, ...koShellRoutes, ...koAccessPolicies, ...koAccessCheck, ...koAuth,
 };

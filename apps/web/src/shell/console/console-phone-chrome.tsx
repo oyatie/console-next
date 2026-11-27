@@ -56,8 +56,9 @@ export function ConsolePhoneTop({
             ) : null}
             <Suspense
               fallback={
-                <Link to="/account" className={s.accountFallback} aria-label={displayName}>
+                <Link to="/account" id="console-phone-account" className={s.accountFallback}>
                   <Avatar name={displayName} size="sm" tone="accent" />
+                  <span className="sr-only">{displayName}</span>
                 </Link>
               }
             >

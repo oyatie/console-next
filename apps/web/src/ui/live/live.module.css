@@ -13,3 +13,4 @@
   position: absolute; inset-block-start: 0; inset-inline-end: var(--space-2); max-width: calc(100% - var(--space-2) * 2);
   pointer-events: auto; background: var(--surface); border-color: var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-pop);
 }
+.listChipStart { inset-inline-start: var(--space-6); inset-inline-end: auto; }

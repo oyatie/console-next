@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import type { components } from "@console/api/schema";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
+import { seededExperience } from "../experience";
 import { accountReads } from "./account";
 import { mockScreen } from "./screen";
 import { user } from "./fixtures";
@@ -83,13 +84,13 @@ for (const width of [1440, 390]) for (const state of ["populated", "empty", "loa
   });
 }
 
-for (const width of [1440, 390]) test(`account links to rights filing at ${width}px`, async ({ page }, testInfo) => {
+for (const width of [1440, 390]) test(`account links to rights filing at ${width}px`, async ({ page, storageState }, testInfo) => {
   await page.setViewportSize({ width, height: 900 });
   const fixture = await mockScreen(page, screens[0], "populated");
     await filingOptions(page);
   await accountReads(page, "save-unchanged");
   await page.goto("/account");
-  await expect(page.getByRole("heading", { name: t("account.title"), exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: t(seededExperience(storageState) === "baseline" ? "account.title" : "shell.profile"), exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: t("account.privacy.title"), exact: true })).toHaveAttribute("href", "/account/privacy");
   for (const theme of ["light", "dark"]) {
     await page.locator("html").evaluate((element, value) => { element.dataset.theme = value; }, theme);

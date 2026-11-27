@@ -25,7 +25,7 @@ export async function fillDate(s: Locator | Page, value: string, label?: string)
   await box.blur();
 }
 /** The immediate preset of the date field, with its localized date or bulk consequence. */
-export const todayPreset = (s: Locator | Page) => s.getByRole("button", { name: /^오늘 (· 바로 반영|\d{4}\.)/ });
+export const todayPreset = (s: Locator | Page) => s.getByRole("button", { name: /^오늘 (· 바로 반영|\d{4}[.-])/ });
 
 /** A business date without the weekday, as sheet buttons and facts show it. */
 export const koMonthDay = koDate;

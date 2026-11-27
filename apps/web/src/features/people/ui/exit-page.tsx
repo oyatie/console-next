@@ -178,7 +178,7 @@ function ConsoleExitCase({ q, toList, canReadDirectory }: { q: ReturnType<typeof
           !settled ? (
             <ReadSkeleton layout="record" />
           ) : (
-            <section className={s.stack} aria-labelledby="exit">
+            <div className={s.stack}>
               <CaseAxis c={c} onBack={setClosing} onDone={done} consoleMode />
               <QueryState q={trail} own={lifecycleTrailError}>
                 {(value) => (
@@ -188,7 +188,7 @@ function ConsoleExitCase({ q, toList, canReadDirectory }: { q: ReturnType<typeof
                   </>
                 )}
               </QueryState>
-            </section>
+            </div>
           )
         ) : null
       }

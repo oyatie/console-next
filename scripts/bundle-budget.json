@@ -90,6 +90,7 @@
       "src/features/people/ui/grid-page.tsx",
       "src/features/people/ui/job-titles-page.tsx",
       "src/features/people/ui/notice-list-page.tsx",
+      "src/features/people/ui/people-route.tsx",
       "src/features/people/ui/requests-page.tsx",
       "src/features/people/ui/roster-fields-page.tsx",
       "src/features/people/ui/unplaced-console.tsx",
@@ -105,8 +106,7 @@
       "src/routes/home-screen.tsx",
       "src/routes/inbox-screen.tsx",
       "src/routes/org-screen.tsx",
-      "src/routes/org-tabs.tsx",
-      "src/routes/people-screen.tsx"
+      "src/routes/org-tabs.tsx"
     ]
   },
   "record": {

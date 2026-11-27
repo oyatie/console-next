@@ -25,7 +25,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await page.goto("/");
     const open = page.getByRole("link", { name: t("home.inbox.viewInbox"), exact: true });
     await expect(open).toBeVisible();
-    const queue = page.getByRole("region", { name: t("home.inbox.title"), exact: true });
+    const queue = page.getByRole("region", { name: t("home.inbox.title"), exact: true }).or(page.getByRole("grid", { name: t("home.inbox.title"), exact: true })).first();
 
     for (let arrival = 0; arrival < 2; arrival++) {
       let release!: () => void;

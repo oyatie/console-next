@@ -132,6 +132,7 @@ export function PaneGrid({
       clearSettle();
       const row = rowElOf(e.target);
       if (row?.closest('[role="tree"]')) return;
+      if (e.target instanceof Element && e.target.closest(NESTED_CONTROL) && e.target !== row) return;
       const id = rowKeyOf(row);
       if (!id) return;
       settleRef.current = setTimeout(() => {

@@ -4,6 +4,7 @@ import type { components } from "@console/api";
 import { fmtDate } from "@console/i18n/format";
 import { expect, test } from "@playwright/test";
 import { expectAxe, fits } from "../a11y";
+import { seededDateStyle } from "../experience";
 import { mockScreen } from "../mock/screen";
 import { AT, id } from "../mock/fixtures";
 import { moveDetail } from "../mock/lifecycle-sheets";
@@ -21,7 +22,8 @@ const refusedEvent: components["schemas"]["EmployeeLifecycleEvent"] & { action_r
 };
 
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
-  test(`lifecycle dates use the shared display format ${width} ${theme} @ui-state`, async ({ page }) => {
+  test(`lifecycle dates use the shared display format ${width} ${theme} @ui-state`, async ({ page, storageState }) => {
+    const style = seededDateStyle(storageState);
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const fixture = await mockScreen(page, lifecycleSheetScreens[0], "populated");
@@ -37,10 +39,10 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await page.goto(`/people/${id(4000)}?act=RETURN_FROM_LEAVE`);
     await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
     const sheet = page.getByRole("dialog", { name: t("lifecycle.title.RETURN_FROM_LEAVE"), exact: true });
-    await expect(sheet).toContainText(t("lifecycle.nowSince", { where: `본사 › ${t("lifecycle.changes.siteDirect")}`, date: fmtDate("2020-03-02") }));
-    await expect(sheet).toContainText(fmtDate("2026-03-01"));
-    await expect(sheet).toContainText(fmtDate("2027-02-28"));
-    await expect(sheet).not.toContainText(/2020-03-02|2026-03-01|2027-02-28/);
+    await expect(sheet).toContainText(t("lifecycle.nowSince", { where: `본사 › ${t("lifecycle.changes.siteDirect")}`, date: fmtDate("2020-03-02", { style }) }));
+    await expect(sheet).toContainText(fmtDate("2026-03-01", { style }));
+    await expect(sheet).toContainText(fmtDate("2027-02-28", { style }));
+    if (style !== "iso") await expect(sheet).not.toContainText(/2020-03-02|2026-03-01|2027-02-28/);
     await fits(page, `people-dates/${width}/${theme}`);
     await expectAxe(page, `people-dates/${width}/${theme}`);
     expect(fixture.unexpected).toEqual([]);

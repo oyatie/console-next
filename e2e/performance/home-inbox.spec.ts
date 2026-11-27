@@ -66,7 +66,7 @@ test("served 2,000-person Home and its inbox stay within 2 seconds under burst",
         expect(next.items.length).toBeGreaterThan(0);
         expect(next.items.every(item => !firstIds.has(item.id))).toBe(true);
       }
-      await expect(admin.getByRole("region", { name: t("home.inbox.title"), exact: true }).locator("[data-id]").first()).toBeVisible();
+      await expect(admin.getByRole("region", { name: t("home.inbox.title"), exact: true }).or(admin.getByRole("grid", { name: t("home.inbox.title"), exact: true })).first().locator("[data-id]").first()).toBeVisible();
       await admin.waitForFunction(() => performance.getEntriesByName("home:first-rows").length > 0);
       const timing = await admin.evaluate(() => {
         const navigation = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming;

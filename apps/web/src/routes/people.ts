@@ -115,7 +115,7 @@ const people = createRoute({
     // Keep the existing export options; the dated register is also available in /statutory.
     export: s.export === "register" ? "register" : undefined,
   }),
-  component: lazyRouteComponent(screen(() => import("./people-screen")), "PeopleScreen"),
+  component: lazyRouteComponent(screen(() => import("../features/people/ui/people-route")), "PeopleRoute"),
 });
 
 export const peopleRoutes = [people.addChildren([registerEmployee]), peopleImport, peopleRecordsImport, unplaced, dataHealth, bulk, run, renew, notices, noticeNew, notice, certificates, certificate, grid, periodLocks, exitCases, exitCase, changeRequests, jobTitles, rosterFields, employee];

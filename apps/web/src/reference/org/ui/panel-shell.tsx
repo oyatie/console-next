@@ -50,7 +50,7 @@ export function PanelShell({ crumb, icon, title, chips, anchors, open, children,
         </nav>
         <div className={css.title}>
           {icon}
-          <h2 id={`${id}-title`} tabIndex={-1}>{title}</h2>
+          {column ? <strong>{title}</strong> : <h2 id={`${id}-title`} tabIndex={-1}>{title}</h2>}
           {chips}
           <span className="grow" />
           {open}

@@ -17,7 +17,7 @@ test.each([
   expect(markup).not.toContain("<img");
   expect(markup).toContain('aria-hidden="true"');
   expect(markup).not.toContain("Kim 사진");
-  expect(markup).toContain(">K</span>");
+  expect(markup).toContain('data-initial="K"');
 });
 
 test.each([

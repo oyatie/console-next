@@ -36,6 +36,16 @@
   flex: 1 0 auto;
 }
 
+@media (min-width: 768px) {
+  :where([data-experience]:not([data-experience="baseline"])) .frame:has([data-day-board]) {
+    flex: 1 1 0%;
+    min-height: 0;
+    height: calc(100dvh - var(--frame-top) - var(--frame-bottom));
+    max-height: 100%;
+    overflow: hidden;
+  }
+}
+
 :where([data-experience]:not([data-experience="baseline"])) .head {
   padding: 0;
   background: var(--surface);

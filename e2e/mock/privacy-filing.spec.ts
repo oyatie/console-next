@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { createHash } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
+import { fmtDate } from "@console/i18n/format";
 import { fits, expectAxe } from "../a11y";
+import { seededDateStyle } from "../experience";
 import { mockScreen } from "./screen";
 import { chooseRadio } from "../flows";
 import { setLocale } from "../shell";
@@ -47,14 +49,14 @@ async function fill(page: Page) {
   await page.getByRole("textbox", { name: /내용/ }).fill("로그인 기록");
 }
 
-for (const width of [390, 1440]) test(`filing uses registered choices and deadlines at ${width}px`, async ({ page }, info) => {
+for (const width of [390, 1440]) test(`filing uses registered choices and deadlines at ${width}px`, async ({ page, storageState }, info) => {
   await page.setViewportSize({ width, height: 900 });
   const fixture = await filing(page);
   await expect(page.getByRole("radio", { name: /내 계정 정보/ })).toHaveCount(0);
   await expect(page.getByRole("checkbox", { name: /자동화|전송/ })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "요구 접수", exact: true })).toBeDisabled();
   await fill(page);
-  await expect(page.getByText(/2026\. 11\. 22\./)).toBeVisible();
+  await expect(page.getByText(fmtDate("2026-11-22", { style: seededDateStyle(storageState) }))).toBeVisible();
   await expect(page.getByRole("checkbox", { name: "열람 · 기록된 정보를 확인합니다", exact: true })).toBeVisible();
   await expect(page.getByText(options.reply_email_masked, { exact: true })).toBeVisible();
   await expect(page.getByRole("textbox", { name: /내용/ })).toHaveAttribute("maxlength", "2000");

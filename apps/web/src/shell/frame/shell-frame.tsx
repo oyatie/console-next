@@ -29,15 +29,19 @@ import { canReadSetupChecklist } from "../../features/onboarding/domain/phase";
 import { fixFor } from "../../features/onboarding/domain/rail";
 import { useExperienceSync } from "../../experience/store";
 import { useActiveExperienceId } from "../../experience/dom";
+import { InviteWithRolesSlot, type InviteWithRolesSlotProps } from "../../reference/authz/ui/use-invite-roles-slot";
 import type { NavHub } from "../nav";
 
 // ⌘K: the jump palette loads with its first use, never in the entry bundle.
 const JumpPalette = lazy(() => chunk(import("../../features/structure/ui/jump-palette")).then((m) => ({ default: m.JumpPalette })));
+const InviteWithRolesSheet = lazy(() => chunk(import("../../features/access/ui/account-invite-roles")).then((m) => ({ default: m.InviteWithRolesSheet })));
+const renderInviteWithRoles = (props: InviteWithRolesSlotProps) => <Suspense fallback={null}><InviteWithRolesSheet {...props} /></Suspense>;
 
 export interface ShellLayoutProps {
   children: ReactNode;
   platform: boolean;
   restoring: boolean;
+  pending?: boolean;
   tenantName?: string;
   tenantPhase?: string;
   userProfile?: {
@@ -195,7 +199,7 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
               : undefined;
   return (<>
     <a className="skip" href="#main">{t("shell.skip")}</a>
-    <Layout platform={platform} restoring={restoring} tenantName={identity.data?.tenant?.name} tenantPhase={identity.data?.tenant?.phase ?? phase} userProfile={identity.data} phoneHeader={phoneHeader} menu={platform || displayed ? menu : undefined}
+    <Layout platform={platform} restoring={restoring} pending={pending} tenantName={identity.data?.tenant?.name} tenantPhase={identity.data?.tenant?.phase ?? phase} userProfile={identity.data} phoneHeader={phoneHeader} menu={platform || displayed ? menu : undefined}
       navigationState={platform || displayed ? "ready" : supportOwnsFailure || railError ? "failed" : "loading"} onSearch={() => setJump(true)}
       navigationNotice={!platform && !displayed ? (supportOwnsFailure
         ? <p role="status" className="muted">{t("shell.nav.failed")}</p>
@@ -211,7 +215,9 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
           {!platform && <DomainNotice />}{!platform && !((access.isError || me.isError || pageFailures > 0) && supportFault && !hasSupportNotice) && <ActiveSupportBanner />}
         </ReadFailureContext.Provider>
         <ReadFailureContext.Provider value={recovery}>
-          <RouteGuard>{platform || pathname === "/org/entities/new" || pathname === "/people/new" ? children : <PhaseBand key={principal}><Suspense fallback={<ReadSkeleton layout="list" />}>{children}</Suspense></PhaseBand>}</RouteGuard>
+          <InviteWithRolesSlot.Provider value={renderInviteWithRoles}>
+            <RouteGuard>{platform || pathname === "/org/entities/new" || pathname === "/people/new" ? children : <PhaseBand key={principal}><Suspense fallback={<ReadSkeleton layout="list" />}>{children}</Suspense></PhaseBand>}</RouteGuard>
+          </InviteWithRolesSlot.Provider>
         </ReadFailureContext.Provider>
         </SessionRecovery>
       </PageMain>

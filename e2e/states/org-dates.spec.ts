@@ -4,6 +4,7 @@ import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { fmtDate, fmtDateTime } from "@console/i18n/format";
 import { expectAxe, fits } from "../a11y";
+import { seededDateStyle } from "../experience";
 import { mockRoute } from "../mock/route";
 import { id } from "../mock/fixtures";
 import { orgPanelReads } from "../mock/org-work";
@@ -13,7 +14,8 @@ import { screens } from "./registry";
 test.beforeAll(() => loadCatalog("ko"));
 
 for (const width of [1440, 390]) {
-  test(`org: compact date picker navigates change dates and returns to today (${width}px) @ui-state`, async ({ page }) => {
+  test(`org: compact date picker navigates change dates and returns to today (${width}px) @ui-state`, async ({ page, storageState }) => {
+    const style = seededDateStyle(storageState);
     await page.setViewportSize({ width, height: 900 });
     await page.clock.setFixedTime(new Date("2026-11-02T12:00:00+09:00"));
     const fixture = await mockScreen(page, screens[2], "populated");
@@ -23,7 +25,7 @@ for (const width of [1440, 390]) {
       const control = page.getByRole("region", { name: t("asof.label"), exact: true });
       const trigger = control.getByRole("button", { name: new RegExp(`^${t("asof.label")} · `) });
       await expect(trigger).toHaveClass(/\bbtn--chip\b/);
-      await expect(trigger).toContainText(`${t("asof.label")} · ${t("asof.today")} · ${fmtDate("2026-11-02")}`);
+      await expect(trigger).toContainText(`${t("asof.label")} · ${t("asof.today")} · ${fmtDate("2026-11-02", { style })}`);
       await expect(control.getByRole("textbox")).toHaveCount(0);
       await expect(page.getByRole("button", { name: t("asof.advanced"), exact: true })).toHaveCount(0);
       await trigger.click();
@@ -32,7 +34,7 @@ for (const width of [1440, 390]) {
       await expect(picker.getByRole("group", { name: t("asof.ribbon"), exact: true }).getByRole("button")).toHaveCount(3);
       await picker.getByRole("button", { name: t("asof.previous"), exact: true }).click();
       await expect(page).toHaveURL(/as_of=2026-10-01/);
-      await expect(trigger).toContainText(fmtDate("2026-10-01"));
+      await expect(trigger).toContainText(fmtDate("2026-10-01", { style }));
       await expect(trigger).not.toContainText(t("asof.today"));
       await trigger.click();
       await picker.getByRole("button", { name: t("uiDate.calendar.open"), exact: true }).click();
@@ -61,7 +63,7 @@ for (const width of [1440, 390]) {
       await expect(trigger).toBeFocused();
       await control.getByRole("button", { name: t("asof.returnToday"), exact: true }).click();
       await expect(page).not.toHaveURL(/as_of=/);
-      await expect(trigger).toContainText(`${t("asof.label")} · ${t("asof.today")} · ${fmtDate("2026-11-02")}`);
+      await expect(trigger).toContainText(`${t("asof.label")} · ${t("asof.today")} · ${fmtDate("2026-11-02", { style })}`);
       expect(fixture.unexpected).toEqual([]);
     } finally { await page.close(); fixture.release(); }
   });

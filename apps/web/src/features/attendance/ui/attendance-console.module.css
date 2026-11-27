@@ -37,8 +37,18 @@
 .dayMain {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  flex: 1 1 0%;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.dayMain [data-pane-grid],
+.dayMain [data-pane-grid] > div:not([role="separator"]),
+.dayMain [data-pane-grid] > div:not([role="separator"]) > div:first-child {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .dayMain a {
@@ -48,8 +58,18 @@
 .dayGroups {
   display: flex;
   flex-direction: column;
+  flex: 1 1 0%;
   gap: var(--space-3);
+  padding: 0 var(--space-3) var(--space-3);
   min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  scroll-padding-top: calc(var(--row-h) + var(--space-4));
+  overscroll-behavior: contain;
+}
+
+:where([data-detail]) .dayGroups {
+  scroll-padding-top: 0;
 }
 
 .groupSection {
@@ -113,16 +133,6 @@
 }
 
 @media (--phone) {
-  :where([data-experience]:not([data-experience="baseline"])) .tabNavWrap > nav {
-    flex-wrap: wrap;
-    overflow-x: visible;
-    gap: 0;
-  }
-
-  :where([data-experience]:not([data-experience="baseline"])) .tabNavWrap > nav > a {
-    flex-shrink: 0;
-  }
-
   .filterPair {
     width: 100%;
     flex-direction: row;
@@ -176,7 +186,9 @@
   }
 
   :where([data-experience]:not([data-experience="baseline"])) .dayMain [data-day-source] {
-    display: none;
+    grid-column: 1 / -1;
+    grid-row: 3;
+    justify-self: start;
   }
 
   :where([data-experience]:not([data-experience="baseline"])) .dayMain [data-day-action] {

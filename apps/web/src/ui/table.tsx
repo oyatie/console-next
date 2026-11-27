@@ -158,7 +158,10 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, onOp
     const step = rowStep(e.nativeEvent);
     if (!step) return;
     e.preventDefault();
-    const next = ids[Math.min(ids.length - 1, Math.max(0, ids.indexOf(current) + step))]!;
+    const visible = ids.filter(id => (tableRef.current?.querySelector<HTMLElement>(`[data-id="${CSS.escape(id)}"]`)?.getClientRects().length ?? 0) > 0);
+    const pool = visible.length > 0 ? visible : ids;
+    const curIdx = pool.indexOf(current);
+    const next = pool[Math.min(pool.length - 1, Math.max(0, (curIdx >= 0 ? curIdx : 0) + step))]!;
     setActive(next);
     tableRef.current?.querySelector<HTMLElement>(`[data-id="${CSS.escape(next)}"]`)?.focus();
   };
@@ -178,7 +181,7 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, onOp
         aria-selected={onSelect ? id === selected : undefined}
         onFocus={onSelect && (() => setActive(id))}
         onClick={onSelect && (e => {
-          if (e.target instanceof HTMLElement && e.target.closest('label.check, input[type="checkbox"]')) return;
+          if (e.target instanceof Element && e.target.closest("a, button, label.check, input, select, textarea")) return;
           onSelect(id);
         })}
       >

@@ -23,7 +23,7 @@ export type WorklistProps = Pick<
   "record" | "related" | "full" | "onFull" | "onSelect" | "onOpen"
 > & {
   q: ReadState;
-  head: Pick<PageHeadProps, "title" | "titleId" | "asOf" | "actions"> & {
+  head: Pick<PageHeadProps, "title" | "titleId" | "meta" | "asOf" | "actions"> & {
     primary?: MenuAction;
     commands?: { label: string; items: readonly MenuAction[] };
   };
@@ -40,5 +40,5 @@ export type WorklistProps = Pick<
   /** Temporary Classic (`baseline`) fallback renderer kept until Phase 7 deletes `baseline`. */
   baseline?: () => ReactNode;
 } & Partial<
-    Record<"tabs" | "views" | "find" | "filters" | "tools" | "stats" | "notes" | "foot" | "facts" | "overlays", ReactNode>
+    Record<"tabs" | "views" | "find" | "filters" | "tools" | "stats" | "notes" | "recovery" | "foot" | "facts" | "overlays", ReactNode>
   >;

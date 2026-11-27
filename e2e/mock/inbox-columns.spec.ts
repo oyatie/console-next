@@ -2,7 +2,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe, fits } from "../a11y";
-import { experienceState } from "../experience";
+import { experienceState, seededExperience } from "../experience";
 import { screens } from "../states/registry";
 import { checklist, failure, inbox } from "./fixtures";
 import { mockRoute } from "./route";
@@ -24,7 +24,7 @@ const queueRows = (page: Page) => page.locator("[data-flexible-columns] [data-id
   .or(page.getByRole("grid", { name: t("home.inbox.title"), exact: true }).locator("[data-id]"));
 
 for (const path of ["/", "/inbox"]) {
-  test(`columns follow keyboard selection and survive reload on ${path}`, async ({ page }) => {
+  test(`columns follow keyboard selection and survive reload on ${path}`, async ({ page, storageState }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     const mock = await mockScreen(page, screens[0], "populated");
     const data = rows();
@@ -45,7 +45,12 @@ for (const path of ["/", "/inbox"]) {
     // 해야 할 일 is the inbox's first tab, so its address carries no tab.
     if (path === "/inbox") expect(new URL(page.url()).searchParams.get("tab")).toBeNull();
     await page.keyboard.press("/");
-    await expect(listRows.first()).toBeFocused();
+    if (seededExperience(storageState) === "baseline") {
+      await expect(listRows.first()).toBeFocused();
+    } else {
+      await expect(page.getByRole("searchbox", { name: t("home.worklist.find"), exact: true })).toBeFocused();
+      await listRows.first().focus();
+    }
     await page.keyboard.press("Enter");
     await expect.poll(() => pane.evaluate(el => el.contains(document.activeElement))).toBe(true);
     await page.keyboard.press("Escape");
@@ -67,7 +72,7 @@ for (const path of ["/", "/inbox"]) {
   });
 
   for (const width of [1440, 390]) for (const state of ["populated", "selected", "missing", "missing-empty", "empty", "failed", "refused", "loading"] as const) {
-    test(`columns ${state} on ${path} at ${width}px in both themes`, async ({ page }, info) => {
+    test(`columns ${state} on ${path} at ${width}px in both themes`, async ({ page, storageState }, info) => {
       await page.setViewportSize({ width, height: 900 });
       const mock = await mockScreen(page, screens[0], state === "missing-empty" ? "empty" : state === "selected" || state === "missing" ? "populated" : state);
       const data = rows();
@@ -89,7 +94,9 @@ for (const path of ["/", "/inbox"]) {
         await expect(pane.getByRole("heading", { name: t("home.inbox.activity.title"), exact: true })).toHaveCount(1);
         await expect(pane).toContainText(t("home.inbox.activity.empty"));
         if (width === 390) {
-          await expect(page.locator("[data-flexible-columns] > div").first()).toBeHidden();
+          if (seededExperience(storageState) === "baseline") {
+            await expect(page.locator("[data-flexible-columns] > div").first()).toBeHidden();
+          }
           await expect(pane.getByRole("button", { name: t("common.back"), exact: true })).toBeVisible();
         }
       } else if (state === "missing" || state === "missing-empty") {
@@ -126,8 +133,9 @@ for (const path of ["/", "/inbox"]) {
   }
 }
 
-for (const path of ["/", "/inbox"]) for (const width of [1440, 390]) test(`a decision in the record stays on ${path} at ${width}px and row commands do not select`, async ({ page }, info) => {
+for (const path of ["/", "/inbox"]) for (const width of [1440, 390]) test(`a decision in the record stays on ${path} at ${width}px and row commands do not select`, async ({ page, storageState }, info) => {
   await page.setViewportSize({ width: 1440, height: 900 });
+  const approveName = seededExperience(storageState) === "baseline" ? "조직 변경 승인" : t("uiWorklist.approve");
   const mock = await mockScreen(page, screens[0], "populated");
   const detail = orgChange("approval");
   const data = inbox(2);
@@ -145,7 +153,7 @@ for (const path of ["/", "/inbox"]) for (const width of [1440, 390]) test(`a dec
   });
   await page.goto(`${path}?${path === "/inbox" ? "tab=turn&" : ""}sel=${encodeURIComponent(data.items[0]!.id)}`);
   const row = page.locator("main [data-id]").nth(1);
-  const approve = row.getByRole("button", { name: "조직 변경 승인", exact: true });
+  const approve = row.getByRole("button", { name: approveName, exact: true });
   await approve.click();
   await expect.poll(() => decisions).toBe(1);
   let observations = 0;
@@ -168,7 +176,7 @@ for (const path of ["/", "/inbox"]) for (const width of [1440, 390]) test(`a dec
     observer.observe(document.querySelector("main")!, { childList: true, subtree: true });
     Object.assign(window, { missingRecordHeadings: seen });
   }, t("common.read.notFound.title"));
-  await pane.getByRole("button", { name: "조직 변경 승인", exact: true }).click();
+  await pane.getByRole("button", { name: approveName, exact: true }).click();
   await expect.poll(() => decisions).toBe(2);
   await expect(pane).toHaveCount(0);
   await expect(page).not.toHaveURL(/sel=/);

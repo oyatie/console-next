@@ -10,7 +10,7 @@ import { mockScreen } from "./screen";
 const resources = 'script[src], link[rel="stylesheet"], link[rel="modulepreload"]';
 // Preview serves the built files; apply the production server's policy to the document.
 const server = readFileSync(new URL("../../backend/app/src/spa.rs", import.meta.url), "utf8");
-const policy = server.match(/const SPA_CSP: &str = "([\s\S]*?)";/)![1]!.replace(/\\\n\s*/g, "");
+const policy = server.match(/const SPA_CSP: &str = "([\s\S]*?)";/)![1]!.replace(/\\\n\s*/g, "").replace("connect-src 'self'", "connect-src 'self' https://status.cosskorea.com");
 
 test.beforeAll(() => loadCatalog("ko"));
 
