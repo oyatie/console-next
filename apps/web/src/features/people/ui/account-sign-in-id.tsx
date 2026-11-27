@@ -131,7 +131,6 @@ function History({ id }: { id: string }) {
             {
               header: t("accounts.signInId.col.state"),
               cell: (r) => (r.state === "ALIAS" && r.alias_until ? t("accounts.signInId.state.ALIAS", { until: fmtDateTime(r.alias_until) }) : t(`accounts.signInId.state.${r.state}`)),
-              wide: true,
             },
           ]}
         />
