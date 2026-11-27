@@ -53,8 +53,7 @@ const employee = createRoute({
   // `back` is the sheet a detour started from (a refusal's "cancel that reservation"): its receipt offers the way back.
   // `tab` is the record's tab (personnel card when absent): action history, documents, change history, access.
   validateSearch: (s: Record<string, unknown>): { act?: string; back?: string; tab?: CardTab } => ({ act: str(s.act), back: str(s.back), tab: CARD_TABS.find((x) => x === s.tab) }),
-  component: lazyRouteComponent(screen(() => import("../features/people/ui/card-page")), "EmployeeCard"),
-});
+}).lazy(() => chunk(import("./employee-record")).then(m => m.employee));
 const REQUEST_LANES = ["all", "me", "role"] as const;
 const REQUEST_STATUSES = ["OPEN", "APPLIED", "DECLINED", "WITHDRAWN", "ALL"] as const;
 const changeRequests = createRoute({

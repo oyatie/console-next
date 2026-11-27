@@ -119,7 +119,8 @@
       "src/features/people/ui/notice-page.tsx",
       "src/features/people/ui/person-act.tsx",
       "src/features/requests/ui/request-console.tsx",
-      "src/features/requests/ui/request-page.tsx"
+      "src/features/requests/ui/request-page.tsx",
+      "src/routes/employee-record.ts"
     ]
   },
   "wizard": {
