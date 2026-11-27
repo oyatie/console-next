@@ -133,6 +133,8 @@ test("J6 bulk transfer from a paste: lines keyed by employee number, errors firs
 
   // Back closes the sheet; the paste is still there when it opens again.
   await admin.goBack();
+  await expect(sheet.getByRole("status")).toContainText("한 번 더 누르면 닫습니다");
+  await admin.goBack();
   await expect(sheet).toBeHidden();
   await admin.getByRole("link", { name: "붙여넣어 일괄 발령" }).click();
   await expect(sheet).toContainText("작성하던 내용을 불러왔습니다");
@@ -170,6 +172,7 @@ test("J6 bulk transfer from a paste: lines keyed by employee number, errors firs
   await sheet.getByRole("button", { name: "거부된 1명 제외 후 다시 시도" }).click();
   await expect(sheet).toBeHidden();
   await expect(admin.getByRole("status").filter({ hasText: `3명을 ${today}자로 전보했습니다` })).toBeVisible();
+  await go(admin, "/people");
   for (const [name, unit] of [["김일번", "채용팀"], ["이이번", "채용팀"], ["정사번", "인사부"], ["박삼번", "인사부"], ["최오번", "인사부"]] as const)
     await expect(admin.getByRole("row", { name: new RegExp(name) })).toContainText(unit);
 

@@ -2,12 +2,11 @@
 import { expect, test } from "@playwright/test";
 import { apiOf, bearerOf, codeOf } from "./helpers/api";
 import { openTenant } from "./helpers/tenant";
-import { go } from "./flows";
 
 test("privacy rights use closed statutory catalogs and a configurable operational objection clock", async ({ browser }) => {
   const admin = await openTenant(browser, "rightspolicy", "권리접수테넌트");
   const bearer = bearerOf(admin);
-  await go(admin, "/");
+  await admin.reload();
   await expect.poll(bearer).not.toBe("");
   const api = apiOf(admin, bearer);
   for (const [domain, codes] of [
