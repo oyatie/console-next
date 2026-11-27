@@ -1,0 +1,33 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
+import type { enAttendanceLeave } from "../en/attendance-leave";
+
+export const koAttendanceLeave: Record<keyof typeof enAttendanceLeave, string> = {
+  "attendance.tab.leave": "연차 관리",
+  "attendance.leave.title": "연차 관리",
+  "attendance.leave.statEmployees": "대상 인원",
+  "attendance.leave.statGrant": "총 부여 일수",
+  "attendance.leave.statUsed": "총 사용 일수",
+  "attendance.leave.statLeft": "잔여 일수",
+  "attendance.leave.filterAll": "전체",
+  "attendance.leave.filterPromote": "촉진 대상",
+  "attendance.leave.searchPlaceholder": "이름 · 부서 검색",
+  "attendance.leave.colName": "이름",
+  "attendance.leave.colTeam": "소속",
+  "attendance.leave.colGrant": "부여",
+  "attendance.leave.colUsed": "사용",
+  "attendance.leave.colLeft": "잔여",
+  "attendance.leave.colStatus": "구분",
+  "attendance.leave.tone.ok": "정상",
+  "attendance.leave.tone.promote": "촉진 대상",
+  "attendance.leave.tone.low": "잔여 적음",
+  "attendance.leave.days": "{days, number}일",
+  "attendance.leave.emptyTitle": "조회된 연차 내역이 없습니다",
+  "attendance.leave.paneTitle": "연차 사용 촉진 · 노무수령 거부 통지",
+  "attendance.leave.branchLabel": "사업장",
+  "attendance.leave.promoteRound1": "1차 사용 촉진 통지",
+  "attendance.leave.promoteRound2": "2차 시기 지정 통지",
+  "attendance.leave.refusalNotice": "노무수령 거부 통지",
+  "attendance.leave.sentPromotion": "{name}에게 {round, number}차 연차 사용 촉진 통지를 발송했습니다",
+  "attendance.leave.sentRefusal": "{name}에게 노무수령 거부 통지를 발송했습니다",
+  "attendance.leave.selectAccountHint": "사업장과 연결된 직원 계정이 확인되면 통지를 발송할 수 있습니다.",
+};

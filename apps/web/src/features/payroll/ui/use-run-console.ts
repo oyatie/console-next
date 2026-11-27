@@ -83,9 +83,10 @@ export function useRunConsole(id: string) {
   const run = detailData?.run;
   const entities = groups.data?.legal_entities ?? [];
   const rawGroups = groups.data?.items ?? [];
+  const scopedGroups = run ? rawGroups.filter(item => item.legal_entity_id === run.legal_entity_id) : rawGroups;
   const nameCounts = new Map<string, number>();
-  for (const item of rawGroups) nameCounts.set(item.name, (nameCounts.get(item.name) ?? 0) + 1);
-  const payGroupOptions = rawGroups.map(item => {
+  for (const item of scopedGroups) nameCounts.set(item.name, (nameCounts.get(item.name) ?? 0) + 1);
+  const payGroupOptions = scopedGroups.map(item => {
     const entity = entities.find(e => e.id === item.legal_entity_id);
     const duplicate = (nameCounts.get(item.name) ?? 0) > 1;
     const label = duplicate && entity?.name ? `${entity.name} · ${item.name}` : item.name;
@@ -108,8 +109,12 @@ export function useRunConsole(id: string) {
   const groupLabel = run && groups.data
     ? selectedGroup?.label ?? `${t("payroll.group")} · ${t("payroll.rule.unknown")}`
     : undefined;
-  const groupPeriodLabel = groupLabel
-    ? `${groupLabel} · ${fmtMonth(activePeriod)}`
+  const qualifiedGroupLabel =
+    groupLabel && entityLabel && !groupLabel.startsWith(`${entityLabel} · `)
+      ? `${entityLabel} · ${groupLabel}`
+      : groupLabel;
+  const groupPeriodLabel = qualifiedGroupLabel
+    ? `${qualifiedGroupLabel} · ${fmtMonth(activePeriod)}`
     : detailData
       ? fmtMonth(activePeriod)
       : undefined;

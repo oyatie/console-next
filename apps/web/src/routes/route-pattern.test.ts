@@ -74,6 +74,7 @@ test("the screens drawn through built patterns declare them, and no other route 
     "/people/notices/$noticeId": "record",
     "/people/notices/new": "wizard",
     "/people/numbering": "settings",
+    "/people/period-locks": "settings",
     "/people/renew": "wizard",
     "/people/requests": "list-record",
     "/people/roster-fields": "settings",

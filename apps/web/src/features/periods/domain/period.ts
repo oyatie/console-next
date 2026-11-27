@@ -5,7 +5,7 @@ import { addDays, daysBetween } from "../../../ui/date/days";
 import type { Window } from "../../../reference/periods/domain/window";
 
 export { monthWindow, wholeMonth, type Window } from "../../../reference/periods/domain/window";
-export type Lock = Window & { id: string; domain: string; unlockedAt?: string; active?: boolean };
+export type Lock = Window & { id: string; domain: string; payGroupId?: string | null; unlockedAt?: string; active?: boolean };
 
 /** In force now: the server's `active` (BW-15: never unlocked, or its unlock window has passed). */
 export const inForce = (l: Lock) => l.active ?? !l.unlockedAt;
@@ -29,8 +29,8 @@ export const windowDays = (w: Window) => daysBetween(w.periodStart, w.periodEnd)
 const overlap = (a: Window, b: Window) => a.periodStart <= b.periodEnd && a.periodEnd >= b.periodStart;
 
 /** The active lock in `domain` that `w` overlaps (the server refuses the create), if any. */
-export const overlapping = <L extends Lock>(locks: readonly L[], domain: string, w: Window): L | undefined =>
-  locks.find((l) => inForce(l) && l.domain === domain && overlap(l, w));
+export const overlapping = <L extends Lock>(locks: readonly L[], domain: string, w: Window, payGroupId?: string | null): L | undefined =>
+  locks.find((l) => inForce(l) && l.domain === domain && (!l.payGroupId || !payGroupId || l.payGroupId === payGroupId) && overlap(l, w));
 
 /**
  * The start that clears `other` when `w` overlaps only its tail (the day after it ends), else null:

@@ -19618,6 +19618,11 @@ export interface components {
         CreatePeriodLockRequest: {
             /** @enum {string} */
             domain: "payroll" | "accounting";
+            /**
+             * Format: uuid
+             * @description Optional pay-group scope for payroll freeze windows; omit to freeze the whole tenant domain.
+             */
+            payGroupId?: string;
             /** Format: date */
             periodStart: string;
             /** Format: date */
@@ -26864,6 +26869,7 @@ export interface components {
         PayGroupDefinition: components["schemas"]["PayGroupRules"] & {
             sensitive: boolean;
             pay_basis_allowed: components["schemas"]["PayGroupPayBases"];
+            member_employee_ids?: string[];
         };
         PayGroupPage: {
             items: components["schemas"]["PayGroup"][];
@@ -26892,6 +26898,11 @@ export interface components {
             };
             base_period: components["schemas"]["PayGroupPeriodRule"];
             variable_period: components["schemas"]["PayGroupPeriodRule"];
+            attendance_cutoff_rule?: {
+                day: number | "LAST_DAY";
+                /** @enum {integer} */
+                month_offset: 0 | 1;
+            };
             /** @enum {string} */
             proration: "CALENDAR_DAYS" | "SCHEDULED_WORKDAYS";
             /** @enum {string} */
@@ -27182,7 +27193,7 @@ export interface components {
         };
         PayrollPreflightCheck: {
             /** @enum {string} */
-            key: "attendance_material" | "period_lock" | "pending_leave";
+            key: "attendance_material" | "period_lock" | "pending_leave" | "workplace_attendance_close";
             label_ko: string;
             ok: boolean;
             /** @description Soft signal only; can_close is the AND of the hard checks (attendance_material, period_lock). */
@@ -27287,6 +27298,8 @@ export interface components {
             variable_period_start: string;
             /** Format: date */
             variable_period_end: string;
+            /** Format: date */
+            attendance_cutoff_date?: string | null;
         };
         PayrollRunSummary: {
             id: components["schemas"]["Uuid"];
@@ -27304,6 +27317,8 @@ export interface components {
             variable_period_start: string | null;
             /** Format: date */
             variable_period_end: string | null;
+            /** Format: date */
+            attendance_cutoff_date?: string | null;
             source_label: string;
             /** @enum {string} */
             status: "STAGED" | "BLOCKED_LEGAL_GATE" | "READY_FOR_REVIEW" | "ATTENDANCE_CLOSED" | "CALCULATING" | "CALCULATED" | "SUBMITTED" | "REJECTED" | "APPROVED" | "DISBURSEMENT_SCHEDULED" | "PAID" | "ISSUED" | "VOID";
@@ -27483,6 +27498,13 @@ export interface components {
             id: string;
             /** @enum {string} */
             domain: "payroll" | "accounting";
+            /**
+             * Format: uuid
+             * @description Optional pay-group scope for payroll freeze windows; absent for tenant-wide locks.
+             */
+            payGroupId?: string;
+            /** @description Display name of the scoped pay group when payGroupId is set. */
+            payGroupName?: string;
             /** Format: date */
             periodStart: string;
             /** Format: date */
@@ -57387,6 +57409,7 @@ export interface operations {
             query?: {
                 active?: boolean;
                 domain?: "payroll" | "accounting";
+                payGroupId?: string;
                 limit?: number;
             };
             header?: never;

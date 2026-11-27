@@ -94,7 +94,7 @@ pub async fn assert_period_open_range(
 ) -> Result<(), KernelError> {
     let lock = sqlx::query(
         "SELECT id, locked_by, locked_at, period_start, period_end FROM period_locks \
-         WHERE domain = $1 AND period_lock_effective(period_locks) \
+         WHERE domain = $1 AND pay_group_id IS NULL AND period_lock_effective(period_locks) \
            AND period_start <= $3 AND period_end >= $2 \
          ORDER BY locked_at DESC LIMIT 1",
     )

@@ -66,7 +66,16 @@ export function LockTable({ label, rows, view, now, onUnlock, onRequest, onReloc
           ),
         };
   const columns: Column<PeriodLock>[] = [
-    { header: t("periodLocks.col.domain"), cell: (l) => domainText(l.domain), fit: true },
+    {
+      header: t("periodLocks.col.domain"),
+      cell: (l) => (
+        <>
+          {domainText(l.domain)}
+          {l.payGroupName ? <> <Chip>{l.payGroupName}</Chip></> : null}
+        </>
+      ),
+      fit: true,
+    },
     { header: t("periodLocks.col.period"), cell: (l) => <span className="num">{rangeText(l)}</span> },
     {
       header: t("periodLocks.col.reason"),

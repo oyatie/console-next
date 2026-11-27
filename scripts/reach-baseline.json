@@ -460,11 +460,6 @@
    "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
-  "GET /api/v1/leave/balances": {
-   "lane": "leave",
-   "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
-   "when": "mvp"
-  },
   "GET /api/v1/leave/requests": {
    "lane": "leave",
    "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
@@ -758,16 +753,6 @@
   "POST /api/v1/integrity/findings/{id}/triage": {
    "lane": "K4",
    "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/leave/promotions": {
-   "lane": "leave",
-   "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
-   "when": "mvp"
-  },
-  "POST /api/v1/leave/refusal-notices": {
-   "lane": "leave",
-   "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
    "when": "mvp"
   },
   "POST /api/v1/leave/requests/{id}/decide": {

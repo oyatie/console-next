@@ -10,7 +10,7 @@ import { mockScreen } from "../mock/screen";
 import { screens } from "./registry";
 import { attendanceBoardScreens, attendanceScreens, type AttendanceState } from "./attendance";
 
-const tabs = ["day", "month", "overtime", "schedule", "issues", "close", "import"] as const;
+const tabs = ["day", "month", "overtime", "leave", "schedule", "issues", "close", "import"] as const;
 
 export async function attendanceReadState(page: Page, screen: typeof attendanceScreens[number], state: AttendanceState, width: number) {
   await page.setViewportSize({ width, height: 900 });

@@ -15,6 +15,13 @@ properties:
   domain:
     type: string
     enum: [payroll, accounting]
+  payGroupId:
+    type: string
+    format: uuid
+    description: Optional pay-group scope for payroll freeze windows; absent for tenant-wide locks.
+  payGroupName:
+    type: string
+    description: Display name of the scoped pay group when payGroupId is set.
   periodStart:
     type: string
     format: date

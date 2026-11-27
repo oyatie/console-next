@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { operationAccess } from "../reference/authz/domain/operation-access";
+import { routeOperationAccess } from "./route-operation-access";
 import type { Requirement } from "../reference/authz/domain/access";
 
-const readAccess = operationAccess;
+const readAccess = routeOperationAccess;
 type Operation = keyof typeof readAccess;
 type Reads = { reads: readonly Operation[]; command?: Operation };
 const structure = "GET /api/v1/org-structure";

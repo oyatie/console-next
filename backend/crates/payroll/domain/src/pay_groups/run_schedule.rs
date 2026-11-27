@@ -3,7 +3,9 @@
 use console_kernel_core::KernelError;
 use time::{Date, Duration, Month};
 
-use crate::pay_groups::{NonBusinessDay, PayDateRule, PayDay, PeriodRule, PeriodStart};
+use crate::pay_groups::{
+    AttendanceCutoffRule, NonBusinessDay, PayDateRule, PayDay, PeriodRule, PeriodStart,
+};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct RunSchedule {
@@ -96,4 +98,30 @@ pub fn derive_schedule(
         variable_start,
         variable_end,
     })
+}
+
+pub fn derive_cutoff_date(
+    month: Date,
+    rule: AttendanceCutoffRule,
+    pay_date: Date,
+) -> Result<Date, KernelError> {
+    rule.validate()?;
+    let cutoff_month = shift_month(month, rule.month_offset as i8)?;
+    let last = shift_month(cutoff_month, 1)?
+        .previous_day()
+        .ok_or_else(|| calendar_error("cutoff month end"))?;
+    let requested = match rule.day {
+        PayDay::LastDay => last.day(),
+        PayDay::Day(day) => day,
+    };
+    let cutoff = cutoff_month
+        .replace_day(requested.min(last.day()))
+        .map_err(calendar_error)?;
+    if cutoff > pay_date {
+        return Err(KernelError::validation(
+            "attendance cutoff date must not be after the pay date",
+        )
+        .with_field("attendance_cutoff_rule"));
+    }
+    Ok(cutoff)
 }

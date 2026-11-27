@@ -16,7 +16,7 @@ export function AttendanceTabNav({ tab }: { tab: Tab }) {
   return (
     <div className={s.tabNavWrap}>
       <TabNav label={t("attendance.tabs")} overflow="scroll">
-        {(["day", "month", "overtime", "schedule", "issues", "close", "import"] as const).map((k) => (
+        {(["day", "month", "overtime", "leave", "schedule", "issues", "close", "import"] as const).map((k) => (
           <Link key={k} from="/attendance" to="/attendance" search={search => ({ ...search, tab: k, person: undefined })} className={tabClass} aria-current={(tab === "week" ? "overtime" : tab) === k ? "page" : undefined}>{t(`attendance.tab.${k}`)}</Link>
         ))}
       </TabNav>

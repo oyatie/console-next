@@ -28,7 +28,6 @@ const RunLifecyclePane = lazy(() => chunk(import("./run-lifecycle-pane")).then(m
 
 const formatWonOrDash = (value: number | null | undefined) =>
   typeof value === "number" && Number.isFinite(value) ? t("payroll.employee.won", { amount: fmtNumber(value) }) : "—";
-
 /** Console (`P6` `RegisterTotals`) view for `/payroll/runs/$id`, falling back to `baseline()` in Classic mode. */
 export function RunConsole({ id, baseline }: { id: string; baseline: () => ReactNode }) {
   return (
@@ -37,7 +36,6 @@ export function RunConsole({ id, baseline }: { id: string; baseline: () => React
     </ExperienceSwitch>
   );
 }
-
 function RunConsoleContent({ id, baseline }: { id: string; baseline: () => ReactNode }) {
   const {
     q,
@@ -93,7 +91,6 @@ function RunConsoleContent({ id, baseline }: { id: string; baseline: () => React
 
   const stageAction = run ? resolveRunStageAction(run.status) : null;
   const showStatutoryLink = Boolean(run && ["APPROVED", "DISBURSEMENT_SCHEDULED", "PAID", "ISSUED"].includes(run.status));
-
   return (
     <RegisterTotals
       q={q}
@@ -124,6 +121,8 @@ function RunConsoleContent({ id, baseline }: { id: string; baseline: () => React
             sideTab={sideTab}
             onToggleSideTab={tab => setSideTab(prev => (prev === tab ? null : tab))}
             showStatutoryLink={showStatutoryLink}
+            canRecalculate={run?.status === "CALCULATED"}
+            onRecalculate={() => setLifecycleSheet("calculate")}
             onOpenExport={() => setExportOpen(true)}
             showPreview={showPreview}
             onTogglePreview={() => setShowPreview(prev => !prev)}

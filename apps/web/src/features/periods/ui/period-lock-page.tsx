@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { t } from "@console/i18n";
@@ -8,7 +8,10 @@ import { QueryState } from "../../../lib/react/query-state";
 import { EmptyState } from "../../../ui/empty-state";
 import { Card } from "../../../ui/card/card";
 import { PageHead } from "../../../ui/page-head/page-head";
+import { ExperienceSwitch } from "../../../ui/patterns/pattern-shell";
+import { SettingsPattern } from "../../../ui/patterns/settings";
 import { Receipt } from "../../../ui/receipt/receipt";
+import type { ReadState } from "../../../lib/react/query-view";
 import { Button, ToggleButton } from "../../../ui/button/button";
 import { reasonCodesQuery } from "../../../lib/reason-codes";
 import { failedWith, locksQuery, settingsQuery, type Domain, type PeriodLock, type UnlockOutcome } from "../api";
@@ -31,7 +34,17 @@ const route = getRouteApi("/app/people/period-locks");
  * and a passkey step-up, and waits for a second close authority when there is one (BW-15).
  * Extension point: a close event (payroll or attendance close) proposing the lock as a work item.
  */
+const READY_LOCK_SHELL: ReadState = { isPending: false, error: null, data: true, refetch: () => Promise.resolve() };
+
 export function PeriodLockPage() {
+  return (
+    <ExperienceSwitch baseline={() => <PeriodLockContent consoleMode={false} />}>
+      {() => <PeriodLockContent consoleMode baseline={() => <PeriodLockContent consoleMode={false} />} />}
+    </ExperienceSwitch>
+  );
+}
+
+function PeriodLockContent({ consoleMode, baseline }: { consoleMode: boolean; baseline?: () => ReactNode }) {
   const locks = useQuery(locksQuery);
   // What the lock form and the unlock dialog read, before either shows: nothing lands under the pointer.
   const reasons = useQuery(reasonCodesQuery("period_lock"));
@@ -98,59 +111,79 @@ export function PeriodLockPage() {
   };
   const viewTitle = t(view === "active" ? "periodLocks.active.section" : "periodLocks.unlocked.section", { count: rows[view].length });
 
-  return (
-    <div className="page">
-      <PageHead
-        title={t("periodLocks.title")}
-        tools={
-          !refused && <Button id="pl-new-open" variant="primary" aria-expanded={open} aria-controls="pl-new" onClick={() => (setFormOpen(!open), !open && focusSoon("pl-new-title"))}>
-            {t("periodLocks.new")}
-          </Button>
-        }
+  const newButton = !refused && (
+    <Button id="pl-new-open" variant="primary" aria-expanded={open} aria-controls="pl-new" onClick={() => (setFormOpen(!open), !open && focusSoon("pl-new-title"))}>
+      {t("periodLocks.new")}
+    </Button>
+  );
+  const mainBody = refused && failedWith(locks.error, 403) ? (
+    <Card><EmptyState title={t("periodLocks.denied.title")} reason={t("periodLocks.denied.reason")} /></Card>
+  ) : locks.isPending || reasons.isPending || refused ? (
+    <Card><QueryState q={locks}>{() => null}</QueryState></Card>
+  ) : (
+    <>
+      <div id="pl-new" hidden={!open}>
+        <Card title={t("periodLocks.new")} titleId="pl-new-title">
+          <LockForm key={preset ? `${preset.domain}-${preset.month}` : "new"} preset={preset} locks={rows.active} onLocked={(l) => (setFormOpen(true), recorded("periodLocks.locked", l, l.lockedAt))} onShowLock={showLock} onClose={() => (setFormOpen(false), focusSoon("pl-new-open"))} />
+        </Card>
+      </div>
+      <MonthStrip
+        locks={items}
+        onShowLock={showLock}
+        onLockMonth={(domain, month) => (setPreset({ domain, month }), setFormOpen(true), focusSoon("pl-new-title"))}
+        onRelocked={(l) => recorded("periodLocks.locked", l, l.lockedAt)}
       />
-      {receipt && <Receipt state="recorded" message={receipt.message} meta={fmtDateTime(receipt.at)} />}
-      {/* One loading card until the locks land: the form opens above the list when none is active, and the list
-          must not be on screen first, under a pointer, to be pushed down by it. */}
-      {refused && failedWith(locks.error, 403) ? <Card><EmptyState title={t("periodLocks.denied.title")} reason={t("periodLocks.denied.reason")} /></Card> : locks.isPending || reasons.isPending || refused ? <Card><QueryState q={locks}>{() => null}</QueryState></Card> : (
-        <>
-          <div id="pl-new" hidden={!open}>
-            <Card title={t("periodLocks.new")} titleId="pl-new-title">
-              <LockForm key={preset ? `${preset.domain}-${preset.month}` : "new"} preset={preset} locks={rows.active} onLocked={(l) => (setFormOpen(true), recorded("periodLocks.locked", l, l.lockedAt))} onShowLock={showLock} onClose={() => (setFormOpen(false), focusSoon("pl-new-open"))} />
-            </Card>
+      <Card
+        title={viewTitle}
+        titleId="pl-list"
+        flush
+        tools={
+          <div className={s.views} role="group" aria-label={t("periodLocks.views")}>
+            {(["active", "unlocked"] as const).map((v) => (
+              <ToggleButton key={v} size="sm" pressed={view === v} onClick={() => setView(v)}>
+                {t(`periodLocks.view.${v}`, { count: rows[v].length })}
+              </ToggleButton>
+            ))}
           </div>
-          <MonthStrip
-            locks={items}
-            onShowLock={showLock}
-            onLockMonth={(domain, month) => (setPreset({ domain, month }), setFormOpen(true), focusSoon("pl-new-title"))}
-            onRelocked={(l) => recorded("periodLocks.locked", l, l.lockedAt)}
-          />
-          <Card
-            title={viewTitle}
-            titleId="pl-list"
-            flush
-            tools={
-              <div className={s.views} role="group" aria-label={t("periodLocks.views")}>
-                {(["active", "unlocked"] as const).map((v) => (
-                  <ToggleButton key={v} size="sm" pressed={view === v} onClick={() => setView(v)}>
-                    {t(`periodLocks.view.${v}`, { count: rows[v].length })}
-                  </ToggleButton>
-                ))}
-              </div>
-            }
-          >
-            <QueryState
-              q={locks}
-              empty={() =>
-                rows[view].length ? null : view === "active" ? <EmptyState title={t("periodLocks.none.title")} reason={t("periodLocks.none.reason")} /> : <EmptyState title={t("periodLocks.unlocked.none")} reason={t("periodLocks.unlocked.none.reason")} />
-              }
-            >
-              {() => <LockTable label={viewTitle} rows={rows[view]} view={view} now={locks.dataUpdatedAt} onUnlock={setUnlocking} onRequest={(l) => setReviewing(l.id)} onRelocked={(l) => (setView("active"), recorded("periodLocks.locked", l, l.lockedAt))} />}
-            </QueryState>
-          </Card>
-        </>
-      )}
+        }
+      >
+        <QueryState
+          q={locks}
+          empty={() =>
+            rows[view].length ? null : view === "active" ? <EmptyState title={t("periodLocks.none.title")} reason={t("periodLocks.none.reason")} /> : <EmptyState title={t("periodLocks.unlocked.none")} reason={t("periodLocks.unlocked.none.reason")} />
+          }
+        >
+          {() => <LockTable label={viewTitle} rows={rows[view]} view={view} now={locks.dataUpdatedAt} onUnlock={setUnlocking} onRequest={(l) => setReviewing(l.id)} onRelocked={(l) => (setView("active"), recorded("periodLocks.locked", l, l.lockedAt))} />}
+        </QueryState>
+      </Card>
+    </>
+  );
+  const dialogs = (
+    <>
       <UnlockDialog lock={unlocking ?? (linked && !linkedPending ? linked : null)} onClose={() => (setUnlocking(null), unlock && dropLink())} onDone={(l, out) => (unlock && dropLink(), unlockDone(l, out))} />
       <UnlockRequestDialog lock={items.find((l) => l.id === (review ?? (linkedPending ? unlock : undefined))) ?? null} asOf={locks.dataUpdatedAt} onClose={() => setReviewing(null)} onDone={decided} />
+    </>
+  );
+
+  if (consoleMode) {
+    return (
+      <SettingsPattern
+        q={READY_LOCK_SHELL}
+        head={{ title: t("periodLocks.title"), titleId: "pl-page-title", actions: newButton || undefined }}
+        notes={receipt ? <Receipt state="recorded" message={receipt.message} meta={fmtDateTime(receipt.at)} /> : undefined}
+        panel={<div className="form">{mainBody}</div>}
+        overlays={dialogs}
+        baseline={baseline}
+      />
+    );
+  }
+
+  return (
+    <div className="page">
+      <PageHead title={t("periodLocks.title")} tools={newButton} />
+      {receipt && <Receipt state="recorded" message={receipt.message} meta={fmtDateTime(receipt.at)} />}
+      {mainBody}
+      {dialogs}
     </div>
   );
 }

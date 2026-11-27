@@ -9,7 +9,7 @@ required:
 properties:
   key:
     type: string
-    enum: [attendance_material, period_lock, pending_leave]
+    enum: [attendance_material, period_lock, pending_leave, workplace_attendance_close]
   label_ko:
     type: string
   ok:

@@ -91,6 +91,8 @@ export function RunConsoleTools({
   sideTab,
   onToggleSideTab,
   showStatutoryLink,
+  canRecalculate,
+  onRecalculate,
   onOpenExport,
   showPreview,
   onTogglePreview,
@@ -98,12 +100,19 @@ export function RunConsoleTools({
   sideTab: PayrollSideTab | null;
   onToggleSideTab: (tab: PayrollSideTab) => void;
   showStatutoryLink: boolean;
+  canRecalculate?: boolean;
+  onRecalculate?: () => void;
   onOpenExport: () => void;
   showPreview: boolean;
   onTogglePreview: () => void;
 }) {
   return (
     <>
+      {canRecalculate && onRecalculate && (
+        <Button size="sm" variant="secondary" onClick={onRecalculate}>
+          <RegisterNowrap>{t("payroll.run.recalculate")}</RegisterNowrap>
+        </Button>
+      )}
       <Button size="sm" aria-pressed={sideTab === "preflight"} onClick={() => onToggleSideTab("preflight")}>
         <CheckSquare size={13} aria-hidden="true" />
         <RegisterNowrap>{t("payrollRun.tool.preflight")}</RegisterNowrap>

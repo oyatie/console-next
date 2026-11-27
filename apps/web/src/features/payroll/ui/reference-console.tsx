@@ -105,13 +105,13 @@ function PayrollReferenceConsoleContent({ baseline }: { baseline: () => ReactNod
           }
           return (
             <LongTable
+              editable
               label={t("payroll.reference.title")}
               empty={null}
               rows={data.items}
               rowId={rateKey}
               activeRowId={selectedRateId ?? undefined}
               onRowAction={id => setSelectedRateId(id)}
-              mobileLayout="compact"
               hasMore={false}
               onLoadMore={() => {}}
               columns={[
@@ -156,7 +156,7 @@ function PayrollReferenceConsoleContent({ baseline }: { baseline: () => ReactNod
                 },
                 {
                   id: "citation",
-                  card: "omit",
+                  card: "action",
                   header: t("payroll.reference.citation"),
                   width: "2fr",
                   cell: rate =>

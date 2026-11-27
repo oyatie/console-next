@@ -6,3 +6,6 @@ allOf:
   properties:
     sensitive: {type: boolean}
     pay_basis_allowed: {$ref: '#/components/schemas/PayGroupPayBases'}
+    member_employee_ids:
+      type: array
+      items: {type: string, format: uuid}

@@ -67,3 +67,21 @@ impl PeriodRule {
         Ok(())
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AttendanceCutoffRule {
+    pub day: PayDay,
+    pub month_offset: u8,
+}
+impl AttendanceCutoffRule {
+    pub fn validate(self) -> Result<(), KernelError> {
+        if matches!(self.day, PayDay::Day(day) if !(1..=31).contains(&day)) || self.month_offset > 1
+        {
+            return Err(KernelError::validation(
+                "attendance cutoff requires day 1–31 or LAST_DAY and month offset 0–1",
+            )
+            .with_field("attendance_cutoff_rule"));
+        }
+        Ok(())
+    }
+}

@@ -126,4 +126,6 @@ export const enPeriodLocks = {
   "periodLocks.request.refused.period_unlock_request_expired": "This unlock request expired. The lock stays in force; request it again if needed.",
   "periodLocks.request.refused.period_unlock_reject_note_invalid": "Enter a reason of at most 1,000 characters.",
   "periodLocks.request.refused.not_found": "This unlock request was already decided. Check its current state in the list.",
+  "periodLocks.payGroup": "Pay group scope (optional)",
+  "periodLocks.payGroupAll": "All pay groups (tenant-wide)",
 } as const;

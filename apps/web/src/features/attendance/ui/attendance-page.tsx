@@ -30,9 +30,10 @@ import { OvertimeTab } from "./overtime-tab";
 import styles from "./records.module.css";
 
 const ImportConsoleView = lazy(() => chunk(import("./import-console-view")).then((m) => ({ default: m.ImportConsoleView })));
+const LeaveConsoleView = lazy(() => chunk(import("./leave-console-view")).then((m) => ({ default: m.LeaveConsoleView })));
 
 export type View = "calendar" | "types" | "crews" | "holidays" | "public";
-export type Tab = "month" | "day" | "week" | "schedule" | "overtime" | "issues" | "close" | "import";
+export type Tab = "month" | "day" | "week" | "schedule" | "overtime" | "issues" | "close" | "import" | "leave";
 export type AttendanceSearch = { view?: View; kind?: ScopeKind; id?: string; month?: string; tab?: Tab; date?: string; wp?: string; unit?: string; person?: string; detail?: boolean; issues?: boolean; mark?: string; unscheduled?: boolean };
 
 const route = getRouteApi("/app/attendance");
@@ -72,6 +73,14 @@ export function ImportPage() {
   return (
     <Suspense fallback={null}>
       <ImportConsoleView baseline={() => <AttendanceLayout>{() => <CloseTab />}</AttendanceLayout>} />
+    </Suspense>
+  );
+}
+
+export function LeavePage() {
+  return (
+    <Suspense fallback={null}>
+      <LeaveConsoleView baseline={() => <AttendanceLayout>{() => <CloseTab />}</AttendanceLayout>} />
     </Suspense>
   );
 }

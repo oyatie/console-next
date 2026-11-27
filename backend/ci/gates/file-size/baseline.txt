@@ -190,7 +190,7 @@ crates/ontology/rest/tests/object_type_lifecycle_over_http.rs	652
 crates/ontology/rest/tests/ont_gaps_as_runtime_role.rs	417
 crates/ontology/rest/tests/projected_dispatch_as_runtime_role.rs	563
 crates/orgchange/adapter-postgres/tests/preflight_persists_nothing.rs	408
-crates/payroll/adapter-postgres/src/lifecycle.rs	838
+crates/payroll/adapter-postgres/src/lifecycle.rs	816
 crates/payroll/adapter-postgres/src/pay_run.rs	485
 crates/payroll/adapter-postgres/tests/pay_run_port_as_runtime_role.rs	1190
 crates/payroll/adapter-postgres/tests/payroll_lifecycle_rls_as_runtime_role.rs	417

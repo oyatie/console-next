@@ -6,7 +6,9 @@ pub use facts::{RlsPayGroupFacts, manageable_pay_groups_in_tx, run_pay_group_in_
 pub mod run_preview;
 mod wire;
 use console_kernel_core::{AuditAction, AuditEvent, KernelError, OrgId, TraceContext, UserId};
-use console_payroll_domain::pay_groups::{PayDateRule, PaymentChannel, PeriodRule, ProrationBasis};
+use console_payroll_domain::pay_groups::{
+    AttendanceCutoffRule, PayDateRule, PaymentChannel, PeriodRule, ProrationBasis,
+};
 use console_platform_authz::Feature;
 use console_platform_authz::access::{AccessEngineError, NodeKind, NodeRef};
 use console_platform_authz::cedar_pbac::residual::SqlValue;
@@ -16,7 +18,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::types::Json;
 use time::OffsetDateTime;
 use uuid::Uuid;
-use wire::{ChannelWire, PayDateWire, PeriodWire, ProrationWire};
+use wire::{ChannelWire, PayDateWire, PeriodWire, ProrationWire, option_cutoff};
 
 use crate::{PgPayrollError, PgPayrollStore};
 
@@ -38,6 +40,14 @@ pub struct CreatePayGroup {
     pub base_period: PeriodRule,
     #[serde(with = "PeriodWire")]
     pub variable_period: PeriodRule,
+    #[serde(
+        default,
+        with = "option_cutoff",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub attendance_cutoff_rule: Option<AttendanceCutoffRule>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub member_employee_ids: Vec<Uuid>,
     #[serde(with = "ProrationWire")]
     pub proration: ProrationBasis,
     #[serde(with = "ChannelWire")]
@@ -57,6 +67,12 @@ pub struct PayGroup {
     pub base_period: PeriodRule,
     #[serde(with = "PeriodWire")]
     pub variable_period: PeriodRule,
+    #[serde(
+        default,
+        with = "option_cutoff",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub attendance_cutoff_rule: Option<AttendanceCutoffRule>,
     #[serde(with = "ProrationWire")]
     pub proration: ProrationBasis,
     #[serde(with = "ChannelWire")]
@@ -119,15 +135,43 @@ impl PgPayrollStore {
             input.pay_date_rule.validate()?;
             input.base_period.validate("base_period")?;
             input.variable_period.validate("variable_period")?;
+            if let Some(cutoff) = input.attendance_cutoff_rule {
+                cutoff.validate()?;
+            }
             if input.pay_basis_allowed.is_empty() || input.pay_basis_allowed.iter().enumerate().any(|(i, basis)| input.pay_basis_allowed[..i].contains(basis)) {
                 return Err(KernelError::validation("select distinct allowed pay bases").with_field("pay_basis_allowed").into());
             }
-            Ok(sqlx::query_scalar::<_, Json<PayGroup>>(
-                "INSERT INTO pay_groups(org_id,id,legal_entity_id,name,pay_date_rule,base_period,variable_period,proration,channel,sensitive,pay_basis_allowed)
-                 VALUES ($1,$2,$3,$4->>'name',$4->'pay_date_rule',$4->'base_period',$4->'variable_period',$4->>'proration',$4->>'channel',($4->>'sensitive')::boolean,ARRAY(SELECT jsonb_array_elements_text($4->'pay_basis_allowed')))
+            let created = sqlx::query_scalar::<_, Json<PayGroup>>(
+                "INSERT INTO pay_groups(org_id,id,legal_entity_id,name,pay_date_rule,base_period,variable_period,attendance_cutoff_rule,proration,channel,sensitive,pay_basis_allowed)
+                 VALUES ($1,$2,$3,$4->>'name',$4->'pay_date_rule',$4->'base_period',$4->'variable_period',NULLIF($4->'attendance_cutoff_rule','null'::jsonb),$4->>'proration',$4->>'channel',($4->>'sensitive')::boolean,ARRAY(SELECT jsonb_array_elements_text($4->'pay_basis_allowed')))
                  RETURNING to_jsonb(pay_groups)",
             ).bind(org.as_uuid()).bind(id).bind(input.legal_entity_id).bind(Json(&input))
-                .fetch_one(tx.as_mut()).await?.0)
+                .fetch_one(tx.as_mut()).await?.0;
+            if !input.member_employee_ids.is_empty() {
+                sqlx::query(
+                    "UPDATE employee_pay_group_assignments
+                     SET superseded_at = CASE WHEN effective_from >= entity_today() THEN now() ELSE NULL END,
+                         effective_to_exclusive = CASE WHEN effective_from < entity_today() THEN entity_today() ELSE effective_to_exclusive END
+                     WHERE org_id = $1 AND employee_id = ANY($2) AND superseded_at IS NULL AND effective_to_exclusive IS NULL",
+                )
+                .bind(org.as_uuid())
+                .bind(&input.member_employee_ids)
+                .execute(tx.as_mut())
+                .await?;
+                sqlx::query(
+                    "INSERT INTO employee_pay_group_assignments(org_id, employee_id, pay_group_id, effective_from, created_by)
+                     SELECT $1, e.id, $3, entity_today(), $4
+                     FROM employees e
+                     WHERE e.org_id = $1 AND e.id = ANY($2)",
+                )
+                .bind(org.as_uuid())
+                .bind(&input.member_employee_ids)
+                .bind(id)
+                .bind(actor.as_uuid())
+                .execute(tx.as_mut())
+                .await?;
+            }
+            Ok(created)
         })).await
     }
 

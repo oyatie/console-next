@@ -4,8 +4,6 @@ import { fmtNumber } from "@console/i18n/format";
 import { legacyPayrollBlockers } from "@console/i18n/payroll-blockers";
 import type { PayGroup, PayrollRate, PayrollRates, PayrollRun } from "./api";
 import {
-  buildCompactRunStages,
-  shortMonthDay,
   type PayrollLineSummary,
   type PayrollRunDetail,
 } from "./domain/run-register";
@@ -85,16 +83,9 @@ export function buildRunCsvHeader(): string[] {
 }
 
 export function buildRunStageSteps(run: PayrollRunDetail["run"]) {
-  return buildCompactRunStages(run.status).map(step => ({
+  return runStages(run.status).map(step => ({
     ...step,
-    label:
-      step.key === "calc"
-        ? t("payroll.run.CALCULATED")
-        : step.key === "approval"
-          ? run.status === "SUBMITTED"
-            ? t("payroll.run.SUBMITTED")
-            : t("payroll.run.stagePendingApproval")
-          : t("payroll.run.stagePayDate", { date: shortMonthDay(run.pay_date) }),
+    label: t(`payroll.stage.${step.key}`),
   }));
 }
 

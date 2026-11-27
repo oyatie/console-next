@@ -96,19 +96,29 @@ async fn preflight_for(
     .bind(run.id)
     .fetch_one(tx.as_mut())
     .await?;
-    // A regular run's roster is its legal entity's members only while that
-    // entity has one pay group; with more, the refresh adds, retracts and
-    // updates nobody, so the lines are no roster anyone can attest.
-    let undefined: bool = sqlx::query_scalar(
-        "SELECT EXISTS (SELECT 1 FROM payroll_draft_runs r \
+    // A regular run's roster is defined when its legal entity has one pay group,
+    // or when every active entity member overlapping the period has a pay-group assignment.
+    let group_ctx: Option<(Uuid, Uuid)> = sqlx::query_as(
+        "SELECT r.org_id, g.legal_entity_id FROM payroll_draft_runs r \
          JOIN pay_groups g ON g.org_id = r.org_id AND g.id = r.pay_group_id \
-         JOIN pay_groups o ON o.org_id = g.org_id AND o.legal_entity_id = g.legal_entity_id \
-          AND o.id <> g.id \
-         WHERE r.id = $1 AND r.kind = 'REGULAR')",
+         WHERE r.id = $1 AND r.kind = 'REGULAR'",
     )
     .bind(run.id)
-    .fetch_one(tx.as_mut())
+    .fetch_optional(tx.as_mut())
     .await?;
+    let undefined = if let (Some((org_id, le_id)), Some(pg_id)) = (group_ctx, run.pay_group_id) {
+        crate::pay_groups::run_preview::entity_roster_ambiguous_in_tx(
+            tx,
+            org_id,
+            le_id,
+            pg_id,
+            run.period_start,
+            run.period_end,
+        )
+        .await?
+    } else {
+        false
+    };
     let attendance = PreflightCheck {
         key: "attendance_material",
         label_ko: "근태 원천 확보",
@@ -130,14 +140,16 @@ async fn preflight_for(
         blocking_refs: if undefined { Vec::new() } else { missing_refs },
     };
 
-    // 2. An active payroll period lock must cover the whole run period.
+    // 2. An active payroll period lock (tenant-wide or scoped to this pay group) must cover the whole run period.
     let lock_active: bool = sqlx::query_scalar(
         "SELECT EXISTS (SELECT 1 FROM period_locks \
          WHERE domain = 'payroll' AND period_lock_effective(period_locks) \
+           AND (pay_group_id IS NULL OR pay_group_id = $3) \
            AND period_start <= $1 AND period_end >= $2)",
     )
     .bind(run.period_start)
     .bind(run.period_end)
+    .bind(run.pay_group_id)
     .fetch_one(tx.as_mut())
     .await?;
     let period_lock = PreflightCheck {
@@ -170,11 +182,35 @@ async fn preflight_for(
         blocking_refs: pending_leave,
     };
 
-    let can_close = attendance.ok && period_lock.ok;
-    Ok(ClosePreflight {
-        checks: vec![attendance, period_lock, leave],
-        can_close,
-    })
+    // 4. Soft warn: unclosed branch attendance months surface for operator acknowledgement without blocking close.
+    let unclosed_branches: Vec<Uuid> = sqlx::query_scalar(
+        "SELECT b.id FROM branches b \
+         WHERE NOT EXISTS ( \
+             SELECT 1 FROM attendance_month_closes amc \
+             WHERE amc.org_id = b.org_id AND amc.month = date_trunc('month', $1::timestamp)::date \
+               AND (amc.branch_id IS NULL OR amc.branch_id = b.id) \
+         ) \
+         ORDER BY b.id LIMIT $2",
+    )
+    .bind(run.period_start)
+    .bind(PREFLIGHT_REF_CAP)
+    .fetch_all(tx.as_mut())
+    .await?;
+    let mut checks = vec![attendance, period_lock, leave];
+    if !unclosed_branches.is_empty() {
+        let count = unclosed_branches.len();
+        checks.push(PreflightCheck {
+            key: "workplace_attendance_close",
+            label_ko: "workplace_attendance_close",
+            ok: true,
+            warn: true,
+            note: Some(format!("unclosed_workplaces:{count}")),
+            blocking_refs: unclosed_branches,
+        });
+    }
+
+    let can_close = checks[0].ok && checks[1].ok;
+    Ok(ClosePreflight { checks, can_close })
 }
 
 pub async fn close_attendance_in_tx(

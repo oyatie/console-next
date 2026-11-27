@@ -18,8 +18,8 @@ export const LOCK_READS = ["/api/v1/period-locks", "/api/v1/attendance"] as cons
 export const strandableChangesQuery = get("/api/v1/org-changes", { params: { query: { status: ["APPROVED", "SETTLING"], limit: 200 } } });
 
 /** Locks a period with a reason code (BW-07) and its note; one user intent per key (an exact replay returns the lock). */
-export const lockPeriod = (body: { domain: Domain; reasonCode?: string; reason?: string } & Window, key: string) =>
-  unwrap(api.POST("/api/v1/period-locks", { params: { header: { "Idempotency-Key": key } }, body: { ...body, reason: body.reason || undefined } }));
+export const lockPeriod = (body: { domain: Domain; payGroupId?: string; reasonCode?: string; reason?: string } & Window, key: string) =>
+  unwrap(api.POST("/api/v1/period-locks", { params: { header: { "Idempotency-Key": key } }, body: { ...body, payGroupId: body.payGroupId || undefined, reason: body.reason || undefined } }));
 
 export type UnlockOutcome = components["schemas"]["PeriodUnlockOutcome"];
 /**
@@ -47,6 +47,8 @@ export const rejectUnlock = (lockId: string, requestId: string, note: string, ke
 
 /** The settings the unlock form bounds its time box by (`period_lock.unlock_max_days`). */
 export const settingsQuery = { ...get("/api/v1/settings"), staleTime: 5 * 60_000 };
+/** Pay groups available when scoping a payroll period lock to one pay group. */
+export const payGroupsQuery = get("/api/v1/payroll/pay-groups");
 
 /** True for a failed request the server answered with `status` (views may not import ApiError). */
 export const failedWith = (e: unknown, status: number) => e instanceof ApiError && e.status === status;

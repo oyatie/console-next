@@ -1,3 +1,4 @@
+import { koAttendanceLeave } from "./ko/attendance-leave";
 import { koShellRoutes } from "./ko/shell-routes";
 import { koSettingsWave2 } from "./ko/settings-wave2";
 import { koUiFlexibleColumns } from "./ko/ui-flexible-columns";
@@ -176,7 +177,7 @@ export const ko: Record<ScreenMessageId, string> = {
   ...koAttendanceHolidays,
   ...koAttendanceCrews,
   ...koAttendanceRecords,
-  ...koAttendanceOverview,
+  ...koAttendanceOverview, ...koAttendanceLeave,
   ...koImport,
   ...koImportRollback,
   ...koImportSheet,

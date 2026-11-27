@@ -68,3 +68,30 @@ pub(crate) struct PeriodWire {
     start_day: PeriodStart,
     month_offset: i8,
 }
+
+#[derive(Deserialize, Serialize)]
+#[serde(remote = "AttendanceCutoffRule", deny_unknown_fields)]
+pub(crate) struct CutoffWire {
+    #[serde(with = "pay_day")]
+    day: PayDay,
+    month_offset: u8,
+}
+
+pub(crate) mod option_cutoff {
+    use super::*;
+    pub fn serialize<S: serde::Serializer>(
+        value: &Option<AttendanceCutoffRule>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        #[derive(Serialize)]
+        struct Helper<'a>(#[serde(with = "CutoffWire")] &'a AttendanceCutoffRule);
+        value.as_ref().map(Helper).serialize(serializer)
+    }
+    pub fn deserialize<'de, D: serde::Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<Option<AttendanceCutoffRule>, D::Error> {
+        #[derive(Deserialize)]
+        struct Helper(#[serde(with = "CutoffWire")] AttendanceCutoffRule);
+        Option::<Helper>::deserialize(deserializer).map(|opt| opt.map(|h| h.0))
+    }
+}
