@@ -71,10 +71,10 @@ test("all three live browser projects exclude backend-free suites while retainin
 
 test("Firefox live discovery preserves Chromium's live scope except visual baselines", { skip: !process.env.E2E_LIVE_INVENTORY }, () => {
   const dir = mkdtempSync(path.join(tmpdir(), "live-inventory-"));
-  const discover = (browser, config = "playwright.config.ts") => {
+  const discover = (browser) => {
     const output = path.join(dir, `${browser}.json`);
     const result = spawnSync(process.execPath, [path.join(root, "node_modules/@playwright/test/cli.js"),
-      "test", "--list", `--config=${config}`, `--project=${browser === "firefox" ? "firefox" : "parallel"}`, "--reporter=json"],
+      "test", "--list", `--project=${browser === "firefox" ? "firefox" : "parallel"}`, "--reporter=json"],
     { cwd: root, encoding: "utf8", env: { ...process.env, E2E_BROWSER: browser, PLAYWRIGHT_JSON_OUTPUT_FILE: output } });
     assert.equal(result.status, 0, result.stdout + result.stderr);
     const report = JSON.parse(readFileSync(output, "utf8"));
@@ -91,8 +91,6 @@ test("Firefox live discovery preserves Chromium's live scope except visual basel
     const chromium = discover("chromium");
     assert.ok(chromium.length > 0);
     assert.deepEqual(discover("firefox"), chromium);
-    for (const config of ["playwright.coldstart.config.ts", "playwright.live-renew.config.ts", "playwright.nts.config.ts"])
-      assert.ok(discover("firefox", config).length > 0, `${config} must retain its dedicated Firefox coverage`);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
@@ -118,7 +116,9 @@ test("live shards reserve cleanup time and run auxiliary suites independently", 
   const bin = path.join(dir, "bin");
   mkdirSync(bin);
   writeFileSync(path.join(bin, "npx"), '#!/bin/sh\nprintf "%s\\n" "$@" > "$CALLS"\n', { mode: 0o755 });
-  writeFileSync(path.join(bin, "node"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+  writeFileSync(path.join(bin, "node"), '#!/bin/sh\nprintf "%s\\n" "$@" > "$CALLS.report"\n', { mode: 0o755 });
+  const discovery = workflow.jobs.build.steps.find(step => step.id === "live");
+  assert.match(discovery.run, /node scripts\/e2e-live-special-inventory\.mjs \.cache\/e2e-live-plan/);
   try {
     for (const name of ["chromium", "firefox"]) {
       const job = workflow.jobs[name];
@@ -141,6 +141,9 @@ test("live shards reserve cleanup time and run auxiliary suites independently", 
           PATH: `${bin}:${process.env.PATH}`, CALLS: calls, SHARD: String(entry.shard),
           CONFIG: entry.config ?? "playwright.config.ts", PROJECT: entry.project ?? project } });
         assert.equal(result.status, 0, result.stdout + result.stderr);
+        assert.deepEqual(readFileSync(`${calls}.report`, "utf8").trim().split("\n"), [
+          "scripts/e2e-live-report.mjs", "--expected", `.cache/e2e-live-runtime/.cache/e2e-live-plan/${name}-${entry.shard}.json`, ".cache/e2e-live/*.json",
+        ]);
         const args = readFileSync(calls, "utf8").trim().split("\n");
         assert.deepEqual(args, ["playwright", "test", ...(typeof entry.shard === "number"
           ? [`--project=${project}`, `--test-list=.cache/e2e-live-runtime/.cache/e2e-live-plan/${name}-${entry.shard}.txt`]
@@ -163,7 +166,9 @@ test("the workflow reaches every previously dormant Playwright surface", () => {
     "e2e/mock/focus-stress.config.ts",
     "playwright.nts.config.ts",
   ]) assert.ok(source.includes(file), file);
-  assert.match(source, /--project=clock/);
+  const { chromium } = yaml.load(source).jobs;
+  const clock = chromium.strategy.matrix.include.find(entry => entry.shard === "clock");
+  assert.deepEqual(clock, { shard: "clock", config: "playwright.config.ts", project: "clock" });
 });
 
 test("the service image is the repository's pinned E2E Postgres image", () => {

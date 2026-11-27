@@ -48,7 +48,7 @@ jobs:
         run: |
           mkdir -p .cache/e2e-live-plan
           PLAYWRIGHT_JSON_OUTPUT_FILE=.cache/e2e-live-plan/chromium-inventory.json npx playwright test --list --grep-invert='first-run-solo|authz/write-refusals|error-beacon' --project=parallel --reporter=json
-          npx playwright test --list --project=clock
+          node scripts/e2e-live-special-inventory.mjs .cache/e2e-live-plan
           E2E_XBROWSER=1 PLAYWRIGHT_JSON_OUTPUT_FILE=.cache/e2e-live-plan/firefox-inventory.json npx playwright test --list --grep-invert='first-run-solo' --project=firefox --reporter=json
           node scripts/e2e-live-plan.mjs .cache/e2e-live-plan/chromium-inventory.json .cache/e2e-live-plan chromium
           node scripts/e2e-live-plan.mjs .cache/e2e-live-plan/firefox-inventory.json .cache/e2e-live-plan firefox
@@ -150,16 +150,14 @@ jobs:
             shift
             PLAYWRIGHT_JSON_OUTPUT_FILE=".cache/e2e-live/${report}.json" npx playwright test "$@" --global-timeout=2400000 --retries=0 --reporter=line,json || failed=1
           }
-          expected=()
           if [[ "$SHARD" =~ ^[0-9]+$ ]]; then
-            expected=(--expected ".cache/e2e-live-runtime/.cache/e2e-live-plan/chromium-${SHARD}.json")
             run_pw main --project=parallel --test-list=".cache/e2e-live-runtime/.cache/e2e-live-plan/chromium-${SHARD}.txt"
           else
             args=(--config="$CONFIG" --no-deps)
             if [[ -n "$PROJECT" ]]; then args+=(--project="$PROJECT"); fi
             run_pw "$SHARD" "${args[@]}"
           fi
-          node scripts/e2e-live-report.mjs "${expected[@]}" .cache/e2e-live/*.json || failed=1
+          node scripts/e2e-live-report.mjs --expected ".cache/e2e-live-runtime/.cache/e2e-live-plan/chromium-${SHARD}.json" .cache/e2e-live/*.json || failed=1
           exit "$failed"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ always() }}
@@ -245,16 +243,14 @@ jobs:
             shift
             PLAYWRIGHT_JSON_OUTPUT_FILE=".cache/e2e-live/${report}.json" npx playwright test "$@" --global-timeout=2400000 --retries=0 --reporter=line,json || failed=1
           }
-          expected=()
           if [[ "$SHARD" =~ ^[0-9]+$ ]]; then
-            expected=(--expected ".cache/e2e-live-runtime/.cache/e2e-live-plan/firefox-${SHARD}.json")
             run_pw main --project=firefox --test-list=".cache/e2e-live-runtime/.cache/e2e-live-plan/firefox-${SHARD}.txt"
           else
             args=(--config="$CONFIG" --no-deps)
             if [[ -n "$PROJECT" ]]; then args+=(--project="$PROJECT"); fi
             run_pw "$SHARD" "${args[@]}"
           fi
-          node scripts/e2e-live-report.mjs "${expected[@]}" .cache/e2e-live/*.json || failed=1
+          node scripts/e2e-live-report.mjs --expected ".cache/e2e-live-runtime/.cache/e2e-live-plan/firefox-${SHARD}.json" .cache/e2e-live/*.json || failed=1
           exit "$failed"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ always() }}
