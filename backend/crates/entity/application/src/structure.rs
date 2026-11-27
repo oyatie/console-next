@@ -12,6 +12,13 @@ pub struct SetWorkplaceCode {
     pub code: Option<String>,
 }
 
+/// Appoint (or clear, `null`) the employee heading one workplace.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SetWorkplaceHead {
+    pub head_employee_id: Option<Uuid>,
+}
+
 /// Whose children are reordered: at most one of the three; none names the
 /// tenant, whose children are its legal entities.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]

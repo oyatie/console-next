@@ -288,4 +288,9 @@ export const enWorkplace = {
   "workplace.code.reused": "A closed workplace used this code · the history shows both with it.",
   "workplace.close.target.closingDept": "A department of the closing workplace",
   "workplace.closed.noEdit": "A closed workplace is not edited · its history stays readable",
+  "workplace.head.field": "Workplace head",
+  "workplace.head.appoint": "Appoint workplace head",
+  "workplace.head.effective": "Recorded as workplace head from today ({date})",
+  "workplace.head.done": "Appointed the head of {name}",
+  "workplace.head.cleared": "Cleared the head of {name}",
 } as const;

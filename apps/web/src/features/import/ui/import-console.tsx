@@ -133,6 +133,7 @@ export function ImportConsole() {
         <Card titleId="import-done-aside" title={t("import.done.actions")}>
           <WorklistPadded>
             <div className={s.guide}>
+              <Link to="/people/records/import" className={buttonClass("secondary")}>{t("empRec.import.link")}</Link>
               <Link to="/people/data-health" className={buttonClass("secondary")}>{t("import.gaps.dataHealth")}</Link>
               <Link to="/people/unplaced" className={buttonClass("ghost")}>{t("unplaced.title")}</Link>
             </div>
@@ -178,6 +179,7 @@ export function ImportConsole() {
               <li>{t("import.aside.dateRule")}</li>
             </ul>
             <Link to="/people/data-health" className={buttonClass("secondary")}>{t("import.aside.healthLink")}</Link>
+            <Link to="/people/records/import" className={buttonClass("ghost")}>{t("empRec.import.link")}</Link>
           </div>
         </WorklistPadded>
       </Card>

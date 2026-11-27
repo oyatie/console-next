@@ -16,3 +16,8 @@ properties:
   error_rows:
     type: integer
     minimum: 0
+  skipped_rows:
+    type: array
+    items:
+      $ref: '#/components/schemas/AttendanceImportRowError'
+    description: Rows left out during partial apply because of unresolved or invalid values.

@@ -289,4 +289,9 @@ export const koImport: Record<keyof typeof enImport, string> = {
   "import.dry.pickToResolve": "확인 필요 항목이나 행을 선택하면 상세 내용과 조치 방법이 열립니다.",
   "import.gaps.dataHealth": "데이터 점검에서 보기",
   "import.done.actions": "완료 후 이동",
+  "import.apply.skipUnresolvedLabel": "부분 반영",
+  "import.apply.skipUnresolvedAck": "확인 필요 {count, number}건을 제외하고 정상 행만 먼저 반영합니다",
+  "import.apply.partial": "명부 부분 반영: 신규 {insert, number}명 · 갱신 {update, number}명 (제외 {skipped, number}건)",
+  "import.downloadUnresolvedCsv": "미해결 행 CSV 내려받기 ({count, number}건)",
+  "import.downloadSkippedCsv": "제외된 행 CSV 내려받기 ({count, number}건)",
 };

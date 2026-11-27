@@ -271,4 +271,6 @@ export const enAttendance = {
   "attendance.import.status.DRY_RUN": "Dry-run ready",
   "attendance.import.status.APPLIED": "Applied",
   "attendance.import.status.FAILED": "Failed",
+  "attendance.import.applyPartialAction": "Apply {ready, number} ready rows (skip {errors, number} errors)",
+  "attendance.import.downloadSkippedCsv": "Download skipped rows CSV ({count, number})",
 } as const;

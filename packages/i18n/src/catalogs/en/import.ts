@@ -277,4 +277,9 @@ export const enImport = {
   "import.dry.pickToResolve": "Select a review item or row on the left to inspect details and resolve.",
   "import.gaps.dataHealth": "Open Data Health",
   "import.done.actions": "Next actions",
+  "import.apply.skipUnresolvedLabel": "Partial apply",
+  "import.apply.skipUnresolvedAck": "Apply valid rows now and skip {count, number} unresolved row(s)",
+  "import.apply.partial": "Apply {insert, number} new · {update, number} updated (skip {skipped, number})",
+  "import.downloadUnresolvedCsv": "Download unresolved rows CSV ({count, number})",
+  "import.downloadSkippedCsv": "Download skipped rows CSV ({count, number})",
 } as const;

@@ -35,6 +35,21 @@ pub struct EmployeeImportReport {
     /// the end of the import; absent on runs applied before it existed.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub register_gaps: Option<RegisterGaps>,
+    /// Unresolved rows left out when `skip_unresolved` was set on apply.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub skipped_rows: Vec<SkippedImportRow>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SkippedImportRow {
+    pub sheet: String,
+    pub row: i32,
+    pub source_key: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub employee_number: Option<String>,
+    pub outcome: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason_code: Option<String>,
 }
 
 /// New people of the run missing each register item (the exit reason: former
@@ -248,6 +263,8 @@ pub struct ImportApplyRequest {
 #[serde(deny_unknown_fields)]
 pub struct EmployeeImportApplyRequest {
     pub dry_run_digest: String,
+    #[serde(default)]
+    pub skip_unresolved: bool,
 }
 
 pub struct XlsxUpload {

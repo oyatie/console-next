@@ -8,7 +8,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::HrError;
-use crate::import::types::{EmployeeImportReport, RegisterGaps};
+use crate::import::types::{EmployeeImportReport, RegisterGaps, SkippedImportRow};
 
 /// The leave command's report plus what the settle and the plan add.
 pub async fn final_report(
@@ -16,22 +16,43 @@ pub async fn final_report(
     org: OrgId,
     run_id: Uuid,
 ) -> Result<EmployeeImportReport, HrError> {
-    let (summary, unplaced, bound): (Value, Option<Value>, i64) = sqlx::query_as(
-        "SELECT r.apply_summary, r.dry_run_summary->'unplaced', \
+    let (summary, unplaced, rows, bound): (Value, Option<Value>, Option<Value>, i64) =
+        sqlx::query_as(
+            "SELECT r.apply_summary, r.dry_run_summary->'unplaced', r.dry_run_summary->'rows', \
                 (SELECT count(*) FROM import_run_row_snapshots s \
                    JOIN person_employees_current e ON e.org_id = s.org_id AND e.id = s.employee_id \
                   WHERE s.org_id = r.org_id AND s.run_id = r.id \
                     AND s.outcome = 'INSERTED' AND e.org_unit_id IS NOT NULL) \
            FROM data_import_runs r WHERE r.org_id = $1 AND r.id = $2",
-    )
-    .bind(org.as_uuid())
-    .bind(run_id)
-    .fetch_one(tx.as_mut())
-    .await?;
+        )
+        .bind(org.as_uuid())
+        .bind(run_id)
+        .fetch_one(tx.as_mut())
+        .await?;
     let mut report: EmployeeImportReport = serde_json::from_value(summary)
         .map_err(|e| HrError::internal(format!("invalid employee import report: {e}")))?;
     report.org_units_bound = usize::try_from(bound).unwrap_or_default();
     report.unplaced = unplaced.and_then(|u| serde_json::from_value(u).ok());
+    report.skipped_rows = rows
+        .as_ref()
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter(|row| {
+            !matches!(
+                row["outcome"].as_str(),
+                Some("insert" | "update" | "unchanged" | "excluded")
+            )
+        })
+        .map(|row| SkippedImportRow {
+            sheet: row["sheet"].as_str().unwrap_or_default().to_owned(),
+            row: i32::try_from(row["row"].as_i64().unwrap_or_default()).unwrap_or_default(),
+            source_key: row["source_key"].as_str().unwrap_or_default().to_owned(),
+            employee_number: row["employee_number"].as_str().map(str::to_owned),
+            outcome: row["outcome"].as_str().unwrap_or_default().to_owned(),
+            reason_code: row["reason"].as_str().map(str::to_owned),
+        })
+        .collect();
     Ok(report)
 }
 

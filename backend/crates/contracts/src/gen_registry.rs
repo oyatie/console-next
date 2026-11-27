@@ -3565,6 +3565,15 @@ const ENTITY_FRAGMENT_PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/workplaces/{workplaceId}/head",
+        operations: &[Operation {
+            method: "put",
+            body: include_str!(
+                "../../entity/rest/openapi/paths/api__v1__workplaces__workplaceId__head.put.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/workplaces/{workplaceId}/insurance",
         operations: &[Operation {
             method: "put",
@@ -4045,6 +4054,10 @@ const ENTITY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "SetWorkplaceCodeRequest",
         body: include_str!("../../entity/rest/openapi/schemas/SetWorkplaceCodeRequest.yaml"),
+    },
+    NamedYaml {
+        name: "SetWorkplaceHeadRequest",
+        body: include_str!("../../entity/rest/openapi/schemas/SetWorkplaceHeadRequest.yaml"),
     },
     NamedYaml {
         name: "SetWorkplaceKindRequest",

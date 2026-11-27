@@ -194,6 +194,9 @@ pub struct WorkplaceView {
     pub kind_code: Option<String>,
     /// Workplace code (review R16): unique among open workplaces; `None` = none.
     pub code: Option<String>,
+    /// Appointed workplace head (BG-3); `None` = vacant.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub head: Option<crate::OrgUnitHeadRef>,
     pub is_primary: bool,
     pub is_head_office: bool,
     pub needs_confirmation: bool,

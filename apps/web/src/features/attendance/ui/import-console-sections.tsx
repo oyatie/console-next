@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { t } from "@console/i18n";
 import { fmtDateTime, fmtNumber } from "@console/i18n/format";
+import { downloadCsv } from "../../../lib/csv-download";
 import { Banner } from "../../../ui/banner/banner";
 import { Button } from "../../../ui/button/button-base";
 import { Chip } from "../../../ui/chip";
@@ -14,6 +15,9 @@ import s from "./attendance-console.module.css";
 type RowError = AttendanceImportDryRun["row_errors"][number];
 
 export function ImportApplySection({
+  readyRows,
+  errorRows,
+  allErrors,
   filteredErrors,
   ack,
   onAckChange,
@@ -22,6 +26,9 @@ export function ImportApplySection({
   pending,
   onApply,
 }: {
+  readyRows: number;
+  errorRows: number;
+  allErrors: RowError[];
   filteredErrors: RowError[];
   ack: string[];
   onAckChange: (next: string[]) => void;
@@ -30,6 +37,16 @@ export function ImportApplySection({
   pending: boolean;
   onApply: () => void;
 }) {
+  const applyLabel =
+    errorRows > 0 && readyRows > 0
+      ? t("attendance.import.applyPartialAction", { ready: readyRows, errors: errorRows })
+      : t("attendance.import.applyAction");
+  const downloadErrors = () =>
+    downloadCsv(
+      "attendance-import-skipped.csv",
+      ["sheet", "row", "source_key", "code", "message"],
+      allErrors.map((r) => [r.source_sheet, r.source_row, r.source_key, r.code, r.message]),
+    );
   return (
     <RecordPaneSection title={t("attendance.import.step.apply")}>
       <div className={s.paneBody}>
@@ -56,17 +73,22 @@ export function ImportApplySection({
         <div className={s.paneActions}>
           {canApply ? (
             <Button size="sm" variant="primary" className={s.nowrap} disabled={pending} onClick={onApply}>
-              {t("attendance.import.applyAction")}
+              {applyLabel}
             </Button>
           ) : (
             <DisabledReason
               reason={applyBlockReason ?? t("attendance.import.blockedErrors")}
               control={props => (
                 <Button {...props} size="sm" variant="primary" className={s.nowrap}>
-                  {t("attendance.import.applyAction")}
+                  {applyLabel}
                 </Button>
               )}
             />
+          )}
+          {allErrors.length > 0 && (
+            <Button size="sm" variant="secondary" className={s.nowrap} onClick={downloadErrors}>
+              {t("attendance.import.downloadSkippedCsv", { count: allErrors.length })}
+            </Button>
           )}
         </div>
       </div>

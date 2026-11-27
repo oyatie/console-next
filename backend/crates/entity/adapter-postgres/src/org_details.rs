@@ -72,7 +72,7 @@ async fn code_taken(
 }
 
 /// The employee exists and has not left.
-async fn head_available(tx: &mut Tx<'_>, employee: Uuid) -> Result<bool, PgEntityError> {
+pub(crate) async fn head_available(tx: &mut Tx<'_>, employee: Uuid) -> Result<bool, PgEntityError> {
     Ok(sqlx::query_scalar(
         "SELECT EXISTS (SELECT 1 FROM employees WHERE id = $1 AND employment_status <> 'EXITED')",
     )

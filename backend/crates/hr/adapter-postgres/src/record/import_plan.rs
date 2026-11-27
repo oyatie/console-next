@@ -26,6 +26,8 @@ pub(crate) struct PlannedRow {
     pub fields: Option<RecordFields>,
     pub reason: Option<String>,
     pub message: Option<String>,
+    pub name_mismatch: bool,
+    pub stored_name: Option<String>,
 }
 
 pub(crate) struct Plan {
@@ -57,6 +59,8 @@ fn error(code: &'static str, message: Option<String>) -> PlannedRow {
         fields: None,
         reason: None,
         message,
+        name_mismatch: false,
+        stored_name: None,
     }
 }
 
@@ -98,6 +102,25 @@ async fn persons_of(
     let mut out: HashMap<Uuid, Uuid> = HashMap::new();
     for row in rows {
         out.insert(row.try_get("employee_id")?, row.try_get("person_id")?);
+    }
+    Ok(out)
+}
+
+async fn names_of(
+    tx: &mut Transaction<'_, Postgres>,
+    org: Uuid,
+    employees: &[Uuid],
+) -> Result<HashMap<Uuid, String>, HrError> {
+    let rows = sqlx::query(
+        "SELECT id, name FROM person_employees_current WHERE org_id = $1 AND id = ANY($2)",
+    )
+    .bind(org)
+    .bind(employees)
+    .fetch_all(tx.as_mut())
+    .await?;
+    let mut out: HashMap<Uuid, String> = HashMap::new();
+    for row in rows {
+        out.insert(row.try_get("id")?, row.try_get("name")?);
     }
     Ok(out)
 }
@@ -154,6 +177,7 @@ pub(crate) async fn plan(
     let by_number = employees_by_number(tx, org, &numbers).await?;
     let employees: Vec<Uuid> = by_number.values().flatten().copied().collect();
     let persons = persons_of(tx, org, &employees).await?;
+    let stored_names = names_of(tx, org, &employees).await?;
     let person_ids: Vec<Uuid> = persons
         .values()
         .copied()
@@ -247,6 +271,18 @@ pub(crate) async fn plan(
                 code: "duplicate_in_sheet",
             };
         }
+        let (name_mismatch, stored_name) = match (
+            row.employee_name
+                .as_deref()
+                .map(str::trim)
+                .filter(|s| !s.is_empty()),
+            stored_names.get(&employee).map(|s| s.trim()),
+        ) {
+            (Some(sheet_name), Some(actual)) if sheet_name != actual => {
+                (true, Some(actual.to_owned()))
+            }
+            _ => (false, None),
+        };
         planned.push(PlannedRow {
             employee: Some(employee),
             person: Some(person),
@@ -254,6 +290,8 @@ pub(crate) async fn plan(
             fields,
             reason,
             message: None,
+            name_mismatch,
+            stored_name,
         });
     }
     let summary: Vec<ImportRowResult> = rows

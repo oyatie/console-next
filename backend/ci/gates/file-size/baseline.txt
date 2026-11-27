@@ -2,7 +2,7 @@
 # Shrink-only: regenerate with `cargo run -p console-gate-file-size -- --write-baseline`.
 app/src/cedar_parity.rs	313
 app/src/collaboration.rs	1499
-app/src/hr.rs	3157
+app/src/hr.rs	3087
 app/src/hr/attendance_import_resolve.rs	328
 app/src/objects.rs	2007
 app/src/office.rs	885

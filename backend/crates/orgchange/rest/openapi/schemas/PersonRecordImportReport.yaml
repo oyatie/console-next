@@ -29,3 +29,7 @@ properties:
           type: [string, 'null']
         message:
           type: [string, 'null']
+        name_mismatch:
+          type: boolean
+        stored_name:
+          type: [string, 'null']

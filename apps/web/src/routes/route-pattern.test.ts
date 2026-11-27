@@ -69,6 +69,7 @@ test("the screens drawn through built patterns declare them, and no other route 
     "/people/exits/$id": "document-decision",
     "/people/grid": "wizard",
     "/people/import": "wizard",
+    "/people/records/import": "wizard",
     "/people/job-titles": "settings",
     "/people/notices": "list-record",
     "/people/notices/$noticeId": "record",

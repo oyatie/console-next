@@ -36,6 +36,8 @@ pub struct ImportRow {
     /// The sheet row number, echoed in the report.
     pub row: u32,
     pub employee_number: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub employee_name: Option<String>,
     #[serde(default)]
     pub entry_id: Option<Uuid>,
     #[serde(default)]
@@ -54,6 +56,9 @@ pub struct ImportSheetRequest {
     /// Apply only: the `plan_digest` of the preview being applied.
     #[serde(default)]
     pub plan_digest: Option<String>,
+    /// Apply only: confirms applying rows whose sheet name differed from stored employee name.
+    #[serde(default)]
+    pub acknowledge_name_mismatch: bool,
 }
 
 /// One row of the report. No field values: row, outcome, code, ids.
@@ -66,6 +71,10 @@ pub struct ImportRowResult {
     pub entry_id: Option<Uuid>,
     pub code: Option<String>,
     pub message: Option<String>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub name_mismatch: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stored_name: Option<String>,
 }
 
 impl ImportRowResult {
@@ -84,6 +93,8 @@ impl ImportRowResult {
             entry_id,
             code,
             message: planned.message.clone(),
+            name_mismatch: planned.name_mismatch,
+            stored_name: planned.stored_name.clone(),
         }
     }
 }
@@ -258,6 +269,15 @@ impl HrService {
                         status: http::StatusCode::CONFLICT,
                         code: "record_import_plan_changed",
                         message: "the sheet or the records changed since the preview; preview again".to_owned(),
+                        refusals: None,
+                    });
+                }
+                if planned.rows.iter().any(|r| r.name_mismatch) && !request.acknowledge_name_mismatch {
+                    return Err(HrError {
+                        errors: None,
+                        status: http::StatusCode::UNPROCESSABLE_ENTITY,
+                        code: "name_mismatch_unacknowledged",
+                        message: "one or more rows have a sheet name that differs from the stored employee name; acknowledge to apply".to_owned(),
                         refusals: None,
                     });
                 }

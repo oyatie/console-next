@@ -17,6 +17,9 @@ properties:
           description: The sheet row number, echoed in the report.
         employee_number:
           type: string
+        employee_name:
+          type: [string, 'null']
+          description: Optional name column from the sheet, checked against the employee's stored name.
         entry_id:
           type: [string, 'null']
           format: uuid
@@ -34,3 +37,7 @@ properties:
   plan_digest:
     type: [string, 'null']
     description: Apply only; the preview's plan_digest.
+  acknowledge_name_mismatch:
+    type: boolean
+    default: false
+    description: Apply only; confirms applying rows whose sheet name differed from the stored employee name.

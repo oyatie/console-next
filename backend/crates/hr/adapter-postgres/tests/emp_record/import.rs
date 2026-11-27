@@ -13,6 +13,7 @@ fn row(n: u32, number: &str, fields: serde_json::Value) -> ImportRow {
     ImportRow {
         row: n,
         employee_number: number.into(),
+        employee_name: None,
         entry_id: None,
         expected_version: None,
         void_reason: None,
@@ -24,6 +25,7 @@ fn sheet(rows: Vec<ImportRow>, digest: Option<String>) -> ImportSheetRequest {
     ImportSheetRequest {
         rows,
         plan_digest: digest,
+        acknowledge_name_mismatch: false,
     }
 }
 
