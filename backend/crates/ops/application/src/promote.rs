@@ -13,7 +13,7 @@ use crate::changes::ReleasesStore;
 use crate::obligations::{Context, Error as SpoolError};
 use crate::sources_status::SourceSlot;
 use crate::victoriametrics::{
-    QUERY_PREVIEW_DIGEST_INFO, QUERY_PREVIEW_RUNNING, VictoriaMetricsSnapshot,
+    QUERY_FREEZE, QUERY_PREVIEW_DIGEST_INFO, QUERY_PREVIEW_RUNNING, VictoriaMetricsSnapshot,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -117,6 +117,11 @@ impl<'a> PromoteService<'a> {
                 .get(QUERY_PREVIEW_RUNNING)
                 .is_some_and(|v| v.iter().any(|s| s.value > 0.0))
         });
+        let frozen = vm.current.as_ref().is_some_and(|snap| {
+            snap.series
+                .get(QUERY_FREEZE)
+                .is_some_and(|v| v.iter().any(|s| s.value > 0.0))
+        });
 
         let state_val = preview_digest
             .as_deref()
@@ -145,11 +150,12 @@ impl<'a> PromoteService<'a> {
                     .filter(|s| s.digest == digest)
                     .map(|s| (&s.operator, s.verdict.as_str()))
                     .collect();
-                if !gates_ok || has_open_blocker || current_verdicts.values().any(|v| *v != "ready")
+                if frozen
+                    || !gates_ok
+                    || has_open_blocker
+                    || current_verdicts.values().any(|v| *v != "ready")
                 {
                     Promotion::Blocked
-                } else if current_verdicts.is_empty() {
-                    Promotion::Watching
                 } else {
                     Promotion::Ready
                 }

@@ -37,12 +37,23 @@ fn readiness_never_turns_green_for_empty_or_open_gates() {
     let done = apply(
         Some(&gate),
         "done",
-        json!({"evidence_ref":"receipt","signer":"Synthetic owner","signed_on":"2026-10-27"}),
+        json!({
+            "evidence_ref": "docs/ops/launch-check.md",
+            "signer": "Synthetic owner",
+            "co_signer": "Synthetic reviewer",
+            "counsel_url": "https://counsel.cosskorea.invalid/opinions/lg-01",
+            "signed_on": "2026-10-27"
+        }),
     );
     let waived = apply(
         Some(&review),
         "waived",
-        json!({"reason":"Superseded","signer":"Synthetic owner"}),
+        json!({
+            "reason": "Superseded",
+            "signer": "Synthetic owner",
+            "co_signer": "Synthetic reviewer",
+            "counsel_url": "docs/ops/waiver-lg-02.md"
+        }),
     );
     assert_eq!(
         launch_readiness(Ok(&[done.clone(), review])).text,
@@ -158,4 +169,54 @@ fn worklist_tiebreak_due_orders_each_bucket_by_earliest_date() {
     ];
     let work = worklist(&items, datetime!(2026-11-20 00:00 UTC), 7);
     assert_eq!(work, [7, 6, 5, 4, 3, 2, 1, 0].map(|i| &items[i]));
+}
+
+#[test]
+fn launch_gate_requires_distinct_two_operator_signoff_and_structured_counsel_url() {
+    use console_ops_domain::obligation::Refusal;
+
+    let gate = open("launch-gate", "Launch check", None);
+    let missing_co = serde_json::from_value::<Event>(json!({
+        "event": "done",
+        "fields": {
+            "evidence_ref": "docs/ops/launch-check.md",
+            "signer": "op-a",
+            "signed_on": "2026-10-27"
+        }
+    }))
+    .unwrap();
+    assert_eq!(
+        Obligation::evolve(Some(&gate), &missing_co),
+        Err(Refusal::Incomplete)
+    );
+
+    let same_signer = serde_json::from_value::<Event>(json!({
+        "event": "done",
+        "fields": {
+            "evidence_ref": "docs/ops/launch-check.md",
+            "signer": "op-a",
+            "co_signer": "OP-A",
+            "signed_on": "2026-10-27"
+        }
+    }))
+    .unwrap();
+    assert_eq!(
+        Obligation::evolve(Some(&gate), &same_signer),
+        Err(Refusal::Invalid)
+    );
+
+    let unstructured_url = serde_json::from_value::<Event>(json!({
+        "event": "done",
+        "fields": {
+            "evidence_ref": "plain-note-only",
+            "signer": "op-a",
+            "co_signer": "op-b",
+            "signed_on": "2026-10-27"
+        }
+    }))
+    .unwrap();
+    assert_eq!(
+        Obligation::evolve(Some(&gate), &unstructured_url),
+        Err(Refusal::Invalid)
+    );
 }

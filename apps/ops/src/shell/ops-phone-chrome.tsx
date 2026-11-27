@@ -6,6 +6,7 @@ import { COPY } from "../copy";
 import type { OpsLive } from "../lib/api";
 import { fmtJoin, formatCount } from "../lib/format";
 import type { LiveStatusSnapshot } from "../lib/live-sse";
+import { toggleOpsLocale, useOpsLocale } from "../lib/locale";
 import { toggleOpsTheme, useOpsTheme } from "../lib/theme";
 import { Badge, type BadgeTone } from "../ui/badge";
 import { isNavActive, type OpsNavItem, type OpsQuickLink } from "./nav";
@@ -32,6 +33,7 @@ export function OpsPhoneTop({
   onReconnect: () => void;
 }) {
   const theme = useOpsTheme();
+  const locale = useOpsLocale();
 
   return (
     <header className={s.phoneTop} data-surface="chrome">
@@ -60,6 +62,14 @@ export function OpsPhoneTop({
             )}
           </>
         ) : null}
+        <button
+          type="button"
+          className="btn btn--sm"
+          onClick={toggleOpsLocale}
+          aria-label={locale === "ko" ? COPY.locale.labelToEn : COPY.locale.labelToKo}
+        >
+          <span>{locale === "ko" ? COPY.locale.toggleToEn : COPY.locale.toggleToKo}</span>
+        </button>
         <button
           type="button"
           className="btn btn--sm"

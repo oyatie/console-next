@@ -8,6 +8,7 @@ import { classifyOpsError, hasOpsAction } from "../lib/auth";
 import { formatCount, formatDuration, formatUtcShort } from "../lib/format";
 import { useOncallPageTestMutation } from "../lib/mutations";
 import { useOpsContext } from "../lib/ops-context";
+import { Badge } from "../ui/badge";
 import { CmdReceipt } from "../ui/cmd-receipt";
 import { DisabledReason } from "../ui/disabled-reason";
 import { InlineError } from "../ui/inline-error";
@@ -117,6 +118,39 @@ export function OncallScreen() {
           },
         ]}
       />
+
+      {data.active_shift ? (
+        <section className={s.section} aria-labelledby="oncall-active-shift">
+          <h2 id="oncall-active-shift" className={s.sectionTitle}>{COPY.oncall.activeShiftTitle}</h2>
+          <KeyValue
+            items={[
+              {
+                id: "shiftPerson",
+                label: COPY.oncall.fields.shiftPerson,
+                value: <code>{data.active_shift.active_person ?? COPY.oncall.fields.unassigned}</code>,
+              },
+              {
+                id: "shiftWindow",
+                label: COPY.oncall.fields.shiftWindow,
+                value: `${formatUtcShort(data.active_shift.shift_from)} – ${formatUtcShort(data.active_shift.shift_until)}`,
+              },
+              {
+                id: "shiftGrants",
+                label: COPY.oncall.fields.shiftGrants,
+                value: data.active_shift.shift_grants.length > 0 ? (
+                  <span className={s.toolRow}>
+                    {data.active_shift.shift_grants.map((g) => (
+                      <Badge key={g} tone="info">{g}</Badge>
+                    ))}
+                  </span>
+                ) : (
+                  COPY.oncall.fields.unassigned
+                ),
+              },
+            ]}
+          />
+        </section>
+      ) : null}
 
       <section className={s.section} aria-labelledby="oncall-config">
         <h2 id="oncall-config" className={s.sectionTitle}>{COPY.oncall.configTitle}</h2>

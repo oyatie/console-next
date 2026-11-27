@@ -8,6 +8,7 @@ use serde_json::Value;
 use crate::bundle::{
     ConfigViolation, as_object, check_exact_keys, check_non_banned_text, check_pos_int, err,
 };
+pub use crate::bundle_oncall_shift::{ActiveOncallShift, SHIFT_BOUND_ACTIONS};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]

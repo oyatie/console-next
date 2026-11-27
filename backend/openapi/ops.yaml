@@ -973,6 +973,8 @@ components:
         state: {"$ref": "#/components/schemas/ObligationState"}
         evidence_ref: {"anyOf": [{"type": "string"}, {"type": "null"}]}
         signer: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+        co_signer: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+        counsel_url: {"anyOf": [{"type": "string"}, {"type": "null"}]}
         signed_on: {"anyOf": [{"type": "string", "format": "date", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"}, {"type": "null"}]}
         deadline: {"$ref": "#/components/schemas/Text"}
     ObligationKind:
@@ -1083,6 +1085,15 @@ components:
       properties:
         evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
         config: {"type": "object"}
+        active_shift:
+          type: "object"
+          required: ["active_person", "backup_person", "shift_from", "shift_until", "shift_grants"]
+          properties:
+            active_person: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+            backup_person: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+            shift_from: {"$ref": "#/components/schemas/Timestamp"}
+            shift_until: {"$ref": "#/components/schemas/Timestamp"}
+            shift_grants: {"type": "array", "items": {"$ref": "#/components/schemas/Text"}}
         display_status: {"$ref": "#/components/schemas/ObservedText"}
         last_page_test_at: {"$ref": "#/components/schemas/ObservedTimestamp"}
         last_page_test_ok: {"$ref": "#/components/schemas/ObservedBoolean"}

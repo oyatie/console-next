@@ -5,6 +5,7 @@ import { COPY } from "../copy";
 import type { OpsLive } from "../lib/api";
 import type { LiveStatusSnapshot } from "../lib/live-sse";
 import { fmtJoin, formatCount } from "../lib/format";
+import { toggleOpsLocale, useOpsLocale } from "../lib/locale";
 import { toggleOpsTheme, useOpsTheme } from "../lib/theme";
 import { Badge, type BadgeTone } from "../ui/badge";
 import { isNavActive, type OpsNavItem } from "./nav";
@@ -41,6 +42,7 @@ export function OpsTopBar({
   onReconnect: () => void;
 }) {
   const theme = useOpsTheme();
+  const locale = useOpsLocale();
 
   return (
     <header className={s.topbar} data-surface="chrome">
@@ -102,6 +104,15 @@ export function OpsTopBar({
             ) : null}
           </div>
         ) : null}
+
+        <button
+          type="button"
+          className="btn btn--sm"
+          onClick={toggleOpsLocale}
+          aria-label={locale === "ko" ? COPY.locale.labelToEn : COPY.locale.labelToKo}
+        >
+          <span>{locale === "ko" ? COPY.locale.toggleToEn : COPY.locale.toggleToKo}</span>
+        </button>
 
         <button
           type="button"

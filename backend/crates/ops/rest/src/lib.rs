@@ -35,6 +35,7 @@ pub mod handlers_recovery;
 pub mod handlers_silences;
 mod jwks_validate;
 pub mod operators;
+mod operators_shift;
 mod ops_metrics;
 pub mod origin_guard;
 pub mod sse;

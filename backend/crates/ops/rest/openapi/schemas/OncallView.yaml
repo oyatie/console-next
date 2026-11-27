@@ -4,6 +4,15 @@ required: ["evaluated_at", "display_status", "last_page_test_at", "last_page_tes
 properties:
   evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
   config: {"type": "object"}
+  active_shift:
+    type: "object"
+    required: ["active_person", "backup_person", "shift_from", "shift_until", "shift_grants"]
+    properties:
+      active_person: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+      backup_person: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+      shift_from: {"$ref": "#/components/schemas/Timestamp"}
+      shift_until: {"$ref": "#/components/schemas/Timestamp"}
+      shift_grants: {"type": "array", "items": {"$ref": "#/components/schemas/Text"}}
   display_status: {"$ref": "#/components/schemas/ObservedText"}
   last_page_test_at: {"$ref": "#/components/schemas/ObservedTimestamp"}
   last_page_test_ok: {"$ref": "#/components/schemas/ObservedBoolean"}

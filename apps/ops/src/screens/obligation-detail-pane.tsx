@@ -43,6 +43,8 @@ export function ObligationDetailPane({
   const [reason, setReason] = useState("");
   const [evidenceRef, setEvidenceRef] = useState("");
   const [signer, setSigner] = useState("");
+  const [coSigner, setCoSigner] = useState("");
+  const [counselUrl, setCounselUrl] = useState("");
   const [signedOn, setSignedOn] = useState(() => new Date().toISOString().slice(0, 10));
 
   const query = useQuery({
@@ -96,10 +98,24 @@ export function ObligationDetailPane({
     } else if (actionType === "done") {
       mut.mutate({
         event: "done",
-        fields: { evidence_ref: evidenceRef.trim(), signer: signer.trim(), signed_on: signedOn.trim() },
+        fields: {
+          evidence_ref: evidenceRef.trim(),
+          signer: signer.trim(),
+          ...(coSigner.trim() ? { co_signer: coSigner.trim() } : {}),
+          ...(counselUrl.trim() ? { counsel_url: counselUrl.trim() } : {}),
+          signed_on: signedOn.trim(),
+        },
       });
     } else {
-      mut.mutate({ event: "waived", fields: { reason: reason.trim(), signer: signer.trim() } });
+      mut.mutate({
+        event: "waived",
+        fields: {
+          reason: reason.trim(),
+          signer: signer.trim(),
+          ...(coSigner.trim() ? { co_signer: coSigner.trim() } : {}),
+          ...(counselUrl.trim() ? { counsel_url: counselUrl.trim() } : {}),
+        },
+      });
     }
   };
 
@@ -126,6 +142,8 @@ export function ObligationDetailPane({
             { id: "deadline", label: COPY.obligations.cols.deadline, value: item.deadline },
             { id: "evidence", label: COPY.obligations.fields.evidenceRef, value: item.evidence_ref ?? COPY.observed.notInstrumented },
             { id: "signer", label: COPY.obligations.fields.signer, value: item.signer ?? COPY.now.unassigned },
+            ...(item.co_signer ? [{ id: "coSigner", label: COPY.obligations.fields.coSigner, value: item.co_signer }] : []),
+            ...(item.counsel_url ? [{ id: "counselUrl", label: COPY.obligations.fields.counselUrl, value: <code>{item.counsel_url}</code> }] : []),
             { id: "signedOn", label: COPY.obligations.detail.signedOn, value: item.signed_on ?? COPY.observed.notInstrumented },
           ]}
         />
@@ -166,6 +184,7 @@ export function ObligationDetailPane({
           ) : null}
           {actionType === "done" ? (
             <>
+              {item.kind === "launch-gate" ? <p className={s.emptyNote}>{COPY.obligations.detail.launchGateHint}</p> : null}
               <label className={s.fieldLabel}>
                 <span>{COPY.obligations.fields.evidenceRef}</span>
                 <input type="text" className="field-input--form" value={evidenceRef} onChange={(e) => setEvidenceRef(e.target.value)} />
@@ -175,6 +194,14 @@ export function ObligationDetailPane({
                 <input type="text" className="field-input--form" value={signer} onChange={(e) => setSigner(e.target.value)} />
               </label>
               <label className={s.fieldLabel}>
+                <span>{COPY.obligations.fields.coSigner}</span>
+                <input type="text" className="field-input--form" value={coSigner} onChange={(e) => setCoSigner(e.target.value)} />
+              </label>
+              <label className={s.fieldLabel}>
+                <span>{COPY.obligations.fields.counselUrl}</span>
+                <input type="text" className="field-input--form" value={counselUrl} onChange={(e) => setCounselUrl(e.target.value)} />
+              </label>
+              <label className={s.fieldLabel}>
                 <span>{COPY.obligations.fields.signedOn}</span>
                 <input type="text" className="field-input--form" value={signedOn} onChange={(e) => setSignedOn(e.target.value)} />
               </label>
@@ -182,6 +209,7 @@ export function ObligationDetailPane({
           ) : null}
           {actionType === "waived" ? (
             <>
+              {item.kind === "launch-gate" ? <p className={s.emptyNote}>{COPY.obligations.detail.launchGateHint}</p> : null}
               <label className={s.fieldLabel}>
                 <span>{COPY.obligations.fields.reason}</span>
                 <input type="text" className="field-input--form" value={reason} onChange={(e) => setReason(e.target.value)} />
@@ -189,6 +217,14 @@ export function ObligationDetailPane({
               <label className={s.fieldLabel}>
                 <span>{COPY.obligations.fields.signer}</span>
                 <input type="text" className="field-input--form" value={signer} onChange={(e) => setSigner(e.target.value)} />
+              </label>
+              <label className={s.fieldLabel}>
+                <span>{COPY.obligations.fields.coSigner}</span>
+                <input type="text" className="field-input--form" value={coSigner} onChange={(e) => setCoSigner(e.target.value)} />
+              </label>
+              <label className={s.fieldLabel}>
+                <span>{COPY.obligations.fields.counselUrl}</span>
+                <input type="text" className="field-input--form" value={counselUrl} onChange={(e) => setCounselUrl(e.target.value)} />
               </label>
             </>
           ) : null}

@@ -198,3 +198,98 @@ fn registry_refuses_ambiguous_identity_and_invalid_facts() {
     unknown[0]["role"] = json!("admin");
     assert!(OperatorRegistry::from_json(&unknown.to_string()).is_err());
 }
+
+#[test]
+fn shift_bound_oncall_grants_allow_active_responder_and_rotate_at_handoff() {
+    use console_ops_domain::bundle::validate_oncall_json;
+
+    let person_a = "00000000-0000-4000-8000-000000000001";
+    let person_b = "00000000-0000-4000-8000-000000000002";
+    let ops_json = json!([
+        {
+            "person": person_a,
+            "email_sha256": hex::encode(digest(&SHA256, b"primary@example.invalid")),
+            "grants": [{"action": "read.me", "from": "2026-10-01T00:00:00Z", "until": "2026-12-01T00:00:00Z"}]
+        },
+        {
+            "person": person_b,
+            "email_sha256": hex::encode(digest(&SHA256, b"backup@example.invalid")),
+            "grants": [{"action": "read.me", "from": "2026-10-01T00:00:00Z", "until": "2026-12-01T00:00:00Z"}]
+        }
+    ])
+    .to_string();
+    let registry = OperatorRegistry::from_json(&ops_json).unwrap();
+    let oncall = validate_oncall_json(
+        &json!({
+            "version": 1,
+            "mode": "primary-backup",
+            "display_status": "Primary and backup active",
+            "timezone": "UTC",
+            "rotation": {
+                "primary_person": person_a,
+                "backup_person": person_b,
+                "handoff_weekday": "Mon",
+                "handoff_hour_local": 9
+            },
+            "escalation": {
+                "ack_timeout_s": 300,
+                "repeat_interval_s": 900,
+                "out_of_hours_policy": "sev1-symptoms-only",
+                "daily_page_budget": 2
+            },
+            "synthetic_page_test": {
+                "enabled": true,
+                "schedule": "weekly",
+                "weekday": "Wed",
+                "hour_utc": 2,
+                "max_delivery_lag_s": 120
+            }
+        })
+        .to_string(),
+        Some(&[person_a, person_b]),
+    )
+    .unwrap();
+
+    let t_week1 = OffsetDateTime::parse("2026-10-28T12:00:00Z", &Rfc3339).unwrap();
+    let t_week2 = OffsetDateTime::parse("2026-11-04T12:00:00Z", &Rfc3339).unwrap();
+
+    let shift1 = oncall.active_shift(t_week1);
+    let active1_email = if shift1.active_person.as_deref() == Some(person_a) {
+        "primary@example.invalid"
+    } else {
+        "backup@example.invalid"
+    };
+    let inactive1_email = if active1_email == "primary@example.invalid" {
+        "backup@example.invalid"
+    } else {
+        "primary@example.invalid"
+    };
+
+    for action in ["alert.ack", "alert.silence", "incident.write"] {
+        assert!(
+            registry
+                .authorize_with_shift(active1_email, action, t_week1, Some(&oncall))
+                .is_ok(),
+            "{action} should be granted on active shift"
+        );
+        assert_eq!(
+            registry
+                .authorize_with_shift(inactive1_email, action, t_week1, Some(&oncall))
+                .unwrap_err(),
+            Refusal::ActionDenied
+        );
+        // Next week handoff rotates active responder!
+        assert!(
+            registry
+                .authorize_with_shift(inactive1_email, action, t_week2, Some(&oncall))
+                .is_ok(),
+            "{action} should rotate to backup responder after handoff"
+        );
+        assert_eq!(
+            registry
+                .authorize_with_shift(active1_email, action, t_week2, Some(&oncall))
+                .unwrap_err(),
+            Refusal::ActionDenied
+        );
+    }
+}
