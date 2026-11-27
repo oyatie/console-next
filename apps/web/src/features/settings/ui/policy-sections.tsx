@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { isMessageId, t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
+import { codeText } from "../../../lib/code-text";
 import { get } from "../../../lib/query";
 import { CommandError } from "../../../lib/react/command-error";
 import { QueryState } from "../../../lib/react/query-state";
@@ -115,7 +116,7 @@ export function PolicyCategoryPanel({
             card: "fact",
             cell: (entry) => (
               <div className={s.chips}>
-                <Chip tone="info">{t(`settingsHub.layer.${entry.source.layer}`)}</Chip>
+                <Chip tone="info">{codeText(`settingsHub.layer.${entry.source.layer}`, t("settingsHub.unknown"))}</Chip>
                 {entry.governance !== "tenant" && <Chip tone="neutral">{t(`settingsHub.governance.${entry.governance}`)}</Chip>}
               </div>
             ),

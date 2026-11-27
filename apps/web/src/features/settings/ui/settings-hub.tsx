@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useRouter, useSearch } from "@tanstack/react-router";
 import type { components } from "@console/api/schema";
 import { chunk } from "../../../lib/chunk-guard";
+import { codeText } from "../../../lib/code-text";
 import { isMessageId, t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { myAccessQuery } from "../../../reference/authz/api";
@@ -215,7 +216,7 @@ export function SettingsHubView({
               id: latestInspectedEntry.key,
               label: formatEntryLabel(latestInspectedEntry, settingsCopy),
               title: formatEntryLabel(latestInspectedEntry, settingsCopy),
-              meta: activeInspect?.scopeLabel ?? t(`settingsHub.layer.${latestInspectedEntry.source.layer}`),
+              meta: activeInspect?.scopeLabel ?? codeText(`settingsHub.layer.${latestInspectedEntry.source.layer}`, t("settingsHub.unknown")),
               onClose: () => {
                 setInspecting(null);
                 setDismissedSection(section);

@@ -31,7 +31,6 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use console_kernel_core::{ErrorKind, KernelError};
 use console_platform_auth::JwtVerifier;
-use console_platform_authz::Principal;
 use console_platform_authz::cedar_pbac::authoring::{
     AuthoredPolicy, NoCodeBlocks, SimRequest, SimResource, SimSubject, SimulationOutcome,
     simulate as simulate_policies,
