@@ -28,11 +28,13 @@ export function CertEvidence({ entityId, doc, onDoc, original = false }: { entit
         onFiles={([f]) => f && upload.mutate(f)}
         busy={upload.isPending ? t("entityCreate.original.uploading") : undefined}
       >
-        {doc && (
-          <div className="row" role="status">
-            <FileText size={14} aria-hidden /> {t("entityReissue.evidence.attached", { name: doc.file_name })} <OpenOriginal doc={doc} />
-          </div>
-        )}
+        <div className={s.certReceipt} role="status">
+          {doc && <>
+            <FileText size={14} aria-hidden />
+            <bdi title={doc.file_name}>{t("entityReissue.evidence.attached", { name: doc.file_name })}</bdi>
+            <OpenOriginal doc={doc} />
+          </>}
+        </div>
       </FileDrop>
       {!original && <Muted>{t("entityReissue.evidence.typed")}</Muted>}
       <EntityError error={upload.error} />
