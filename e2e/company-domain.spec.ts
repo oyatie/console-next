@@ -45,7 +45,7 @@ test("company domain: deliberate opening, safe rename, old-domain sign-in notice
   await go(v, "/account");
   await expect(v.getByRole("heading", { name: "내 계정", exact: true })).toBeVisible();
   await go(v, "/platform");
-  await v.getByRole("row").filter({ hasText: old }).click();
+  await v.getByRole("row").filter({ has: v.getByText(old, { exact: true }) }).click();
   await expect(v.getByRole("complementary").getByText(next, { exact: true })).toBeVisible();
 
   await v.getByRole("button", { name: "회사 도메인 변경", exact: true }).click();
@@ -74,5 +74,5 @@ test("company domain: deliberate opening, safe rename, old-domain sign-in notice
   await expectAccessible(admin, "renamed company domain");
   // Permanent aliases remain searchable in the platform directory.
   await v.getByRole("textbox", { name: "고객 계정 검색" }).fill(old);
-  await expect(v.getByRole("row").filter({ hasText: next })).toBeVisible();
+  await expect(v.getByRole("row").filter({ has: v.getByText(next, { exact: true }) })).toBeVisible();
 });

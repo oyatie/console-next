@@ -4,7 +4,7 @@ import { expect, test } from "@playwright/test";
 import { clickCounter } from "./clicks";
 import { expectAccessible } from "./a11y";
 import { fillRegister, openRegistered, pressRegister, receiptOf, registerSheet } from "./helpers/register";
-import { forgetResize } from "./stability";
+import { expectStable, forgetResize } from "./stability";
 import { go, kstDate } from "./flows";
 import { hrAct, hrItem, hrMenu } from "./record";
 import { tenantWithExecutive } from "./setup-flows";
@@ -40,10 +40,17 @@ test("HCM journey: org structure → staffing → transfer → promotion → lea
   expect(c.done("add a department")).toBeLessThanOrEqual(5);
 
   // 3. (Regions and branches are retired, decisions #18: the 사업장's own branch is everyone's home branch.)
-  // 4. Register an employee from the department's box (unit is prefilled).
+  // 4. At laptop width the applied receipt and its actions leave the department open to a press.
+  await expectStable(admin, "department created");
+  const desktop = admin.viewportSize()!;
+  await admin.setViewportSize({ width: 1100, height: 700 });
+  await forgetResize(admin);
   await revealUnit(admin, "인사부");
   await c.click(admin.getByRole("complementary", { name: "인사부", exact: true }).getByRole("link", { name: "인사부에 직원 등록" }));
   await expect(registerSheet(admin).getByRole("textbox", { name: /^이름/ })).toBeVisible();
+  await expectStable(admin, "register employee from the laptop chart");
+  await admin.setViewportSize(desktop);
+  await forgetResize(admin);
   await expectAccessible(admin, "register employee");
   // The full form at phone width: its rows wrap instead of scrolling sideways.
   await admin.setViewportSize({ width: 390, height: 844 });
