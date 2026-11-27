@@ -1231,6 +1231,8 @@ export interface components {
             state: components["schemas"]["ObligationState"];
             evidence_ref: string | null;
             signer: string | null;
+            co_signer?: string | null;
+            counsel_url?: string | null;
             signed_on: string | null;
             deadline: components["schemas"]["Text"];
         };
@@ -1332,6 +1334,13 @@ export interface components {
         OncallView: {
             evaluated_at: components["schemas"]["Timestamp"];
             config?: Record<string, never>;
+            active_shift?: {
+                active_person: string | null;
+                backup_person: string | null;
+                shift_from: components["schemas"]["Timestamp"];
+                shift_until: components["schemas"]["Timestamp"];
+                shift_grants: components["schemas"]["Text"][];
+            };
             display_status: components["schemas"]["ObservedText"];
             last_page_test_at: components["schemas"]["ObservedTimestamp"];
             last_page_test_ok: components["schemas"]["ObservedBoolean"];
