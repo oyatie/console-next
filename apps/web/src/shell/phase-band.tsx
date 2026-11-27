@@ -63,7 +63,9 @@ export function PhaseBand({ children }: { children: ReactNode }) {
   const next = band === "setup" ? currentStep(data?.steps ?? []) : undefined;
   const label = t("shell.phase.setup");
   const text = next ? `${label} · ${codeText(`setup.step.${next}`, "")}` : label;
-  const slot = <PhaseSlot phase={band === "started" && dismissed === receipt ? null : band} text={text} dismiss={dismiss} />;
+  // Access can observe go-live before the matching checklist refresh supplies its receipt.
+  const transitioning = access.data?.phase === "OPERATING" && data?.phase === "SETUP" && q.isFetching;
+  const slot = transitioning ? <div className={s.band} aria-hidden="true" /> : <PhaseSlot phase={band === "started" && dismissed === receipt ? null : band} text={text} dismiss={dismiss} />;
   return <PagePhase value={{ slot, settled: decided }}>
     {!decided && <div className="page"><Skeleton bones={["crumb", "title", "line", "row", "row", "row"]} label={t("common.loading")} /></div>}
     <div className={s.content} data-phase-pending={!decided || undefined} inert={!decided} aria-hidden={!decided || undefined}>{children}</div>

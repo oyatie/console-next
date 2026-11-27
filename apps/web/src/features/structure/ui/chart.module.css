@@ -129,7 +129,8 @@
 @media (--phone) {
   .head { flex-wrap: wrap; }
   .toolbarFind { width: 100%; min-width: 0; max-width: 100%; }
-  .crumbs { min-width: 0; max-width: 100%; }
+  .crumbs { min-width: 0; max-width: 100%; overflow-x: auto; }
+  .crumb { flex-shrink: 0; }
   :where([data-experience]:not([data-experience="baseline"])) .toolbarFind { flex: 1 1 calc(var(--panel-w) / 2); width: auto; }
   :where([data-experience]:not([data-experience="baseline"])) .chev:empty { display: none; }
   :where([data-experience]:not([data-experience="baseline"])) [data-mobile-layout="compact"] .treeCell { padding-inline-start: 0 !important; }

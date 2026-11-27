@@ -98,10 +98,12 @@ test("a refresh that fails for a server fault or a dropped connection never sign
     );
     // A reload restores the session by refresh: with the server unreachable it says so, and stays signed in.
     await page.reload();
-    await expect(page.getByRole("heading", { name: "화면을 표시하지 못했습니다" })).toBeVisible();
+    const failure = page.getByRole("alert");
+    await expect(failure.getByRole("heading", { name: t("common.loadFailed.title") })).toBeVisible();
+    await expect(failure).toContainText(t(fault === "503" ? "common.read.sessionRestoreReason" : "common.networkError"));
     await expect(page).not.toHaveURL(/\/login/);
     await page.unroute("**/api/v1/auth/token/refresh");
-    await page.getByRole("button", { name: "페이지 새로 고침" }).click();
+    await page.getByRole("button", { name: t("common.retry") }).click();
     await expectSignedIn(page);
     await expect(page).not.toHaveURL(/\/login/);
   }

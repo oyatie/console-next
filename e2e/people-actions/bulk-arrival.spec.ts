@@ -14,7 +14,7 @@ test("bulk kinds wait for the picked employees before opening their controls", {
   let started!: () => void;
   const reading = new Promise<void>((resolve) => { started = resolve; });
   await admin.route("**/api/v1/employees?**", async (route) => {
-    if (new URL(route.request().url()).searchParams.get("limit") !== "1000") return route.continue();
+    if (!new URL(route.request().url()).searchParams.has("ids")) return route.continue();
     const response = await route.fetch();
     started();
     await held;
@@ -25,7 +25,8 @@ test("bulk kinds wait for the picked employees before opening their controls", {
     await reading;
     await expectAccessible(admin, "bulk appointment while the selected records are loading");
     const kinds = admin.getByRole("group", { name: "무엇을" });
-    for (const name of ["전보", "승진"]) await expect(kinds.getByRole("button", { name, exact: true })).toBeDisabled();
+    await expect(admin.locator('[data-read-layout="form"][aria-busy="true"]')).toBeVisible();
+    await expect(kinds).toHaveCount(0);
     release();
     await expect(kinds.getByRole("button", { name: "승진", exact: true })).toBeEnabled();
     await kinds.getByRole("button", { name: "승진", exact: true }).click();
