@@ -68,6 +68,38 @@ export const payGroupSchemas = {
       "variable_period": {
         "$ref": "#/components/schemas/PayGroupPeriodRule"
       },
+      "attendance_cutoff_rule": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "day",
+          "month_offset"
+        ],
+        "properties": {
+          "day": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 31
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "LAST_DAY"
+                ]
+              }
+            ]
+          },
+          "month_offset": {
+            "type": "integer",
+            "enum": [
+              0,
+              1
+            ]
+          }
+        }
+      },
       "proration": {
         "type": "string",
         "enum": [

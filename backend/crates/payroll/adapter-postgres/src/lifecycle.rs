@@ -191,7 +191,7 @@ pub async fn calculate_run_in_tx(
     let Some(run) = run_head(tx, run_id, true).await? else {
         return Err(LifecycleError::NotFound);
     };
-    if run.status != "ATTENDANCE_CLOSED" {
+    if run.status != "ATTENDANCE_CLOSED" && run.status != "CALCULATED" {
         return Err(invalid_state("calculate", &run.status));
     }
     // The transient state is real: any concurrent reader inside this
@@ -350,31 +350,6 @@ pub async fn calculate_run_in_tx(
             exceptions_created += i64::try_from(inserted.rows_affected()).unwrap_or(0);
         }
     }
-
-    // Carry-forward: HELD exceptions from the previous run of the same series
-    // are re-opened on this run (carried_from_run_id keeps the lineage).
-    let carried = sqlx::query(
-        "INSERT INTO payroll_run_exceptions \
-         (org_id, run_id, line_id, employee_id, employee_display_name, kind, severity, \
-          amount_delta_won, summary_ko, detail, linked_refs, carried_from_run_id) \
-         SELECT e.org_id, $1, NULL, e.employee_id, e.employee_display_name, e.kind, \
-                e.severity, e.amount_delta_won, e.summary_ko, e.detail, e.linked_refs, e.run_id \
-         FROM payroll_run_exceptions e \
-         WHERE e.status = 'HELD' \
-           AND e.run_id = (SELECT r.id FROM payroll_draft_runs r \
-                           WHERE r.source_label = $2 AND r.period_end < $3 \
-                           ORDER BY r.period_end DESC LIMIT 1) \
-           AND NOT EXISTS (SELECT 1 FROM payroll_run_exceptions x \
-                           WHERE x.run_id = $1 AND x.carried_from_run_id = e.run_id \
-                             AND x.kind = e.kind \
-                             AND x.employee_id IS NOT DISTINCT FROM e.employee_id)",
-    )
-    .bind(run_id)
-    .bind(&run.source_label)
-    .bind(run.period_start)
-    .execute(tx.as_mut())
-    .await?;
-    exceptions_created += i64::try_from(carried.rows_affected()).unwrap_or(0);
 
     sqlx::query(
         "UPDATE payroll_draft_runs SET status = 'CALCULATED', updated_at = now() WHERE id = $1",

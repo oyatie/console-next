@@ -21,6 +21,8 @@ pub struct PayrollRunSummary {
     pub variable_period_start: Option<Date>,
     #[serde(with = "date::option")]
     pub variable_period_end: Option<Date>,
+    #[serde(with = "date::option", skip_serializing_if = "Option::is_none")]
+    pub attendance_cutoff_date: Option<Date>,
     pub source_label: String,
     pub status: String,
     pub calculation_enabled: bool,

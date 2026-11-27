@@ -12,6 +12,8 @@ import { todayKst } from "../../../lib/pure/today";
 import { PERIOD_LOCK_DOMAIN } from "../../../lib/labels";
 import { useNeedsNote, useReasonCodesReady } from "../../../lib/reason-codes";
 import { ReasonCodeField } from "../../../reference/reason/ui/reason-code-field";
+import { myAccessQuery } from "../../../reference/authz/api";
+import { accessRefusal } from "../../../reference/authz/domain/access";
 import { useCan } from "../../../reference/authz/ui/use-can";
 import { ActionBar } from "../../../ui/action-bar/action-bar";
 import { Banner } from "../../../ui/banner/banner";
@@ -22,13 +24,13 @@ import { DerivedValue } from "../../../ui/field/derived-value";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { Field } from "../../../ui/field/field";
 import { TextArea } from "../../../ui/field/text-area";
-import { LOCK_READS, failedWith, lockPeriod, locksQuery, strandableChangesQuery, type Domain, type PeriodLock } from "../api";
+import { LOCK_READS, failedWith, lockPeriod, locksQuery, payGroupsQuery, strandableChangesQuery, type Domain, type PeriodLock } from "../api";
 import { datedWithin, monthWindow, overlapping, recentMonths, shiftedStart, type Window } from "../domain/period";
 import { dayText, domainText, monthText, periodText, rangeText } from "../present";
 import s from "./period-locks.module.css";
 
-type Form = { domain: Domain | null; mode: "month" | "range"; month: string | null; start: string; end: string; code: string | null; reason: string };
-const EMPTY: Form = { domain: null, mode: "month", month: null, start: "", end: "", code: null, reason: "" };
+type Form = { domain: Domain | null; payGroupId: string | null; mode: "month" | "range"; month: string | null; start: string; end: string; code: string | null; reason: string };
+const EMPTY: Form = { domain: null, payGroupId: null, mode: "month", month: null, start: "", end: "", code: null, reason: "" };
 type Key = "domain" | "month" | "start" | "end" | "reason";
 
 /** The field ids the press-time validation focuses, in screen order. */
@@ -54,10 +56,14 @@ export function LockForm({ locks, preset, onLocked, onShowLock, onClose }: { loc
   const months = recentMonths(today).map((m) => ({ value: m, label: monthText(m) }));
 
   const w: Window | null = f.mode === "month" ? (f.month ? monthWindow(f.month) : null) : f.start && f.end && f.end >= f.start ? { periodStart: f.start, periodEnd: f.end } : null;
-  const clash = f.domain && w ? overlapping(locks, f.domain, w) : undefined;
+  const scopedPayGroupId = f.domain === "payroll" && f.payGroupId ? f.payGroupId : null;
+  const clash = f.domain && w ? overlapping(locks, f.domain, w, scopedPayGroupId) : undefined;
   const shift = clash && w ? shiftedStart(w, clash) : null;
   const can = useCan();
+  const myAccess = useQuery(myAccessQuery);
+  const canViewPay = !!myAccess.data && accessRefusal(myAccess.data, { domain: "pay", level: "view", scopes: ["TENANT", "LEGAL_ENTITY", "WORKPLACE"] }) === null;
   const changes = useQuery({ ...strandableChangesQuery, enabled: can("org_change_read") });
+  const payGroups = useQuery({ ...payGroupsQuery, enabled: f.domain === "payroll" && canViewPay, retry: false });
   const stranded = w && changes.data ? datedWithin(changes.data.items, w) : [];
 
   const errors: Partial<Record<Key, string>> = {};
@@ -73,7 +79,7 @@ export function LockForm({ locks, preset, onLocked, onShowLock, onClose }: { loc
   const missing = (Object.keys(errors) as Key[]).map((k) => ({ domain: t("periodLocks.col.domain"), month: t("periodLocks.month"), start: t("periodLocks.start"), end: t("periodLocks.end"), reason: t("periodLocks.reason") })[k]);
 
   const lock = useCommand({
-    run: (_: void, key: string) => lockPeriod({ domain: f.domain!, periodStart: w!.periodStart, periodEnd: w!.periodEnd, reasonCode: f.code ?? undefined, reason: f.reason.trim() }, key),
+    run: (_: void, key: string) => lockPeriod({ domain: f.domain!, payGroupId: scopedPayGroupId ?? undefined, periodStart: w!.periodStart, periodEnd: w!.periodEnd, reasonCode: f.code ?? undefined, reason: f.reason.trim() }, key),
     invalidates: LOCK_READS,
     onSuccess: (l) => {
       setF(EMPTY);
@@ -108,8 +114,20 @@ export function LockForm({ locks, preset, onLocked, onShowLock, onClose }: { loc
     <div ref={escRef}>
       <Form className="form" onSubmit={submit} noValidate>
         <div id={fid("domain")}>
-          <ChoiceField label={t("periodLocks.col.domain")} required options={PERIOD_LOCK_DOMAIN.values.map((d) => ({ value: d, label: domainText(d) }))} value={f.domain} onChange={(d) => set({ domain: d as Domain })} error={shown("domain")} />
+          <ChoiceField label={t("periodLocks.col.domain")} required options={PERIOD_LOCK_DOMAIN.values.map((d) => ({ value: d, label: domainText(d) }))} value={f.domain} onChange={(d) => set({ domain: d as Domain, payGroupId: null })} error={shown("domain")} />
         </div>
+        {f.domain === "payroll" && (payGroups.data?.items.length ?? 0) > 0 && (
+          <ChoiceField
+            label={t("periodLocks.payGroup")}
+            required={false}
+            options={[
+              { value: "", label: t("periodLocks.payGroupAll") },
+              ...payGroups.data!.items.map((g) => ({ value: g.id, label: g.name })),
+            ]}
+            value={f.payGroupId ?? ""}
+            onChange={(v) => set({ payGroupId: v || null })}
+          />
+        )}
         <ChoiceField
           label={t("periodLocks.mode")}
           required

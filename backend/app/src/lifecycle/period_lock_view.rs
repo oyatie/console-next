@@ -21,6 +21,10 @@ use super::unlock_review::unreviewed_unlock;
 pub(super) struct PeriodLockResponse {
     id: Uuid,
     pub(super) domain: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pay_group_id: Option<Uuid>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pay_group_name: Option<String>,
     pub(super) period_start: String,
     pub(super) period_end: String,
     reason: String,
@@ -157,6 +161,8 @@ fn period_lock_from_row(row: &sqlx::postgres::PgRow) -> Result<PeriodLockRespons
     Ok(PeriodLockResponse {
         id: row.try_get("id")?,
         domain: row.try_get("domain")?,
+        pay_group_id: row.try_get("pay_group_id")?,
+        pay_group_name: row.try_get("pay_group_name")?,
         period_start: period_start.to_string(),
         period_end: period_end.to_string(),
         // 0252 made reason a nullable note beside reason_code; the wire keeps
@@ -184,7 +190,9 @@ fn period_lock_from_row(row: &sqlx::postgres::PgRow) -> Result<PeriodLockRespons
 /// lookups: a removed account reads as no name, never another tenant's user.
 macro_rules! lock_columns {
     () => {
-        concat!("id, domain, period_start, period_end, reason, reason_code, \
+        concat!("id, domain, pay_group_id, \
+     (SELECT g.name FROM pay_groups g WHERE g.org_id = period_locks.org_id AND g.id = period_locks.pay_group_id) AS pay_group_name, \
+     period_start, period_end, reason, reason_code, \
      locked_by, locked_at, unlocked_by, unlocked_at, unlock_reason, unlock_reason_code, relock_at, \
      unlock_approved_by, \
      ((unlock_review_required AND unlock_approved_by IS NOT NULL) OR EXISTS( \
@@ -217,6 +225,7 @@ pub(super) async fn load_period_lock(
 pub(super) async fn list_locks(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     domain: Option<&str>,
+    pay_group_id: Option<Uuid>,
     limit: i64,
     active: Option<bool>,
 ) -> Result<Vec<PeriodLockResponse>, LifecycleError> {
@@ -225,6 +234,7 @@ pub(super) async fn list_locks(
         lock_columns!(),
         " FROM period_locks \
          WHERE ($1::text IS NULL OR domain = $1) \
+           AND ($4::uuid IS NULL OR pay_group_id = $4) \
            AND ($3::bool IS NOT TRUE OR period_lock_effective(period_locks)) \
          ORDER BY locked_at DESC \
          LIMIT $2"
@@ -232,6 +242,7 @@ pub(super) async fn list_locks(
     .bind(domain)
     .bind(limit)
     .bind(active)
+    .bind(pay_group_id)
     .fetch_all(tx.as_mut())
     .await?;
     rows.iter().map(period_lock_from_row).collect()

@@ -121,7 +121,7 @@ export function CloseConsoleView({ baseline }: { baseline: () => React.ReactNode
             hasMore={false}
             onLoadMore={() => {}}
             density="compact"
-            mobileLayout="compact"
+            mobileLayout="cards"
             activeRowId={selectedRow?.branch_scope}
             onRowAction={id => {
               setDismissedAuto(false);
@@ -151,7 +151,7 @@ export function CloseConsoleView({ baseline }: { baseline: () => React.ReactNode
               {
                 id: "closedAt",
                 header: t("attendance.close.closedAt"),
-                card: "omit",
+                card: "fact",
                 cell: row => (row.close ? <time dateTime={row.close.closed_at}>{fmtDateTime(row.close.closed_at)}</time> : "—"),
               },
               ...(hasLocks
@@ -159,7 +159,7 @@ export function CloseConsoleView({ baseline }: { baseline: () => React.ReactNode
                     {
                       id: "lock",
                       header: t("attendance.close.periodLock"),
-                      card: "omit",
+                      card: "action",
                       cell: row =>
                         row.close?.period_lock_id ? (
                           <Link to="/people/period-locks" search={{ unlock: row.close.period_lock_id }}>

@@ -126,6 +126,9 @@ function PayrollRunCreateConsoleContent({ baseline }: { baseline: () => ReactNod
                       label: t("payroll.variablePeriod"),
                       value: `${fmtDate(facts.variable_period_start)} – ${fmtDate(facts.variable_period_end)}`,
                     },
+                    ...(facts.attendance_cutoff_date
+                      ? [{ key: "cutoff", label: t("payroll.cutoffDate"), value: fmtDate(facts.attendance_cutoff_date) }]
+                      : []),
                   ]}
                 />
               )}

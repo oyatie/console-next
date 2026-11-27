@@ -26702,6 +26702,12 @@ paths:
         schema:
           type: string
           enum: [payroll, accounting]
+      - name: payGroupId
+        in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
       - name: limit
         in: query
         required: false
@@ -43252,6 +43258,10 @@ components:
         domain:
           type: string
           enum: [payroll, accounting]
+        payGroupId:
+          type: string
+          format: uuid
+          description: Optional pay-group scope for payroll freeze windows; omit to freeze the whole tenant domain.
         periodStart:
           type: string
           format: date
@@ -58085,6 +58095,9 @@ components:
         properties:
           sensitive: {type: boolean}
           pay_basis_allowed: {$ref: '#/components/schemas/PayGroupPayBases'}
+          member_employee_ids:
+            type: array
+            items: {type: string, format: uuid}
     PayGroupPage:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
@@ -58139,6 +58152,16 @@ components:
             non_business_day: {type: string, enum: [PREVIOUS, NEXT]}
         base_period: {$ref: '#/components/schemas/PayGroupPeriodRule'}
         variable_period: {$ref: '#/components/schemas/PayGroupPeriodRule'}
+        attendance_cutoff_rule:
+          type: object
+          additionalProperties: false
+          required: [day, month_offset]
+          properties:
+            day:
+              oneOf:
+              - {type: integer, minimum: 1, maximum: 31}
+              - {type: string, enum: [LAST_DAY]}
+            month_offset: {type: integer, enum: [0, 1]}
         proration: {type: string, enum: [CALENDAR_DAYS, SCHEDULED_WORKDAYS]}
         channel: {type: string, enum: [ATTESTATION_ONLY, FILE_GENERIC]}
     PayrollCalculationDeduction:
@@ -58742,7 +58765,7 @@ components:
       properties:
         key:
           type: string
-          enum: [attendance_material, period_lock, pending_leave]
+          enum: [attendance_material, period_lock, pending_leave, workplace_attendance_close]
         label_ko:
           type: string
         ok:
@@ -58935,6 +58958,7 @@ components:
         period_end: {type: string, format: date}
         variable_period_start: {type: string, format: date}
         variable_period_end: {type: string, format: date}
+        attendance_cutoff_date: {type: [string, 'null'], format: date}
     PayrollRunSummary:
       type: object
       required:
@@ -58978,6 +59002,9 @@ components:
           type: [string, 'null']
           format: date
         variable_period_end:
+          type: [string, 'null']
+          format: date
+        attendance_cutoff_date:
           type: [string, 'null']
           format: date
         source_label:
@@ -59296,6 +59323,13 @@ components:
         domain:
           type: string
           enum: [payroll, accounting]
+        payGroupId:
+          type: string
+          format: uuid
+          description: Optional pay-group scope for payroll freeze windows; absent for tenant-wide locks.
+        payGroupName:
+          type: string
+          description: Display name of the scoped pay group when payGroupId is set.
         periodStart:
           type: string
           format: date

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
@@ -17,8 +17,8 @@ import { Receipt } from "../../../ui/receipt/receipt";
 import { RecordSection } from "../../../ui/record/record-section";
 import { StepLine } from "../../../ui/step-line/step-line";
 import { createPayGroup, payGroupsQuery, type CreatePayGroup } from "../api";
-import { payGroupInput, type PayGroupDraft } from "../domain/pay-group-input";
-import { Choice, PayGroupSetupAside } from "./payroll-setup-console-parts";
+import { isPayGroupDirty, payGroupInput, type PayGroupDraft } from "../domain/pay-group-input";
+import { Choice, OptionalCutoffFieldSet, PayGroupSetupAside } from "./payroll-setup-console-parts";
 import { firstDay, lastDay, payBases, payDate, payDay, periodRuleSchema, rules, startDay } from "./use-pay-group-schema";
 import s from "./payroll-console.module.css";
 
@@ -39,14 +39,18 @@ export function PayrollSetupConsole({ baseline }: { baseline: () => ReactNode })
 }
 
 function PayrollSetupConsoleContent({ baseline }: { baseline: () => ReactNode }) {
+  const navigate = useNavigate();
   const groups = useQuery(payGroupsQuery);
   const [draft, setDraft] = useState<PayGroupDraft>(EMPTY_DRAFT);
   const [attempted, setAttempted] = useState(false);
+  const [unsavedWarn, setUnsavedWarn] = useState(false);
   const [receipt, setReceipt] = useState<string | null>(null);
   const input = payGroupInput(draft);
 
-  const change = <K extends keyof PayGroupDraft>(key: K, value: PayGroupDraft[K]) =>
+  const change = <K extends keyof PayGroupDraft>(key: K, value: PayGroupDraft[K]) => {
+    setUnsavedWarn(false);
     setDraft(current => ({ ...current, [key]: value }));
+  };
 
   const save = useCommand({
     run: createPayGroup,
@@ -63,20 +67,12 @@ function PayrollSetupConsoleContent({ baseline }: { baseline: () => ReactNode })
   const entities = groups.data?.legal_entities ?? [];
   const step1Done = Boolean(draft.legal_entity_id && draft.name?.trim());
   const step2Done = Boolean(
-    draft.pay_date_rule.month_offset !== undefined &&
-      draft.pay_date_rule.day !== undefined &&
-      draft.pay_date_rule.non_business_day &&
-      draft.base_period.month_offset !== undefined &&
-      draft.base_period.start_day !== undefined &&
-      draft.variable_period.month_offset !== undefined &&
-      draft.variable_period.start_day !== undefined,
+    draft.pay_date_rule.month_offset !== undefined && draft.pay_date_rule.day !== undefined && draft.pay_date_rule.non_business_day &&
+      draft.base_period.month_offset !== undefined && draft.base_period.start_day !== undefined &&
+      draft.variable_period.month_offset !== undefined && draft.variable_period.start_day !== undefined,
   );
   const step3Done = Boolean(
-    draft.proration &&
-      draft.channel &&
-      draft.sensitive !== undefined &&
-      draft.pay_basis_allowed &&
-      draft.pay_basis_allowed.length > 0,
+    draft.proration && draft.channel && draft.sensitive !== undefined && draft.pay_basis_allowed && draft.pay_basis_allowed.length > 0,
   );
 
   const periodFields = (key: "base_period" | "variable_period") => (
@@ -85,19 +81,13 @@ function PayrollSetupConsoleContent({ baseline }: { baseline: () => ReactNode })
         <Choice
           label={t("payroll.setup.month")}
           value={draft[key].month_offset}
-          options={periodRuleSchema.month_offset.enum.map(value => ({
-            value,
-            label: t(`payroll.rule.periodMonth.${value}`),
-          }))}
+          options={periodRuleSchema.month_offset.enum.map(value => ({ value, label: t(`payroll.rule.periodMonth.${value}`) }))}
           onChange={month_offset => change(key, { ...draft[key], month_offset })}
         />
         <Choice<CreatePayGroup["base_period"]["start_day"]>
           label={t("payroll.setup.startDay")}
           value={draft[key].start_day}
-          options={[
-            ...firstDay.enum.map(value => ({ value, label: t("payroll.rule.day", { day: startDay.minimum }) })),
-            ...days(startDay).slice(1),
-          ]}
+          options={[...firstDay.enum.map(value => ({ value, label: t("payroll.rule.day", { day: startDay.minimum }) })), ...days(startDay).slice(1)]}
           onChange={start_day => change(key, { ...draft[key], start_day })}
         />
       </div>
@@ -166,6 +156,10 @@ function PayrollSetupConsoleContent({ baseline }: { baseline: () => ReactNode })
             </FieldSet>
             {periodFields("base_period")}
             {periodFields("variable_period")}
+            <OptionalCutoffFieldSet
+              cutoff={draft.attendance_cutoff_rule}
+              onChange={next => change("attendance_cutoff_rule", next)}
+            />
           </div>
         </RecordSection>
 
@@ -263,23 +257,21 @@ function PayrollSetupConsoleContent({ baseline }: { baseline: () => ReactNode })
       notice={
         <>
           {receipt ? <Receipt state="applied" message={receipt} onDismiss={() => setReceipt(null)} /> : null}
+          {unsavedWarn ? <div role="status">{t("composer.unsaved")}</div> : null}
           <CommandError error={save.error} />
           {attempted && !input ? <div role="alert">{t("payroll.setup.required")}</div> : null}
         </>
       }
       actions={
         entities.length > 0 ? (
-          <Button
-            variant="primary"
-            className={s.nowrap}
-            disabled={save.isPending}
-            onClick={() => {
-              setAttempted(true);
-              if (input) save.mutate(input);
-            }}
-          >
-            {commitLabel({ kind: "payGroup", mode: "save" })}
-          </Button>
+          <>
+            <Button variant="secondary" className={s.nowrap} onClick={() => (isPayGroupDirty(draft) && !unsavedWarn ? setUnsavedWarn(true) : void navigate({ to: "/payroll" }))}>
+              {t("uiSheet.close")}
+            </Button>
+            <Button variant="primary" className={s.nowrap} disabled={save.isPending} onClick={() => (setAttempted(true), input && save.mutate(input))}>
+              {commitLabel({ kind: "payGroup", mode: "save" })}
+            </Button>
+          </>
         ) : (
           <Link to="/payroll" className={buttonClass("secondary", { size: "sm", className: s.nowrap })}>
             {t("payroll.title")}

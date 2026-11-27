@@ -7,6 +7,10 @@ properties:
   domain:
     type: string
     enum: [payroll, accounting]
+  payGroupId:
+    type: string
+    format: uuid
+    description: Optional pay-group scope for payroll freeze windows; omit to freeze the whole tenant domain.
   periodStart:
     type: string
     format: date

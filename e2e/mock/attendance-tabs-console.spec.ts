@@ -68,6 +68,40 @@ async function setupAttendanceTabs(page: Parameters<typeof mockScreen>[0], theme
     const employeeId = new URL(req.url()).pathname.split("/").at(-2) ?? dayBoard.groups[0]!.rows[0]!.employee_id;
     return { status: 200, json: saeonAttendancePersonMonth(employeeId, "2026-10") };
   });
+  await mockRoute(page, "get", "/api/v1/leave/balances", {
+    status: 200,
+    json: {
+      items: [
+        {
+          employee_id: dayBoard.groups[0]!.rows[0]!.employee_id,
+          name: dayBoard.groups[0]!.rows[0]!.name,
+          team: dayBoard.groups[0]!.name,
+          grant: 15,
+          used: 5,
+          left: 10,
+          tone: "promote",
+        },
+        {
+          employee_id: dayBoard.groups[0]!.rows[1]?.employee_id ?? "00000000-0000-4000-8810-000000000002",
+          name: dayBoard.groups[0]!.rows[1]?.name ?? dayBoard.groups[0]!.rows[0]!.name,
+          team: dayBoard.groups[0]!.name,
+          grant: 15,
+          used: 12,
+          left: 3,
+          tone: "ok",
+        },
+      ],
+    },
+  });
+  await mockRoute(page, "get", "/api/v1/directory/people", {
+    status: 200,
+    json: {
+      items: [],
+      limit: 200,
+      offset: 0,
+      total: 0,
+    },
+  });
 
   return { fixture, exceptionsPage, dayBoard };
 }
@@ -108,6 +142,12 @@ for (const width of [1440, 390] as const) {
         await fits(page, `att-schedule ${width} ${theme}`);
         await expectAxe(page, `att-schedule ${width} ${theme}`);
         await captureBuiltConsoleShot(page, width, "attendance-schedule", theme);
+
+        await page.goto("/attendance?tab=leave&month=2026-10");
+        await expect(page.getByRole("navigation", { name: t("attendance.tabs"), exact: true })).toBeVisible();
+        await fits(page, `att-leave ${width} ${theme}`);
+        await expectAxe(page, `att-leave ${width} ${theme}`);
+        await captureBuiltConsoleShot(page, width, "attendance-leave", theme);
 
         expect(fixture.unexpected).toEqual([]);
       } finally {

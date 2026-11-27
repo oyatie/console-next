@@ -38,6 +38,7 @@
       "src/features/attendance/ui/close-console-sheets.tsx",
       "src/features/attendance/ui/import-console-view.tsx",
       "src/features/attendance/ui/issues-console-sheets.tsx",
+      "src/features/attendance/ui/leave-console-view.tsx",
       "src/features/attendance/ui/substitutions-sheet.tsx",
       "src/features/entity/ui/entity-record.tsx",
       "src/features/me/ui/me-attendance-page.tsx",

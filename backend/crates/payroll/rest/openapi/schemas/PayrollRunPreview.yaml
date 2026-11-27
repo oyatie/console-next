@@ -12,3 +12,4 @@ properties:
   period_end: {type: string, format: date}
   variable_period_start: {type: string, format: date}
   variable_period_end: {type: string, format: date}
+  attendance_cutoff_date: {type: [string, 'null'], format: date}

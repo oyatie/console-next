@@ -60,6 +60,8 @@ const DEFAULT_LIST_LIMIT: i64 = 50;
 #[serde(rename_all = "camelCase")]
 pub(super) struct CreatePeriodLockRequest {
     domain: String,
+    #[serde(default)]
+    pay_group_id: Option<Uuid>,
     period_start: String,
     period_end: String,
     /// The `period_lock` reason code (0252); the free text is then its note.
@@ -70,8 +72,10 @@ pub(super) struct CreatePeriodLockRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub(super) struct PeriodLockListQuery {
     domain: Option<String>,
+    pay_group_id: Option<Uuid>,
     limit: Option<i64>,
     /// `true`: only locks in force (`period_lock_effective`), for date inputs.
     active: Option<bool>,
@@ -94,11 +98,12 @@ pub(super) async fn list_period_locks(
         .unwrap_or(DEFAULT_LIST_LIMIT)
         .clamp(1, MAX_LIST_LIMIT);
     let active = query.active;
+    let pay_group_id = query.pay_group_id;
     let org = principal.org_id;
 
     let items = with_org_conn::<_, _, LifecycleError>(&state.pool, org, move |tx| {
         Box::pin(async move {
-            let mut items = list_locks(tx, domain, limit, active).await?;
+            let mut items = list_locks(tx, domain, pay_group_id, limit, active).await?;
             attach_unlock_requests(tx, &principal, &mut items).await?;
             Ok(items)
         })
@@ -115,6 +120,12 @@ pub(super) async fn create_period_lock(
 ) -> Result<(StatusCode, Json<Value>), LifecycleError> {
     authorize_period_lock_manage(&principal)?;
     let domain = PeriodLockDomain::parse(&body.domain)?;
+    let pay_group_id = body.pay_group_id;
+    if pay_group_id.is_some() && domain != PeriodLockDomain::Payroll {
+        return Err(LifecycleError::validation(
+            "payGroupId is only supported on payroll period locks",
+        ));
+    }
     let period_start = parse_iso_date(&body.period_start, "periodStart")?;
     let period_end = parse_iso_date(&body.period_end, "periodEnd")?;
     if period_end < period_start {
@@ -135,6 +146,7 @@ pub(super) async fn create_period_lock(
     let idempotency_key = optional_idempotency_key(&headers)?;
     let fingerprint = json!({
         "domain": domain.as_str(),
+        "pay_group_id": pay_group_id,
         "period_start": period_start.to_string(),
         "period_end": period_end.to_string(),
         "reason_code": &reason_code,
@@ -154,6 +166,18 @@ pub(super) async fn create_period_lock(
                     IdempotencyClaim::Fresh => {}
                 }
             }
+            if let Some(pg_id) = pay_group_id {
+                let exists: bool = sqlx::query_scalar(
+                    "SELECT EXISTS (SELECT 1 FROM pay_groups WHERE org_id = $1 AND id = $2)",
+                )
+                .bind(*org.as_uuid())
+                .bind(pg_id)
+                .fetch_one(tx.as_mut())
+                .await?;
+                if !exists {
+                    return Err(LifecycleError::validation("unknown payGroupId"));
+                }
+            }
             let reason_code = match &reason_code {
                 Some(code) => Some(
                     validate_reason_in_tx(tx.as_mut(), org, ReasonDomain::PeriodLock, code, reason.as_deref())
@@ -167,15 +191,17 @@ pub(super) async fn create_period_lock(
             // between the staging INSERT's snapshot and its commit.
             lock_period_lock_key(tx, domain, *org.as_uuid()).await?;
             // Refuse a duplicate active lock covering the same window: one
-            // active lock per (domain, window) keeps unlock semantics obvious.
+            // active lock per (domain, scope, window) keeps unlock semantics obvious.
             let overlapping: i64 = sqlx::query_scalar(
                 "SELECT COUNT(*) FROM period_locks \
                  WHERE domain = $1 AND period_lock_effective(period_locks) \
+                   AND (pay_group_id IS NULL OR $4::uuid IS NULL OR pay_group_id = $4) \
                    AND period_start <= $3 AND period_end >= $2",
             )
             .bind(domain.as_str())
             .bind(period_start)
             .bind(period_end)
+            .bind(pay_group_id)
             .fetch_one(tx.as_mut())
             .await?;
             if overlapping > 0 {
@@ -186,12 +212,13 @@ pub(super) async fn create_period_lock(
 
             sqlx::query(
                 "INSERT INTO period_locks \
-                     (id, org_id, domain, period_start, period_end, reason, reason_code, locked_by) \
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+                     (id, org_id, domain, pay_group_id, period_start, period_end, reason, reason_code, locked_by) \
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
             )
             .bind(lock_id)
             .bind(*org.as_uuid())
             .bind(domain.as_str())
+            .bind(pay_group_id)
             .bind(period_start)
             .bind(period_end)
             .bind(&reason)
@@ -217,6 +244,7 @@ pub(super) async fn create_period_lock(
                 None,
                 Some(json!({
                     "domain": domain.as_str(),
+                    "pay_group_id": pay_group_id,
                     "period_start": period_start.to_string(),
                     "period_end": period_end.to_string(),
                     "reason_code": &reason_code,

@@ -19,6 +19,7 @@ pub struct LockRow {
     pub id: Uuid,
     pub org_id: Uuid,
     pub domain: String,
+    pub pay_group_id: Option<Uuid>,
     pub period_start: Date,
     pub period_end: Date,
     pub unlocked_at: Option<OffsetDateTime>,
@@ -42,7 +43,7 @@ pub struct UnlockWrite<'a> {
 
 macro_rules! lock_columns {
     () => {
-        "id, org_id, domain, period_start, period_end, unlocked_at, \
+        "id, org_id, domain, pay_group_id, period_start, period_end, unlocked_at, \
                             period_lock_effective(period_locks) AS effective"
     };
 }
@@ -52,6 +53,7 @@ fn lock_row(row: &sqlx::postgres::PgRow) -> Result<LockRow, sqlx::Error> {
         id: row.try_get("id")?,
         org_id: row.try_get("org_id")?,
         domain: row.try_get("domain")?,
+        pay_group_id: row.try_get("pay_group_id")?,
         period_start: row.try_get("period_start")?,
         period_end: row.try_get("period_end")?,
         unlocked_at: row.try_get("unlocked_at")?,
@@ -94,8 +96,8 @@ pub async fn append_successor_in_tx(
         .map_err(|error| sqlx::Error::Protocol(error.message))?;
     lock_period_lock_key(tx, domain, expired.org_id).await?;
     sqlx::query_scalar(
-        "INSERT INTO period_locks (org_id, domain, period_start, period_end, reason, reason_code) \
-         SELECT org_id, domain, period_start, period_end, reason, reason_code \
+        "INSERT INTO period_locks (org_id, domain, pay_group_id, period_start, period_end, reason, reason_code) \
+         SELECT org_id, domain, pay_group_id, period_start, period_end, reason, reason_code \
          FROM period_locks p WHERE p.id = $1 AND period_lock_effective(p) \
          RETURNING id",
     )
@@ -125,12 +127,14 @@ pub async fn unlock_in_tx(
         "SELECT ",
         lock_columns!(),
         " FROM period_locks \
-         WHERE domain = $1 AND period_start = $2 AND period_end = $3 \
+         WHERE domain = $1 AND pay_group_id IS NOT DISTINCT FROM $4 \
+           AND period_start = $2 AND period_end = $3 \
          ORDER BY locked_at DESC LIMIT 1 FOR UPDATE"
     ))
     .bind(&named.domain)
     .bind(named.period_start)
     .bind(named.period_end)
+    .bind(named.pay_group_id)
     .fetch_one(tx.as_mut())
     .await
     .and_then(|row| lock_row(&row))

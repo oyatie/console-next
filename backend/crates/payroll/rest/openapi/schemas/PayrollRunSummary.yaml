@@ -42,6 +42,9 @@ properties:
   variable_period_end:
     type: [string, 'null']
     format: date
+  attendance_cutoff_date:
+    type: [string, 'null']
+    format: date
   source_label:
     type: string
   status:
