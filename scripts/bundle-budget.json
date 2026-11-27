@@ -29,6 +29,7 @@
       "src/features/access-log/ui/access-log-inspector.tsx",
       "src/features/access-log/ui/access-log-review-composer.tsx",
       "src/features/access-log/ui/access-log-review-sheet.tsx",
+      "src/features/access/ui/access-review-cycle.tsx",
       "src/features/account/ui/privacy-intake-inspector.tsx",
       "src/features/account/ui/privacy-intake-queue.tsx",
       "src/features/account/ui/privacy-intake-workbench.tsx",
@@ -57,8 +58,10 @@
     ],
     "routes": [
       "src/features/access-log/ui/access-log-page.tsx",
+      "src/features/access/ui/access-check-page.tsx",
       "src/features/access/ui/access-routes.tsx",
       "src/features/access/ui/access-review-page.tsx",
+      "src/features/access/ui/policies-page.tsx",
       "src/features/account/ui/privacy-page.tsx",
       "src/features/approvals/ui/approvals-page.tsx",
       "src/features/attendance/ui/attendance-page.tsx",
@@ -112,6 +115,7 @@
     ],
     "routes": [
       "src/features/account/Account.tsx",
+      "src/features/access/ui/policy-draft-page.tsx",
       "src/features/approvals/ui/approval-viewer.tsx",
       "src/features/entity/ui/entity-record.tsx",
       "src/features/identifiers/ui/identifiers-page.tsx",

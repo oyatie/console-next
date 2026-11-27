@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+x-console-authz: {"permission": "access:view", "scope": "tenant"}
+tags: [access]
+operationId: exportAccessReviewCsv
+summary: Export frozen grants and review decisions for a quarterly cycle as CSV
+security:
+- bearerAuth: []
+parameters:
+- name: period
+  in: path
+  required: true
+  schema:
+    type: string
+    pattern: '^[0-9]{4}-Q[1-4]$'
+- name: export_purpose
+  in: query
+  required: false
+  schema:
+    type: string
+    maxLength: 300
+responses:
+  '200':
+    description: CSV export of the quarterly access review cycle.
+    content:
+      text/csv:
+        schema:
+          type: string
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '503':
+    $ref: '#/components/responses/ServiceUnavailable'

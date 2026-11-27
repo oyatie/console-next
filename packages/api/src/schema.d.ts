@@ -1442,6 +1442,111 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/access/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List quarterly periodic access review cycles
+         * @description Lists active, completed, and upcoming quarterly access review cycles for the tenant.
+         */
+        get: operations["listAccessReviews"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/reviews/{period}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read one quarterly periodic access review cycle and its frozen items */
+        get: operations["getAccessReview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/reviews/{period}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign off a quarterly access review and apply revocations with passkey step-up */
+        post: operations["completeAccessReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/reviews/{period}/decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record a KEEP or REVOKE decision for one frozen grant in an access review */
+        post: operations["recordAccessReviewDecision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/reviews/{period}/export.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export frozen grants and review decisions for a quarterly cycle as CSV */
+        get: operations["exportAccessReviewCsv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/reviews/{period}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start and freeze a quarterly periodic access review cycle */
+        post: operations["startAccessReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/access/roles": {
         parameters: {
             query?: never;
@@ -16111,6 +16216,55 @@ export interface components {
          * @enum {string}
          */
         AccessRequestReason: "NEW_DUTY" | "COVER" | "NEEDED_NOW" | "OTHER";
+        AccessReviewDecisionInput: {
+            item_id: components["schemas"]["Uuid"];
+            /** @enum {string} */
+            decision: "KEEP" | "REVOKE";
+            reason_code?: string | null;
+            reason_note?: string | null;
+        };
+        AccessReviewDetail: {
+            summary: components["schemas"]["AccessReviewSummary"];
+            items: components["schemas"]["AccessReviewItem"][];
+        };
+        AccessReviewItem: {
+            id: components["schemas"]["Uuid"];
+            grant_id: components["schemas"]["Uuid"];
+            account_id: components["schemas"]["Uuid"];
+            account_name: string;
+            employee_number?: string | null;
+            unit_name?: string | null;
+            role_id: components["schemas"]["Uuid"];
+            role_name_ko: string;
+            scope_kind: string;
+            scope_label: string;
+            valid_from: components["schemas"]["Timestamp"];
+            valid_to?: components["schemas"]["Timestamp"];
+            last_used_at?: components["schemas"]["Timestamp"];
+            signals: string[];
+            /** @enum {string|null} */
+            decision?: "KEEP" | "REVOKE" | null;
+            reason_code?: string | null;
+            reason_note?: string | null;
+            decided_by?: components["schemas"]["Uuid"];
+            decided_by_name?: string | null;
+            decided_at?: components["schemas"]["Timestamp"];
+            applied_at?: components["schemas"]["Timestamp"];
+        };
+        AccessReviewSummary: {
+            id?: components["schemas"]["Uuid"];
+            period: string;
+            /** @enum {string} */
+            state: "UNSTARTED" | "UPCOMING" | "OPEN" | "COMPLETE";
+            due_at: components["schemas"]["Timestamp"];
+            frozen_count: number;
+            decided_count: number;
+            keep_count: number;
+            revoke_count: number;
+            reviewer_count: number;
+            started_at?: components["schemas"]["Timestamp"];
+            completed_at?: components["schemas"]["Timestamp"];
+        };
         AccessRole: {
             id: components["schemas"]["Uuid"];
             name_ko: string;
@@ -35916,6 +36070,191 @@ export interface operations {
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
+        };
+    };
+    listAccessReviews: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Periodic access review cycles. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessReviewSummary"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    getAccessReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                period: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Periodic access review detail. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessReviewDetail"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    completeAccessReview: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                period: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    step_up?: components["schemas"]["PasskeyLoginFinishRequest"];
+                };
+            };
+        };
+        responses: {
+            /** @description Completed quarterly access review detail. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessReviewDetail"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            /** @description passkey_step_up_required — passkey step-up assertion required to sign off. */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    recordAccessReviewDecision: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                period: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccessReviewDecisionInput"];
+            };
+        };
+        responses: {
+            /** @description Updated quarterly access review detail. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessReviewDetail"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    exportAccessReviewCsv: {
+        parameters: {
+            query?: {
+                export_purpose?: string;
+            };
+            header?: never;
+            path: {
+                period: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description CSV export of the quarterly access review cycle. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    startAccessReview: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                period: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Started or existing quarterly access review detail. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessReviewDetail"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
         };
     };
     listAccessRoles: {

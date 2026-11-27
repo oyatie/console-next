@@ -56,6 +56,7 @@ const ACTION_KINDS = {
   attendanceException: ["attendance.issues.noun", "units"],
   attendanceSubstitution: ["attendance.sub.noun", "units"],
   payrollRun: ["payrollRun.noun", "units"],
+  accessReview: ["accessReview.title", "units"],
   accessLogReview: ["accessLog.review.noun", "units"],
   privacyIntake: ["privacy.intake.noun", "units"],
   accountInvite: ["accounts.invite", "people"],

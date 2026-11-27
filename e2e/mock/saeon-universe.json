@@ -5,7 +5,7 @@
   "referenceDateDisplay": "2026-11-10 (화)",
   "adminActor": { "name": "문서연", "unit": "인사팀", "grade": "과장", "topBarLabel": "문서연 · 인사팀 과장" },
   "privacyConsole": { "requestDetail": "인사 기록 열람 요청", "secondaryActor": "박서윤" },
-  "accessConsole": { "roleName": "(주)새온정밀 인사 실무 담당", "readOnlyRole": "인사 조회", "opsAccountName": "운영 계정" },
+  "accessConsole": { "roleName": "(주)새온정밀 인사 실무 담당", "readOnlyRole": "인사 운영", "opsAccountName": "운영 계정", "opsRoleVersion": 6 },
   "counts": {
     "active": 2054,
     "leave": 37,

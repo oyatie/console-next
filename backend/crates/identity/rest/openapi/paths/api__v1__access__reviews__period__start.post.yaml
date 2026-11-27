@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+x-console-authz: {"permission": "access:edit", "scope": "tenant"}
+tags: [access]
+operationId: startAccessReview
+summary: Start and freeze a quarterly periodic access review cycle
+security:
+- bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: true
+  schema:
+    type: string
+    minLength: 16
+    maxLength: 200
+- name: period
+  in: path
+  required: true
+  schema:
+    type: string
+    pattern: '^[0-9]{4}-Q[1-4]$'
+responses:
+  '200':
+    description: Started or existing quarterly access review detail.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/AccessReviewDetail'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '503':
+    $ref: '#/components/responses/ServiceUnavailable'

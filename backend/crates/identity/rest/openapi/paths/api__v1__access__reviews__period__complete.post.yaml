@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+x-console-authz: {"permission": "access:edit", "scope": "tenant"}
+tags: [access]
+operationId: completeAccessReview
+summary: Sign off a quarterly access review and apply revocations with passkey step-up
+security:
+- bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: true
+  schema:
+    type: string
+    minLength: 16
+    maxLength: 200
+- name: period
+  in: path
+  required: true
+  schema:
+    type: string
+    pattern: '^[0-9]{4}-Q[1-4]$'
+requestBody:
+  required: false
+  content:
+    application/json:
+      schema:
+        type: object
+        additionalProperties: false
+        properties:
+          step_up:
+            $ref: '#/components/schemas/PasskeyLoginFinishRequest'
+responses:
+  '200':
+    description: Completed quarterly access review detail.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/AccessReviewDetail'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '428':
+    description: passkey_step_up_required — passkey step-up assertion required to sign off.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '503':
+    $ref: '#/components/responses/ServiceUnavailable'
