@@ -77,7 +77,7 @@ test("dated chart and comparison retain 2,000 imported people through a projecte
   const geometry = async () => {
     const canvas = admin.getByRole("region", { name: "조직도", exact: true });
     // Loading reserves the whole chart region, including a selected inspector.
-    const surface = await canvas.count() ? canvas.locator("../..") : admin.locator('[data-read-layout="grid"]');
+    const surface = await canvas.count() ? admin.locator("[data-flexible-columns]").filter({ has: canvas }) : admin.locator('[data-read-layout="grid"]');
     return Promise.all([surface, admin.locator("#org-scheduled")].map((node) => node.evaluate((el) => {
       const { x, y, width, height } = el.getBoundingClientRect();
       return { x, y, width, height };
