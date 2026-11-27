@@ -14,6 +14,10 @@ jobs:
     name: Build browser test application
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 90
+    outputs:
+      chromium: ${{ steps.live.outputs.chromium }}
+      firefox: ${{ steps.live.outputs.firefox }}
+      firefox-states: ${{ steps.states.outputs.firefox-states }}
     permissions:
       contents: read
     env:
@@ -37,6 +41,7 @@ jobs:
       - name: Build the served web client once
         run: npm run build
       - name: Refuse an empty live suite
+        id: live
         env:
           E2E_PREBUILT: "1"
           E2E_SERVED: "1"
@@ -47,16 +52,20 @@ jobs:
           E2E_XBROWSER=1 PLAYWRIGHT_JSON_OUTPUT_FILE=.cache/e2e-live-plan/firefox-inventory.json npx playwright test --list --grep-invert='first-run-solo' --project=firefox --reporter=json
           node scripts/e2e-live-plan.mjs .cache/e2e-live-plan/chromium-inventory.json .cache/e2e-live-plan chromium
           node scripts/e2e-live-plan.mjs .cache/e2e-live-plan/firefox-inventory.json .cache/e2e-live-plan firefox
-      - name: Check cross-browser inventory nightly
-        if: ${{ github.event_name == 'schedule' }}
+      - name: Check cross-browser inventory
         env:
           E2E_LIVE_INVENTORY: "1"
         run: node --test --test-name-pattern="Firefox live discovery" scripts/e2e-live-workflow.test.mjs
-      - name: Plan Firefox mocked states nightly
-        if: ${{ github.event_name == 'schedule' }}
+      - name: Plan Firefox mocked states
+        id: states
         run: |
           E2E_XBROWSER=1 PLAYWRIGHT_JSON_OUTPUT_FILE=.cache/e2e-live-plan/firefox-states-inventory.json npx playwright test --config=e2e/mock/playwright.config.ts --list --reporter=json
           node scripts/e2e-live-plan.mjs .cache/e2e-live-plan/firefox-states-inventory.json .cache/e2e-live-plan firefox-states
+      # Promotion verifies the complete matrix against these independently planned counts.
+      - name: 'Planned browser shards · ${{ steps.live.outputs.chromium-count }}/${{ steps.live.outputs.firefox-count }}/${{ steps.states.outputs.firefox-states-count }}'
+        run: |
+          jq -sr '"Planned browser shards: Chromium \(.[0] | length), Firefox \(.[1] | length), Firefox states \(.[2] | length)."' \
+            .cache/e2e-live-plan/{chromium,firefox,firefox-states}.json >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-live-runtime
@@ -79,7 +88,7 @@ jobs:
       fail-fast: false
       max-parallel: 4
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+        shard: ${{ fromJSON(needs.build.outputs.chromium) }}
         include:
           - {shard: clock, config: playwright.config.ts, project: "clock"}
           - {shard: coldstart, config: playwright.coldstart.config.ts, project: "parallel"}
@@ -141,14 +150,16 @@ jobs:
             shift
             PLAYWRIGHT_JSON_OUTPUT_FILE=".cache/e2e-live/${report}.json" npx playwright test "$@" --global-timeout=2400000 --retries=0 --reporter=line,json || failed=1
           }
+          expected=()
           if [[ "$SHARD" =~ ^[0-9]+$ ]]; then
+            expected=(--expected ".cache/e2e-live-runtime/.cache/e2e-live-plan/chromium-${SHARD}.json")
             run_pw main --project=parallel --test-list=".cache/e2e-live-runtime/.cache/e2e-live-plan/chromium-${SHARD}.txt"
           else
             args=(--config="$CONFIG" --no-deps)
             if [[ -n "$PROJECT" ]]; then args+=(--project="$PROJECT"); fi
             run_pw "$SHARD" "${args[@]}"
           fi
-          node scripts/e2e-live-report.mjs .cache/e2e-live/*.json || failed=1
+          node scripts/e2e-live-report.mjs "${expected[@]}" .cache/e2e-live/*.json || failed=1
           exit "$failed"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ always() }}
@@ -172,7 +183,7 @@ jobs:
       fail-fast: false
       max-parallel: 4
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+        shard: ${{ fromJSON(needs.build.outputs.firefox) }}
         include:
           - {shard: coldstart, config: playwright.coldstart.config.ts, project: "firefox"}
           - {shard: live-renew, config: playwright.live-renew.config.ts, project: "firefox"}
@@ -234,14 +245,16 @@ jobs:
             shift
             PLAYWRIGHT_JSON_OUTPUT_FILE=".cache/e2e-live/${report}.json" npx playwright test "$@" --global-timeout=2400000 --retries=0 --reporter=line,json || failed=1
           }
+          expected=()
           if [[ "$SHARD" =~ ^[0-9]+$ ]]; then
+            expected=(--expected ".cache/e2e-live-runtime/.cache/e2e-live-plan/firefox-${SHARD}.json")
             run_pw main --project=firefox --test-list=".cache/e2e-live-runtime/.cache/e2e-live-plan/firefox-${SHARD}.txt"
           else
             args=(--config="$CONFIG" --no-deps)
             if [[ -n "$PROJECT" ]]; then args+=(--project="$PROJECT"); fi
             run_pw "$SHARD" "${args[@]}"
           fi
-          node scripts/e2e-live-report.mjs .cache/e2e-live/*.json || failed=1
+          node scripts/e2e-live-report.mjs "${expected[@]}" .cache/e2e-live/*.json || failed=1
           exit "$failed"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ always() }}
@@ -255,7 +268,6 @@ jobs:
 
   firefox-states:
     name: Firefox UI states · shard ${{ matrix.shard }}
-    if: ${{ github.event_name == 'schedule' }}
     needs: [build]
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 60
@@ -265,7 +277,7 @@ jobs:
       fail-fast: false
       max-parallel: 4
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+        shard: ${{ fromJSON(needs.build.outputs.firefox-states) }}
     env:
       E2E_WORKERS: "2"
       E2E_XBROWSER: "1"
@@ -288,7 +300,7 @@ jobs:
           mkdir -p .cache/e2e-live
           failed=0
           PLAYWRIGHT_JSON_OUTPUT_FILE=.cache/e2e-live/firefox-states.json npx playwright test --config=e2e/mock/playwright.config.ts --test-list=".cache/e2e-live-runtime/.cache/e2e-live-plan/firefox-states-${SHARD}.txt" --global-timeout=2400000 --retries=0 --reporter=line,json || failed=1
-          node scripts/e2e-live-report.mjs .cache/e2e-live/*.json || failed=1
+          node scripts/e2e-live-report.mjs --expected ".cache/e2e-live-runtime/.cache/e2e-live-plan/firefox-states-${SHARD}.json" .cache/e2e-live/*.json || failed=1
           exit "$failed"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ always() }}

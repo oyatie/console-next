@@ -22,16 +22,16 @@ test("live E2E builds one candidate and runs at most four Chromium shards before
   const cargo = build.steps.find((step) => step.run?.includes("cargo build"));
   assert.match(cargo.run, /--release/);
   assert.match(cargo.run, /full,e2e-test-support/);
-  const artifact = build.steps.find((step) => step.uses?.startsWith("actions\/upload-artifact@"));
+  const artifact = build.steps.find((step) => step.uses?.startsWith("actions/upload-artifact@"));
   assert.ok(artifact);
   assert.deepEqual(chromium.needs, ["build"]);
   assert.deepEqual(firefox.needs, ["build", "chromium"]);
   assert.match(firefox.if, /needs\.build\.result == 'success'/);
   for (const job of [chromium, firefox]) {
-    assert.deepEqual(job.strategy.matrix.shard, [1, 2, 3, 4, 5, 6, 7, 8]);
+    assert.equal(job.strategy.matrix.shard, `\${{ fromJSON(needs.build.outputs.${job === chromium ? "chromium" : "firefox"}) }}`);
     assert.equal(job.strategy["max-parallel"], 4);
     assert.ok(job.services.postgres.image.includes("@sha256:"));
-    assert.ok(job.steps.some((step) => step.uses?.startsWith("actions\/download-artifact@") && step.with.name === artifact.with.name));
+    assert.ok(job.steps.some((step) => step.uses?.startsWith("actions/download-artifact@") && step.with.name === artifact.with.name));
     const run = job.steps.find((step) => step.run?.includes("e2e-live-report.mjs"));
     assert.ok(run);
     assert.match(run.run, /--retries=0/, "live E2E must report flakes instead of retrying them green");
@@ -135,7 +135,7 @@ test("live shards reserve cleanup time and run auxiliary suites independently", 
       assert.match(run.run, /--config="\$CONFIG"/);
       assert.equal(run.env.CONFIG, "${{ matrix.config || 'playwright.config.ts' }}");
       const project = name === "chromium" ? "parallel" : "firefox";
-      for (const entry of [...job.strategy.matrix.shard.map(shard => ({ shard })), ...job.strategy.matrix.include]) {
+      for (const entry of [...[1, 8, 9].map(shard => ({ shard })), ...job.strategy.matrix.include]) {
         const calls = path.join(dir, "calls");
         const result = spawnSync("bash", ["-c", run.run], { cwd: dir, encoding: "utf8", env: { ...process.env,
           PATH: `${bin}:${process.env.PATH}`, CALLS: calls, SHARD: String(entry.shard),
@@ -223,13 +223,13 @@ test("route load publishes failed measurements against the served synthetic tena
 });
 
 
-test("Firefox mocked states run nightly in bounded shards without a backend", () => {
+test("Firefox mocked states run for every full suite in bounded shards without a backend", () => {
   const workflow = yaml.load(read(".github/workflows/e2e-live.yml"));
   const job = workflow.jobs["firefox-states"];
   assert.ok(job, "Firefox mocked states need a scheduled producer");
-  assert.equal(job.if, "${{ github.event_name == 'schedule' }}");
+  assert.equal(job.if, undefined);
   assert.deepEqual(job.needs, ["build"]);
-  assert.deepEqual(job.strategy.matrix.shard, workflow.jobs.firefox.strategy.matrix.shard);
+  assert.equal(job.strategy.matrix.shard, "${{ fromJSON(needs.build.outputs.firefox-states) }}");
   assert.equal(job.strategy["max-parallel"], 4);
   assert.equal(job.services, undefined);
   assert.equal(job.env.E2E_XBROWSER, "1");
@@ -250,7 +250,7 @@ test("Firefox mocked states run nightly in bounded shards without a backend", ()
   writeFileSync(path.join(bin, "npx"), '#!/bin/sh\nprintf "%s\\n" "$@" > "$CALLS"\nexit "${PW_STATUS:-0}"\n', { mode: 0o755 });
   writeFileSync(path.join(bin, "node"), '#!/bin/sh\nexit "${REPORT_STATUS:-0}"\n', { mode: 0o755 });
   try {
-    for (const shard of job.strategy.matrix.shard) {
+    for (const shard of [1, 8, 9]) {
       const calls = path.join(dir, "calls");
       for (const [pw, report] of [[0, 0], [1, 0], [0, 1]]) {
         const result = spawnSync("bash", ["-c", run.run], { cwd: dir, encoding: "utf8", env: { ...process.env,
@@ -269,11 +269,11 @@ test("Firefox mocked states run nightly in bounded shards without a backend", ()
 });
 
 
-test("browser inventory discovery is opt-in and scheduled outside PR checks", () => {
+test("browser inventory discovery runs on both full-suite triggers outside PR checks", () => {
   const workflow = yaml.load(read(".github/workflows/e2e-live.yml"));
   const inventory = workflow.jobs.build.steps.find(step => step.env?.E2E_LIVE_INVENTORY === "1");
   assert.ok(inventory, "the scheduled workflow must run the browser inventory check");
-  assert.equal(inventory.if, "${{ github.event_name == 'schedule' }}");
+  assert.equal(inventory.if, undefined);
   assert.match(inventory.run, /node --test .*scripts\/e2e-live-workflow.test.mjs/);
   assert.match(read("scripts/e2e-live-workflow.test.mjs"), /skip: !process.env.E2E_LIVE_INVENTORY/);
 });
