@@ -1,5 +1,6 @@
 //! Load registration evidence; the domain owns classification decisions.
 use crate::{PgEntityError, Tx};
+use console_entity_application::{ReadOptions, ReadPoint};
 use console_entity_domain::{Refusal, codes::BizKind};
 use sqlx::Row;
 use uuid::Uuid;
@@ -19,7 +20,8 @@ pub async fn company_candidates(
     tx: &mut Tx<'_>,
     _org: Uuid,
 ) -> Result<Vec<CompanyCandidate>, PgEntityError> {
-    let entities = crate::read::entities(tx, None, None, true).await?;
+    let point = ReadPoint::new(crate::today_kst(tx).await?, ReadOptions::default());
+    let entities = crate::read::entity_records_at(tx, None, None, true, point).await?;
     let mut out = Vec::new();
     for e in entities {
         if e.closed_on.is_some() || e.needs_confirmation || !e.identity_problems.is_empty() {
