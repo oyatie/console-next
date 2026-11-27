@@ -199,7 +199,7 @@ for (const [experience, light, dark, primaryLight, primaryDark] of experiences) 
         expect(menuBox.x, "account menu stays on screen").toBeGreaterThanOrEqual(0);
         expect(menuBox.x + menuBox.width, "account menu stays on screen").toBeLessThanOrEqual(width);
         // The open menu covers page targets for a moment, which axe would count as undersized; the page is scanned closed below.
-        await expectAxe(page, `${experience}/${theme}/${screen.key}/${width} account menu`, { include: "header" });
+        await expectAxe(page, `${experience}/${theme}/${screen.key}/${width} account menu`, { include: 'header[data-surface="chrome"]' });
         await page.keyboard.press("Escape");
         await expect(accountMenu).toBeHidden();
       } else {
