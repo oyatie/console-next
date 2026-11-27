@@ -28,7 +28,7 @@ pub(super) async fn explain_age(pool: &PgPool, org: uuid::Uuid, captured: &[Stri
         .execute(&mut *conn)
         .await
         .unwrap();
-    let bounds:Value=sqlx::query_scalar("SELECT jsonb_agg(jsonb_build_object('code',code,'effective_from',effective_from,'earliest_event_on',NULL)) FROM lifecycle_filing_rules WHERE filing_rule IS NOT NULL").fetch_one(&mut *conn).await.unwrap();
+    let bounds = age_scale::filing_periods(pool, org).await;
     let explain = format!("EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) {sql}");
     let mut q = sqlx::query_scalar::<_, Value>(sqlx::AssertSqlSafe(explain))
         .bind(org)

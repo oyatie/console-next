@@ -103,7 +103,7 @@ pub(super) async fn query_rows(
         "WITH boundary AS MATERIALIZED (SELECT tenant.id AS org_id,COALESCE(phase.go_live_at,now()) AS go_live_at,min((COALESCE(phase.go_live_at,now()) AT TIME ZONE zones.time_zone)::date) AS go_live_on \
          FROM (SELECT ",
     );
-    q.push_bind(*principal.org_id.as_uuid()).push(concat!(
+    q.push_bind(*principal.org_id.as_uuid()).push(
         "::uuid AS id) tenant LEFT JOIN tenant_phase phase ON phase.org_id=tenant.id \
          CROSS JOIN LATERAL (SELECT time_zone FROM lifecycle_country_packs WHERE is_default \
            UNION SELECT time_zone FROM workplaces WHERE org_id=tenant.id \
@@ -117,17 +117,21 @@ pub(super) async fn query_rows(
            EXISTS(SELECT 1 FROM employee_lifecycle_events WHERE org_id=(SELECT org_id FROM boundary) AND event_type IN ('TERMINATE','OFFBOARD','GROUP_TRANSFER') AND state IN ('APPLIED','SCHEDULED')) AS exits), \
          sources AS (SELECT id,org_id,employee_id,event_type,state,effective_date,created_at,from_org_unit_id,to_org_unit_id,to_workplace_id,NULL::text AS request_kind,NULL::uuid AS source_event_id,effective_date AS placement_date,event_type AS source_type,id AS voidable_event_id FROM employee_lifecycle_events WHERE org_id=(SELECT org_id FROM boundary) UNION ALL \
            SELECT r.id,r.org_id,r.employee_id,'STATUTORY_REQUEST',p.state,r.anchor_on::text,r.created_at,p.from_org_unit_id,p.to_org_unit_id,p.to_workplace_id,r.filing_kind,r.source_event_id,p.effective_date,p.event_type,r.source_event_id FROM insurance_filing_requests r JOIN employee_lifecycle_events p ON p.org_id=r.org_id AND p.id=r.source_event_id WHERE r.filing_kind<>'ACQUIRE_REQUESTED' AND r.org_id=(SELECT org_id FROM boundary)), \
-         rules AS MATERIALIZED (SELECT DISTINCT r.event_from,r.event_until, \
-           r.recording_held,r.requires_workplace_change,r.trigger_event_kinds, \
-           r.filing_rule->>'filing_kind' AS filing_kind,r.filing_rule->>'insurer' AS insurer, \
-           r.filing_rule->>'age_trigger_years' IS NOT NULL AS is_age, \
-           cutoff.earliest_event_on \
-           FROM ",
-        super::filing_boundary::filing_rule_periods!(),
-        " r JOIN jsonb_to_recordset(",
-    ));
+         rules AS MATERIALIZED (SELECT DISTINCT * FROM jsonb_to_recordset(",
+    );
     q.push_bind(bounds).push(
-        ") AS cutoff(code text,effective_from date,earliest_event_on date) ON cutoff.code=r.code AND cutoff.effective_from=r.effective_from), \
+        ") AS r(event_from date,event_until date,recording_held boolean,requires_workplace_change boolean,\
+         trigger_event_kinds text[],filing_kind text,insurer text,is_age boolean,earliest_event_on date)",
+    );
+    if query.kind.as_deref() == Some("AGE60") {
+        q.push(" WHERE r.filing_kind = 'AGE60'");
+    } else if query.inbox_scan_limit.is_some() || lightweight {
+        // Birthday tasks use a companion read. Remove those historical versions
+        // once, before the lateral rule scan runs for each employee event.
+        q.push(" WHERE r.filing_kind <> 'AGE60'");
+    }
+    q.push(
+        "), \
       filtered AS (SELECT l.id,l.org_id,l.created_at AS source_created_at, \
       'insurance_filing_' || kind.k || '_' || agency.insurer || ':' || l.id AS inbox_id,l.employee_id, \
       kind.k AS kind,agency.insurer AS insurer,rule.recording_held, \
@@ -157,10 +161,6 @@ pub(super) async fn query_rows(
     // These candidates are absent under the shared assessment, including its stored-facts fallback.
     q.push(" AND (kind.k <> 'AGE60' OR (agency.insurer = 'NPS' \
       AND COALESCE(x.birth_date::text, assessment.applicability_facts->>'birth_date') IS NOT NULL))");
-    if (query.inbox_scan_limit.is_some() || lightweight) && query.kind.as_deref() != Some("AGE60") {
-        // Birthday tasks use their projected birthday key in the companion read.
-        q.push(" AND kind.k <> 'AGE60'");
-    }
     if let Some(id) = query.filing_id {
         q.push(" AND f.id = ").push_bind(id);
     }
@@ -220,7 +220,11 @@ pub(super) async fn query_rows(
         ..query.clone()
     };
     super::filing_age::candidates(&mut q, &candidate_query, register)?;
-    q.push("), paged AS MATERIALIZED (SELECT * FROM candidates");
+    q.push(if lightweight {
+        "), paged AS (SELECT * FROM candidates"
+    } else {
+        "), paged AS MATERIALIZED (SELECT * FROM candidates"
+    });
     let order = if lightweight {
         ""
     } else if let Some(selected) = selected {
@@ -232,8 +236,18 @@ pub(super) async fn query_rows(
         push_page_order(&mut q, query)
     };
     // Resolve each selected workplace once; unplaced legacy rows keep the employee fallback.
-    q.push("), hydrated AS MATERIALIZED (SELECT l.*,");
-    if !placement_filter {
+    q.push("), hydrated AS MATERIALIZED (SELECT ");
+    if lightweight {
+        // Keep only assessment, cursor and timezone inputs while grouping the
+        // whole cohort. The selected page below still projects every task field.
+        q.push(
+            "l.kind,l.insurer,l.effective_date,l.source_event_id,l.birth_date,l.employment_type,\
+            l.inbox_id,l.created_at,l.recording_held,l.employee_id,",
+        );
+    } else {
+        q.push("l.*,");
+    }
+    if !placement_filter || lightweight {
         q.push("ea.legal_entity_id,ea.workplace_id,");
     }
     q.push("l.placement_date::date AS placement_on,personal.nationality, ")
