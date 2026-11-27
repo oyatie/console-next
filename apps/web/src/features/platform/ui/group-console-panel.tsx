@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
+import { fmtDateTime } from "@console/i18n/format";
 import { ACCOUNT_STATUS, TENANT_STATUS, label } from "../../../lib/labels";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
@@ -11,17 +12,19 @@ import { Chip } from "../../../ui/chip";
 import { EnumValue } from "../../../ui/enum-value";
 import { RecordIdentityBar, RecordPaneSection } from "../../../ui/patterns/list-record-parts";
 import {
+  cancelGroupInvitation,
   groupAccountsQuery,
   removeOrgFromGroup,
   revokeGroupRole,
   type Group,
+  type GroupJoinInvitation,
   type GroupRole,
   type Issued,
   type Org,
   type Recorded,
 } from "../api";
 import { PLATFORM_GROUP_ROLE } from "../domain/tenants";
-import { AssignOrgDialog, CreateGroupAccountDialog, GroupFormDialog } from "./group-dialogs";
+import { AssignOrgDialog, CreateGroupAccountDialog, GroupFormDialog, InviteOrgDialog } from "./group-dialogs";
 import s from "./platform-console.module.css";
 
 export function GroupConsolePanel({
@@ -38,12 +41,19 @@ export function GroupConsolePanel({
   const accountsQ = useQuery(groupAccountsQuery(group.id));
   const [editing, setEditing] = useState(false);
   const [assigning, setAssigning] = useState(false);
+  const [inviting, setInviting] = useState(false);
   const [addingAccount, setAddingAccount] = useState(false);
 
   const removeOrg = useCommand({
     run: (member: { id: string; name: string }) => removeOrgFromGroup(group.id, member.id),
     invalidates: ["/api/platform"],
     onSuccess: (_res, member) => onRecorded({ message: t("tenants.groups.removeOrgDone", { org: member.name, group: group.name }) }),
+  });
+
+  const cancelInvite = useCommand({
+    run: (inv: GroupJoinInvitation) => cancelGroupInvitation(group.id, inv.id),
+    invalidates: ["/api/platform"],
+    onSuccess: (_res, inv) => onRecorded({ message: t("tenants.groups.cancelInviteDone", { org: inv.org_name }) }),
   });
 
   const revokeRole = useCommand({
@@ -53,7 +63,10 @@ export function GroupConsolePanel({
   });
 
   const memberIds = new Set(group.members.map((m) => m.id));
+  const pendingInvitations = group.pending_invitations ?? [];
+  const invitedOrgIds = new Set(pendingInvitations.map((i) => i.org_id));
   const assignableOrgs = allOrgs.filter((o) => !memberIds.has(o.id) && o.status === "ACTIVE");
+  const invitableOrgs = assignableOrgs.filter((o) => !invitedOrgIds.has(o.id));
 
   return (
     <div className={s.paneStack}>
@@ -74,14 +87,21 @@ export function GroupConsolePanel({
         title={t("tenants.groups.members")}
         trailing={
           assignableOrgs.length > 0 ? (
-            <Button size="sm" variant="secondary" onClick={() => setAssigning(true)}>
-              {t("tenants.groups.assignOrg")}
-            </Button>
+            <div className={s.actionRow}>
+              {invitableOrgs.length > 0 && group.status === "ACTIVE" ? (
+                <Button size="sm" variant="secondary" onClick={() => setInviting(true)}>
+                  {t("tenants.groups.inviteOrg")}
+                </Button>
+              ) : null}
+              <Button size="sm" variant="secondary" onClick={() => setAssigning(true)}>
+                {t("tenants.groups.assignOrg")}
+              </Button>
+            </div>
           ) : null
         }
       >
         <div className={s.paneStack}>
-          <CommandError error={removeOrg.error} />
+          <CommandError error={removeOrg.error ?? cancelInvite.error} />
           {group.members.length === 0 ? (
             <bdi className="muted t-sm">{t("tenants.groups.membersEmpty")}</bdi>
           ) : (
@@ -105,6 +125,32 @@ export function GroupConsolePanel({
               ))}
             </div>
           )}
+          {pendingInvitations.length > 0 ? (
+            <div className={s.paneStack}>
+              <strong className="t-xs muted">{t("tenants.groups.pendingInvites")}</strong>
+              <div role="list" className={s.memberList}>
+                {pendingInvitations.map((inv) => (
+                  <div role="listitem" key={inv.id} className={s.memberRow}>
+                    <div className={s.memberMeta}>
+                      <strong>{inv.org_name}</strong>
+                      <code>{inv.org_slug}</code>
+                      <time className="muted t-xs" dateTime={inv.expires_at}>
+                        {t("tenants.groups.inviteExpires", { at: fmtDateTime(inv.expires_at) })}
+                      </time>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={cancelInvite.isPending}
+                      onClick={() => cancelInvite.mutate(inv)}
+                    >
+                      {t("tenants.groups.cancelInvite")}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
       </RecordPaneSection>
 
@@ -180,6 +226,16 @@ export function GroupConsolePanel({
         onDone={(org) => {
           setAssigning(false);
           onRecorded({ message: t("tenants.groups.assignDone", { org: org.name, group: group.name }) });
+        }}
+      />
+      <InviteOrgDialog
+        open={inviting}
+        group={group}
+        orgs={invitableOrgs}
+        onClose={() => setInviting(false)}
+        onDone={(org) => {
+          setInviting(false);
+          onRecorded({ message: t("tenants.groups.inviteDone", { org: org.name }) });
         }}
       />
       <CreateGroupAccountDialog

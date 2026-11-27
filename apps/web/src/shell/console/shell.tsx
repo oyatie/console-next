@@ -80,20 +80,25 @@ function ConsoleLayout({
   const profileRead = useQuery({ ...meQuery, enabled: false });
 
   const allLinks: readonly NavLink[] = useMemo(() => menu?.flatMap(group => group.links) ?? [], [menu]);
+  const showMyDesk = !platform && tenantPhase !== "SETUP" && userProfile?.employee_link_status === "LINKED";
   const currentModuleTo = useMemo(
-    () => activeLink(pathname, allLinks) ?? (pathname === "/" && allLinks.some(l => l.to === "/") ? "/" : undefined),
-    [pathname, allLinks],
+    () =>
+      (showMyDesk && (pathname === "/me/desk" || pathname.startsWith("/me/"))
+        ? "/me/desk"
+        : undefined) ??
+      activeLink(pathname, allLinks) ??
+      (pathname === "/" && allLinks.some(l => l.to === "/") ? "/" : undefined),
+    [pathname, allLinks, showMyDesk],
   );
 
-  const navItems: readonly ModuleNavItem[] = useMemo(
-    () =>
-      allLinks.map(link =>
-        link.countKey === "inbox"
-          ? { id: link.to, href: link.to, label: t(link.label), count: inboxCount, countMore: !inboxExact, name: inboxName, description: inboxDescription }
-          : { id: link.to, href: link.to, label: t(link.label), count: link.countKey === "approvals" ? approvalsCount : undefined },
-      ),
-    [allLinks, inboxCount, inboxExact, inboxName, inboxDescription, approvalsCount],
-  );
+  const navItems: readonly ModuleNavItem[] = useMemo(() => {
+    const base = allLinks.map(link =>
+      link.countKey === "inbox"
+        ? { id: link.to, href: link.to, label: t(link.label), count: inboxCount, countMore: !inboxExact, name: inboxName, description: inboxDescription }
+        : { id: link.to, href: link.to, label: t(link.label), count: link.countKey === "approvals" ? approvalsCount : undefined },
+    );
+    return showMyDesk ? [...base, { id: "/me/desk", href: "/me/desk", label: t("shell.link.meDesk") }] : base;
+  }, [allLinks, inboxCount, inboxExact, inboxName, inboxDescription, approvalsCount, showMyDesk]);
 
   const { title: currentTitle, isFallback, tabTarget } = useResolvedTabTitle({
     pathname,
@@ -180,7 +185,7 @@ function ConsoleLayout({
     ? pathname
     : phoneHeader?.phoneNav === "self-service" && pathname === "/account" && location.search.sheet === "certificates"
       ? "/account?sheet=certificates"
-      : pathname === "/me/attendance" || pathname === "/me/desk" || pathname === "/account" || pathname.startsWith("/account/")
+      : pathname === "/me/attendance" || pathname === "/me/desk" || pathname === "/me/dispatch-offers" || pathname === "/account" || pathname.startsWith("/account/")
         ? "/account"
         : currentModuleTo;
   const shellOwnsH1 = isPhone && Boolean(phoneHeader?.shellOwnsH1);

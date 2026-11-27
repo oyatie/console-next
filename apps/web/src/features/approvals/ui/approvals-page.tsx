@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
@@ -10,6 +10,7 @@ import { useMarkActiveCachedQuery } from "../../../lib/react/cached-pages";
 import { QueryState } from "../../../lib/react/query-state";
 import { columnSelection } from "../../../lib/react/use-column-selection";
 import { Button } from "../../../ui/button/button";
+import { buttonClass } from "../../../ui/button/button-class";
 import { Card } from "../../../ui/card/card";
 import { ChainStepper } from "../../../ui/chain-stepper/chain-stepper";
 import { Chip } from "../../../ui/chip";
@@ -242,7 +243,7 @@ function ConsoleApprovalsPage() {
       q={inbox}
       viewportLock
       tabs={tabs}
-      head={{ title: t("approvals.title"), titleId: "approvals-title" }}
+      head={{ title: t("approvals.title"), titleId: "approvals-title", actions: <Link to="/approvals/new" className={buttonClass("primary", { size: "sm" })}>{t("approvals.new.cta")}</Link> }}
       find={<div ref={findBox} data-list-find=""><WorklistSearchField label={t("approvals.filters.search")} value={query} onChange={setQuery} /></div>}
       filters={<div ref={filters} className={s.consoleFilters} role="group" aria-label={t("approvals.filters.label")}>
         <SelectField hideLabel label={t("approvals.filters.source")} placeholder={t("approvals.filters.allSources")} options={sourceOptions} value={source ?? ALL_SOURCES} onChange={id => { setBlockedKey(null); setDismissedKey(null); set({ source: id === ALL_SOURCES ? undefined : id, ...CLOSED }); }} />
@@ -301,6 +302,8 @@ function ConsoleApprovalsPage() {
   );
 }
 
+const LazyApprovalNewPage = lazy(() => import("./approval-new-page").then(m => ({ default: m.ApprovalNewPage })));
+export function ApprovalNew() { return <Suspense fallback={null}><LazyApprovalNewPage /></Suspense>; }
 export function ApprovalsPage() {
   return <ExperienceSwitch baseline={() => <BaselineApprovalsPage />}>{() => <ConsoleApprovalsPage />}</ExperienceSwitch>;
 }

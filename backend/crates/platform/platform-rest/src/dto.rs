@@ -1,6 +1,6 @@
 use console_platform_provisioning::{
-    GroupAccountOnboarding, GroupAccountSummary, GroupMemberSummary, GroupSummary,
-    OrganizationSummary, RouteAdoptionMetric, TenantHealth, TenantOnboarding,
+    GroupAccountOnboarding, GroupAccountSummary, GroupJoinInvitationSummary, GroupMemberSummary,
+    GroupSummary, OrganizationSummary, RouteAdoptionMetric, TenantHealth, TenantOnboarding,
 };
 use serde::Serialize;
 use time::OffsetDateTime;
@@ -81,6 +81,8 @@ pub(crate) struct GroupResponse {
     status: String,
     member_count: i64,
     members: Vec<GroupMemberResponse>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pending_invitations: Vec<GroupJoinInvitationSummary>,
     #[serde(with = "time::serde::rfc3339")]
     created_at: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339")]
@@ -100,6 +102,7 @@ impl From<GroupSummary> for GroupResponse {
                 .into_iter()
                 .map(GroupMemberResponse::from)
                 .collect(),
+            pending_invitations: group.pending_invitations,
             created_at: group.created_at,
             updated_at: group.updated_at,
         }

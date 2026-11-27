@@ -1,4 +1,5 @@
 import { koAttendanceLeave } from "./ko/attendance-leave";
+import { koWave6 } from "./ko/wave6";
 import { koShellRoutes } from "./ko/shell-routes";
 import { koSettingsWave2 } from "./ko/settings-wave2";
 import { koAccessWave3 } from "./ko/access-wave3";
@@ -281,5 +282,5 @@ export const ko: Record<ScreenMessageId, string> = {
   ...koDirectoryViews,
   ...koUiWorklist,
   ...koUiLedger,
-  ...koMe, ...koTeam, ...koShellRoutes, ...koSettingsWave2, ...koAccessWave3,
+  ...koMe, ...koTeam, ...koShellRoutes, ...koSettingsWave2, ...koAccessWave3, ...koWave6,
 };

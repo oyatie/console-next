@@ -37,6 +37,9 @@
     "/api/v1/lifecycles/{objectType}/{objectId}/transition": [
       "post"
     ],
+    "/api/v1/me/requests": [
+      "get"
+    ],
     "/api/v1/requests": [
       "get"
     ],
@@ -55,6 +58,7 @@
     "GovernanceLifecyclePreflightRequest",
     "GovernanceOpenOverrideRequest",
     "LifecycleState",
+    "MyCommandOutcomePage",
     "ObjectLifecycle",
     "ObjectLifecycleTransition",
     "SetLifecycleHoldRequest",

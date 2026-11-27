@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
 tags:
 - auth
 operationId: getRecoveryStatus

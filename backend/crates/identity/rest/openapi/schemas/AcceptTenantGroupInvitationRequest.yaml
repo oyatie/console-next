@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+required:
+- step_up
+properties:
+  step_up:
+    $ref: '#/components/schemas/PasskeyStepUpAssertion'
+    description: Fresh passkey step-up assertion from the accepting tenant ops holder.

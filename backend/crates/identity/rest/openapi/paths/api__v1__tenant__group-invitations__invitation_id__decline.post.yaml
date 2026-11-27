@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+x-console-authz: {"permission": "tenant:edit", "scope": "ops"}
+tags:
+- platform
+operationId: declineTenantGroupInvitation
+summary: Decline a pending group join invitation for the caller's tenant organization
+security:
+- bearerAuth: []
+parameters:
+- name: invitation_id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+responses:
+  '204':
+    description: Pending group join invitation declined.
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'

@@ -9,7 +9,7 @@ app/src/office.rs	885
 app/src/privacy/decide.rs	306
 app/src/workbench.rs	650
 app/src/workflow_object_context.rs	460
-app/src/workflow_studio.rs	7162
+app/src/workflow_studio.rs	7115
 app/tests/action_inbox_api.rs	877
 app/tests/attendance_persona_api.rs	415
 app/tests/audit_api.rs	754

@@ -39,3 +39,7 @@ properties:
   context_payload:
     type: object
     additionalProperties: true
+  approval_line_overrides:
+    type: array
+    items:
+      $ref: '#/components/schemas/ApprovalLineOverrideStep'

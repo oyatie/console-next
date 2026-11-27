@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
 import { AccessGate } from "../../../reference/authz/ui/access-gate";
@@ -11,6 +12,16 @@ import { PersonAccess } from "./person-access";
 import { ReadinessPage } from "./readiness-page";
 import { RoleEditorPage } from "./role-editor";
 import { RolesPage } from "./roles-page";
+
+const LazyAccessReviewPage = lazy(() => import("./access-review-page").then(m => ({ default: m.AccessReviewPage })));
+const LazyPoliciesPage = lazy(() => import("./policies-page").then(m => ({ default: m.PoliciesPage })));
+const LazyPolicyDraftPage = lazy(() => import("./policy-draft-page").then(m => ({ default: m.PolicyDraftPage })));
+const LazyAccessCheckPage = lazy(() => import("./access-check-page").then(m => ({ default: m.AccessCheckPage })));
+
+export function ReviewScreen() { return <Suspense fallback={null}><LazyAccessReviewPage /></Suspense>; }
+export function PoliciesScreen() { return <Suspense fallback={null}><LazyPoliciesPage /></Suspense>; }
+export function PolicyDraftScreen() { return <Suspense fallback={null}><LazyPolicyDraftPage /></Suspense>; }
+export function CheckScreen() { return <Suspense fallback={null}><LazyAccessCheckPage /></Suspense>; }
 
 // The slice's screens as route components (routes/access.ts loads this module lazily).
 export const RolesScreen = RolesPage;

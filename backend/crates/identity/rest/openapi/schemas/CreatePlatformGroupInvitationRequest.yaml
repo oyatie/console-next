@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+required:
+- org_id
+- step_up
+properties:
+  org_id:
+    $ref: '#/components/schemas/Uuid'
+  step_up:
+    $ref: '#/components/schemas/PasskeyStepUpAssertion'
+    description: Fresh passkey step-up assertion from the inviting platform operator.

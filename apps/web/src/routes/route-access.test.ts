@@ -13,7 +13,7 @@ import { routeList } from "../../../../e2e/helpers/route-list";
 
 const router = createRouter({ routeTree });
 const appRoutes = Object.values(router.routesById).filter((route: AnyRoute) => route.id.startsWith("/app/"));
-const signedIn = (path: string) => ["/", "/inbox", "/leave", "/payslips", "/me/attendance", "/me/desk", "/approvals", "/account", "/account/privacy", "/requests", "/people/requests"].includes(path) || path.includes("$");
+const signedIn = (path: string) => ["/", "/inbox", "/leave", "/payslips", "/me/attendance", "/me/desk", "/me/dispatch-offers", "/approvals", "/approvals/new", "/account", "/account/location", "/account/privacy", "/requests", "/people/requests"].includes(path) || path.includes("$");
 
 function assertAccess(route: { fullPath: string; options: { staticData?: StaticDataRouteOption } }, exceptions: Record<string, { lane: string; reason: string }>) {
   const access = route.options.staticData?.access;

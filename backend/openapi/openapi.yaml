@@ -1133,6 +1133,77 @@ paths:
           $ref: '#/components/responses/ValidationError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+  /api/platform/groups/{id}/invitations:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+      - platform
+      operationId: createPlatformGroupInvitation
+      summary: Issue a 7-day group join invitation to a tenant organization
+      description: Creates a pending 7-day group join invitation audited to the target organization. Requires GroupManage authority and a fresh passkey step-up assertion.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePlatformGroupInvitationRequest'
+      responses:
+        '201':
+          description: Pending 7-day group join invitation created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformGroupJoinInvitation'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/platform/groups/{id}/invitations/{invitation_id}:
+    delete:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+      - platform
+      operationId: cancelPlatformGroupInvitation
+      summary: Cancel a pending group join invitation
+      description: Cancels a pending group join invitation and records an audit event on the target organization.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      - name: invitation_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      responses:
+        '204':
+          description: Pending group join invitation cancelled.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/platform/groups/{id}/organizations/{org_id}:
     delete:
       tags:
@@ -3259,6 +3330,7 @@ paths:
           $ref: '#/components/responses/Conflict'
   /api/v1/access/invites:
     post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       tags:
       - access
       operationId: createAccessInvite
@@ -3307,6 +3379,7 @@ paths:
           $ref: '#/components/responses/PreconditionRequired'
   /api/v1/access/invites/preview:
     post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       tags:
       - access
       operationId: previewAccessInvite
@@ -3415,6 +3488,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /api/v1/access/ops/holders:
     post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       tags:
       - access
       operationId: designateOpsAccountHolder
@@ -3447,6 +3521,7 @@ paths:
           $ref: '#/components/responses/PreconditionRequired'
   /api/v1/access/ops/holders/release:
     post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       tags:
       - access
       operationId: releaseSelfOpsAccountHolder
@@ -5782,6 +5857,7 @@ paths:
           $ref: '#/components/responses/Unauthorized'
   /api/v1/auth/recovery/challenge:
     post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       tags:
       - auth
       operationId: startRecoveryChallenge
@@ -5804,6 +5880,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
   /api/v1/auth/recovery/codes/generate:
     post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       tags:
       - auth
       operationId: generateRecoveryCodes
@@ -5832,6 +5909,7 @@ paths:
           $ref: '#/components/responses/PreconditionRequired'
   /api/v1/auth/recovery/contact:
     put:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       tags:
       - auth
       operationId: upsertRecoveryContact
@@ -5862,6 +5940,7 @@ paths:
           $ref: '#/components/responses/PreconditionRequired'
   /api/v1/auth/recovery/redeem:
     post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       tags:
       - auth
       operationId: redeemRecoveryCode
@@ -5888,6 +5967,7 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
   /api/v1/auth/recovery/status:
     get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       tags:
       - auth
       operationId: getRecoveryStatus
@@ -21921,6 +22001,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/me/requests:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags: [audit]
+      operationId: listMyCommandOutcomes
+      summary: List the caller's own command outcomes in reverse chronological order
+      security: [{bearerAuth: []}]
+      parameters:
+      - in: query
+        name: limit
+        required: false
+        schema: {type: integer, format: int64, minimum: 1, maximum: 100, default: 50}
+      - in: query
+        name: offset
+        required: false
+        schema: {type: integer, format: int64, minimum: 0, default: 0}
+      responses:
+        '200':
+          description: Paginated personal command outcomes for the authenticated caller
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/MyCommandOutcomePage'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
   /api/v1/me/todos:
     get:
       tags:
@@ -31887,6 +31990,92 @@ paths:
           description: Pending request changed concurrently or slug already taken
         '422':
           description: Invalid requested company domain
+  /api/v1/tenant/group-invitations:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "tenant:edit", "scope": "ops"}
+      tags:
+      - platform
+      operationId: listTenantGroupInvitations
+      summary: List pending group join invitations for the caller's tenant organization
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Pending non-expired group join invitations for the caller's organization.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantGroupInvitationListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/v1/tenant/group-invitations/{invitation_id}/accept:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "tenant:edit", "scope": "ops"}
+      tags:
+      - platform
+      operationId: acceptTenantGroupInvitation
+      summary: Accept a pending group join invitation for the caller's tenant organization
+      description: Assigns the caller's organization to the inviting platform group after verifying a fresh passkey assertion from an active tenant ops holder.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: invitation_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptTenantGroupInvitationRequest'
+      responses:
+        '200':
+          description: Updated tenant organization summary after joining the group.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformOrg'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/tenant/group-invitations/{invitation_id}/decline:
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "tenant:edit", "scope": "ops"}
+      tags:
+      - platform
+      operationId: declineTenantGroupInvitation
+      summary: Decline a pending group join invitation for the caller's tenant organization
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: invitation_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      responses:
+        '204':
+          description: Pending group join invitation declined.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/v1/tenant/ops-recovery:
     get:
       # SPDX-License-Identifier: LicenseRef-Proprietary
@@ -34743,6 +34932,7 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
   /api/v1/workplaces/{workplaceId}/head:
     put:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       tags:
       - entity
       operationId: setWorkplaceHead
@@ -36052,6 +36242,16 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorBody'
   schemas:
+    AcceptTenantGroupInvitationRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required:
+      - step_up
+      properties:
+        step_up:
+          $ref: '#/components/schemas/PasskeyStepUpAssertion'
+          description: Fresh passkey step-up assertion from the accepting tenant ops holder.
     AccessCatalog:
       type: object
       required:
@@ -36565,6 +36765,7 @@ components:
           items:
             type: string
     AccessInviteGrantLineInput:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - role_id
@@ -38378,6 +38579,20 @@ components:
         total:
           type: integer
           format: int64
+    ApprovalLineOverrideStep:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required:
+      - assignee_role_key
+      properties:
+        node_key:
+          type: string
+          description: Existing approval node key to swap; omit when appending an optional approval step.
+        assignee_role_key:
+          type: string
+          minLength: 1
+        title:
+          type: string
     ApprovalOntologyContext:
       type: object
       description: Tenant/org/branch/object identity for ontology-aware workflow, analytics, audit, and future group/organization
@@ -42107,6 +42322,7 @@ components:
       type: string
       enum: [ACTIVE, RETIRED]
     CreateAccessInviteRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - display_name
@@ -42143,6 +42359,7 @@ components:
         step_up:
           $ref: '#/components/schemas/PasskeyStepUpAssertion'
     CreateAccessInviteResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - user
@@ -43320,6 +43537,19 @@ components:
           description: One-time setup OTP returned exactly once; deliver out-of-band and never log it.
         otp_expires_at:
           $ref: '#/components/schemas/Timestamp'
+    CreatePlatformGroupInvitationRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required:
+      - org_id
+      - step_up
+      properties:
+        org_id:
+          $ref: '#/components/schemas/Uuid'
+        step_up:
+          $ref: '#/components/schemas/PasskeyStepUpAssertion'
+          description: Fresh passkey step-up assertion from the inviting platform operator.
     CreatePlatformGroupRequest:
       type: object
       required:
@@ -44380,6 +44610,7 @@ components:
       - STRAIGHT_LINE
       - DECLINING_BALANCE
     DesignateOpsHolderRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - account_id
@@ -50324,12 +50555,14 @@ components:
           type: array
           items: { type: object, additionalProperties: true }  # per-gate { gate, status }
     GenerateRecoveryCodesRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       additionalProperties: false
       properties:
         step_up:
           $ref: '#/components/schemas/PasskeyStepUpAssertion'
     GenerateRecoveryCodesResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - batch_id
@@ -55110,6 +55343,24 @@ components:
             $ref: '#/components/schemas/MyAccessLogEvent'
         next_cursor:
           type: [string, 'null']
+    MyCommandOutcomePage:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required: [items, total, limit, offset]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CommandOutcome'
+        total:
+          type: integer
+          format: int64
+        limit:
+          type: integer
+          format: int64
+        offset:
+          type: integer
+          format: int64
     MyDispatchOffer:
       type: object
       description: >-
@@ -56192,6 +56443,7 @@ components:
           format: int32
           minimum: 0
     OpsHolderSummary:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - account_id
@@ -59997,6 +60249,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PlatformGroupMember'
+        pending_invitations:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlatformGroupJoinInvitation'
         created_at:
           $ref: '#/components/schemas/Timestamp'
         updated_at:
@@ -60052,6 +60308,46 @@ components:
           items:
             $ref: '#/components/schemas/PlatformGroupRole'
         created_at:
+          $ref: '#/components/schemas/Timestamp'
+    PlatformGroupJoinInvitation:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required:
+      - id
+      - group_id
+      - group_slug
+      - group_name
+      - org_id
+      - org_slug
+      - org_name
+      - status
+      - requested_at
+      - expires_at
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        group_id:
+          $ref: '#/components/schemas/Uuid'
+        group_slug:
+          type: string
+        group_name:
+          type: string
+        org_id:
+          $ref: '#/components/schemas/Uuid'
+        org_slug:
+          type: string
+        org_name:
+          type: string
+        status:
+          type: string
+          enum:
+          - PENDING
+          - ACCEPTED
+          - DECLINED
+          - CANCELLED
+        requested_at:
+          $ref: '#/components/schemas/Timestamp'
+        expires_at:
           $ref: '#/components/schemas/Timestamp'
     PlatformGroupMember:
       type: object
@@ -61268,6 +61564,7 @@ components:
           format: int64
           minimum: 1
     PreviewAccessInviteItem:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - index
@@ -61306,6 +61603,7 @@ components:
         activates_at:
           $ref: '#/components/schemas/Timestamp'
     PreviewAccessInviteRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - display_name
@@ -61340,6 +61638,7 @@ components:
           - 'null'
           maxLength: 500
     PreviewAccessInviteResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - phase
@@ -62336,6 +62635,7 @@ components:
           maxLength: 2000
           description: Required when kind is CUSTOMER_DECLINED; it becomes the customer-visible comment on the reopen.
     RecoveryChallengeRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - identifier
@@ -62344,6 +62644,7 @@ components:
         identifier:
           type: string
     RecoveryChallengeResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - sent
@@ -62354,11 +62655,13 @@ components:
         expires_at:
           $ref: '#/components/schemas/Timestamp'
     RecoveryChannel:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: string
       enum:
       - EMAIL
       - PHONE
     RecoveryCodesSummary:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - total
@@ -62376,6 +62679,7 @@ components:
           - $ref: '#/components/schemas/Timestamp'
           - type: 'null'
     RecoveryContactStatus:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - channel
@@ -62395,6 +62699,7 @@ components:
         review_pending:
           type: boolean
     RecoveryRedeemRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - recovery_code
@@ -62406,6 +62711,7 @@ components:
         contact_code:
           type: string
     RecoveryRedeemResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - access_token
@@ -62434,6 +62740,7 @@ components:
         cancelled_recovery_request:
           type: boolean
     RecoveryStatusResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - eligible
@@ -63942,6 +64249,7 @@ components:
           type: string
           minLength: 1
     ReleaseOpsHolderRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       additionalProperties: false
       properties:
@@ -65113,6 +65421,7 @@ components:
           pattern: ^[A-Za-z0-9._-]{1,30}$
           description: The code; null (or blank) clears it.
     SetWorkplaceHeadRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       additionalProperties: false
       required:
@@ -66195,6 +66504,10 @@ components:
         context_payload:
           type: object
           additionalProperties: true
+        approval_line_overrides:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApprovalLineOverrideStep'
     StartWorkflowRunResponse:
       type: object
       required:
@@ -66433,6 +66746,8 @@ components:
         required_approval_line:
           type: boolean
         required_payment_line:
+          type: boolean
+        allow_approval_line_override:
           type: boolean
     SubstituteAssignment:
       type: object
@@ -67349,6 +67664,16 @@ components:
         erased_at:
           type: [string, 'null']
           format: date-time
+    TenantGroupInvitationListResponse:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlatformGroupJoinInvitation'
     TenantReasonCode:
       type: object
       additionalProperties: false
@@ -68483,6 +68808,7 @@ components:
         link:
           $ref: '#/components/schemas/NotificationLink'
     UpsertRecoveryContactRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
       required:
       - channel

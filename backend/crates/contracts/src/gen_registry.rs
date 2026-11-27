@@ -5506,6 +5506,15 @@ const GOVERNANCE_FRAGMENT_PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/me/requests",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../governance/rest/openapi/paths/api__v1__me__requests.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/requests",
         operations: &[Operation {
             method: "get",
@@ -5571,6 +5580,10 @@ const GOVERNANCE_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "LifecycleState",
         body: include_str!("../../governance/rest/openapi/schemas/LifecycleState.yaml"),
+    },
+    NamedYaml {
+        name: "MyCommandOutcomePage",
+        body: include_str!("../../governance/rest/openapi/schemas/MyCommandOutcomePage.yaml"),
     },
     NamedYaml {
         name: "ObjectLifecycle",
@@ -5736,6 +5749,24 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
             method: "delete",
             body: include_str!(
                 "../../identity/rest/openapi/paths/api__platform__groups__id__accounts__user_id__roles__group_role.delete.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/platform/groups/{id}/invitations",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__platform__groups__id__invitations.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/platform/groups/{id}/invitations/{invitation_id}",
+        operations: &[Operation {
+            method: "delete",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__platform__groups__id__invitations__invitation_id.delete.yaml"
             ),
         }],
     },
@@ -7171,6 +7202,33 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
         ],
     },
     PathItem {
+        path: "/api/v1/tenant/group-invitations",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__tenant__group-invitations.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/tenant/group-invitations/{invitation_id}/accept",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__tenant__group-invitations__invitation_id__accept.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/tenant/group-invitations/{invitation_id}/decline",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../../identity/rest/openapi/paths/api__v1__tenant__group-invitations__invitation_id__decline.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/tenant/ops-recovery",
         operations: &[Operation {
             method: "get",
@@ -7328,6 +7386,12 @@ const IDENTITY_FRAGMENT_PATHS: &[PathItem] = &[
 ];
 
 const IDENTITY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
+    NamedYaml {
+        name: "AcceptTenantGroupInvitationRequest",
+        body: include_str!(
+            "../../identity/rest/openapi/schemas/AcceptTenantGroupInvitationRequest.yaml"
+        ),
+    },
     NamedYaml {
         name: "AccessCatalog",
         body: include_str!("../../identity/rest/openapi/schemas/AccessCatalog.yaml"),
@@ -7598,6 +7662,12 @@ const IDENTITY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         name: "CreatePlatformGroupAccountResponse",
         body: include_str!(
             "../../identity/rest/openapi/schemas/CreatePlatformGroupAccountResponse.yaml"
+        ),
+    },
+    NamedYaml {
+        name: "CreatePlatformGroupInvitationRequest",
+        body: include_str!(
+            "../../identity/rest/openapi/schemas/CreatePlatformGroupInvitationRequest.yaml"
         ),
     },
     NamedYaml {
@@ -7891,6 +7961,10 @@ const IDENTITY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "PlatformGroupAccount",
         body: include_str!("../../identity/rest/openapi/schemas/PlatformGroupAccount.yaml"),
+    },
+    NamedYaml {
+        name: "PlatformGroupJoinInvitation",
+        body: include_str!("../../identity/rest/openapi/schemas/PlatformGroupJoinInvitation.yaml"),
     },
     NamedYaml {
         name: "PlatformGroupMember",
@@ -8221,6 +8295,12 @@ const IDENTITY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "TenantEraseRequest",
         body: include_str!("../../identity/rest/openapi/schemas/TenantEraseRequest.yaml"),
+    },
+    NamedYaml {
+        name: "TenantGroupInvitationListResponse",
+        body: include_str!(
+            "../../identity/rest/openapi/schemas/TenantGroupInvitationListResponse.yaml"
+        ),
     },
     NamedYaml {
         name: "TokenPairResponse",
@@ -14123,6 +14203,10 @@ const REGISTRY_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "AdminWorkflowRunListResponse",
         body: include_str!("../../registry/rest/openapi/schemas/AdminWorkflowRunListResponse.yaml"),
+    },
+    NamedYaml {
+        name: "ApprovalLineOverrideStep",
+        body: include_str!("../../registry/rest/openapi/schemas/ApprovalLineOverrideStep.yaml"),
     },
     NamedYaml {
         name: "AssignSubstituteRequest",

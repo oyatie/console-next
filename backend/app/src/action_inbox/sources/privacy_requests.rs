@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-//! Open receipts reach handlers admitted by the canonical Cedar fact snapshot.
+//! Open privacy receipts reach only handlers who can actually decide them (BG-9).
 use console_action_inbox_application::{
     ActionInboxLink, ActionInboxSourceItem, ActionInboxSourcePage, ActionInboxSourceQuery,
     page_source_items,
 };
 use console_kernel_core::KernelError;
 use console_platform_authz::{
-    Principal, access::cedar::PRIVACY_REQUEST_INTAKE_READ, cedar_pbac::visible::EmployeePlacement,
+    Feature, Principal,
+    cedar_pbac::{actions::independent_people, visible::EmployeePlacement},
 };
+use serde_json::Value;
 use sqlx::PgPool;
 use time::{Date, OffsetDateTime, Time};
 use uuid::Uuid;
@@ -15,9 +17,11 @@ use uuid::Uuid;
 #[derive(sqlx::FromRow)]
 struct Receipt {
     id: Uuid,
+    subject_user_id: Uuid,
+    body: Value,
     receipt_no: String,
     subject_name: String,
-    kinds: serde_json::Value,
+    kinds: Value,
     received_at: OffsetDateTime,
     due_on: Option<Date>,
     org_unit_id: Option<Uuid>,
@@ -46,16 +50,15 @@ pub(crate) async fn page(
         .get_in(&mut tx, principal.org_id, *principal.user_id.as_uuid())
         .await?;
     let nodes = facts
-        .permitted_nodes(PRIVACY_REQUEST_INTAKE_READ)
+        .permitted_nodes(Feature::PrivacyRequestDecide.as_str())
         .map_err(failure)?;
     let _ = permission.set(!nodes.is_empty());
     if nodes.is_empty() {
         tx.commit().await.map_err(failure)?;
         return Ok(super::super::empty_source_page());
     }
-    // shortcut: materialize open receipts for exact Cedar counts; push the scope filter into SQL when intake volume grows.
     let rows = sqlx::query_as::<_, Receipt>(concat!(
-        "SELECT r.id, r.body->>'receipt_no' AS receipt_no, p.display_name AS subject_name, ",
+        "SELECT r.id, r.subject_user_id, r.body, r.body->>'receipt_no' AS receipt_no, p.display_name AS subject_name, ",
         "(SELECT jsonb_agg(key ORDER BY key) FROM jsonb_object_keys(r.body->'kinds') key) AS kinds, ",
         "(r.body#>>'{receipt,identity_at}')::timestamptz AS received_at, ",
         "(SELECT min((v#>>'{due,on}')::date) FROM jsonb_each(r.body->'kinds') AS k(key,v)) AS due_on, ",
@@ -67,8 +70,14 @@ pub(crate) async fn page(
         "WHERE r.org_id=$1 AND r.body->>'status'='RECEIVED' ",
         "AND r.body#>>'{receipt,controller}'='TENANT' ",
         "AND (r.body#>>'{receipt,identity_at}')::timestamptz<=$2"
-    )).bind(principal.org_id.as_uuid()).bind(query.as_of)
-        .fetch_all(tx.as_mut()).await.map_err(failure)?;
+    ))
+    .bind(principal.org_id.as_uuid())
+    .bind(query.as_of)
+    .fetch_all(tx.as_mut())
+    .await
+    .map_err(failure)?;
+
+    let checker = *principal.user_id.as_uuid();
     let mut items = Vec::new();
     for row in rows {
         let node = EmployeePlacement {
@@ -78,11 +87,70 @@ pub(crate) async fn page(
         }
         .node(principal.org_id, &facts);
         if !facts
-            .authorize(PRIVACY_REQUEST_INTAKE_READ, node)
+            .authorize(Feature::PrivacyRequestDecide.as_str(), node)
             .map_err(failure)?
         {
             continue;
         }
+        let filed_by = row
+            .body
+            .get("filed_by")
+            .and_then(Value::as_str)
+            .and_then(|s| Uuid::parse_str(s).ok());
+        let objection_of = row
+            .body
+            .get("objection_of")
+            .and_then(Value::as_str)
+            .and_then(|s| Uuid::parse_str(s).ok());
+        let original_decided_by = if let Some(orig_id) = objection_of {
+            let orig_body: Option<Value> = sqlx::query_scalar(
+                "SELECT body FROM privacy_rights_requests WHERE org_id=$1 AND id=$2",
+            )
+            .bind(principal.org_id.as_uuid())
+            .bind(orig_id)
+            .fetch_optional(tx.as_mut())
+            .await
+            .map_err(failure)?;
+            orig_body.and_then(|body| {
+                body.get("decided_by")
+                    .and_then(Value::as_str)
+                    .and_then(|s| Uuid::parse_str(s).ok())
+            })
+        } else {
+            None
+        };
+        let (allowed, _) = facts
+            .authorize_privacy_request_decide(
+                node,
+                row.subject_user_id,
+                filed_by,
+                original_decided_by,
+            )
+            .map_err(failure)?;
+        if !allowed {
+            continue;
+        }
+        if independent_people::refusal_in_tx(tx.as_mut(), Some(row.subject_user_id), checker)
+            .await
+            .is_some()
+        {
+            continue;
+        }
+        if let Some(filer) = filed_by.filter(|f| *f != row.subject_user_id)
+            && independent_people::refusal_in_tx(tx.as_mut(), Some(filer), checker)
+                .await
+                .is_some()
+        {
+            continue;
+        }
+        if let Some(orig_decider) = original_decided_by
+            && independent_people::refusal_in_tx(tx.as_mut(), Some(orig_decider), checker)
+                .await
+                .is_some()
+        {
+            continue;
+        }
+
         items.push(ActionInboxSourceItem {
             due_basis: row
                 .due_on

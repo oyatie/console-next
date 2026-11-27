@@ -28,6 +28,7 @@ import {
   saveMyRecoveryContact,
   type RecoveryChannel,
 } from "../api";
+import { useOpsGroupInvitesItem } from "./ops-group-invites";
 import s from "./account.module.css";
 
 const ownCode = (code: string | undefined) => {
@@ -39,6 +40,7 @@ export function OpsSecurityBody({ myId }: { myId: string }) {
   const consentId = useId();
   const recQ = useQuery(recoveryStatusQuery);
   const opsQ = useQuery(opsHoldersQuery);
+  const groupInvitesItem = useOpsGroupInvitesItem();
   const [modal, setModal] = useState<"contact" | "designate" | "release" | null>(null);
   const [channel, setChannel] = useState<RecoveryChannel>("EMAIL");
   const [contactVal, setContactVal] = useState("");
@@ -176,7 +178,7 @@ export function OpsSecurityBody({ myId }: { myId: string }) {
 
   return (
     <>
-      <KeyValue items={items} />
+      <KeyValue items={groupInvitesItem ? [...items, groupInvitesItem] : items} />
       <PasskeyError error={regenCodes.error} own={ownCode} />
 
       {modal === "contact" && (

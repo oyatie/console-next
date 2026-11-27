@@ -51,6 +51,7 @@ for (const theme of ["light", "dark"]) {
   for (const path of ["/requests", `/requests/${id(99)}`]) {
     test(`fits the shell around the nested ${path} landmark in ${theme}`, async ({ page }) => {
       const fixture = await mockScreen(page, screens[0], "empty");
+      await mockRoute(page, "get", "/api/v1/me/requests", { status: 200, json: { items: [], total: 0, offset: 0, limit: 50 } });
       await mockRoute(page, "get", "/api/v1/requests/{key}", { status: 404, json: failure("request_not_found") });
       try {
         await page.goto(path);
@@ -88,6 +89,7 @@ for (const style of ["baseline", "console"] as const) test.describe(`${style} la
 
   for (const path of ["/requests", `/requests/${id(99)}`]) test(`the shell around ${path} has ${style}'s main landmarks`, pin, async ({ page }) => {
     const fixture = await mockScreen(page, screens[0], "empty");
+    await mockRoute(page, "get", "/api/v1/me/requests", { status: 200, json: { items: [], total: 0, offset: 0, limit: 50 } });
     await mockRoute(page, "get", "/api/v1/requests/{key}", { status: 404, json: failure("request_not_found") });
     try {
       await page.goto(path);

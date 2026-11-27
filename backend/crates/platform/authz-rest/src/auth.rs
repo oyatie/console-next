@@ -7,9 +7,21 @@ use console_platform_authz::access::{
     AccessSlice, Domain, Level, NodePath, action_group, load_access_subject,
 };
 use console_platform_authz::{Action, Feature, Principal, authorize_org_wide};
+use console_platform_db::DbError;
 use time::OffsetDateTime;
 
 use crate::{CedarPolicyRestState, RestError, rest_error_from_request_context};
+
+enum AuthSubjectLoadError {
+    Db,
+    Kernel(KernelError),
+}
+
+impl From<DbError> for AuthSubjectLoadError {
+    fn from(_: DbError) -> Self {
+        Self::Db
+    }
+}
 
 pub(crate) async fn authorize_admin(
     state: &CedarPolicyRestState,
@@ -27,27 +39,33 @@ pub(crate) async fn authorize_admin(
     }
     let org = principal.org_id;
     let user_uuid = *principal.user_id.as_uuid();
-    let holds_tenant_access_edit = console_platform_db::with_org_conn::<_, _, KernelError>(
-        state.store.pool(),
-        org,
-        move |tx| {
-            Box::pin(async move {
-                let subject =
-                    load_access_subject(tx, org, user_uuid, OffsetDateTime::now_utc()).await?;
-                let ok = AccessSlice::compile(&subject).ok().is_some_and(|slice| {
-                    slice
-                        .allows(
-                            &action_group(Domain::Access, Level::Edit),
-                            &NodePath::tenant(org),
-                        )
-                        .unwrap_or(false)
-                });
-                Ok(ok)
-            })
-        },
-    )
-    .await
-    .map_err(RestError::from_kernel)?;
+    let holds_tenant_access_edit =
+        console_platform_db::with_org_conn::<_, _, AuthSubjectLoadError>(
+            state.store.pool(),
+            org,
+            move |tx| {
+                Box::pin(async move {
+                    let subject =
+                        load_access_subject(tx, org, user_uuid, OffsetDateTime::now_utc())
+                            .await
+                            .map_err(AuthSubjectLoadError::Kernel)?;
+                    let ok = AccessSlice::compile(&subject).ok().is_some_and(|slice| {
+                        slice
+                            .allows(
+                                &action_group(Domain::Access, Level::Edit),
+                                &NodePath::tenant(org),
+                            )
+                            .unwrap_or(false)
+                    });
+                    Ok(ok)
+                })
+            },
+        )
+        .await
+        .map_err(|err| match err {
+            AuthSubjectLoadError::Db => RestError::internal("internal server error"),
+            AuthSubjectLoadError::Kernel(k) => RestError::from_kernel(k),
+        })?;
     if holds_tenant_access_edit {
         return Ok(principal);
     }

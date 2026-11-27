@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required:
+- id
+- group_id
+- group_slug
+- group_name
+- org_id
+- org_slug
+- org_name
+- status
+- requested_at
+- expires_at
+properties:
+  id:
+    $ref: '#/components/schemas/Uuid'
+  group_id:
+    $ref: '#/components/schemas/Uuid'
+  group_slug:
+    type: string
+  group_name:
+    type: string
+  org_id:
+    $ref: '#/components/schemas/Uuid'
+  org_slug:
+    type: string
+  org_name:
+    type: string
+  status:
+    type: string
+    enum:
+    - PENDING
+    - ACCEPTED
+    - DECLINED
+    - CANCELLED
+  requested_at:
+    $ref: '#/components/schemas/Timestamp'
+  expires_at:
+    $ref: '#/components/schemas/Timestamp'

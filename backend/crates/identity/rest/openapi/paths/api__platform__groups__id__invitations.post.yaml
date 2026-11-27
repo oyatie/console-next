@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags:
+- platform
+operationId: createPlatformGroupInvitation
+summary: Issue a 7-day group join invitation to a tenant organization
+description: Creates a pending 7-day group join invitation audited to the target organization. Requires GroupManage authority and a fresh passkey step-up assertion.
+security:
+- bearerAuth: []
+parameters:
+- name: id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/CreatePlatformGroupInvitationRequest'
+responses:
+  '201':
+    description: Pending 7-day group join invitation created.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/PlatformGroupJoinInvitation'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '503':
+    $ref: '#/components/responses/ServiceUnavailable'

@@ -22,16 +22,54 @@ mod statutory;
 pub(crate) use recovery::tick;
 pub(crate) use statutory::read_outcome as read_filing_outcome;
 
-pub const REQUEST_ROUTE_PATHS: &[&str] = &["/api/v1/requests", "/api/v1/requests/{key}"];
+pub const REQUEST_ROUTE_PATHS: &[&str] = &[
+    "/api/v1/requests",
+    "/api/v1/requests/{key}",
+    "/api/v1/me/requests",
+];
 pub fn router(pool: PgPool, jwt: Option<JwtVerifier>) -> Router {
     with_request_context(
         Router::new()
             .route(REQUEST_ROUTE_PATHS[0], get(by_query))
             .route(REQUEST_ROUTE_PATHS[1], get(by_key))
+            .route(REQUEST_ROUTE_PATHS[2], get(mine))
             .with_state(pool.clone()),
         jwt,
         pool,
     )
+}
+#[derive(Deserialize)]
+struct MineQuery {
+    limit: Option<i64>,
+    offset: Option<i64>,
+}
+async fn mine(
+    State(pool): State<PgPool>,
+    Extension(p): Extension<Principal>,
+    Query(q): Query<MineQuery>,
+) -> Result<Json<Value>, ApiError> {
+    let limit = q.limit.unwrap_or(50).clamp(1, 100);
+    let offset = q.offset.unwrap_or(0).max(0);
+    command_outcomes::expire_abandoned(&pool, p.org_id)
+        .await
+        .map_err(|_| ApiError::internal("internal server error"))?;
+    let (rows, total) = command_outcomes::list_for_actor(&pool, p.org_id, p.user_id, limit, offset)
+        .await
+        .map_err(|_| ApiError::internal("internal server error"))?;
+    let mut items = Vec::with_capacity(rows.len());
+    for mut out in rows {
+        let readable = certificates::read_outcome(&pool, &p, &mut out).await;
+        if let Some(result) = out.result.as_mut() {
+            record_access::mask_saved_result(&pool, &p, result).await;
+        }
+        items.push(masked_outcome(out, readable));
+    }
+    Ok(Json(json!({
+        "items": items,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+    })))
 }
 #[derive(Deserialize)]
 struct Lookup {

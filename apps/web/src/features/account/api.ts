@@ -89,6 +89,16 @@ export async function removePasskey(id: string) {
 }
 
 export const tenantRecoveryQuery = get("/api/v1/tenant/ops-recovery");
+export const tenantGroupInvitationsQuery = get("/api/v1/tenant/group-invitations");
+export const acceptTenantGroupInvitation = async (invitationId: string) =>
+  unwrap(api.POST("/api/v1/tenant/group-invitations/{invitation_id}/accept", {
+    params: { path: { invitation_id: invitationId } },
+    body: { step_up: await assertPasskey() },
+  }));
+export const declineTenantGroupInvitation = (invitationId: string) =>
+  unwrap(api.POST("/api/v1/tenant/group-invitations/{invitation_id}/decline", {
+    params: { path: { invitation_id: invitationId } },
+  }));
 export const cancelTenantRecovery = async (orgId: string, id: string, reason: string, key: string) => unwrap(api.POST("/api/v1/tenant/ops-recovery/{rid}/cancel", {
   params: { path: { rid: id }, header: { "Idempotency-Key": key } },
   body: { reason, step_up: await assertBoundPasskey("OPERATOR_RECOVERY", id, JSON.stringify([orgId, id, "cancel", "", "", "", "", reason])) },

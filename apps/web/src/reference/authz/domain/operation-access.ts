@@ -89,4 +89,7 @@ export const operationAccess = {
   "DELETE /api/v1/tenant/company-domain/request": {"domain":"tenant","level":"edit","tenant":true,"scopes":[]},
   "GET /api/v1/tenant/company-domain/request": {"domain":"tenant","level":"edit","tenant":true,"scopes":[]},
   "POST /api/v1/tenant/company-domain/request": {"domain":"tenant","level":"edit","tenant":true,"scopes":[]},
+  "GET /api/v1/tenant/group-invitations": {"domain":"tenant","level":"edit","tenant":true,"scopes":[]},
+  "POST /api/v1/tenant/group-invitations/{invitation_id}/accept": {"domain":"tenant","level":"edit","tenant":true,"scopes":[]},
+  "POST /api/v1/tenant/group-invitations/{invitation_id}/decline": {"domain":"tenant","level":"edit","tenant":true,"scopes":[]},
 } as const satisfies Record<string, Requirement>;

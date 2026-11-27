@@ -4,6 +4,7 @@ import { approvalBox, type ApprovalBox } from "../features/approvals/domain/inbo
 import { APPROVALS_MODULE } from "../reference/onboarding/api";
 import { app, screen, str } from "./app";
 
+const loadApprovals = () => import("../features/approvals/ui/approvals-page");
 type ApprovalsSearch = { box?: Exclude<ApprovalBox, "pending">; q?: string; source?: string; sel?: string; full?: 1 };
 export const approvalsRoute = createRoute({
   getParentRoute: () => app,
@@ -15,7 +16,14 @@ export const approvalsRoute = createRoute({
     const sel = str(search.sel) ?? str(search.focus);
     return { box: box === "pending" ? undefined : box, q: str(search.q), source: str(search.source), sel, full: sel && (search.full === 1 || search.full === "1") ? 1 : undefined };
   },
-  component: lazyRouteComponent(screen(() => import("../features/approvals/ui/approvals-page")), "ApprovalsPage"),
+  component: lazyRouteComponent(screen(loadApprovals), "ApprovalsPage"),
+});
+
+export const approvalNewRoute = createRoute({
+  getParentRoute: () => app,
+  path: "/approvals/new",
+  staticData: { access: "signed-in", module: APPROVALS_MODULE, floorplan: "P-04", pattern: "form" },
+  component: lazyRouteComponent(screen(loadApprovals), "ApprovalNew"),
 });
 
 export const approvalViewerRoute = createRoute({

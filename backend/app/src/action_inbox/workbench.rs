@@ -57,26 +57,36 @@ pub(crate) async fn read_workbench_action_inbox(
     authorization: Authorization,
 ) -> Result<WorkbenchActionInboxPage, WorkbenchSourceFailure> {
     let (org, account) = (principal.org_id, principal.user_id);
-    let (deadline_due_soon_days, policies, snoozed) = console_platform_db::with_org_conn::<
-        _,
-        _,
-        console_settings_adapter_postgres::PgSettingsError,
-    >(pool, org, move |tx| {
-        Box::pin(async move {
-            let (window, policies, _) = policy::load(tx.as_mut(), org, as_of).await?;
-            let snoozed = snooze::load(tx.as_mut(), org, account)
-                .await
-                .map_err(console_platform_db::DbError::from)?;
-            Ok((window, policies, snoozed))
+    let (deadline_due_soon_days, policies, snoozed, public_holidays) =
+        console_platform_db::with_org_conn::<
+            _,
+            _,
+            console_settings_adapter_postgres::PgSettingsError,
+        >(pool, org, move |tx| {
+            Box::pin(async move {
+                let (window, policies, _) = policy::load(tx.as_mut(), org, as_of).await?;
+                let snoozed = snooze::load(tx.as_mut(), org, account)
+                    .await
+                    .map_err(console_platform_db::DbError::from)?;
+                let holidays: std::collections::HashSet<time::Date> =
+                    sqlx::query_scalar::<_, time::Date>(
+                        "SELECT holiday_date FROM attendance_public_holidays",
+                    )
+                    .fetch_all(tx.as_mut())
+                    .await
+                    .unwrap_or_default()
+                    .into_iter()
+                    .collect();
+                Ok((window, policies, snoozed, holidays))
+            })
         })
-    })
-    .await
-    .map_err(|error| {
-        tracing::warn!(%org, ?error, "workbench deadline display settings unavailable");
-        WorkbenchSourceFailure::Unavailable {
-            code: "action_inbox_unavailable",
-        }
-    })?;
+        .await
+        .map_err(|error| {
+            tracing::warn!(%org, ?error, "workbench deadline display settings unavailable");
+            WorkbenchSourceFailure::Unavailable {
+                code: "action_inbox_unavailable",
+            }
+        })?;
     let sources = PgActionInboxSources {
         authorization,
         pool: pool.clone(),
@@ -85,6 +95,7 @@ pub(crate) async fn read_workbench_action_inbox(
         support_can_approve: tokio::sync::OnceCell::new(),
         privacy_can_handle: tokio::sync::OnceCell::new(),
         statutory_register: request_register::Register::default(),
+        public_holidays,
         setup_created_at: as_of,
         deadline_due_soon_days,
         policies,

@@ -123,6 +123,13 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/me/requests",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__me__requests.get.yaml"),
+        }],
+    },
+    PathItem {
         path: "/api/v1/requests",
         operations: &[Operation {
             method: "get",
@@ -178,6 +185,10 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "LifecycleState",
         body: include_str!("../openapi/schemas/LifecycleState.yaml"),
+    },
+    NamedYaml {
+        name: "MyCommandOutcomePage",
+        body: include_str!("../openapi/schemas/MyCommandOutcomePage.yaml"),
     },
     NamedYaml {
         name: "ObjectLifecycle",

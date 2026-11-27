@@ -24,6 +24,12 @@
     "/api/platform/groups/{id}/accounts/{user_id}/roles/{group_role}": [
       "delete"
     ],
+    "/api/platform/groups/{id}/invitations": [
+      "post"
+    ],
+    "/api/platform/groups/{id}/invitations/{invitation_id}": [
+      "delete"
+    ],
     "/api/platform/groups/{id}/organizations/{org_id}": [
       "delete",
       "put"
@@ -435,6 +441,15 @@
       "get",
       "post"
     ],
+    "/api/v1/tenant/group-invitations": [
+      "get"
+    ],
+    "/api/v1/tenant/group-invitations/{invitation_id}/accept": [
+      "post"
+    ],
+    "/api/v1/tenant/group-invitations/{invitation_id}/decline": [
+      "post"
+    ],
     "/api/v1/tenant/ops-recovery": [
       "get"
     ],
@@ -486,6 +501,7 @@
     ]
   },
   "schemas": [
+    "AcceptTenantGroupInvitationRequest",
     "AccessCatalog",
     "AccessCatalogDomain",
     "AccessCatalogScopeKind",
@@ -552,6 +568,7 @@
     "CreateBranchRequest",
     "CreatePlatformGroupAccountRequest",
     "CreatePlatformGroupAccountResponse",
+    "CreatePlatformGroupInvitationRequest",
     "CreatePlatformGroupRequest",
     "CreatePlatformOrgRequest",
     "CreatePolicyRoleRequest",
@@ -602,6 +619,7 @@
     "PlatformAccountStatus",
     "PlatformGroup",
     "PlatformGroupAccount",
+    "PlatformGroupJoinInvitation",
     "PlatformGroupMember",
     "PlatformGroupRole",
     "PlatformOperatorInviteResponse",
@@ -678,6 +696,7 @@
     "Team",
     "TenantEraseRead",
     "TenantEraseRequest",
+    "TenantGroupInvitationListResponse",
     "TokenPairResponse",
     "UpdateAccessRoleRequest",
     "UpdateBranchRequest",

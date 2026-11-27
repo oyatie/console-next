@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags: [audit]
+operationId: listMyCommandOutcomes
+summary: List the caller's own command outcomes in reverse chronological order
+security: [{bearerAuth: []}]
+parameters:
+- in: query
+  name: limit
+  required: false
+  schema: {type: integer, format: int64, minimum: 1, maximum: 100, default: 50}
+- in: query
+  name: offset
+  required: false
+  schema: {type: integer, format: int64, minimum: 0, default: 0}
+responses:
+  '200':
+    description: Paginated personal command outcomes for the authenticated caller
+    content:
+      application/json:
+        schema: {$ref: '#/components/schemas/MyCommandOutcomePage'}
+  '401': {$ref: '#/components/responses/Unauthorized'}

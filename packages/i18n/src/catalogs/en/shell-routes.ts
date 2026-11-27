@@ -72,4 +72,7 @@ export const enShellRoutes = {
   "shellRoutes.companyDomain": "Company domain",
   "shellRoutes.privacy": "Privacy rights",
   "shellRoutes.privacyIntake": "Privacy request",
+  "shellRoutes.approvalNew": "New approval",
+  "shellRoutes.locationConsent": "Location consent",
+  "shellRoutes.dispatchOffers": "Dispatch offers",
 } as const;

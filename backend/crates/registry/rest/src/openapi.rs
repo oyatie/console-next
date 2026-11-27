@@ -501,6 +501,10 @@ const SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../openapi/schemas/AdminWorkflowRunListResponse.yaml"),
     },
     NamedYaml {
+        name: "ApprovalLineOverrideStep",
+        body: include_str!("../openapi/schemas/ApprovalLineOverrideStep.yaml"),
+    },
+    NamedYaml {
         name: "AssignSubstituteRequest",
         body: include_str!("../openapi/schemas/AssignSubstituteRequest.yaml"),
     },

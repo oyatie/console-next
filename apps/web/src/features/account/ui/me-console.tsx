@@ -207,6 +207,11 @@ export function MeConsole({
                 <bdi className={s.privacyLabel}>{t("account.privacy.title")}</bdi>
                 <ChevronRight size={16} aria-hidden="true" className="muted" />
               </Link>
+              <Link to="/account/location" className={`${s.privacyLink} ${s.plainLink}`}>
+                <ShieldCheck size={18} aria-hidden="true" className="t-primary" />
+                <bdi className={s.privacyLabel}>{t("account.location.link")}</bdi>
+                <ChevronRight size={16} aria-hidden="true" className="muted" />
+              </Link>
             </div>
           ),
         }]

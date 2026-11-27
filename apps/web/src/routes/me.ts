@@ -17,6 +17,7 @@ const meAttendance = createRoute({
   component: lazyRouteComponent(screen(() => import("../features/me/ui/me-attendance-page")), "MeAttendancePage"),
 });
 
+const loadMeDesk = () => import("../features/me/ui/me-desk-page");
 const meDesk = createRoute({
   getParentRoute: () => app,
   path: "/me/desk",
@@ -24,7 +25,14 @@ const meDesk = createRoute({
   validateSearch: (s: Record<string, unknown>): MeDeskSearch => ({
     view: DESK_VIEWS.find(v => v === s.view),
   }),
-  component: lazyRouteComponent(screen(() => import("../features/me/ui/me-desk-page")), "MeDeskPage"),
+  component: lazyRouteComponent(screen(loadMeDesk), "MeDeskPage"),
 });
 
-export const meRoutes = [meAttendance, meDesk];
+const meDispatchOffers = createRoute({
+  getParentRoute: () => app,
+  path: "/me/dispatch-offers",
+  staticData: { access: "signed-in", floorplan: "P-03", pattern: "worklist" },
+  component: lazyRouteComponent(screen(loadMeDesk), "MeDispatchOffers"),
+});
+
+export const meRoutes = [meAttendance, meDesk, meDispatchOffers];

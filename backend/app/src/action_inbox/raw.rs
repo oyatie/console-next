@@ -16,7 +16,7 @@ impl ActionInboxSourcePort for Raw<'_> {
     ) -> ActionInboxSourceFuture<'_> {
         let sources = self.0;
         Box::pin(async move {
-            match source {
+            let mut page = match source {
                 #[cfg(feature = "workspace")]
                 ActionInboxSource::Workflow => sources.workflow_page(query).await,
                 #[cfg(feature = "dispatch")]
@@ -147,7 +147,40 @@ impl ActionInboxSourcePort for Raw<'_> {
                 }
                 #[allow(unreachable_patterns)]
                 _ => Ok(empty_source_page()),
-            }
+            }?;
+            roll_statutory_due_dates(&mut page, &sources.public_holidays);
+            Ok(page)
         })
+    }
+}
+
+fn roll_statutory_due_dates(
+    page: &mut ActionInboxSourcePage,
+    holidays: &std::collections::HashSet<time::Date>,
+) {
+    let kst = time::macros::offset!(+9);
+    for item in &mut page.items {
+        if item.due_basis != Some(console_action_inbox_application::DueBasis::Statutory) {
+            continue;
+        }
+        let Some(due) = item.due else {
+            continue;
+        };
+        let in_kst = due.to_offset(kst);
+        let mut date = in_kst.date();
+        let start = date;
+        while matches!(
+            date.weekday(),
+            time::Weekday::Saturday | time::Weekday::Sunday
+        ) || holidays.contains(&date)
+        {
+            let Some(next) = date.next_day() else {
+                break;
+            };
+            date = next;
+        }
+        if date != start {
+            item.due = Some(date.with_time(in_kst.time()).assume_offset(kst));
+        }
     }
 }

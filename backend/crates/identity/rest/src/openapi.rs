@@ -138,6 +138,22 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/platform/groups/{id}/invitations",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!("../openapi/paths/api__platform__groups__id__invitations.post.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/platform/groups/{id}/invitations/{invitation_id}",
+        operations: &[Operation {
+            method: "delete",
+            body: include_str!(
+                "../openapi/paths/api__platform__groups__id__invitations__invitation_id.delete.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/platform/groups/{id}/organizations/{org_id}",
         operations: &[
             Operation {
@@ -1345,6 +1361,31 @@ const PATHS: &[PathItem] = &[
         ],
     },
     PathItem {
+        path: "/api/v1/tenant/group-invitations",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__tenant__group-invitations.get.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/tenant/group-invitations/{invitation_id}/accept",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__tenant__group-invitations__invitation_id__accept.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/tenant/group-invitations/{invitation_id}/decline",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__tenant__group-invitations__invitation_id__decline.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/tenant/ops-recovery",
         operations: &[Operation {
             method: "get",
@@ -1484,6 +1525,10 @@ const PATHS: &[PathItem] = &[
 ];
 
 const SCHEMAS: &[NamedYaml] = &[
+    NamedYaml {
+        name: "AcceptTenantGroupInvitationRequest",
+        body: include_str!("../openapi/schemas/AcceptTenantGroupInvitationRequest.yaml"),
+    },
     NamedYaml {
         name: "AccessCatalog",
         body: include_str!("../openapi/schemas/AccessCatalog.yaml"),
@@ -1747,6 +1792,10 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "CreatePlatformGroupAccountResponse",
         body: include_str!("../openapi/schemas/CreatePlatformGroupAccountResponse.yaml"),
+    },
+    NamedYaml {
+        name: "CreatePlatformGroupInvitationRequest",
+        body: include_str!("../openapi/schemas/CreatePlatformGroupInvitationRequest.yaml"),
     },
     NamedYaml {
         name: "CreatePlatformGroupRequest",
@@ -2023,6 +2072,10 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "PlatformGroupAccount",
         body: include_str!("../openapi/schemas/PlatformGroupAccount.yaml"),
+    },
+    NamedYaml {
+        name: "PlatformGroupJoinInvitation",
+        body: include_str!("../openapi/schemas/PlatformGroupJoinInvitation.yaml"),
     },
     NamedYaml {
         name: "PlatformGroupMember",
@@ -2335,6 +2388,10 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "TenantEraseRequest",
         body: include_str!("../openapi/schemas/TenantEraseRequest.yaml"),
+    },
+    NamedYaml {
+        name: "TenantGroupInvitationListResponse",
+        body: include_str!("../openapi/schemas/TenantGroupInvitationListResponse.yaml"),
     },
     NamedYaml {
         name: "TokenPairResponse",

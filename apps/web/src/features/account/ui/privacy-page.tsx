@@ -35,6 +35,13 @@ const PrivacyIntakeInspector = lazy(() =>
 const PrivacyObjectionComposer = lazy(() =>
   import("./privacy-objection-composer").then(m => ({ default: m.PrivacyObjectionComposer })),
 );
+const LazyLocationConsentPage = lazy(() =>
+  import("./location-consent-page").then(m => ({ default: m.LocationConsentPage })),
+);
+
+export function LocationConsent() {
+  return <Suspense fallback={null}><LazyLocationConsentPage /></Suspense>;
+}
 
 const privacyRoute = getRouteApi("/app/account/privacy");
 

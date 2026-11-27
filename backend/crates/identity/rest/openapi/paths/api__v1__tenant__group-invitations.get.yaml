@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+x-console-authz: {"permission": "tenant:edit", "scope": "ops"}
+tags:
+- platform
+operationId: listTenantGroupInvitations
+summary: List pending group join invitations for the caller's tenant organization
+security:
+- bearerAuth: []
+responses:
+  '200':
+    description: Pending non-expired group join invitations for the caller's organization.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/TenantGroupInvitationListResponse'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'

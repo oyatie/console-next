@@ -528,6 +528,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/platform/groups/{id}/invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Issue a 7-day group join invitation to a tenant organization
+         * @description Creates a pending 7-day group join invitation audited to the target organization. Requires GroupManage authority and a fresh passkey step-up assertion.
+         */
+        post: operations["createPlatformGroupInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/platform/groups/{id}/invitations/{invitation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Cancel a pending group join invitation
+         * @description Cancels a pending group join invitation and records an audit event on the target organization.
+         */
+        delete: operations["cancelPlatformGroupInvitation"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/platform/groups/{id}/organizations/{org_id}": {
         parameters: {
             query?: never;
@@ -10057,6 +10097,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the caller's own command outcomes in reverse chronological order */
+        get: operations["listMyCommandOutcomes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/todos": {
         parameters: {
             query?: never;
@@ -14318,6 +14375,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tenant/group-invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List pending group join invitations for the caller's tenant organization */
+        get: operations["listTenantGroupInvitations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tenant/group-invitations/{invitation_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept a pending group join invitation for the caller's tenant organization
+         * @description Assigns the caller's organization to the inviting platform group after verifying a fresh passkey assertion from an active tenant ops holder.
+         */
+        post: operations["acceptTenantGroupInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tenant/group-invitations/{invitation_id}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decline a pending group join invitation for the caller's tenant organization */
+        post: operations["declineTenantGroupInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tenant/ops-recovery": {
         parameters: {
             query?: never;
@@ -15906,6 +16017,10 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AcceptTenantGroupInvitationRequest: {
+            /** @description Fresh passkey step-up assertion from the accepting tenant ops holder. */
+            step_up: components["schemas"]["PasskeyStepUpAssertion"];
+        };
         AccessCatalog: {
             domains: components["schemas"]["AccessCatalogDomain"][];
             levels: components["schemas"]["AccessLevel"][];
@@ -16899,6 +17014,12 @@ export interface components {
             offset: number;
             /** Format: int64 */
             total: number;
+        };
+        ApprovalLineOverrideStep: {
+            /** @description Existing approval node key to swap; omit when appending an optional approval step. */
+            node_key?: string;
+            assignee_role_key: string;
+            title?: string;
         };
         /** @description Tenant/org/branch/object identity for ontology-aware workflow, analytics, audit, and future group/organization hierarchy views. */
         ApprovalOntologyContext: {
@@ -20035,6 +20156,11 @@ export interface components {
             /** @description One-time setup OTP returned exactly once; deliver out-of-band and never log it. */
             otp: string;
             otp_expires_at: components["schemas"]["Timestamp"];
+        };
+        CreatePlatformGroupInvitationRequest: {
+            org_id: components["schemas"]["Uuid"];
+            /** @description Fresh passkey step-up assertion from the inviting platform operator. */
+            step_up: components["schemas"]["PasskeyStepUpAssertion"];
         };
         CreatePlatformGroupRequest: {
             slug: string;
@@ -25912,6 +26038,15 @@ export interface components {
             items: components["schemas"]["MyAccessLogEvent"][];
             next_cursor: string | null;
         };
+        MyCommandOutcomePage: {
+            items: components["schemas"]["CommandOutcome"][];
+            /** Format: int64 */
+            total: number;
+            /** Format: int64 */
+            limit: number;
+            /** Format: int64 */
+            offset: number;
+        };
         /** @description One pending P1 offer for the signed-in mechanic: a BROADCASTING dispatch that fanned out to the caller, still inside its accept window, with no response from the caller yet. */
         MyDispatchOffer: {
             dispatch_id: components["schemas"]["Uuid"];
@@ -28281,6 +28416,7 @@ export interface components {
             /** Format: int64 */
             member_count: number;
             members: components["schemas"]["PlatformGroupMember"][];
+            pending_invitations?: components["schemas"]["PlatformGroupJoinInvitation"][];
             created_at: components["schemas"]["Timestamp"];
             updated_at: components["schemas"]["Timestamp"];
         };
@@ -28301,6 +28437,19 @@ export interface components {
             org_name: string;
             group_roles: components["schemas"]["PlatformGroupRole"][];
             created_at: components["schemas"]["Timestamp"];
+        };
+        PlatformGroupJoinInvitation: {
+            id: components["schemas"]["Uuid"];
+            group_id: components["schemas"]["Uuid"];
+            group_slug: string;
+            group_name: string;
+            org_id: components["schemas"]["Uuid"];
+            org_slug: string;
+            org_name: string;
+            /** @enum {string} */
+            status: "PENDING" | "ACCEPTED" | "DECLINED" | "CANCELLED";
+            requested_at: components["schemas"]["Timestamp"];
+            expires_at: components["schemas"]["Timestamp"];
         };
         PlatformGroupMember: {
             id: components["schemas"]["Uuid"];
@@ -30982,6 +31131,7 @@ export interface components {
             context_payload?: {
                 [key: string]: unknown;
             };
+            approval_line_overrides?: components["schemas"]["ApprovalLineOverrideStep"][];
         };
         StartWorkflowRunResponse: {
             run: components["schemas"]["WorkflowRunSummary"];
@@ -31086,6 +31236,7 @@ export interface components {
             active_version: number;
             required_approval_line: boolean;
             required_payment_line: boolean;
+            allow_approval_line_override?: boolean;
         };
         SubstituteAssignment: {
             /** Format: uuid */
@@ -31423,6 +31574,9 @@ export interface components {
             cancelled_at: string | null;
             /** Format: date-time */
             erased_at: string | null;
+        };
+        TenantGroupInvitationListResponse: {
+            items: components["schemas"]["PlatformGroupJoinInvitation"][];
         };
         TenantReasonCode: {
             domain: string;
@@ -34043,6 +34197,62 @@ export interface operations {
             404: components["responses"]["NotFound"];
             422: components["responses"]["ValidationError"];
             503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    createPlatformGroupInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePlatformGroupInvitationRequest"];
+            };
+        };
+        responses: {
+            /** @description Pending 7-day group join invitation created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformGroupJoinInvitation"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    cancelPlatformGroupInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Uuid"];
+                invitation_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Pending group join invitation cancelled. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     assignPlatformOrgToGroup: {
@@ -54071,6 +54281,30 @@ export interface operations {
             };
         };
     };
+    listMyCommandOutcomes: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated personal command outcomes for the authenticated caller */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyCommandOutcomePage"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
     listMyTodos: {
         parameters: {
             query?: {
@@ -63384,6 +63618,82 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+        };
+    };
+    listTenantGroupInvitations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Pending non-expired group join invitations for the caller's organization. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantGroupInvitationListResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    acceptTenantGroupInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invitation_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptTenantGroupInvitationRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated tenant organization summary after joining the group. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformOrg"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    declineTenantGroupInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invitation_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Pending group join invitation declined. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     readTenantOpsRecovery: {

@@ -24,6 +24,10 @@ properties:
     type: array
     items:
       $ref: '#/components/schemas/PlatformGroupMember'
+  pending_invitations:
+    type: array
+    items:
+      $ref: '#/components/schemas/PlatformGroupJoinInvitation'
   created_at:
     $ref: '#/components/schemas/Timestamp'
   updated_at:

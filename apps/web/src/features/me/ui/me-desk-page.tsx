@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
@@ -39,6 +40,8 @@ export type MeDeskSearch = { view?: MeDeskView };
 const route = getRouteApi("/app/me/desk");
 const VIEWS: readonly MeDeskView[] = ["overview", "attendance", "requests", "documents"];
 
+const LazyDispatchOffers = lazy(() => import("./me-dispatch-offers-page").then(m => ({ default: m.MeDispatchOffersPage })));
+export function MeDispatchOffers() { return <Suspense fallback={null}><LazyDispatchOffers /></Suspense>; }
 export function MeDeskPage() {
   const search = route.useSearch();
   const navigate = route.useNavigate();
@@ -110,6 +113,7 @@ export function MeDeskPage() {
       </div>
       <div className={s.railLinks}>
         <Link to="/me/attendance" className={buttonClass("secondary", { size: "sm", className: s.nowrap })}>{t("me.desk.links.attendance")}</Link>
+        <Link to="/me/dispatch-offers" className={buttonClass("secondary", { size: "sm", className: s.nowrap })}>{t("me.dispatch.link")}</Link>
         <Link to="/payslips" className={buttonClass("secondary", { size: "sm", className: s.nowrap })}>{t("shell.title.payslip")}</Link>
         <Link to="/account/privacy" className={buttonClass("secondary", { size: "sm", className: s.nowrap })}>{t("me.desk.links.privacy")}</Link>
       </div>

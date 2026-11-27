@@ -162,6 +162,7 @@
   },
   "schemas": [
     "AdminWorkflowRunListResponse",
+    "ApprovalLineOverrideStep",
     "AssignSubstituteRequest",
     "BulkApprovalCapability",
     "BulkApprovalInboxResponse",

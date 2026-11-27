@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required:
+- assignee_role_key
+properties:
+  node_key:
+    type: string
+    description: Existing approval node key to swap; omit when appending an optional approval step.
+  assignee_role_key:
+    type: string
+    minLength: 1
+  title:
+    type: string
