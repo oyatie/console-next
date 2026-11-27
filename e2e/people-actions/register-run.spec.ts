@@ -25,7 +25,7 @@ async function fill(page: Page, n: number, p: { name: string; birth?: string; ph
   if (p.type) await page.getByRole("combobox", { name: `${n}번째 사람 고용형태` }).selectOption({ label: "정규직" });
   if (p.place) {
     // Typed as a person types (a one-shot fill does not open the list).
-    await page.getByRole("combobox", { name: `${n}번째 사람 둘 곳` }).pressSequentially("조립1");
+    await page.getByRole("combobox", { name: `${n}번째 사람 소속` }).pressSequentially("조립1");
     await page.getByRole("option", { name: /조립1팀/ }).first().click();
   }
   if (p.hire) await cell(page, n, "입사일").fill(p.hire);
@@ -74,7 +74,7 @@ test("연속 등록: rows saved with ⌘↵, carried values, gaps named, a names
   // 3. Carry: a chip reads as the value in the row and, switched on, keeps it for the next people of the run.
   await fill(admin, 2, { name: "서정우", birth: "1991-03-13", phone: "010-1234-0053", place: true, hire: "2026-10-19", type: true, position: "사원", pay: "3000000" });
   c.done("E3-run second person");
-  for (const k of [/^둘 곳 조립1팀/, /^입사일 2026-10-19/, /^고용형태 정규직/, /^직위 사원/, /^기본급 3,000,000/]) await c.click(carry.getByRole("button", { name: k }));
+  for (const k of [/^소속 조립1팀/, /^입사일 2026-10-19/, /^고용형태 정규직/, /^직위 사원/, /^기본급 3,000,000/]) await c.click(carry.getByRole("button", { name: k }));
   expect(c.done("E3-run carry chips")).toBe(5);
   await expect(carry.getByRole("button", { pressed: true })).toHaveCount(5);
   await admin.keyboard.press("ControlOrMeta+Enter");

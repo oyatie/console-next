@@ -25,7 +25,7 @@ import { InboxRecord } from "./inbox-record";
 import { InboxTabs } from "./inbox-tabs";
 import { QuietQueue } from "./quiet-queue";
 import { SnoozeMenu, SnoozedList } from "./snooze";
-import { useInboxRead } from "./use-inbox-read";
+import { isInboxRow, useInboxRead } from "./use-inbox-read";
 import { WorklistColumnsDialog } from "./worklist-columns-dialog";
 import s from "./worklist-console.module.css";
 import { WorklistLower } from "./worklist-lower";
@@ -91,7 +91,7 @@ export function WorklistConsole({
   const inSetup = setupPhase || Boolean(checklist);
   const allItems = pages
     .flatMap(page => page.items)
-    .filter(item => !checklist || !item.kind.startsWith("setup_"))
+    .filter(item => isInboxRow(item.kind, Boolean(checklist)))
     .filter(item => !(mode === "inbox" && inSetup) || item.kind === "privacy_request");
 
   if (

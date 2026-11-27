@@ -14,7 +14,7 @@ import { SetupReceipt } from "../features/onboarding/ui/setup-receipt";
 import { useReceipt } from "../features/onboarding/ui/use-receipt";
 import { useLiveHold } from "../lib/live/hold";
 import { InboxRead } from "../features/home/ui/inbox-read";
-import { useInboxRead } from "../features/home/ui/use-inbox-read";
+import { isInboxRow, useInboxRead } from "../features/home/ui/use-inbox-read";
 import { entitiesRef } from "../reference/entity/api";
 import { unitsQuery } from "../reference/org/api";
 import { readRequirement } from "./route-reads";
@@ -41,7 +41,7 @@ function HomeContent() {
   // Under the phase band's hold Home lays out unseen; it latches its arrival only once the band decides, so a receipt
   // record that the decided phase calls for is still waited on before Home shows.
   if (!pending && !settled && phase.settled) setSettled(true);
-  useLiveHold(phase.settled && !pending && !!inbox.data?.pages.some((page) => page.items.length > 0), true);
+  useLiveHold(phase.settled && !pending && !!inbox.data?.pages.some((page) => page.items.some((item) => isInboxRow(item.kind, during))), true);
   if (pending) return <ReadSkeleton layout="list" />;
   return (
     <Home

@@ -106,9 +106,9 @@ test("the roster at 3,000 people: virtualized paging, server counts, jump, bound
   await pageBox.click();
   await admin.getByRole("button", { name: `필터와 일치하는 ${fmt(kims)}명 모두 선택` }).click();
   await expect(admin.getByRole("status").filter({ hasText: `필터와 일치하는 ${fmt(kims)}명 선택됨` })).toBeVisible();
-  await admin.getByRole("group", { name: "확인 필요" }).getByRole("button", { name: /^반영 실패/ }).click();
+  await admin.getByRole("group", { name: "상태", exact: true }).getByRole("button", { name: /^입사 예정/ }).click();
   await expect(admin.getByRole("status").filter({ hasText: "선택됨" })).toHaveCount(0);
-  await admin.getByRole("group", { name: "확인 필요" }).getByRole("button", { name: /^반영 실패/ }).click();
+  await admin.getByRole("group", { name: "상태", exact: true }).getByRole("button", { name: /^입사 예정/ }).click();
 
   // Single-key shortcuts work only inside the table's region, and J/K beat type-to-select ("k" is not a jump to Kim).
   await find.fill("");

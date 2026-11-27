@@ -8,7 +8,6 @@ import type { Correction } from "../api";
 import { FIELD_CLASS, type FixField } from "../domain/fix";
 import { CardCert } from "./card-cert";
 import { FixCorrect } from "./fix-correct";
-import { FixEmpno } from "./fix-empno";
 import { FixMulti } from "./fix-multi";
 import { FixRevise } from "./fix-revise";
 import type { Card } from "./use-card";
@@ -17,7 +16,7 @@ const FIELDS = new Set(Object.keys(FIELD_CLASS));
 
 /**
  * The personnel card's own sheets, opened by `?act=` (pushed, so Back closes them): `fix:<field>` (edit / correction only), `multi`
- * (multi-field correction), `empno` (employee-number change), `print` (record print), `cert` (certificate); registration cancel is CRUD's CancelHost (`cancel`). Lifecycle acts
+ * (multi-field correction), `print` (record print), `cert` (certificate); registration cancel is CRUD's CancelHost (`cancel`). Lifecycle acts
  * (TRANSFER…) belong to ActHost; exits to the exit card.
  */
 export function FixHost({ c, act, onClose, onAct }: { c: Card; act?: string; onClose: () => void; onAct: (act: string) => void }) {
@@ -46,7 +45,6 @@ export function FixHost({ c, act, onClose, onAct }: { c: Card; act?: string; onC
         ? <FixRevise key={field} c={c} field={field} onClose={onClose} onCorrected={corrected} onChanged={changed} />
         : <FixCorrect key={field} c={c} field={field} onClose={onClose} onDone={corrected} />)}
       {act === "multi" && <FixMulti c={c} onClose={onClose} onDone={corrected} onAct={onAct} />}
-      {act === "empno" && <FixEmpno c={c} onClose={onClose} onCorrect={() => onAct("fix:employee_number")} />}
       {act === "cert" && <CardCert c={c} onClose={onClose} />}
     </>
   );

@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { lazy, Suspense, useEffect, useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { fmtDate, fmtDateTime } from "@console/i18n/format";
 import { ChevronLeft, ChevronRight, FileText, Lock, MoreHorizontal, MoveRight, Pencil, Printer } from "lucide-react";
-import { chunk } from "../../../lib/chunk-guard";
 import { EMPLOYEE_STATUS, EMPLOYMENT_TYPE, LIFECYCLE_EVENT, label, labeled } from "../../../lib/labels";
 import { todayKst } from "../../../lib/pure/today";
 import { focusSoon } from "../../../lib/react/announce";
@@ -27,6 +26,7 @@ import { verbStates } from "../domain/lifecycle";
 import { plannedWhat, whyText } from "../present";
 import { BindingReviewChip } from "./binding-evidence";
 import { CardBar } from "./card-body";
+import { CardActionSheets } from "./card-action-sheets";
 import { CardConsoleNotes } from "./card-console-notes";
 import type { CardTab } from "./card-head";
 import { CardSpine } from "./card-spine";
@@ -46,7 +46,6 @@ import { useCard } from "./use-card";
 import { useLinkedAccount } from "./use-linked-account";
 import { useQuick } from "./use-quick";
 
-const CardActions = lazy(() => chunk(import("./person-act")).then(m => ({ default: m.CardActions })));
 type Detail = components["schemas"]["EmployeeDetail"];
 type UnitPosition = components["schemas"]["EmployeeUnitPosition"];
 const route = getRouteApi("/app/people/$id");
@@ -227,7 +226,7 @@ export function LoadedConsoleCard(props: {
       }
       spine={tab === "card" ? <CardSpine c={c} onAct={open} onLedger={() => onTab("ledger")} onHistory={() => onTab("events")} /> : undefined}
       foot={<>{quick.toast}<PeopleJump /></>}
-      overlays={actionsOpened ? <Suspense fallback={null}><CardActions c={c} act={act} back={back} onClose={close} onOpen={open} onRecorded={recorded} /></Suspense> : null}
+      overlays={actionsOpened ? <CardActionSheets c={c} act={act} back={back} onClose={close} onOpen={open} onRecorded={recorded} /> : null}
       statusSegments={[
         { id: "person", tone: "strong", content: `${e.name} ${e.employee_number ?? ""}`.trim() },
         { id: "status", content: m.status.label },

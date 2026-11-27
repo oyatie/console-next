@@ -42,7 +42,7 @@ test("solo HR: work-injury protection refuses dismissal, voluntary reporting sur
   const refusal = sheet.getByRole("alert");
   await expect(refusal).toContainText("exit_protected_period");
   await expect(refusal).not.toContainText("다른 계정");
-  await refusal.getByText("이유 보기", { exact: true }).click();
+  await refusal.locator("details").filter({ hasText: "산재 요양" }).locator("summary").click();
   await expect(refusal).toContainText("산재 요양");
   await expect(refusal).toContainText("제23조제2항");
   await expect(refusal).toContainText(kstDate(0).slice(5, 7));

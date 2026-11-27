@@ -160,6 +160,17 @@ test("an inline command needs both the server verb and its registered record lin
   expect(renderToStaticMarkup(state.action!(item({ kind: "org_change_draft" })))).toBe("");
 });
 
+test("setup rows already drawn in the rail leave Home open to changes from other sessions", () => {
+  landed(checklist);
+  state.entities = state.units = { isSuccess: true, isFetching: false, isError: false };
+  state.inbox.data!.pages[0]!.items = [item({ kind: "setup_entity" })];
+  render();
+  expect(state.hold).toHaveBeenLastCalledWith(false, true);
+  state.inbox.data!.pages[0]!.items.push(item());
+  render();
+  expect(state.hold).toHaveBeenLastCalledWith(true, true);
+});
+
 test("only painted queue rows need a live hold", () => {
   landed();
   state.inbox.data!.pages[0]!.items = [item()];

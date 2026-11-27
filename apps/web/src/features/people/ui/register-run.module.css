@@ -14,15 +14,15 @@
 @media (min-width: 641px) {
   .wrap :global(.table) { table-layout: fixed; min-width: 68rem; }
   /* #, name, birth, number, type, place, start, phone, position, pay, save: fits 1440 px with the side cards under the rows. */
-  .wrap :global(.table) th:nth-child(1) { width: 2.5rem; }
-  .wrap :global(.table) th:nth-child(2) { width: 6.5rem; }
-  .wrap :global(.table) th:nth-child(3), .wrap :global(.table) th:nth-child(7) { width: 7.5rem; }
-  .wrap :global(.table) th:nth-child(4), .wrap :global(.table) th:nth-child(5) { width: 6.5rem; }
-  .wrap :global(.table) th:nth-child(6) { width: 10rem; }
-  .wrap :global(.table) th:nth-child(8) { width: 8rem; }
-  .wrap :global(.table) th:nth-child(9) { width: 5.5rem; }
-  .wrap :global(.table) th:nth-child(10) { width: 6.5rem; }
-  .wrap :global(.table) th:nth-child(11) { width: 5.5rem; }
+  .wrap :global(.table) th:nth-child(1) { width: 3.5%; }
+  .wrap :global(.table) th:nth-child(2) { width: 9%; }
+  .wrap :global(.table) th:nth-child(3), .wrap :global(.table) th:nth-child(7) { width: 10%; }
+  .wrap :global(.table) th:nth-child(4), .wrap :global(.table) th:nth-child(5) { width: 9%; }
+  .wrap :global(.table) th:nth-child(6) { width: 13%; }
+  .wrap :global(.table) th:nth-child(8) { width: 11%; }
+  .wrap :global(.table) th:nth-child(9) { width: 7.5%; }
+  .wrap :global(.table) th:nth-child(10) { width: 9%; }
+  .wrap :global(.table) th:nth-child(11) { width: 8.5%; }
   .wrap :global(.table) td { vertical-align: middle; }
 }
 @media (--phone) {

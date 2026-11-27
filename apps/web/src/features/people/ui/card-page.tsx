@@ -24,6 +24,7 @@ import type { Done } from "./person-act";
 import { CardBar, CardBody } from "./card-body";
 import { CardHead, type CardTab } from "./card-head";
 import { chunk } from "../../../lib/chunk-guard";
+import { CardActionSheets } from "./card-action-sheets";
 import { CardSkeleton } from "./card-states";
 import { CardTabs } from "./card-tabs";
 import { useCard } from "./use-card";
@@ -33,7 +34,6 @@ import { PeopleJump } from "./people-jump";
 import { CardConsole } from "./card-console";
 import s from "./card.module.css";
 
-const CardActions = lazy(() => chunk(import("./person-act")).then(m => ({ default: m.CardActions })));
 const CardPrint = lazy(() => chunk(import("./card-print")).then(m => ({ default: m.CardPrint })));
 
 type Detail = components["schemas"]["EmployeeDetail"];
@@ -161,7 +161,7 @@ function Card({ d }: { d: Detail }) {
         <CardHead c={c} onTab={onTab} onAct={open} onGo={go} onKeys={(next, prev) => Object.assign(keys.current, { next, prev })} />
         {tab === "card" && c.manage && <CardBar c={c} current={current} onJump={jumpTo} />}
       </div>
-      {actionsOpened && <Suspense fallback={null}><CardActions c={c} act={act} back={back} onClose={close} onOpen={open} onRecorded={recorded} /></Suspense>}
+      {actionsOpened && <CardActionSheets c={c} act={act} back={back} onClose={close} onOpen={open} onRecorded={recorded} />}
       {tab === "card" ? (
         <CardBody c={c} quick={quick} act={act} onAct={open} onTab={onTab} onJump={jumpTo} />
       ) : (
