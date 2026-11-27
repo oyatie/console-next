@@ -40,7 +40,7 @@ export function NeedsMeMenu({ id, seed }: { id: string; seed?: InboxPage }) {
     <DialogTrigger isOpen={open} onOpenChange={setOpen}>
       <Button id={id} className={s.needsMe} aria-label={label} aria-describedby={count ? `${id}-description` : undefined}>
         <Inbox size={16} aria-hidden />
-        <span className={s.name}>{t("home.inbox.title")}</span>
+        <span className={s.name}>{t("home.inbox.title")}</span>{" "}
         <span className={s.badge} data-count={count ? "" : undefined} aria-hidden>
           {count ? (exact ? count : `${count}+`) : null}
         </span>
