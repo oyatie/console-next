@@ -109,8 +109,12 @@ test.describe("read boundaries keep chrome, previous content and keyboard focus"
         await route.continue();
       });
       try {
-        const answered = first ? undefined : page.waitForResponse(r => r.request().method() === "GET" && new URL(r.url()).pathname === read && r.ok());
-        await page.goto(resolve(row.path));
+        const [arrival] = await Promise.all([
+          first
+            ? page.waitForRequest(r => r.method() === "GET" && new URL(r.url()).pathname === read)
+            : page.waitForResponse(r => r.request().method() === "GET" && new URL(r.url()).pathname === read && r.ok()),
+          page.goto(resolve(row.path)),
+        ]);
         const main = page.getByRole("main");
         await expect(page.getByRole("navigation", { name: "주 메뉴" })).toBeVisible({ timeout: 1500 });
         if (first) {
@@ -119,7 +123,7 @@ test.describe("read boundaries keep chrome, previous content and keyboard focus"
           await expect(main.locator("[data-read-layout]").last()).toBeVisible({ timeout: 1500 });
           return;
         }
-        await (await answered)?.finished();
+        if ("finished" in arrival) await arrival.finished();
         await routeReady(page);
         await expect(main.locator("[data-read-region]").last()).toBeAttached();
         await expect(main.locator('[aria-busy="true"]')).toHaveCount(0);

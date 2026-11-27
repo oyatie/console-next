@@ -74,6 +74,26 @@ const RECORDS: &str = concat!(
        w.sort_order NULLS LAST, COALESCE(w.created_at, r.created_at), x.id"
 );
 
+/// The module list only needs to know whether each prerequisite exists.
+pub(crate) async fn module_prerequisites(
+    tx: &mut Transaction<'_, Postgres>,
+) -> Result<console_onboarding_domain::ModulePrerequisites, PgOnboardingError> {
+    let row = sqlx::query(concat!(
+        base!(),
+        "SELECT EXISTS (SELECT 1 FROM ent) AS has_entity, \
+                EXISTS (SELECT 1 FROM wp) AS has_workplace, \
+                EXISTS (SELECT 1 FROM employees WHERE merged_into_employee_id IS NULL \
+                  AND entity_employed_on(entity_today(), hire_on, exit_on, employment_status)) AS has_employee"
+    ))
+    .fetch_one(tx.as_mut())
+    .await?;
+    Ok(console_onboarding_domain::ModulePrerequisites {
+        has_entity: row.try_get("has_entity")?,
+        has_workplace: row.try_get("has_workplace")?,
+        has_employee: row.try_get("has_employee")?,
+    })
+}
+
 const SCALARS: &str = concat!(
     base!(),
     "SELECT \
@@ -200,7 +220,8 @@ async fn load(
     } else {
         crate::people_facts::counts(tx).await?
     };
-    let (access, mut details) = crate::access_facts::load(tx, org).await?;
+    let (access, mut details) =
+        crate::access_facts::load(tx, org, detailed || phase_is_setup).await?;
     let (terms_accepted, terms_version) = crate::terms::acceptance(tx).await?;
     details.terms_version = terms_version;
     if detailed {
