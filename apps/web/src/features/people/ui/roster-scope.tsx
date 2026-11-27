@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Building2, ChevronDown, Layers, MapPin, Network } from "lucide-react";
 import { t } from "@console/i18n";
@@ -29,23 +30,24 @@ export function RosterScope({ value, onChange }: { value?: string; onChange: (v:
 }
 
 function ScopePicker({ value, onChange }: { value?: string; onChange: (v: string | null) => void }) {
+  const [open, setOpen] = useState(false);
+  const needsScope = open || Boolean(value);
   // The structure node carries the legal name only; the entity record gives the name every other surface shows (0h). The
   // node's legal name stands in only once the records have come back without that entity, never while their first read is in flight.
-  const recordsQ = useQuery({ ...entitiesRef, refetchOnMount: "always" });
-  const treeQ = useQuery(orgStructureRef);
-  const unitsQ = useQuery({ ...unitsQuery, refetchOnMount: "always" });
+  const recordsQ = useQuery({ ...entitiesRef, enabled: needsScope, refetchOnMount: "always" });
+  const treeQ = useQuery({ ...orgStructureRef, enabled: needsScope });
+  const unitsQ = useQuery({ ...unitsQuery, enabled: needsScope, refetchOnMount: "always" });
   const records = recordsQ.data?.items ?? [];
   const entities = (treeQ.data?.entities ?? []).map((e) => ({ id: e.id, name: entityName(records.find((r) => r.id === e.id)) || (recordsQ.isLoading ? "" : e.name), workplaces: e.children.filter((w) => w.kind === "WORKPLACE").map((w) => ({ id: w.id, name: w.name, orgUnitId: w.org_unit_id })) }));
   const units = unitsQ.data?.items ?? [];
   // Headcount = active + on leave (G2): the counts leave out the exited and those starting later, as the status chips do.
-  const facets = useQuery(workplaceCountsQuery(undefined, ["ACTIVE", "ON_LEAVE"])).data;
+  const facets = useQuery({ ...workplaceCountsQuery(undefined, ["ACTIVE", "ON_LEAVE"]), enabled: open }).data;
   const all = scopeRows(entities, units, facets?.legal_entity ?? [], facets?.workplace ?? []);
   const current = all.find((r) => r.value === value);
-  const total = facets?.total ?? 0;
   const name = current?.name ?? t("roster.scope.all");
   const facetsRead = readGroup([recordsQ, treeQ, unitsQ]);
   return (
-    <PopoverButton wide label={t("roster.scope.open", { scope: name })} trigger={<><Layers size={14} aria-hidden /> {t("roster.scope.label")} <b className={s.scopeName}>{name}</b> <ChevronDown size={14} aria-hidden /></>} title={t("roster.scope.title")}>
+    <PopoverButton wide isOpen={open} onOpenChange={setOpen} label={t("roster.scope.open", { scope: name })} trigger={<><Layers size={14} aria-hidden /> {t("roster.scope.label")} <b className={s.scopeName}>{name}</b> <ChevronDown size={14} aria-hidden /></>} title={t("roster.scope.title")}>
       {(close) => {
         const pick = (v: string | null) => (onChange(v), close());
         return (
@@ -57,16 +59,16 @@ function ScopePicker({ value, onChange }: { value?: string; onChange: (v: string
               value={value ?? ALL}
               onChange={(v) => pick(v === ALL ? null : v)}
               items={[
-                { id: ALL, name: t("roster.scope.all"), depth: 0, note: fmtNumber(total) },
+                { id: ALL, name: t("roster.scope.all"), depth: 0, note: facets && fmtNumber(facets.total) },
                 ...all.map((r) => {
                   const Icon = ICON[r.depth];
                   const meta = r.meta && t("roster.scope.meta", { sites: r.meta.sites ?? 0, units: r.meta.units ?? 0 });
-                  return { id: r.value, name: r.name, depth: r.depth, icon: <Icon size={14} aria-hidden />, note: [meta, r.count === undefined ? "" : fmtNumber(r.count)].filter(Boolean).join(" · ") };
+                  return { id: r.value, name: r.name, depth: r.depth, icon: <Icon size={14} aria-hidden />, note: [meta, r.count !== undefined && (facets || r.depth >= 2) ? fmtNumber(r.count) : ""].filter(Boolean).join(" · ") };
                 }),
               ]}
             />
             {/* G8: the arithmetic on screen — the companies add up to everyone. */}
-            <p className={s.said}>{t("roster.scope.sum", { list: all.filter((r) => r.depth === 0).map((r) => fmtNumber(r.count ?? 0)).join(" + "), n: fmtNumber(total) })}</p>
+            {facets && <p className={s.said}>{t("roster.scope.sum", { list: all.filter((r) => r.depth === 0).map((r) => fmtNumber(r.count ?? 0)).join(" + "), n: fmtNumber(facets.total) })}</p>}
           </div>}</QueryState>
         );
       }}

@@ -72,6 +72,40 @@ beforeAll(async () => {
 }, 60_000);
 afterAll(async () => { await browser?.close(); await server?.close(); });
 
+test("the unfiltered roster reads the organization chart when its scope picker opens", async () => {
+  let requests = 0;
+  const chart = "**/api/v1/org-structure";
+  const respond = (route: Route) => {
+    requests++;
+    return route.fulfill({ json: { entities: [] } });
+  };
+  const counts = "**/api/v1/employees/facets?**";
+  const held = Promise.withResolvers<void>();
+  const answerCounts = async (route: Route) => {
+    await held.promise;
+    await route.fulfill({ json: { total: 7, legal_entity: [], workplace: [] } });
+  };
+  await page.route(chart, respond);
+  await page.route(counts, answerCounts);
+  try {
+    await page.goto(`${server.resolvedUrls!.local[0]}roster-layout-test?scope`);
+    const trigger = page.getByRole("button", { name: t("roster.scope.open", { scope: t("roster.scope.all") }), exact: true });
+    await dom(trigger).toBeVisible();
+    expect(requests).toBe(0);
+    await trigger.click();
+    await dom(page.getByRole("dialog", { name: t("roster.scope.title") })).toBeVisible();
+    await expect.poll(() => requests).toBe(1);
+    await dom(page.getByRole("option", { name: t("roster.scope.all"), exact: true })).toBeVisible();
+    await dom(page.getByText(t("roster.scope.sum", { list: "", n: 0 }), { exact: true })).toHaveCount(0);
+    held.resolve();
+    await dom(page.getByText(t("roster.scope.sum", { list: "", n: 7 }), { exact: true })).toBeVisible();
+  } finally {
+    held.resolve();
+    await page.unroute(counts, answerCounts);
+    await page.unroute(chart, respond);
+  }
+});
+
 test.each([1012, 1172, 760, 390].flatMap(width => ["light", "dark"].map(theme => ({ width, theme }))))("roster filters stay in place when the table search mounts and unmounts at $width px in $theme", async ({ width, theme }) => {
   await page.setViewportSize({ width: width === 390 ? width : 1280, height: 900 });
   await page.goto(`${server.resolvedUrls!.local[0]}roster-layout-test?width=${width}px`);

@@ -92,6 +92,50 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
   });
 }
 
+test("the directory waits for authorization and rechecks its roster grant on return", async ({ page }) => {
+  const state = await fixture(page);
+  const effective = Promise.withResolvers<void>(), capability = Promise.withResolvers<void>();
+  const counts = { effective: 0, capability: 0, employees: 0, inactiveTabs: 0 };
+  for (const [path, gate, key] of [["/api/v1/access/me", effective, "effective"], ["/api/v1/me/authz", capability, "capability"]] as const) {
+    await page.route(url => url.pathname === path, async route => {
+      counts[key]++;
+      await gate.promise;
+      await route.fallback();
+    });
+  }
+  page.on("request", request => {
+    const path = new URL(request.url()).pathname;
+    if (path === "/api/v1/employees") counts.employees++;
+    if (/^\/assets\/(Accounts|unplaced-roster)-[\w-]+\.js$/.test(path)) counts.inactiveTabs++;
+  });
+  const grid = page.getByRole("grid", { name: "직원", exact: true });
+  try {
+    await page.goto("/people");
+    await expect.poll(() => counts.effective).toBeGreaterThan(0);
+    await expect(grid).toHaveCount(0);
+    expect([counts.employees, counts.inactiveTabs]).toEqual([0, 0]);
+    effective.resolve();
+    await expect.poll(() => counts.capability).toBe(1);
+    await expect(grid).toHaveCount(0);
+    expect([counts.employees, counts.inactiveTabs]).toEqual([0, 0]);
+    capability.resolve();
+    await expect(grid).toBeVisible();
+    expect(counts.employees).toBe(1);
+    expect(counts.inactiveTabs).toBe(0);
+
+    const tabs = page.getByRole("navigation", { name: t("roster.head.title"), exact: true }).getByRole("link");
+    await tabs.nth(1).click();
+    await expect(page.getByRole("heading", { name: t("notice.title"), exact: true })).toBeVisible();
+    await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: { ...screenAccess("/people"), entries: [], is_ops: false } });
+    const checked = page.waitForResponse(response => new URL(response.url()).pathname === "/api/v1/access/me");
+    await tabs.first().click();
+    await checked;
+    await expect(page.getByText(t("common.denied.title.plain"), { exact: true }).first()).toBeVisible();
+    await expect(grid).toHaveCount(0);
+    expect(state.unexpected).toEqual([]);
+  } finally { effective.resolve(); capability.resolve(); await page.close(); state.release(); }
+});
+
 test("unplaced is a roster filter with the queue's rows on LongTable", async ({ page }) => {
   const state = await fixture(page);
   try {
