@@ -9,9 +9,18 @@ use support::world;
 
 const PATH: &str = "/api/v1/access/access-log?period=2026-09";
 
-async fn seed(w: &support::World, n: i32) {
-    sqlx::query("INSERT INTO audit_events(org_id,actor,actor_display,action,target_type,target_id,trace_id,span_id,occurred_at,created_at,after_snap,outcome,ip) SELECT $1,CASE WHEN n%2=0 THEN $2 ELSE $3 END,CASE WHEN n%2=0 THEN NULL ELSE 'Historical Actor' END,CASE WHEN n%2=0 THEN 'employee.rrn_reveal' ELSE 'employee.read' END,'employee','test',repeat('a',32),repeat('b',16),'2026-09-01T02:00:00Z','2026-09-10T00:00:00Z',CASE WHEN n%2=0 THEN '{\"self_read\":false,\"subject_count\":777,\"private_note\":\"hidden-needle\"}' ELSE '{\"self_read\":false,\"subject_count\":1,\"export_purpose\":\"payroll_%\\\\archive\"}' END::jsonb,CASE WHEN n%2=0 THEN 'DENIED' ELSE 'ALLOWED' END,CASE WHEN n%2=0 THEN '203.0.113.9' ELSE '198.51.100.7' END FROM generate_series(1,$4) n")
-        .bind(w.org).bind(w.hr.as_uuid()).bind(w.hr2.as_uuid()).bind(n).execute(&w.owner).await.unwrap();
+async fn seed(w: &support::World, n: i32) -> i32 {
+    // Actor UUIDs are searchable too. Pick a count found only in the subject-count column.
+    let actor_ids = [w.hr.to_string(), w.hr2.to_string()];
+    let subject_count = (777..=999)
+        .find(|count: &i32| {
+            let term = count.to_string();
+            actor_ids.iter().all(|id| !id.contains(&term))
+        })
+        .unwrap();
+    sqlx::query("INSERT INTO audit_events(org_id,actor,actor_display,action,target_type,target_id,trace_id,span_id,occurred_at,created_at,after_snap,outcome,ip) SELECT $1,CASE WHEN n%2=0 THEN $2 ELSE $3 END,CASE WHEN n%2=0 THEN NULL ELSE 'Historical Actor' END,CASE WHEN n%2=0 THEN 'employee.rrn_reveal' ELSE 'employee.read' END,'employee','test',repeat('a',32),repeat('b',16),'2026-09-01T02:00:00Z','2026-09-10T00:00:00Z',CASE WHEN n%2=0 THEN jsonb_build_object('self_read',false,'subject_count',$5::int,'private_note','hidden-needle') ELSE '{\"self_read\":false,\"subject_count\":1,\"export_purpose\":\"payroll_%\\\\archive\"}' END::jsonb,CASE WHEN n%2=0 THEN 'DENIED' ELSE 'ALLOWED' END,CASE WHEN n%2=0 THEN '203.0.113.9' ELSE '198.51.100.7' END FROM generate_series(1,$4) n")
+        .bind(w.org).bind(w.hr.as_uuid()).bind(w.hr2.as_uuid()).bind(n).bind(subject_count).execute(&w.owner).await.unwrap();
+    subject_count
 }
 
 async fn get(w: &support::World, suffix: &str) -> Value {
@@ -25,7 +34,7 @@ async fn get(w: &support::World, suffix: &str) -> Value {
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn search_filters_projected_fields_totals_and_audits_returned_rows_and_choices(pool: PgPool) {
     let w = world(pool.clone()).await;
-    seed(&w, 4).await;
+    let subject_count = seed(&w, 4).await;
     let other = world(pool).await;
     seed(&other, 2).await;
     for term in [
@@ -35,7 +44,7 @@ async fn search_filters_projected_fields_totals_and_audits_returned_rows_and_cho
         "RRN_REVEAL".into(),
         "DENIED".into(),
         "sensitive_read".into(),
-        "777".into(),
+        subject_count.to_string(),
     ] {
         let encoded: String = term.bytes().map(|b| format!("%{b:02X}")).collect();
         let body = get(&w, &format!("&search={encoded}")).await;
