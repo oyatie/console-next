@@ -124,10 +124,13 @@ test("two minutes before the idle cut-off a warning shows, and staying signed in
   await page.keyboard.press("Shift"); // real input
   const warning = page.getByRole("alert").filter({ hasText: "자동으로 로그아웃됩니다" });
 
+  // Finish the real reads, including the key's report, before advancing their request deadlines with the idle timer.
+  await settled(page);
   await page.clock.fastForward("27:00");
   await page.clock.runFor(10_000);
   await expect(warning).toHaveCount(0);
 
+  await settled(page); // the stream may have reconnected and asked the open screen to read again
   await page.clock.fastForward("01:30");
   await page.clock.runFor(10_000);
   await expect(warning).toBeVisible();
