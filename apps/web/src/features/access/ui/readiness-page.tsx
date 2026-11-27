@@ -25,12 +25,18 @@ function Row({ c, ops, accounts, setup }: { c: Item; ops: string; accounts: read
   const Icon = ICON[c.tone];
   const who = "account" in c ? c.account.name : ops;
   const person = "account" in c ? accounts.find((a) => a.id === c.account.id) ?? c.account : undefined;
-  const textKey = c.code === "no_grant" && !setup ? ("access.ready.no_grant.text.operating" as const) : (`access.ready.${c.code}.text` as const);
+  const titleKey = c.code === "single_ops_holder" ? ("accessGrants.ready.single_ops_holder" as const) : (`access.ready.${c.code}` as const);
+  const textKey =
+    c.code === "single_ops_holder"
+      ? ("accessGrants.ready.single_ops_holder.text" as const)
+      : c.code === "no_grant" && !setup
+        ? ("access.ready.no_grant.text.operating" as const)
+        : (`access.ready.${c.code}.text` as const);
   return (
     <div className={s.check}>
       <Icon size={18} className={s[c.tone]} aria-hidden />
       <div>
-        <strong>{t(`access.ready.${c.code}`, { name: who })}</strong>
+        <strong>{t(titleKey, { name: who })}</strong>
         {person && <div><PersonLabel person={person} peers={accounts} /></div>}
         <p>{t(textKey, { name: who })}{"alsoNoPasskey" in c && c.alsoNoPasskey && <> {t("access.ready.alsoNoPasskey")}</>}</p>
       </div>
@@ -38,6 +44,7 @@ function Row({ c, ops, accounts, setup }: { c: Item; ops: string; accounts: read
       {c.code === "no_passkey" && <Link to="/people" search={{ view: "accounts" }} className={buttonClass()}>{t("access.ready.no_passkey.fix")}</Link>}
       {c.code === "only_ops_manages" && <Link to="/access/roles/new" className={buttonClass("ghost")}>{t("access.roles.create")}</Link>}
       {c.code === "no_accounts" && <Link to="/people" search={{ view: "accounts" }} className={buttonClass("ghost")}>{t("access.ready.no_accounts.fix")}</Link>}
+      {c.code === "single_ops_holder" && <Link to="/account" className={buttonClass("ghost")}>{t("accessGrants.ready.single_ops_holder.fix")}</Link>}
     </div>
   );
 }
@@ -67,7 +74,8 @@ export function ReadinessPage() {
           const checks = readiness(
             ctx.accounts.map((a) => ({ ...a, name: personLabel(a).name, active: a.is_active })),
             g.items.map((x) => ({ account_id: x.account_id, enforcement: x.enforcement, manages_access: manages.has(x.role_id) })),
-            ctx.ops,
+            ctx.opsIds ?? ctx.ops,
+            ctx.opsHolders?.length,
           );
           const prepared = g.items.filter((x) => x.enforcement === "PREPARED");
           // governance-31: in setup the list holds grants already in force (from setup) and grants that wait for go-live;

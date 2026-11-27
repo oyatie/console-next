@@ -1238,6 +1238,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/access/invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Atomically invite an account, apply initial role grants, and mint a first sign-in code
+         * @description Creates the account, applies all initial role/scope grants, and issues the first sign-in one-time code in one atomic database transaction under a single passkey step-up assertion. Any refusal rolls back every write.
+         */
+        post: operations["createAccessInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/invites/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview an account invite together with optional initial role and scope grants
+         * @description Validates account invite fields and dry-runs each initial role/scope grant against the caller's authority and grantor ceiling without writing any row.
+         */
+        post: operations["previewAccessInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/access/me": {
         parameters: {
             query?: never;
@@ -1292,6 +1332,46 @@ export interface paths {
         get: operations["listOpsUsage"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/ops/holders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Designate a second ops account holder (at most 2 per tenant)
+         * @description Only an active ops account holder may designate another active account (with an enrolled passkey and zero active role grants) as a second ops account holder. Requires a fresh passkey step-up assertion.
+         */
+        post: operations["designateOpsAccountHolder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/ops/holders/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Release the caller's own ops account holder status
+         * @description Self-only release of ops account holder status when a second active ops account holder remains. Revokes any unconsumed recovery codes of the releasing holder. Requires a fresh passkey step-up assertion.
+         */
+        post: operations["releaseSelfOpsAccountHolder"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2939,6 +3019,106 @@ export interface paths {
                 401: components["responses"]["Unauthorized"];
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/recovery/challenge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send a verification code to an ops holder recovery contact
+         * @description Pre-authentication anti-enumeration endpoint that dispatches a short-lived verification code when the identifier resolves to an active ops holder with a registered recovery contact and remaining recovery codes.
+         */
+        post: operations["startRecoveryChallenge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/recovery/codes/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate 10 single-use recovery codes for an ops account holder
+         * @description Revokes any previous unconsumed batch and returns 10 fresh single-use recovery codes once; only keyed HMAC-SHA256 digests are stored. Requires a passkey step-up assertion once a passkey is enrolled.
+         */
+        post: operations["generateRecoveryCodes"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/recovery/contact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Register or update the ops holder recovery contact
+         * @description Seals the recovery contact using AWS-ESDK-v2 key-committing envelope encryption. Requires a passkey step-up assertion once a passkey is enrolled.
+         */
+        put: operations["upsertRecoveryContact"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/recovery/redeem": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Redeem one saved recovery code and recovery-contact verification code
+         * @description Atomically consumes one saved recovery code and one out-of-band contact verification code, revokes lost passkeys and sessions, cancels any open ops recovery request on an active tenant, and mints a passkey-enrollment session.
+         */
+        post: operations["redeemRecoveryCode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/recovery/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read ops holder recovery contact and recovery code status
+         * @description Available to both full sessions and initial passkey-enrollment sessions. Non-ops accounts receive eligible=false.
+         */
+        get: operations["getRecoveryStatus"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -15770,6 +15950,14 @@ export interface components {
             count: number;
             names: string[];
         };
+        AccessInviteGrantLineInput: {
+            role_id: components["schemas"]["Uuid"];
+            scope: components["schemas"]["AccessScope"];
+            valid_from?: components["schemas"]["Timestamp"] | null;
+            valid_to?: components["schemas"]["Timestamp"] | null;
+            /** @default false */
+            effective_in_setup: boolean;
+        };
         /**
          * @description View `view` · create/edit `edit` · approve `approve` · export `export`. edit/approve/export imply view.
          * @enum {string}
@@ -16257,6 +16445,8 @@ export interface components {
             user_id: components["schemas"]["Uuid"];
             otp: string;
             expires_at: components["schemas"]["Timestamp"];
+            delivered_to_recovery_contact?: boolean;
+            masked_contact?: string | null;
         };
         AdminIssueOtpRequest: {
             user_id: components["schemas"]["Uuid"];
@@ -19053,6 +19243,23 @@ export interface components {
         CoverageLevel: "PRIMARY" | "PARTIAL" | "SUPPORTING" | "COMPENSATING";
         /** @enum {string} */
         CoverageStatus: "ACTIVE" | "RETIRED";
+        CreateAccessInviteRequest: {
+            display_name: string;
+            employee_id?: components["schemas"]["Uuid"] | null;
+            phone?: string | null;
+            sign_in_id?: string | null;
+            grants?: components["schemas"]["AccessInviteGrantLineInput"][];
+            reason_code?: string | null;
+            reason_note?: string | null;
+            step_up?: components["schemas"]["PasskeyStepUpAssertion"];
+        };
+        CreateAccessInviteResponse: {
+            user: components["schemas"]["UserSummary"];
+            grants: components["schemas"]["AccessGrant"][];
+            otp: string | null;
+            otp_expires_at: components["schemas"]["Timestamp"];
+            operation_id: components["schemas"]["Uuid"];
+        };
         CreateAccessRequest: {
             screen: string;
             reason_code: components["schemas"]["AccessRequestReason"];
@@ -20125,6 +20332,10 @@ export interface components {
         };
         /** @enum {string} */
         DepreciationMethod: "STRAIGHT_LINE" | "DECLINING_BALANCE";
+        DesignateOpsHolderRequest: {
+            account_id: components["schemas"]["Uuid"];
+            step_up?: components["schemas"]["PasskeyStepUpAssertion"];
+        };
         DeviceLoginApproveRequest: {
             approve_token: string;
             ceremony_id: components["schemas"]["Uuid"];
@@ -23128,6 +23339,14 @@ export interface components {
                 [key: string]: unknown;
             }[];
         };
+        GenerateRecoveryCodesRequest: {
+            step_up?: components["schemas"]["PasskeyStepUpAssertion"];
+        };
+        GenerateRecoveryCodesResponse: {
+            batch_id: components["schemas"]["Uuid"];
+            codes: string[];
+            generated_at: components["schemas"]["Timestamp"];
+        };
         GoLiveFactsSnapshotV1: {
             phase_is_setup: boolean;
             terms_accepted: boolean;
@@ -25922,6 +26141,8 @@ export interface components {
         OpsAccount: {
             account_id: components["schemas"]["Uuid"];
             display_name: string;
+            max_holders: number;
+            holders: components["schemas"]["OpsHolderSummary"][];
         };
         OpsEquipmentStatus: {
             /** Format: int32 */
@@ -25944,6 +26165,15 @@ export interface components {
             in_progress: number;
             /** Format: int32 */
             completed: number;
+        };
+        OpsHolderSummary: {
+            account_id: components["schemas"]["Uuid"];
+            display_name: string;
+            sign_in_id?: string | null;
+            has_passkey: boolean;
+            has_recovery_contact: boolean;
+            recovery_codes_remaining: number;
+            designated_at: components["schemas"]["Timestamp"];
         };
         OpsMechanicLoad: {
             /** Format: uuid */
@@ -28231,6 +28461,35 @@ export interface components {
             /** Format: int64 */
             expires_in_secs: number;
         };
+        PreviewAccessInviteItem: {
+            index: number;
+            /** @enum {string} */
+            op: "grant";
+            /** @enum {string} */
+            outcome: "OK" | "REFUSED";
+            refusal?: {
+                code: string;
+                message: string;
+            } | null;
+            enforcement_after: components["schemas"]["AccessEnforcement"] | null;
+            activates_at?: components["schemas"]["Timestamp"];
+        };
+        PreviewAccessInviteRequest: {
+            display_name: string;
+            employee_id?: components["schemas"]["Uuid"] | null;
+            phone?: string | null;
+            sign_in_id?: string | null;
+            grants?: components["schemas"]["AccessInviteGrantLineInput"][];
+            reason_code?: string | null;
+            reason_note?: string | null;
+        };
+        PreviewAccessInviteResponse: {
+            /** @enum {string} */
+            phase: "SETUP" | "OPERATING";
+            step_up_required: boolean;
+            refused: number;
+            items: components["schemas"]["PreviewAccessInviteItem"][];
+        };
         PreviewScheduleRequest: {
             cron_expr: string;
             /** @description IANA timezone (default Asia/Seoul). */
@@ -28807,6 +29066,49 @@ export interface components {
             accepted_by: string;
             /** @description Required when kind is CUSTOMER_DECLINED; it becomes the customer-visible comment on the reopen. */
             note?: string | null;
+        };
+        RecoveryChallengeRequest: {
+            identifier: string;
+        };
+        RecoveryChallengeResponse: {
+            sent: boolean;
+            expires_at: components["schemas"]["Timestamp"];
+        };
+        /** @enum {string} */
+        RecoveryChannel: "EMAIL" | "PHONE";
+        RecoveryCodesSummary: {
+            total: number;
+            remaining: number;
+            generated_at: components["schemas"]["Timestamp"] | null;
+        };
+        RecoveryContactStatus: {
+            channel: components["schemas"]["RecoveryChannel"];
+            masked_value: string;
+            confirmed_at: components["schemas"]["Timestamp"];
+            notice_version: string;
+            review_pending: boolean;
+        };
+        RecoveryRedeemRequest: {
+            recovery_code: string;
+            contact_code: string;
+        };
+        RecoveryRedeemResponse: {
+            access_token: string;
+            refresh_token?: string | null;
+            /** @enum {string} */
+            token_type: "Bearer";
+            refresh_expires_at: components["schemas"]["Timestamp"];
+            requires_passkey_setup: boolean;
+            privacy_consent_accepted: boolean;
+            cancelled_recovery_request: boolean;
+        };
+        RecoveryStatusResponse: {
+            eligible: boolean;
+            is_tenant_ops: boolean;
+            holder_count: number;
+            max_holders: number;
+            contact: components["schemas"]["RecoveryContactStatus"] | null;
+            codes: components["schemas"]["RecoveryCodesSummary"];
         };
         /** @enum {string} */
         RecruitAmountPeriod: "MONTHLY" | "DAILY";
@@ -29400,6 +29702,11 @@ export interface components {
         };
         RejectWorkOrderRequest: {
             memo: string;
+        };
+        ReleaseOpsHolderRequest: {
+            target_account_id?: components["schemas"]["Uuid"] | null;
+            reason?: string | null;
+            step_up?: components["schemas"]["PasskeyStepUpAssertion"];
         };
         ReleaseProductionPlan: {
             expected_version: number;
@@ -31013,6 +31320,8 @@ export interface components {
             refresh_expires_at: components["schemas"]["Timestamp"];
             /** @description True when the refreshed session belongs to an OTP-signed-in user who still has no passkey. Web clients must keep routing this session to initial passkey enrollment after a reload; passkey-authenticated sessions return false. */
             requires_passkey_setup: boolean;
+            /** @description True when signing in as an active ops account holder automatically cancelled an open ops recovery request on an active tenant. */
+            cancelled_recovery_request?: boolean;
         };
         TransitionLifecycleRequest: {
             toState: string;
@@ -31374,6 +31683,12 @@ export interface components {
             /** @description Required when scope is category; must be absent otherwise. */
             category?: string;
             link?: components["schemas"]["NotificationLink"];
+        };
+        UpsertRecoveryContactRequest: {
+            channel: components["schemas"]["RecoveryChannel"];
+            value: string;
+            consent_accepted: boolean;
+            step_up?: components["schemas"]["PasskeyStepUpAssertion"];
         };
         UserPage: {
             items: components["schemas"]["UserSummary"][];
@@ -35209,6 +35524,76 @@ export interface operations {
             409: components["responses"]["Conflict"];
         };
     };
+    createAccessInvite: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAccessInviteRequest"];
+            };
+        };
+        responses: {
+            /** @description Idempotent replay of a previously committed invite (otp is null on replay). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateAccessInviteResponse"];
+                };
+            };
+            /** @description Newly created account, applied grants, and one-time sign-in code. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateAccessInviteResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            428: components["responses"]["PreconditionRequired"];
+        };
+    };
+    previewAccessInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreviewAccessInviteRequest"];
+            };
+        };
+        responses: {
+            /** @description Dry-run preview outcome. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreviewAccessInviteResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+        };
+    };
     getMyEffectiveAccess: {
         parameters: {
             query?: never;
@@ -35276,6 +35661,64 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+        };
+    };
+    designateOpsAccountHolder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DesignateOpsHolderRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated ops account holders summary. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpsAccount"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            428: components["responses"]["PreconditionRequired"];
+        };
+    };
+    releaseSelfOpsAccountHolder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReleaseOpsHolderRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated ops account holders summary. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpsAccount"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            428: components["responses"]["PreconditionRequired"];
         };
     };
     getAccessPerson: {
@@ -37522,6 +37965,134 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
+        };
+    };
+    startRecoveryChallenge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecoveryChallengeRequest"];
+            };
+        };
+        responses: {
+            /** @description Uniform dispatch acknowledgement. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryChallengeResponse"];
+                };
+            };
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    generateRecoveryCodes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerateRecoveryCodesRequest"];
+            };
+        };
+        responses: {
+            /** @description Newly issued 10 single-use recovery codes (shown once). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GenerateRecoveryCodesResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            428: components["responses"]["PreconditionRequired"];
+        };
+    };
+    upsertRecoveryContact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertRecoveryContactRequest"];
+            };
+        };
+        responses: {
+            /** @description Masked recovery contact status. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryContactStatus"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationError"];
+            428: components["responses"]["PreconditionRequired"];
+        };
+    };
+    redeemRecoveryCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecoveryRedeemRequest"];
+            };
+        };
+        responses: {
+            /** @description Enrollment session token pair. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryRedeemResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getRecoveryStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Recovery contact and single-use recovery code status. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryStatusResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
         };
     };
     listBenefitCatalogItems: {

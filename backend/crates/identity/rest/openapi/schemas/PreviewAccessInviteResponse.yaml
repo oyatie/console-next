@@ -1,0 +1,21 @@
+type: object
+required:
+- phase
+- step_up_required
+- refused
+- items
+properties:
+  phase:
+    type: string
+    enum:
+    - SETUP
+    - OPERATING
+  step_up_required:
+    type: boolean
+  refused:
+    type: integer
+    minimum: 0
+  items:
+    type: array
+    items:
+      $ref: '#/components/schemas/PreviewAccessInviteItem'

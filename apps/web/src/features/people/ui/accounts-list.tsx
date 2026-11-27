@@ -145,7 +145,16 @@ export function Accounts({ sel, head }: { sel?: string; head?: (available: boole
         <InviteSheet
           employeeId={s.employee}
           onClose={() => closeSheet()}
-          onIssued={(r) => (closeSheet({ sel: r.userId }), setIssued(r), setReceipt({ id: r.userId, message: t("accounts.invite.done", { name: r.name }) }))}
+          onIssued={(r) => (
+            closeSheet({ sel: r.userId }),
+            setIssued(r),
+            setReceipt({
+              id: r.userId,
+              message: r.grantedCount
+                ? t("accounts.invite.doneWithRoles", { name: r.name, count: r.grantedCount })
+                : t("accounts.invite.done", { name: r.name }),
+            })
+          )}
           onOpenAccount={(id) => closeSheet({ sel: id })}
         />
       )}

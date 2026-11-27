@@ -66,12 +66,13 @@ impl PlatformProvisioner {
         };
         arm(tx, org).await?;
         // Account custody precedes the organization lock, also when a tenant holder cancels.
-        let ops: Option<Uuid> =
-            sqlx::query_scalar("SELECT id FROM users WHERE org_id=$1 AND is_tenant_ops")
-                .bind(org.as_uuid())
-                .fetch_optional(tx.as_mut())
-                .await?;
-        if let Some(ops) = ops {
+        let ops_holders: Vec<Uuid> = sqlx::query_scalar(
+            "SELECT id FROM users WHERE org_id=$1 AND is_tenant_ops ORDER BY created_at, id",
+        )
+        .bind(org.as_uuid())
+        .fetch_all(tx.as_mut())
+        .await?;
+        for ops in ops_holders {
             console_platform_auth::lock_account_tx(tx, org, ops).await?;
         }
         sqlx::query("SELECT slug FROM platform_lock_organization($1)")
@@ -118,7 +119,12 @@ impl PlatformProvisioner {
             if status.as_deref() != Some("ACTIVE") {
                 return Err(ProvisioningError::Conflict("tenant is not active".into()));
             }
-            let target:Option<Uuid>=sqlx::query_scalar("SELECT id FROM users WHERE org_id=$1 AND is_tenant_ops AND is_active FOR NO KEY UPDATE").bind(org.as_uuid()).fetch_optional(tx.as_mut()).await?;
+            let target: Option<Uuid> = sqlx::query_scalar(
+                "SELECT id FROM users WHERE org_id=$1 AND is_tenant_ops AND is_active ORDER BY created_at, id LIMIT 1 FOR NO KEY UPDATE",
+            )
+            .bind(org.as_uuid())
+            .fetch_optional(tx.as_mut())
+            .await?;
             let target = target.ok_or_else(|| ProvisioningError::NotFound("ops account".into()))?;
             let enrolled: bool = sqlx::query_scalar(
                 "SELECT EXISTS(SELECT 1 FROM auth_webauthn_credentials WHERE user_id=$1) OR EXISTS(SELECT 1 FROM ops_recovery_requests WHERE target_user_id=$1 AND issued_at IS NOT NULL)",
@@ -228,7 +234,13 @@ impl PlatformProvisioner {
                     if status.as_deref() != Some("ACTIVE") {
                         return Err(ProvisioningError::Conflict("tenant is not active".into()));
                     }
-                    let target:Option<Uuid>=sqlx::query_scalar("SELECT id FROM users WHERE org_id=$1 AND is_tenant_ops AND is_active FOR NO KEY UPDATE").bind(org.as_uuid()).fetch_optional(tx.as_mut()).await?;
+                    let target: Option<Uuid> = sqlx::query_scalar(
+                        "SELECT id FROM users WHERE org_id=$1 AND id=$2 AND is_tenant_ops AND is_active FOR NO KEY UPDATE",
+                    )
+                    .bind(org.as_uuid())
+                    .bind(row.target_user_id)
+                    .fetch_optional(tx.as_mut())
+                    .await?;
                     if target != Some(row.target_user_id) {
                         return Err(ProvisioningError::Conflict("ops holder changed".into()));
                     }

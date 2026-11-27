@@ -1,0 +1,30 @@
+tags:
+- access
+operationId: releaseSelfOpsAccountHolder
+summary: Release the caller's own ops account holder status
+description: Self-only release of ops account holder status when a second active ops account holder remains. Revokes any unconsumed recovery codes of the releasing holder. Requires a fresh passkey step-up assertion.
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/ReleaseOpsHolderRequest'
+responses:
+  '200':
+    description: Updated ops account holders summary.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/OpsAccount'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '428':
+    $ref: '#/components/responses/PreconditionRequired'

@@ -455,6 +455,20 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/access/invites",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!("../openapi/paths/api__v1__access__invites.post.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/access/invites/preview",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!("../openapi/paths/api__v1__access__invites__preview.post.yaml"),
+        }],
+    },
+    PathItem {
         path: "/api/v1/access/me",
         operations: &[Operation {
             method: "get",
@@ -466,6 +480,20 @@ const PATHS: &[PathItem] = &[
         operations: &[Operation {
             method: "get",
             body: include_str!("../openapi/paths/api__v1__access__ops.get.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/access/ops/holders",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!("../openapi/paths/api__v1__access__ops__holders.post.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/access/ops/holders/release",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!("../openapi/paths/api__v1__access__ops__holders__release.post.yaml"),
         }],
     },
     PathItem {
@@ -693,6 +721,43 @@ const PATHS: &[PathItem] = &[
         operations: &[Operation {
             method: "post",
             body: include_str!("../openapi/paths/api__v1__auth__privacy-consent__status.post.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/auth/recovery/challenge",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!("../openapi/paths/api__v1__auth__recovery__challenge.post.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/auth/recovery/codes/generate",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__auth__recovery__codes__generate.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/auth/recovery/contact",
+        operations: &[Operation {
+            method: "put",
+            body: include_str!("../openapi/paths/api__v1__auth__recovery__contact.put.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/auth/recovery/redeem",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!("../openapi/paths/api__v1__auth__recovery__redeem.post.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/auth/recovery/status",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__auth__recovery__status.get.yaml"),
         }],
     },
     PathItem {
@@ -1726,6 +1791,86 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "OpsAccount",
         body: include_str!("../openapi/schemas/OpsAccount.yaml"),
+    },
+    NamedYaml {
+        name: "OpsHolderSummary",
+        body: include_str!("../openapi/schemas/OpsHolderSummary.yaml"),
+    },
+    NamedYaml {
+        name: "DesignateOpsHolderRequest",
+        body: include_str!("../openapi/schemas/DesignateOpsHolderRequest.yaml"),
+    },
+    NamedYaml {
+        name: "ReleaseOpsHolderRequest",
+        body: include_str!("../openapi/schemas/ReleaseOpsHolderRequest.yaml"),
+    },
+    NamedYaml {
+        name: "AccessInviteGrantLineInput",
+        body: include_str!("../openapi/schemas/AccessInviteGrantLineInput.yaml"),
+    },
+    NamedYaml {
+        name: "PreviewAccessInviteRequest",
+        body: include_str!("../openapi/schemas/PreviewAccessInviteRequest.yaml"),
+    },
+    NamedYaml {
+        name: "PreviewAccessInviteItem",
+        body: include_str!("../openapi/schemas/PreviewAccessInviteItem.yaml"),
+    },
+    NamedYaml {
+        name: "PreviewAccessInviteResponse",
+        body: include_str!("../openapi/schemas/PreviewAccessInviteResponse.yaml"),
+    },
+    NamedYaml {
+        name: "CreateAccessInviteRequest",
+        body: include_str!("../openapi/schemas/CreateAccessInviteRequest.yaml"),
+    },
+    NamedYaml {
+        name: "CreateAccessInviteResponse",
+        body: include_str!("../openapi/schemas/CreateAccessInviteResponse.yaml"),
+    },
+    NamedYaml {
+        name: "RecoveryChannel",
+        body: include_str!("../openapi/schemas/RecoveryChannel.yaml"),
+    },
+    NamedYaml {
+        name: "RecoveryContactStatus",
+        body: include_str!("../openapi/schemas/RecoveryContactStatus.yaml"),
+    },
+    NamedYaml {
+        name: "RecoveryCodesSummary",
+        body: include_str!("../openapi/schemas/RecoveryCodesSummary.yaml"),
+    },
+    NamedYaml {
+        name: "RecoveryStatusResponse",
+        body: include_str!("../openapi/schemas/RecoveryStatusResponse.yaml"),
+    },
+    NamedYaml {
+        name: "UpsertRecoveryContactRequest",
+        body: include_str!("../openapi/schemas/UpsertRecoveryContactRequest.yaml"),
+    },
+    NamedYaml {
+        name: "GenerateRecoveryCodesRequest",
+        body: include_str!("../openapi/schemas/GenerateRecoveryCodesRequest.yaml"),
+    },
+    NamedYaml {
+        name: "GenerateRecoveryCodesResponse",
+        body: include_str!("../openapi/schemas/GenerateRecoveryCodesResponse.yaml"),
+    },
+    NamedYaml {
+        name: "RecoveryChallengeRequest",
+        body: include_str!("../openapi/schemas/RecoveryChallengeRequest.yaml"),
+    },
+    NamedYaml {
+        name: "RecoveryChallengeResponse",
+        body: include_str!("../openapi/schemas/RecoveryChallengeResponse.yaml"),
+    },
+    NamedYaml {
+        name: "RecoveryRedeemRequest",
+        body: include_str!("../openapi/schemas/RecoveryRedeemRequest.yaml"),
+    },
+    NamedYaml {
+        name: "RecoveryRedeemResponse",
+        body: include_str!("../openapi/schemas/RecoveryRedeemResponse.yaml"),
     },
     NamedYaml {
         name: "OpsRecoveryCancelRequest",

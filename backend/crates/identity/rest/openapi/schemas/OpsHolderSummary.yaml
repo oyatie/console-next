@@ -1,0 +1,26 @@
+type: object
+required:
+- account_id
+- display_name
+- has_passkey
+- has_recovery_contact
+- recovery_codes_remaining
+- designated_at
+properties:
+  account_id:
+    $ref: '#/components/schemas/Uuid'
+  display_name:
+    type: string
+  sign_in_id:
+    type:
+    - string
+    - 'null'
+  has_passkey:
+    type: boolean
+  has_recovery_contact:
+    type: boolean
+  recovery_codes_remaining:
+    type: integer
+    minimum: 0
+  designated_at:
+    $ref: '#/components/schemas/Timestamp'

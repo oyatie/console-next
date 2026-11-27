@@ -67,6 +67,11 @@ impl PartialEq for OtpHmacKey {
 impl Eq for OtpHmacKey {}
 
 impl OtpHmacKey {
+    #[must_use]
+    pub(crate) fn active_secret_bytes(&self) -> &[u8; OTP_HMAC_KEY_LEN] {
+        self.active.expose_secret()
+    }
+
     /// Construct from raw 32-byte key material, rejecting all-zero keys.
     pub fn from_bytes(
         active: [u8; OTP_HMAC_KEY_LEN],

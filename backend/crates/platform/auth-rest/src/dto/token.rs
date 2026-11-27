@@ -21,6 +21,8 @@ pub(crate) struct TokenPairResponse {
     pub(crate) privacy_consent_accepted: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) passkey_profile: Option<PasskeyProfile>,
+    #[serde(skip_serializing_if = "std::ops::Not::not", default)]
+    pub(crate) cancelled_recovery_request: bool,
 }
 
 /// The refresh-token body is OPTIONAL: web (cookie transport) sends the token in

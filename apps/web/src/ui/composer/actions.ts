@@ -58,6 +58,7 @@ const ACTION_KINDS = {
   payrollRun: ["payrollRun.noun", "units"],
   accessLogReview: ["accessLog.review.noun", "units"],
   privacyIntake: ["privacy.intake.noun", "units"],
+  accountInvite: ["accounts.invite", "people"],
 } as const;
 
 /** Withdraw pending approval; cancel before effect; correct an applied fact; revoke an applied act. */

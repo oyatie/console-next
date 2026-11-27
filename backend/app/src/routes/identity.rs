@@ -8,6 +8,7 @@ use console_onboarding_adapter_postgres::PgOnboardingStore;
 use console_platform_access::AccessService;
 use console_platform_access_rest::AccessRestState;
 use console_platform_authz_rest::{CedarPolicyRestState, PgCedarPolicyStore};
+use console_platform_provisioning::BootstrapCredentialStore;
 
 use super::TenantDeps;
 
@@ -30,7 +31,15 @@ pub(super) fn mount(router: Router, deps: &TenantDeps<'_>) -> Router {
             ),
         ))
         .merge(console_platform_access_rest::router(AccessRestState::new(
-            AccessService::new(pool.clone(), state.policy_step_up.clone()),
+            {
+                let service = AccessService::new(pool.clone(), state.policy_step_up.clone());
+                match state.otp_hmac_key.clone() {
+                    Some(key) => {
+                        service.with_bootstrap_credentials(BootstrapCredentialStore::new(key))
+                    }
+                    None => service,
+                }
+            },
             state.jwt_verifier.clone(),
         )))
 }

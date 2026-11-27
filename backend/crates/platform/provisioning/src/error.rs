@@ -53,6 +53,12 @@ pub enum ProvisioningError {
     #[error("conflict: {0}")]
     Conflict(String),
 
+    #[error("forbidden: {0}")]
+    Forbidden(String),
+
+    #[error("invalid input: {0}")]
+    InvalidInput(String),
+
     #[error("only the tenant ops account may request a company-domain change")]
     DomainRequestForbidden,
 

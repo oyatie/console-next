@@ -8,7 +8,7 @@ import { accountSearchQuery, type Account } from "../api";
 import { personOption } from "../../../reference/person/ui/person-option";
 
 /** The grant dialog unmounts this picker when a person is chosen. Searches the directory server-side. */
-export function AccountPick({ accounts: all, ops, loading, onPick }: { accounts: readonly Account[]; ops: string | undefined; loading: boolean; onPick: (a: Account) => void }) {
+export function AccountPick({ accounts: all, ops, loading, onPick }: { accounts: readonly Account[]; ops: string | ReadonlySet<string> | undefined; loading: boolean; onPick: (a: Account) => void }) {
   const [q, setQ] = useState("");
   const [debounced, setDebounced] = useState("");
   useEffect(() => {

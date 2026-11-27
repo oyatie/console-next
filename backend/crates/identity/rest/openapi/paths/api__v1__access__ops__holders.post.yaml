@@ -1,0 +1,30 @@
+tags:
+- access
+operationId: designateOpsAccountHolder
+summary: Designate a second ops account holder (at most 2 per tenant)
+description: Only an active ops account holder may designate another active account (with an enrolled passkey and zero active role grants) as a second ops account holder. Requires a fresh passkey step-up assertion.
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/DesignateOpsHolderRequest'
+responses:
+  '200':
+    description: Updated ops account holders summary.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/OpsAccount'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '428':
+    $ref: '#/components/responses/PreconditionRequired'

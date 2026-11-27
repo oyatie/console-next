@@ -1,0 +1,22 @@
+type: object
+required:
+- user
+- grants
+- otp
+- otp_expires_at
+- operation_id
+properties:
+  user:
+    $ref: '#/components/schemas/UserSummary'
+  grants:
+    type: array
+    items:
+      $ref: '#/components/schemas/AccessGrant'
+  otp:
+    type:
+    - string
+    - 'null'
+  otp_expires_at:
+    $ref: '#/components/schemas/Timestamp'
+  operation_id:
+    $ref: '#/components/schemas/Uuid'

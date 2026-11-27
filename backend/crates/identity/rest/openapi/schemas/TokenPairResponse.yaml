@@ -37,3 +37,6 @@ properties:
     description: True when the refreshed session belongs to an OTP-signed-in user who still has no passkey. Web clients
       must keep routing this session to initial passkey enrollment after a reload; passkey-authenticated sessions return
       false.
+  cancelled_recovery_request:
+    type: boolean
+    description: True when signing in as an active ops account holder automatically cancelled an open ops recovery request on an active tenant.

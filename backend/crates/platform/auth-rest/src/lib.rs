@@ -6,6 +6,7 @@
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 mod admin;
+mod admin_ops_reset;
 mod audit;
 mod config;
 mod consent;
@@ -22,6 +23,7 @@ mod limits;
 mod otp;
 mod passkey;
 mod rate_limit;
+mod recovery;
 mod state;
 mod token;
 mod urls;
@@ -54,12 +56,18 @@ use crate::passkey::self_service::delete_self_passkey;
 use crate::passkey::self_service::list_self_passkeys;
 use crate::passkey::self_service::rename_self_passkey;
 use crate::passkey::step_up::start_mobile_step_up;
+use crate::recovery::generate_codes;
+use crate::recovery::recovery_status;
+use crate::recovery::redeem_recovery;
+use crate::recovery::start_recovery_challenge;
+use crate::recovery::upsert_contact;
 use crate::token::logout::logout;
 use crate::token::refresh::refresh_token;
 use axum::Router;
 use axum::routing::delete;
 use axum::routing::get;
 use axum::routing::post;
+use axum::routing::put;
 
 pub const PASSKEY_REGISTER_START_PATH: &str = "/api/v1/auth/passkey/register/start";
 pub const PASSKEY_REGISTER_FINISH_PATH: &str = "/api/v1/auth/passkey/register/finish";
@@ -81,6 +89,11 @@ pub const PRIVACY_CONSENT_STATUS_PATH: &str = "/api/v1/auth/privacy-consent/stat
 pub const PRIVACY_CONSENT_ACCEPT_PATH: &str = "/api/v1/auth/privacy-consent/accept";
 pub const TOKEN_REFRESH_PATH: &str = "/api/v1/auth/token/refresh";
 pub const LOGOUT_PATH: &str = "/api/v1/auth/logout";
+pub const RECOVERY_STATUS_PATH: &str = "/api/v1/auth/recovery/status";
+pub const RECOVERY_CONTACT_PATH: &str = "/api/v1/auth/recovery/contact";
+pub const RECOVERY_CODES_GENERATE_PATH: &str = "/api/v1/auth/recovery/codes/generate";
+pub const RECOVERY_CHALLENGE_PATH: &str = "/api/v1/auth/recovery/challenge";
+pub const RECOVERY_REDEEM_PATH: &str = "/api/v1/auth/recovery/redeem";
 pub const GROUP_ADMIN_GROUPS_PATH: &str = "/api/v1/group-admin/groups";
 pub const GROUP_ADMIN_TENANT_CONTEXT_PATH: &str = "/api/v1/group-admin/tenant-context";
 pub const GROUP_ADMIN_TENANT_CONTEXT_EXIT_PATH: &str = "/api/v1/group-admin/tenant-context/exit";
@@ -109,6 +122,11 @@ pub const AUTH_ROUTE_PATHS: &[&str] = &[
     PRIVACY_CONSENT_ACCEPT_PATH,
     TOKEN_REFRESH_PATH,
     LOGOUT_PATH,
+    RECOVERY_STATUS_PATH,
+    RECOVERY_CONTACT_PATH,
+    RECOVERY_CODES_GENERATE_PATH,
+    RECOVERY_CHALLENGE_PATH,
+    RECOVERY_REDEEM_PATH,
     GROUP_ADMIN_GROUPS_PATH,
     GROUP_ADMIN_TENANT_CONTEXT_PATH,
     GROUP_ADMIN_TENANT_CONTEXT_EXIT_PATH,
@@ -126,6 +144,9 @@ pub const ENROLLMENT_ROUTE_PATHS: &[&str] = &[
     PASSKEY_REGISTER_START_PATH,
     PASSKEY_REGISTER_FINISH_PATH,
     PASSKEY_ENROLL_HANDOFF_PATH,
+    RECOVERY_STATUS_PATH,
+    RECOVERY_CONTACT_PATH,
+    RECOVERY_CODES_GENERATE_PATH,
     TOKEN_REFRESH_PATH,
     LOGOUT_PATH,
 ];
@@ -161,6 +182,11 @@ pub fn router(state: AuthRestState) -> Router {
         .route(PRIVACY_CONSENT_ACCEPT_PATH, post(accept_privacy_consent))
         .route(TOKEN_REFRESH_PATH, post(refresh_token))
         .route(LOGOUT_PATH, post(logout))
+        .route(RECOVERY_STATUS_PATH, get(recovery_status))
+        .route(RECOVERY_CONTACT_PATH, put(upsert_contact))
+        .route(RECOVERY_CODES_GENERATE_PATH, post(generate_codes))
+        .route(RECOVERY_CHALLENGE_PATH, post(start_recovery_challenge))
+        .route(RECOVERY_REDEEM_PATH, post(redeem_recovery))
         .route(GROUP_ADMIN_GROUPS_PATH, get(list_group_admin_groups))
         .route(
             GROUP_ADMIN_TENANT_CONTEXT_PATH,

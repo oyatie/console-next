@@ -2,7 +2,11 @@
   "shell": {
     "budget_kb": 82,
     "css_budget_kb": 6,
-    "deferred": ["src/lib/react/crash-console-extras.tsx"],
+    "deferred": [
+      "src/auth/LoginRecovery.tsx",
+      "src/auth/SetupPasskeyRecovery.tsx",
+      "src/lib/react/crash-console-extras.tsx"
+    ],
     "routes": [
       "src/auth/IdleGuard.tsx",
       "src/auth/Login.tsx",
@@ -38,6 +42,7 @@
       "src/features/me/ui/me-attendance-page.tsx",
       "src/features/me/ui/me-desk-page.tsx",
       "src/features/entity/ui/entity-wizard.tsx",
+      "src/features/people/ui/account-invite-roles.tsx",
       "src/features/people/ui/register-export.tsx",
       "src/features/people/ui/roster-console-panel.tsx",
       "src/features/settings/ui/policy-edit-sheet.tsx",

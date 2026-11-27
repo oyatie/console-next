@@ -33,6 +33,7 @@ import { payslipMonthSource } from "../domain/profile";
 import { ConsentBody } from "./consent-card";
 import { MyAccessGrants } from "./my-access";
 import { OpsRecoveryBody } from "./ops-recovery-notice";
+import { OpsSecurityBody } from "./ops-security-card";
 import { usePasskeysContent } from "./use-passkeys-content";
 import { ProfileName } from "./profile-name";
 import { MyAccessLogBody } from "./me-access-log";
@@ -209,6 +210,9 @@ export function MeConsole({
             </div>
           ),
         }]
+      : []),
+    ...(!vendor && u?.is_tenant_ops
+      ? [{ key: "ops-security", title: t("account.opsSecurity.title"), titleId: "account-ops-security", children: <div className={s.pad}><OpsSecurityBody myId={u.id} /></div> }]
       : []),
     ...(!vendor && recovery.data?.request
       ? [{ key: "ops-recovery", title: t("opsRecovery.title"), titleId: "account-ops-recovery", children: <div className={s.pad}><OpsRecoveryBody /></div> }]

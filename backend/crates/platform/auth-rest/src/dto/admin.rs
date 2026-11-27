@@ -51,4 +51,8 @@ pub(crate) struct AdminCredentialResetResponse {
     pub(crate) otp: String,
     #[serde(with = "time::serde::rfc3339")]
     pub(crate) expires_at: OffsetDateTime,
+    #[serde(skip_serializing_if = "std::ops::Not::not", default)]
+    pub(crate) delivered_to_recovery_contact: bool,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub(crate) masked_contact: Option<String>,
 }

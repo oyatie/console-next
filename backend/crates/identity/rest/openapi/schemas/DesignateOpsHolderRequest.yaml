@@ -1,0 +1,9 @@
+type: object
+required:
+- account_id
+additionalProperties: false
+properties:
+  account_id:
+    $ref: '#/components/schemas/Uuid'
+  step_up:
+    $ref: '#/components/schemas/PasskeyStepUpAssertion'

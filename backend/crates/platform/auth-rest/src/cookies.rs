@@ -113,13 +113,14 @@ pub(crate) fn refresh_clear_cookie() -> Option<HeaderValue> {
 /// access token stays in the body in both cases.
 #[cfg(feature = "dev-auth")]
 pub(crate) fn token_pair_response(tokens: IssuedTokenPair, headers: &HeaderMap) -> Response {
-    token_pair_response_with_profile(tokens, headers, None)
+    token_pair_response_with_profile(tokens, headers, None, false)
 }
 
 pub(crate) fn token_pair_response_with_profile(
     tokens: IssuedTokenPair,
     headers: &HeaderMap,
     profile: Option<crate::dto::token::PasskeyProfile>,
+    cancelled_recovery_request: bool,
 ) -> Response {
     if wants_cookie_transport(headers) {
         let max_age = (tokens.refresh_expires_at - OffsetDateTime::now_utc()).whole_seconds();
@@ -131,6 +132,7 @@ pub(crate) fn token_pair_response_with_profile(
             requires_passkey_setup: false,
             privacy_consent_accepted: tokens.privacy_consent_accepted,
             passkey_profile: profile,
+            cancelled_recovery_request,
         };
         with_refresh_cookie(
             Json(body).into_response(),
@@ -139,6 +141,7 @@ pub(crate) fn token_pair_response_with_profile(
     } else {
         let mut body = tokens.into_response();
         body.passkey_profile = profile;
+        body.cancelled_recovery_request = cancelled_recovery_request;
         Json(body).into_response()
     }
 }

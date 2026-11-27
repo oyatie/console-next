@@ -23,6 +23,8 @@ export function useAccessContext() {
     accountsQ: accounts,
     me: me.data?.account_id,
     ops: ops.data?.account_id,
+    opsHolders: ops.data?.holders,
+    opsIds: new Set(ops.data?.holders?.map((h) => h.account_id) ?? (ops.data?.account_id ? [ops.data.account_id] : [])),
     setup: me.data?.phase !== "OPERATING",
   };
 }

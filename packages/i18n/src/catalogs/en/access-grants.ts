@@ -46,4 +46,7 @@ export const enAccessGrants = {
   "accessGrants.requests.when": "Asked on",
   "accessGrants.requests.done": "Done",
   "accessGrants.requests.decline": "Decline",
+  "accessGrants.ready.single_ops_holder": "Review: 1 of 2 ops account holders designated",
+  "accessGrants.ready.single_ops_holder.text": "{name} is currently the sole ops account holder. Designating a second ops account holder allows peer credential recovery without waiting for vendor proofing.",
+  "accessGrants.ready.single_ops_holder.fix": "Manage holders",
 } as const;
