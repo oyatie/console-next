@@ -20,7 +20,7 @@ pub use crate::directory::read_from::{
 /// The most employee numbers one list read resolves (the bulk-action cap).
 pub const MAX_EMPLOYEE_NUMBERS: usize = 500;
 
-pub(crate) const DEPARTMENT_MISSING: &str = "(e.merged_into_employee_id IS NULL AND entity_employed_on(entity_today(), e.hire_on, e.exit_on, e.employment_status) AND (e.org_unit_id IS NULL OR e.org_unit_id NOT IN (SELECT department_unit_ids())))";
+pub(crate) const DEPARTMENT_MISSING: &str = "(e.merged_into_employee_id IS NULL AND entity_employed_on(entity_today(), e.hire_on, e.exit_on, e.employment_status) AND (e.org_unit_id IS NULL OR e.org_unit_id NOT IN (SELECT department_unit_ids())) AND e.id NOT IN (SELECT supervised_without_department_employee_ids()))";
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct EmployeeListQuery {

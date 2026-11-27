@@ -8,6 +8,7 @@ import { WorkplaceCloseSheet } from "./workplace-close-sheet";
 import { WorkplaceCreateSheet } from "./workplace-create-sheet";
 import { WorkplaceDeleteSheet } from "./workplace-delete-sheet";
 import { WorkplacePrimarySheet } from "./workplace-primary-sheet";
+import { WorkplaceHeadSheet } from "./workplace-head-sheet";
 import { WorkplaceKindSheet } from "./workplace-kind-sheet";
 import { WorkplaceKindsSheet } from "./workplace-kinds-sheet";
 
@@ -31,6 +32,13 @@ export function WorkplaceSheet({ act, at, setup, onClose, onSelect, onAct }: Wor
       ) : null;
     case "wp-kinds":
       return <WorkplaceKindsSheet onClose={onClose} />;
+    case "wp-head":
+      return at.kind === "workplace" ? (
+        <FreshEntity id={at.entity.id} title={t("workplace.head.appoint")} onClose={onClose}>{(e) => {
+          const w = e.workplaces.find((x) => x.id === at.node.id);
+          return w ? <WorkplaceHeadSheet w={w} onClose={onClose} /> : null;
+        }}</FreshEntity>
+      ) : null;
     default:
       return null;
   }

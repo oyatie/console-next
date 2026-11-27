@@ -470,3 +470,33 @@ test("Console /org/move locks body, saveDraft, AddMore, and Ctrl+Enter on 403 re
     fixture.release();
   }
 });
+
+test("Console /org appoints workplace head via PUT /api/v1/workplaces/{workplaceId}/head", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const { fixture, entities } = await setupConsoleOrg(page, { theme: "light" });
+  const wp = entities.items[0]!.workplaces[0]!;
+  const emp = { ...baseEmployees(1)[0]!, id: "00000000-0000-4000-8350-000000000999", name: "Site Head", status: "ACTIVE" as const, legal_entity_id: entities.items[0]!.id, workplace_id: wp.id, org_unit_id: null };
+  await mockRoute(page, "get", "/api/v1/employees", { status: 200, json: { items: [emp], total: 1, limit: 20, offset: 0, next_cursor: null } });
+  await mockRoute(page, "get", "/api/v1/workplaces/{workplaceId}/end-options", { status: 200, json: { id: wp.id, phase: "OPERATING" as const, delete: { allowed: false }, close: { allowed: true }, open_exit_cases: [], can_manage: true } });
+  await mockRoute(page, "get", "/api/v1/workplaces/{workplaceId}/revisions", { status: 200, json: { items: [] } });
+  let putBody: unknown = null;
+  await mockRoute(page, "put", "/api/v1/workplaces/{workplaceId}/head", req => {
+    putBody = req.postDataJSON();
+    return { status: 200, json: { record: { ...wp, head: { employee_id: emp.id, name: emp.name, since: "2026-11-10", concurrent: false } }, warnings: [], change_mode: "GOVERNED" as const } };
+  });
+  try {
+    await page.goto(`/org?sel=${wp.id}&act=wp-head`);
+    const sheet = page.getByRole("dialog", { name: t("workplace.head.appoint"), exact: true });
+    await expect(sheet).toBeVisible();
+    const picker = sheet.getByRole("combobox", { name: t("workplace.head.field"), exact: true });
+    await picker.press("ArrowDown");
+    await page.getByRole("option", { name: /Site Head/ }).click();
+    await sheet.getByRole("button", { name: commitLabel({ kind: "orgHead", mode: "assign" }), exact: true }).click();
+    await expect(sheet).toBeHidden();
+    expect(putBody).toEqual({ head_employee_id: emp.id });
+    expect(fixture.unexpected).toEqual([]);
+  } finally {
+    await page.close();
+    fixture.release();
+  }
+});

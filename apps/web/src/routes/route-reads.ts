@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import type { operationAccess } from "../reference/authz/domain/operation-access";
 import type { Requirement } from "../reference/authz/domain/access";
 import { routeOperationAccess } from "./route-operation-access";
 
-const readAccess: Record<string, Requirement> = routeOperationAccess;
-type Operation = keyof typeof operationAccess;
+const readAccess = routeOperationAccess;
+type Operation = keyof typeof readAccess;
 type Reads = { reads: readonly Operation[]; command?: Operation };
 const structure = "GET /api/v1/org-structure";
 const entities = "GET /api/v1/legal-entities";
@@ -62,6 +61,7 @@ export const routeReads = {
   "/people/notices": { reads: ["GET /api/v1/appointment-notices"] },
   "/people/notices/new": { reads: ["GET /api/v1/appointment-notices/candidates"] },
   "/people/import": { reads: [unplaced] },
+  "/people/records/import": { reads: [people] },
   "/people/unplaced": { reads: [unplaced] },
   "/people/data-health": { reads: ["GET /api/v1/hr/people/data-health"] },
   "/people/job-titles": { reads: ["GET /api/v1/job-titles"] },

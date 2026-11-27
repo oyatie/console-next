@@ -146,6 +146,7 @@ async fn inline_driver_leaves_the_queued_http_outcome_immutable(pool: PgPool) {
                     run,
                     EmployeeImportApplyRequest {
                         dry_run_digest: digest,
+                        skip_unresolved: false,
                     },
                 )
                 .await

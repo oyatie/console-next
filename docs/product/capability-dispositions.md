@@ -103,9 +103,9 @@ Partially exposed operations keep their current route and component; their refus
 | `GET /api/v1/change-sets` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `GET /api/v1/change-sets/{id}` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `DELETE /api/v1/change-sets/{id}` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `GET /api/v1/employee-records/{section}` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/employee-records/{section}/import/apply` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/employee-records/{section}/import/preview` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
+| `GET /api/v1/employee-records/{section}` | exposed | expose | `/people/records/import` · `RecordsImportPage` exports live section rows as CSV. |
+| `POST /api/v1/employee-records/{section}/import/apply` | exposed | expose | `/people/records/import` · `RecordsImportPage` applies previewed section rows with name-mismatch confirmation. |
+| `POST /api/v1/employee-records/{section}/import/preview` | exposed | expose | `/people/records/import` · `RecordsImportPage` previews parsed section rows before apply. |
 | `GET /api/v1/employees/corrections/bulk/{id}` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `POST /api/v1/employees/import` | hidden | internal | Removed legacy importer returns 410; employee import uses preview, dry-run and apply. |
 | `GET /api/v1/employees/import/{run_id}/reconcile` | partial | expose | `/people/import` · `ImportPage`; complete refusal recovery copy. |

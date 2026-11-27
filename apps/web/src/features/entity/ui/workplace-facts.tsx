@@ -25,15 +25,15 @@ import { WorkplaceMoveSheet } from "./workplace-move-sheet";
 import { WorkplaceStatusSheet } from "./workplace-status";
 import { Muted } from "../../../ui/muted/muted";
 
-type Open = { k: "info"; field: InfoKey; clear?: boolean } | { k: "move" | "status" | "attach" | "code" | "changeReg" } | { k: "kind" | "primary" };
+type Open = { k: "info"; field: InfoKey; clear?: boolean } | { k: "move" | "status" | "attach" | "code" | "changeReg" } | { k: "kind" | "primary" | "head" };
 
 export function WorkplaceFacts({ e, w, place, onAct }: { e: LegalEntity; w: Workplace; place?: Place; onAct?: (a: StructureAct) => void }) {
   const [state, setOpen] = useState<Open | null>(null);
   const navigate = useNavigate();
-  // Kind and primary/head-office are structure acts: their sheets live with the org chart (one host); from the entity page the row's
+  // Kind, primary/head-office and head are structure acts: their sheets live with the org chart (one host); from the entity page the row's
   // edit opens the chart with this workplace selected and that sheet open.
-  const open = state?.k === "kind" || state?.k === "primary" ? null : state;
-  const structure = (act: "wp-kind" | "wp-primary") => (onAct ? onAct(act) : void navigate({ to: "/org", search: { sel: w.id, act } }));
+  const open = state?.k === "kind" || state?.k === "primary" || state?.k === "head" ? null : state;
+  const structure = (act: "wp-kind" | "wp-primary" | "wp-head") => (onAct ? onAct(act) : void navigate({ to: "/org", search: { sel: w.id, act } }));
   const kinds = useQuery(kindsQuery).data?.items;
   const setup = useQuery({ ...checklistRef, retry: false }).data?.phase === "SETUP";
   const close = () => setOpen(null);
@@ -49,7 +49,7 @@ export function WorkplaceFacts({ e, w, place, onAct }: { e: LegalEntity; w: Work
       <RowActions
         field={label}
         edit={extra?.correct ? "correct" : extra?.enter ? "enter" : extra?.add ? "add" : "edit"}
-        onEdit={() => (o.k === "kind" ? structure("wp-kind") : o.k === "primary" ? structure("wp-primary") : setOpen(o))}
+        onEdit={() => (o.k === "kind" ? structure("wp-kind") : o.k === "primary" ? structure("wp-primary") : o.k === "head" ? structure("wp-head") : setOpen(o))}
         why={why}
         path={extra?.correct ? "correction" : setup ? "setup" : "revision"}
         end={extra?.clear && !why && o.k === "info" ? { verb: "clear", onPress: () => setOpen({ ...o, clear: true }) } : undefined}
@@ -81,6 +81,20 @@ export function WorkplaceFacts({ e, w, place, onAct }: { e: LegalEntity; w: Work
       { k: "status" },
     ),
     row(t("orgStructure.wp.roles"), roles || none, { k: "primary" }),
+    row(
+      t("workplace.head.field"),
+      w.head ? (
+        <>
+          {w.head.name}
+          {w.head.concurrent && ` ${t("orgUnit.head.concurrent")}`}
+          {w.head.since && <Muted> · {t("orgUnit.head.since", { date: fmtDate(w.head.since) })}</Muted>}
+        </>
+      ) : (
+        none
+      ),
+      { k: "head" },
+      w.head ? undefined : { add: true },
+    ),
     reg
       ? {
           label: t("workplace.field.regMode"),

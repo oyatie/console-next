@@ -3,7 +3,9 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
 import { fmtZonedDateTime } from "@console/i18n/format";
+import { downloadCsv } from "../../../lib/csv-download";
 import { QueryState } from "../../../lib/react/query-state";
+import { Button } from "../../../ui/button/button";
 import { EnumValue } from "../../../ui/enum-value";
 import { SectionHead } from "../../../ui/card/section-head";
 import { runQuery } from "../api";
@@ -26,7 +28,10 @@ export function DoneStep({ report, runId }: { report?: ImportReport; runId: stri
   }
   return (
     <QueryState q={run}>
-    {(r) => <>
+    {(r) => {
+      const summarySkipped = (r.apply_summary as ImportReport | null | undefined)?.skipped_rows;
+      const skippedRows: NonNullable<ImportReport["skipped_rows"]> = report?.skipped_rows ?? summarySkipped ?? [];
+      return <>
     <section className="card panel" aria-labelledby="import-done">
       <h2 id="import-done" className="panel__title" tabIndex={-1}>{t(r.status === "APPLIED" ? "import.done.title" : "importRollback.run.title")}</h2>
       <SectionHead tools={<EnumValue e={IMPORT_RUN_STATUS} value={r.status} />}>{r.source_filename}</SectionHead>
@@ -38,13 +43,34 @@ export function DoneStep({ report, runId }: { report?: ImportReport; runId: stri
       </p>
       <div className="form__actions">
         <Link to="/people/import" search={{}} className="btn" reloadDocument>{t("import.again")}</Link>
+        {skippedRows.length > 0 && (
+          <Button
+            onClick={() =>
+              downloadCsv(
+                "employee-import-skipped.csv",
+                ["sheet", "row", "source_key", "employee_number", "outcome", "reason_code"],
+                skippedRows.map((x) => [
+                  x.sheet,
+                  x.row,
+                  x.source_key,
+                  x.employee_number ?? "",
+                  x.outcome,
+                  x.reason_code ?? "",
+                ]),
+              )
+            }
+          >
+            {t("import.downloadSkippedCsv", { count: skippedRows.length })}
+          </Button>
+        )}
         <Link to="/people" search={{}} className="btn btn--primary">{t("import.viewEmployees")}</Link>
       </div>
     </section>
     {report?.register_gaps && <RegisterGaps gaps={report.register_gaps} />}
     {["APPLIED", "ROLLBACK_REQUESTED", "ROLLBACK_RUNNING", "ROLLED_BACK"].includes(r.status) && <RollbackPanel run={r} onChanged={completed} />}
     {r.status === "APPLIED" && <ReconcilePanel runId={runId} />}
-    </>}
+    </>;
+    }}
     </QueryState>
   );
 }

@@ -77,3 +77,24 @@ export function HeadCell({ n, readOnly = false, quiet = false }: { n: ChartNode;
     </Button>
   );
 }
+
+/** Workplace head cell in the registry table: never alters department vacancy counts or uses the department head label. */
+export function WorkplaceHeadCell({ n, readOnly = false, quiet = false }: { n: ChartNode; readOnly?: boolean; quiet?: boolean }) {
+  const nav = route.useNavigate();
+  if (n.head) return <>{n.head.name}{n.head.concurrent ? t("structure.list.concurrent") : ""}</>;
+  if (readOnly || quiet) return <>{t("entityOps.info.none")}</>;
+  return (
+    <Button
+      variant="ghost"
+      id={`act-wp-head-${n.id}`}
+      className={css.headPick}
+      aria-label={t("workplace.head.appoint")}
+      onPointerDown={e => e.stopPropagation()}
+      onKeyDown={e => { if (e.key === "Enter" || e.key === " ") e.stopPropagation(); }}
+      onKeyUp={e => { if (e.key === "Enter" || e.key === " ") e.stopPropagation(); }}
+      onClick={e => { e.stopPropagation(); void nav({ search: (q) => ({ ...q, sel: n.id, act: "wp-head" }) }); }}
+    >
+      {t("workplace.head.appoint")}
+    </Button>
+  );
+}

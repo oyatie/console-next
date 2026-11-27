@@ -76,6 +76,7 @@ mod structure_labels;
 mod structure_members;
 mod workplace;
 mod workplace_branch;
+mod workplace_head;
 mod workplace_kind;
 mod workplace_revision;
 mod workplace_tx;

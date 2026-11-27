@@ -290,4 +290,9 @@ export const koWorkplace: Record<keyof typeof enWorkplace, string> = {
   "workplace.code.reused": "닫힌 사업장이 쓰던 코드입니다 · 이력에서 두 사업장이 같은 코드로 보입니다.",
   "workplace.close.target.closingDept": "닫히는 사업장의 부서",
   "workplace.closed.noEdit": "폐쇄한 사업장은 수정하지 않습니다 · 이력은 계속 볼 수 있습니다",
+  "workplace.head.field": "사업장장",
+  "workplace.head.appoint": "사업장장 지정",
+  "workplace.head.effective": "오늘({date})부터 사업장장으로 기록됩니다",
+  "workplace.head.done": "{name}의 사업장장을 지정했습니다",
+  "workplace.head.cleared": "{name}의 사업장장 지정을 해제했습니다",
 };

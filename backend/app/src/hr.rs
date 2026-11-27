@@ -1,9 +1,12 @@
+#[path = "hr/attendance_import_apply.rs"]
+mod attendance_import_apply;
 #[path = "hr/attendance_import_batch.rs"]
 mod attendance_import_batch;
 #[path = "hr/attendance_import_resolve.rs"]
 mod attendance_import_resolve;
 #[path = "hr/attendance_import_response.rs"]
 mod attendance_import_response;
+use attendance_import_apply::apply_attendance_import;
 use attendance_import_response::AttendanceImportSummaryItem;
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -1549,87 +1552,6 @@ async fn dry_run_attendance_import(
     Ok(Json(summary))
 }
 
-async fn apply_attendance_import(
-    State(state): State<HrState>,
-    Extension(principal): Extension<Principal>,
-    Path(run_id): Path<Uuid>,
-    body: Option<Json<ImportApplyRequest>>,
-) -> Result<Json<AttendanceImportApplyReport>, HrApiError> {
-    let checklist_all_acknowledged = body.and_then(|Json(b)| b.checklist_all_acknowledged);
-    let gate_outcome = evaluate_ingest_checklist_gate(checklist_all_acknowledged)?;
-    let org = principal.org_id;
-    let org_uuid = *org.as_uuid();
-    let actor = principal.user_id;
-
-    let event = AuditEvent::new(
-        Some(actor),
-        AuditAction::new("attendance_import.apply").map_err(HrError::from_kernel)?,
-        "data_import_run",
-        run_id.to_string(),
-        TraceContext::generate(),
-        OffsetDateTime::now_utc(),
-    )
-    .with_org(org)
-    .with_snapshots(
-        None,
-        Some(json!({
-            "run_id": run_id,
-            "entity_type": "attendance_direct",
-            "gate_outcome": gate_outcome
-        })),
-    );
-
-    let report = with_audit::<_, _, HrError>(&state.pool, event, |tx| {
-        Box::pin(async move {
-            attendance_access::require(tx, org, actor, None).await?;
-            let run = import_run_for_update(tx, org_uuid, run_id).await?;
-            ensure_attendance_import_run(&run, &["DRY_RUN"])?;
-            let rows = load_attendance_import_rows(tx, org_uuid, run_id).await?;
-            let summary = resolve_attendance_import_rows(tx, org_uuid, run_id, &run, &rows).await?;
-            if !summary.row_errors.is_empty() {
-                return Err(HrError::validation(
-                    "cannot apply attendance import with unresolved or invalid rows",
-                ));
-            }
-
-            let inserted = attendance_import_batch::insert_attendance_direct_import_events(
-                tx,
-                org_uuid,
-                run_id,
-                &run.source_sha256,
-                &summary.ready_rows_for_apply,
-            )
-            .await?;
-
-            let report = AttendanceImportApplyReport {
-                run_id,
-                inserted,
-                skipped: summary.ready_rows.saturating_sub(inserted),
-                error_rows: 0,
-            };
-            sqlx::query(
-                r#"
-                    UPDATE data_import_runs
-                    SET status = 'APPLIED', apply_summary = $3, applied_by = $4,
-                        applied_at = now(), updated_at = now()
-                    WHERE org_id = $1 AND id = $2
-                    "#,
-            )
-            .bind(org_uuid)
-            .bind(run_id)
-            .bind(json!(&report))
-            .bind(*actor.as_uuid())
-            .execute(tx.as_mut())
-            .await?;
-            Ok(report)
-        })
-    })
-    .await?;
-
-    metrics::counter!("hr_attendance_import_runs_total", "stage" => "apply").increment(1);
-    Ok(Json(report))
-}
-
 async fn list_attendance_import_summary(
     State(state): State<HrState>,
     Extension(principal): Extension<Principal>,
@@ -1892,6 +1814,8 @@ struct AttendanceImportApplyReport {
     inserted: usize,
     skipped: usize,
     error_rows: usize,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    skipped_rows: Vec<AttendanceImportRowError>,
 }
 
 #[derive(Debug, Serialize)]
@@ -3931,6 +3855,7 @@ mod tests {
             Json(
                 console_hr_adapter_postgres::import::types::EmployeeImportApplyRequest {
                     dry_run_digest: summary.dry_run_digest,
+                    skip_unresolved: false,
                 },
             ),
         )

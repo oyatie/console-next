@@ -15445,6 +15445,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workplaces/{workplaceId}/head": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Appoint or clear the head of a workplace
+         * @description Appoints any non-exited employee in the tenant as workplace head, or clears the appointment when null.
+         */
+        put: operations["setWorkplaceHead"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workplaces/{workplaceId}/insurance": {
         parameters: {
             query?: never;
@@ -17417,6 +17437,8 @@ export interface components {
             inserted: number;
             skipped: number;
             error_rows: number;
+            /** @description Rows left out during partial apply because of unresolved or invalid values. */
+            skipped_rows?: components["schemas"]["AttendanceImportRowError"][];
         };
         AttendanceImportColumn: {
             source_header: string;
@@ -21220,6 +21242,11 @@ export interface components {
         };
         EmployeeImportApplyRequest: {
             dry_run_digest: string;
+            /**
+             * @description When true, applies valid insert and update rows while leaving out unresolved row-level items.
+             * @default false
+             */
+            skip_unresolved: boolean;
         };
         EmployeeImportColumn: {
             source_header: string;
@@ -21568,6 +21595,14 @@ export interface components {
                 careers: number;
                 exit_reason: number;
             };
+            skipped_rows?: {
+                sheet: string;
+                row: number;
+                source_key: string;
+                employee_number?: string | null;
+                outcome: string;
+                reason_code?: string | null;
+            }[];
         };
         EmployeeImportReviewItem: {
             /** @description Original header of the imported company cell. */
@@ -28104,6 +28139,8 @@ export interface components {
                 entry_id: string | null;
                 code: string | null;
                 message: string | null;
+                name_mismatch?: boolean;
+                stored_name?: string | null;
             }[];
         };
         PersonRecordImportRequest: {
@@ -28111,6 +28148,8 @@ export interface components {
                 /** @description The sheet row number, echoed in the report. */
                 row: number;
                 employee_number: string;
+                /** @description Optional name column from the sheet, checked against the employee's stored name. */
+                employee_name?: string | null;
                 /** Format: uuid */
                 entry_id?: string | null;
                 /** Format: int64 */
@@ -28121,6 +28160,11 @@ export interface components {
             }[];
             /** @description Apply only; the preview's plan_digest. */
             plan_digest?: string | null;
+            /**
+             * @description Apply only; confirms applying rows whose sheet name differed from the stored employee name.
+             * @default false
+             */
+            acknowledge_name_mismatch: boolean;
         };
         /** @description Language skills. language is an ISO 639 code (stored lower case). */
         PersonRecordLanguage: {
@@ -30414,6 +30458,13 @@ export interface components {
             /** @description The code; null (or blank) clears it. */
             code: string | null;
         };
+        SetWorkplaceHeadRequest: {
+            /**
+             * Format: uuid
+             * @description Employee appointed as workplace head; null clears the appointment.
+             */
+            head_employee_id: string | null;
+        };
         SetWorkplaceKindRequest: {
             /** @description The kind code; null clears it. */
             kind_code: string | null;
@@ -32659,6 +32710,8 @@ export interface components {
             kind_code?: string | null;
             /** @description The workplace code (unique among open workplaces), when set. */
             code?: string | null;
+            /** @description Appointed workplace head when set. */
+            head?: components["schemas"]["OrgUnitHeadRef"] | null;
             is_primary: boolean;
             is_head_office: boolean;
             needs_confirmation: boolean;
@@ -65879,6 +65932,72 @@ export interface operations {
             };
             /** @description Not found in this tenant. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    setWorkplaceHead: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A UUID per user intent. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                workplaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetWorkplaceHeadRequest"];
+            };
+        };
+        responses: {
+            /** @description Workplace head updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedWorkplace"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Not permitted. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not found in this tenant. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Refused with a stable code (workplace_voided). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Field issues: errors[{field, code}] (head_employee_id: head_unavailable). */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

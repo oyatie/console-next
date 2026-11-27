@@ -45,7 +45,12 @@ export function ImportConsoleView({ baseline }: { baseline: () => React.ReactNod
   const [dryRun, setDryRun] = useState<AttendanceImportDryRun | null>(null);
   const [kpiFilter, setKpiFilter] = useState<KpiFilter>("all");
   const [ack, setAck] = useState<string[]>([]);
-  const [applied, setApplied] = useState<{ inserted: number; skipped: number } | null>(null);
+  const [applied, setApplied] = useState<{
+    inserted: number;
+    skipped: number;
+    errorRows: number;
+    skippedRows: AttendanceImportDryRun["row_errors"];
+  } | null>(null);
 
   const previewCmd = useCommand({
     run: async () => {
@@ -75,7 +80,12 @@ export function ImportConsoleView({ baseline }: { baseline: () => React.ReactNod
     run: async () => {
       if (!preview) throw new Error("missing_preview");
       const res = await applyAttendanceImport(preview.run_id, ack.includes("ack"));
-      setApplied({ inserted: res.inserted, skipped: res.skipped });
+      setApplied({
+        inserted: res.inserted,
+        skipped: res.skipped,
+        errorRows: res.error_rows ?? 0,
+        skippedRows: res.skipped_rows ?? [],
+      });
       return res;
     },
     invalidates: ["/api/v1/hr/attendance-import/summary", "/api/v1/attendance"],
@@ -107,12 +117,12 @@ export function ImportConsoleView({ baseline }: { baseline: () => React.ReactNod
   const uploadBlockReason = !file
     ? t("attendance.import.uploadMissingFile")
     : t("attendance.import.invalidDateRange");
-  const canApply = Boolean(dryRun && dryRun.error_rows === 0 && ack.includes("ack") && !applied);
+  const canApply = Boolean(dryRun && dryRun.ready_rows > 0 && ack.includes("ack") && !applied);
   const applyBlockReason = applied
-    ? t("attendance.import.appliedReceipt", applied)
+    ? t("attendance.import.appliedReceipt", { inserted: applied.inserted, skipped: applied.skipped })
     : !dryRun
       ? t("attendance.import.step.dryRun")
-      : dryRun.error_rows > 0
+      : dryRun.ready_rows === 0
         ? t("attendance.import.blockedErrors")
         : !ack.includes("ack")
           ? t("attendance.import.blockedAck")
@@ -130,7 +140,7 @@ export function ImportConsoleView({ baseline }: { baseline: () => React.ReactNod
       }}
       notes={
         applied ? (
-          <Receipt state="recorded" message={t("attendance.import.appliedReceipt", applied)} />
+          <Receipt state="recorded" message={t("attendance.import.appliedReceipt", { inserted: applied.inserted, skipped: applied.skipped })} />
         ) : commandError ? (
           <CommandError error={commandError} />
         ) : undefined
@@ -243,6 +253,9 @@ export function ImportConsoleView({ baseline }: { baseline: () => React.ReactNod
 
             {dryRun && (
               <ImportApplySection
+                readyRows={dryRun.ready_rows}
+                errorRows={dryRun.error_rows}
+                allErrors={applied?.skippedRows.length ? applied.skippedRows : dryRun.row_errors}
                 filteredErrors={filteredErrors}
                 ack={ack}
                 onAckChange={setAck}

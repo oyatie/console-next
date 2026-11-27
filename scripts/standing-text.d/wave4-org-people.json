@@ -1,0 +1,15 @@
+{
+  "baseline": {
+    "apps/web/src/features/people/ui/records-import-page.tsx#RecordsImportPage": 39
+  },
+  "newScreens": {
+    "apps/web/src/features/people/ui/records-import-page.tsx#RecordsImportPage": {
+      "FACT": 26,
+      "REFUSAL": 8,
+      "EMPTY": 3,
+      "LEGAL": 0,
+      "RECEIPT": 2,
+      "EXPLANATION": 0
+    }
+  }
+}

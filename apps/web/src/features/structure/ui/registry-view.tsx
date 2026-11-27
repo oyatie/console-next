@@ -14,7 +14,7 @@ import { registryRows, vacantHeads, type Level, type ListFilter } from "../domai
 import { temporalLabel, unitCounts } from "../present";
 import { AddUnit } from "./add-unit";
 import { InlineUnitInput, type OutlineEdit } from "./outline-rows";
-import { HeadCell, OrderCell, RegistryActions, RegistryFilters } from "./registry-bar";
+import { HeadCell, OrderCell, RegistryActions, RegistryFilters, WorkplaceHeadCell } from "./registry-bar";
 import type { ViewCommands } from "./page-head";
 import { useStructureGesturesBare } from "./use-outline-edit";
 import type { Commands } from "./use-structure-commands";
@@ -87,6 +87,7 @@ export function RegistryView({ s, cmd, sel, onSelect, onVisibleRows, find: q = "
       header: t("structure.list.head"),
       cell: (n) =>
         n.kind === "entity" ? (n.reps ? t("structure.node.reps", { name: n.reps.first, more: n.reps.more }) : none)
+        : n.kind === "site" ? <WorkplaceHeadCell n={n} readOnly={s.readOnly} quiet={compact} />
         : n.kind === "dept" ? <HeadCell n={n} readOnly={s.readOnly} quiet={compact} />
         : none,
     },

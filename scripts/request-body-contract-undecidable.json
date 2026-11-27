@@ -584,7 +584,7 @@
       "body_type": "EmployeeImportApplyRequest",
       "body_struct_file": "backend/crates/hr/adapter-postgres/src/import/types.rs",
       "body_struct": "EmployeeImportApplyRequest",
-      "schema_sha256": "71196da268d3f92de282318edef8ca2da1b26592c7ec74530aa15ee5c83e6a70",
+      "schema_sha256": "de0be9e81065aee20d1796baab1d210750d1457877eefa79768faa05512b8b42",
       "status": "resolved"
     },
     {

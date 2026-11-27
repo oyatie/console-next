@@ -385,11 +385,6 @@
    "reason": "Ops realm capability awaits the ops-cockpit owner lanes; units/maturity/plan.md §3.",
    "when": "excluded"
   },
-  "GET /api/v1/employee-records/{section}": {
-   "lane": "P1b",
-   "reason": "P1b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
   "GET /api/v1/employees/corrections/bulk/{id}": {
    "lane": "P2",
    "reason": "P2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
@@ -649,16 +644,6 @@
    "lane": "MAT-PARITY",
    "reason": "Ops realm capability awaits the ops-cockpit owner lanes; units/maturity/plan.md §3.",
    "when": "excluded"
-  },
-  "POST /api/v1/employee-records/{section}/import/apply": {
-   "lane": "P1b",
-   "reason": "P1b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/employee-records/{section}/import/preview": {
-   "lane": "P1b",
-   "reason": "P1b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
   },
   "POST /api/v1/employees/import": {
    "lane": "P3a",

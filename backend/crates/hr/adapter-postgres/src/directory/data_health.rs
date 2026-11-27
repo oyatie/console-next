@@ -52,7 +52,8 @@ fn push_scoped_cte(q: &mut QueryBuilder<Postgres>, filters: &EmployeeListFilters
                   (cp.employee_id IS NOT NULL) AS is_placed, \
                   (e.merged_into_employee_id IS NULL \
                     AND entity_employed_on(entity_today(), e.hire_on, e.exit_on, e.employment_status) \
-                    AND (e.org_unit_id IS NULL OR e.org_unit_id NOT IN (SELECT department_unit_ids()))) AS no_department, \
+                    AND (e.org_unit_id IS NULL OR e.org_unit_id NOT IN (SELECT department_unit_ids())) \
+                    AND e.id NOT IN (SELECT supervised_without_department_employee_ids())) AS no_department, \
                   COALESCE((SELECT epf.bank_account_registered FROM employee_personal_facts epf \
                     WHERE epf.org_id = e.org_id AND epf.employee_id = e.id), FALSE) AS bank_ok, \
                   (fe.id IS NOT NULL) AS has_failed",

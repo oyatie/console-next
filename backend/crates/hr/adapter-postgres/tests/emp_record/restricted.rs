@@ -264,6 +264,7 @@ async fn nobody_handles_a_restricted_section_of_their_own_record(pool: PgPool) {
     let row = |n, number: &str| ImportRow {
         row: n,
         employee_number: number.into(),
+        employee_name: None,
         entry_id: None,
         expected_version: None,
         void_reason: None,
@@ -274,6 +275,7 @@ async fn nobody_handles_a_restricted_section_of_their_own_record(pool: PgPool) {
     let sheet = |digest| ImportSheetRequest {
         rows: rows.clone(),
         plan_digest: digest,
+        acknowledge_name_mismatch: false,
     };
     let preview =
         f.hr.preview_record_import(p(), Section::Disability, sheet(None))

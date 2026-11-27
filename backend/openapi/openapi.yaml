@@ -34735,6 +34735,68 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+  /api/v1/workplaces/{workplaceId}/head:
+    put:
+      tags:
+      - entity
+      operationId: setWorkplaceHead
+      summary: Appoint or clear the head of a workplace
+      description: Appoints any non-exited employee in the tenant as workplace head, or clears the appointment when null.
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        description: A UUID per user intent.
+        schema:
+          type: string
+          format: uuid
+      - name: workplaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetWorkplaceHeadRequest'
+      responses:
+        '200':
+          description: Workplace head updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedWorkplace'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Not permitted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '422':
+          description: 'Field issues: errors[{field, code}] (head_employee_id: head_unavailable).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          description: Not found in this tenant.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '409':
+          description: Refused with a stable code (workplace_voided).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
   /api/v1/workplaces/{workplaceId}/insurance:
     put:
       tags:
@@ -38924,6 +38986,11 @@ components:
         error_rows:
           type: integer
           minimum: 0
+        skipped_rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttendanceImportRowError'
+          description: Rows left out during partial apply because of unresolved or invalid values.
     AttendanceImportColumn:
       type: object
       required:
@@ -45700,6 +45767,10 @@ components:
         dry_run_digest:
           type: string
           pattern: ^[0-9a-f]{64}$
+        skip_unresolved:
+          type: boolean
+          default: false
+          description: When true, applies valid insert and update rows while leaving out unresolved row-level items.
     EmployeeImportColumn:
       type: object
       required:
@@ -46472,6 +46543,24 @@ components:
             exit_reason:
               type: integer
               minimum: 0
+        skipped_rows:
+          type: array
+          items:
+            type: object
+            required: [sheet, row, source_key, outcome]
+            properties:
+              sheet:
+                type: string
+              row:
+                type: integer
+              source_key:
+                type: string
+              employee_number:
+                type: [string, 'null']
+              outcome:
+                type: string
+              reason_code:
+                type: [string, 'null']
     EmployeeImportReviewItem:
       type: object
       required: [id, reason, blocking, sheet, rows]
@@ -59629,6 +59718,10 @@ components:
                 type: [string, 'null']
               message:
                 type: [string, 'null']
+              name_mismatch:
+                type: boolean
+              stored_name:
+                type: [string, 'null']
     PersonRecordImportRequest:
       type: object
       additionalProperties: false
@@ -59649,6 +59742,9 @@ components:
                 description: The sheet row number, echoed in the report.
               employee_number:
                 type: string
+              employee_name:
+                type: [string, 'null']
+                description: Optional name column from the sheet, checked against the employee's stored name.
               entry_id:
                 type: [string, 'null']
                 format: uuid
@@ -59666,6 +59762,10 @@ components:
         plan_digest:
           type: [string, 'null']
           description: Apply only; the preview's plan_digest.
+        acknowledge_name_mismatch:
+          type: boolean
+          default: false
+          description: Apply only; confirms applying rows whose sheet name differed from the stored employee name.
     PersonRecordLanguage:
       type: object
       additionalProperties: false
@@ -64978,6 +65078,18 @@ components:
           maxLength: 30
           pattern: ^[A-Za-z0-9._-]{1,30}$
           description: The code; null (or blank) clears it.
+    SetWorkplaceHeadRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - head_employee_id
+      properties:
+        head_employee_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          description: Employee appointed as workplace head; null clears the appointment.
     SetWorkplaceKindRequest:
       type: object
       required:
@@ -70273,6 +70385,11 @@ components:
           - string
           - 'null'
           description: The workplace code (unique among open workplaces), when set.
+        head:
+          anyOf:
+          - $ref: '#/components/schemas/OrgUnitHeadRef'
+          - type: 'null'
+          description: Appointed workplace head when set.
         is_primary:
           type: boolean
         is_head_office:

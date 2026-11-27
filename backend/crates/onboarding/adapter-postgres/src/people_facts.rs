@@ -14,7 +14,7 @@ pub(crate) async fn records(
 ) -> Result<Records, PgOnboardingError> {
     let sql = concat!(
         current!(),
-        ", reviewed AS (SELECT *, employed AND (org_unit_id IS NULL OR org_unit_id NOT IN (SELECT department_unit_ids())) AS no_department FROM people) \
+        ", reviewed AS (SELECT *, employed AND (org_unit_id IS NULL OR org_unit_id NOT IN (SELECT department_unit_ids())) AND id NOT IN (SELECT supervised_without_department_employee_ids()) AS no_department FROM people) \
         SELECT id::text, (SELECT p.name FROM person_employees_current p WHERE p.org_id=reviewed.org_id AND p.id=reviewed.id) AS name, legal_entity_id::text AS entity, no_department, \
         unplaced, \
         (org_unit_id IS NULL AND source_metadata ? 'unresolved_org_unit') AS department_missing \
@@ -110,7 +110,7 @@ pub(crate) async fn counts(
     let row: (i64,i64,i64,i64) = sqlx::query_as(concat!(current!(),
         "SELECT count(*) FILTER (WHERE unplaced), \
          count(*) FILTER (WHERE org_unit_id IS NULL AND source_metadata ? 'unresolved_org_unit'), \
-         count(*) FILTER (WHERE employed AND (org_unit_id IS NULL OR org_unit_id NOT IN (SELECT department_unit_ids()))), \
+         count(*) FILTER (WHERE employed AND (org_unit_id IS NULL OR org_unit_id NOT IN (SELECT department_unit_ids())) AND id NOT IN (SELECT supervised_without_department_employee_ids())), \
          count(*) FILTER (WHERE legal_entity_id IS NULL) FROM people"))
         .fetch_one(tx.as_mut()).await?;
     Ok([row.0, row.1, row.2, row.3])

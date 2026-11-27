@@ -35,6 +35,7 @@ pub(crate) async fn staged(i: &Importer, people: usize) -> (Uuid, String) {
 pub(crate) fn body(digest: &str) -> EmployeeImportApplyRequest {
     EmployeeImportApplyRequest {
         dry_run_digest: digest.into(),
+        skip_unresolved: false,
     }
 }
 

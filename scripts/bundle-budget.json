@@ -164,6 +164,7 @@
       "src/features/people/ui/bulk-page.tsx",
       "src/features/people/ui/notice-new-console.tsx",
       "src/features/people/ui/notice-new-page.tsx",
+      "src/features/people/ui/records-import-page.tsx",
       "src/features/people/ui/register-dup.tsx",
       "src/features/people/ui/register-route.tsx",
       "src/features/people/ui/register-run-console.tsx",

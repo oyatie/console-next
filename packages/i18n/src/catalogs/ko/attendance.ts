@@ -281,4 +281,6 @@ export const koAttendance: Record<keyof typeof enAttendance, string> = {
   "attendance.import.status.DRY_RUN": "사전 검증 완료",
   "attendance.import.status.APPLIED": "반영 완료",
   "attendance.import.status.FAILED": "실패",
+  "attendance.import.applyPartialAction": "정상 {ready, number}건 반영 (오류 {errors, number}건 제외)",
+  "attendance.import.downloadSkippedCsv": "오류 행 CSV 내려받기 ({count, number}건)",
 };

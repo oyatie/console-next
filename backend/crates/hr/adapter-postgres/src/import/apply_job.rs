@@ -78,6 +78,8 @@ pub struct ApplyJob {
     pub state: String,
     pub dry_run_digest: String,
     pub requested_by: Uuid,
+    #[serde(default)]
+    pub skip_unresolved: bool,
     /// Plan rows the settle covers, and how many are done.
     pub total: usize,
     pub done: usize,
@@ -127,6 +129,7 @@ impl ApplyJob {
             state: "queued".into(),
             dry_run_digest: digest.to_owned(),
             requested_by: *actor.as_uuid(),
+            skip_unresolved: false,
             total: 0,
             done: 0,
             report: None,

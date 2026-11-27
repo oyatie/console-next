@@ -63,6 +63,7 @@ const paths = [
   "/people/exits/$id",
   "/people/grid",
   "/people/import",
+  "/people/records/import",
   "/people/job-titles",
   "/people/new",
   "/people/notices",
