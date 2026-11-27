@@ -281,10 +281,12 @@ export const en = {
   ...enMe,
   ...enTeam,
   ...enShellRoutes,
+  ...enSettingsWave2,
 } as const;
 
 export type ScreenMessageId = keyof typeof en;
 import { enDirectoryViews } from "./en/directory-views";
 import { enSettingsHub } from "./en/settings-hub";
+import { enSettingsWave2 } from "./en/settings-wave2";
 import { enShellRoutes } from "./en/shell-routes";
 import { enUiWorklist } from "./en/ui-worklist";

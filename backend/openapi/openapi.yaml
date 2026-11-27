@@ -29787,6 +29787,66 @@ paths:
           $ref: '#/components/responses/ValidationError'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/settings/overtime-attestations:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "settings:view", "scope": "any"}
+      tags: [settings]
+      operationId: listOvertimeRuleAttestations
+      summary: List overtime recognition work-rule confirmations
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: scope_entity_id
+          required: false
+          schema:
+            $ref: '#/components/schemas/Uuid'
+      responses:
+        '200':
+          description: Recorded overtime rule confirmations
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/OvertimeRuleAttestation'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "settings:edit", "scope": "any"}
+      tags: [settings]
+      operationId: recordOvertimeRuleAttestation
+      summary: Record an overtime recognition work-rule confirmation
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOvertimeAttestationRequest'
+      responses:
+        '201':
+          description: Overtime rule confirmation recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OvertimeRuleAttestation'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: Validation refusal
   /api/v1/settings/{key}:
     post:
       operationId: changeSetting
@@ -31228,6 +31288,25 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
   /api/v1/tenant/company-domain/request:
+    delete:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "tenant:edit", "scope": "ops"}
+      tags: [platform]
+      operationId: cancelCompanyDomainRequest
+      summary: Withdraw the tenant ops account's pending company-domain request
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Pending request cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyDomainRequestState'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
     get:
       x-console-authz: {"permission": "tenant:edit", "scope": "ops"}
       tags: [platform]
@@ -31247,6 +31326,8 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
     post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "tenant:edit", "scope": "ops"}
       tags: [platform]
       operationId: requestCompanyDomainChange
       summary: Tenant ops asks the platform operator to change their own company domain
@@ -31272,6 +31353,8 @@ paths:
                 slug:
                   type: string
                   pattern: ^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$
+                expected_pending_domain:
+                  type: [string, 'null']
       responses:
         '200':
           description: Request recorded for platform operators
@@ -31283,6 +31366,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Pending request changed concurrently or slug already taken
         '422':
           description: Invalid requested company domain
   /api/v1/tenant/ops-recovery:
@@ -40517,11 +40602,41 @@ components:
               audit_id: {$ref: '#/components/schemas/Uuid'}
               branch_id: {type: [string, 'null'], format: uuid}
     CompanyDomainRequestState:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       type: object
+      additionalProperties: false
       required: [pending_domain]
       properties:
         pending_domain:
           type: [string, 'null']
+        requested_by:
+          type: [string, 'null']
+          format: uuid
+        requested_by_name:
+          type: [string, 'null']
+        requested_at:
+          type: [string, 'null']
+          format: date-time
+        current_domain:
+          type: [string, 'null']
+        account_count:
+          type: integer
+          format: int64
+        domain_aliases:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [slug, retired_at, alias_until]
+            properties:
+              slug:
+                type: string
+              retired_at:
+                type: [string, 'null']
+                format: date-time
+              alias_until:
+                type: [string, 'null']
+                format: date-time
     CompleteInspectionRoundRequest:
       type: object
       required:
@@ -42263,6 +42378,33 @@ components:
           type: string
         reason:
           type: string
+    CreateOvertimeAttestationRequest:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required:
+        - confirmed_on
+        - rule_reference
+        - worker_notice_method
+      properties:
+        scope_entity_id:
+          allOf: [{$ref: '#/components/schemas/Uuid'}]
+          nullable: true
+        confirmed_on:
+          type: string
+          format: date
+        rule_reference:
+          type: string
+          minLength: 1
+          maxLength: 300
+        worker_notice_method:
+          type: string
+          minLength: 1
+          maxLength: 300
+        statutory_basis:
+          type: string
+          maxLength: 300
+          nullable: true
     CreateOwnershipTransferRequest:
       type: object
       required:
@@ -56619,6 +56761,42 @@ components:
           - RESULT_SUBMITTED
           - COMPLETED
           - CANCELLED
+    OvertimeRuleAttestation:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - scope_entity_id
+        - confirmed_on
+        - rule_reference
+        - worker_notice_method
+        - statutory_basis
+        - recorded_by
+        - recorded_by_name
+        - created_at
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        scope_entity_id:
+          allOf: [{$ref: '#/components/schemas/Uuid'}]
+          nullable: true
+        confirmed_on:
+          type: string
+          format: date
+        rule_reference:
+          type: string
+        worker_notice_method:
+          type: string
+        statutory_basis:
+          type: string
+        recorded_by:
+          $ref: '#/components/schemas/Uuid'
+        recorded_by_name:
+          type: string
+          nullable: true
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
     OwnAttendanceException:
       type: object
       additionalProperties: false
@@ -63818,6 +63996,8 @@ components:
             second_person:
               type: boolean
               enum: [false]
+            worker_consent:
+              type: boolean
         earliest_effective_from:
           $ref: '#/components/schemas/Timestamp'
         in_force:
@@ -63848,6 +64028,15 @@ components:
               description: Descendant scopes with their own override in force at effective_from.
               items:
                 $ref: '#/components/schemas/Uuid'
+            affected_people_count:
+              type: integer
+              format: int64
+            out_of_scope_people_count:
+              type: integer
+              format: int64
+            disfavored_people_count:
+              type: integer
+              format: int64
     SettingChangeRequest:
       type: object
       additionalProperties: false
@@ -63962,7 +64151,7 @@ components:
           properties:
             layer:
               type: string
-              enum: [code_default, platform, tenant, legal_entity, workplace]
+              enum: [code_default, platform, tenant, legal_entity, workplace, department, person]
             scope_entity_id:
               allOf: [{$ref: '#/components/schemas/Uuid'}]
               nullable: true
@@ -64456,6 +64645,7 @@ components:
           - passkey
           - employees
           - roles
+          - overtime
           - golive
         group:
           type: string

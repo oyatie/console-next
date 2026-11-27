@@ -107,6 +107,7 @@ pub(crate) async fn require_step(
         "org" => (Domain::Org, Level::Edit),
         "employees" => (Domain::HrBasic, Level::Edit),
         "roles" => (Domain::Access, Level::Edit),
+        "overtime" => (Domain::Attendance, Level::Approve),
         _ => return Err(refused(ErrorKind::Validation, "step_not_skippable", None)),
     };
     let subject = load_access_subject(

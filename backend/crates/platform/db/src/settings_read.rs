@@ -16,6 +16,21 @@ pub enum SettingLayerKind {
     Tenant,
     LegalEntity,
     Workplace,
+    Department,
+    Person,
+}
+
+impl SettingLayerKind {
+    #[must_use]
+    pub fn from_db_layer(raw: &str) -> Option<Self> {
+        match raw {
+            "legal_entity" => Some(Self::LegalEntity),
+            "workplace" => Some(Self::Workplace),
+            "department" => Some(Self::Department),
+            "person" => Some(Self::Person),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -48,57 +63,50 @@ pub async fn load_rows_in_tx(
         .filter(|key| key.def().governance == Governance::PlatformOnly)
         .map(|key| key.as_str())
         .collect();
+    let scope_rows = if let Some(target_id) = entity {
+        let fetched =
+            sqlx::query("SELECT scope_id, layer FROM setting_scope_chain($1, $2) ORDER BY seq")
+                .bind(org.as_uuid())
+                .bind(target_id)
+                .fetch_all(&mut *conn)
+                .await
+                .map_err(db_error)?;
+        if fetched.is_empty() {
+            tracing::warn!(code = "setting_scope_unknown", "settings scope refused");
+            return Err(KernelError::validation("unknown setting scope")
+                .with_code("setting_scope_unknown")
+                .with_field("scope_entity_id"));
+        }
+        fetched
+    } else {
+        Vec::new()
+    };
+    let mut chain = Vec::with_capacity(scope_rows.len());
+    for srow in scope_rows {
+        let id: Uuid = srow.try_get("scope_id").map_err(db_error)?;
+        let raw_layer: String = srow.try_get("layer").map_err(db_error)?;
+        let layer = SettingLayerKind::from_db_layer(&raw_layer)
+            .ok_or_else(|| KernelError::internal("unknown setting scope layer"))?;
+        chain.push(SettingScope { id, layer });
+    }
+    let chain_ids: Vec<Uuid> = chain.iter().map(|s| s.id).collect();
     let rows = sqlx::query(
-        "WITH target AS (
-           SELECT w.id AS workplace_id, e.id AS legal_entity_id
-             FROM workplaces w JOIN legal_entities e ON e.org_id=w.org_id AND e.id=w.legal_entity_id
-            WHERE w.org_id=$1 AND w.id=$3
-           UNION ALL
-           SELECT NULL::uuid, e.id FROM legal_entities e WHERE e.org_id=$1 AND e.id=$3
-           ORDER BY workplace_id NULLS LAST LIMIT 1
-         ), scope AS (
-           SELECT t.workplace_id, t.legal_entity_id,
-             CASE WHEN $3::uuid IS NULL THEN '{}'::uuid[]
-                  WHEN t.legal_entity_id IS NOT NULL THEN array_remove(ARRAY[t.workplace_id,t.legal_entity_id], NULL)
-             END AS chain
-           FROM (SELECT 1) anchor LEFT JOIN target t ON true
-         ), overrides AS (
-         SELECT id, key, scope_entity_id, value, effective_from
+        "SELECT id, key, scope_entity_id, value, effective_from
            FROM tenant_setting_overrides
           WHERE org_id = $1 AND key = ANY($2) AND NOT key = ANY($4)
-            AND (scope_entity_id IS NULL OR scope_entity_id = ANY((SELECT chain FROM scope)::uuid[]))
-          UNION ALL
-         SELECT id, key, NULL::uuid, value, effective_from
+            AND (scope_entity_id IS NULL OR scope_entity_id = ANY($3))
+         UNION ALL
+         SELECT id, key, NULL::uuid AS scope_entity_id, value, effective_from
            FROM platform_setting_overrides WHERE key = ANY($4)
-         ) SELECT scope.chain, scope.workplace_id, scope.legal_entity_id, o.* FROM scope LEFT JOIN overrides o ON true
           ORDER BY effective_from",
     )
     .bind(org.as_uuid())
     .bind(&wire)
-    .bind(entity)
+    .bind(&chain_ids)
     .bind(&platform_keys)
-    .fetch_all(conn)
+    .fetch_all(&mut *conn)
     .await
     .map_err(db_error)?;
-    let scope = rows
-        .first()
-        .ok_or_else(|| KernelError::internal("settings scope query returned no row"))?;
-    let ids: Option<Vec<Uuid>> = scope.try_get("chain").map_err(db_error)?;
-    if ids.is_none() {
-        tracing::warn!(code = "setting_scope_unknown", "settings scope refused");
-        return Err(KernelError::validation("unknown setting scope")
-            .with_code("setting_scope_unknown")
-            .with_field("scope_entity_id"));
-    }
-    let workplace: Option<Uuid> = scope.try_get("workplace_id").map_err(db_error)?;
-    let legal_entity: Option<Uuid> = scope.try_get("legal_entity_id").map_err(db_error)?;
-    let chain = [
-        (workplace, SettingLayerKind::Workplace),
-        (legal_entity, SettingLayerKind::LegalEntity),
-    ]
-    .into_iter()
-    .filter_map(|(id, layer)| id.map(|id| SettingScope { id, layer }))
-    .collect();
     let mut out: BTreeMap<SettingKey, Vec<OverrideRow>> = BTreeMap::new();
     for row in rows {
         let Some(wire_key): Option<String> = row.try_get("key").map_err(db_error)? else {

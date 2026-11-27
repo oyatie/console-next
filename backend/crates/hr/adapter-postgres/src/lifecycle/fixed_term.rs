@@ -30,6 +30,7 @@ use time::{Date, Duration};
 use uuid::Uuid;
 
 use super::classification::closed_contract_windows;
+use super::fixed_term_options::limit_months;
 use super::title_reason::coded;
 use crate::HrError;
 
@@ -129,35 +130,6 @@ async fn load(
     })
 }
 
-/// The limit in force on `on`, from the statutory register (fail closed: no
-/// row, two rows or a unit other than whole years is a server error).
-// a direct SELECT of the global, SELECT-only register instead of
-// console-compliance-adapter's validated load (one more adapter edge would
-// push layer-boundary's rules.rs past the file-size ceiling).
-async fn limit_months(
-    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-    on: Date,
-) -> Result<u8, HrError> {
-    let rows: Vec<(String, i64, i64)> = sqlx::query_as(
-        "SELECT unit, value_num, value_den FROM statutory_rules \
-         WHERE code = $1 AND effective_from <= $2 \
-           AND (effective_to_exclusive IS NULL OR effective_to_exclusive > $2)",
-    )
-    .bind(codes::FIXED_TERM_MAX_YEARS)
-    .bind(on)
-    .fetch_all(tx.as_mut())
-    .await?;
-    match rows.as_slice() {
-        [(unit, years, 1)] if unit == "YEARS" => {
-            u8::try_from(years * 12).map_err(|_| HrError::internal("fixed-term limit out of range"))
-        }
-        _ => Err(HrError::internal(format!(
-            "no single whole-year {} rule in force on {on}",
-            codes::FIXED_TERM_MAX_YEARS
-        ))),
-    }
-}
-
 fn basis(service: &FixedTermService) -> &'static str {
     match service.basis {
         ServiceBasis::ContractHistory => "CONTRACT_HISTORY",
@@ -191,7 +163,11 @@ pub async fn fixed_term_view(
         childcare_leave: &loaded.childcare,
         hire_date,
     };
-    let service = fixed_term_service(history, as_of, limit_months(tx, as_of).await?);
+    let service = fixed_term_service(
+        history,
+        as_of,
+        limit_months(tx, org, employee, as_of).await?,
+    );
     Ok(FixedTermView {
         available_exceptions: Vec::new(),
         rule: Some(
@@ -250,7 +226,7 @@ pub async fn check_fixed_term_renewal(
         childcare_leave: &loaded.childcare,
         hire_date,
     };
-    let limit = limit_months(tx, effective).await?;
+    let limit = limit_months(tx, org, employee, effective).await?;
     let (verdict, service) = check_renewal(
         history,
         DatePeriod {

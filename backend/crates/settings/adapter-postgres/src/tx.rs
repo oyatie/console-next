@@ -3,11 +3,12 @@
 //! with a concurrent change, or onboarding ending) maps back to the same coded
 //! [`SettingError`] the domain check returns.
 
+use crate::impact::{compute_scope_impact, descendant_overrides};
 use crate::read::{db_error, load_rows_in_tx, parse_direction};
 use crate::reason_codes::validate_reason_in_tx;
 use console_kernel_core::{KernelError, OrgId, Timestamp};
 use console_settings_application::{
-    Actor, ChangeError, InsertedOverride, NewOverride, SettingsStore, StoreFacts,
+    Actor, ChangeError, InsertedOverride, NewOverride, ScopeImpact, SettingsStore, StoreFacts,
 };
 use console_settings_domain::code_lists::{ReasonDomain, ValidReason};
 use console_settings_domain::{
@@ -37,20 +38,13 @@ pub(crate) async fn require_live_scope(
     entity: Option<Uuid>,
 ) -> Result<(), KernelError> {
     if let Some(entity) = entity {
-        let live: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM legal_entities e WHERE e.org_id=$1 AND e.id=$2
-               AND e.voided_at IS NULL AND e.closed_on IS NULL
-             UNION ALL SELECT 1 FROM workplaces w JOIN legal_entities e
-               ON e.org_id=w.org_id AND e.id=w.legal_entity_id
-             WHERE w.org_id=$1 AND w.id=$2 AND w.voided_at IS NULL
-               AND w.closed_on IS NULL
-               AND e.voided_at IS NULL AND e.closed_on IS NULL)",
-        )
-        .bind(org.as_uuid())
-        .bind(entity)
-        .fetch_one(conn)
-        .await
-        .map_err(db_error)?;
+        let live: bool =
+            sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM setting_scope_chain($1, $2))")
+                .bind(org.as_uuid())
+                .bind(entity)
+                .fetch_one(conn)
+                .await
+                .map_err(db_error)?;
         if !live {
             tracing::warn!(code = "setting_scope_unknown", "settings scope refused");
             return Err(KernelError::validation("unknown or inactive setting scope")
@@ -170,21 +164,17 @@ impl SettingsStore for PgSettingsTx<'_, '_> {
         entity: Option<Uuid>,
         as_of: Timestamp,
     ) -> Result<Vec<Uuid>, KernelError> {
-        sqlx::query_scalar(
-            "SELECT DISTINCT scope_entity_id FROM tenant_setting_overrides
-             WHERE org_id = $1 AND key = $2 AND effective_from <= $4
-               AND scope_entity_id IS NOT NULL AND scope_entity_id IS DISTINCT FROM $3
-               AND ($3::uuid IS NULL OR scope_entity_id IN
-                   (SELECT id FROM workplaces WHERE org_id = $1 AND legal_entity_id = $3))
-             ORDER BY scope_entity_id",
-        )
-        .bind(self.org.as_uuid())
-        .bind(key.as_str())
-        .bind(entity)
-        .bind(as_of)
-        .fetch_all(self.tx.as_mut())
-        .await
-        .map_err(db_error)
+        descendant_overrides(self.tx.as_mut(), self.org, key, entity, as_of).await
+    }
+
+    async fn scope_impact(
+        &mut self,
+        key: SettingKey,
+        entity: Option<Uuid>,
+        proposed: Option<SettingValue>,
+        as_of: Timestamp,
+    ) -> Result<ScopeImpact, KernelError> {
+        compute_scope_impact(self.tx.as_mut(), self.org, key, entity, proposed, as_of).await
     }
 }
 
@@ -201,6 +191,13 @@ fn insert_error(row: &NewOverride, error: sqlx::Error) -> ChangeError {
             Some("23514") => {
                 let refusal = match db.message() {
                     "setting_not_editable" => Some(SettingError::NotEditable(key)),
+                    "setting_scope_not_allowed" => Some(SettingError::ScopeNotAllowed(key)),
+                    "setting_tenant_root_disallowed" => {
+                        Some(SettingError::TenantRootDisallowed(key))
+                    }
+                    "setting_person_disfavorable" => {
+                        Some(SettingError::PersonOverrideDisfavorable(key))
+                    }
                     "setting_unknown_key" | "setting_value_invalid" => {
                         Some(SettingError::InvalidValue(key))
                     }

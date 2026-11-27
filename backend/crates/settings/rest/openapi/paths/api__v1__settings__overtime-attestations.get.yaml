@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+x-console-authz: {"permission": "settings:view", "scope": "any"}
+tags: [settings]
+operationId: listOvertimeRuleAttestations
+summary: List overtime recognition work-rule confirmations
+security:
+  - bearerAuth: []
+parameters:
+  - in: query
+    name: scope_entity_id
+    required: false
+    schema:
+      $ref: '#/components/schemas/Uuid'
+responses:
+  '200':
+    description: Recorded overtime rule confirmations
+    content:
+      application/json:
+        schema:
+          type: object
+          additionalProperties: false
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/OvertimeRuleAttestation'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'

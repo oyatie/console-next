@@ -132,6 +132,10 @@ pub const PLATFORM_ROUTE_OPERATIONS: &[PlatformRouteOperation] = &[
         path: TENANT_DOMAIN_REQUEST_PATH,
     },
     PlatformRouteOperation {
+        method: "DELETE",
+        path: TENANT_DOMAIN_REQUEST_PATH,
+    },
+    PlatformRouteOperation {
         method: "GET",
         path: PLATFORM_COMPANY_DOMAIN_PATH,
     },

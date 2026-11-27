@@ -167,6 +167,7 @@ impl Feature {
             // PREREG-2: Cedar-only. No legacy decision exists, so the matrix
             // grants nobody; the per-action Cedar schema is the only allow path.
             Self::SettingsManage
+            | Self::AttendanceOvertimeDecide
             | Self::ReasonCodeManage
             | Self::ExceptionDecide
             | Self::PrivacyRequestFile

@@ -30,6 +30,8 @@ properties:
       second_person:
         type: boolean
         enum: [false]
+      worker_consent:
+        type: boolean
   earliest_effective_from:
     $ref: '#/components/schemas/Timestamp'
   in_force:
@@ -60,3 +62,12 @@ properties:
         description: Descendant scopes with their own override in force at effective_from.
         items:
           $ref: '#/components/schemas/Uuid'
+      affected_people_count:
+        type: integer
+        format: int64
+      out_of_scope_people_count:
+        type: integer
+        format: int64
+      disfavored_people_count:
+        type: integer
+        format: int64

@@ -89,6 +89,7 @@ fn step(key: &'static str, group: &'static str, state: StepState, action: &'stat
             "employees" => "hr_basic::edit",
             "roles" => "access::edit",
             "approval" => "settings::edit",
+            "overtime" => "attendance::approve",
             "passkey" => "own_account",
             _ => "tenant_ops",
         },
@@ -217,6 +218,15 @@ pub fn checklist(f: &SetupFacts) -> Checklist {
         }
     }
     steps.push(roles);
+
+    if f.overtime_rule_store_available {
+        let mut overtime = step("overtime", "operations", Todo, "confirm_overtime_rule");
+        overtime.skippable = !f.overtime_step_skipped;
+        if f.overtime_rule_attested || f.overtime_step_skipped {
+            overtime.state = Done;
+        }
+        steps.push(overtime);
+    }
 
     let mut golive = step("golive", "people", Todo, "open_go_live_preview");
     if !f.phase_is_setup {

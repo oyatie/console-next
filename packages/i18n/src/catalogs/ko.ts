@@ -1,4 +1,5 @@
 import { koShellRoutes } from "./ko/shell-routes";
+import { koSettingsWave2 } from "./ko/settings-wave2";
 import { koUiFlexibleColumns } from "./ko/ui-flexible-columns";
 import { koGovernanceRefusals } from "./ko/governance";
 import { koDirectoryViews } from "./ko/directory-views";
@@ -281,4 +282,5 @@ export const ko: Record<ScreenMessageId, string> = {
   ...koMe,
   ...koTeam,
   ...koShellRoutes,
+  ...koSettingsWave2,
 };

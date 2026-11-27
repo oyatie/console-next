@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+required:
+  - id
+  - scope_entity_id
+  - confirmed_on
+  - rule_reference
+  - worker_notice_method
+  - statutory_basis
+  - recorded_by
+  - recorded_by_name
+  - created_at
+properties:
+  id:
+    $ref: '#/components/schemas/Uuid'
+  scope_entity_id:
+    allOf: [{$ref: '#/components/schemas/Uuid'}]
+    nullable: true
+  confirmed_on:
+    type: string
+    format: date
+  rule_reference:
+    type: string
+  worker_notice_method:
+    type: string
+  statutory_basis:
+    type: string
+  recorded_by:
+    $ref: '#/components/schemas/Uuid'
+  recorded_by_name:
+    type: string
+    nullable: true
+  created_at:
+    $ref: '#/components/schemas/Timestamp'

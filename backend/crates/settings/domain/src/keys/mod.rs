@@ -83,6 +83,8 @@ pub const FILING_CADENCES: &[&str] = &["MONTHLY", "SEMIANNUAL"];
 pub const UNNUMBERED_MODES: &[&str] = &["queue", "assign_by_rule"];
 /// Visual screen styles; switching appearance alters neither access nor statutory rules.
 pub const EXPERIENCES: &[&str] = &["baseline", "console", "warm-clear"];
+/// Overtime recognition modes, strictest first (`approval` = prior/post approval, `recorded` = recorded punches).
+pub const OVERTIME_RECOGNITION_MODES: &[&str] = &["approval", "recorded"];
 
 const fn retention_years(years: i64) -> D {
     D::int(Years, Some(years), None, years, Lower)
@@ -140,8 +142,10 @@ mod access_log_review;
 mod privacy_rights;
 #[macro_use]
 mod modules;
+#[macro_use]
+mod wave2;
 
-roster!([] found, pa_ent, ent_capture, emp_record, people_a, d26, import2, mig, perf, attendance, ops_recovery, display, support, nts, orgchange, privacy_reveal, access_log_review, privacy_rights, modules);
+roster!([] found, pa_ent, ent_capture, emp_record, people_a, d26, import2, mig, perf, attendance, ops_recovery, display, support, nts, orgchange, privacy_reveal, access_log_review, privacy_rights, modules, wave2);
 
 impl SettingKey {
     /// Client behavior and workflow copy require these effective values for every member.
@@ -150,6 +154,7 @@ impl SettingKey {
         matches!(
             self,
             Self::AuthIdleTimeoutMinutes
+                | Self::AttendanceConsoleClockOut
                 | Self::ApprovalPolicyOrgStructure
                 | Self::ApprovalPolicyPeopleCorrection
                 | Self::ApprovalPolicyIdentityMerge

@@ -4,7 +4,7 @@ import { settingLabel, settingValue, type SummaryCopy } from "./summaries";
 
 export type SettingEntry = components["schemas"]["SettingEntry"];
 type SettingValue = components["schemas"]["SettingValue"];
-export type SettingSectionId = "overview" | "approvals" | "operations" | "privacy" | "workplace" | "reasons";
+export type SettingSectionId = "overview" | "approvals" | "operations" | "privacy" | "workplace" | "reasons" | "rollout";
 
 export const SETTINGS_SECTIONS: readonly SettingSectionId[] = [
   "overview",
@@ -13,6 +13,7 @@ export const SETTINGS_SECTIONS: readonly SettingSectionId[] = [
   "privacy",
   "workplace",
   "reasons",
+  "rollout",
 ];
 
 export function parseSettingsSection(raw: unknown): SettingSectionId {

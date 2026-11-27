@@ -165,7 +165,9 @@ pub fn router(state: PlatformRestState) -> Router {
                 )
                 .route(
                     TENANT_DOMAIN_REQUEST_PATH,
-                    get(company_domain::own_request).post(company_domain::request_domain),
+                    get(company_domain::own_request)
+                        .post(company_domain::request_domain)
+                        .delete(company_domain::cancel_request),
                 ),
         )
         .with_state(state.clone()),

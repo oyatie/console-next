@@ -22,6 +22,7 @@ properties:
     - passkey
     - employees
     - roles
+    - overtime
     - golive
   group:
     type: string

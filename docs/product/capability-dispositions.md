@@ -49,10 +49,10 @@ Partially exposed operations keep their current route and component; their refus
 | `GET /api/v1/branches/{id}` | hidden | allow-list | Organization structure: Only legacy region and branch closures remain supported. These pre-workplace cleanup commands stay outside the primary organization editor until place-model compatibility retirement. Release gate: place-model compatibility retirement. |
 | `PATCH /api/v1/branches/{id}` | hidden | allow-list | Organization structure: Separate branch and region drafting is retired under the workplace model. Workplace changes own placement; retain these protocol URLs until compatibility retirement. Release gate: place-model compatibility retirement. |
 | `DELETE /api/v1/branches/{id}` | hidden | allow-list | Organization structure: Separate branch and region drafting is retired under the workplace model. Workplace changes own placement; retain these protocol URLs until compatibility retirement. Release gate: place-model compatibility retirement. |
-| `POST /api/v1/console/kill-switch` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `GET /api/v1/console/rollout` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `PUT /api/v1/console/rollout/opt-in` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `PUT /api/v1/console/rollout/org-flag` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
+| `POST /api/v1/console/kill-switch` | exposed | expose | `/settings?section=rollout` · `RolloutPanel` activates or clears emergency Classic fallback with audit note. |
+| `GET /api/v1/console/rollout` | exposed | expose | `/settings?section=rollout` · `RolloutPanel` reads tenant rollout flag, personal opt-in, and emergency fallback state. |
+| `PUT /api/v1/console/rollout/opt-in` | exposed | expose | `/settings?section=rollout` · `RolloutPanel` updates personal Console rollout opt-in. |
+| `PUT /api/v1/console/rollout/org-flag` | exposed | expose | `/settings?section=rollout` · `RolloutPanel` updates tenant Console rollout flag with audit note. |
 | `POST /api/v1/console/telemetry/route` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `GET /api/v1/group-admin/groups` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `POST /api/v1/group-admin/tenant-context` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |

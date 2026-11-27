@@ -6,12 +6,18 @@
 //! `with_audits`), so RLS scopes it to the caller's tenant.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
+pub mod attestations;
+mod impact;
 mod read;
 mod reason_codes;
 mod reason_stats;
 mod reason_tx;
 mod tx;
 
+pub use attestations::{
+    NewOvertimeAttestation, OvertimeRuleAttestation, list_attestations, record_attestation,
+    resolve_overtime_recognition_on_date_in_tx,
+};
 pub use read::{
     EffectiveSetting, EffectiveSettings, LegalBasis, OverrideRecord, ResolvedSettings,
     ScheduledValue, approval_routes_in_tx, deadline_due_soon_days_in_tx, load_rows_in_tx,

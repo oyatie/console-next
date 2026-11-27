@@ -23,6 +23,12 @@ pub enum SettingError {
     },
     /// A tenant fact with no default has not been declared yet.
     FactUndeclared(SettingKey),
+    /// The target scope is finer than the key's allowed override ceiling.
+    ScopeNotAllowed(SettingKey),
+    /// The value is allowed only on scoped overrides, not at the tenant root.
+    TenantRootDisallowed(SettingKey),
+    /// An individual person override cannot be less favorable to the worker than the inherited rule.
+    PersonOverrideDisfavorable(SettingKey),
 }
 
 impl SettingError {
@@ -35,6 +41,9 @@ impl SettingError {
             Self::Backdated(_) => "setting_backdated",
             Self::LooseningTooSoon { .. } => "setting_loosening_too_soon",
             Self::FactUndeclared(_) => "setting_fact_undeclared",
+            Self::ScopeNotAllowed(_) => "setting_scope_not_allowed",
+            Self::TenantRootDisallowed(_) => "setting_tenant_root_disallowed",
+            Self::PersonOverrideDisfavorable(_) => "setting_person_disfavorable",
         }
     }
 
@@ -43,7 +52,11 @@ impl SettingError {
         match self {
             Self::Backdated(_) | Self::LooseningTooSoon { .. } => "effective_from",
             Self::NotEditable(_) | Self::FactUndeclared(_) => "key",
-            Self::InvalidValue(_) | Self::OutOfRange(_) => "value",
+            Self::ScopeNotAllowed(_) => "scope_entity_id",
+            Self::InvalidValue(_)
+            | Self::OutOfRange(_)
+            | Self::TenantRootDisallowed(_)
+            | Self::PersonOverrideDisfavorable(_) => "value",
         }
     }
 }
@@ -69,6 +82,25 @@ impl std::fmt::Display for SettingError {
                 key.as_str()
             ),
             Self::FactUndeclared(k) => write!(f, "setting {} has not been declared", k.as_str()),
+            Self::ScopeNotAllowed(k) => {
+                write!(
+                    f,
+                    "setting {} cannot be overridden at this scope",
+                    k.as_str()
+                )
+            }
+            Self::TenantRootDisallowed(k) => {
+                write!(
+                    f,
+                    "this value is not allowed at the tenant root for setting {}",
+                    k.as_str()
+                )
+            }
+            Self::PersonOverrideDisfavorable(k) => write!(
+                f,
+                "an individual override for setting {} cannot be less favorable to the worker",
+                k.as_str()
+            ),
         }
     }
 }

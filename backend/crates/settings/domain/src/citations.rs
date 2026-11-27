@@ -89,3 +89,10 @@ pub const LABOR_STANDARDS_ACT_50_53: OfficialSource = source(
     "근로기준법 제50조, 제53조 (기록 확인 기준은 법정 근로시간 한도가 아님)",
     "https://www.law.go.kr/법령/근로기준법",
 );
+
+/// Fixed-term employment statutory ceiling of two years (24 months).
+pub const FIXED_TERM_ACT_4: OfficialSource = source(
+    NATIONAL_ASSEMBLY,
+    "Fixed-Term and Part-Time Employees Protection Act Article 4(1)",
+    "https://www.law.go.kr/%EB%B2%95%EB%A0%B9/%EA%B8%B0%EA%B0%84%EC%A0%9C%EB%B0%8F%EB%8B%A8%EC%8B%9C%EA%B0%84%EA%B7%BC%EB%A1%9C%EC%9E%90%EB%B3%B4%ED%98%B8%EB%93%B1%EC%97%90%EA%B4%80%ED%95%9C%EB%B2%95%EB%A5%A0",
+);

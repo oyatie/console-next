@@ -385,11 +385,6 @@
    "reason": "Ops realm capability awaits the ops-cockpit owner lanes; units/maturity/plan.md §3.",
    "when": "excluded"
   },
-  "GET /api/v1/console/rollout": {
-   "lane": "MAT-PARITY",
-   "reason": "Ops realm capability awaits the ops-cockpit owner lanes; units/maturity/plan.md §3.",
-   "when": "excluded"
-  },
   "GET /api/v1/employee-records/{section}": {
    "lane": "P1b",
    "reason": "P1b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
@@ -675,11 +670,6 @@
    "reason": "K3 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
-  "POST /api/v1/console/kill-switch": {
-   "lane": "MAT-PARITY",
-   "reason": "Ops realm capability awaits the ops-cockpit owner lanes; units/maturity/plan.md §3.",
-   "when": "excluded"
-  },
   "POST /api/v1/console/telemetry/route": {
    "lane": "MAT-PARITY",
    "reason": "Ops realm capability awaits the ops-cockpit owner lanes; units/maturity/plan.md §3.",
@@ -909,16 +899,6 @@
    "lane": "leave",
    "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
    "when": "mvp"
-  },
-  "PUT /api/v1/console/rollout/opt-in": {
-   "lane": "MAT-PARITY",
-   "reason": "Ops realm capability awaits the ops-cockpit owner lanes; units/maturity/plan.md §3.",
-   "when": "excluded"
-  },
-  "PUT /api/v1/console/rollout/org-flag": {
-   "lane": "MAT-PARITY",
-   "reason": "Ops realm capability awaits the ops-cockpit owner lanes; units/maturity/plan.md §3.",
-   "when": "excluded"
   },
   "PUT /api/v1/me/notification-policies": {
    "lane": "MAT-PARITY",

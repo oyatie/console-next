@@ -6,6 +6,7 @@ import { Chip } from "../../../ui/chip";
 import { KeyValue } from "../../../ui/key-value/key-value";
 import { RegisterBlockerItem, RegisterBlockerRow, RegisterSheetStack } from "../../../ui/patterns/register-totals-parts";
 import { Sheet } from "../../../ui/sheet/sheet";
+import { RunAttendanceBlocker } from "./run-attendance-blocker";
 import { RunOpenExceptionsBlocker } from "./run-open-exceptions-blocker";
 import {
   buildRunCsvMatrix,
@@ -40,16 +41,7 @@ export function RunPrecheckBlockers({
 }) {
   return (
     <RegisterBlockerRow title={t("payroll.run.precheckTitle")}>
-      {attendanceOpenWarning && (
-        <RegisterBlockerItem
-          badge={
-            <Chip tone={runStatus === "BLOCKED_LEGAL_GATE" ? "danger" : "warn"}>
-              {t("payroll.run.attendanceNotClosedChip")}
-            </Chip>
-          }
-          note={t("payroll.run.attendanceNotClosedNote")}
-        />
-      )}
+      {attendanceOpenWarning && <RunAttendanceBlocker runStatus={runStatus} />}
       {attentionCount > 0 && (
         <RegisterBlockerItem
           badge={<Chip tone="danger">{hasBankIssues ? t("payroll.run.missingBankChip", { count: attentionCount }) : t("payroll.run.attentionChip", { count: attentionCount })}</Chip>}

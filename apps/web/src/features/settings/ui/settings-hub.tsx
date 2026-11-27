@@ -35,6 +35,8 @@ const PolicyCategoryPanel = lazy(() => chunk(import("./policy-sections")).then(m
 const WorkplaceScopePanel = lazy(() => chunk(import("./policy-sections")).then(m => ({ default: m.WorkplaceScopePanel })));
 const ReasonCodesPanel = lazy(() => chunk(import("./policy-reasons-panel")).then(m => ({ default: m.ReasonCodesPanel })));
 const PolicySavedReceipt = lazy(() => chunk(import("./policy-reasons-panel")).then(m => ({ default: m.PolicySavedReceipt })));
+const RolloutPanel = lazy(() => chunk(import("./rollout-panel")).then(m => ({ default: m.RolloutPanel })));
+const SettingsSummaryStrip = lazy(() => chunk(import("./settings-summary-strip")).then(m => ({ default: m.SettingsSummaryStrip })));
 
 export function SettingsHub() {
   const access = useQuery(myAccessQuery);
@@ -130,6 +132,13 @@ export function SettingsHubView({
         </Suspense>
       );
     }
+    if (section === "rollout") {
+      return (
+        <Suspense fallback={null}>
+          <RolloutPanel />
+        </Suspense>
+      );
+    }
     return (
       <QueryState q={settings} inline own={() => t("settingsHub.unknown")}>
         {(data) => (
@@ -161,6 +170,13 @@ export function SettingsHubView({
     <SettingsPattern
       q={{ isPending: false, error: null, data: rows, refetch: () => {} }}
       head={{ title: t("shell.link.settings") }}
+      summary={
+        interactive && isCategorySection && settings.data ? (
+          <Suspense fallback={null}>
+            <SettingsSummaryStrip entries={settings.data.items} />
+          </Suspense>
+        ) : undefined
+      }
       views={
         interactive && onSelectSection ? (
           <nav className={s.viewsNav} aria-label={t("shell.link.settings")}>
@@ -208,6 +224,7 @@ export function SettingsHubView({
                 <Suspense fallback={null}>
                   <PolicyInspector
                     entry={latestInspectedEntry}
+                    scopeEntityId={activeInspect?.scopeEntityId ?? null}
                     canChange={Boolean(settings.data?.can_change ?? true)}
                     onEdit={() =>
                       setEditing({

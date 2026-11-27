@@ -37,13 +37,17 @@
       "src/features/entity/ui/entity-record.tsx",
       "src/features/me/ui/me-attendance-page.tsx",
       "src/features/me/ui/me-desk-page.tsx",
+      "src/features/company-domain/ui/company-domain-console.tsx",
       "src/features/entity/ui/entity-wizard.tsx",
       "src/features/people/ui/register-export.tsx",
       "src/features/people/ui/roster-console-panel.tsx",
+      "src/features/settings/ui/overtime-attestation-panel.tsx",
       "src/features/settings/ui/policy-edit-sheet.tsx",
       "src/features/settings/ui/policy-inspector.tsx",
       "src/features/settings/ui/policy-reasons-panel.tsx",
       "src/features/settings/ui/policy-sections.tsx",
+      "src/features/settings/ui/rollout-panel.tsx",
+      "src/features/settings/ui/settings-summary-strip.tsx",
       "src/ui/qr-code/qr-code.tsx"
     ],
     "routes": [

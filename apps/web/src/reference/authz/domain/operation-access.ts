@@ -73,6 +73,10 @@ export const operationAccess = {
   "POST /api/v1/payroll/runs/{id}/withdraw": {"domain":"pay","level":"edit","tenant":true,"scopes":["TENANT"]},
   "GET /api/v1/period-locks": {"domain":"exceptions","level":"edit","tenant":true,"scopes":["TENANT"]},
   "GET /api/v1/roster-fields": {"domain":"hr_basic","level":"view"},
+  "GET /api/v1/settings/overtime-attestations": {"domain":"settings","level":"view"},
+  "POST /api/v1/settings/overtime-attestations": {"domain":"settings","level":"edit"},
   "GET /api/v1/statutory/workplaces": {"domain":"hr_basic","level":"edit"},
+  "DELETE /api/v1/tenant/company-domain/request": {"domain":"tenant","level":"edit","tenant":true,"scopes":[]},
   "GET /api/v1/tenant/company-domain/request": {"domain":"tenant","level":"edit","tenant":true,"scopes":[]},
+  "POST /api/v1/tenant/company-domain/request": {"domain":"tenant","level":"edit","tenant":true,"scopes":[]},
 } as const satisfies Record<string, Requirement>;

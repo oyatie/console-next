@@ -113,6 +113,11 @@ impl PlatformError {
             ProvisioningError::DomainRequestForbidden => {
                 Self::forbidden("only the tenant ops account may request a company-domain change")
             }
+            ProvisioningError::DomainRequestConflict => Self::new(
+                StatusCode::CONFLICT,
+                "domain_request_conflict",
+                "the pending sign-in domain request was changed by another ops holder",
+            ),
             ProvisioningError::SlugTaken => Self::new(
                 StatusCode::CONFLICT,
                 "slug_taken",

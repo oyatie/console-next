@@ -1221,6 +1221,12 @@ const PATHS: &[PathItem] = &[
                     "../openapi/paths/api__v1__tenant__company-domain__request.post.yaml"
                 ),
             },
+            Operation {
+                method: "delete",
+                body: include_str!(
+                    "../openapi/paths/api__v1__tenant__company-domain__request.delete.yaml"
+                ),
+            },
         ],
     },
     PathItem {

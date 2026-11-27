@@ -56,6 +56,9 @@ pub enum ProvisioningError {
     #[error("only the tenant ops account may request a company-domain change")]
     DomainRequestForbidden,
 
+    #[error("pending company-domain request changed concurrently")]
+    DomainRequestConflict,
+
     /// Another tenant already uses the slug (UNIQUE `organizations.slug`).
     #[error("tenant slug is taken")]
     SlugTaken,

@@ -16,6 +16,7 @@ impl PgOnboardingStore {
             "org" => "ORG_STEP_SKIPPED",
             "employees" => "EMPLOYEES_STEP_DEFERRED",
             "roles" => "ROLES_STEP_SKIPPED",
+            "overtime" => "OVERTIME_STEP_SKIPPED",
             _ => {
                 return self
                     .audit_refusal(

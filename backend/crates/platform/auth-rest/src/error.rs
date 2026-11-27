@@ -217,6 +217,7 @@ impl RestError {
             | ProvisioningError::InvalidRoster(_)
             | ProvisioningError::SlugInvalid(_)
             | ProvisioningError::DomainRequestForbidden
+            | ProvisioningError::DomainRequestConflict
             | ProvisioningError::UnknownBranch { .. } => Self::internal(error.to_string()),
         }
     }

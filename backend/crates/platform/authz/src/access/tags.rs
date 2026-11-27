@@ -40,6 +40,7 @@ pub const fn tag(feature: Feature) -> Option<(Domain, Level)> {
         F::AttendanceExceptionManage | F::AttendanceSubstitutionManage => {
             Some((D::Attendance, L::Edit))
         }
+        F::AttendanceOvertimeDecide => Some((D::Attendance, L::Approve)),
         F::PayrollRunRead => Some((D::Pay, L::View)),
         F::PayrollRunManage => Some((D::Pay, L::Edit)),
         F::EvaluationRead => Some((D::Evaluation, L::View)),

@@ -4,7 +4,9 @@
 //! coded refusal and knows whether the change is a loosening (step-up, notice
 //! to every EXECUTIVE and SUPER_ADMIN and the security contact, case-A act).
 
-use crate::{Governance, LooserWhen, SettingError, SettingKey, SettingValue};
+use crate::{
+    Governance, LooserWhen, ScopeCeiling, SettingError, SettingKey, SettingValue, WorkerFavorable,
+};
 use console_kernel_core::Timestamp;
 use serde_json::Value;
 use time::Duration;
@@ -82,16 +84,64 @@ pub fn check_change(
     in_force: Option<SettingValue>,
     onboarding: bool,
 ) -> Result<AcceptedChange, SettingError> {
+    check_scoped_change(
+        key,
+        raw,
+        effective_from,
+        now,
+        in_force,
+        onboarding,
+        ScopeCeiling::Tenant,
+    )
+}
+
+/// Validates a proposed override row at a specific target `scope_layer`
+/// (`ScopeCeiling::Tenant` when `scope_entity_id` is `None`).
+///
+/// # Errors
+/// The first rule the change breaks, as a coded [`SettingError`].
+pub fn check_scoped_change(
+    key: SettingKey,
+    raw: &Value,
+    effective_from: Timestamp,
+    now: Timestamp,
+    in_force: Option<SettingValue>,
+    onboarding: bool,
+    scope_layer: ScopeCeiling,
+) -> Result<AcceptedChange, SettingError> {
     let def = key.def();
     if def.governance != Governance::Tenant {
         return Err(SettingError::NotEditable(key));
+    }
+    if scope_layer > def.scope_ceiling {
+        return Err(SettingError::ScopeNotAllowed(key));
     }
     let value = def.parse(raw).ok_or(SettingError::InvalidValue(key))?;
     if !def.in_range(value) {
         return Err(SettingError::OutOfRange(key));
     }
+    if key == SettingKey::AttendanceOvertimeRecognition
+        && scope_layer == ScopeCeiling::Tenant
+        && value == SettingValue::Code("recorded")
+    {
+        return Err(SettingError::TenantRootDisallowed(key));
+    }
     if effective_from < now {
         return Err(SettingError::Backdated(key));
+    }
+    if scope_layer == ScopeCeiling::Person
+        && def.worker_favorable != WorkerFavorable::Neutral
+        && let Some(current) = in_force
+        && let (Some(from), Some(to)) = (def.ordinal(current), def.ordinal(value))
+    {
+        let disfavorable = match def.worker_favorable {
+            WorkerFavorable::Higher => to < from,
+            WorkerFavorable::Lower => to > from,
+            WorkerFavorable::Neutral => false,
+        };
+        if disfavorable {
+            return Err(SettingError::PersonOverrideDisfavorable(key));
+        }
     }
     let direction = direction(key, in_force, value);
     let earliest = now + LOOSENING_DELAY;

@@ -87,6 +87,8 @@ const SCALARS: &str = concat!(
        EXISTS (SELECT 1 FROM tenant_phase_events WHERE kind = 'EMPLOYEES_STEP_DEFERRED') AS employees_deferred, \
        (SELECT count(*) FROM access_roles WHERE status <> 'RETIRED') AS tenant_roles, \
        EXISTS (SELECT 1 FROM tenant_phase_events WHERE kind = 'ROLES_STEP_SKIPPED') AS roles_skipped, \
+       EXISTS (SELECT 1 FROM overtime_rule_attestations) AS overtime_attested, \
+       EXISTS (SELECT 1 FROM tenant_phase_events WHERE kind = 'OVERTIME_STEP_SKIPPED') AS overtime_skipped, \
        (SELECT count(*) FROM employment_assignments WHERE superseded_at IS NULL AND cause = 'MIGRATION_UNMAPPED') AS unmapped, \
        (SELECT count(*) FROM org_change_requests WHERE status = 'IN_APPROVAL') AS in_approval, \
        (SELECT count(*) FROM audit_events WHERE org_id = NULLIF(current_setting('app.current_org', true), '')::uuid \
@@ -155,6 +157,7 @@ pub(crate) async fn permission_facts(
         )
         .await?,
         security_contact_store_available: SECURITY_CONTACT_STORE_AVAILABLE,
+        overtime_rule_store_available: true,
         ..SetupFacts::default()
     })
 }
@@ -244,6 +247,9 @@ async fn load(
         entity_unknown_people: people[3],
         tenant_roles: r.try_get("tenant_roles")?,
         roles_step_skipped: r.try_get("roles_skipped")?,
+        overtime_rule_store_available: permissions.overtime_rule_store_available,
+        overtime_rule_attested: r.try_get("overtime_attested")?,
+        overtime_step_skipped: r.try_get("overtime_skipped")?,
         unmapped_assignments: r.try_get("unmapped")?,
         insurance_not_established_with_people: count(
             &listed,

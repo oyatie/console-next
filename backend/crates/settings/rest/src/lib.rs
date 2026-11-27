@@ -20,9 +20,11 @@ pub mod authz;
 pub use authz::authorize_change;
 pub use console_settings_application::SettingChangePlan;
 
+pub mod attestations;
 mod error;
 pub mod reason_codes;
 
+pub use attestations::OVERTIME_ATTESTATIONS_PATH;
 pub use reason_codes::REASON_CODES_ROUTE_PATHS;
 
 use axum::extract::{Extension, Path, Query, State};
@@ -47,7 +49,12 @@ pub const SETTINGS_PATH: &str = "/api/v1/settings";
 pub const SETTING_PATH: &str = "/api/v1/settings/{key}";
 pub const SETTING_HISTORY_PATH: &str = "/api/v1/settings/{key}/history";
 
-pub const SETTINGS_ROUTE_PATHS: &[&str] = &[SETTINGS_PATH, SETTING_PATH, SETTING_HISTORY_PATH];
+pub const SETTINGS_ROUTE_PATHS: &[&str] = &[
+    SETTINGS_PATH,
+    SETTING_PATH,
+    SETTING_HISTORY_PATH,
+    OVERTIME_ATTESTATIONS_PATH,
+];
 
 #[derive(Clone)]
 pub struct SettingsRestState {
@@ -71,6 +78,7 @@ pub fn router(state: SettingsRestState) -> Router {
     let router = Router::new()
         .route(SETTINGS_PATH, get(list))
         .route(SETTING_HISTORY_PATH, get(history))
+        .merge(attestations::routes())
         .merge(reason_codes::routes())
         .with_state(state.clone());
     let changes = Router::new()
@@ -108,18 +116,31 @@ async fn list(
     let facts = Authorization::default()
         .load(state.store.pool(), &principal)
         .await?;
-    let kinds = if query.entity.is_some() {
-        &[NodeKind::LegalEntity, NodeKind::Workplace][..]
+    let candidate_nodes: Vec<NodeRef> = if query.entity.is_some() {
+        let mut out = Vec::new();
+        for &id in &listed.resource_entities {
+            for kind in [
+                NodeKind::LegalEntity,
+                NodeKind::Workplace,
+                NodeKind::Department,
+            ] {
+                out.push(NodeRef { kind, id });
+            }
+        }
+        out.push(NodeRef {
+            kind: NodeKind::Tenant,
+            id: *principal.org_id.as_uuid(),
+        });
+        out
     } else {
-        &[NodeKind::Tenant][..]
+        vec![NodeRef {
+            kind: NodeKind::Tenant,
+            id: *principal.org_id.as_uuid(),
+        }]
     };
     let mut can_read = false;
     let mut can_read_runtime = false;
-    for &kind in kinds {
-        let node = NodeRef {
-            kind,
-            id: query.entity.unwrap_or(*principal.org_id.as_uuid()),
-        };
+    for node in candidate_nodes {
         can_read |= facts
             .authorize("settings::view", node)
             .map_err(|error| KernelError::internal(error.to_string()))?;
