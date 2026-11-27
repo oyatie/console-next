@@ -595,24 +595,37 @@ export async function mountOpsMock(
       return json(201, { evaluated_at: TS, action: makeHandOff("rollback", `APPROVER=oncall scripts/tb rollback ${body.digest}`, body.digest) });
     }
 
-    if (path === "/api/ops/v1/promote") return json(200, data.oc1.promote);
+    const recomputePromoteState = (): S["Promotion"] => {
+      const frozen = data.oc1.changes.freeze.value === true;
+      const openBlocker = data.oc1.promote.feedback.some(
+        (f) => (f.severity === "P0" || f.severity === "P1") && f.disposition === "open",
+      );
+      const blockedSignoff = data.oc1.promote.signoffs.some((s) => s.verdict !== "ready");
+      return frozen || openBlocker || blockedSignoff ? "Blocked" : "Ready";
+    };
+
+    if (path === "/api/ops/v1/promote") {
+      data.oc1.promote.state = { state: "Verified", value: recomputePromoteState(), unit: null, source: "promote", observed_at: TS, age_s: 5, reason: null };
+      return json(200, data.oc1.promote);
+    }
     if (path === "/api/ops/v1/promote/feedback" && method === "POST") {
       const body = req.postDataJSON() as S["FeedbackRequest"];
       const entry: S["FeedbackTriage"] = { seq: 2, hash: "fb-h2", support_ref: "sup-fb-2", at: TS, operator: "oncall@cosskorea.invalid", ...body };
       data.oc1.promote.feedback = [entry];
-      data.oc1.promote.state = { state: "Verified", value: "Watching", unit: null, source: "promote", observed_at: TS, age_s: 5, reason: null };
+      data.oc1.promote.state = { state: "Verified", value: recomputePromoteState(), unit: null, source: "promote", observed_at: TS, age_s: 5, reason: null };
       return json(201, { evaluated_at: TS, feedback: entry });
     }
     if (path === "/api/ops/v1/promote/signoff" && method === "POST") {
       const body = req.postDataJSON() as S["SignoffRequest"];
       const entry: S["PromotionSignoff"] = { seq: 1, hash: "sig-h1", support_ref: "sup-sig-1", at: TS, operator: "oncall@cosskorea.invalid", ...body };
       data.oc1.promote.signoffs.push(entry);
-      if (body.verdict === "ready") {
-        data.oc1.promote.state = { state: "Verified", value: "Ready", unit: null, source: "promote", observed_at: TS, age_s: 5, reason: null };
-      }
+      data.oc1.promote.state = { state: "Verified", value: recomputePromoteState(), unit: null, source: "promote", observed_at: TS, age_s: 5, reason: null };
       return json(201, { evaluated_at: TS, signoff: entry });
     }
     if (path === "/api/ops/v1/promote/request" && method === "POST") {
+      if (data.oc1.changes.freeze.value === true) {
+        return json(400, { evaluated_at: TS, support_ref: "sup-promo-frz", code: "bad_request", message: "deploy freeze is active" });
+      }
       const body = req.postDataJSON() as S["PromoteRequest"];
       return json(201, { evaluated_at: TS, action: makeHandOff("promote", `APPROVER=oncall BAKE=${body.bake} scripts/tb release ${body.digest}`, body.digest) });
     }
@@ -710,15 +723,34 @@ export async function mountOpsMock(
       const item = data.oc1.obligations.find((o) => o.id === id);
       if (!item) return json(404, { evaluated_at: TS, support_ref: "sup-obl-404", code: "OPS_OBLIGATION_NOT_FOUND", message: "obligation not found" });
       const body = req.postDataJSON() as { event: "in_review" | "redated" | "done" | "waived"; fields: Record<string, string> };
+      const isStructuredRef = (raw: string | undefined) =>
+        Boolean(raw && !/\s/.test(raw) && !raw.includes("..") && (/^https:\/\/[^/]+\/.+/.test(raw) || /^docs\/.+/.test(raw) || /^ops\/.+/.test(raw)));
+      if (item.kind === "launch-gate" && (body.event === "done" || body.event === "waived")) {
+        const signer = (body.fields.signer ?? "").trim();
+        const coSigner = (body.fields.co_signer ?? "").trim();
+        const counselUrl = (body.fields.counsel_url ?? "").trim();
+        const evidenceRef = (body.fields.evidence_ref ?? "").trim();
+        if (!signer || !coSigner || (body.event === "waived" && !counselUrl)) {
+          return json(422, { evaluated_at: TS, support_ref: "sup-obl-422", code: "OPS_OBLIGATION_INCOMPLETE", message: "Launch gate requires two distinct signers and counsel URL." });
+        }
+        const refToCheck = counselUrl || evidenceRef;
+        if (signer.toLowerCase() === coSigner.toLowerCase() || !isStructuredRef(refToCheck)) {
+          return json(400, { evaluated_at: TS, support_ref: "sup-obl-400", code: "OPS_OBLIGATION_INVALID", message: "Distinct signers and structured counsel URL required." });
+        }
+      }
       if (body.event === "in_review") item.state = "in-review";
       else if (body.event === "done") {
         item.state = "done";
         item.evidence_ref = body.fields.evidence_ref ?? null;
         item.signer = body.fields.signer ?? null;
+        item.co_signer = body.fields.co_signer ?? null;
+        item.counsel_url = body.fields.counsel_url ?? null;
         item.signed_on = body.fields.signed_on ?? null;
       } else if (body.event === "waived") {
         item.state = "waived";
         item.signer = body.fields.signer ?? null;
+        item.co_signer = body.fields.co_signer ?? null;
+        item.counsel_url = body.fields.counsel_url ?? null;
       } else if (body.event === "redated") {
         item.due = body.fields.due ?? item.due;
       }

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Page } from "@playwright/test";
+import { OPS_COPY_KO } from "@console/i18n/ops-ko";
 import { atPhoneWidth, expectAxe, fits } from "../a11y";
 import { withFullPage } from "../shots";
 import { forgetResize } from "../stability";
@@ -55,13 +56,18 @@ test.describe("Stage-1 OC1 Ops Cockpit", () => {
     await expect(page.getByText("Event history (1)")).toBeVisible();
     await shotOps(page, "obligation-detail");
 
-    // Transition open -> in-review -> done
+    // Transition open -> in-review -> done (launch-gate enforces 2-operator signoff + structured counsel URL)
     await page.getByRole("button", { name: "Start review" }).click();
     await expect(page.getByText("Event history (2)")).toBeVisible();
 
     await page.getByLabel("Lifecycle transitions").selectOption("done");
-    await page.getByLabel("Evidence reference").fill("drill-2026-11-21");
-    await page.getByLabel("Signer").fill("ops-lead");
+    await page.getByLabel("Evidence reference").fill("docs/ops/pitr-drill-2026-11-21.md");
+    await page.getByLabel("Signer", { exact: true }).fill("ops-lead");
+    await page.getByRole("button", { name: "Mark done" }).click();
+    await expect(page.getByText("Required obligation transition fields missing")).toBeVisible();
+
+    await page.getByLabel("Co-signer (second operator)").fill("security-lead");
+    await page.getByLabel("Counsel / evidence URL (https://... or docs/...)").fill("https://counsel.cosskorea.invalid/opinions/lg-0001");
     await page.getByRole("button", { name: "Mark done" }).click();
     await expect(page.getByText("Obligation is finalized and cannot be modified")).toBeVisible();
 
@@ -225,20 +231,28 @@ test.describe("Stage-1 OC1 Ops Cockpit", () => {
     await shotOps(page, "changes");
 
     await page.goto("/promote");
-    await expect(page.getByText("Blocked by open P0/P1 feedback or missing release gates")).toBeVisible();
+    await expect(page.getByText("Check deploy freeze, release gates, blocked signoffs and open P0/P1 feedback")).toBeVisible();
     await expect(page.getByRole("button", { name: "Request promotion" })).toBeDisabled();
 
-    // Triage P1 feedback -> Watching -> Signoff ready -> Ready -> Promote
+    // Unfreeze deploys -> triage P1 feedback -> immediately Ready with 0 signoffs -> Signoff & Request promotion
+    await page.goto("/changes");
+    await page.getByLabel("Change reason (required)").fill("Investigation cleared; lifting freeze");
+    await page.getByRole("button", { name: "Unfreeze deploys" }).click();
+    await expect(page.getByText("ACT-0003 · unfreeze")).toBeVisible();
+
+    await page.goto("/promote");
+    await expect(page.getByRole("button", { name: "Request promotion" })).toBeDisabled();
     await page.getByLabel("Feedback ID").fill("FB-101");
     await page.locator('form:has-text("Save triage")').getByLabel("Note").fill("Verified resolved");
     await page.getByRole("button", { name: "Save triage" }).click();
-    await expect(page.getByText("Awaiting a ready staging signoff for this candidate digest")).toBeVisible();
+    await expect(page.getByText("All 5 gates passed · deploy freeze clear · 0 open P0/P1 blockers")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Request promotion" })).toBeEnabled();
 
     await page.locator('form:has-text("Record signoff")').getByLabel("Note").fill("Staging smoke green");
     await page.getByRole("button", { name: "Record signoff" }).click();
     await expect(page.getByRole("button", { name: "Request promotion" })).toBeEnabled();
     await page.getByRole("button", { name: "Request promotion" }).click();
-    await expect(page.getByText("ACT-0003 · promote")).toBeVisible();
+    await expect(page.getByText("ACT-0004 · promote")).toBeVisible();
     await shotOps(page, "promote");
 
     await page.goto("/actions");
@@ -326,5 +340,34 @@ test.describe("Stage-1 OC1 Ops Cockpit", () => {
     await expect(page.getByText("Permission missing")).toBeVisible();
     expect(await page.locator("body").innerText()).not.toMatch(/\b[A-Z]{2,}_[A-Z0-9_]+\b/);
     expect(minMock.unexpected).toEqual([]);
+  });
+
+  test("Wave 7 Korean locale + KST timestamps and active shift-bound grant display work cleanly", async ({ page }) => {
+    const mock = await mountOpsMock(page, "paging");
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/oncall");
+
+    await expect(page.getByText("Active shift & shift-bound grants")).toBeVisible();
+    await expect(page.getByText("alert.ack")).toBeVisible();
+    await expect(page.getByText("alert.silence")).toBeVisible();
+    await expect(page.getByText("incident.write")).toBeVisible();
+
+    // Toggle KO locale -> Korean surface copy + KST timestamps
+    await page.getByRole("button", { name: "Switch language to Korean" }).click();
+    await expect(page.locator("html")).toHaveAttribute("lang", "ko");
+    await expect(page.getByText(OPS_COPY_KO.oncall.activeShiftTitle)).toBeVisible();
+    await expect(page.locator("footer")).toContainText("KST");
+
+    await page.goto("/");
+    await expect(page.getByRole("heading", { name: OPS_COPY_KO.now.title, exact: true })).toBeVisible();
+    await expect(page.getByText(OPS_COPY_KO.now.worklistTitle)).toBeVisible();
+    await expectAxe(page, "ops-now-ko-1440");
+
+    // Toggle back to EN -> zero Hangul
+    await page.getByRole("button", { name: OPS_COPY_KO.locale.labelToEn }).click();
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await expect(page.getByRole("heading", { name: "Now", exact: true })).toBeVisible();
+    expect(await page.locator("body").innerText()).not.toMatch(/\p{Script=Hangul}/u);
+    expect(mock.unexpected).toEqual([]);
   });
 });

@@ -30,31 +30,37 @@ import { StatRow } from "../ui/stat-row";
 import { ObligationCloseButton, ObligationDetailPane } from "./obligation-detail-pane";
 import s from "./obligations-screen.module.css";
 
-const KIND_OPTIONS = [
-  { value: "", label: COPY.obligations.allKinds },
-  { value: "launch-gate", label: "Launch gate" },
-  { value: "professional-review", label: "Professional review" },
-  { value: "credential-rotation", label: "Credential rotation" },
-  { value: "escrow", label: "Escrow" },
-  { value: "drill", label: "Drill" },
-  { value: "owner-decision", label: "Owner decision" },
-  { value: "regulatory-watch", label: "Regulatory watch" },
-] as const;
+function getKindOptions() {
+  return [
+    { value: "", label: COPY.obligations.allKinds },
+    { value: "launch-gate", label: formatObligationKind("launch-gate") },
+    { value: "professional-review", label: formatObligationKind("professional-review") },
+    { value: "credential-rotation", label: formatObligationKind("credential-rotation") },
+    { value: "escrow", label: formatObligationKind("escrow") },
+    { value: "drill", label: formatObligationKind("drill") },
+    { value: "owner-decision", label: formatObligationKind("owner-decision") },
+    { value: "regulatory-watch", label: formatObligationKind("regulatory-watch") },
+  ] as const;
+}
 
-const STATE_OPTIONS = [
-  { value: "", label: COPY.obligations.allStates },
-  { value: "open", label: "Open" },
-  { value: "in-review", label: "In review" },
-  { value: "done", label: "Done" },
-  { value: "waived", label: "Waived" },
-] as const;
+function getStateOptions() {
+  return [
+    { value: "", label: COPY.obligations.allStates },
+    { value: "open", label: formatObligationState("open") },
+    { value: "in-review", label: formatObligationState("in-review") },
+    { value: "done", label: formatObligationState("done") },
+    { value: "waived", label: formatObligationState("waived") },
+  ] as const;
+}
 
-const ROLE_OPTIONS = [
-  { value: "owner", label: "Owner" },
-  { value: "labor-attorney", label: "Labor attorney" },
-  { value: "lawyer", label: "Lawyer" },
-  { value: "tax-accountant", label: "Tax accountant" },
-] as const;
+function getRoleOptions() {
+  return [
+    { value: "owner", label: formatObligationRole("owner") },
+    { value: "labor-attorney", label: formatObligationRole("labor-attorney") },
+    { value: "lawyer", label: formatObligationRole("lawyer") },
+    { value: "tax-accountant", label: formatObligationRole("tax-accountant") },
+  ] as const;
+}
 
 function verdictTone(w: OpsHealth): BadgeTone {
   if (w === "Healthy") return "ok";
@@ -204,8 +210,8 @@ export function ObligationsScreen({
       {createOpen ? (
         <form className={s.createPanel} onSubmit={submitNew}>
           <div className={s.formGrid}>
-            <SelectField label={COPY.obligations.fields.kind} value={newKind} options={KIND_OPTIONS.slice(1)} onChange={(v) => setNewKind(v as OpsObligationKind)} />
-            <SelectField label={COPY.obligations.fields.reviewerRole} value={newRole} options={ROLE_OPTIONS} onChange={(v) => setNewRole(v as OpsObligationReviewerRole)} />
+            <SelectField label={COPY.obligations.fields.kind} value={newKind} options={getKindOptions().slice(1)} onChange={(v) => setNewKind(v as OpsObligationKind)} />
+            <SelectField label={COPY.obligations.fields.reviewerRole} value={newRole} options={getRoleOptions()} onChange={(v) => setNewRole(v as OpsObligationReviewerRole)} />
           </div>
           <label className={s.fieldLabel}>
             <span>{COPY.obligations.fields.title}</span>
@@ -244,8 +250,8 @@ export function ObligationsScreen({
         ]}
       />
       <div className={s.filterBar}>
-        <SelectField label={COPY.obligations.filterKind} value={filters.kind ?? ""} options={KIND_OPTIONS} onChange={(v) => onFiltersChange({ ...filters, kind: (v || undefined) as OpsObligationKind | undefined })} />
-        <SelectField label={COPY.obligations.filterState} value={filters.state ?? ""} options={STATE_OPTIONS} onChange={(v) => onFiltersChange({ ...filters, state: (v || undefined) as OpsObligationState | undefined })} />
+        <SelectField label={COPY.obligations.filterKind} value={filters.kind ?? ""} options={getKindOptions()} onChange={(v) => onFiltersChange({ ...filters, kind: (v || undefined) as OpsObligationKind | undefined })} />
+        <SelectField label={COPY.obligations.filterState} value={filters.state ?? ""} options={getStateOptions()} onChange={(v) => onFiltersChange({ ...filters, state: (v || undefined) as OpsObligationState | undefined })} />
         {filters.kind || filters.state ? (
           <button type="button" className="btn btn--sm" onClick={() => onFiltersChange({})}>{COPY.obligations.clearFilters}</button>
         ) : null}

@@ -7,6 +7,7 @@ import { fetchOpsAlerts, opsQueryKeys, readObservedValue, type OpsMe } from "../
 import { hasAnyWriteAction, hasOpsAction } from "../lib/auth";
 import { fmtJoin, formatCount } from "../lib/format";
 import type { LiveStatusSnapshot, OpsLiveController } from "../lib/live-sse";
+import { syncOpsDocumentLang, useOpsLocale } from "../lib/locale";
 import { useIsPhone } from "../lib/use-is-phone";
 import { filterOpsNav, filterOpsSubLinks, resolveActiveSurfaceTitle } from "./nav";
 import { OpsPhoneBottom, OpsPhoneTop } from "./ops-phone-chrome";
@@ -26,7 +27,11 @@ export function OpsShell({
   children: ReactNode;
 }) {
   const { pathname } = useLocation();
+  const locale = useOpsLocale();
   const isPhone = useIsPhone();
+  useEffect(() => {
+    syncOpsDocumentLang(locale);
+  }, [locale]);
   const canHome = hasOpsAction(me, "read.home");
   const canAlerts = hasOpsAction(me, "read.alerts");
   const canWrite = hasAnyWriteAction(me);
@@ -66,9 +71,9 @@ export function OpsShell({
   const alertsCount =
     !alertsUnknown && typeof alertsCountVal === "number" ? alertsCountVal : undefined;
 
-  const navItems = useMemo(() => filterOpsNav(me), [me]);
-  const subLinks = useMemo(() => filterOpsSubLinks(me), [me]);
-  const currentTitle = useMemo(() => resolveActiveSurfaceTitle(pathname, navItems), [navItems, pathname]);
+  const navItems = filterOpsNav(me);
+  const subLinks = filterOpsSubLinks(me);
+  const currentTitle = resolveActiveSurfaceTitle(pathname, navItems);
 
   const noticeText =
     live.status === "Paused"

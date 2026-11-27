@@ -35,33 +35,37 @@ export type OpsQuickLink = {
   icon: LucideIcon;
 };
 
-export const OPS_NAV_ITEMS: readonly OpsNavItem[] = [
-  { id: "now", to: "/", label: COPY.nav.now, action: "read.home", icon: Home },
-  { id: "alerts", to: "/alerts", label: COPY.nav.alerts, action: "read.alerts", icon: Bell },
-  { id: "incidents", to: "/incidents", label: COPY.nav.incidents, action: "read.home", icon: Flame },
-  { id: "running", to: "/running", label: COPY.nav.running, action: "read.running", icon: Activity },
-  { id: "obligations", to: "/obligations", label: COPY.nav.obligations, action: "obligation.read", icon: CheckSquare },
-  { id: "recovery", to: "/recovery", label: COPY.nav.recovery, action: "recovery.read", icon: HardDrive },
-  { id: "sources", to: "/sources", label: COPY.nav.sources, action: "read.sources", icon: Database },
-];
+export function getOpsNavItems(): readonly OpsNavItem[] {
+  return [
+    { id: "now", to: "/", label: COPY.nav.now, action: "read.home", icon: Home },
+    { id: "alerts", to: "/alerts", label: COPY.nav.alerts, action: "read.alerts", icon: Bell },
+    { id: "incidents", to: "/incidents", label: COPY.nav.incidents, action: "read.home", icon: Flame },
+    { id: "running", to: "/running", label: COPY.nav.running, action: "read.running", icon: Activity },
+    { id: "obligations", to: "/obligations", label: COPY.nav.obligations, action: "obligation.read", icon: CheckSquare },
+    { id: "recovery", to: "/recovery", label: COPY.nav.recovery, action: "recovery.read", icon: HardDrive },
+    { id: "sources", to: "/sources", label: COPY.nav.sources, action: "read.sources", icon: Database },
+  ];
+}
 
-export const OPS_SUB_LINKS: readonly OpsQuickLink[] = [
-  { id: "health", to: "/health", label: COPY.health.tabTitle, action: "read.home", icon: HeartPulse },
-  { id: "oncall", to: "/oncall", label: COPY.alerts.oncallTab, action: "read.alerts", icon: PhoneCall },
-  { id: "silences", to: "/alerts/silences", label: COPY.alerts.silencesTab, action: "read.alerts", icon: Bell },
-  { id: "jobs", to: "/running/jobs", label: COPY.running.jobsTab, action: "read.running", icon: Activity },
-  { id: "changes", to: "/changes", label: COPY.running.changesTab, action: "read.running", icon: GitBranch },
-  { id: "promote", to: "/promote", label: COPY.running.promoteTab, action: "read.running", icon: Rocket },
-  { id: "actions", to: "/actions", label: COPY.running.actionsTab, action: "read.running", icon: Terminal },
-  { id: "runbooks", to: "/runbooks", label: COPY.running.runbooksTab, action: "read.running", icon: BookOpen },
-];
+export function getOpsSubLinks(): readonly OpsQuickLink[] {
+  return [
+    { id: "health", to: "/health", label: COPY.health.tabTitle, action: "read.home", icon: HeartPulse },
+    { id: "oncall", to: "/oncall", label: COPY.alerts.oncallTab, action: "read.alerts", icon: PhoneCall },
+    { id: "silences", to: "/alerts/silences", label: COPY.alerts.silencesTab, action: "read.alerts", icon: Bell },
+    { id: "jobs", to: "/running/jobs", label: COPY.running.jobsTab, action: "read.running", icon: Activity },
+    { id: "changes", to: "/changes", label: COPY.running.changesTab, action: "read.running", icon: GitBranch },
+    { id: "promote", to: "/promote", label: COPY.running.promoteTab, action: "read.running", icon: Rocket },
+    { id: "actions", to: "/actions", label: COPY.running.actionsTab, action: "read.running", icon: Terminal },
+    { id: "runbooks", to: "/runbooks", label: COPY.running.runbooksTab, action: "read.running", icon: BookOpen },
+  ];
+}
 
 export function filterOpsNav(me: OpsMe | undefined): readonly OpsNavItem[] {
-  return OPS_NAV_ITEMS.filter((item) => hasOpsAction(me, item.action));
+  return getOpsNavItems().filter((item) => hasOpsAction(me, item.action));
 }
 
 export function filterOpsSubLinks(me: OpsMe | undefined): readonly OpsQuickLink[] {
-  return OPS_SUB_LINKS.filter((item) => hasOpsAction(me, item.action));
+  return getOpsSubLinks().filter((item) => hasOpsAction(me, item.action));
 }
 
 export function isNavActive(pathname: string, to: OpsNavItem["to"]): boolean {

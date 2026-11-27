@@ -89,8 +89,25 @@ export type StatusIncident = {
 export type ObligationEventPayload =
   | { event: "in_review"; fields: { note?: string | null } }
   | { event: "redated"; fields: { due: string; reason: string } }
-  | { event: "done"; fields: { evidence_ref: string; signer: string; signed_on: string } }
-  | { event: "waived"; fields: { reason: string; signer: string } };
+  | {
+      event: "done";
+      fields: {
+        evidence_ref: string;
+        signer: string;
+        co_signer?: string | null;
+        counsel_url?: string | null;
+        signed_on: string;
+      };
+    }
+  | {
+      event: "waived";
+      fields: {
+        reason: string;
+        signer: string;
+        co_signer?: string | null;
+        counsel_url?: string | null;
+      };
+    };
 
 export type ObligationRecordFields = {
   kind?: S["ObligationKind"];
@@ -101,6 +118,8 @@ export type ObligationRecordFields = {
   note?: string | null;
   reason?: string | null;
   signer?: string | null;
+  co_signer?: string | null;
+  counsel_url?: string | null;
   signed_on?: string | null;
 };
 
@@ -239,6 +258,8 @@ export function readObligationFields(raw: unknown): ObligationRecordFields {
     note: readStringField(raw, "note"),
     reason: readStringField(raw, "reason"),
     signer: readStringField(raw, "signer"),
+    co_signer: readStringField(raw, "co_signer"),
+    counsel_url: readStringField(raw, "counsel_url"),
     signed_on: readStringField(raw, "signed_on"),
   };
 }

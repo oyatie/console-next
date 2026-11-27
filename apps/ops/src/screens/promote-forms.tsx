@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { COPY } from "../copy";
 import { hasOpsAction } from "../lib/auth";
+import { formatFeedbackDisposition, formatPromoteVerdict } from "../lib/format";
 import { usePromoteFeedbackMutation, usePromoteRequestMutation, usePromoteSignoffMutation } from "../lib/mutations";
 import { useOpsContext } from "../lib/ops-context";
 import { CmdReceipt } from "../ui/cmd-receipt";
@@ -10,15 +11,19 @@ import { InlineError } from "../ui/inline-error";
 import { SelectField } from "../ui/select-field";
 import s from "./promote-screen.module.css";
 
-const BAKE_OPTIONS = [
-  { value: "normal", label: COPY.promote.bakeNormal },
-  { value: "long", label: COPY.promote.bakeLong },
-] as const;
+function getBakeOptions() {
+  return [
+    { value: "normal", label: COPY.promote.bakeNormal },
+    { value: "long", label: COPY.promote.bakeLong },
+  ] as const;
+}
 
-const VERDICT_OPTIONS = [
-  { value: "ready", label: "Ready" },
-  { value: "blocked", label: "Blocked" },
-] as const;
+function getVerdictOptions() {
+  return [
+    { value: "ready", label: formatPromoteVerdict("ready") },
+    { value: "blocked", label: formatPromoteVerdict("blocked") },
+  ] as const;
+}
 
 const FEEDBACK_SEV_OPTIONS = [
   { value: "P0", label: "P0" },
@@ -26,12 +31,14 @@ const FEEDBACK_SEV_OPTIONS = [
   { value: "P2", label: "P2" },
 ] as const;
 
-const DISPOSITION_OPTIONS = [
-  { value: "open", label: "Open" },
-  { value: "triaged", label: "Triaged" },
-  { value: "resolved", label: "Resolved" },
-  { value: "wontfix", label: "Won't fix" },
-] as const;
+function getDispositionOptions() {
+  return [
+    { value: "open", label: formatFeedbackDisposition("open") },
+    { value: "triaged", label: formatFeedbackDisposition("triaged") },
+    { value: "resolved", label: formatFeedbackDisposition("resolved") },
+    { value: "wontfix", label: formatFeedbackDisposition("wontfix") },
+  ] as const;
+}
 
 export function PromoteForms({
   digest,
@@ -75,7 +82,7 @@ export function PromoteForms({
         <div className={s.bandHead}><h2 id="promote-request" className={s.bandTitle}>{COPY.promote.requestBtn}</h2></div>
         <div className={s.formBody}>
           <div className={s.inlineRow}>
-            <SelectField label={COPY.promote.bakeLabel} value={bake} options={BAKE_OPTIONS} onChange={(v) => setBake(v as "normal" | "long")} />
+            <SelectField label={COPY.promote.bakeLabel} value={bake} options={getBakeOptions()} onChange={(v) => setBake(v as "normal" | "long")} />
             <button
               type="button"
               className="btn btn--sm btn--primary"
@@ -84,7 +91,7 @@ export function PromoteForms({
             >
               {COPY.promote.requestBtn}
             </button>
-            <DisabledReason reason={promoteBlockedReason} />
+            {promoState === "Ready" && !promoteBlockedReason ? <span>{COPY.promote.readyNote}</span> : <DisabledReason reason={promoteBlockedReason} />}
           </div>
           {reqMut.error ? <InlineError error={reqMut.error} /> : null}
           {reqMut.data ? <CmdReceipt action={reqMut.data.action} /> : null}
@@ -104,7 +111,7 @@ export function PromoteForms({
               );
             }}
           >
-            <SelectField label={COPY.promote.verdictLabel} value={verdict} options={VERDICT_OPTIONS} onChange={(v) => setVerdict(v as "ready" | "blocked")} />
+            <SelectField label={COPY.promote.verdictLabel} value={verdict} options={getVerdictOptions()} onChange={(v) => setVerdict(v as "ready" | "blocked")} />
             <label className={s.fieldLabel}>
               <span>{COPY.promote.noteLabel}</span>
               <input type="text" className="field-input--form" value={signNote} onChange={(e) => setSignNote(e.target.value)} />
@@ -144,7 +151,7 @@ export function PromoteForms({
               <SelectField label={COPY.promote.severityLabel} value={fbSeverity} options={FEEDBACK_SEV_OPTIONS} onChange={(v) => setFbSeverity(v as "P0" | "P1" | "P2")} />
             </div>
             <div className={s.formGrid}>
-              <SelectField label={COPY.promote.dispositionLabel} value={fbDisposition} options={DISPOSITION_OPTIONS} onChange={(v) => setFbDisposition(v as "open" | "triaged" | "resolved" | "wontfix")} />
+              <SelectField label={COPY.promote.dispositionLabel} value={fbDisposition} options={getDispositionOptions()} onChange={(v) => setFbDisposition(v as "open" | "triaged" | "resolved" | "wontfix")} />
               <label className={s.fieldLabel}>
                 <span>{COPY.promote.noteLabel}</span>
                 <input type="text" className="field-input--form" value={fbNote} onChange={(e) => setFbNote(e.target.value)} />

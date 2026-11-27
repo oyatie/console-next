@@ -123,9 +123,26 @@ async fn obligations_seed_transitions_home_gating_and_sse() -> TestResult {
     assert_eq!(st, StatusCode::OK);
     for (idx, id) in opened_ids.iter().enumerate() {
         let payload = if idx % 2 == 0 {
-            json!({"event":"done","fields":{"evidence_ref":format!("receipt-{idx}"),"signer":"Reviewer","signed_on":"2026-11-23"}})
+            json!({
+                "event": "done",
+                "fields": {
+                    "evidence_ref": format!("docs/ops/receipt-{idx}.md"),
+                    "signer": "Reviewer",
+                    "co_signer": "Second-Reviewer",
+                    "counsel_url": format!("https://counsel.cosskorea.invalid/opinions/{idx}"),
+                    "signed_on": "2026-11-23"
+                }
+            })
         } else {
-            json!({"event":"waived","fields":{"reason":"Not required","signer":"Owner"}})
+            json!({
+                "event": "waived",
+                "fields": {
+                    "reason": "Not required",
+                    "signer": "Owner",
+                    "co_signer": "Security-Lead",
+                    "counsel_url": format!("docs/ops/waiver-{idx}.md")
+                }
+            })
         };
         let (st, _, b) = send_json(
             &h.app,

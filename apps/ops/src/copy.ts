@@ -1,10 +1,18 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { OPS_COPY_KO } from "@console/i18n/ops-ko";
 import { COPY_OC1 } from "./copy-oc1";
+import { getOpsLocale } from "./lib/locale";
 
-export const COPY = {
+export const COPY_EN = {
   brand: "CossKorea Ops",
   envChip: "Stage 1",
   skipToMain: "Skip to main content",
+  locale: {
+    toggleToKo: "KO",
+    toggleToEn: "EN",
+    labelToKo: "Switch language to Korean",
+    labelToEn: "Switch language to English",
+  },
   nav: {
     label: "Primary navigation",
     phoneLabel: "Mobile navigation",
@@ -241,3 +249,33 @@ export const COPY = {
   },
   ...COPY_OC1,
 } as const;
+
+type DeepWiden<T> = T extends string
+  ? string
+  : T extends Record<string, unknown>
+    ? { readonly [K in keyof T]: DeepWiden<T[K]> }
+    : T;
+
+export type OpsCopyCatalog = DeepWiden<typeof COPY_EN>;
+
+const KO_CHECK: OpsCopyCatalog = OPS_COPY_KO;
+
+function makeLocaleProxy<T extends Record<string, unknown>>(path: readonly string[] = []): T {
+  return new Proxy({} as T, {
+    get(_target, prop) {
+      if (typeof prop !== "string") return undefined;
+      const root: Record<string, unknown> = getOpsLocale() === "ko" ? KO_CHECK : COPY_EN;
+      let cur: unknown = root;
+      for (const seg of path) {
+        if (cur && typeof cur === "object") cur = (cur as Record<string, unknown>)[seg];
+      }
+      const next = cur && typeof cur === "object" ? (cur as Record<string, unknown>)[prop] : undefined;
+      if (next && typeof next === "object" && !Array.isArray(next)) {
+        return makeLocaleProxy([...path, prop]);
+      }
+      return next;
+    },
+  });
+}
+
+export const COPY: OpsCopyCatalog = makeLocaleProxy<OpsCopyCatalog>();

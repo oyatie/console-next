@@ -266,6 +266,129 @@ fn incidents_changes_and_promote_services_produce_expected_views_and_cmds() -> T
     };
     assert!(promote_svc.request_promote(&digest, "normal", &ctx).is_ok());
 
+    struct AllGatesPass;
+    impl console_ops_application::changes::ReleasesStore for AllGatesPass {
+        fn list_releases(
+            &self,
+        ) -> Result<Vec<console_ops_application::changes::ReleaseArtifact>, String> {
+            Ok(vec![])
+        }
+        fn get_gates(
+            &self,
+            d: &str,
+        ) -> Result<Option<console_ops_application::domain::changes::GateStatement>, String>
+        {
+            let hex = d.strip_prefix("sha256:").unwrap_or(d);
+            let raw = serde_json::json!({
+                "_type": "https://in-toto.io/Statement/v1",
+                "predicateType": "https://cosskorea.com/attestations/console-gates/v1",
+                "subject": [{"digest": {"sha256": hex}}],
+                "predicate": {
+                    "inputs": {},
+                    "gates": [
+                        {"name": "code-gates", "result": "pass"},
+                        {"name": "api-compat", "result": "pass"},
+                        {"name": "sbom", "result": "pass"},
+                        {"name": "scan", "result": "pass"},
+                        {"name": "smoke", "result": "pass"}
+                    ],
+                    "runner": {"kind": "gha", "url": null},
+                    "approver": null,
+                    "bake": "normal"
+                }
+            });
+            Ok(
+                console_ops_application::domain::changes::parse_gate_statement(
+                    &raw.to_string(),
+                    Some(d),
+                )
+                .ok(),
+            )
+        }
+    }
+    let gates_store = AllGatesPass;
+    let ready_svc = PromoteService {
+        releases: Some(&gates_store),
+        promotions: &DummyPromotions,
+        feedback: &DummyFeedback,
+        actions: &actions,
+    };
+    let mut promo_vm = SourceSlot::new(
+        "victoriametrics",
+        SourceKind::VictoriaMetrics,
+        "vm".into(),
+        interval,
+    );
+    promo_vm.begin_read(now);
+    promo_vm.finish_ok(VictoriaMetricsSnapshot {
+        series: BTreeMap::from([
+            (
+                console_ops_application::victoriametrics::QUERY_PREVIEW_DIGEST_INFO.to_owned(),
+                vec![InstantSample {
+                    metric: [("digest".into(), digest.clone())].into(),
+                    timestamp_s: now.unix_timestamp() as f64,
+                    value: 1.0,
+                }],
+            ),
+            (
+                console_ops_application::victoriametrics::QUERY_PREVIEW_RUNNING.to_owned(),
+                vec![InstantSample {
+                    metric: BTreeMap::new(),
+                    timestamp_s: now.unix_timestamp() as f64,
+                    value: 1.0,
+                }],
+            ),
+        ]),
+        targets: vec![],
+    });
+    let ready_view = ready_svc
+        .build_view(&promo_vm, now)
+        .map_err(|e| format!("{e:?}"))?;
+    assert_eq!(
+        ready_view.state.value(),
+        Some(&console_ops_application::domain::ladders::Promotion::Ready),
+        "0 signoffs with all 5 gates passing and no freeze/blocker must report Ready"
+    );
+
+    promo_vm.begin_read(now);
+    promo_vm.finish_ok(VictoriaMetricsSnapshot {
+        series: BTreeMap::from([
+            (
+                console_ops_application::victoriametrics::QUERY_PREVIEW_DIGEST_INFO.to_owned(),
+                vec![InstantSample {
+                    metric: [("digest".into(), digest.clone())].into(),
+                    timestamp_s: now.unix_timestamp() as f64,
+                    value: 1.0,
+                }],
+            ),
+            (
+                console_ops_application::victoriametrics::QUERY_PREVIEW_RUNNING.to_owned(),
+                vec![InstantSample {
+                    metric: BTreeMap::new(),
+                    timestamp_s: now.unix_timestamp() as f64,
+                    value: 1.0,
+                }],
+            ),
+            (
+                console_ops_application::victoriametrics::QUERY_FREEZE.to_owned(),
+                vec![InstantSample {
+                    metric: BTreeMap::new(),
+                    timestamp_s: now.unix_timestamp() as f64,
+                    value: 1.0,
+                }],
+            ),
+        ]),
+        targets: vec![],
+    });
+    let frozen_view = ready_svc
+        .build_view(&promo_vm, now)
+        .map_err(|e| format!("{e:?}"))?;
+    assert_eq!(
+        frozen_view.state.value(),
+        Some(&console_ops_application::domain::ladders::Promotion::Blocked),
+        "active QUERY_FREEZE must block promotion"
+    );
+
     let running_digest = format!("sha256:{}", "d".repeat(64));
     vm_slot.begin_read(now);
     vm_slot.finish_ok(VictoriaMetricsSnapshot {

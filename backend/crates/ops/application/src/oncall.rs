@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-use console_ops_domain::bundle::OncallConfig;
+use console_ops_domain::bundle::{OncallConfig, SHIFT_BOUND_ACTIONS};
 use console_ops_domain::changes::CmdHandOff;
 use console_ops_domain::{Observed, ObservedTimestamp, UtcTimestamp};
 use serde::Serialize;
@@ -12,12 +12,23 @@ use crate::victoriametrics::{
     QUERY_ONCALL_SYNTHETIC_PAGE_OK, QUERY_ONCALL_SYNTHETIC_PAGE_TS, VictoriaMetricsSnapshot,
 };
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ActiveOncallShiftView {
+    pub active_person: Option<String>,
+    pub backup_person: Option<String>,
+    pub shift_from: UtcTimestamp,
+    pub shift_until: UtcTimestamp,
+    pub shift_grants: Vec<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct OncallView {
     #[serde(with = "time::serde::rfc3339")]
     pub evaluated_at: OffsetDateTime,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub config: Option<OncallConfig>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub active_shift: Option<ActiveOncallShiftView>,
     pub display_status: Observed<String>,
     pub last_page_test_at: ObservedTimestamp,
     pub last_page_test_ok: Observed<bool>,
@@ -50,9 +61,29 @@ impl OncallService {
             .map(UtcTimestamp::new);
         let last_ok = first_val(QUERY_ONCALL_SYNTHETIC_PAGE_OK).map(|v| v > 0.0);
 
+        let active_shift = config.map(|cfg| {
+            let shift = cfg.active_shift(now);
+            let shift_grants = if shift.active_person.is_some() {
+                SHIFT_BOUND_ACTIONS
+                    .iter()
+                    .map(|s| (*s).to_owned())
+                    .collect()
+            } else {
+                Vec::new()
+            };
+            ActiveOncallShiftView {
+                active_person: shift.active_person,
+                backup_person: shift.backup_person,
+                shift_from: UtcTimestamp::new(shift.shift_from),
+                shift_until: UtcTimestamp::new(shift.shift_until),
+                shift_grants,
+            }
+        });
+
         OncallView {
             evaluated_at: now,
             config: config.cloned(),
+            active_shift,
             display_status,
             last_page_test_at: vm.observe(last_at, None, now),
             last_page_test_ok: vm.observe(last_ok, None, now),

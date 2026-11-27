@@ -63,12 +63,20 @@ pub enum Event {
     Done {
         evidence_ref: Option<String>,
         signer: Option<String>,
+        #[serde(default)]
+        co_signer: Option<String>,
+        #[serde(default)]
+        counsel_url: Option<String>,
         #[serde(default, with = "iso_date::option")]
         signed_on: Option<Date>,
     },
     Waived {
         reason: Option<String>,
         signer: Option<String>,
+        #[serde(default)]
+        co_signer: Option<String>,
+        #[serde(default)]
+        counsel_url: Option<String>,
     },
 }
 
@@ -102,12 +110,48 @@ pub struct Obligation {
     state: State,
     evidence_ref: Option<String>,
     signer: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    co_signer: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    counsel_url: Option<String>,
     #[serde(with = "iso_date::option")]
     signed_on: Option<Date>,
 }
 
 fn present(value: &Option<String>) -> bool {
     value.as_ref().is_some_and(|value| !value.trim().is_empty())
+}
+
+pub fn is_structured_counsel_url(raw: &str) -> bool {
+    let trimmed = raw.trim();
+    if trimmed.is_empty()
+        || trimmed.chars().any(|c| c.is_whitespace() || c.is_control())
+        || trimmed.contains("..")
+    {
+        return false;
+    }
+    if let Some(rest) = trimmed.strip_prefix("https://") {
+        let Some((host, path)) = rest.split_once('/') else {
+            return false;
+        };
+        return !host.is_empty()
+            && (host.contains('.') || host.starts_with("localhost"))
+            && !path.is_empty();
+    }
+    if let Some(rest) = trimmed
+        .strip_prefix("docs/")
+        .or_else(|| trimmed.strip_prefix("ops/"))
+    {
+        return !rest.is_empty() && !rest.starts_with('/');
+    }
+    false
+}
+
+fn distinct_signers(primary: &Option<String>, secondary: &Option<String>) -> bool {
+    match (primary.as_deref(), secondary.as_deref()) {
+        (Some(a), Some(b)) => !a.trim().eq_ignore_ascii_case(b.trim()),
+        _ => true,
+    }
 }
 
 impl Obligation {
@@ -135,6 +179,8 @@ impl Obligation {
                 state: State::Open,
                 evidence_ref: evidence_ref.clone(),
                 signer: None,
+                co_signer: None,
+                counsel_url: None,
                 signed_on: None,
             });
         }
@@ -148,16 +194,84 @@ impl Obligation {
             Event::Done {
                 evidence_ref,
                 signer,
+                co_signer,
+                counsel_url,
                 signed_on: Some(signed_on),
             } if present(evidence_ref) && present(signer) => {
+                if item.kind == Kind::LaunchGate {
+                    if !present(co_signer) {
+                        return Err(Refusal::Incomplete);
+                    }
+                    let structured_ok = if present(counsel_url) {
+                        counsel_url
+                            .as_deref()
+                            .is_some_and(is_structured_counsel_url)
+                    } else {
+                        evidence_ref
+                            .as_deref()
+                            .is_some_and(is_structured_counsel_url)
+                    };
+                    if !distinct_signers(signer, co_signer) || !structured_ok {
+                        return Err(Refusal::Invalid);
+                    }
+                } else {
+                    if present(co_signer) && !distinct_signers(signer, co_signer) {
+                        return Err(Refusal::Invalid);
+                    }
+                    if present(counsel_url)
+                        && !counsel_url
+                            .as_deref()
+                            .is_some_and(is_structured_counsel_url)
+                    {
+                        return Err(Refusal::Invalid);
+                    }
+                }
                 item.state = State::Done;
                 item.evidence_ref = evidence_ref.clone();
                 item.signer = signer.clone();
+                item.co_signer = co_signer.as_ref().filter(|s| !s.trim().is_empty()).cloned();
+                item.counsel_url = counsel_url
+                    .as_ref()
+                    .filter(|s| !s.trim().is_empty())
+                    .cloned();
                 item.signed_on = Some(*signed_on);
             }
-            Event::Waived { reason, signer } if present(reason) && present(signer) => {
+            Event::Waived {
+                reason,
+                signer,
+                co_signer,
+                counsel_url,
+            } if present(reason) && present(signer) => {
+                if item.kind == Kind::LaunchGate {
+                    if !present(co_signer) || !present(counsel_url) {
+                        return Err(Refusal::Incomplete);
+                    }
+                    if !distinct_signers(signer, co_signer)
+                        || !counsel_url
+                            .as_deref()
+                            .is_some_and(is_structured_counsel_url)
+                    {
+                        return Err(Refusal::Invalid);
+                    }
+                } else {
+                    if present(co_signer) && !distinct_signers(signer, co_signer) {
+                        return Err(Refusal::Invalid);
+                    }
+                    if present(counsel_url)
+                        && !counsel_url
+                            .as_deref()
+                            .is_some_and(is_structured_counsel_url)
+                    {
+                        return Err(Refusal::Invalid);
+                    }
+                }
                 item.state = State::Waived;
                 item.signer = signer.clone();
+                item.co_signer = co_signer.as_ref().filter(|s| !s.trim().is_empty()).cloned();
+                item.counsel_url = counsel_url
+                    .as_ref()
+                    .filter(|s| !s.trim().is_empty())
+                    .cloned();
             }
             Event::Opened { .. } | Event::InReview { .. } => return Err(Refusal::Invalid),
             _ => return Err(Refusal::Incomplete),
@@ -191,6 +305,14 @@ impl Obligation {
 
     pub fn signer(&self) -> Option<&str> {
         self.signer.as_deref()
+    }
+
+    pub fn co_signer(&self) -> Option<&str> {
+        self.co_signer.as_deref()
+    }
+
+    pub fn counsel_url(&self) -> Option<&str> {
+        self.counsel_url.as_deref()
     }
 
     pub fn signed_on(&self) -> Option<Date> {

@@ -249,6 +249,27 @@ pub async fn request_promote(
         actions: action_store,
     };
     let now = (state.clock)();
+    state.refresh_vm_slot(now).await;
+    let frozen = state
+        .vm_slot
+        .read()
+        .await
+        .current
+        .as_ref()
+        .is_some_and(|snap| {
+            snap.series
+                .get(console_ops_application::victoriametrics::QUERY_FREEZE)
+                .is_some_and(|v| v.iter().any(|s| s.value > 0.0))
+        });
+    if frozen {
+        return Err(from_promote_error(
+            console_ops_application::promote::PromoteError::InvalidInput(
+                "deploy freeze is active".to_owned(),
+            ),
+            sref,
+            ROUTE,
+        ));
+    }
     let ctx = op_context(&op, now, sref.clone());
     let handoff = svc
         .request_promote(&req.digest, &req.bake, &ctx)

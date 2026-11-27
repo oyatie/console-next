@@ -2,6 +2,8 @@
 use aws_lc_rs::constant_time::verify_slices_are_equal;
 use aws_lc_rs::digest::{SHA256, digest};
 use console_kernel_core::OrgId;
+use console_ops_domain::UtcTimestamp;
+use console_ops_domain::bundle::{OncallConfig, SHIFT_BOUND_ACTIONS};
 use console_platform_authz::CedarEvaluation;
 use console_platform_authz::cedar_pbac::engine::{
     CompiledBundle, compile_bundle_from_sources, evaluate_entities,
@@ -11,6 +13,12 @@ use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use uuid::Uuid;
 
 pub use crate::valid_actions::VALID_ACTIONS;
+
+#[derive(Debug, Clone)]
+pub struct AuthorizedMatch {
+    pub person: Uuid,
+    pub grants: Vec<Grant>,
+}
 
 #[derive(Debug)]
 pub struct Operator {
@@ -116,6 +124,20 @@ impl OperatorRegistry {
         action: &str,
         now: OffsetDateTime,
     ) -> Result<&Operator, Refusal> {
+        let matched = self.authorize_with_shift(verified_email, action, now, None)?;
+        self.operators
+            .iter()
+            .find(|op| op.person == matched.person)
+            .ok_or(Refusal::NotOperator)
+    }
+
+    pub fn authorize_with_shift(
+        &self,
+        verified_email: &str,
+        action: &str,
+        now: OffsetDateTime,
+        oncall: Option<&OncallConfig>,
+    ) -> Result<AuthorizedMatch, Refusal> {
         let hash = digest(&SHA256, verified_email.trim().to_lowercase().as_bytes());
         let operator = self
             .operators
@@ -128,15 +150,65 @@ impl OperatorRegistry {
                 }
             })
             .ok_or(Refusal::NotOperator)?;
+
+        let mut effective_grants = operator.grants.clone();
+        if let Some(cfg) = oncall {
+            let shift = cfg.active_shift(now);
+            let person_str = operator.person.to_string();
+            if shift.active_person.as_deref() == Some(person_str.as_str())
+                && shift.shift_from <= now
+                && now < shift.shift_until
+            {
+                let from = serde_json::to_value(UtcTimestamp::new(shift.shift_from))
+                    .ok()
+                    .and_then(|v| v.as_str().map(str::to_owned));
+                let until = serde_json::to_value(UtcTimestamp::new(shift.shift_until))
+                    .ok()
+                    .and_then(|v| v.as_str().map(str::to_owned));
+                if let (Some(from), Some(until)) = (from, until) {
+                    for &shift_action in SHIFT_BOUND_ACTIONS {
+                        let exists = effective_grants.iter().any(|g| {
+                            g.action == shift_action && g.from == from && g.until == until
+                        });
+                        if !exists {
+                            effective_grants.push(Grant {
+                                action: shift_action.to_owned(),
+                                from: from.clone(),
+                                until: until.clone(),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
         let mut allowed = false;
         let mut live = false;
-        let now = i64::try_from(now.unix_timestamp_nanos()).map_err(|_| Refusal::ActionDenied)?;
-        for grant in &operator.grants {
-            allowed |= decide(&self.bundle, operator, grant, action, now)?;
-            live |= decide(&self.bundle, operator, grant, &grant.action, now)?;
+        let now_ns =
+            i64::try_from(now.unix_timestamp_nanos()).map_err(|_| Refusal::ActionDenied)?;
+        for grant in &effective_grants {
+            allowed |= decide_with_grants(
+                &self.bundle,
+                operator.person,
+                &effective_grants,
+                grant,
+                action,
+                now_ns,
+            )?;
+            live |= decide_with_grants(
+                &self.bundle,
+                operator.person,
+                &effective_grants,
+                grant,
+                &grant.action,
+                now_ns,
+            )?;
         }
         if allowed {
-            Ok(operator)
+            Ok(AuthorizedMatch {
+                person: operator.person,
+                grants: effective_grants,
+            })
         } else if live {
             Err(Refusal::ActionDenied)
         } else {
@@ -219,14 +291,31 @@ fn decide(
     action: &str,
     now: i64,
 ) -> Result<bool, Refusal> {
-    let grants = operator
-        .grants
+    decide_with_grants(
+        bundle,
+        operator.person,
+        &operator.grants,
+        selected,
+        action,
+        now,
+    )
+}
+
+fn decide_with_grants(
+    bundle: &CompiledBundle,
+    person: Uuid,
+    all_grants: &[Grant],
+    selected: &Grant,
+    action: &str,
+    now: i64,
+) -> Result<bool, Refusal> {
+    let grants = all_grants
         .iter()
         .map(cedar_grant)
         .collect::<Result<Vec<_>, _>>()?;
     let entities = (
         Entity {
-            uid: uid("Ops::Operator", &operator.person.to_string()),
+            uid: uid("Ops::Operator", &person.to_string()),
             attrs: Attributes { grants: &grants },
             parents: [],
         },
@@ -243,7 +332,7 @@ fn decide(
     let json_action = serde_json::to_string(action).map_err(|_| Refusal::ActionDenied)?;
     match evaluate_entities(
         bundle,
-        &format!("Ops::Operator::\"{}\"", operator.person),
+        &format!("Ops::Operator::\"{person}\""),
         &format!("Ops::Action::{json_action}"),
         "Ops::Console::\"ops\"",
         serde_json::to_value(entities).map_err(|_| Refusal::ActionDenied)?,
