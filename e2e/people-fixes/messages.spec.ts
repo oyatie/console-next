@@ -59,7 +59,7 @@ test("solo: a contract overlap names its period and opens that contract's correc
   const caseHref = await admin.getByRole("link", { name: "퇴직 건 열기", exact: true }).getAttribute("href");
   await go(admin, caseHref!);
   await admin.getByRole("region", { name: /지금/ }).getByRole("button", { name: "퇴직 본사 확인 1명 적용", exact: true }).click();
-  await expect(admin.getByRole("main")).toContainText("본사 확인됨");
+  await expect(admin.getByRole("listitem").filter({ hasText: "본사에서 퇴직을 확인했습니다" })).toContainText("본사 확인");
   const before = await read();
   await go(admin, `/people/${worker.id}?act=rehire`);
   const rehire = admin.getByRole("dialog", { name: "재입사로 등록" });

@@ -19,7 +19,7 @@ test("일정 없음: warning → filtered people → assign one person; month sa
   await expect(admin).toHaveURL(/unscheduled=(1|true)/);
   await expect(admin.getByRole("button", { name: "일정 없음만" })).toHaveAttribute("aria-pressed", "true");
   await expect(admin.getByRole("button", { name: "일정 지정", exact: true })).toHaveCount(3);
-  await expect(admin.getByText(/3명 · 정상 0 · 일정 없음 3/)).toBeVisible();
+  await expect(admin.getByText("근태 대상 3명 = 일정 없음 3", { exact: true })).toBeVisible();
   await expect(admin.getByRole("button", { name: "소정대로 기록", exact: true })).toHaveCount(0);
   await expect(admin.getByRole("list", { name: "기록이 비어 있는 곳" }).getByRole("link", { name: "일정 없음 3명 보기" })).toBeVisible();
   await expectAccessible(admin, "unscheduled people and remedy");
