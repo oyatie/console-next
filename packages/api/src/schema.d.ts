@@ -27746,8 +27746,7 @@ export interface components {
             provenance_ko: string;
         };
         PayrollPreflightCheck: {
-            /** @enum {string} */
-            key: "attendance_material" | "period_lock" | "pending_leave" | "workplace_attendance_close";
+            key: string;
             label_ko: string;
             ok: boolean;
             /** @description Soft signal only; can_close is the AND of the hard checks (attendance_material, period_lock). */
@@ -30735,8 +30734,7 @@ export interface components {
                 effective_from: components["schemas"]["Timestamp"];
             }[];
             source: {
-                /** @enum {string} */
-                layer: "code_default" | "platform" | "tenant" | "legal_entity" | "workplace" | "department" | "person";
+                layer: string;
                 scope_entity_id: components["schemas"]["Uuid"] | null;
             };
             /** @description Most specific scope first, followed by tenant and code default; only in-force values. */
