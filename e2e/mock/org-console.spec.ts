@@ -150,6 +150,7 @@ async function setupConsoleOrg(
   await mockRoute(page, "get", "/api/v1/org-structure/batches", { status: 200, json: { items: [] } });
   await mockRoute(page, "get", "/api/v1/entity-setup/batches", { status: 200, json: { items: [] } });
   await mockRoute(page, "get", "/api/v1/access/grants", { status: 200, json: [] });
+  await mockRoute(page, "get", "/api/v1/me/requests", { status: 200, json: { items: [], total: 0, offset: 0, limit: 50 } });
   await mockRoute(page, "get", "/api/v1/onboarding/go-live/preview", {
     status: 200,
     json: saeonGoLivePreview(phase),
