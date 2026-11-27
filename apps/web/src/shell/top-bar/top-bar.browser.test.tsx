@@ -155,15 +155,22 @@ test.each([1440, 390])("needs-me badge shows turn count, opens task panel with /
   await element(trigger).toBeFocused();
 });
 
-test("needs-me badge omits count pill when 0 items need action and renders empty state", async () => {
+test("needs-me keeps its position when the last item clears and renders the empty state", async () => {
+  let total = 1;
   await page.route("**/api/v1/me/action-inbox**", route => route.fulfill({
     status: 200,
     contentType: "application/json",
-    body: JSON.stringify({ as_of: "2026-11-04T09:00:00Z", has_work: false, available_filters: [], counts: { turn: { total: 0, total_is_exact: true } }, unavailable: [], next_cursor: null, items: [] }),
+    body: JSON.stringify({ as_of: "2026-11-04T09:00:00Z", has_work: total > 0, available_filters: [], counts: { turn: { total, total_is_exact: true } }, unavailable: [], next_cursor: null, items: [] }),
   }));
   await open();
+  const withItem = page.getByRole("button", { name: t("shell.needsMe.count", { count: 1 }), exact: true });
+  await element(withItem).toBeVisible();
+  const before = await withItem.boundingBox();
+  total = 0;
+  await page.evaluate(() => window.dispatchEvent(new Event("refetch-inbox")));
   const trigger = page.getByRole("button", { name: t("home.inbox.title"), exact: true });
   await element(trigger).toBeVisible();
+  expect(await trigger.boundingBox()).toEqual(before);
   await element(trigger.locator("[data-count]")).toHaveCount(0);
   await trigger.click();
   await element(page.getByRole("dialog", { name: "대기 업무", exact: true }).getByText("처리할 업무가 없습니다", { exact: true })).toBeVisible();

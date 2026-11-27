@@ -49,6 +49,7 @@ test.describe("route requirements with a real grantless account", () => {
   test.describe.configure({ mode: "default" });
   let admin: Page;
   let reader: Page;
+  let themedPages: Record<"light" | "dark", Page>;
   let token: ReturnType<typeof bearerOf>;
   test.beforeAll(async ({ browser }) => {
     ({ admin, exec: reader } = await tenantBeforeSetup(browser, `route-refusal-${test.info().workerIndex}`, "권한 없는 화면", false, "none"));
@@ -59,46 +60,49 @@ test.describe("route requirements with a real grantless account", () => {
     const me = await (await apiOf(reader, token)("/access/me")).json();
     expect(me.is_ops).toBe(false);
     expect(me.entries).toEqual([]);
+    // A new tab rotates this session. Keep both appearances signed in as the route matrix walks them.
+    themedPages = { light: await reader.context().newPage(), dark: await reader.context().newPage() };
+    for (const [theme, page] of Object.entries(themedPages)) {
+      await page.addInitScript(value => { localStorage.setItem("console.theme", value); }, theme);
+    }
   });
   test.afterAll(async () => { await Promise.all([admin?.context().close(), reader?.context().close()]); });
 
   for (const { path, reads } of routeList.filter(route => route.reads.length)) {
     test(`${path}: the server refuses the protected read`, async () => {
       for (const read of reads) {
-      const endpoint = read.replace(/\$[^/]+/g, record).replace("/api/v1", "");
-      const query = new URLSearchParams(readQuery(read, record));
-      const response = await apiOf(reader, token)(`${endpoint}${query.size ? `?${query}` : ""}`);
-      expect(response.status(), read).toBe(403);
-      expect((await response.json()).error.code).toBeTruthy();
+        const endpoint = read.replace(/\$[^/]+/g, record);
+        const query = new URLSearchParams(readQuery(read, record));
+        const response = await apiOf(reader, token)(`${endpoint}${query.size ? `?${query}` : ""}`);
+        expect(response.status(), read).toBe(403);
+        expect((await response.json()).error.code).toBeTruthy();
       }
     });
-    for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
+    for (const width of [1440, 390]) for (const theme of ["light", "dark"] as const) {
       test(`${path}: one refusal, no page controls at ${width} ${theme}`, async () => {
-        const page = await reader.context().newPage();
-        try {
-          await page.setViewportSize({ width, height: 900 });
-          await page.addInitScript(value => { localStorage.setItem("console.theme", value); }, theme);
-          await go(page, path.replace(/\$[^/]+/g, record), path in redirectTargets);
-          const main = page.getByRole("main");
-          const card = main.getByRole("region", { name: bootKo["common.denied.title.plain"], exact: true });
-          await expect(card).toHaveCount(1);
-          await expect(card.getByRole("button", { name: bootKo["common.denied.request"], exact: true })).toBeVisible();
-          const permission = await card.locator(".state > .muted").innerText();
-          const need = readRequirement(path as Parameters<typeof readRequirement>[0]);
-          const required = "allOf" in need ? need.allOf : [need];
-          for (const entry of required) {
-            if ("action" in entry) {
-              expect(permission).toContain(ko[`denied.action.${entry.action}` as keyof typeof ko]);
-              continue;
-            }
-            expect(permission).toContain(ko[`accessCodes.domain.${entry.domain}` as keyof typeof ko]);
-            expect(permission).toContain(ko[`accessCodes.level.${entry.level}` as keyof typeof ko]);
+        const page = themedPages[theme];
+        await page.setViewportSize({ width, height: 900 });
+        await go(page, path.replace(/\$[^/]+/g, record), path in redirectTargets);
+        await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+        const main = page.getByRole("main");
+        const card = main.getByRole("region", { name: bootKo["common.denied.title.plain"], exact: true });
+        await expect(card).toHaveCount(1);
+        await expect(card.getByRole("button", { name: bootKo["common.denied.request"], exact: true })).toBeVisible();
+        const permission = await card.locator(".state > .muted").innerText();
+        const need = readRequirement(path as Parameters<typeof readRequirement>[0]);
+        const required = "allOf" in need ? need.allOf : [need];
+        for (const entry of required) {
+          if ("action" in entry) {
+            expect(permission).toContain(ko[`denied.action.${entry.action}` as keyof typeof ko]);
+            continue;
           }
-          expect(await main.locator("button, a, input, select, textarea, [role=tab]").evaluateAll((elements, label) => elements.filter(element => element.closest('section[aria-label]')?.getAttribute("aria-label") !== label).length, bootKo["common.denied.title.plain"])).toBe(0);
-          expect(await main.innerText()).toBe(await card.innerText());
-          expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
-          if (["/people", "/org/changes", "/access/roles"].includes(path)) await expectAxe(page, `${path} refused at ${width} ${theme}`);
-        } finally { await page.close(); }
+          expect(permission).toContain(ko[`accessCodes.domain.${entry.domain}` as keyof typeof ko]);
+          expect(permission).toContain(ko[`accessCodes.level.${entry.level}` as keyof typeof ko]);
+        }
+        expect(await main.locator("button, a, input, select, textarea, [role=tab]").evaluateAll((elements, label) => elements.filter(element => element.closest('section[aria-label]')?.getAttribute("aria-label") !== label).length, bootKo["common.denied.title.plain"])).toBe(0);
+        expect(await main.innerText()).toBe(await card.innerText());
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+        if (["/people", "/org/changes", "/access/roles"].includes(path)) await expectAxe(page, `${path} refused at ${width} ${theme}`);
       });
     }
   }
