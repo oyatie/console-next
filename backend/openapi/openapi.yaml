@@ -59017,7 +59017,7 @@ components:
       properties:
         key:
           type: string
-          enum: [attendance_material, period_lock, pending_leave, workplace_attendance_close]
+          x-extensible-enum: [attendance_material, period_lock, pending_leave, workplace_attendance_close]
         label_ko:
           type: string
         ok:
@@ -65653,7 +65653,7 @@ components:
           properties:
             layer:
               type: string
-              enum: [code_default, platform, tenant, legal_entity, workplace, department, person]
+              x-extensible-enum: [code_default, platform, tenant, legal_entity, workplace, department, person]
             scope_entity_id:
               allOf: [{$ref: '#/components/schemas/Uuid'}]
               nullable: true

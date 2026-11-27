@@ -24,9 +24,8 @@ pub fn is_structured_counsel_url(raw: &str) -> bool {
             && (host.contains('.') || host.starts_with("localhost"))
             && !path.is_empty();
     }
-    if let Some(rest) = trimmed
-        .strip_prefix("docs/")
-        .or_else(|| trimmed.strip_prefix("ops/"))
+    if let Some((root, rest)) = trimmed.split_once('/')
+        && matches!(root, "docs" | "ops")
     {
         return !rest.is_empty() && !rest.starts_with('/');
     }
