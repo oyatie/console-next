@@ -11,11 +11,11 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 beforeAll(() => loadCatalog("ko"));
 
-const tabs = ["day", "month", "overtime", "schedule", "issues", "close", "import"] as const;
+const tabs = ["day", "month", "overtime", "leave", "schedule", "issues", "close", "import"] as const;
 test.each(tabs)("T6 order and current URL view: %s", tab => {
   const html = renderToStaticMarkup(<AttendanceHead tab={tab} />);
   const links = [...html.matchAll(/<span\b([^>]*data-href="[^"]+"[^>]*)>(.*?)<\/span>/g)];
-  expect(links.map(link => link[2])).toEqual(["오늘", "근태 기록", "연장근로", "근무 일정", "확인 필요", "월 마감", "가져오기"]);
+  expect(links.map(link => link[2])).toEqual(["오늘", "근태 기록", "연장근로", "연차 관리", "근무 일정", "확인 필요", "월 마감", "가져오기"]);
   expect(links.map(link => link[1]!.match(/data-href="([^"]+)"/)![1])).toEqual(tabs.map(id => `?tab=${id}`));
   expect(links.filter(link => link[1]!.includes('aria-current="page"')).map(link => link[2])).toEqual([links[tabs.indexOf(tab)]![2]]);
   expect(html).not.toContain(">휴가<");

@@ -3,8 +3,8 @@ import { api, unwrap, type components } from "@console/api";
 import { get } from "../../../lib/query";
 
 export type LeaveRosterEntry = components["schemas"]["LeaveRosterEntry"];
-export type LeavePromotionRequest = components["schemas"]["LeavePromotionRequest"];
-export type LeaveRefusalRequest = components["schemas"]["LeaveRefusalRequest"];
+type LeavePromotionRequest = components["schemas"]["LeavePromotionRequest"];
+type LeaveRefusalRequest = components["schemas"]["LeaveRefusalRequest"];
 
 export const leaveBalancesQuery = get("/api/v1/leave/balances");
 export const branchesQuery = get("/api/v1/branches");

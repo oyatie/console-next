@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { OPS_COPY_KO_OC1 } from "./ops-ko-oc1";
 
-export const OPS_FORMAT_LABELS_KO = {
+const OPS_FORMAT_LABELS_KO = {
   legalClock: {
     intrusion_24h: "침해사고 24시간",
     pipc_kisa_72h: "개인정보위·KISA 72시간",
@@ -30,6 +30,7 @@ export const OPS_FORMAT_LABELS_KO = {
 } as const;
 
 export const OPS_COPY_KO = {
+  formatLabels: OPS_FORMAT_LABELS_KO,
   brand: "CossKorea 운영",
   envChip: "Stage 1",
   skipToMain: "본문 바로가기",

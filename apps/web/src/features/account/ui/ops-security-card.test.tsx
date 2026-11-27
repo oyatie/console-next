@@ -31,8 +31,8 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock("@tanstack/react-query", () => ({
-  useQuery: (q: { queryKey?: unknown[] }) => {
-    const key = String(q?.queryKey?.[0] ?? "");
+  useQuery: (q: unknown) => {
+    const key = JSON.stringify(q);
     if (key.includes("/auth/recovery/status")) return { data: state.rec, isPending: false };
     if (key.includes("/access/ops")) return { data: state.ops, isPending: false };
     return { data: [], isPending: false };

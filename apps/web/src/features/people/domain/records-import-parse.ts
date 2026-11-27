@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import type { RecordImportRequest, RecordSegment } from "../api/record-import";
+import type { components } from "@console/api/schema";
 import { ROW_SPEC, toFields, type RowDraft } from "./record-spec";
+
+type RecordSegment = components["schemas"]["PersonRecordSectionSegment"];
+type RecordImportRequest = components["schemas"]["PersonRecordImportRequest"];
 
 export const IMPORT_SECTIONS = [
   "education",

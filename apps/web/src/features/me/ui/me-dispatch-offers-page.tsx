@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useState, useSyncExternalStore } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
@@ -8,6 +8,7 @@ import { announce } from "../../../lib/react/announce";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { QueryState } from "../../../lib/react/query-state";
+import { useIsDesktop } from "../../../lib/react/use-desktop";
 import { Button } from "../../../ui/button/button";
 import { buttonClass } from "../../../ui/button/button-class";
 import { Card } from "../../../ui/card/card";
@@ -24,22 +25,6 @@ import {
   type DispatchResponseKind,
   type MyDispatchOffer,
 } from "../api/dispatch-offers";
-
-const DESKTOP_MEDIA = "(min-width: 768px)";
-
-function subscribeDesktop(onChange: () => void) {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => {};
-  const mq = window.matchMedia(DESKTOP_MEDIA);
-  mq.addEventListener("change", onChange);
-  return () => mq.removeEventListener("change", onChange);
-}
-
-const getDesktopSnapshot = () =>
-  typeof window !== "undefined" && typeof window.matchMedia === "function"
-    ? window.matchMedia(DESKTOP_MEDIA).matches
-    : true;
-
-const getDesktopServerSnapshot = () => false;
 
 function DispatchOfferDetail({
   offer,
@@ -87,7 +72,7 @@ function DispatchOfferDetail({
 
 function ConsoleDispatchOffersPage() {
   const offersQ = useQuery(myDispatchOffersQuery);
-  const isDesktop = useSyncExternalStore(subscribeDesktop, getDesktopSnapshot, getDesktopServerSnapshot);
+  const isDesktop = useIsDesktop();
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | undefined>();
   const [dismissed, setDismissed] = useState(false);

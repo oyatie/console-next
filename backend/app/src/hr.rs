@@ -50,9 +50,9 @@ use console_hr_adapter_postgres::import::parsed::ImportRowStatus;
 use console_hr_adapter_postgres::import::persist::persistable_import_row;
 use console_hr_adapter_postgres::import::sheet::cell_json as sheet_cell_json;
 use console_hr_adapter_postgres::import::store::import_run_for_update;
-use console_hr_adapter_postgres::import::types::{
-    DataImportRunRecord, ImportApplyRequest, XlsxUpload,
-};
+#[cfg(all(test, feature = "test-postgres"))]
+use console_hr_adapter_postgres::import::types::ImportApplyRequest;
+use console_hr_adapter_postgres::import::types::{DataImportRunRecord, XlsxUpload};
 use console_hr_adapter_postgres::lifecycle::events_page::LifecycleEventsQuery;
 use console_hr_adapter_postgres::lifecycle::requests::{
     BulkEmployeeLifecycleEventRequest, CancelLifecycleEventRequest,

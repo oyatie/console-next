@@ -29,7 +29,7 @@ import {
   type PolicyCatalogEntry,
   type PolicyDraftRecord,
   type PolicyNoCodeBlocks,
-} from "../policy-api";
+} from "../api/policy";
 import { AccessNavTabs } from "./access-head";
 import s from "./access.module.css";
 

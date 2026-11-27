@@ -17,6 +17,7 @@ use crate::PgOnboardingError;
 /// is unavailable and neither the rail nor the preview mentions it; flip this
 /// and read the store when it does (INTEG request).
 const SECURITY_CONTACT_STORE_AVAILABLE: bool = false;
+const OVERTIME_RULE_STORE_AVAILABLE: bool = true;
 
 /// The live legal entities, registrations, workplaces and today's placements and
 /// four-social-insurance status, as the legal entity and workplace panels read them
@@ -157,7 +158,7 @@ pub(crate) async fn permission_facts(
         )
         .await?,
         security_contact_store_available: SECURITY_CONTACT_STORE_AVAILABLE,
-        overtime_rule_store_available: true,
+        overtime_rule_store_available: OVERTIME_RULE_STORE_AVAILABLE,
         ..SetupFacts::default()
     })
 }

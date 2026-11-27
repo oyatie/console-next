@@ -1,16 +1,48 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Admin authorization helper for Cedar Policy Studio REST handlers.
 
+use axum::Json;
 use axum::http::HeaderMap;
+use axum::response::{IntoResponse, Response};
 use console_kernel_core::KernelError;
+use console_platform_authz::Principal;
 use console_platform_authz::access::{
     AccessSlice, Domain, Level, NodePath, action_group, load_access_subject,
 };
-use console_platform_authz::{Action, Feature, Principal, authorize_org_wide};
 use console_platform_db::DbError;
+use serde::Serialize;
 use time::OffsetDateTime;
 
-use crate::{CedarPolicyRestState, RestError, rest_error_from_request_context};
+use crate::{
+    CedarPolicyRestState, RestError, check_legacy_role_manage, rest_error_from_request_context,
+};
+
+#[derive(Debug, Serialize)]
+struct ErrorBody {
+    error: ErrorPayload,
+}
+
+#[derive(Debug, Serialize)]
+struct ErrorPayload {
+    code: &'static str,
+    message: String,
+}
+
+impl IntoResponse for RestError {
+    fn into_response(self) -> Response {
+        let code = self.code();
+        (
+            self.status,
+            Json(ErrorBody {
+                error: ErrorPayload {
+                    code,
+                    message: self.message,
+                },
+            }),
+        )
+            .into_response()
+    }
+}
 
 enum AuthSubjectLoadError {
     Db,
@@ -34,7 +66,8 @@ pub(crate) async fn authorize_admin(
         console_platform_request_context::resolve_principal(verifier, state.store.pool(), headers)
             .await
             .map_err(rest_error_from_request_context)?;
-    if authorize_org_wide(&principal, Action::new(Feature::RoleManage)).is_ok() {
+    let legacy = check_legacy_role_manage(&principal);
+    if legacy.is_ok() {
         return Ok(principal);
     }
     let org = principal.org_id;
@@ -69,7 +102,6 @@ pub(crate) async fn authorize_admin(
     if holds_tenant_access_edit {
         return Ok(principal);
     }
-    authorize_org_wide(&principal, Action::new(Feature::RoleManage))
-        .map_err(RestError::from_kernel)?;
+    legacy.map_err(RestError::from_kernel)?;
     Ok(principal)
 }

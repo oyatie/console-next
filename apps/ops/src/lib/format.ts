@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { OPS_FORMAT_LABELS_KO } from "@console/i18n/ops-ko";
+import { OPS_COPY_KO } from "@console/i18n/ops-ko";
 import { COPY } from "../copy";
 import { getOpsLocale } from "./locale";
 
@@ -191,46 +191,46 @@ function humanizeToken(raw: string): string {
 }
 
 export function formatLegalClockKind(kind: string): string {
-  const map = getOpsLocale() === "ko" ? OPS_FORMAT_LABELS_KO.legalClock : LEGAL_CLOCK_LABELS;
+  const map = getOpsLocale() === "ko" ? OPS_COPY_KO.formatLabels.legalClock : LEGAL_CLOCK_LABELS;
   return map[kind] ?? humanizeToken(kind);
 }
 
 export function formatIncidentTimelineKind(kind: string): string {
-  const map = getOpsLocale() === "ko" ? OPS_FORMAT_LABELS_KO.incidentTimeline : INCIDENT_TIMELINE_LABELS;
+  const map = getOpsLocale() === "ko" ? OPS_COPY_KO.formatLabels.incidentTimeline : INCIDENT_TIMELINE_LABELS;
   return map[kind] ?? humanizeToken(kind);
 }
 
 export function formatObligationEvent(event: string): string {
-  const map = getOpsLocale() === "ko" ? OPS_FORMAT_LABELS_KO.obligationEvent : OBLIGATION_EVENT_LABELS;
+  const map = getOpsLocale() === "ko" ? OPS_COPY_KO.formatLabels.obligationEvent : OBLIGATION_EVENT_LABELS;
   return map[event] ?? humanizeToken(event);
 }
 
 export function formatObligationKind(kind: string): string {
-  const map = getOpsLocale() === "ko" ? OPS_FORMAT_LABELS_KO.obligationKind : OBLIGATION_KIND_LABELS;
+  const map = getOpsLocale() === "ko" ? OPS_COPY_KO.formatLabels.obligationKind : OBLIGATION_KIND_LABELS;
   return map[kind] ?? humanizeToken(kind);
 }
 
 export function formatObligationState(state: string): string {
-  const map = getOpsLocale() === "ko" ? OPS_FORMAT_LABELS_KO.obligationState : OBLIGATION_STATE_LABELS;
+  const map = getOpsLocale() === "ko" ? OPS_COPY_KO.formatLabels.obligationState : OBLIGATION_STATE_LABELS;
   return map[state] ?? humanizeToken(state);
 }
 
 export function formatObligationRole(role: string): string {
-  const map = getOpsLocale() === "ko" ? OPS_FORMAT_LABELS_KO.obligationRole : OBLIGATION_ROLE_LABELS;
+  const map = getOpsLocale() === "ko" ? OPS_COPY_KO.formatLabels.obligationRole : OBLIGATION_ROLE_LABELS;
   return map[role] ?? humanizeToken(role);
 }
 
 export function formatPersonalDataImpact(impact: string): string {
-  const map = getOpsLocale() === "ko" ? OPS_FORMAT_LABELS_KO.pdataImpact : PDATA_IMPACT_LABELS;
+  const map = getOpsLocale() === "ko" ? OPS_COPY_KO.formatLabels.pdataImpact : PDATA_IMPACT_LABELS;
   return map[impact] ?? humanizeToken(impact);
 }
 
 export function formatPromoteVerdict(verdict: string): string {
-  const map = getOpsLocale() === "ko" ? OPS_FORMAT_LABELS_KO.promoteVerdict : PROMOTE_VERDICT_LABELS;
+  const map = getOpsLocale() === "ko" ? OPS_COPY_KO.formatLabels.promoteVerdict : PROMOTE_VERDICT_LABELS;
   return map[verdict] ?? humanizeToken(verdict);
 }
 
 export function formatFeedbackDisposition(disposition: string): string {
-  const map = getOpsLocale() === "ko" ? OPS_FORMAT_LABELS_KO.feedbackDisposition : FEEDBACK_DISPOSITION_LABELS;
+  const map = getOpsLocale() === "ko" ? OPS_COPY_KO.formatLabels.feedbackDisposition : FEEDBACK_DISPOSITION_LABELS;
   return map[disposition] ?? humanizeToken(disposition);
 }

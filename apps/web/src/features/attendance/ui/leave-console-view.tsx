@@ -5,7 +5,8 @@ import { t } from "@console/i18n";
 import { fmtNumber } from "@console/i18n/format";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
-import { useCan } from "../../../reference/authz/ui/use-can";
+import { myAccessQuery } from "../../../reference/authz/api";
+import { accessRefusal } from "../../../reference/authz/domain/access";
 import { Button } from "../../../ui/button/button";
 import { Card } from "../../../ui/card/card";
 import { Chip } from "../../../ui/chip";
@@ -33,9 +34,9 @@ import s from "./attendance-console.module.css";
 type FilterMode = "all" | "promote";
 
 export function LeaveConsoleView({ baseline }: { baseline: () => ReactNode }) {
-  const can = useCan();
-  const canManage = can("employee_directory_manage");
-  const canReadDirectory = can("employee_directory_read", "all");
+  const access = useQuery(myAccessQuery);
+  const canManage = Boolean(access.data && accessRefusal(access.data, { domain: "hr_basic", level: "edit" }) === null);
+  const canReadDirectory = Boolean(access.data && accessRefusal(access.data, { domain: "hr_basic", level: "view" }) === null);
   const q = useQuery(leaveBalancesQuery);
   const branches = useQuery({ ...branchesQuery, enabled: canManage });
   const directory = useQuery({ ...directoryPeopleQuery, enabled: canManage && canReadDirectory });

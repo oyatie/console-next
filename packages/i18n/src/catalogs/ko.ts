@@ -1,8 +1,6 @@
-import { koAttendanceLeave } from "./ko/attendance-leave";
-import { koWave6 } from "./ko/wave6";
 import { koShellRoutes } from "./ko/shell-routes";
-import { koSettingsWave2 } from "./ko/settings-wave2";
-import { koAccessWave3 } from "./ko/access-wave3";
+import { koAccessCheck } from "./ko/access-check";
+import { koAccessPolicies } from "./ko/access-policies";
 import { koUiFlexibleColumns } from "./ko/ui-flexible-columns";
 import { koGovernanceRefusals } from "./ko/governance";
 import { koDirectoryViews } from "./ko/directory-views";
@@ -179,7 +177,7 @@ export const ko: Record<ScreenMessageId, string> = {
   ...koAttendanceHolidays,
   ...koAttendanceCrews,
   ...koAttendanceRecords,
-  ...koAttendanceOverview, ...koAttendanceLeave,
+  ...koAttendanceOverview,
   ...koImport,
   ...koImportRollback,
   ...koImportSheet,
@@ -282,5 +280,5 @@ export const ko: Record<ScreenMessageId, string> = {
   ...koDirectoryViews,
   ...koUiWorklist,
   ...koUiLedger,
-  ...koMe, ...koTeam, ...koShellRoutes, ...koSettingsWave2, ...koAccessWave3, ...koWave6,
+  ...koMe, ...koTeam, ...koShellRoutes, ...koAccessPolicies, ...koAccessCheck,
 };

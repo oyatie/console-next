@@ -111,7 +111,7 @@ export function PersonAccess({ accountId, grant: granting = false, onGrant }: {
       return <>      <>
       <div className={s.titleRow} data-access-subhead="">
         <Link to="/access/grants" className={buttonClass("ghost")}><ChevronLeft size={16} aria-hidden />{t("access.nav.grants")}</Link>
-        {account ? <PersonHead a={account} ops={Boolean(account.is_tenant_ops) || ctx.opsIds.has(account.id)} details={!account.employee_id} title={<h2 className={s.personTitle}>{name}</h2>} /> : <h2 className="page__title">{t("access.person.title")}</h2>}
+        {account ? <PersonHead a={account} ops={Boolean(account.is_tenant_ops) || Boolean(ctx.opsIds?.has(account.id))} details={!account.employee_id} title={<h2 className={s.personTitle}>{name}</h2>} /> : <h2 className="page__title">{t("access.person.title")}</h2>}
         {account && <PersonRef account={account} wrap />}
         <div className="grow" />
         {account && !e.is_ops && <Button variant="primary" onClick={() => onGrant(true)}><Plus size={16} aria-hidden />{t("access.grant.title")}</Button>}

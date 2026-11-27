@@ -40,6 +40,7 @@ pub(super) async fn sources(pool: &PgPool, org: OrgId, actor: UserId) -> PgActio
         setup_created_at: OffsetDateTime::UNIX_EPOCH,
         deadline_due_soon_days,
         policies,
+        public_holidays: Default::default(),
         read_permits: Arc::new(tokio::sync::Semaphore::new(1)),
         support_reference: String::new(),
         snoozes: Default::default(),

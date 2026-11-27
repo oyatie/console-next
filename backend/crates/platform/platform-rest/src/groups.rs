@@ -10,7 +10,10 @@ use crate::dto::{GroupAccountResponse, GroupResponse, OrgResponse};
 use crate::step_up::{PlatformStepUpRequest, require_platform_step_up};
 use crate::{PlatformError, PlatformRestState};
 
-fn require_group_manage(principal: &PlatformPrincipal, message: &str) -> Result<(), PlatformError> {
+pub(crate) fn require_group_manage(
+    principal: &PlatformPrincipal,
+    message: &str,
+) -> Result<(), PlatformError> {
     principal
         .authorize(PlatformFeature::GroupManage)
         .map_err(|_| PlatformError::forbidden(message))

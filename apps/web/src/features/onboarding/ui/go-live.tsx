@@ -87,7 +87,7 @@ export function GoLive() {
     const stats = (f: GoLiveFactsSnapshot) => [
       { key: "entities", label: t("setup.golive.details.legal_entity"), value: fmtNumber(f.entities) },
       { key: "workplaces", label: t("setup.golive.details.workplace"), value: fmtNumber(f.workplaces) },
-      { key: "registration-todo", label: t("setup.golive.registrationTodo"), value: fmtNumber(f.staffed_workplaces_without_registration + f.empty_workplaces_without_registration) },
+      { key: "registration-todo", label: t("setup.golive.registrationTodo"), value: fmtNumber((f.staffed_workplaces_without_registration ?? 0) + (f.empty_workplaces_without_registration ?? 0)) },
       { key: "units", label: t("setup.golive.details.units"), value: fmtNumber(f.org_units) },
       { key: "people", label: t("setup.stats.people"), value: fmtNumber(f.employees) },
       { key: "later", label: t("setup.golive.later"), value: fmtNumber(f.employees_starting_later) },

@@ -5,7 +5,7 @@ import { get } from "../../lib/query";
 
 export { ApiError };
 
-export type RequestDomainInput =
+type RequestDomainInput =
   | string
   | {
       slug: string;

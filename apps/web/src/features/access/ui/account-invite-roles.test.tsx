@@ -6,8 +6,8 @@ import type { Sheet } from "../../../ui/sheet/sheet";
 import { InviteWithRolesSheet } from "./account-invite-roles";
 
 vi.mock("@tanstack/react-query", () => ({
-  useQuery: (q: { queryKey?: unknown[] }) => {
-    const key = String(q?.queryKey?.[0] ?? "");
+  useQuery: (q: unknown) => {
+    const key = JSON.stringify(q);
     if (key.includes("/access/roles")) {
       return {
         isSuccess: true,
@@ -37,7 +37,7 @@ test("invite with roles renders role grant lines, operating start choices, and r
     <InviteWithRolesSheet
       accountFields={<div data-account-fields="" />}
       displayName="Park Staff"
-      loginValue="park"
+      normalizedLogin="park"
       accountBlockedWhy={null}
       onTriedAccount={vi.fn()}
       onFocusInvalid={vi.fn()}

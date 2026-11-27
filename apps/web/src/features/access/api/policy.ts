@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { api, assertPasskey, unwrap, type components, type operations } from "@console/api";
-import { get, type PathPrefix } from "../../lib/query";
+import { get, type PathPrefix } from "../../../lib/query";
 
-export type AccessReviewSummary = components["schemas"]["AccessReviewSummary"];
-export type AccessReviewDetail = components["schemas"]["AccessReviewDetail"];
 export type AccessReviewItem = components["schemas"]["AccessReviewItem"];
-export type AccessReviewDecisionInput = components["schemas"]["AccessReviewDecisionInput"];
+type AccessReviewDecisionInput = components["schemas"]["AccessReviewDecisionInput"];
 
-export type PolicyNoCodeCondition = {
+type PolicyNoCodeCondition = {
   attr: string;
   op: "eq" | "ne" | "contains";
   value: { kind: "literal" | "subject_attr" | "bool"; value: string | boolean };
@@ -42,7 +40,7 @@ export type PolicyDraftRecord = {
   updated_at?: string;
 };
 
-export type PolicyDecisionEntry = {
+type PolicyDecisionEntry = {
   id?: string;
   subject_ref?: string;
   action?: string;

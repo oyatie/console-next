@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { personName } from "../../../reference/person/present";
-import { lazy, Suspense, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { KeyRound } from "lucide-react";
 import type { components } from "@console/api/schema";
 import { isMessageId, t } from "@console/i18n";
-import { chunk } from "../../../lib/chunk-guard";
 import { Sheet } from "../../../ui/sheet/sheet";
 import { Button } from "../../../ui/button/button";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
@@ -16,12 +15,11 @@ import { useCommand } from "../../../lib/react/command";
 import { get } from "../../../lib/query";
 import { EMPLOYEE_STATUS, label } from "../../../lib/labels";
 import { PasskeyError } from "../../../lib/react/passkey-error";
+import { useInviteWithRolesSlot } from "../../../reference/authz/ui/use-invite-roles-slot";
 import { createAccount, employeeQuery } from "../api";
 import { useFocusInvalid } from "./use-focus-invalid";
 import { useIssueCode, type Issued } from "./use-issue-code";
 import { inviteBlock, LOGIN_MAX, loginProblem, normalizeLogin, suggestLogin } from "../domain/sign-in-id";
-
-const InviteWithRolesSheet = lazy(() => chunk(import("./account-invite-roles")).then((m) => ({ default: m.InviteWithRolesSheet })));
 import { personOption } from "../../../reference/person/ui/person-option";
 import { PersonLabel } from "../../../reference/person/ui/person-label";
 import { Muted } from "../../../ui/muted/muted";
@@ -73,6 +71,7 @@ export function InviteSheet({ employeeId, onClose, onIssued, onOpenAccount }: {
   const loginError = loginValue.trim() ? loginProblem(loginValue) : null;
   const domain = useQuery(get("/api/v1/users/me")).data?.sign_in_id?.split("@")[1];
 
+  const renderInviteWithRoles = useInviteWithRolesSlot();
   // The account, once created: a failed code issue then retries only the issue, never the creation.
   const [created, setCreated] = useState<{ id: string; name: string; signInId?: string | null } | null>(null);
   const [grantingRoles, setGrantingRoles] = useState(false);
@@ -127,7 +126,7 @@ export function InviteSheet({ employeeId, onClose, onIssued, onOpenAccount }: {
           <Button variant="ghost" onClick={() => (setNonEmployee(!nonEmployee), setTried(false))}>
             {t(nonEmployee ? "accounts.invite.fromEmployees" : "accounts.invite.nonEmployee")}
           </Button>
-          {created === null && (
+          {created === null && renderInviteWithRoles && (
             <Button variant="ghost" onClick={() => (setGrantingRoles(!grantingRoles), setTried(false))}>
               {t(grantingRoles ? "accounts.invite.removeRoles" : "accounts.invite.addRoles")}
             </Button>
@@ -144,22 +143,18 @@ export function InviteSheet({ employeeId, onClose, onIssued, onOpenAccount }: {
     </div>
   );
 
-  if (grantingRoles && created === null) {
-    return (
-      <Suspense fallback={null}>
-        <InviteWithRolesSheet
-          accountFields={accountFields}
-          displayName={displayName}
-          employeeId={who?.id}
-          loginValue={loginValue}
-          accountBlockedWhy={blockedWhy}
-          onTriedAccount={() => setTried(true)}
-          onFocusInvalid={focusInvalid}
-          onClose={onClose}
-          onIssued={onIssued}
-        />
-      </Suspense>
-    );
+  if (grantingRoles && created === null && renderInviteWithRoles) {
+    return renderInviteWithRoles({
+      accountFields,
+      displayName,
+      employeeId: who?.id,
+      normalizedLogin: loginValue.trim() ? normalizeLogin(loginValue) : null,
+      accountBlockedWhy: blockedWhy,
+      onTriedAccount: () => setTried(true),
+      onFocusInvalid: focusInvalid,
+      onClose,
+      onIssued,
+    });
   }
 
   const commit = () => {

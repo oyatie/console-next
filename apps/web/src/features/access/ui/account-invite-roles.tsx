@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { isMessageId, t } from "@console/i18n";
@@ -7,6 +7,7 @@ import { todayKst } from "../../../lib/pure/today";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { PasskeyError } from "../../../lib/react/passkey-error";
+import type { InviteWithRolesSlotProps } from "../../../reference/authz/ui/use-invite-roles-slot";
 import { orgStructureRef } from "../../../reference/entity/api";
 import { personName } from "../../../reference/person/present";
 import { Banner } from "../../../ui/banner/banner";
@@ -15,15 +16,7 @@ import { ChoiceField } from "../../../ui/choice/choice-field";
 import { Composer } from "../../../ui/composer/composer";
 import { ReasonField } from "../../../ui/reason/reason-field";
 import { reasonProblem, type Reason } from "../../../ui/reason/reason";
-import { catalogQuery, meQuery as myAccessQuery, rolesQuery } from "../../access/api";
-import { blankLine, endToWire, missing, ready, startProblem, startToWire, type DraftLine, type Start } from "../../access/domain/grants";
-import type { OrgNode } from "../../access/domain/scope";
-import { refusalText, scopeLabel } from "../../access/present";
-import { GrantLine } from "../../access/ui/grant-line";
-import { StartPick } from "../../access/ui/grant-sheet-parts";
-import { ScopeSheet } from "../../access/ui/scope-picker";
-import { useReasons } from "../../access/ui/use-reasons";
-import accessStyles from "../../access/ui/access.module.css";
+import { catalogQuery, meQuery as myAccessQuery, rolesQuery } from "../api";
 import {
   createAccessInvite,
   INVITE_WITH_ROLES_INVALIDATES,
@@ -31,8 +24,14 @@ import {
   type CreateAccessInviteBody,
   type PreviewAccessInviteResponse,
 } from "../api/access-invite";
-import { normalizeLogin } from "../domain/sign-in-id";
-import type { Issued } from "./use-issue-code";
+import { blankLine, endToWire, missing, ready, startProblem, startToWire, type DraftLine, type Start } from "../domain/grants";
+import type { OrgNode } from "../domain/scope";
+import { refusalText, scopeLabel } from "../present";
+import { GrantLine } from "./grant-line";
+import { StartPick } from "./grant-sheet-parts";
+import { ScopeSheet } from "./scope-picker";
+import { useReasons } from "./use-reasons";
+import accessStyles from "./access.module.css";
 
 const OTHER = "OTHER";
 
@@ -51,23 +50,13 @@ export function InviteWithRolesSheet({
   accountFields,
   displayName,
   employeeId,
-  loginValue,
+  normalizedLogin,
   accountBlockedWhy,
   onTriedAccount,
   onFocusInvalid,
   onClose,
   onIssued,
-}: {
-  accountFields: ReactNode;
-  displayName: string;
-  employeeId?: string;
-  loginValue: string;
-  accountBlockedWhy: string | null;
-  onTriedAccount: () => void;
-  onFocusInvalid: () => void;
-  onClose: () => void;
-  onIssued: (r: Issued) => void;
-}) {
+}: InviteWithRolesSlotProps) {
   const cat = useQuery(catalogQuery);
   const rolesQ = useQuery(rolesQuery);
   const meAccess = useQuery(myAccessQuery);
@@ -140,7 +129,7 @@ export function InviteWithRolesSheet({
   const buildBody = (): CreateAccessInviteBody => ({
     display_name: displayName,
     employee_id: employeeId ?? null,
-    sign_in_id: loginValue.trim() ? normalizeLogin(loginValue) : null,
+    sign_in_id: normalizedLogin,
     grants: lines.filter(ready).map((l) => ({
       role_id: l.role_id,
       scope: l.scope,
@@ -211,7 +200,7 @@ export function InviteWithRolesSheet({
       {accountFields}
       {rolesQ.isSuccess && roles.length === 0 && <Banner>{t("access.grant.noRoles")}</Banner>}
       <div className={accessStyles.lines} role="group" aria-labelledby="invite-grant-lines">
-        <span id="invite-grant-lines" className="field__label">{t("access.grant.lines")}</span>
+        <strong id="invite-grant-lines">{t("access.grant.lines")}</strong>
         {lines.map((l, i) => (
           <GrantLine
             key={l.key}

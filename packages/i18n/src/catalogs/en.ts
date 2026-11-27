@@ -175,7 +175,7 @@ export const en = {
   ...enAttendanceHolidays,
   ...enAttendanceCrews,
   ...enAttendanceRecords,
-  ...enAttendanceOverview, ...enAttendanceLeave,
+  ...enAttendanceOverview,
   ...enImport,
   ...enImportRollback,
   ...enImportSheet,
@@ -278,15 +278,13 @@ export const en = {
   ...enDirectoryViews,
   ...enUiWorklist,
   ...enUiLedger,
-  ...enMe, ...enTeam, ...enShellRoutes, ...enSettingsWave2, ...enAccessWave3, ...enWave6,
+  ...enMe, ...enTeam, ...enShellRoutes, ...enAccessPolicies, ...enAccessCheck,
 } as const;
 
 export type ScreenMessageId = keyof typeof en;
-import { enAccessWave3 } from "./en/access-wave3";
-import { enWave6 } from "./en/wave6";
-import { enAttendanceLeave } from "./en/attendance-leave";
+import { enAccessCheck } from "./en/access-check";
+import { enAccessPolicies } from "./en/access-policies";
 import { enDirectoryViews } from "./en/directory-views";
 import { enSettingsHub } from "./en/settings-hub";
-import { enSettingsWave2 } from "./en/settings-wave2";
 import { enShellRoutes } from "./en/shell-routes";
 import { enUiWorklist } from "./en/ui-worklist";

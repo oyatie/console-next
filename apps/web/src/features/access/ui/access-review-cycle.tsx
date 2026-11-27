@@ -18,7 +18,7 @@ import {
   exportAccessReviewCsv,
   startAccessReview,
   type AccessReviewItem,
-} from "../policy-api";
+} from "../api/policy";
 import { AccessReviewDecisionComposer } from "./access-review-decision-composer";
 import s from "./access.module.css";
 

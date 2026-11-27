@@ -134,4 +134,5 @@ export const enAccessLog = {
   "accessLog.review.error.incomplete": "Review all flagged events before completing the monthly review.",
   "accessLog.review.error.tenantOnly": "Monthly access-log review requires tenant-wide audit permission.",
   "accessLog.review.inspectorTitle": "Audit evidence and review",
+  "accessLog.review.error.selfReview": "You cannot review or clear your own access-log events.",
 } as const;

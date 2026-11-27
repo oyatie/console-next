@@ -26,7 +26,7 @@ import {
   validatePolicyDraft,
   type PolicyNoCodeBlocks,
   type PolicySimulationOutcome,
-} from "../policy-api";
+} from "../api/policy";
 import s from "./access.module.css";
 
 const route = getRouteApi("/app/access/policies/$draftId");

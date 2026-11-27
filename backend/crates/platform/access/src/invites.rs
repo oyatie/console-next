@@ -7,8 +7,8 @@ mod create_impl;
 
 use console_identity_adapter_postgres::sign_in_id::parse_login;
 use console_identity_domain::{normalize_optional_phone, validate_display_name};
+use console_platform_authz::Principal;
 use console_platform_authz::access::{Domain, Enforcement, GrantState, Level, load_tenant_phase};
-use console_platform_authz::{Action, Feature, Principal, authorize_capability};
 use console_platform_db::with_org_conn;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -81,9 +81,8 @@ pub struct CreateInviteIn {
 }
 
 pub(crate) fn require_invite_authority(p: &Principal, actor: &Actor) -> AccessResult<()> {
-    let can_manage_users = p.is_tenant_ops
-        || authorize_capability(p, Action::new(Feature::UserManage)).is_ok()
-        || actor.may(Domain::Access, Level::Edit, &actor.tenant());
+    let can_manage_users =
+        p.is_tenant_ops || actor.may(Domain::Access, Level::Edit, &actor.tenant());
     if can_manage_users {
         Ok(())
     } else {

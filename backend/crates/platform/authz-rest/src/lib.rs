@@ -26,7 +26,7 @@ pub use store::{
 
 use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, StatusCode};
-use axum::response::{IntoResponse, Response};
+use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use console_kernel_core::{ErrorKind, KernelError};
@@ -492,34 +492,16 @@ pub(crate) fn rest_error_from_request_context(
     }
 }
 
-#[derive(Debug, Serialize)]
-struct ErrorBody {
-    error: ErrorPayload,
+pub(crate) fn check_legacy_role_manage(
+    principal: &console_platform_authz::Principal,
+) -> Result<(), KernelError> {
+    console_platform_authz::authorize_org_wide(
+        principal,
+        console_platform_authz::Action::new(console_platform_authz::Feature::RoleManage),
+    )
 }
 
-#[derive(Debug, Serialize)]
-struct ErrorPayload {
-    code: &'static str,
-    message: String,
-}
-
-impl IntoResponse for RestError {
-    fn into_response(self) -> Response {
-        let code = self.code();
-        (
-            self.status,
-            Json(ErrorBody {
-                error: ErrorPayload {
-                    code,
-                    message: self.message,
-                },
-            }),
-        )
-            .into_response()
-    }
-}
-
-fn status_for_error_kind(kind: ErrorKind) -> StatusCode {
+pub(crate) fn status_for_error_kind(kind: ErrorKind) -> StatusCode {
     StatusCode::from_u16(kind.status_code()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR)
 }
 

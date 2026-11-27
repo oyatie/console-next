@@ -14,7 +14,7 @@ import {
   ACCESS_REVIEW_READS,
   recordAccessReviewDecision,
   type AccessReviewItem,
-} from "../policy-api";
+} from "../api/policy";
 import s from "./access.module.css";
 
 const ownError = (code: string) => {

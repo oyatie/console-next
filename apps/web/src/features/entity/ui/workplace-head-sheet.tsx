@@ -107,7 +107,7 @@ export function WorkplaceHeadSheet({ w, onClose }: { w: Workplace; onClose: () =
           />
         )}
         {head && (
-          <Button variant="ghost" className="btn--sm" onClick={() => setHead(null)}>
+          <Button variant="ghost" size="sm" onClick={() => setHead(null)}>
             {t("orgUnit.head.clear")}
           </Button>
         )}

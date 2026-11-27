@@ -303,4 +303,6 @@ export const enAccess = {
   "access.role.history.compare": "Compare changes",
   "access.role.history.initial": "Initial version",
   "access.role.history.empty": "No version history recorded",
+  "access.nav.policies": "Policies",
+  "access.nav.check": "Access check",
 } as const;

@@ -2,7 +2,7 @@
 import { csvCell } from "./csv-cell";
 
 /** Build a UTF-8 BOM CSV string with formula-safe cells. */
-export function buildCsv(
+function buildCsv(
   headers: readonly (string | number)[],
   rows: readonly (readonly (string | number)[])[],
 ): string {

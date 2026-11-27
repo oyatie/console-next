@@ -14,9 +14,9 @@ setRecoveryNotifier(noteCancelledRecovery);
 export { cancelledRecoveryNotice, dismissCancelledRecoveryNotice, subscribeCancelledRecovery };
 
 export type RecoveryChannel = components["schemas"]["RecoveryChannel"];
-export type RecoveryStatus = components["schemas"]["RecoveryStatusResponse"];
-export type RecoveryContactStatus = components["schemas"]["RecoveryContactStatus"];
-export type GeneratedRecoveryCodes = components["schemas"]["GenerateRecoveryCodesResponse"];
+type RecoveryStatus = components["schemas"]["RecoveryStatusResponse"];
+type RecoveryContactStatus = components["schemas"]["RecoveryContactStatus"];
+type GeneratedRecoveryCodes = components["schemas"]["GenerateRecoveryCodesResponse"];
 
 /** Capability-safe status read: returns `null` when an older server does not expose self-recovery yet. */
 export async function recoveryStatus(): Promise<RecoveryStatus | null> {

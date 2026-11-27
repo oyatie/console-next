@@ -36,4 +36,9 @@ export const koRequestOutcome: Record<keyof typeof enRequestOutcome, string> = {
   "requestOutcome.resultLive": "{at}에 운영을 시작했습니다.",
   "requestOutcome.resultItems": "{count}건을 반영했습니다. 아래 기록에서 결과를 확인하십시오.",
   "requestOutcome.resultRecorded": "요청이 반영되었습니다. 연결된 기록에서 결과를 확인하십시오.",
+  "requestOutcome.myHistory.title": "내 최근 요청 내역",
+  "requestOutcome.myHistory.col.id": "요청 ID",
+  "requestOutcome.myHistory.col.state": "처리 상태",
+  "requestOutcome.myHistory.col.created": "요청 시각",
+  "requestOutcome.myHistory.open": "결과 보기",
 };

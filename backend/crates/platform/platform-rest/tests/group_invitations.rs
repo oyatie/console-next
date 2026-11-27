@@ -3,6 +3,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 #[path = "fixtures/rename.rs"]
+#[allow(dead_code)]
 mod fixture;
 
 use console_kernel_core::{OrgId, UserId};

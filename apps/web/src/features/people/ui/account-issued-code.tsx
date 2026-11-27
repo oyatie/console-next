@@ -7,6 +7,7 @@ import { chunk } from "../../../lib/chunk-guard";
 import { buildInviteUrl } from "../../../lib/pure/invite-link";
 import { Dialog } from "../../../ui/dialog";
 import { Button } from "../../../ui/button/button";
+import { buttonClass } from "../../../ui/button/button-class";
 import { KeyValue } from "../../../ui/key-value/key-value";
 import { announce } from "../../../lib/react/announce";
 import type { Issued } from "./use-issue-code";
@@ -53,7 +54,7 @@ export function IssuedCode({ issued, onDone }: { issued: Issued | null; onDone: 
             {inviteUrl && <Button onClick={copyLink}>{t("common.copyInviteLink")}</Button>}
             {!peerDelivered && !issued.reset && (
               issued.grantedCount ? (
-                <Link to="/access/people/$accountId" params={{ accountId: issued.userId }} className="btn" onClick={onDone}>
+                <Link to="/access/people/$accountId" params={{ accountId: issued.userId }} className={buttonClass("secondary")} onClick={onDone}>
                   {t("accounts.access.view")}
                 </Link>
               ) : (

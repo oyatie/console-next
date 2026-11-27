@@ -32,6 +32,7 @@
       "src/features/access/ui/access-check-page.tsx",
       "src/features/access/ui/access-review-cycle.tsx",
       "src/features/access/ui/access-review-page.tsx",
+      "src/features/access/ui/account-invite-roles.tsx",
       "src/features/access/ui/policies-page.tsx",
       "src/features/account/ui/location-consent-page.tsx",
       "src/features/account/ui/privacy-intake-inspector.tsx",
@@ -51,7 +52,6 @@
       "src/features/me/ui/me-dispatch-offers-page.tsx",
       "src/features/company-domain/ui/company-domain-console.tsx",
       "src/features/entity/ui/entity-wizard.tsx",
-      "src/features/people/ui/account-invite-roles.tsx",
       "src/features/people/ui/register-export.tsx",
       "src/features/people/ui/roster-console-panel.tsx",
       "src/features/settings/ui/overtime-attestation-panel.tsx",
@@ -90,7 +90,6 @@
       "src/features/people/ui/grid-page.tsx",
       "src/features/people/ui/job-titles-page.tsx",
       "src/features/people/ui/notice-list-page.tsx",
-      "src/features/people/ui/people-route.tsx",
       "src/features/people/ui/requests-page.tsx",
       "src/features/people/ui/roster-fields-page.tsx",
       "src/features/people/ui/unplaced-console.tsx",
@@ -106,7 +105,8 @@
       "src/routes/home-screen.tsx",
       "src/routes/inbox-screen.tsx",
       "src/routes/org-screen.tsx",
-      "src/routes/org-tabs.tsx"
+      "src/routes/org-tabs.tsx",
+      "src/routes/people-screen.tsx"
     ]
   },
   "record": {

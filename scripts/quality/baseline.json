@@ -26,7 +26,6 @@
   "unused-export:apps/web/src/features/access/domain/grant-filter.ts:GrantFilter": 1,
   "unused-export:apps/web/src/features/access/domain/grant-filter.ts:GrantRow": 1,
   "unused-export:apps/web/src/features/access/domain/grants.ts:ReadyLine": 1,
-  "unused-export:apps/web/src/features/access/domain/grants.ts:startToWire": 1,
   "unused-export:apps/web/src/features/access/domain/readiness.ts:ReadyAccount": 1,
   "unused-export:apps/web/src/features/access/domain/readiness.ts:ReadyGrant": 1,
   "unused-export:apps/web/src/features/access/domain/scope.ts:Row": 1,

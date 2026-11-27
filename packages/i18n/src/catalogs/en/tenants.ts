@@ -256,4 +256,11 @@ export const enTenants = {
   "tenants.support.tokenNotice": "Shown once for read-only support queries until {at}. Do not store or share this token in logs or URLs.",
   "tenants.support.copyToken": "Copy bearer token",
   "tenants.support.tokenCopied": "Bearer token copied",
+  "tenants.groups.inviteOrg": "Invite account (7d)",
+  "tenants.groups.inviteSubmit": "Send 7-day invite",
+  "tenants.groups.inviteDone": "Sent 7-day group invitation to {org}",
+  "tenants.groups.pendingInvites": "Pending 7-day invitations",
+  "tenants.groups.inviteExpires": "Expires {at}",
+  "tenants.groups.cancelInvite": "Cancel invite",
+  "tenants.groups.cancelInviteDone": "Cancelled invitation for {org}",
 } as const;

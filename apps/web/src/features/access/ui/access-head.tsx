@@ -24,7 +24,7 @@ export function AccessNavTabs({ failed = false }: { failed?: boolean }) {
   const canEditPolicy = Boolean(
     me.data &&
       (me.data.is_ops ||
-        me.data.entries.some(
+        me.data.entries?.some(
           (e) =>
             e.domain === "access" &&
             e.level === "edit" &&

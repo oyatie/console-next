@@ -18,7 +18,7 @@ import {
   authorizePolicyBulk,
   authorizePolicyPoint,
   type PolicySimulationOutcome,
-} from "../policy-api";
+} from "../api/policy";
 import { AccessNavTabs } from "./access-head";
 import s from "./access.module.css";
 

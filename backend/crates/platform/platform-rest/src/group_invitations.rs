@@ -4,7 +4,7 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::{Extension, Json};
-use console_platform_authz::{PlatformFeature, PlatformPrincipal, Principal};
+use console_platform_authz::{PlatformPrincipal, Principal};
 use serde::Deserialize;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -89,9 +89,10 @@ pub(crate) async fn create_invitation(
     Path(id): Path<Uuid>,
     Json(body): Json<CreateGroupInvitationRequest>,
 ) -> Result<Response, PlatformError> {
-    principal
-        .authorize(PlatformFeature::GroupManage)
-        .map_err(|_| PlatformError::forbidden("platform principal cannot invite group members"))?;
+    crate::groups::require_group_manage(
+        &principal,
+        "platform principal cannot invite group members",
+    )?;
     require_platform_step_up(
         &state,
         &principal,
@@ -121,11 +122,10 @@ pub(crate) async fn cancel_invitation(
     Extension(principal): Extension<PlatformPrincipal>,
     Path((id, invitation_id)): Path<(Uuid, Uuid)>,
 ) -> Result<Response, PlatformError> {
-    principal
-        .authorize(PlatformFeature::GroupManage)
-        .map_err(|_| {
-            PlatformError::forbidden("platform principal cannot cancel group invitations")
-        })?;
+    crate::groups::require_group_manage(
+        &principal,
+        "platform principal cannot cancel group invitations",
+    )?;
 
     state
         .provisioner

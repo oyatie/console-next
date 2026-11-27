@@ -3,10 +3,9 @@ import { api, unwrap } from "@console/api";
 import type { components } from "@console/api/schema";
 import type { ExportPurpose } from "../../../reference/directory/domain/export";
 
-export type RecordSegment = components["schemas"]["PersonRecordSectionSegment"];
-export type RecordImportRequest = components["schemas"]["PersonRecordImportRequest"];
+type RecordSegment = components["schemas"]["PersonRecordSectionSegment"];
+type RecordImportRequest = components["schemas"]["PersonRecordImportRequest"];
 export type RecordImportReport = components["schemas"]["PersonRecordImportReport"];
-export type RecordSheet = components["schemas"]["PersonRecordSheet"];
 
 /** Export live entries of one personnel card section (`GET /api/v1/employee-records/{section}`). */
 export const exportRecordSheet = (section: RecordSegment, exportPurpose: ExportPurpose) =>

@@ -264,4 +264,11 @@ export const koTenants: Record<keyof typeof enTenants, string> = {
   "tenants.support.tokenNotice": "{at}까지 읽기 전용 조회에만 사용할 수 있는 토큰입니다. 로그나 주소창에 남기지 마십시오.",
   "tenants.support.copyToken": "토큰 복사",
   "tenants.support.tokenCopied": "지원 세션 토큰을 복사했습니다",
+  "tenants.groups.inviteOrg": "그룹 편입 초대 (7일)",
+  "tenants.groups.inviteSubmit": "초대 발송",
+  "tenants.groups.inviteDone": "‘{org}’에 7일 그룹 편입 초대를 보냈습니다",
+  "tenants.groups.pendingInvites": "대기 중인 그룹 편입 초대 (7일)",
+  "tenants.groups.inviteExpires": "만료 {at}",
+  "tenants.groups.cancelInvite": "초대 취소",
+  "tenants.groups.cancelInviteDone": "‘{org}’ 그룹 편입 초대를 취소했습니다",
 };
