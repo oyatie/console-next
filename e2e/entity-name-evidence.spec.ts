@@ -1,10 +1,21 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator } from "@playwright/test";
+import { ko } from "../packages/i18n/src/catalogs/ko";
 import { expectAccessible } from "./a11y";
 import { go, option } from "./flows";
 import { openTenant } from "./helpers/tenant";
 import { editName, setName } from "./helpers/entity";
 import { registerSheet } from "./helpers/register";
 import { wizardBrn, brnDisplay, fillEntity, REGISTRATION_FIXTURES, setupCompany } from "./setup-flows";
+
+async function closeEdit(dialog: Locator) {
+  const close = dialog.getByRole("button", { name: ko["uiSheet.close"], exact: true });
+  await close.click();
+  if (await dialog.isVisible()) {
+    await expect(dialog.getByRole("status")).toContainText(ko["composer.unsaved"]);
+    await close.click();
+  }
+  await expect(dialog).toBeHidden();
+}
 
 test("one 법인명: ① edits the name every surface shows, and the 약칭 and 영문명 stay secondary", { tag: ["@org", "@regression"] }, async ({ browser }) => {
   const p = await openTenant(browser, "name-source", "법인명 단일 출처");
@@ -20,13 +31,12 @@ test("one 법인명: ① edits the name every surface shows, and the 약칭 and 
     await expect(d).toContainText(reason);
     await expect(d.getByRole("button", { name: "정정 기록" })).toHaveAttribute("aria-disabled", "true");
     await expectAccessible(p, `${label} refusal`);
-    await d.getByRole("button", { name: "취소", exact: true }).click();
-    await expect(d).toBeHidden();
+    await closeEdit(d);
   }
   const long = await editName(p, "약칭");
   await long.getByRole("textbox", { name: "약칭" }).fill("가".repeat(41));
   await expect(long.getByRole("textbox", { name: "약칭" })).toHaveValue("가".repeat(40));
-  await long.getByRole("button", { name: "취소", exact: true }).click();
+  await closeEdit(long);
 
   // regression (0h): the 등록증's ① showed its own copy while its 수정 edited the 법인명.
   await p.getByRole("tablist", { name: "법인 정보 보기", exact: true }).getByRole("tab", { name: /^사업자등록증/ }).click();
@@ -127,8 +137,7 @@ test("the server refuses a 대표자 as 법인명 or 영문명 and the sheet say
     await expect(d).toContainText(reason);
     await expectAccessible(p, `server ${code}`);
     await p.unroute(revise);
-    await d.getByRole("button", { name: "취소", exact: true }).click();
-    await expect(d).toBeHidden();
+    await closeEdit(d);
     await expect(title).toHaveText("주식회사 누리");
   }
 });

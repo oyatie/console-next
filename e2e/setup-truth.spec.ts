@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "./a11y";
-import { authenticatorOf, virtualAuthenticator } from "./auth";
+import { onSecondDevice } from "./auth";
 import { tenantNameField, tenantOnboardSubmit, tenantSlugField, firstSignIn, go, kstDate, option, takeCode, unique, vendorPage } from "./flows";
 import { pickKind, setupCompany, setupRail, startOperations, tenantInSetup, typeAddress, workplaceSheet } from "./setup-flows";
 import { fillRegister, openRegistered, pressRegister, registerSheet } from "./helpers/register";
@@ -19,16 +19,6 @@ const ACCOUNT = "새온그룹";
 const shot = (page: Page, name: string) => (process.env.E2E_SHOTS ? page.screenshot({ path: `${process.env.E2E_SHOTS}/${name}.png`, fullPage: true }) : Promise.resolve());
 const ENTITY = "주식회사 새온정밀";
 test.beforeAll(() => loadCatalog("ko"));
-
-/** The next WebAuthn registration lands on a second device (the first holds this account's credential, which is excluded). */
-async function onSecondDevice(page: Page) {
-  const first = authenticatorOf(page);
-  await page.route("**/api/v1/auth/passkey/register/start", async (route) => {
-    await first.remove();
-    await virtualAuthenticator(page);
-    await route.continue();
-  });
-}
 
 /** Registers `name` from `unit`'s box at `site` (two 사업장: the sheet asks which), hired `hired`; lands on their record. */
 async function hire(page: Page, name: string, unit: string, site: string, hired: string) {
@@ -161,7 +151,6 @@ test("go-live counts what the panels show and fixes each record in place; the te
   await step.getByRole("button", { name: t("account.passkey.add"), exact: true }).click();
   await expect(step.getByRole("button", { name: t("account.passkey.add"), exact: true })).toBeHidden();
   await expect(step).toHaveAttribute("data-state", "done");
-  await admin.unroute("**/api/v1/auth/passkey/register/start");
   await go(admin, "/setup/go-live");
   await expect(main.getByRole("alert").first()).toBeVisible();
   await expect(main).not.toContainText("패스키가 1개뿐입니다");
