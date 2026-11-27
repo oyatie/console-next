@@ -203,10 +203,13 @@ test.describe("one state contract across console routes", () => {
         await route.fulfill(failure(503));
       });
       try {
-        const requested = page.waitForRequest(request => request.method() === "GET" && new URL(request.url()).pathname === read);
-        await page.goto(path);
+        // A fresh tab must restore its session before issuing the protected read. Time the
+        // loading UI from that read, holding its answer until the shell and skeleton are visible.
+        await Promise.all([
+          page.waitForRequest(request => request.method() === "GET" && new URL(request.url()).pathname === read),
+          page.goto(path),
+        ]);
         await expect(page.getByRole("navigation", { name: "주 메뉴" })).toBeVisible({ timeout: 1500 });
-        await requested;
         await expect(page.getByRole("main").locator('[aria-busy="true"]').last()).toBeVisible({ timeout: 1500 });
         await expect(page.getByRole("main").locator("[data-read-layout]").last()).toBeVisible({ timeout: 1500 });
         held = false;
