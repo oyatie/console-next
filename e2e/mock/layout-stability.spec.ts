@@ -14,6 +14,8 @@ import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
 import { moveDetail } from "./lifecycle-sheets";
 import { attendancePerson } from "./attendance-board";
+import { setupConsoleSaeonPeople } from "./people-saeon";
+import { SAEON_HERO_ID } from "./saeon";
 
 test.beforeAll(() => loadCatalog("ko"));
 test.beforeEach(async ({ page }) => {
@@ -27,6 +29,25 @@ test.afterEach(async ({ page }, info) => {
     await fits(page, `${info.title} ${theme}`);
     await page.screenshot({ path: info.outputPath(`${theme}.png`), fullPage: true });
   }
+});
+
+test("roster end actions stay in place when the selected employee's register arrives @baseline", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const fixture = await setupConsoleSaeonPeople(page, { experience: "baseline" });
+  const held = Promise.withResolvers<void>();
+  const register = `**/api/v1/employees/${SAEON_HERO_ID}/register-facts`;
+  await page.route(register, async route => { await held.promise; await route.fallback(); });
+  try {
+    await Promise.all([page.waitForRequest(register), page.goto(`/people?sel=${SAEON_HERO_ID}`)]);
+    const actions = page.getByRole("navigation", { name: t("crud.person.ends"), exact: true });
+    await expect(actions.getByText(t("crud.person.exit"), { exact: true })).toBeVisible();
+    await page.evaluate(() => document.fonts.ready);
+    const before = await actions.boundingBox();
+    held.resolve();
+    await expect(page.getByRole("heading", { name: new RegExp(t("empCard.reg.title")) })).toBeVisible();
+    expect(await actions.boundingBox()).toEqual(before);
+    expect(fixture.unexpected).toEqual([]);
+  } finally { held.resolve(); fixture.release(); }
 });
 
 for (const width of [1440, 390]) {

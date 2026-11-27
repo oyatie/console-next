@@ -93,6 +93,8 @@ function Peek({ d, today, unitTriggerRef, onOpenUnit }: { d: Detail; today: stri
         )}
         {e.identity_review_required && <Chip tone="warn">{t("people.identityReview")}</Chip>}
       </div>
+      {/* Keep record actions together so arriving register facts cannot move a visible control. */}
+      <nav className="row" aria-label={t("crud.person.ends")}><EndActions id={e.id} /></nav>
       {e.status === "EXITED" && e.exit_date && <ExitPeek id={e.id} exitDate={e.exit_date} today={today} />}
       {next && (
         <Banner tone="warn" title={t("roster.peek.next", { days: daysBetween(today, next.date) })}>{t("empCard.next.what", { date: fmtDate(next.date), what: next.what })}</Banner>
@@ -121,8 +123,6 @@ function Peek({ d, today, unitTriggerRef, onOpenUnit }: { d: Detail; today: stri
           </dl>
         </section>}</QueryState>
       )}
-      {/* CRUD: exit and registration cancel from the roster's peek, each opening on the record. */}
-      <nav className="row" aria-label={t("crud.person.ends")}><EndActions id={e.id} /></nav>
     </>
   );
 }
