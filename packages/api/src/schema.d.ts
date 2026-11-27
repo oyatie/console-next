@@ -13390,6 +13390,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/settings/overtime-attestations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List overtime recognition work-rule confirmations */
+        get: operations["listOvertimeRuleAttestations"];
+        put?: never;
+        /** Record an overtime recognition work-rule confirmation */
+        post: operations["recordOvertimeRuleAttestation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/settings/{key}": {
         parameters: {
             query?: never;
@@ -14008,7 +14026,8 @@ export interface paths {
         put?: never;
         /** Tenant ops asks the platform operator to change their own company domain */
         post: operations["requestCompanyDomainChange"];
-        delete?: never;
+        /** Withdraw the tenant ops account's pending company-domain request */
+        delete: operations["cancelCompanyDomainRequest"];
         options?: never;
         head?: never;
         patch?: never;
@@ -18535,6 +18554,21 @@ export interface components {
         };
         CompanyDomainRequestState: {
             pending_domain: string | null;
+            /** Format: uuid */
+            requested_by?: string | null;
+            requested_by_name?: string | null;
+            /** Format: date-time */
+            requested_at?: string | null;
+            current_domain?: string | null;
+            /** Format: int64 */
+            account_count?: number;
+            domain_aliases?: {
+                slug: string;
+                /** Format: date-time */
+                retired_at: string | null;
+                /** Format: date-time */
+                alias_until: string | null;
+            }[];
         };
         CompleteInspectionRoundRequest: {
             outcome: components["schemas"]["InspectionRoundOutcome"];
@@ -19560,6 +19594,14 @@ export interface components {
             vendor_name: string;
             vendor_contact?: string;
             reason: string;
+        };
+        CreateOvertimeAttestationRequest: {
+            scope_entity_id?: components["schemas"]["Uuid"] | null;
+            /** Format: date */
+            confirmed_on: string;
+            rule_reference: string;
+            worker_notice_method: string;
+            statutory_basis?: string | null;
         };
         CreateOwnershipTransferRequest: {
             /** @description New legal-owner label after all signoffs approve. */
@@ -26605,6 +26647,18 @@ export interface components {
             /** @enum {string} */
             status?: "REQUESTED" | "ASSIGNED" | "IN_PROGRESS" | "RESULT_SUBMITTED" | "COMPLETED" | "CANCELLED";
         };
+        OvertimeRuleAttestation: {
+            id: components["schemas"]["Uuid"];
+            scope_entity_id: components["schemas"]["Uuid"] | null;
+            /** Format: date */
+            confirmed_on: string;
+            rule_reference: string;
+            worker_notice_method: string;
+            statutory_basis: string;
+            recorded_by: components["schemas"]["Uuid"];
+            recorded_by_name: string | null;
+            created_at: components["schemas"]["Timestamp"];
+        };
         OwnAttendanceException: {
             id: components["schemas"]["Uuid"];
             code: string;
@@ -29927,6 +29981,7 @@ export interface components {
                 step_up: boolean;
                 /** @enum {boolean} */
                 second_person: false;
+                worker_consent?: boolean;
             };
             earliest_effective_from: components["schemas"]["Timestamp"];
             /** @description Value and deciding scope at the request's current time, independent of scheduled changes. */
@@ -29939,6 +29994,12 @@ export interface components {
                 scope_entity_id: components["schemas"]["Uuid"] | null;
                 /** @description Descendant scopes with their own override in force at effective_from. */
                 keeps_own_value: components["schemas"]["Uuid"][];
+                /** Format: int64 */
+                affected_people_count?: number;
+                /** Format: int64 */
+                out_of_scope_people_count?: number;
+                /** Format: int64 */
+                disfavored_people_count?: number;
             };
         };
         SettingChangeRequest: {
@@ -29992,7 +30053,7 @@ export interface components {
             }[];
             source: {
                 /** @enum {string} */
-                layer: "code_default" | "platform" | "tenant" | "legal_entity" | "workplace";
+                layer: "code_default" | "platform" | "tenant" | "legal_entity" | "workplace" | "department" | "person";
                 scope_entity_id: components["schemas"]["Uuid"] | null;
             };
             /** @description Most specific scope first, followed by tenant and code default; only in-force values. */
@@ -60745,6 +60806,65 @@ export interface operations {
             503: components["responses"]["ServiceUnavailable"];
         };
     };
+    listOvertimeRuleAttestations: {
+        parameters: {
+            query?: {
+                scope_entity_id?: components["schemas"]["Uuid"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Recorded overtime rule confirmations */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["OvertimeRuleAttestation"][];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    recordOvertimeRuleAttestation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateOvertimeAttestationRequest"];
+            };
+        };
+        responses: {
+            /** @description Overtime rule confirmation recorded */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OvertimeRuleAttestation"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Validation refusal */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     changeSetting: {
         parameters: {
             query?: {
@@ -62226,6 +62346,7 @@ export interface operations {
             content: {
                 "application/json": {
                     slug: string;
+                    expected_pending_domain?: string | null;
                 };
             };
         };
@@ -62241,6 +62362,13 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            /** @description Pending request changed concurrently or slug already taken */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Invalid requested company domain */
             422: {
                 headers: {
@@ -62248,6 +62376,28 @@ export interface operations {
                 };
                 content?: never;
             };
+        };
+    };
+    cancelCompanyDomainRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Pending request cancelled */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyDomainRequestState"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
     readTenantOpsRecovery: {
