@@ -165,15 +165,15 @@ test.each(["already settled", "still pending"])("the rail finishes its identity 
   const original = Promise.withResolvers<string>();
   const replacement = Promise.withResolvers<string>();
   const read = vi.fn().mockReturnValueOnce(original.promise).mockReturnValue(replacement.promise);
-  const key = meQuery.queryKey;
   const shared = vi.spyOn(client, "fetchQuery");
   try {
     renderToStaticMarkup(<QueryClientProvider client={client}><ShellFrame layout={() => null} /></QueryClientProvider>);
-    client.setQueryData(key, "previous");
-    const identity = client.fetchQuery({ queryKey: key, queryFn: read });
-    const rail = client.getQueryCache().find({ queryKey: navigationRead(meQuery).queryKey, exact: true })!;
+    await client.fetchQuery({ ...meQuery, queryFn: async () => "previous" });
+    shared.mockClear();
+    const identity = client.fetchQuery({ ...meQuery, queryFn: read });
+    const rail = client.getQueryCache().find({ ...navigationRead(meQuery), exact: true })!;
     const snapshot = rail.fetch();
-    const refreshing = client.refetchQueries({ queryKey: key, exact: true });
+    const refreshing = client.refetchQueries({ ...meQuery, exact: true });
     if (timing === "still pending") await vi.waitFor(() => expect(shared).toHaveBeenCalledTimes(3));
     replacement.resolve("current");
     original.resolve("previous");

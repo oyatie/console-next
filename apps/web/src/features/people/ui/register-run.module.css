@@ -24,7 +24,7 @@
   .wrap :global(.table) th:nth-child(10) { width: 9%; }
   .wrap :global(.table) th:nth-child(11) { width: 8.5%; }
   .wrap :global(.table) td { vertical-align: middle; }
-  .wrap :global(.table) td:last-child { padding-inline: var(--space-1); }
+  .wrap td:last-child { --cell-px: var(--space-1); }
 }
 @media (--phone) {
   :where([data-experience]:not([data-experience="baseline"])) .carry,
