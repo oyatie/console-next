@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { openAsOf } from "./dates";
 import { expectAccessible } from "./a11y";
 import { tenantNameField, tenantOnboardSubmit, tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
 import { setupCompany } from "./setup-flows";
@@ -33,7 +34,10 @@ for (const viewport of [{ width: 1280, height: 720 }, { width: 1920, height: 108
       const r = (await box(admin, "생산부").boundingBox())!;
       return r.y + r.height - (await bottom.boundingBox())!.y;
     }).toBeLessThanOrEqual(-8);
-    await expect(admin.getByRole("group", { name: "변경일" })).not.toHaveAttribute("aria-busy", "true");
+    const picker = await openAsOf(admin);
+    await expect(picker.getByRole("group", { name: "변경일" })).not.toHaveAttribute("aria-busy", "true");
+    await admin.keyboard.press("Escape");
+    await expect(picker).toBeHidden();
     // Floating controls can overlap different edges as the viewport wraps; probe an exposed point.
     const production = box(admin, "생산부");
     const point = await production.evaluate((el) => {

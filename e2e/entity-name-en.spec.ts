@@ -1,4 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { en } from "../packages/i18n/src/catalogs/en";
+import { ko } from "../packages/i18n/src/catalogs/ko";
 import { expectAccessible } from "./a11y";
 import { go, option } from "./flows";
 import { registerAt, setName } from "./helpers/entity";
@@ -26,7 +28,7 @@ test("the English UI names a 법인 by its English name on every surface, and Ko
   // The record's header, crumb and delete sheet (offered while nobody is placed in the 법인).
   await setLocale(p,"en");
   await expect(p.getByRole("heading", { level: 1 })).toHaveText(EN);
-  await english(p.getByRole("navigation", { name: "Location" }));
+  await english(p.getByRole("navigation", { name: en["uiCrumbs.label"] }));
   await p.getByRole("button", { name: "Preview deleting the entity" }).click();
   const remove = p.getByRole("dialog", { name: "Delete entity" });
   await expect(remove).toContainText(`Deletes ${EN},`);
@@ -70,7 +72,7 @@ test("the English UI names a 법인 by its English name on every surface, and Ko
   await setLocale(p,"ko");
   await go(p, record);
   await expect(p.getByRole("heading", { level: 1 })).toHaveText(`${LEGAL} · ${EN}`);
-  await expect(p.getByRole("navigation", { name: "위치" })).toContainText(LEGAL);
+  await expect(p.getByRole("navigation", { name: ko["uiCrumbs.label"] })).toContainText(LEGAL);
   await go(p, "/people/new");
   await expect(p.getByRole("dialog", { name: "직원 등록" })).toContainText(LEGAL);
 });

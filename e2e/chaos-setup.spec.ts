@@ -142,7 +142,7 @@ test("edits on a bad connection: a failed 법인 or 사업장 change keeps the d
   await faultNext(admin, /\/api\/v1\/workplaces\/[^/]+$/, "slow", "PUT");
   await place.finish.dblclick();
   await expect(wEdit).toBeHidden({ timeout: 15_000 });
-  await expect(panel.getByRole("definition").filter({ hasText: "031-555-0102" })).toBeVisible();
+  await expect(panel.getByRole("definition").filter({ hasText: /^031-555-0102$/ })).toBeVisible();
   test.info().annotations.push({ type: "sends", description: `workplace edit: ${wSends.count()} PUT, ${wSends.keys().size} key` });
   expect(wSends.keys().size).toBe(1);
   const w = (await read<Entities>("/api/v1/legal-entities")).items.find((e) => e.current?.name === "주식회사 혼돈변경")!.workplaces[0]!;
