@@ -47,12 +47,17 @@ const FROM: &str = " FROM sources l \
  LEFT JOIN employee_employment_profiles profile ON profile.org_id=x.org_id AND profile.employee_id=x.id \
  LEFT JOIN age_facts assessment ON assessment.source_id=l.id AND assessment.insurer=agency.insurer AND assessment.filing_kind=kind.k \
 ";
-const PLACEMENT: &str = " LEFT JOIN LATERAL (SELECT a.legal_entity_id, a.workplace_id FROM employment_assignments a \
+fn push_placement(q: &mut QueryBuilder<Postgres>, only_for_time_zone: bool) {
+    q.push(" LEFT JOIN LATERAL (SELECT a.legal_entity_id, a.workplace_id FROM employment_assignments a \
    WHERE a.org_id = l.org_id AND a.employee_id = l.employee_id AND a.superseded_at IS NULL \
      AND a.valid_from <= l.placement_date::date \
      AND (l.source_type <> 'GROUP_TRANSFER' OR kind.k NOT IN ('LOSE','SEPARATION_CERTIFICATE') OR a.valid_from < l.placement_date::date) \
-   ORDER BY a.valid_from DESC LIMIT 1) ea ON TRUE \
-";
+   ");
+    if only_for_time_zone {
+        q.push(" AND (SELECT shared_time_zone IS NULL FROM boundary)");
+    }
+    q.push(" ORDER BY a.valid_from DESC LIMIT 1) ea ON TRUE ");
+}
 const FILING: &str = " LEFT JOIN filing_obligations f ON f.org_id=l.org_id AND f.event_id=l.id AND f.filing_kind=kind.k AND f.insurer=agency.insurer \
 ";
 const WHERE: &str = " WHERE l.state IN ('APPLIED','SCHEDULED') AND x.voided_at IS NULL \
@@ -100,7 +105,8 @@ pub(super) async fn query_rows(
     // A constant lower bound across tenant zones avoids recalculating placement
     // for every excluded candidate. The exact check still uses the owning zone.
     let mut q = QueryBuilder::<Postgres>::new(
-        "WITH boundary AS MATERIALIZED (SELECT tenant.id AS org_id,COALESCE(phase.go_live_at,now()) AS go_live_at,min((COALESCE(phase.go_live_at,now()) AT TIME ZONE zones.time_zone)::date) AS go_live_on \
+        "WITH boundary AS MATERIALIZED (SELECT tenant.id AS org_id,COALESCE(phase.go_live_at,now()) AS go_live_at,min((COALESCE(phase.go_live_at,now()) AT TIME ZONE zones.time_zone)::date) AS go_live_on, \
+         CASE WHEN count(zones.time_zone)=1 THEN (SELECT time_zone FROM lifecycle_country_packs WHERE is_default) END AS shared_time_zone \
          FROM (SELECT ",
     );
     q.push_bind(*principal.org_id.as_uuid()).push(
@@ -145,7 +151,7 @@ pub(super) async fn query_rows(
     }
     q.push(FROM);
     if placement_filter {
-        q.push(PLACEMENT);
+        push_placement(&mut q, false);
     }
     if query.filing_id.is_some() {
         q.push(FILING);
@@ -279,7 +285,8 @@ pub(super) async fn query_rows(
     if placement_filter {
         q.push(" CROSS JOIN LATERAL (SELECT l.legal_entity_id,l.workplace_id) ea ");
     } else {
-        q.push(PLACEMENT);
+        // Ranking needs the assignment only to distinguish local calendars in multi-zone tenants.
+        push_placement(&mut q, lightweight);
     }
     if !lightweight {
         q.push(FILING);
@@ -289,7 +296,7 @@ pub(super) async fn query_rows(
       ), page_workplaces AS MATERIALIZED (SELECT DISTINCT workplace_id FROM hydrated WHERE workplace_id IS NOT NULL), \
       page_zones AS MATERIALIZED (SELECT w.id,lifecycle_time_zone(w.org_id,NULL,current_date,w.id) AS time_zone \
         FROM page_workplaces p JOIN workplaces w ON w.id=p.workplace_id AND w.org_id=(SELECT org_id FROM boundary) WHERE w.legal_entity_id IS NOT NULL), \
-      zoned AS MATERIALIZED (SELECT paged.*,COALESCE(z.time_zone,lifecycle_time_zone((SELECT org_id FROM boundary),paged.employee_id,paged.placement_on,paged.workplace_id)) AS time_zone \
+      zoned AS MATERIALIZED (SELECT paged.*,COALESCE((SELECT shared_time_zone FROM boundary),z.time_zone,lifecycle_time_zone((SELECT org_id FROM boundary),paged.employee_id,paged.placement_on,paged.workplace_id)) AS time_zone \
         FROM hydrated paged LEFT JOIN page_zones z ON z.id=paged.workplace_id) \
       ");
     q.push("SELECT ");
