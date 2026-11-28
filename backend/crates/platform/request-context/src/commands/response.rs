@@ -3,8 +3,10 @@ use axum::{
     body::{Body, to_bytes},
     response::{IntoResponse, Response},
 };
+use console_platform_authz::Principal;
 use http::StatusCode;
 use serde_json::{Value, json};
+use sqlx::PgPool;
 use uuid::Uuid;
 // These existing endpoints deliberately use different initial/replay responses.
 pub(super) fn replay_status(status: StatusCode, path: &str) -> StatusCode {
@@ -184,4 +186,17 @@ mod tests {
             .contains_key("location")
         );
     }
+}
+
+pub(super) async fn audited_refusal(
+    pool: &PgPool,
+    p: &Principal,
+    status: StatusCode,
+    code: &str,
+    id: Option<Uuid>,
+) -> Response {
+    if crate::record_refusal(pool, p, code, id).await.is_err() {
+        return refusal(StatusCode::SERVICE_UNAVAILABLE, "service_unavailable", id);
+    }
+    refusal(status, code, id)
 }
