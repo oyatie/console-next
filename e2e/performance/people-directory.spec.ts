@@ -10,10 +10,19 @@ test("served directory paints its first rows within 2 seconds of the navigation 
   await importPeople(admin);
   await admin.setViewportSize({ width: 1440, height: 900 });
   await admin.addInitScript(() => {
+    performance.setResourceTimingBufferSize(1000);
+    const markers: { t: number; type: string }[] = [];
+    Object.assign(window, { directoryMarkers: markers });
+    const mark = (type: string) => markers.push({ t: Math.round(performance.now()), type });
+    document.addEventListener("visibilitychange", () => mark(document.visibilityState));
+    document.addEventListener("DOMContentLoaded", () => mark("DOMContentLoaded"));
+    window.addEventListener("load", () => mark("load"));
+    mark(document.visibilityState);
     const observer = new MutationObserver(() => {
       const row = document.querySelector('[role="grid"][aria-label="직원"] [role="rowheader"]');
       if (row?.textContent?.trim() !== "D-0001") return;
       observer.disconnect();
+      mark("row DOM");
       requestAnimationFrame(() => performance.mark("directory:first-rows"));
     });
     observer.observe(document, { subtree: true, childList: true });
@@ -25,8 +34,18 @@ test("served directory paints its first rows within 2 seconds of the navigation 
     const timing = await admin.evaluate(() => {
       const navigation = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming;
       const [paint] = performance.getEntriesByName("directory:first-rows", "mark");
-      return { responseStart: navigation.responseStart, firstRows: paint!.startTime - navigation.responseStart };
+      const resources = performance.getEntriesByType("resource") as PerformanceResourceTiming[];
+      const zero = navigation.responseStart;
+      const times = (r: PerformanceResourceTiming) => [Math.round(r.startTime - zero), Math.round(r.requestStart - zero), Math.round(r.responseStart - zero), Math.round(r.responseEnd - zero)];
+      const path = (r: PerformanceResourceTiming) => new URL(r.name, location.href).pathname;
+      const assets = resources.filter(r => path(r).startsWith("/assets/"));
+      const diagnosis = { responseStart: zero, markers: (window as unknown as { directoryMarkers: unknown }).directoryMarkers, navigation: [navigation.domInteractive, navigation.domContentLoadedEventEnd, navigation.loadEventEnd], assets: assets.length,
+        api: resources.filter(r => path(r).startsWith("/api/")).map(r => [path(r), ...times(r)]),
+        slowAssets: [...assets].sort((a,b) => b.duration - a.duration).slice(0, 15).map(r => [path(r), ...times(r)]),
+        lastAssets: [...assets].sort((a,b) => b.responseEnd - a.responseEnd).slice(0, 15).map(r => [path(r), ...times(r)]) };
+      return { diagnosis, responseStart: navigation.responseStart, firstRows: paint!.startTime - navigation.responseStart };
     });
+    console.log("Directory diagnosis", JSON.stringify(timing.diagnosis));
     await info.attach(`response-to-first-rows-${run}`, { body: JSON.stringify(timing), contentType: "application/json" });
     console.log(`directory first rows ${run}: ${timing.firstRows.toFixed(1)} ms from navigation response`);
     expect(timing.firstRows).toBeGreaterThan(0);
