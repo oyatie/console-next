@@ -14,7 +14,7 @@ export type NavLink = { to: string; label: MessageId; icon: LucideIcon; countKey
 export type NavHub = { hub: MessageId; links: readonly NavLink[] };
 type Routes = Readonly<Record<string, { options: { staticData?: StaticDataRouteOption } }>>;
 // null preserves an unanswered modules read across reloads without treating it as ready.
-type NavContext = { evidenceVault?: boolean; pathname: string; phase?: string; setupTargets?: readonly string[]; modules?: Modules | null };
+type NavContext = { evidenceVault?: boolean; payrollOutlook?: boolean; pathname: string; phase?: string; setupTargets?: readonly string[]; modules?: Modules | null };
 
 const REQUESTS: NavLink = { to: "/people/requests", label: "shell.link.requests", icon: ListChecks };
 // One entry table; future destinations appear only when their route is served.
@@ -45,12 +45,13 @@ export const PLATFORM_NAV: readonly NavHub[] = [{ hub: "shell.hub.platform", lin
 
 /** Served destinations use their own requirement; readiness remains a server fact. */
 export function tenantNav(access: AccessEffective | undefined, routes: Routes, supportApproval = false,
-  { phase, setupTargets, modules, evidenceVault }: NavContext = { pathname: "/" }) {
+  { phase, setupTargets, modules, evidenceVault, payrollOutlook }: NavContext = { pathname: "/" }) {
   const expand = (link: NavLink): readonly NavLink[] => {
     const hasPrimary = !!routes[link.to];
     const auditFallback = link.to === "/audit" && link.supportApproval && supportApproval && routes["/audit/support-access"];
     const vaultFallback = link.to === "/audit" && evidenceVault && routes["/audit/evidence"];
-    if (!hasPrimary && !auditFallback && !vaultFallback) return [];
+    const outlookFallback = link.to === "/payroll" && payrollOutlook && routes["/payroll/outlook"];
+    if (!hasPrimary && !auditFallback && !vaultFallback && !outlookFallback) return [];
     if (link.to === "/") return [link];
     if (!access) return [];
     if (link.requireReadiness && !modules) return [];
@@ -65,6 +66,7 @@ export function tenantNav(access: AccessEffective | undefined, routes: Routes, s
     if (allowedPrimary) return [link];
     if (auditFallback) return [{ ...link, to: "/audit/support-access" }];
     if (vaultFallback) return [{ ...link, to: "/audit/evidence" }];
+    if (outlookFallback) return [{ ...link, to: "/payroll/outlook" }];
     return [];
   };
   return TENANT_NAV.map(g => ({ ...g, links: g.links.flatMap(expand) })).filter(g => g.links.length);

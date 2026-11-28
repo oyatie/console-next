@@ -3,6 +3,7 @@ use console_platform_authz::Action;
 use console_platform_authz::Feature;
 use console_platform_authz::PermissionLevel;
 use console_platform_authz::Principal;
+use console_platform_authz::authorize_capability;
 use console_platform_authz::authorize_org_wide;
 use console_platform_authz::permission_for;
 use serde::Serialize;
@@ -154,7 +155,11 @@ pub(crate) fn me_authz_projection(principal: &Principal) -> MeAuthzResponse {
 }
 
 /// Served module capabilities inherit their owning Cedar permission.
-pub(crate) fn served_authz_projection(principal: &Principal, documents: bool) -> MeAuthzResponse {
+pub(crate) fn served_authz_projection(
+    principal: &Principal,
+    documents: bool,
+    analytics_projection: bool,
+) -> MeAuthzResponse {
     let mut response = me_authz_projection(principal);
     if documents
         && let Some(cap) = response
@@ -165,6 +170,21 @@ pub(crate) fn served_authz_projection(principal: &Principal, documents: bool) ->
     {
         response.capabilities.push(MeAuthzCapability {
             feature: "documents".to_owned(),
+            ..cap
+        });
+    }
+    // This calculator has no target row. Match the mounted handler's exact branch-less gate,
+    // including its refusal of a grant that covers only part of the caller's branch scope.
+    if analytics_projection
+        && authorize_capability(principal, Action::new(Feature::KpiRead)).is_ok()
+        && let Some(cap) = response
+            .capabilities
+            .iter()
+            .find(|cap| cap.feature == Feature::KpiRead.as_str())
+            .cloned()
+    {
+        response.capabilities.push(MeAuthzCapability {
+            feature: "analytics_projection".to_owned(),
             ..cap
         });
     }
@@ -194,7 +214,7 @@ mod me_authz_org_wide_tests {
             BranchScope::All,
         );
         let contains = |p: &Principal, served| {
-            served_authz_projection(p, served)
+            served_authz_projection(p, served, false)
                 .capabilities
                 .iter()
                 .any(|cap| cap.feature == "documents")
@@ -208,6 +228,27 @@ mod me_authz_org_wide_tests {
             BranchScope::All,
         );
         assert!(!contains(&no_roles, true));
+    }
+
+    #[test]
+    fn projection_requires_the_served_calculator_and_the_handlers_kpi_read() {
+        for roles in [BTreeSet::new(), BTreeSet::from([Role::SuperAdmin])] {
+            for scope in [BranchScope::All, BranchScope::Branches(BTreeSet::new())] {
+                let principal = Principal::new(UserId::new(), OrgId::one(), roles.clone(), scope);
+                for served in [false, true] {
+                    let listed = served_authz_projection(&principal, false, served)
+                        .capabilities
+                        .iter()
+                        .any(|cap| cap.feature == "analytics_projection");
+                    assert_eq!(
+                        listed,
+                        served
+                            && authorize_capability(&principal, Action::new(Feature::KpiRead))
+                                .is_ok()
+                    );
+                }
+            }
+        }
     }
 
     fn period_lock(principal: &Principal) -> Option<bool> {

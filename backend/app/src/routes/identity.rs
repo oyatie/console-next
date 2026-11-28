@@ -22,7 +22,8 @@ pub(super) fn mount(router: Router, deps: &TenantDeps<'_>) -> Router {
                 PgOnboardingStore::new(pool.clone()),
             )
             .with_passkey_step_up(state.policy_step_up.clone())
-            .with_documents_served(cfg!(feature = "docs")),
+            .with_documents_served(cfg!(feature = "docs"))
+            .with_analytics_projection_served(cfg!(feature = "analytics-quant")),
         ))
         .merge(console_platform_authz_rest::router(
             CedarPolicyRestState::new(

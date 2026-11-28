@@ -49,7 +49,7 @@ export const granted = (caps: readonly Capability[] | undefined, failed = false)
 
 /** Platform tokens are refused by /me/authz; the vendor menu is fixed. */
 export const authzApplies = () => !session.claims?.platform;
-export const evidenceAuthzApplies = () => !!session.token && authzApplies();
+export const servedAuthzApplies = () => !!session.token && authzApplies();
 
 // What I may do, as the server decides it (governance-22): one effective read per account — Cedar over the grant set,
 // each line with its caveats. My access, the person-access view and every refused screen read it.
