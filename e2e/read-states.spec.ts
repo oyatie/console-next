@@ -8,7 +8,7 @@ import { expectAccessible, expectAxe } from "./a11y";
 import { apiOf, bearerOf } from "./helpers/api";
 import { redirectTargets, routeList } from "./helpers/route-list";
 import { readQuery } from "./helpers/read-query";
-import { alternativeRouteReads, overtimeReadAccess, readRequirement } from "../apps/web/src/routes/route-reads";
+import { alternativeRouteReads, overtimeReadAccess, readRequirement, servedRouteReads } from "../apps/web/src/routes/route-reads";
 import { todayKst } from "../apps/web/src/lib/pure/today";
 import { go, routeReady, vendorPage } from "./flows";
 import { expectStable } from "./stability";
@@ -67,7 +67,9 @@ test.describe("route requirements with a real grantless account", () => {
       for (const read of reads) {
       const endpoint = read.replace(/\$[^/]+/g, record).replace("/api/v1", "");
       const query = new URLSearchParams(readQuery(read, record));
-      const response = await apiOf(reader, token)(`${endpoint}${query.size ? `?${query}` : ""}`);
+      const response = read === "/api/v1/analytics/projection"
+        ? await apiOf(reader, token)(endpoint, "POST", { kind: "money", series: [100, 100, 100], horizon: 1 }, { "Idempotency-Key": randomUUID() })
+        : await apiOf(reader, token)(`${endpoint}${query.size ? `?${query}` : ""}`);
       expect(response.status(), read).toBe(403);
       expect((await response.json()).error.code).toBeTruthy();
       }
@@ -84,9 +86,14 @@ test.describe("route requirements with a real grantless account", () => {
           await expect(card).toHaveCount(1);
           await expect(card.getByRole("button", { name: bootKo["common.denied.request"], exact: true })).toBeVisible();
           const permission = await card.locator(".state > .muted").innerText();
-          const need = Object.hasOwn(alternativeRouteReads, path) ? overtimeReadAccess : readRequirement(path as Parameters<typeof readRequirement>[0]);
+          const need = Object.hasOwn(servedRouteReads, path) ? servedRouteReads[path as keyof typeof servedRouteReads].access
+            : Object.hasOwn(alternativeRouteReads, path) ? overtimeReadAccess : readRequirement(path as Parameters<typeof readRequirement>[0]);
           const required = "destinations" in need ? need.destinations : "allOf" in need ? need.allOf : [need];
           for (const entry of required) {
+            if ("servedCapability" in entry) {
+              expect(permission).toContain(ko[entry.servedCapability === "documents" ? "audit.vault.permission" : "payroll.outlook.permission"]);
+              continue;
+            }
             if ("action" in entry) {
               expect(permission).toContain(ko[`denied.action.${entry.action}` as keyof typeof ko]);
               continue;

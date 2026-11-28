@@ -67,12 +67,16 @@ impl ProjectionBody {
     }
 }
 
+/// Required authority for both the mounted calculator and its navigation capability.
+pub fn projection_access(principal: &Principal) -> Result<(), KernelError> {
+    authorize_capability(principal, Action::new(Feature::KpiRead))
+}
+
 async fn post_projection(
     Extension(principal): Extension<Principal>,
     Json(body): Json<ProjectionBody>,
 ) -> Result<Json<ProjectionResult>, RestError> {
-    authorize_capability(&principal, Action::new(Feature::KpiRead))
-        .map_err(RestError::from_kernel)?;
+    projection_access(&principal).map_err(RestError::from_kernel)?;
 
     let result =
         project(&body.into_domain()).map_err(|err| RestError::bad_request(err.to_string()))?;

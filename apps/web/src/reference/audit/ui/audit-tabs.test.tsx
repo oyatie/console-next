@@ -10,14 +10,23 @@ vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to }: { children: ReactNode; to: string }) => <a href={to}>{children}</a>,
 }));
 
+const evidence = vi.hoisted(() => vi.fn(() => true));
+vi.mock("../../authz/ui/use-documents-served", () => ({ useEvidenceServed: evidence }));
+
 beforeAll(() => loadCatalog("ko"));
 
 test("audit navigation exposes audit log, access log review, and support-access views", () => {
   const html = renderToStaticMarkup(<AuditTabs />);
+  expect(html).toContain('href="/audit/evidence"');
   expect(html).toContain('href="/audit"');
   expect(html).toContain(t("audit.nav.log"));
   expect(html).toContain('href="/audit/access-log"');
   expect(html).toContain("접속기록 점검");
   expect(html).toContain('href="/audit/support-access"');
   expect(html).toContain("지원 접근");
+});
+
+test("the evidence tab stays hidden without a served org-wide read", () => {
+  evidence.mockReturnValueOnce(false);
+  expect(renderToStaticMarkup(<AuditTabs />)).not.toContain('href="/audit/evidence"');
 });

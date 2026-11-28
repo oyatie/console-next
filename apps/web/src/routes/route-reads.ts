@@ -23,6 +23,12 @@ const orgDraft = "POST /api/v1/org-changes";
 const appointment = "POST /api/v1/employees/lifecycle-events/bulk/preview";
 const register = "POST /api/v1/employees";
 
+/** Runtime-served capabilities come from /me/authz, independently of the effective-domain grants. */
+export const servedRouteReads = {
+  "/payroll/outlook": { access: { servedCapability: "analytics_projection" }, reads: ["/api/v1/analytics/projection"], method: "post" },
+  "/audit/evidence": { access: { servedCapability: "documents" }, reads: ["/api/v1/evidence/objects"] },
+} as const;
+
 /** Required first reads (including default tabs), plus the server door a form offers. No permission alternatives. */
 export const routeReads = {
   "/access": { reads: [roles] },

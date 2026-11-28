@@ -2,7 +2,8 @@
 import type { AccessEffective } from "../api";
 
 export type Requirement = { action: keyof NonNullable<AccessEffective["decisions"]> } | { domain: AccessEffective["entries"][number]["domain"]; level: AccessEffective["entries"][number]["level"]; tenant?: boolean; scopes?: readonly AccessEffective["entries"][number]["scope"]["kind"][] };
-export type AccessRequirement = Requirement | { allOf: readonly Requirement[] } | { destinations: readonly AccessRequirement[] };
+export type ServedCapability = "documents" | "analytics_projection";
+export type AccessRequirement = Requirement | { servedCapability: ServedCapability } | { allOf: readonly Requirement[] } | { destinations: readonly AccessRequirement[] };
 
 type GrantRow = AccessEffective["entries"][number];
 
@@ -16,9 +17,10 @@ export function enforcedRows(access: AccessEffective, domain: GrantRow["domain"]
 }
 
 /** The server already Cedar-checked ENFORCED rows; prepared or expired grants never open a form. */
-export function accessRefusal(access: AccessEffective, need: AccessRequirement): "scope_tenant_wide_only" | "access_denied" | "out_of_scope" | null {
+export function accessRefusal(access: AccessEffective, need: AccessRequirement, served: readonly ServedCapability[] = []): "scope_tenant_wide_only" | "access_denied" | "out_of_scope" | null {
+  if ("servedCapability" in need) return served.includes(need.servedCapability) ? null : "access_denied";
   // Hubs compose their served destination requirements, never a second list of grants.
-  if ("destinations" in need) return need.destinations.some(requirement => accessRefusal(access, requirement) === null) ? null : "access_denied";
+  if ("destinations" in need) return need.destinations.some(requirement => accessRefusal(access, requirement, served) === null) ? null : "access_denied";
   if ("allOf" in need) return need.allOf.length ? need.allOf.map(requirement => accessRefusal(access, requirement)).find(code => code !== null) ?? null : "access_denied";
   if ("action" in need) return access.decisions?.[need.action] === true ? null : "access_denied";
   if (access.is_ops) return null;

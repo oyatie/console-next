@@ -44,6 +44,20 @@ const WORD: Readonly<Record<string, string>> = {
   "/settings": "shell.link.settings",
 };
 
+test("a calculator-only reader can reach the outlook when the payroll module is ready", () => {
+  const nav = (payrollOutlook: boolean) => top(tenantNav(noGrants, routes, false, { ...live(), payrollOutlook }));
+  expect(nav(true)).toContain("/payroll/outlook");
+  expect(nav(false)).not.toContain("/payroll/outlook");
+  expect(nav(true)).not.toContain("/payroll");
+});
+
+test("an evidence-only reader can enter Audit through the served vault", () => {
+  const nav = (evidenceVault: boolean) => top(tenantNav(noGrants, routes, false, { ...live(), evidenceVault }));
+  expect(nav(true)).toContain("/audit/evidence");
+  expect(nav(true)).not.toContain("/audit");
+  expect(nav(false)).not.toContain("/audit/evidence");
+});
+
 test.each([
   { viewer: "a full admin", held: admin, at: live(),
     bar: ["/", "/people/requests", "/approvals", "/org", "/team", "/people", "/attendance", "/payroll", "/statutory", "/access", "/audit", "/settings"] },

@@ -4,7 +4,7 @@ import { createRequire } from "node:module";
 import { createRouter, type AnyRoute } from "@tanstack/react-router";
 import { expect, test } from "vitest";
 import { routeTree } from "./tree";
-import { alternativeRouteReads, routeReads, readRequirement } from "./route-reads";
+import { alternativeRouteReads, routeReads, readRequirement, servedRouteReads } from "./route-reads";
 import { accessRefusal, type Requirement } from "../reference/authz/domain/access";
 import type { AccessEffective } from "../reference/authz/api";
 import { queryPath } from "../lib/query";
@@ -28,7 +28,14 @@ test("the table covers every guarded leaf; hubs compose only those leaf requirem
     for (const destination of need.destinations) expect(leafPaths.some(path => routes[path]?.options.staticData?.access === destination), route.fullPath).toBe(true);
     return false;
   }).map(route => route.fullPath);
-  expect(leafPaths.sort()).toEqual(guarded.sort());
+  expect([...leafPaths, ...Object.keys(servedRouteReads)].sort()).toEqual(guarded.sort());
+});
+
+test("served route reads use their own capability projection before the declared API reads", () => {
+  for (const [path, contract] of Object.entries(servedRouteReads)) {
+    expect(routes[path]?.options.staticData?.access).toEqual(contract.access);
+    for (const read of contract.reads) expect(spec.paths[read]?.["method" in contract ? contract.method : "get"]).toBeDefined();
+  }
 });
 
 test("access person declares its account read without changing the effective-read scope", () => {
