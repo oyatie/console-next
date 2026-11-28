@@ -13,18 +13,18 @@ import { PhaseBand } from "./phase-band";
 import { queryPath } from "../lib/query";
 
 const state = vi.hoisted(() => ({ data: undefined as Checklist | undefined, phase: "OPERATING" as string | undefined,
-  error: null as unknown, accessError: false, checklistPending: true, days: 2 as unknown }));
+  error: null as unknown, accessError: false, checklistPending: true, days: 2 as unknown, effectiveRead: true, capabilityRead: true }));
 vi.mock("@tanstack/react-query", () => ({ useQuery: (q: Parameters<typeof queryPath>[0]) => ({
   data: queryPath(q) === "/api/v1/settings" ? { items: [{ key: "onboarding.receipt_days", value: state.days }] }
-    : state.phase ? { phase: state.phase } : undefined,
-  failureCount: state.accessError ? 1 : 0,
+    : state.phase ? { phase: state.phase, is_ops: state.effectiveRead, entries: [] } : undefined,
+  isSuccess: !state.accessError, failureCount: state.accessError ? 1 : 0,
 }) }));
 vi.mock("../features/onboarding/ui/use-setup", () => ({ useSetupChecklist: () => {
   const q = { data: state.data, dataUpdatedAt: 0, isPending: state.checklistPending && state.data === undefined, isError: !!state.error, failureCount: state.error ? 1 : 0, error: state.error };
-  return { q, phaseQ: q };
+  return { q, phaseQ: q, readable: state.capabilityRead };
 } }));
 beforeAll(() => loadCatalog("ko"));
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); state.phase = "OPERATING"; state.data = undefined; state.error = null; state.accessError = false; state.checklistPending = true; state.days = 2; });
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); state.phase = "OPERATING"; state.data = undefined; state.error = null; state.accessError = false; state.checklistPending = true; state.days = 2; state.effectiveRead = true; state.capabilityRead = true; });
 const tabs = "Tabs", content = "route content";
 const render = () => renderToStaticMarkup(<PhaseBand><PageHead title="Route" tabs={<nav>{tabs}</nav>} /><p>{content}</p></PhaseBand>);
 
@@ -32,6 +32,13 @@ function PhaseRead() {
   return <output>{String(useContext(PagePhase).settled)}</output>;
 }
 const settled = () => renderToStaticMarkup(<PhaseBand><PhaseRead /></PhaseBand>);
+
+test.each(["effectiveRead", "capabilityRead"] as const)("an identity timestamp cannot reveal the receipt without %s", missing => {
+  state[missing] = false;
+  const html = renderToStaticMarkup(<PhaseBand operatingSince={new Date().toISOString()}><PageHead title="Route" /></PhaseBand>);
+  expect(html).toContain('data-phase-pending="true"');
+  expect(html).not.toContain('data-phase-band="started"');
+});
 
 test("the phase hold leaves the read layout owned by the mounted page", () => {
   const html = renderToStaticMarkup(<main><PhaseBand><ReadSkeleton layout="record" /></PhaseBand></main>);

@@ -2,10 +2,37 @@
 import { beforeAll, expect, test } from "vitest";
 import { expect as element } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
-import { authz, checklist, failure } from "../../../../e2e/mock/fixtures";
+import { authz, checklist, failure, user } from "../../../../e2e/mock/fixtures";
 import { navFixture } from "./nav.browser-fixture";
 
 beforeAll(() => loadCatalog("ko"));
+
+test("the current operating identity shows and dismisses the same receipt before the full checklist returns", async () => {
+  const { server, browser, page } = await navFixture();
+  const held = Promise.withResolvers<void>();
+  const goLiveAt = new Date().toISOString();
+  await page.route("**/api/v1/users/me", route => route.fulfill({ json: { ...user, tenant: { ...user.tenant, phase: "OPERATING", go_live_at: goLiveAt } } }));
+  await page.route("**/api/v1/settings", route => route.fulfill({ json: { items: [{ key: "onboarding.receipt_days", value: 2 }] } }));
+  await page.route("**/api/v1/me/authz", route => route.fulfill({ json: authz }));
+  await page.route("**/api/v1/onboarding/checklist", async route => {
+    await held.promise;
+    await route.fulfill({ json: { ...checklist, go_live_at: goLiveAt } });
+  });
+  try {
+    const requested = page.waitForRequest("**/api/v1/onboarding/checklist");
+    await page.goto(new URL("/people", server.resolvedUrls!.local[0]!).href);
+    await requested;
+    const band = page.locator('header [data-phase-band="started"]');
+    await element(band).toBeVisible();
+    await element(page.locator("[data-phase-pending]")).toHaveCount(0);
+    await band.getByRole("button", { name: t("setup.phase.dismiss") }).click();
+    const answered = page.waitForResponse("**/api/v1/onboarding/checklist");
+    held.resolve();
+    await answered;
+    await element(band).toHaveCount(0);
+    expect(await page.evaluate(() => Object.values(localStorage))).toContain(`OPERATING:${goLiveAt}`);
+  } finally { held.resolve(); await browser.close(); await server.close(); }
+}, 60_000);
 
 test.each(["receipt", "expired", "checklist-503"])("a slow access read paints the head once: %s", async outcome => {
   const { server, browser, page } = await navFixture();
