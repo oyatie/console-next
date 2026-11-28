@@ -42,6 +42,7 @@ export function PeopleJump() {
   const matchRead = useQuery({ ...numberMatchQuery(q.trim()), enabled: asked, retry: false });
   const match = matchRead.data;
   const aliasRead = useQuery({ ...employeeQuery(match?.employee_id ?? ""), enabled: match?.matched_by === "alias" });
+  if (!open) return null;
   const alias = aliasRead.data?.employee;
   // Everything this search asks has answered (an alias lookup included), so no section lands above another later.
   const settled = found.isSuccess && !found.isFetching && (!asked || !matchRead.isFetching) && !(match?.matched_by === "alias" && aliasRead.isPending);

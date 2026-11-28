@@ -37,8 +37,7 @@ import { RosterConsoleRail } from "./roster-console-rail";
 import { RosterEmpty } from "./roster-empty";
 import { RosterFirstRun } from "./roster-first-run";
 import { RosterSavedViews } from "./roster-saved-views";
-import { BulkRescind } from "./bulk-rescind";
-import { BulkSheet, RosterUnitPanel } from "./roster-actions";
+import { BulkRescind, BulkSheet, RosterUnitPanel } from "./roster-actions";
 import { RosterBulk } from "./roster-bulk";
 import { RosterTable } from "./roster-table";
 import { BULK_MAX } from "./use-roster";
@@ -160,7 +159,7 @@ export function RosterConsole({
           {notice || scoped ? <div className={s.notes}><bdi className="muted t-xs" role={notice ? "note" : undefined}>{notice}{notice && scoped ? " " : null}{scoped ? t("roster.scope.branches") : null}</bdi></div> : null}
           {sameName > 1 ? <RecordBannerBand tone="warn"><bdi role="note">{t("roster.sameName", { count: sameName, name: r.rows[0]!.name })}</bdi></RecordBannerBand> : null}
           {recorded ? <div className={s.notes}><Receipt state="recorded" message={recorded} actions={batch && manage && rescindReady ? <Button variant="ghost" onClick={() => setRescinding(true)}>{t("bulk.rescind.open", { count: batch.count })}</Button> : undefined} /></div> : null}
-          {rescinding && batch ? <BulkRescind batchId={batch.id} count={batch.count} onClose={() => setRescinding(false)} onDone={n => { setRescinding(false); setBatch(null); setRecorded(t("bulk.rescind.done", { count: n })); }} /> : null}
+          {rescinding && batch ? <Suspense fallback={null}><BulkRescind batchId={batch.id} count={batch.count} onClose={() => setRescinding(false)} onDone={n => { setRescinding(false); setBatch(null); setRecorded(t("bulk.rescind.done", { count: n })); }} /></Suspense> : null}
         </>
       }
       list={

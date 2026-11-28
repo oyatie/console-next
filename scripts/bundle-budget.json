@@ -43,6 +43,7 @@
       "src/features/people/ui/bulk-sheet.tsx",
       "src/features/people/ui/bulk-exit-sheet.tsx",
       "src/features/people/ui/roster-panel.tsx",
+      "src/features/people/ui/roster-saved-content.tsx",
       "src/features/people/ui/roster-unit-panel.tsx",
       "src/features/people/ui/roster-console-panel.tsx",
       "src/features/settings/ui/policy-edit-sheet.tsx",
