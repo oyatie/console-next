@@ -145,7 +145,7 @@ pub(crate) async fn upsert_contact(
         &services.recovery_cipher,
         org_id,
         uid,
-        body.channel,
+        body.channel.into(),
         &body.value,
         OffsetDateTime::now_utc(),
     )
