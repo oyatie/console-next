@@ -41,8 +41,8 @@ pub(super) async fn limit_months(
         }
     };
     let as_of = on
-        .with_hms(23, 59, 59)
-        .map_or_else(|_| time::OffsetDateTime::now_utc(), |dt| dt.assume_utc());
+        .with_time(time::macros::time!(23:59:59.999999))
+        .assume_offset(time::macros::offset!(+9));
     let key = console_settings_domain::SettingKey::HrFixedTermLimitMonths;
     let mut resolved = console_settings_adapter_postgres::resolve_in_tx(
         tx.as_mut(),

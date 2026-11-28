@@ -57,7 +57,7 @@ pub use code_issuance::issue_code;
 pub use error::{DbError, watch_pool_timeouts};
 pub use governance_finding::{OpenFinding, upsert_open_finding_tx};
 pub use period_lock::{
-    PERIOD_LOCKED, PeriodLockDomain, assert_period_open, assert_period_open_range,
-    lock_period_lock_key,
+    PERIOD_LOCKED, PeriodLockDomain, assert_employee_payroll_period_open, assert_period_open,
+    assert_period_open_range, lock_period_lock_key,
 };
 pub use versioning::{ObjectVersionRecord, ObjectVersions};
