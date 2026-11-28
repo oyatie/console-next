@@ -992,20 +992,19 @@ fn status_response(consent: LocationConsent) -> LocationConsentStatusResponse {
 /// Whether any branch of the caller's effective scope admits a consent ledger read.
 /// A narrowed custom grant can admit a specific branch even if it cannot cover the entire scope.
 pub fn consent_ledger_available(principal: &Principal) -> bool {
-    if console_platform_authz::authorize_capability(principal, Action::new(Feature::AuditLogRead))
-        .is_ok()
-    {
+    let action = Action::new(Feature::AuditLogRead);
+    if console_platform_authz::authorize_capability(principal, action).is_ok() {
         return true;
     }
-    principal
-        .effective_feature_grants
-        .iter()
-        .filter(|g| g.feature == Feature::AuditLogRead)
-        .any(|grant| match &grant.branch_scope {
-            BranchScope::Branches(ids) => ids
-                .iter()
-                .any(|id| authorize_ledger_read(principal, Some(*id)).is_ok()),
-            BranchScope::All => false,
+    // Navigation may offer a specific branch; the ledger handler still authorizes the requested branch.
+    principal.support.is_none()
+        && principal.effective_feature_grants.iter().any(|grant| {
+            grant.feature == action.feature()
+                && grant.permission == console_platform_authz::PermissionLevel::Allow
+                && !grant
+                    .branch_scope
+                    .intersect(&principal.branch_scope)
+                    .is_empty()
         })
 }
 
@@ -1343,6 +1342,12 @@ mod tests {
         assert!(super::authorize_ledger_read(&principal, Some(branch)).is_ok());
         assert!(super::authorize_ledger_read(&principal, Some(outside)).is_err());
         assert!(super::authorize_ledger_read(&principal, None).is_err());
+        let mut disjoint = principal;
+        disjoint.branch_scope = BranchScope::single(outside);
+        assert!(!super::consent_ledger_available(&disjoint));
+        disjoint.branch_scope = BranchScope::single(branch);
+        disjoint.effective_feature_grants[0].permission = PermissionLevel::Limited;
+        assert!(!super::consent_ledger_available(&disjoint));
     }
 
     #[test]
