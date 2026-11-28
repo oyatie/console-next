@@ -40,7 +40,7 @@ export function InsuranceTabMain({
   after?: string;
   setAfter: (next: string | undefined) => void;
 }) {
-  const filingColumns = buildFilingColumns(setInspectedId);
+  const filingColumns = buildFilingColumns(setInspectedId, state);
   return (
     <QueryState q={readGroup([workplaces, tasks])} layout="list">
       {() => {
