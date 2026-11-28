@@ -50,7 +50,11 @@ for (const [path, contract] of Object.entries(routeReads)) {
   test(`${path}: exact generated contract, including scopes and all prerequisites`, () => {
     expect(contract.reads.length).toBeGreaterThan(0);
     expect(contract.reads.every(op => op.startsWith("GET "))).toBe(true);
-    expect(routes[path]!.options.staticData?.access).toEqual(readRequirement(path as keyof typeof routeReads));
+    const unique = new Map(ops.map(op => [JSON.stringify(operationAccess[op]), operationAccess[op]]));
+    const requirements = [...unique.values()];
+    const expected = requirements.length === 1 ? requirements[0] : { allOf: requirements };
+    expect(routes[path]!.options.staticData?.access).toEqual(expected);
+    expect(readRequirement(path as keyof typeof routeReads)).toEqual(expected);
   });
   for (const kind of [...scopeKinds, null]) {
     test(`${path} × ${kind ?? "no grant"}: route admits iff required first reads and form door admit`, () => {
