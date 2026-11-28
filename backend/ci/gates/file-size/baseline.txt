@@ -1,7 +1,7 @@
 # Oversize Rust files, pinned at their code-line count (see ci/gates/file-size).
 # Shrink-only: regenerate with `cargo run -p console-gate-file-size -- --write-baseline`.
 app/src/cedar_parity.rs	313
-app/src/collaboration.rs	1499
+app/src/collaboration.rs	1376
 app/src/hr.rs	2898
 app/src/hr/attendance_import_resolve.rs	328
 app/src/objects.rs	2007
@@ -23,7 +23,7 @@ app/tests/console_route_telemetry.rs	312
 app/tests/consulting_engagement_api.rs	1079
 app/tests/current_authority.rs	729
 app/tests/equipment_3r_api.rs	1344
-app/tests/evaluation_cycle_api.rs	1301
+app/tests/evaluation_cycle_api.rs	1290
 app/tests/facilities_pilot_story.rs	652
 app/tests/field_visit_api.rs	804
 app/tests/hr_attendance_manager_scope.rs	367
@@ -49,7 +49,7 @@ app/tests/recruiting_pipeline_api.rs	767
 app/tests/registry_api.rs	577
 app/tests/search_api.rs	505
 app/tests/submittable_definitions_api.rs	385
-app/tests/workbench_native_api.rs	588
+app/tests/workbench_native_api.rs	530
 app/tests/workflow_four_eyes_publish.rs	967
 app/tests/workflow_object_context_api.rs	564
 app/tests/workflow_run_read_surface.rs	606
@@ -62,7 +62,7 @@ ci/gates/layer-boundary/src/lib.rs	431
 ci/gates/layer-boundary/tests/gate_detects_violation.rs	948
 ci/gates/migration-safety/src/lib.rs	347
 ci/gates/migration-safety/tests/gate_detects_violation.rs	372
-ci/gates/personal-data-classification/src/lib.rs	1245
+ci/gates/personal-data-classification/src/lib.rs	1235
 ci/gates/personal-data-classification/tests/gate_detects_violation.rs	1304
 ci/gates/pii-no-logs/src/lib.rs	399
 ci/gates/tenant-isolation/src/lib.rs	779
@@ -75,7 +75,7 @@ crates/attendance/application/src/lib.rs	400
 crates/attendance/rest/src/lib.rs	1107
 crates/benefit/adapter-postgres/src/lib.rs	1251
 crates/benefit/domain/src/lib.rs	307
-crates/benefit/rest/src/lib.rs	480
+crates/benefit/rest/src/lib.rs	471
 crates/comms/adapter-postgres/src/lib.rs	1257
 crates/comms/adapter-postgres/tests/mail_account_rls_surfaces_as_runtime_role.rs	528
 crates/comms/adapter-postgres/tests/mail_sync_rls_surfaces_as_runtime_role.rs	689
@@ -105,8 +105,8 @@ crates/docs/rest/tests/evidence_rest_rls_surfaces_as_runtime_role.rs	780
 crates/equipment/adapter-postgres/src/lib.rs	1189
 crates/equipment/rest/src/lib.rs	524
 crates/erp/domain/src/lib.rs	686
-crates/evaluation/adapter-postgres/src/lib.rs	1430
-crates/evaluation/rest/src/lib.rs	674
+crates/evaluation/adapter-postgres/src/lib.rs	1428
+crates/evaluation/rest/src/lib.rs	576
 crates/facilities/rest/src/lib.rs	635
 crates/finance-gl/adapter-postgres/src/lib.rs	649
 crates/finance-gl/adapter-postgres/tests/voucher_rls_and_fsm_as_runtime_role.rs	551
@@ -148,7 +148,6 @@ crates/messenger/rest/src/lib.rs	493
 crates/messenger/rest/tests/api.rs	505
 crates/notices/adapter-postgres/src/lib.rs	681
 crates/notices/adapter-postgres/tests/notices_rls_surfaces_as_runtime_role.rs	540
-crates/notices/rest/src/lib.rs	337
 crates/notices/rest/tests/api.rs	558
 crates/notifications/adapter-postgres/src/lib.rs	834
 crates/notifications/adapter-postgres/tests/notifications_rls_surfaces_as_runtime_role.rs	1005

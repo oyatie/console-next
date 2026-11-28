@@ -91,14 +91,9 @@ pub fn router(state: LifecycleState) -> Router {
             PERIOD_LOCK_UNLOCK_REVIEW_PATH_TEMPLATE,
             post(unlock_review::acknowledge),
         )
-        .route(LIFECYCLE_PATH_TEMPLATE, get(get_lifecycle))
-        .route(
-            LIFECYCLE_TRANSITION_PATH_TEMPLATE,
-            post(transition_lifecycle),
-        )
-        .route(LIFECYCLE_HOLD_PATH_TEMPLATE, post(set_lifecycle_hold))
-        .with_state(state);
+        .with_state(state.clone());
     console_platform_request_context::with_request_context(router, verifier, pool)
+        .merge(record_routes::router(state))
 }
 
 mod error;
@@ -108,6 +103,7 @@ mod period_lock_view;
 mod period_locks;
 pub(crate) mod period_relock;
 mod period_unlock;
+mod record_routes;
 mod sole_holder_unlock;
 mod unlock_decision;
 mod unlock_handlers;

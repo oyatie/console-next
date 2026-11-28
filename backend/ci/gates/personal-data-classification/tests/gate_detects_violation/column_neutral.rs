@@ -25,7 +25,8 @@ fn gate_accepts_the_column_neutral_statements_the_repo_writes()
          ALTER TABLE staff VALIDATE CONSTRAINT staff_org_check;
          ALTER TABLE staff ALTER COLUMN org_id SET NOT NULL;
          ALTER TABLE staff OWNER TO console_app;
-         ALTER TABLE staff DROP CONSTRAINT staff_org_check;
+         ALTER TABLE staff RENAME CONSTRAINT staff_org_check TO staff_org_required;
+         ALTER TABLE staff DROP CONSTRAINT staff_org_required;
          LOCK TABLE public.staff IN SHARE ROW EXCLUSIVE MODE;
          SET LOCAL lock_timeout = '2s';
          SET CONSTRAINTS trg_command_outcome_emit IMMEDIATE;
@@ -51,6 +52,18 @@ fn gate_accepts_the_column_neutral_statements_the_repo_writes()
 #[test]
 fn gate_rejects_other_lock_and_setting_heads() -> Result<(), Box<dyn std::error::Error>> {
     for (name, sql) in [
+        (
+            "incomplete-constraint-rename",
+            "CREATE TABLE staff(id uuid); ALTER TABLE staff RENAME CONSTRAINT check_id TO;",
+        ),
+        (
+            "column-rename",
+            "CREATE TABLE staff(id uuid); ALTER TABLE staff RENAME COLUMN id TO new_id;",
+        ),
+        (
+            "table-rename",
+            "CREATE TABLE staff(id uuid); ALTER TABLE staff RENAME TO people;",
+        ),
         ("invalid-timing", "SET CONSTRAINTS staff_check DISABLED;"),
         ("missing-constraint", "SET CONSTRAINTS IMMEDIATE;"),
         (

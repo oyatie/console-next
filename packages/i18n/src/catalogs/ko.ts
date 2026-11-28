@@ -37,6 +37,7 @@ import { koAccounts } from "./ko/accounts";
 import { koAccess } from "./ko/access";
 import { koAccessReview } from "./ko/access-review";
 import { koAccessLog } from "./ko/access-log";
+import { koInternalCalendar } from "./ko/internal-calendar";
 import { koBenefits } from "./ko/benefits";
 import { koAudit } from "./ko/audit";
 import { koAccessCodes } from "./ko/access-codes";
@@ -52,6 +53,7 @@ import { koAttendanceHolidays } from "./ko/attendance-holidays";
 import { koAttendanceCrews } from "./ko/attendance-crews";
 import { koAttendanceOverview } from "./ko/attendance-overview";
 import { koAttendanceRecords } from "./ko/attendance-records";
+import { koEvaluation } from "./ko/evaluation";
 import { koMe } from "./ko/me";
 import { koTeam } from "./ko/team";
 import { koImport } from "./ko/import";
@@ -168,6 +170,7 @@ export const ko: Record<ScreenMessageId, string> = {
   ...koAccess,
   ...koAccessReview,
   ...koAccessLog,
+  ...koInternalCalendar,
   ...koBenefits,
   ...koAudit,
   ...koAccessCodes,
@@ -285,5 +288,5 @@ export const ko: Record<ScreenMessageId, string> = {
   ...koDirectoryViews,
   ...koUiWorklist,
   ...koUiLedger,
-  ...koMe, ...koTeam, ...koShellRoutes, ...koAccessPolicies, ...koAccessCheck, ...koAuth,
+  ...koEvaluation, ...koMe, ...koTeam, ...koShellRoutes, ...koAccessPolicies, ...koAccessCheck, ...koAuth,
 };

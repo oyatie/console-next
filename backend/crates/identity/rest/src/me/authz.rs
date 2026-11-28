@@ -153,14 +153,31 @@ pub(crate) fn me_authz_projection(principal: &Principal) -> MeAuthzResponse {
     }
 }
 
-/// Served module capabilities inherit their owning Cedar permission.
+#[derive(Default)]
+pub(crate) struct ServedModules {
+    pub(crate) documents: bool,
+    pub(crate) integrity: (bool, bool),
+    pub(crate) ledger: bool,
+    pub(crate) benefits: (bool, bool),
+    pub(crate) calendar: bool,
+    pub(crate) evaluation_tasks: bool,
+    pub(crate) evaluation_cycles: (bool, bool),
+}
+
+/// Project the enrollment and permission decisions supplied by each owning module.
 pub(crate) fn served_authz_projection(
     principal: &Principal,
-    documents: bool,
-    (read_findings, triage_findings): (bool, bool),
-    ledger: bool,
-    (read_benefits, manage_benefits): (bool, bool),
+    modules: ServedModules,
 ) -> MeAuthzResponse {
+    let ServedModules {
+        documents,
+        integrity: (read_findings, triage_findings),
+        ledger,
+        benefits: (read_benefits, manage_benefits),
+        calendar,
+        evaluation_tasks,
+        evaluation_cycles: (read_cycles, manage_cycles),
+    } = modules;
     let mut response = me_authz_projection(principal);
     if documents
         && let Some(cap) = response
@@ -175,6 +192,7 @@ pub(crate) fn served_authz_projection(
         });
     }
     for (feature, name, allowed) in [
+        (Feature::Login, "served_calendar", calendar),
         (
             Feature::BenefitCatalogRead,
             "served_benefit_catalog",
@@ -184,6 +202,21 @@ pub(crate) fn served_authz_projection(
             Feature::BenefitCatalogManage,
             "served_benefit_catalog_manage",
             manage_benefits,
+        ),
+        (
+            Feature::EvaluationRead,
+            "served_evaluation_cycles",
+            read_cycles,
+        ),
+        (
+            Feature::EvaluationManage,
+            "served_evaluation_cycle_create",
+            manage_cycles,
+        ),
+        (
+            Feature::EvaluationSubmit,
+            "served_evaluation_tasks",
+            evaluation_tasks,
         ),
         (
             Feature::AuditLogRead,
@@ -240,10 +273,16 @@ mod me_authz_org_wide_tests {
             BranchScope::All,
         );
         let contains = |p: &Principal, served| {
-            served_authz_projection(p, served, (false, false), false, (false, false))
-                .capabilities
-                .iter()
-                .any(|cap| cap.feature == "documents")
+            served_authz_projection(
+                p,
+                ServedModules {
+                    documents: served,
+                    ..Default::default()
+                },
+            )
+            .capabilities
+            .iter()
+            .any(|cap| cap.feature == "documents")
         };
         assert!(!contains(&admin, false));
         assert!(contains(&admin, true));

@@ -1,7 +1,7 @@
 import { readRequirement } from "./route-reads";
 import { createRoute, lazyRouteComponent, redirect } from "@tanstack/react-router";
 import { app, flag, screen, str } from "./app";
-import { STRUCTURE_ACTS } from "../reference/org/domain/structure";
+import { STRUCTURE_ACTS } from "../reference/org/domain/structure-actions";
 import { ORG_TABS, orgTab } from "./org-tab-search";
 
 /** The proposal or structure sheet a panel opens for its selection (`sel`). Regions and branches are retired (decisions #18, MR-20). */

@@ -2,8 +2,12 @@ tags:
   - collaboration
 operationId: createCollaborationCalendarEvent
 summary: Create an audited collaboration calendar event
-description: Creates a tenant-scoped calendar event with explicit audience scope and optional source object link. The
-  server records an audit event and an append-only lifecycle event under forced RLS.
+description: |
+  Creates an internal event, an append-only lifecycle record and a platform audit record in one tenant transaction.
+  Members create PERSONAL events for themselves. DEPARTMENT publication requires NoticeManage for the referenced
+  active branch. TENANT, ORG and TEAM publication require organization-wide NoticeManage. A branch-scoped administrator
+  previously allowed to publish a tenant event now receives 403. Personal events and authorized branch publishing remain available.
+  This operation sends no invitations or email and does not start a delivery worker.
 security:
 - bearerAuth: []
 requestBody:

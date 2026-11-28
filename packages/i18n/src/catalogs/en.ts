@@ -31,6 +31,7 @@ import { enAccounts } from "./en/accounts";
 import { enAccess } from "./en/access";
 import { enAccessReview } from "./en/access-review";
 import { enAccessLog } from "./en/access-log";
+import { enInternalCalendar } from "./en/internal-calendar";
 import { enBenefits } from "./en/benefits";
 import { enAudit } from "./en/audit";
 import { enAccessCodes } from "./en/access-codes";
@@ -46,6 +47,7 @@ import { enAttendanceHolidays } from "./en/attendance-holidays";
 import { enAttendanceCrews } from "./en/attendance-crews";
 import { enAttendanceOverview } from "./en/attendance-overview";
 import { enAttendanceRecords } from "./en/attendance-records";
+import { enEvaluation } from "./en/evaluation";
 import { enMe } from "./en/me";
 import { enTeam } from "./en/team";
 import { enImport } from "./en/import";
@@ -165,6 +167,7 @@ export const en = {
   ...enAccess,
   ...enAccessReview,
   ...enAccessLog,
+  ...enInternalCalendar,
   ...enBenefits,
   ...enAudit,
   ...enAccessCodes,
@@ -282,7 +285,7 @@ export const en = {
   ...enDirectoryViews,
   ...enUiWorklist,
   ...enUiLedger,
-  ...enMe, ...enTeam, ...enShellRoutes, ...enAccessPolicies, ...enAccessCheck, ...enAuth,
+  ...enEvaluation, ...enMe, ...enTeam, ...enShellRoutes, ...enAccessPolicies, ...enAccessCheck, ...enAuth,
 } as const;
 
 export type ScreenMessageId = keyof typeof en;

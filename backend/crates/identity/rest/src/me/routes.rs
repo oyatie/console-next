@@ -1,6 +1,6 @@
 use crate::context::principal_from_headers;
 use crate::error::RestError;
-use crate::me::authz::served_authz_projection;
+use crate::me::authz::{ServedModules, served_authz_projection};
 use crate::state::IdentityRestState;
 use crate::users::dto::UpdateSelfRequest;
 use axum::Json;
@@ -61,15 +61,38 @@ pub(crate) async fn get_me_authz(
     State(state): State<IdentityRestState>,
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, RestError> {
-    // The resolved Principal already carries the live branch scope + runtime
-    // custom-role grants (armed under this request's org), so the projection is
-    // pure — no DB read beyond principal resolution.
     let principal = principal_from_headers(&state, &headers).await?;
+    use console_platform_request_context::tenant_module::TenantModule;
+    let tasks = (state.evaluation_tasks)(&principal);
+    let (read_cycles, create_cycles) = (state.evaluation_cycles)(&principal);
+    let (read_benefits, manage_benefits) = (state.benefit_access)(&principal);
+    let requested = [
+        (
+            TenantModule::Evaluation,
+            tasks || read_cycles || create_cycles,
+        ),
+        (TenantModule::Benefits, read_benefits || manage_benefits),
+        (TenantModule::Calendar, (state.calendar_access)(&principal)),
+    ]
+    .into_iter()
+    .filter_map(|(module, allowed)| allowed.then_some(module))
+    .collect();
+    let enabled = TenantModule::enabled_modules(state.pool(), principal.org_id, requested)
+        .await
+        .map_err(RestError::from_kernel)?;
+    let evaluation = enabled.contains(&TenantModule::Evaluation);
+    let benefits = enabled.contains(&TenantModule::Benefits);
+    let calendar = enabled.contains(&TenantModule::Calendar);
     Ok(Json(served_authz_projection(
         &principal,
-        state.documents_served,
-        (state.integrity_access)(&principal),
-        (state.ledger_access)(&principal),
-        (state.benefit_access)(&principal),
+        ServedModules {
+            documents: state.documents_served,
+            integrity: (state.integrity_access)(&principal),
+            ledger: (state.ledger_access)(&principal),
+            benefits: (benefits && read_benefits, benefits && manage_benefits),
+            calendar,
+            evaluation_tasks: evaluation && tasks,
+            evaluation_cycles: (evaluation && read_cycles, evaluation && create_cycles),
+        },
     )))
 }

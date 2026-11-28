@@ -85,7 +85,9 @@ pub fn router(state: BenefitRestState) -> Router {
             axum::routing::put(replace_conditions),
         )
         .with_state(state);
-    console_platform_request_context::with_request_context(router, verifier, pool)
+    console_platform_request_context::with_request_context(router, verifier, pool).layer(
+        axum::Extension(console_platform_request_context::tenant_module::TenantModule::Benefits),
+    )
 }
 
 #[derive(Debug, Deserialize)]
@@ -244,9 +246,9 @@ struct UpdateItemBody {
     related_domain: Option<Option<String>>,
     #[serde(default, deserialize_with = "double_option")]
     related_object_id: Option<Option<Uuid>>,
-    #[serde(default, deserialize_with = "double_option_iso_date")]
+    #[serde(default, deserialize_with = "iso_date_opt::patch")]
     effective_on: Option<Option<Date>>,
-    #[serde(default, deserialize_with = "double_option_iso_date")]
+    #[serde(default, deserialize_with = "iso_date_opt::patch")]
     retires_on: Option<Option<Date>>,
     display_order: Option<i32>,
     metadata: Option<Value>,
@@ -281,18 +283,6 @@ where
     T: Deserialize<'de>,
 {
     Option::<T>::deserialize(deserializer).map(Some)
-}
-
-fn double_option_iso_date<'de, D>(deserializer: D) -> Result<Option<Option<Date>>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    match Option::<String>::deserialize(deserializer)? {
-        Some(value) => Date::parse(&value, &time::format_description::well_known::Iso8601::DATE)
-            .map(|date| Some(Some(date)))
-            .map_err(serde::de::Error::custom),
-        None => Ok(Some(None)),
-    }
 }
 
 async fn update_item(

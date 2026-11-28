@@ -1,7 +1,9 @@
 type: object
 required:
 - items
+- next_cursor
 properties:
+  next_cursor: { type: [string, 'null'] }
   items:
     type: array
     items:

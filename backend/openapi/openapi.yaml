@@ -7452,8 +7452,10 @@ paths:
         - collaboration
       operationId: listCollaborationCalendarEvents
       summary: List tenant-scoped collaboration calendar events
-      description: Returns server-filtered collaboration calendar events for the caller's tenant. Personal events are visible
-        only to the creator, while org/team/department scopes carry explicit server policy metadata for future PBAC/ABAC expansion.
+      description: |
+        Lists active internal events visible to this tenant member over the given range. Personal events belong to the creator,
+        department events to authorized branches and team events to team members. Creators can inspect their own events.
+        Follow next_cursor with the original range to read subsequent pages in stable order at the first page's snapshot time.
       security:
       - bearerAuth: []
       parameters:
@@ -7467,6 +7469,10 @@ paths:
         required: false
         schema:
           $ref: '#/components/schemas/Timestamp'
+      - name: cursor
+        in: query
+        description: Opaque continuation returned by the preceding page for this range.
+        schema: { type: string }
       - name: limit
         in: query
         required: false
@@ -7494,8 +7500,12 @@ paths:
         - collaboration
       operationId: createCollaborationCalendarEvent
       summary: Create an audited collaboration calendar event
-      description: Creates a tenant-scoped calendar event with explicit audience scope and optional source object link. The
-        server records an audit event and an append-only lifecycle event under forced RLS.
+      description: |
+        Creates an internal event, an append-only lifecycle record and a platform audit record in one tenant transaction.
+        Members create PERSONAL events for themselves. DEPARTMENT publication requires NoticeManage for the referenced
+        active branch. TENANT, ORG and TEAM publication require organization-wide NoticeManage. A branch-scoped administrator
+        previously allowed to publish a tenant event now receives 403. Personal events and authorized branch publishing remain available.
+        This operation sends no invitations or email and does not start a delivery worker.
       security:
       - bearerAuth: []
       requestBody:
@@ -14268,6 +14278,7 @@ paths:
       - name: stage
         in: query
         required: false
+        description: Omit to list active cycles. Select ARCHIVED for archived cycles. Rows are ordered by creation time and then cycle ID, newest first.
         schema: { $ref: '#/components/schemas/EvaluationCycleStage' }
       - name: limit
         in: query
@@ -14290,11 +14301,18 @@ paths:
       operationId: createEvaluationCycle
       summary: Create a draft evaluation cycle
       security: [{ bearerAuth: [] }]
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Reuse this key for the same create intent.
+        schema: { type: string }
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CreateEvaluationCycleRequest' } } } }
       responses:
         '201': { description: Draft cycle created., content: { application/json: { schema: { $ref: '#/components/schemas/EvaluationCycleDetail' } } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: A previous command with this key was already applied or is processing., content: { application/json: { schema: { $ref: '#/components/schemas/ErrorBody' } } } }
         '422': { $ref: '#/components/responses/ValidationError' }
         '500': { $ref: '#/components/responses/InternalServerError' }
         '503': { $ref: '#/components/responses/ServiceUnavailable' }
@@ -40819,7 +40837,9 @@ components:
       type: object
       required:
       - items
+      - next_cursor
       properties:
+        next_cursor: { type: [string, 'null'] }
         items:
           type: array
           items:

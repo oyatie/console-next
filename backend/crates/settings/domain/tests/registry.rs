@@ -15,7 +15,8 @@ use std::collections::HashSet;
 /// the operational objection-review clock, the onboarding receipt window, payroll activation,
 /// the saved-view ceiling, the privacy filing detail limit, three excess-disposition settings,
 /// the two inbox snooze preset day counts, the tenant default screen style, and three
-/// attendance/HR policy keys (overtime recognition, console clock-out, fixed-term limit).
+/// attendance/HR policy keys (overtime recognition, console clock-out, fixed-term limit),
+/// plus three optional module preferences (evaluation, benefits and calendar).
 const EXPECTED_KEYS: usize = 34
     + 17
     + 1
@@ -45,6 +46,7 @@ const EXPECTED_KEYS: usize = 34
     + 3
     + 2
     + 1
+    + 3
     + 3;
 
 #[test]
@@ -126,6 +128,9 @@ fn only_neutral_keys_skip_a_risk_direction() {
                     || matches!(def.kind, SettingKind::Code { allowed } if allowed.len() == 1)
                     || *key == SettingKey::OrgChangeApplyTime
                     // Module availability does not alter payroll authority or pay rules.
+                    || *key == SettingKey::ModuleBenefitsEnabled
+                    || *key == SettingKey::ModuleCalendarEnabled
+                    || *key == SettingKey::ModuleEvaluationEnabled
                     || *key == SettingKey::ModulePayrollEnabled
                     // Visual style alters layout and chrome only, never access or statutory rules.
                     || *key == SettingKey::DisplayExperience,

@@ -2,8 +2,10 @@ tags:
   - collaboration
 operationId: listCollaborationCalendarEvents
 summary: List tenant-scoped collaboration calendar events
-description: Returns server-filtered collaboration calendar events for the caller's tenant. Personal events are visible
-  only to the creator, while org/team/department scopes carry explicit server policy metadata for future PBAC/ABAC expansion.
+description: |
+  Lists active internal events visible to this tenant member over the given range. Personal events belong to the creator,
+  department events to authorized branches and team events to team members. Creators can inspect their own events.
+  Follow next_cursor with the original range to read subsequent pages in stable order at the first page's snapshot time.
 security:
 - bearerAuth: []
 parameters:
@@ -17,6 +19,10 @@ parameters:
   required: false
   schema:
     $ref: '#/components/schemas/Timestamp'
+- name: cursor
+  in: query
+  description: Opaque continuation returned by the preceding page for this range.
+  schema: { type: string }
 - name: limit
   in: query
   required: false

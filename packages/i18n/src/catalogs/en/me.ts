@@ -1,5 +1,15 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 export const enMe = {
+  "me.evaluation.title": "My evaluation tasks",
+  "me.evaluation.empty": "No evaluation tasks assigned",
+  "me.evaluation.cycle": "Cycle",
+  "me.evaluation.kind": "Review",
+  "me.evaluation.self": "Self review",
+  "me.evaluation.manager": "Manager review",
+  "me.evaluation.pending": "Not started",
+  "me.evaluation.draft": "Draft",
+  "me.evaluation.submitted": "Submitted",
+  "me.evaluation.due": "Due date",
   "me.attendance.title": "My attendance",
   "me.attendance.stripLabel": "Own attendance summary",
   "me.attendance.week52.current": "Week hours",
