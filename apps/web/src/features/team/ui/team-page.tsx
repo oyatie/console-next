@@ -20,11 +20,9 @@ import { ListRecord } from "../../../ui/patterns/list-record";
 import { RecordBannerBand } from "../../../ui/patterns/record-banner-band";
 import { WorklistSearchField } from "../../../ui/patterns/worklist-parts";
 import {
-  isRefusalError,
   teamAccessQuery,
   teamEmployeesPages,
   teamFacetsQuery,
-  teamLeaveQueueQuery,
   teamMeQuery,
 } from "../api";
 import {
@@ -37,6 +35,7 @@ import {
   filterTeamEmployees,
   filterVisibleTeamLeaves,
 } from "../domain/team-scope";
+import { useTeamLeaves } from "./use-team-leaves";
 import { buildTeamColumns } from "./team-columns";
 import { TeamRecordPane } from "./team-record-pane";
 import s from "./team.module.css";
@@ -94,11 +93,7 @@ export function TeamPage() {
   const canReadLeave = Boolean(
     access.data && accessRefusal(access.data, operationAccess["GET /api/v1/employees"]) === null,
   );
-  const leaveQueue = useQuery({ ...teamLeaveQueueQuery, enabled: canReadLeave, retry: false });
-  const pendingLeaves = useMemo(
-    () => (leaveQueue.isError && isRefusalError(leaveQueue.error) ? [] : (leaveQueue.data?.items ?? [])),
-    [leaveQueue.isError, leaveQueue.error, leaveQueue.data],
-  );
+  const { pendingLeaves, moreLeaves, complete: allLeavesRead, available: leaveAvailable } = useTeamLeaves(canReadLeave);
 
   const rawRows = useMemo(() => employees.data?.pages.flatMap(p => p.items) ?? [], [employees.data]);
   const rows = useMemo(
@@ -127,7 +122,8 @@ export function TeamPage() {
     return facets.data ? facets.data.status.find(item => item.value === value)?.count ?? 0 : undefined;
   };
   const contractEndingCount = hasScope ? ending.data?.total : 0;
-  const attentionCount = contractEndingCount === undefined ? undefined : visibleLeaves.length + contractEndingCount;
+  const partial = !allLeavesRead || ((isClientFiltered || activeView === "concurrent") && employees.hasNextPage);
+  const attentionCount = contractEndingCount === undefined || !leaveAvailable ? undefined : visibleLeaves.length + contractEndingCount;
 
   const columns = buildTeamColumns(today, pendingLeaves);
 
@@ -239,6 +235,7 @@ export function TeamPage() {
             <div className={s.baselineWrap}>
               {filtersBar}
               {findBar}
+              {moreLeaves}
               {tableNode}
             </div>
           )}
@@ -248,6 +245,7 @@ export function TeamPage() {
   );
 
   const noteText =
+    partial && leaveAvailable ? t("team.leave.partial", { count: visibleLeaves.length }) :
     visibleLeaves.length > 0 && (contractEndingCount ?? 0) > 0
       ? t("team.notes.attention", { leaveCount: visibleLeaves.length, contractCount: contractEndingCount ?? 0 })
       : visibleLeaves.length > 0
@@ -271,15 +269,13 @@ export function TeamPage() {
             {
               key: "attention",
               label: t("team.stats.attention"),
-              value: attentionCount ?? "—",
+              value: attentionCount === undefined ? "—" : partial ? `≥ ${attentionCount}` : attentionCount,
               tone: (attentionCount ?? 0) > 0 ? "warn" : undefined,
-              onPress: () => go({ status: "SOON" }),
-              active: statusFilter === "SOON",
             },
           ]}
         />
       }
-      notes={noteText ? <RecordBannerBand tone="warn"><bdi>{noteText}</bdi></RecordBannerBand> : undefined}
+      notes={noteText || moreLeaves ? <RecordBannerBand tone="warn"><bdi>{noteText}</bdi>{moreLeaves}</RecordBannerBand> : undefined}
       list={tableNode}
       onSelect={id => go({ sel: id })}
       record={
@@ -290,7 +286,7 @@ export function TeamPage() {
               title: t("team.pane.title"),
               openInTab: { href: `/people/${selectedMember.id}`, label: selectedMember.name },
               onClose: () => go({ sel: undefined }),
-              children: <TeamRecordPane member={selectedMember} leaveRequests={pendingLeaves} />,
+              children: <TeamRecordPane member={selectedMember} leaveRequests={pendingLeaves} moreLeaves={moreLeaves} />,
             }
           : null
       }

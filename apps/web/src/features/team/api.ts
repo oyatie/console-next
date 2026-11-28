@@ -30,9 +30,7 @@ export const teamFacetsQuery = (params: {
   status?: "ACTIVE" | "ON_LEAVE";
 }) => get("/api/v1/employees/facets", { params: { query: { ...params, status: params.status ? [params.status] : undefined } } });
 
-export const teamLeaveQueueQuery = get("/api/v2/leave/requests", {
-  params: { query: { status: "pending", limit: 20 } },
-});
+export const teamLeaveQueueQuery = cursorPages("/api/v2/leave/requests", { status: "pending", limit: 20 });
 
 export function isRefusalError(error: unknown): boolean {
   return error instanceof ApiError && error.status === 403;

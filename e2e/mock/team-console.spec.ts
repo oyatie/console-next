@@ -188,3 +188,28 @@ test("Console /team concurrent view scopes attentionCount and leave banner to th
     fixture.release();
   }
 });
+
+test("the team can read the next page of pending leave and update the attention total", async ({ page }) => {
+  const { fixture, empPage } = await setupSaeonTeam(page, { theme: "light", tenantWide: true });
+  const leave = saeonTeamLeaveQueue(empPage.items).items[0]!;
+  const cursor = leave.id;
+  let requested = false;
+  await mockRoute(page, "get", "/api/v2/leave/requests", req => {
+    if (new URL(req.url()).searchParams.get("cursor") === cursor) {
+      requested = true;
+      return { status: 200, json: { items: [{ ...leave, id: "00000000-0000-4000-8120-000000000099", subject_employee_id: empPage.items[1]!.id }], next_cursor: null } };
+    }
+    return { status: 200, json: { items: [leave], next_cursor: cursor } };
+  });
+  try {
+    await page.goto("/team");
+    const stats = page.getByLabel(t("team.stats.label"));
+    await expect(stats).toContainText(`${t("team.stats.attention")}≥ 1`);
+    await page.getByRole("button", { name: t("team.leave.more") }).click();
+    expect(requested).toBe(true);
+    await expect(stats).toContainText(`${t("team.stats.attention")}2`);
+    await expect(page.getByText(t("team.notes.leaveOnly", { leaveCount: 2 }))).toBeVisible();
+  } finally {
+    fixture.release();
+  }
+});

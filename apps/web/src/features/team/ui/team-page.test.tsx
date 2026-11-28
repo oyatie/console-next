@@ -35,6 +35,9 @@ vi.mock("@tanstack/react-query", async original => {
       const first = Object.values(opts).find(Array.isArray);
       const path = String(first?.[0] ?? "");
       state.paths.push(path);
+      if (path.includes("/api/v2/leave/requests")) {
+        return { data: { pages: [{ items: [], next_cursor: null }] }, error: null, hasNextPage: false };
+      }
       if (state.refused) {
         return {
           isPending: false,
@@ -150,9 +153,6 @@ vi.mock("@tanstack/react-query", async original => {
             review: { contract_ending_before: 0 },
           },
         };
-      }
-      if (path.includes("/api/v2/leave/requests")) {
-        return { isPending: false, error: null, data: { items: [] }, refetch: vi.fn() };
       }
       return { isPending: false, error: null, data: undefined, refetch: vi.fn() };
     },
