@@ -35,6 +35,7 @@ export const enRequestOutcome = {
   "requestOutcome.resultLive": "Operations started at {at}.",
   "requestOutcome.resultItems": "{count} items were applied. Review the records below.",
   "requestOutcome.resultRecorded": "The request was applied. Review the linked records.",
+  "requestOutcome.myHistory.empty": "You have no requests on this page.",
   "requestOutcome.myHistory.title": "My recent requests",
   "requestOutcome.myHistory.col.id": "Request ID",
   "requestOutcome.myHistory.col.state": "Status",

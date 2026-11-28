@@ -4,16 +4,13 @@ import { useState, type ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type { components } from "@console/api/schema";
-import { Banknote, CalendarDays, ChevronRight, Clock, FileText, LogOut, ShieldCheck } from "lucide-react";
+import { Banknote, CalendarDays, ChevronRight, Clock, FileText, LayoutDashboard, LogOut, ShieldCheck } from "lucide-react";
 import { t } from "@console/i18n";
 import { fmtMonth } from "@console/i18n/format";
 import type { ReadState } from "../../../lib/react/query-view";
 import { SupportLookup } from "../../../lib/react/support-lookup";
 import { useSidePanel } from "../../../lib/side-panel/use-side-panel";
 import { personName } from "../../../reference/person/present";
-import { myAccessQuery } from "../../../reference/authz/api";
-import { accessRefusal } from "../../../reference/authz/domain/access";
-import { operationAccess } from "../../../reference/authz/domain/operation-access";
 import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
 import { KeyValue, StatRow } from "../../../ui/key-value/key-value";
@@ -77,7 +74,6 @@ export function MeConsole({
   const [payslipId, setPayslipId] = useState<string | null>(null);
   // The sheet lives in the address, so the phone nav and a shared link open it and Back closes it.
   const sheet = useSidePanel("sheet");
-  const access = useQuery({ ...myAccessQuery, enabled: !vendor });
   const meProfile = useQuery({ ...meProfileQuery, enabled: isLinked, retry: false });
   const leave = useQuery({ ...myLeaveSummaryQuery, enabled: isLinked, retry: false });
   const payslips = useQuery({ ...myPayslipDocsQuery, enabled: isLinked, retry: false });
@@ -90,21 +86,20 @@ export function MeConsole({
     compact: true,
   });
 
-  const hasAccess = (op: keyof typeof operationAccess) =>
-    Boolean(access.data && accessRefusal(access.data, operationAccess[op]) === null);
-  const canAttendance = hasAccess("GET /api/v1/attendance/month");
-  const canPayroll = hasAccess("GET /api/v1/payroll/runs");
-
   const latestPayslip = payslips.data?.items[0];
   const remainingLeave = leave.data?.balance?.remaining_units;
   const links: PhoneHubLinkItem[] = isLinked
     ? [
+        ...(u?.tenant?.phase === "OPERATING" ? [{
+          key: "desk", icon: <LayoutDashboard size={20} aria-hidden="true" />,
+          label: t("shell.link.meDesk"), href: "/me/desk",
+        } satisfies PhoneHubLinkItem] : []),
         {
           key: "leave",
           icon: <CalendarDays size={20} aria-hidden="true" />,
           label: t("account.hub.leave"),
           meta: remainingLeave != null ? t("account.hub.leaveRemaining", { days: Number(remainingLeave) }) : undefined,
-          href: canAttendance ? "/attendance" : "/leave",
+          href: "/leave",
         },
         {
           key: "me-attendance",
@@ -113,18 +108,14 @@ export function MeConsole({
           meta: t("account.hub.attendanceMeta"),
           href: "/me/attendance",
         },
-        ...(latestPayslip || canPayroll
-          ? [
-              {
-                key: "payslip",
-                icon: <Banknote size={20} aria-hidden="true" />,
-                label: t("account.hub.payslip"),
-                meta: latestPayslip ? formatPayslipMeta(latestPayslip) : t("account.hub.payslipIssued"),
-                href: latestPayslip ? undefined : "/payroll",
-                onPress: latestPayslip ? () => setPayslipId(latestPayslip.id) : undefined,
-              } satisfies PhoneHubLinkItem,
-            ]
-          : []),
+        {
+          key: "payslip",
+          icon: <Banknote size={20} aria-hidden="true" />,
+          label: t("account.hub.payslip"),
+          meta: latestPayslip ? formatPayslipMeta(latestPayslip) : undefined,
+          href: latestPayslip ? undefined : "/payslips",
+          onPress: latestPayslip ? () => setPayslipId(latestPayslip.id) : undefined,
+        },
         {
           key: "certificates",
           icon: <FileText size={20} aria-hidden="true" />,
@@ -160,6 +151,7 @@ export function MeConsole({
         </div>
       ),
     },
+    ...(vendor ? [] : [{ key: "history", label: t("requestOutcome.title"), value: <Link to="/requests">{t("requestOutcome.myHistory.title")}</Link> }]),
     ...(vendor ? [] : [{ key: "signInId", label: t("account.field.signInId"), value: <bdi className="code">{u?.sign_in_id ?? "—"}</bdi> }]),
     ...(vendor ? [] : [{ key: "domain", label: t("account.domain.title"), value: <Link to="/settings/company-domain" className={s.plainLink}>{u?.sign_in_id?.split("@")[1] ?? "—"}</Link> }]),
     ...(vendor || isLinked ? [] : [{ key: "unit", label: t("account.field.unit"), value: <bdi className="muted">{t("account.field.unlinked")}</bdi> }]),
