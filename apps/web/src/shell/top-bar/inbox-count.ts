@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { InfiniteData, UseInfiniteQueryResult } from "@tanstack/react-query";
 import { api, unwrap } from "@console/api";
 import type { components } from "@console/api/schema";
-import { cursorRead } from "../../lib/query";
+import { BACKGROUND_SETTLE_MS, cursorRead } from "../../lib/query";
 
 export type InboxPage = components["schemas"]["ActionInboxResponse"];
 type InboxRead = UseInfiniteQueryResult<InfiniteData<InboxPage>>;
@@ -27,4 +27,20 @@ export function useNewestPage(read: InboxRead) {
   const next = newest(shown, read);
   if (next !== shown) setShown(next);
   return read.isSuccess ? next.page ?? read.data.pages[0] : undefined;
+}
+
+/** Give the first route its reads before starting the header's background count. */
+export function useCountAfterArrival(active: boolean, routeKey: string | undefined) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    if (!active || ready) return;
+    const marker = document.querySelector<HTMLElement>("[data-route-key]");
+    const arrived = () => marker?.dataset.routeKey === routeKey && !!marker?.dataset.routeReady;
+    const observer = new MutationObserver(() => { if (arrived()) setReady(true); });
+    if (marker) observer.observe(marker, { attributes: true, attributeFilter: ["data-route-key", "data-route-ready"] });
+    // A slow or paused route still gets its count, and opening the panel always reads immediately.
+    const timeout = window.setTimeout(() => setReady(true), marker && !arrived() ? BACKGROUND_SETTLE_MS : 0);
+    return () => { observer.disconnect(); window.clearTimeout(timeout); };
+  }, [active, ready, routeKey]);
+  return ready;
 }

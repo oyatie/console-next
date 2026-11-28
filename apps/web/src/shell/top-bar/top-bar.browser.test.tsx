@@ -22,7 +22,7 @@ beforeAll(async () => {
         import React, { useSyncExternalStore } from 'react';
         import { createRoot } from 'react-dom/client';
         import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-        import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider } from '@tanstack/react-router';
+        import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider, useLocation } from '@tanstack/react-router';
         import { i18n, loadCatalog } from '@console/i18n';
         import { setLocale } from '/apps/web/src/shell/locale.ts';
         import { invalidatePaths } from '/apps/web/src/lib/query.ts';
@@ -35,7 +35,12 @@ beforeAll(async () => {
         const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
         window.addEventListener('refetch-inbox', () => Promise.all(invalidatePaths(client, ['/api/v1/me/action-inbox'])));
         const tenant = { name: '이름이 아주 긴 고객 계정 이름 전체', phase: location.hash === '#operating' ? 'OPERATING' : 'SETUP', go_live_at: null };
+        function RouteMarker() {
+          const { state } = useLocation();
+          return location.hash === '#pending' ? React.createElement('span', { hidden: true, 'data-route-key': state["__TSR_key"] }) : null;
+        }
         const root = createRootRoute({ component: () => React.createElement('main', null,
+          React.createElement(RouteMarker),
           React.createElement('header', { className: 'top' },
             React.createElement(TenantHead, { tenant }),
             React.createElement(NeedsMeMenu, { id: 'test-needs-me' }),
@@ -133,6 +138,26 @@ test.each(["dark", "light"])("theme radio selects %s on the document", async the
   await page.getByRole("menuitemradio", { name: theme === "dark" ? "어두운 화면" : "밝은 화면", exact: true }).click();
   await element(page.locator("html")).toHaveAttribute("data-theme", theme);
   await element(page.getByRole("button", { name: "남궁가나다라마바사 전체 이름" })).toBeFocused();
+});
+
+test.each(["route ready", "open panel", "deadline"])("a cold background inbox waits for %s", async release => {
+  let reads = 0;
+  const countRead = (request: { url(): string }) => {
+    if (new URL(request.url()).pathname === "/api/v1/me/action-inbox") reads++;
+  };
+  page.on("request", countRead);
+  try {
+    await open("#pending");
+    const button = page.locator("#test-needs-me");
+    await element(button).toHaveAccessibleName(t("shell.needsMe.loading"));
+    expect(reads).toBe(0);
+    if (release === "route ready") await page.locator("[data-route-key]").evaluate(marker => marker.setAttribute("data-route-ready", "/people"));
+    if (release === "open panel") await button.click();
+    await element(button).toHaveAccessibleName(t("shell.needsMe.count", { count: 3 }));
+    expect(reads).toBe(1);
+  } finally {
+    page.off("request", countRead);
+  }
 });
 
 test.each([1440, 390])("needs-me badge shows turn count, opens task panel with /inbox link, and closes on Escape at %spx", async width => {
