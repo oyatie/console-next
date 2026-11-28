@@ -37,6 +37,22 @@ afterAll(async () => {
   await mounted?.close();
 });
 
+test("fixed desktop rows follow a change to the table's CSS row height", async () => {
+  const table = mounted.page.getByRole("region", { name: "Rows" });
+  const geometry = () => table.locator("[data-row-id] [role=rowheader]").evaluateAll(cells => {
+    const [first, second, third] = cells.map(cell => cell.getBoundingClientRect());
+    return first && second && third ? [first.height, second.top - first.top, third.top - second.top] : [];
+  });
+  try {
+    for (const height of [47, 31]) {
+      await table.evaluate((element, px) => (element as HTMLElement).style.setProperty("--row-h", `${px}px`), height);
+      await expect.poll(geometry).toEqual([height, height, height]);
+    }
+  } finally {
+    await table.evaluate(element => (element as HTMLElement).style.removeProperty("--row-h"));
+  }
+});
+
 /** What a row shows: its fill, the bar at its start edge, and the weight of its name and of its link. */
 const look = (id: string) => mounted.page.evaluate(rowId => {
   const row = document.querySelector<HTMLElement>(`[data-row-id="${rowId}"]`)!;
