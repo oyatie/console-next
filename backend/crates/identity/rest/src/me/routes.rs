@@ -62,7 +62,9 @@ pub(crate) async fn get_me_authz(
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
-    let tasks = (state.evaluation_tasks)(&principal)
+    let tasks = (state.evaluation_tasks)(&principal);
+    let (read_cycles, create_cycles) = (state.evaluation_cycles)(&principal);
+    let evaluation = (tasks || read_cycles || create_cycles)
         && console_platform_request_context::tenant_module::TenantModule::Evaluation
             .enabled(state.pool(), principal.org_id)
             .await
@@ -72,6 +74,7 @@ pub(crate) async fn get_me_authz(
         state.documents_served,
         (state.integrity_access)(&principal),
         (state.ledger_access)(&principal),
-        tasks,
+        evaluation && tasks,
+        (evaluation && read_cycles, evaluation && create_cycles),
     )))
 }

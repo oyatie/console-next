@@ -31,4 +31,11 @@ CREATE POLICY org_isolation ON tenant_module_enrollments
     USING (org_id = NULLIF(current_setting('app.current_org', true), '')::UUID)
     WITH CHECK (org_id = NULLIF(current_setting('app.current_org', true), '')::UUID);
 REVOKE ALL ON tenant_module_enrollments FROM PUBLIC, console_rt;
-GRANT SELECT ON tenant_module_enrollments TO console_rt;
+GRANT SELECT (org_id, module_key, enabled, revision) ON tenant_module_enrollments TO console_rt;
+COMMENT ON COLUMN tenant_module_enrollments.revision IS 'pd:none — enrollment decision order';
+COMMENT ON COLUMN tenant_module_enrollments.org_id IS 'pd:none — tenant scope';
+COMMENT ON COLUMN tenant_module_enrollments.module_key IS 'pd:none — release module identifier';
+COMMENT ON COLUMN tenant_module_enrollments.enabled IS 'pd:none — explicit enrollment decision';
+COMMENT ON COLUMN tenant_module_enrollments.change_ref IS 'pd:none — opaque release change reference';
+COMMENT ON COLUMN tenant_module_enrollments.recorded_by IS 'pd:personal — database operator principal recording the decision';
+COMMENT ON COLUMN tenant_module_enrollments.recorded_at IS 'pd:none — release decision timestamp';

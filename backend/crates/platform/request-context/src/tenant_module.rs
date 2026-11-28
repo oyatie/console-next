@@ -18,45 +18,41 @@ pub enum TenantModule {
     Evaluation,
 }
 
+#[derive(Debug, thiserror::Error)]
+enum PolicyReadError {
+    #[error(transparent)]
+    Database(#[from] DbError),
+    #[error(transparent)]
+    Setting(#[from] KernelError),
+    #[error("the module setting has no boolean value")]
+    InvalidSetting,
+}
+
 impl TenantModule {
+    /// Read operator enrollment and the tenant's effective preference from the same snapshot.
+    ///
+    /// # Errors
+    /// Returns an unavailable error when either authoritative source cannot be read.
     pub async fn enabled(self, pool: &PgPool, org: OrgId) -> Result<bool, KernelError> {
-        let (enrollment, key) = match self {
+        let (module, key) = match self {
             Self::Evaluation => ("evaluation", SettingKey::ModuleEvaluationEnabled),
         };
-        with_org_snapshot(pool, org, |tx| {
-            Box::pin(async move {
-                let enrolled: bool = sqlx::query_scalar("SELECT enabled FROM tenant_module_enrollments WHERE org_id=$1 AND module_key=$2 ORDER BY revision DESC LIMIT 1")
-                    .bind(org.as_uuid()).bind(enrollment)
-                    .fetch_optional(tx.as_mut()).await?.unwrap_or(false);
-                if !enrolled {
-                    return Ok::<_, DbError>(Ok(false));
-                }
-                let values = resolve_in_tx(
-                    tx.as_mut(),
-                    org,
-                    &[key],
-                    None,
-                    time::OffsetDateTime::now_utc(),
-                )
-                .await;
-                Ok(values.and_then(|values| {
-                    match values
-                        .get(&key)
-                        .and_then(|value| value.as_ref().ok())
-                        .map(|v| v.value)
-                    {
-                        Some(SettingValue::Bool(enabled)) => Ok(enabled),
-                        _ => Err(KernelError::unavailable("module policy unavailable")),
-                    }
-                }))
-            })
-        })
-        .await
-        .map_err(|err| {
-            tracing::error!(error = %err, "module enrollment unavailable");
+        with_org_snapshot(pool, org, |tx| Box::pin(async move {
+            let enrolled = sqlx::query_scalar::<_, bool>(
+                "SELECT enabled FROM tenant_module_enrollments WHERE org_id=$1 AND module_key=$2 ORDER BY revision DESC LIMIT 1"
+            ).bind(org.as_uuid()).bind(module).fetch_optional(tx.as_mut()).await.map_err(DbError::from)?;
+            if enrolled != Some(true) {
+                return Ok(false);
+            }
+            let settings = resolve_in_tx(tx.as_mut(), org, &[key], None, time::OffsetDateTime::now_utc()).await?;
+            match settings.get(&key).and_then(|result| result.as_ref().ok()).map(|value| value.value) {
+                Some(SettingValue::Bool(enabled)) => Ok(enabled),
+                _ => Err(PolicyReadError::InvalidSetting),
+            }
+        })).await.map_err(|err| {
+            tracing::error!(error = %err, "module policy read failed");
             KernelError::unavailable("module policy unavailable")
-        })?
-        .map_err(|_| KernelError::unavailable("module policy unavailable"))
+        })
     }
 
     pub(crate) async fn admit(self, pool: &PgPool, org: OrgId) -> Result<(), Response> {

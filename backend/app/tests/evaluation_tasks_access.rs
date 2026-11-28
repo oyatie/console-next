@@ -91,17 +91,41 @@ async fn tenant_policy_precedes_reads_and_command_replay(pool: PgPool) {
     );
     let (status, authz) = ctx.call("GET", "/api/v1/me/authz", None).await;
     assert_eq!(status, StatusCode::OK, "{authz}");
-    assert!(
-        authz["capabilities"]
-            .as_array()
+    assert!(authz["capabilities"].as_array().unwrap().iter().all(|cap| {
+        !cap["feature"]
+            .as_str()
             .unwrap()
-            .iter()
-            .all(|cap| cap["feature"] != "served_evaluation_tasks")
-    );
+            .starts_with("served_evaluation_")
+    }));
     let count: i64 = sqlx::query_scalar("SELECT count(*) FROM evaluation_cycles WHERE org_id=$1")
         .bind(org)
         .fetch_one(&pool)
         .await
         .unwrap();
     assert_eq!(count, 1);
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn tenant_role_cannot_enroll_itself_or_read_another_tenants_enrollment(pool: PgPool) {
+    let (org, _) = http::tenant(&pool, &["SUPER_ADMIN"]).await;
+    let (other, _) = http::tenant(&pool, &["SUPER_ADMIN"]).await;
+    enroll(&pool, other).await;
+    let runtime = console_platform_test_support::runtime_role_pool(&pool).await;
+    let mut tx = runtime.begin().await.unwrap();
+    sqlx::query("SELECT set_config('app.current_org',$1,true)")
+        .bind(org.to_string())
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    let rows: i64 = sqlx::query_scalar("SELECT count(revision) FROM tenant_module_enrollments")
+        .fetch_one(tx.as_mut())
+        .await
+        .unwrap();
+    assert_eq!(rows, 0);
+    let error = sqlx::query("INSERT INTO tenant_module_enrollments(org_id,module_key,enabled,change_ref) VALUES ($1,'evaluation',true,'self-grant')")
+        .bind(org).execute(tx.as_mut()).await.unwrap_err();
+    assert_eq!(
+        error.as_database_error().and_then(|e| e.code()).as_deref(),
+        Some("42501")
+    );
 }

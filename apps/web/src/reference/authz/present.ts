@@ -63,6 +63,8 @@ export const domainText = (key: string) => codeText(`accessCodes.domain.${key}`,
 export const levelText = (level: components["schemas"]["AccessLevel"]) => t(`accessCodes.level.${level}`);
 
 const servedPermission = {
+  served_evaluation_cycles: "evaluation.title",
+  served_evaluation_cycle_create: "evaluation.create",
   served_evaluation_tasks: "me.evaluation.permission",
   documents: "audit.vault.permission",
   served_integrity_findings: "audit.findings.permission",

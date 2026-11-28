@@ -9,8 +9,10 @@
 //! preflights, SoD, and the `with_audits` carve-outs live in the adapter.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
+mod cycles;
 mod openapi;
 mod tasks;
+pub use cycles::cycle_access;
 pub use openapi::OPENAPI_FRAGMENT;
 pub use tasks::my_tasks_available;
 
@@ -110,7 +112,10 @@ pub fn router(state: EvaluationRestState) -> Router {
     let verifier = state.jwt_verifier.clone();
     let pool = state.store.pool().clone();
     let routes = Router::new()
-        .route(EVALUATION_CYCLES_PATH, get(list_cycles).post(create_cycle))
+        .route(
+            EVALUATION_CYCLES_PATH,
+            get(cycles::list_cycles).post(cycles::create_cycle),
+        )
         .route(EVALUATION_CYCLE_PATH_TEMPLATE, get(get_cycle))
         .route(EVALUATION_CYCLE_PREFLIGHT_PATH_TEMPLATE, get(preflight))
         .route(EVALUATION_CYCLE_OPEN_PATH_TEMPLATE, post(open_cycle))
@@ -228,58 +233,6 @@ struct ErrorPayload {
 // ---------------------------------------------------------------------------
 // Cycle handlers
 // ---------------------------------------------------------------------------
-
-async fn create_cycle(
-    State(state): State<EvaluationRestState>,
-    headers: HeaderMap,
-    Json(body): Json<CreateCycleRequest>,
-) -> Result<(StatusCode, Json<CycleDetail>), RestError> {
-    let principal = principal_from_headers(&state, &headers).await?;
-    require_feature(&principal, Feature::EvaluationManage)?;
-    let name = bounded_required(&body.name, 1, NAME_MAX_CHARS, "name")?;
-    let period_label = bounded_required(
-        &body.period_label,
-        1,
-        PERIOD_LABEL_MAX_CHARS,
-        "period_label",
-    )?;
-    let detail = state
-        .store
-        .create_cycle(
-            principal.user_id,
-            CreateCycleInput {
-                name,
-                kind: body.kind,
-                period_label,
-                due_date: body.due_date,
-            },
-        )
-        .await
-        .map_err(RestError::from_store)?;
-    Ok((StatusCode::CREATED, Json(detail)))
-}
-
-async fn list_cycles(
-    State(state): State<EvaluationRestState>,
-    headers: HeaderMap,
-    Query(filter): Query<CycleListFilter>,
-) -> Result<Json<CyclePage>, RestError> {
-    let principal = principal_from_headers(&state, &headers).await?;
-    require_feature(&principal, Feature::EvaluationRead)?;
-    let page = state
-        .store
-        .list_cycles(CycleQuery {
-            stage: filter.stage,
-            limit: filter
-                .limit
-                .unwrap_or(DEFAULT_CYCLE_LIMIT)
-                .clamp(1, MAX_CYCLE_LIMIT),
-            offset: filter.offset.unwrap_or(0).max(0),
-        })
-        .await
-        .map_err(RestError::from_store)?;
-    Ok(Json(page))
-}
 
 async fn get_cycle(
     State(state): State<EvaluationRestState>,
