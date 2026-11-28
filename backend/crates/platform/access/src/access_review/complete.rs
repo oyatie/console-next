@@ -99,15 +99,24 @@ pub async fn complete(
                        FROM access_review_decisions d
                        JOIN access_review_items i
                          ON i.org_id = d.org_id AND i.review_id = d.review_id AND i.id = d.item_id
-                      WHERE d.org_id = $1 AND d.review_id = $2 AND d.decision = 'REVOKE'",
+                      WHERE d.org_id = $1 AND d.review_id = $2 AND d.decision = 'REVOKE'
+                      ORDER BY i.grant_id",
                 )
                 .bind(p.org_id.as_uuid())
                 .bind(review_id)
                 .fetch_all(tx.as_mut())
                 .await?;
 
+                let mut revoked_count = 0;
                 for (decision_id, grant_id) in &revocations {
-                    grants_store::revoke(tx, p.org_id, *grant_id, *p.user_id.as_uuid()).await?;
+                    let grant = grants_store::grant_row(tx, p.org_id, *grant_id, true)
+                        .await?
+                        .ok_or_else(|| AccessError::not_found("grant_not_found", "reviewed grant not found"))?;
+                    if !grant.revoked {
+                        grants_store::revoke(tx, p.org_id, *grant_id, *p.user_id.as_uuid()).await?;
+                        audits.push(audit(&p, "access.grant.revoke", "access_grant", *grant_id)?);
+                        revoked_count += 1;
+                    }
                     sqlx::query(
                         "UPDATE access_review_decisions SET applied_at = now()
                           WHERE org_id = $1 AND id = $2",
@@ -116,7 +125,6 @@ pub async fn complete(
                     .bind(decision_id)
                     .execute(tx.as_mut())
                     .await?;
-                    audits.push(audit(&p, "access.grant.revoke", "access_grant", *grant_id)?);
                 }
 
                 sqlx::query(
@@ -135,7 +143,7 @@ pub async fn complete(
                     Some(json!({
                         "period": period,
                         "frozen_count": frozen_count,
-                        "revoked_count": revocations.len(),
+                        "revoked_count": revoked_count,
                     })),
                 ));
             }

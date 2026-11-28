@@ -65,7 +65,10 @@ pub async fn start(
                 let grant_rows = sqlx::query(
                     "SELECT g.id, g.account_id, COALESCE(u.display_name, g.account_id::text) AS account_name,
                             e.employee_number, e.org_unit AS unit_name, u.is_active AS account_active,
-                            g.role_id, r.name_ko AS role_name_ko, g.scope_kind,
+                            g.role_id, r.name_ko AS role_name_ko, g.scope_kind, g.include_descendants,
+                            COALESCE(g.legal_entity_id, g.workplace_id, g.org_unit_id) AS scope_node_id,
+                            access_review_scope_name(g.org_id, g.scope_kind,
+                                COALESCE(g.legal_entity_id, g.workplace_id, g.org_unit_id), $2) AS scope_name,
                             g.valid_from, g.valid_to,
                             (SELECT max(a.created_at) FROM audit_events a
                               WHERE a.org_id = g.org_id AND a.actor = g.account_id) AS last_used_at
@@ -123,8 +126,8 @@ pub async fn start(
                         "INSERT INTO access_review_items
                             (org_id, id, review_id, grant_id, account_id, account_name, employee_number,
                              unit_name, role_id, role_name_ko, scope_kind, scope_label, valid_from,
-                             valid_to, last_used_at, signals)
-                         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)",
+                             valid_to, last_used_at, signals, scope_node_id, scope_include_descendants)
+                         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)",
                     )
                     .bind(p.org_id.as_uuid())
                     .bind(Uuid::new_v4())
@@ -137,11 +140,13 @@ pub async fn start(
                     .bind(row.try_get::<Uuid, _>("role_id")?)
                     .bind(row.try_get::<String, _>("role_name_ko")?)
                     .bind(&scope_kind)
-                    .bind(&scope_kind)
+                    .bind(row.try_get::<Option<String>, _>("scope_name")?.as_deref().unwrap_or(&scope_kind))
                     .bind(row.try_get::<OffsetDateTime, _>("valid_from")?)
                     .bind(valid_to)
                     .bind(last_used_at)
                     .bind(&signals)
+                    .bind(row.try_get::<Option<Uuid>, _>("scope_node_id")?)
+                    .bind(row.try_get::<bool, _>("include_descendants")?)
                     .execute(tx.as_mut())
                     .await?;
                 }

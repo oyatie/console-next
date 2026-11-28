@@ -18,6 +18,8 @@ use time::OffsetDateTime;
 /// JSON object (the console window/panel arrangement); the empty default is `{}`.
 #[derive(Debug, Serialize)]
 pub(crate) struct WorkspaceResponse {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) legacy_kill_switch_enabled: Option<bool>,
     pub(crate) layout: serde_json::Value,
 }
 
@@ -33,12 +35,15 @@ pub(crate) async fn get_workspace(
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
-    let layout = state
+    let (layout, forced) = state
         .store
-        .get_workspace_layout(principal.user_id)
+        .workspace_with_rollback(principal.user_id)
         .await
         .map_err(RestError::from_store)?;
-    Ok(Json(WorkspaceResponse { layout }))
+    Ok(Json(WorkspaceResponse {
+        layout,
+        legacy_kill_switch_enabled: Some(forced),
+    }))
 }
 
 pub(crate) async fn put_workspace(
@@ -71,5 +76,8 @@ pub(crate) async fn put_workspace(
         )
         .await
         .map_err(RestError::from_store)?;
-    Ok(Json(WorkspaceResponse { layout }))
+    Ok(Json(WorkspaceResponse {
+        layout,
+        legacy_kill_switch_enabled: None,
+    }))
 }

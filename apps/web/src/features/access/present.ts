@@ -9,6 +9,7 @@ export { domainText, levelText };
 import { lastDay } from "./domain/grants";
 import { find, reach, type OrgNode, type Scope } from "./domain/scope";
 import type { AccessGrant, AccessRoleLine, AccessScope, Account, PreviewItem } from "./api";
+import type { AccessReviewItem } from "./api/policy";
 
 export const domainHelp = (key: string) => codeText(`accessCodes.domain.${key}.help`, "");
 export const enforcementText = (e: string) => codeText(`accessCodes.enforcement.${e}`, e);
@@ -46,6 +47,13 @@ export const storedScope = (s: AccessScope, roots: readonly OrgNode[] = []) =>
   s.kind === "TENANT"
     ? t("access.scope.tenant")
     : t(s.include_descendants ? "access.scope.below.short" : "access.scope.only.short", { name: s.node_name || (s.node_id && find(roots, s.node_id)?.node.name) || "" });
+
+export function reviewScopeText(item: Pick<AccessReviewItem, "scope_kind" | "scope_label" | "scope_node_id" | "scope_include_descendants">) {
+  if (item.scope_kind === "TENANT") return t("access.scope.tenant");
+  const id = item.scope_node_id;
+  const name = id && item.scope_label !== item.scope_kind ? `${item.scope_label} (${id})` : id || item.scope_label;
+  return item.scope_include_descendants == null ? name : t(item.scope_include_descendants ? "access.scope.below.short" : "access.scope.only.short", { name });
+}
 
 /** A stored scope with today's headcount when the tree still holds its node (name, "and below", today's count). */
 export const scopeText = (roots: readonly OrgNode[], s: AccessScope) => (reach(roots, s) == null ? storedScope(s, roots) : scopeLabel(roots, s));

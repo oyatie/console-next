@@ -104,7 +104,7 @@ export function PromoteScreen() {
         ]}
       />
 
-      <PromoteForms digest={digest} promoState={promoState} />
+      <PromoteForms digest={digest} promoState={promoState} bake={data.signed_bake ?? null} />
 
       <div className={s.splitGrid}>
         <section className={s.splitCell} aria-labelledby="promote-signoffs">

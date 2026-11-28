@@ -112,3 +112,53 @@ fn state_filter_excludes_closed_items_independently_of_kind() {
         assert_eq!(open_items[0].id, "2");
     }
 }
+
+#[test]
+fn earlier_launch_decisions_replay_and_require_independent_attestation() {
+    let tmp = Temp::new();
+    let spool = RecordSpool::open(&tmp.0).unwrap();
+    for (id, outcome, fields) in [
+        (
+            "1",
+            "done",
+            json!({"signer":"Legacy reviewer","evidence_ref":"paper receipt","signed_on":"2026-10-27"}),
+        ),
+        (
+            "3",
+            "waived",
+            json!({"signer":"Legacy reviewer","reason":"Superseded"}),
+        ),
+    ] {
+        for event in [
+            json!({"event":"opened","fields":{"kind":"launch-gate","reviewer_role":"owner","title":"Recorded gate"}}),
+            json!({"event":outcome,"fields":fields}),
+        ] {
+            let mut document = event.as_object().unwrap().clone();
+            document.extend(json!({"obligation_id":id,"at":"2026-10-27T00:00:00Z","operator":context().operator}).as_object().unwrap().clone());
+            spool
+                .append("synthetic-ref", |_| Ok::<_, ()>(document))
+                .unwrap();
+        }
+    }
+    let reopened = RecordSpool::open(&tmp.0).unwrap();
+    let register = Register::new(&reopened);
+    for id in ["1", "3"] {
+        let legacy = register.detail(id).unwrap();
+        assert_eq!(legacy.history.len(), 2);
+        assert!(legacy.item.obligation.is_open());
+        assert_eq!(legacy.item.obligation.signer(), Some("Legacy reviewer"));
+    }
+    let proposal = register.event("1", serde_json::from_value(json!({"event":"done","fields":{"evidence_ref":"docs/proof","signed_on":"2026-10-27"}})).unwrap(), &context()).unwrap();
+    let fresh = RecordSpool::open(&tmp.0).unwrap();
+    let mut second = context();
+    second.operator.person = "00000000-0000-4000-8000-000000000003".into();
+    let confirm = serde_json::from_value(
+        json!({"event":"countersigned","fields":{"proposal_seq":proposal.seq}}),
+    )
+    .unwrap();
+    Register::new(&fresh).event("1", confirm, &second).unwrap();
+    let gate = Register::new(&fresh).detail("1").unwrap().item.obligation;
+    assert!(!gate.is_open());
+    assert_eq!(gate.signer(), Some(context().operator.person.as_str()));
+    assert_eq!(gate.co_signer(), Some(second.operator.person.as_str()));
+}

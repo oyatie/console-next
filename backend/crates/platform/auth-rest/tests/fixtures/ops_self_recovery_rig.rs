@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(dead_code, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    Arc, Mutex,
+    atomic::{AtomicBool, Ordering},
+};
 
 use axum::body::{Body, to_bytes};
 use axum::http::{Method, Request, StatusCode, header};
@@ -25,7 +28,7 @@ use tower::ServiceExt;
 use uuid::Uuid;
 
 #[derive(Clone, Default)]
-pub struct CapturingMailer(pub Arc<Mutex<Vec<(String, String)>>>);
+pub struct CapturingMailer(pub Arc<Mutex<Vec<(String, String)>>>, pub Arc<AtomicBool>);
 
 impl EmailSender for CapturingMailer {
     fn send_otp<'a>(
@@ -34,6 +37,11 @@ impl EmailSender for CapturingMailer {
         code: &'a str,
         _ttl: std::time::Duration,
     ) -> BoxFuture<'a, Result<(), EmailError>> {
+        if self.1.load(Ordering::Relaxed) {
+            return Box::pin(async {
+                Err(EmailError::Config("synthetic transport refusal".to_owned()))
+            });
+        }
         self.0
             .lock()
             .unwrap()

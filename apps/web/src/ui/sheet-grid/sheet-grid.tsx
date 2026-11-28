@@ -6,7 +6,7 @@ import { narrow } from "./choices";
 import { readClipboard, writeClipboard } from "./clipboard";
 import { pasteBlock, type SheetGridPasteResult } from "./paste";
 import { at as rangeAt, indexOf, inRect, moveRange, rectIn, type Range } from "./range";
-import { gridViewport, useGridWindow } from "./use-grid-window";
+import { gridPageStep, gridViewport, useGridWindow } from "./use-grid-window";
 import s from "./sheet-grid.module.css";
 import k from "./input.module.css";
 import m from "./window.module.css";
@@ -133,7 +133,7 @@ export function SheetGrid<R>({
     setTyped("");
     if (to) move(to.r, to.c);
   };
-  const { first, last, rowHeight, viewportRows, setScrollTop } = useGridWindow(gridRef, rows.length, visibleRows, overscan, validActive ? active!.r : null, (top, bottom) => {
+  const { first, last, rowHeight, setScrollTop } = useGridWindow(gridRef, rows.length, visibleRows, overscan, validActive ? active!.r : null, (top, bottom) => {
     if (input.current && document.activeElement === input.current) {
       const bounds = input.current.getBoundingClientRect();
       if (bounds.bottom <= top || bounds.top >= bottom) {
@@ -170,7 +170,8 @@ export function SheetGrid<R>({
     if (!rows[r] || !columns[c]) return;
     const selected = selection && indexOf(selection.focus, axes);
     const current = selected?.r === r && selected.c === c ? selection! : rangeAt(rowKey(rows[r]!), columns[c]!.key);
-    const moved = moveRange(current, e.key, e.shiftKey, axes, Math.max(1, viewportRows - 1), e.ctrlKey || e.metaKey);
+    const page = e.key === "PageUp" || e.key === "PageDown" ? gridPageStep(gridRef.current!, visibleRows) : 1;
+    const moved = moveRange(current, e.key, e.shiftKey, axes, page, e.ctrlKey || e.metaKey);
     if (moved) {
       e.preventDefault();
       setRange(moved);

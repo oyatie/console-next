@@ -2994,6 +2994,8 @@ dependencies = [
 name = "console-ops-domain"
 version = "0.1.0"
 dependencies = [
+ "chrono",
+ "chrono-tz",
  "proptest",
  "serde",
  "serde_json",

@@ -29,6 +29,7 @@ pub async fn create(
     p: Principal,
     idempotency_key: String,
     mut body: CreateInviteIn,
+    receipt_only: bool,
 ) -> AccessResult<(bool, Value)> {
     if body.grants.len() > MAX_INVITE_GRANTS {
         return Err(AccessError::invalid(
@@ -51,11 +52,28 @@ pub async fn create(
     with_audits::<_, _, AccessError>(&s.pool, p.org_id, move |tx| {
         Box::pin(async move {
             const OP_KEY: &str = "access.invites.create";
+            let actor = Actor::load(tx, &p).await?;
+            require_invite_authority(&actor)?;
             match idempotency::claim_idempotency_key(tx, OP_KEY, &idempotency_key, &fingerprint)
                 .await
                 .map_err(DbError::from)?
             {
                 idempotency::IdempotencyClaim::Replay(cached) => {
+                    // User creation and its audit event commit with the receipt, including
+                    // receipts created before replay was scoped to the issuing actor.
+                    let issued_here: bool = sqlx::query_scalar(
+                        "SELECT EXISTS (SELECT 1 FROM audit_events
+                          WHERE org_id = $1 AND actor = $2 AND action = 'user.create'
+                            AND target_type = 'user' AND target_id = $3)",
+                    )
+                    .bind(p.org_id.as_uuid())
+                    .bind(actor.id())
+                    .bind(cached.pointer("/user/id").and_then(Value::as_str))
+                    .fetch_one(tx.as_mut())
+                    .await?;
+                    if !issued_here {
+                        return Err(AccessError::access_denied());
+                    }
                     return Ok(((false, cached), Vec::new()));
                 }
                 idempotency::IdempotencyClaim::Mismatch => {
@@ -64,11 +82,15 @@ pub async fn create(
                         "idempotency key was already used with a different request",
                     ));
                 }
+                idempotency::IdempotencyClaim::Fresh if receipt_only => {
+                    return Err(AccessError::conflict(
+                        "receipt_expired",
+                        "the invitation receipt is no longer available",
+                    ));
+                }
                 idempotency::IdempotencyClaim::Fresh => {}
             }
 
-            let actor = Actor::load(tx, &p).await?;
-            require_invite_authority(&p, &actor)?;
             let org = actor.org();
             sqlx::query("SELECT set_config('app.current_actor', $1, true)")
                 .bind(actor.id().to_string())

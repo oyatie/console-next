@@ -3,7 +3,9 @@ use serde::{Deserialize, Serialize};
 use time::{Date, OffsetDateTime, UtcOffset};
 
 pub use crate::obligation_guards::{is_structured_counsel_url, launch_readiness, worklist};
-use crate::obligation_guards::{present, validate_done, validate_waived};
+use crate::obligation_guards::{present, validate_signer_fields};
+
+mod attestation;
 
 time::serde::format_description!(iso_date, Date, "[year]-[month]-[day]");
 
@@ -71,6 +73,9 @@ pub enum Event {
         #[serde(default, with = "iso_date::option")]
         signed_on: Option<Date>,
     },
+    Countersigned {
+        proposal_seq: u64,
+    },
     Waived {
         reason: Option<String>,
         signer: Option<String>,
@@ -100,6 +105,13 @@ impl Refusal {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct GateProposal {
+    pub seq: u64,
+    pub outcome: State,
+    pub reason: Option<String>,
+}
+
 // State is reconstructed only through validated events, never deserialized from a snapshot.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Obligation {
@@ -109,6 +121,10 @@ pub struct Obligation {
     #[serde(with = "iso_date::option")]
     due: Option<Date>,
     state: State,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pending_signoff: Option<GateProposal>,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    requires_reattestation: bool,
     evidence_ref: Option<String>,
     signer: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -122,6 +138,22 @@ pub struct Obligation {
 impl Obligation {
     /// Replay under the spool's append lock; a refusal leaves the previous state intact.
     pub fn evolve(current: Option<&Self>, event: &Event) -> Result<Self, Refusal> {
+        if current.is_some_and(|item| item.kind == Kind::LaunchGate)
+            && matches!(
+                event,
+                Event::Done { .. } | Event::Waived { .. } | Event::Countersigned { .. }
+            )
+        {
+            return Err(Refusal::Invalid);
+        }
+        Self::apply(current, event, true)
+    }
+
+    fn apply(
+        current: Option<&Self>,
+        event: &Event,
+        validate_signoff: bool,
+    ) -> Result<Self, Refusal> {
         if current.is_some_and(|item| !item.is_open()) {
             return Err(Refusal::Final);
         }
@@ -142,6 +174,8 @@ impl Obligation {
                 title: title.clone(),
                 due: *due,
                 state: State::Open,
+                pending_signoff: None,
+                requires_reattestation: false,
                 evidence_ref: evidence_ref.clone(),
                 signer: None,
                 co_signer: None,
@@ -163,7 +197,9 @@ impl Obligation {
                 counsel_url,
                 signed_on: Some(signed_on),
             } if present(evidence_ref) && present(signer) => {
-                validate_done(item.kind, evidence_ref, signer, co_signer, counsel_url)?;
+                if validate_signoff {
+                    validate_signer_fields(signer, co_signer, counsel_url)?;
+                }
                 item.state = State::Done;
                 item.evidence_ref = evidence_ref.clone();
                 item.signer = signer.clone();
@@ -180,7 +216,9 @@ impl Obligation {
                 co_signer,
                 counsel_url,
             } if present(reason) && present(signer) => {
-                validate_waived(item.kind, signer, co_signer, counsel_url)?;
+                if validate_signoff {
+                    validate_signer_fields(signer, co_signer, counsel_url)?;
+                }
                 item.state = State::Waived;
                 item.signer = signer.clone();
                 item.co_signer = co_signer.as_ref().filter(|s| !s.trim().is_empty()).cloned();

@@ -39,6 +39,9 @@ export const TOPICS: Readonly<Record<string, Topic>> = {
   exit_case: { detail: "/api/v1/hr/exit-cases", paths: [...EMPLOYEE_READS, "/api/v1/org-structure", "/api/v1/legal-entities", "/api/v1/workplaces", "/api/v1/employee-import-runs"] },
   change_request: { paths: ["/api/v1/change-requests", ...EMPLOYEE_READS, "/api/v1/employee-import-runs"] },
   import_run: { paths: [...EMPLOYEE_READS, "/api/v1/employee-import-runs", "/api/v1/org-units", "/api/v1/onboarding"] },
+  console_rollout: { paths: ["/api/v1/console/rollout", "/api/v1/me/workspace"] },
+  workspace: { paths: ["/api/v1/me/workspace"] },
+  tenant_settings: { paths: ["/api/v1/settings"] },
   user: { detail: "/api/v1/users", paths: ["/api/v1/users", "/api/v1/directory", "/api/v1/access", "/api/v1/onboarding", "/api/v1/me/action-inbox"] },
   // A role or its assignment changes who may do what, this user's own grants included.
   role: { paths: ["/api/v1/policy", "/api/v1/access", "/api/v1/me/authz", "/api/v1/users", "/api/v1/directory", "/api/v1/onboarding", "/api/v1/me/action-inbox"] },

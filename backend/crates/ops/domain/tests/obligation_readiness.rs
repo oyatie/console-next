@@ -12,6 +12,15 @@ fn apply(item: Option<&Obligation>, event: &str, fields: Value) -> Obligation {
     Obligation::evolve(item, &event).unwrap()
 }
 
+fn countersign(item: Option<&Obligation>, outcome: &str, fields: Value) -> Obligation {
+    let event = serde_json::from_value(json!({"event":outcome,"fields":fields})).unwrap();
+    let pending = Obligation::apply_record(item, &event, "operator-a", 2).unwrap();
+    assert!(pending.is_open());
+    let confirm = Event::Countersigned { proposal_seq: 2 };
+    assert!(Obligation::apply_record(Some(&pending), &confirm, "operator-a", 3).is_err());
+    Obligation::apply_record(Some(&pending), &confirm, "operator-b", 3).unwrap()
+}
+
 fn open(kind: &str, title: &str, due: Option<&str>) -> Obligation {
     apply(
         None,
@@ -34,24 +43,20 @@ fn readiness_never_turns_green_for_empty_or_open_gates() {
     let blocked = launch_readiness(Ok(&[gate.clone(), review.clone()]));
     assert_eq!(blocked.text, "Blocked: 2 launch gates open");
     assert_eq!(blocked.worst, Health::Degraded);
-    let done = apply(
+    let done = countersign(
         Some(&gate),
         "done",
         json!({
             "evidence_ref": "docs/ops/launch-check.md",
-            "signer": "Synthetic owner",
-            "co_signer": "Synthetic reviewer",
             "counsel_url": "https://counsel.cosskorea.invalid/opinions/lg-01",
             "signed_on": "2026-10-27"
         }),
     );
-    let waived = apply(
+    let waived = countersign(
         Some(&review),
         "waived",
         json!({
             "reason": "Superseded",
-            "signer": "Synthetic owner",
-            "co_signer": "Synthetic reviewer",
             "counsel_url": "docs/ops/waiver-lg-02.md"
         }),
     );
@@ -186,8 +191,8 @@ fn launch_gate_requires_distinct_two_operator_signoff_and_structured_counsel_url
     }))
     .unwrap();
     assert_eq!(
-        Obligation::evolve(Some(&gate), &missing_co),
-        Err(Refusal::Incomplete)
+        Obligation::apply_record(Some(&gate), &missing_co, "op-a", 2),
+        Err(Refusal::Invalid)
     );
 
     let same_signer = serde_json::from_value::<Event>(json!({
@@ -201,7 +206,7 @@ fn launch_gate_requires_distinct_two_operator_signoff_and_structured_counsel_url
     }))
     .unwrap();
     assert_eq!(
-        Obligation::evolve(Some(&gate), &same_signer),
+        Obligation::apply_record(Some(&gate), &same_signer, "op-a", 2),
         Err(Refusal::Invalid)
     );
 
@@ -209,14 +214,12 @@ fn launch_gate_requires_distinct_two_operator_signoff_and_structured_counsel_url
         "event": "done",
         "fields": {
             "evidence_ref": "plain-note-only",
-            "signer": "op-a",
-            "co_signer": "op-b",
             "signed_on": "2026-10-27"
         }
     }))
     .unwrap();
     assert_eq!(
-        Obligation::evolve(Some(&gate), &unstructured_url),
+        Obligation::apply_record(Some(&gate), &unstructured_url, "op-a", 2),
         Err(Refusal::Invalid)
     );
 }

@@ -61,8 +61,7 @@ impl OncallService {
             .map(UtcTimestamp::new);
         let last_ok = first_val(QUERY_ONCALL_SYNTHETIC_PAGE_OK).map(|v| v > 0.0);
 
-        let active_shift = config.map(|cfg| {
-            let shift = cfg.active_shift(now);
+        let active_shift = config.and_then(|cfg| cfg.active_shift(now)).map(|shift| {
             let shift_grants = if shift.active_person.is_some() {
                 SHIFT_BOUND_ACTIONS
                     .iter()

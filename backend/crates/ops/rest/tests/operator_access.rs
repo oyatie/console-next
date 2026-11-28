@@ -253,7 +253,7 @@ fn shift_bound_oncall_grants_allow_active_responder_and_rotate_at_handoff() {
     let t_week1 = OffsetDateTime::parse("2026-10-28T12:00:00Z", &Rfc3339).unwrap();
     let t_week2 = OffsetDateTime::parse("2026-11-04T12:00:00Z", &Rfc3339).unwrap();
 
-    let shift1 = oncall.active_shift(t_week1);
+    let shift1 = oncall.active_shift(t_week1).unwrap();
     let active1_email = if shift1.active_person.as_deref() == Some(person_a) {
         "primary@example.invalid"
     } else {

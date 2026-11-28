@@ -1,7 +1,6 @@
 export { ApiError } from "@console/api";
-export type { RecoveryChannel } from "@console/api/recovery";
 import { api, assertBoundPasskey, assertPasskey, consentDocuments, consentStatus, logout, meProfileApi, registerPasskey, session, unwrap } from "@console/api";
-import { generateRecoveryCodes, recoveryStatus, upsertRecoveryContact, type RecoveryChannel } from "@console/api/recovery";
+import { generateRecoveryCodes, recoveryStatus, upsertRecoveryContact } from "@console/api/recovery";
 import { isMessageId, t } from "@console/i18n";
 import type { PrivacyRightsReceipt } from "@console/api/pending";
 import type { components } from "@console/api/schema";
@@ -109,8 +108,8 @@ export const opsHoldersQuery = { ...get("/api/v1/access/ops"), refetchOnMount: "
 export const candidateUsersQuery = { ...get("/api/v1/users", { params: { query: { limit: 200 } } }), refetchOnMount: "always" as const };
 export const activeGrantsQuery = { ...get("/api/v1/access/grants"), refetchOnMount: "always" as const };
 
-export const saveMyRecoveryContact = (channel: RecoveryChannel, value: string) =>
-  upsertRecoveryContact({ channel, value, consentAccepted: true, stepUp: true });
+export const saveMyRecoveryContact = (value: string) =>
+  upsertRecoveryContact({ channel: "EMAIL", value, consentAccepted: true, stepUp: true });
 
 export const regenerateMyRecoveryCodes = () =>
   generateRecoveryCodes({ stepUp: true });

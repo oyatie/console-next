@@ -7,7 +7,8 @@ required:
 additionalProperties: false
 properties:
   channel:
-    $ref: '#/components/schemas/RecoveryChannel'
+    type: string
+    enum: [EMAIL]
   value:
     type: string
   consent_accepted:

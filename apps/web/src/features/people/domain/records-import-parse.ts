@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import type { components } from "@console/api/schema";
+import { readDelimited } from "../../../lib/pure/sheet-text";
 import { ROW_SPEC, toFields, type RowDraft } from "./record-spec";
 
 type RecordSegment = components["schemas"]["PersonRecordSectionSegment"];
@@ -18,43 +19,18 @@ export const IMPORT_SECTIONS = [
 export type ImportableSection = (typeof IMPORT_SECTIONS)[number];
 export type ParsedSheetRow = RecordImportRequest["rows"][number];
 
-function splitLine(line: string, sep: string): string[] {
-  const out: string[] = [];
-  let cur = "";
-  let inQuotes = false;
-  for (let i = 0; i < line.length; i += 1) {
-    const ch = line[i]!;
-    if (ch === '"') {
-      if (inQuotes && line[i + 1] === '"') {
-        cur += '"';
-        i += 1;
-      } else {
-        inQuotes = !inQuotes;
-      }
-    } else if (ch === sep && !inQuotes) {
-      out.push(cur.trim());
-      cur = "";
-    } else {
-      cur += ch;
-    }
-  }
-  out.push(cur.trim());
-  return out;
-}
-
 export function parseSheetText(
   section: ImportableSection,
   raw: string,
   labels: { numberCol: string; nameCol: string; voidCol: string; fieldLabel: (key: string) => string },
 ): ParsedSheetRow[] {
   const spec = ROW_SPEC[section] ?? [];
-  const lines = raw
-    .replace(/^\uFEFF/, "")
-    .split(/\r?\n/)
-    .filter((l) => l.trim().length > 0);
-  if (lines.length < 2) return [];
-  const sep = lines[0]!.includes("\t") ? "\t" : ",";
-  const headers = splitLine(lines[0]!, sep).map((h) => h.replace(/^'/, "").trim().toLowerCase());
+  const text = raw.replace(/^\uFEFF/, "").trimStart();
+  const header = text.split(/[\r\n]/, 1)[0] ?? "";
+  const records = readDelimited(text, { delimiter: header.includes("\t") ? "\t" : "," })
+    .filter(row => row.some(cell => cell.trim()));
+  if (records.length < 2) return [];
+  const headers = records[0]!.map(h => h.trim().replace(/^'/, "").trim().toLowerCase());
   const idx = (names: readonly string[]) => headers.findIndex((h) => names.includes(h));
   const empNumIdx = idx(["employee_number", labels.numberCol.toLowerCase()]);
   const empNameIdx = idx(["employee_name", "name", labels.nameCol.toLowerCase()]);
@@ -69,8 +45,8 @@ export function parseSheetText(
   }));
 
   const rows: ParsedSheetRow[] = [];
-  for (let i = 1; i < lines.length; i += 1) {
-    const cells = splitLine(lines[i]!, sep).map((c) => c.replace(/^'/, "").trim());
+  for (let i = 1; i < records.length; i += 1) {
+    const cells = records[i]!.map((c) => c.trim().replace(/^'/, "").trim());
     const employee_number = cells[empNumIdx] ?? "";
     if (!employee_number) continue;
     const employee_name = empNameIdx >= 0 && cells[empNameIdx] ? cells[empNameIdx]! : null;

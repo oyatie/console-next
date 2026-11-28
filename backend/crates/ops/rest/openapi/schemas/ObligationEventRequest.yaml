@@ -3,5 +3,5 @@ type: "object"
 required: ["event", "fields"]
 additionalProperties: false
 properties:
-  event: {"type": "string", "enum": ["in_review", "redated", "done", "waived"]}
+  event: {"type": "string", "enum": ["in_review", "redated", "done", "waived", "countersigned"]}
   fields: {"type": "object"}

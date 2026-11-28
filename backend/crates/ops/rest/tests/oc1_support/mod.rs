@@ -6,13 +6,12 @@ use std::num::NonZeroU64;
 use std::sync::{Arc, Mutex};
 use std::time::Duration as StdDuration;
 
-use aws_lc_rs::digest::{SHA256, digest};
 use axum::body::{Body, to_bytes};
 use axum::http::{Request, StatusCode};
 use console_ops_application::{Alert, AlertState, AlertStatus, CockpitEvaluator, SourcePorts};
 use console_ops_domain::bundle::{AccessSettings, validate_oncall_json};
 use console_ops_rest::access_jwt::AccessJwtVerifier;
-use console_ops_rest::operators::{OperatorRegistry, VALID_ACTIONS};
+use console_ops_rest::operators::OperatorRegistry;
 use console_ops_rest::state::OpsRestState;
 use console_ops_rest::{FsBackendPaths, attach_fs_backends, router};
 use serde_json::{Value, json};
@@ -27,6 +26,8 @@ pub mod base;
 pub use base::{
     AUD, ISSUER, JwtSigner, MockSources, OPERATOR_EMAIL, ORIGIN, READ_HOME_ONLY_EMAIL, test_bundle,
 };
+
+pub mod operator_fixture;
 
 pub struct Oc1Harness {
     pub dirs: TempRoot,
@@ -50,27 +51,7 @@ pub async fn build_harness(
     let now = fixed_now.unwrap_or_else(OffsetDateTime::now_utc);
     let from = (now - Duration::hours(2)).format(&Rfc3339)?;
     let until = (now + Duration::hours(2)).format(&Rfc3339)?;
-    let all_grants: Vec<Value> = VALID_ACTIONS
-        .iter()
-        .map(|a| json!({"action": a, "from": from, "until": until}))
-        .collect();
-    let operators_json = json!([
-        {
-            "person": "00000000-0000-4000-8000-000000000001",
-            "email_sha256": hex::encode(digest(&SHA256, OPERATOR_EMAIL.as_bytes())),
-            "grants": all_grants
-        },
-        {
-            "person": "00000000-0000-4000-8000-000000000002",
-            "email_sha256": hex::encode(digest(&SHA256, READ_HOME_ONLY_EMAIL.as_bytes())),
-            "grants": [
-                {"action": "read.me", "from": from, "until": until},
-                {"action": "read.home", "from": from, "until": until}
-            ]
-        }
-    ])
-    .to_string();
-
+    let operators_json = operator_fixture::operators(&from, &until);
     let (dirs, rx) = TempRoot::new()?;
     fs::write(
         dirs.config.join("runbooks/RUNBOOK.md"),

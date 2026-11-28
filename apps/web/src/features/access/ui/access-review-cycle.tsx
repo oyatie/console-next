@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { reviewScopeText } from "../present";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { isMessageId, t } from "@console/i18n";
@@ -146,7 +147,7 @@ export function AccessReviewCyclePanel({
                 card: "fact",
                 cell: (r) => (
                   <div className={s.actions}>
-                    <span>{r.scope_label}</span>
+                    <span>{reviewScopeText(r)}</span>
                     {r.signals.map((sig) => {
                       const sigKey = `accessReview.signal.${sig}`;
                       return (

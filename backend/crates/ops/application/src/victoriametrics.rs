@@ -203,6 +203,43 @@ pub struct VictoriaMetricsSnapshot {
     pub targets: Vec<ScrapeTarget>,
 }
 
+impl crate::sources_status::SourceSlot<VictoriaMetricsSnapshot> {
+    pub fn deployment_freeze(&self, now: OffsetDateTime) -> console_ops_domain::Observed<bool> {
+        let unknown = || {
+            console_ops_domain::Observed::unknown(
+                self.producer.clone(),
+                "deployment freeze status unavailable".to_owned(),
+            )
+        };
+        let Some(samples) = self
+            .current
+            .as_ref()
+            .and_then(|s| s.series.get(QUERY_FREEZE))
+        else {
+            return unknown();
+        };
+        let mut oldest = None;
+        let mut frozen = false;
+        for sample in samples {
+            if !sample.timestamp_s.is_finite() || !sample.value.is_finite() || sample.value < 0.0 {
+                return unknown();
+            }
+            let Ok(at) =
+                OffsetDateTime::from_unix_timestamp_nanos((sample.timestamp_s * 1e9) as i128)
+            else {
+                return unknown();
+            };
+            if at > now {
+                return unknown();
+            }
+            oldest = Some(oldest.map_or(at, |prior: OffsetDateTime| prior.min(at)));
+            frozen |= sample.value > 0.0;
+        }
+        let Some(at) = oldest else { return unknown() };
+        self.observe_at(Some(frozen), None, Some(at), now, self.interval_s)
+    }
+}
+
 pub trait VictoriaMetrics: Send + Sync {
     fn query_instant(&self, query: &str) -> SourceFuture<'_, Vec<InstantSample>>;
     fn targets(&self) -> SourceFuture<'_, Vec<ScrapeTarget>>;

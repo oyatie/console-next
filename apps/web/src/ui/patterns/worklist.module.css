@@ -61,6 +61,10 @@
     overflow: hidden;
   }
 
+  :where([data-experience]:not([data-experience="baseline"])) .frame[data-viewport-lock] > nav {
+    flex-shrink: 0;
+  }
+
   :where([data-experience]:not([data-experience="baseline"])) .frame[data-viewport-lock] :global([data-pane-grid]) {
     flex: 1 1 0%;
     min-height: 0;
