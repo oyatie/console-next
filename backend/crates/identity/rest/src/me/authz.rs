@@ -158,6 +158,7 @@ pub(crate) fn served_authz_projection(
     principal: &Principal,
     documents: bool,
     (read_findings, triage_findings): (bool, bool),
+    ledger: bool,
 ) -> MeAuthzResponse {
     let mut response = me_authz_projection(principal);
     if documents
@@ -173,6 +174,11 @@ pub(crate) fn served_authz_projection(
         });
     }
     for (feature, name, allowed) in [
+        (
+            Feature::AuditLogRead,
+            "served_location_consent_ledger",
+            ledger,
+        ),
         (
             Feature::IntegrityFindingsRead,
             "served_integrity_findings",
@@ -223,7 +229,7 @@ mod me_authz_org_wide_tests {
             BranchScope::All,
         );
         let contains = |p: &Principal, served| {
-            served_authz_projection(p, served, (false, false))
+            served_authz_projection(p, served, (false, false), false)
                 .capabilities
                 .iter()
                 .any(|cap| cap.feature == "documents")

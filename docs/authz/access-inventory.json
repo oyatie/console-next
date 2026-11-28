@@ -155,7 +155,7 @@
       "model": "BranchScope",
       "file": "backend/crates/compliance/rest/src/lib.rs",
       "kind": "reference",
-      "count": 22
+      "count": 21
     },
     {
       "model": "BranchScope",
@@ -1049,7 +1049,7 @@
       "model": "matrix",
       "file": "backend/crates/compliance/rest/src/lib.rs",
       "kind": "reference",
-      "count": 23
+      "count": 15
     },
     {
       "model": "matrix",

@@ -29,6 +29,8 @@ pub(super) fn mount(router: Router, deps: &TenantDeps<'_>) -> Router {
             authorize_integrity_triage(principal).is_ok(),
         )
     });
+    #[cfg(feature = "compliance")]
+    let identity = identity.with_ledger_access(console_compliance_rest::consent_ledger_available);
     router
         .merge(console_identity_rest::router(identity))
         .merge(console_platform_authz_rest::router(

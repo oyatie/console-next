@@ -14,7 +14,7 @@ export type NavLink = { to: string; label: MessageId; icon: LucideIcon; countKey
 export type NavHub = { hub: MessageId; links: readonly NavLink[] };
 type Routes = Readonly<Record<string, { options: { staticData?: StaticDataRouteOption } }>>;
 // null preserves an unanswered modules read across reloads without treating it as ready.
-type NavContext = { evidenceVault?: boolean; findings?: boolean; pathname: string; phase?: string; setupTargets?: readonly string[]; modules?: Modules | null };
+type NavContext = { evidenceVault?: boolean; findings?: boolean; consents?: boolean; pathname: string; phase?: string; setupTargets?: readonly string[]; modules?: Modules | null };
 
 const REQUESTS: NavLink = { to: "/people/requests", label: "shell.link.requests", icon: ListChecks };
 // One entry table; future destinations appear only when their route is served.
@@ -45,13 +45,14 @@ export const PLATFORM_NAV: readonly NavHub[] = [{ hub: "shell.hub.platform", lin
 
 /** Served destinations use their own requirement; readiness remains a server fact. */
 export function tenantNav(access: AccessEffective | undefined, routes: Routes, supportApproval = false,
-  { phase, setupTargets, modules, evidenceVault, findings }: NavContext = { pathname: "/" }) {
+  { phase, setupTargets, modules, evidenceVault, findings, consents }: NavContext = { pathname: "/" }) {
   const expand = (link: NavLink): readonly NavLink[] => {
     const hasPrimary = !!routes[link.to];
     const auditFallback = link.to === "/audit" && link.supportApproval && supportApproval && routes["/audit/support-access"];
     const vaultFallback = link.to === "/audit" && evidenceVault && routes["/audit/evidence"];
     const findingsFallback = link.to === "/audit" && findings && routes["/audit/findings"];
-    if (!hasPrimary && !auditFallback && !vaultFallback && !findingsFallback) return [];
+    const consentsFallback = link.to === "/audit" && consents && routes["/audit/location-consents"];
+    if (!hasPrimary && !auditFallback && !vaultFallback && !findingsFallback && !consentsFallback) return [];
     if (link.to === "/") return [link];
     if (!access) return [];
     if (link.requireReadiness && !modules) return [];
@@ -67,6 +68,7 @@ export function tenantNav(access: AccessEffective | undefined, routes: Routes, s
     if (auditFallback) return [{ ...link, to: "/audit/support-access" }];
     if (vaultFallback) return [{ ...link, to: "/audit/evidence" }];
     if (findingsFallback) return [{ ...link, to: "/audit/findings" }];
+    if (consentsFallback) return [{ ...link, to: "/audit/location-consents" }];
     return [];
   };
   return TENANT_NAV.map(g => ({ ...g, links: g.links.flatMap(expand) })).filter(g => g.links.length);

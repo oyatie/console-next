@@ -49,3 +49,8 @@ export const triageFinding = (id: string, body: Triage, key: string) =>
   unwrap(api.POST("/api/v1/integrity/findings/{id}/triage", {
     params: { path: { id } }, headers: { "Idempotency-Key": key }, body,
   }));
+
+export type ConsentEvent = components["schemas"]["LocationConsentLedgerEntry"];
+type ConsentFilter = NonNullable<paths["/api/v1/location-consents/ledger"]["get"]["parameters"]["query"]>;
+export const consentLedgerQuery = (query: ConsentFilter) => get("/api/v1/location-consents/ledger", { params: { query } });
+export const consentLedgerCsv = (query: ConsentFilter) => unwrap(api.GET("/api/v1/location-consents/ledger.csv", { params: { query }, parseAs: "blob" }));

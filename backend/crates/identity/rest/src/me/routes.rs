@@ -69,5 +69,6 @@ pub(crate) async fn get_me_authz(
         &principal,
         state.documents_served,
         (state.integrity_access)(&principal),
+        (state.ledger_access)(&principal),
     )))
 }

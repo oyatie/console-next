@@ -11,3 +11,5 @@ export function findingDetector(id: string) {
   if (id === "anomaly.price_outlier") return t("audit.findings.priceOutlier");
   return id;
 }
+
+export const consentCode = (code: string) => codeText(`audit.consents.code.${code}`, code);
