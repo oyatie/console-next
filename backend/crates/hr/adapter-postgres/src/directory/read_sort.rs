@@ -79,9 +79,7 @@ impl RosterSort {
     /// The SQL sort expression; a missing value sorts as `''`.
     pub fn expr(self) -> &'static str {
         match self.key {
-            SortKey::Name => {
-                "COALESCE(console_employee_facts(e.org_id,e.id)->>'legal_name',e.name)"
-            }
+            SortKey::Name => "e.name",
             SortKey::EmployeeNumber => "COALESCE(e.employee_number, '')",
             SortKey::HireDate => "COALESCE(e.hire_date, '')",
             SortKey::OrgUnit => "COALESCE(e.org_unit, '')",
@@ -102,8 +100,7 @@ impl RosterSort {
     pub fn push_order(self, builder: &mut QueryBuilder<Postgres>) {
         let direction = if self.descending { "DESC" } else { "ASC" };
         builder.push(format!(
-            " ORDER BY {} {direction}, e.id {direction}",
-            self.expr()
+            " ORDER BY sort_value {direction}, e.id {direction}"
         ));
     }
 }

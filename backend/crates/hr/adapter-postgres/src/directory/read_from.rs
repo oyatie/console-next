@@ -88,9 +88,8 @@ const FAILED_SET_JOIN: &str = " LEFT JOIN (SELECT DISTINCT f.org_id, f.employee_
              AND r.created_at > f.created_at)) fe \
      ON fe.org_id = e.org_id AND fe.id = e.id AND e.employment_status <> 'EXITED'";
 
-const FILTERED_FROM: &str = concat!(
-    " FROM person_employees_current e \
-     LEFT JOIN branches b ON b.id = e.home_branch_id \
+const ROW_DETAILS: &str = concat!(
+    " LEFT JOIN branches b ON b.id = e.home_branch_id \
        AND b.org_id = e.org_id AND b.deactivated_at IS NULL \
      LEFT JOIN employee_employment_profiles p \
        ON p.employee_id = e.id AND p.org_id = e.org_id \
@@ -102,8 +101,7 @@ const FILTERED_FROM: &str = concat!(
     leave_return_lateral!(),
     status_since_lateral!(),
     assignment_lateral!(),
-    current_placement_join!(),
-    " WHERE TRUE"
+    current_placement_join!()
 );
 
 /// `<select>` over the employees the list filters admit. The one FROM/WHERE
@@ -117,8 +115,18 @@ pub fn filtered_employees(select: &str, filters: &EmployeeListFilters) -> QueryB
 
 /// The FROM/WHERE of [`filtered_employees`], for a select that binds values.
 pub fn push_filtered_from(builder: &mut QueryBuilder<Postgres>, filters: &EmployeeListFilters) {
-    builder.push(FILTERED_FROM);
+    builder.push(" FROM person_employees_current e");
+    builder.push(ROW_DETAILS);
+    builder.push(" WHERE TRUE");
     filters.push(builder);
+}
+
+/// Hydrate just the authorized, ordered cursor page with its employment and lifecycle details.
+pub(crate) fn push_page_details(builder: &mut QueryBuilder<Postgres>) {
+    builder.push(
+        " FROM page JOIN person_employees_current e ON e.org_id=page.org_id AND e.id=page.id",
+    );
+    builder.push(ROW_DETAILS);
 }
 
 /// `<select>` over the same rows as [`filtered_employees`], joining only what

@@ -255,3 +255,77 @@ async fn reader_sees_the_work_email_and_never_the_personal_phone(pool: PgPool) {
         Some("010-••••-5678")
     );
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn directory_pages_and_search_use_the_current_tenant_name(pool: PgPool) {
+    let tenant = support::tenant(&pool).await;
+    let actor = user(&pool, tenant.org, None).await;
+    let renamed = employee(&pool, tenant.org, "Zed", "A1", "ACTIVE").await;
+    let legacy = employee(&pool, tenant.org, "Bravo", "A2", "ACTIVE").await;
+    let fallback = employee(&pool, tenant.org, "Charlie", "A3", "ACTIVE").await;
+    let other = support::tenant(&pool).await;
+    employee(&pool, other.org, "Alpha", "X1", "ACTIVE").await;
+
+    let mut tx = pool.begin().await.unwrap();
+    for (id, name) in [(renamed, Some("Alpha")), (fallback, None)] {
+        let person: Uuid = sqlx::query_scalar("SELECT console_bind_employee_person($1,$2,$3)")
+            .bind(tenant.org)
+            .bind(id)
+            .bind(*actor.as_uuid())
+            .fetch_one(tx.as_mut())
+            .await
+            .unwrap();
+        sqlx::query("SELECT console_revise_person_facts($1,$2,$3,$4)")
+            .bind(tenant.org)
+            .bind(person)
+            .bind(json!({"legal_name":name}))
+            .bind(*actor.as_uuid())
+            .execute(tx.as_mut())
+            .await
+            .unwrap();
+    }
+    tx.commit().await.unwrap();
+    let reader = || principal(tenant.org, actor);
+    for (sort, expected) in [
+        ("name", [renamed, legacy, fallback]),
+        ("-name", [fallback, legacy, renamed]),
+    ] {
+        let first = tenant
+            .hr
+            .list_employees(reader(), query(json!({"sort":sort,"limit":2})))
+            .await
+            .unwrap();
+        assert_eq!(first.total, 3);
+        assert_eq!(
+            first.items.iter().map(|row| row.id).collect::<Vec<_>>(),
+            expected[..2]
+        );
+        let next = tenant
+            .hr
+            .list_employees(
+                reader(),
+                query(json!({"sort":sort,"limit":2,"cursor":first.next_cursor.unwrap()})),
+            )
+            .await
+            .unwrap();
+        assert_eq!(next.items[0].id, expected[2]);
+        assert!(next.next_cursor.is_none());
+    }
+    for (search, expected) in [
+        ("Alpha", Some(renamed)),
+        ("Bravo", Some(legacy)),
+        ("Charlie", Some(fallback)),
+        ("Zed", None),
+    ] {
+        let page = tenant
+            .hr
+            .list_employees(reader(), query(json!({"search":search})))
+            .await
+            .unwrap();
+        assert_eq!(
+            page.items.first().map(|row| (row.id, row.name.as_str())),
+            expected.map(|id| (id, search))
+        );
+        assert_eq!(page.total, i64::from(expected.is_some()));
+    }
+}
