@@ -58058,7 +58058,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
             };
             /** @description Invalid employee or date for this group. */
             422: {
@@ -58342,7 +58344,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
             };
             /** @description run_kind_unsupported for non-REGULAR kinds; validation for missing group or invalid kind. */
             422: {

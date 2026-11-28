@@ -31,5 +31,9 @@ responses:
             id: {type: string, format: uuid, description: Destination pay group.}
   '401': {$ref: '#/components/responses/Unauthorized'}
   '403': {$ref: '#/components/responses/Forbidden'}
-  '409': {description: Membership changed since selection or the change overlaps a closed run or active payroll freeze.}
+  '409':
+    description: Membership changed since selection or the change overlaps a closed run or active payroll freeze.
+    content:
+      application/json:
+        schema: {$ref: '#/components/schemas/ErrorBody'}
   '422': {description: Invalid employee or date for this group.}
