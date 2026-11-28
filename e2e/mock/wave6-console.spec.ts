@@ -11,6 +11,26 @@ import { mockScreen } from "./screen";
 
 test.beforeAll(() => loadCatalog("ko"));
 
+test("an approvals-enabled tenant can read its inbox when the build omits workflow submission", async ({ page }) => {
+  const fixture = await mockScreen(page, screens[0], "populated");
+  await mockRoute(page, "get", "/api/v1/onboarding/modules", {
+    status: 200, json: [{ key: "approvals", ready: true, unblock: null }],
+  });
+  let reads = 0;
+  page.on("request", req => { if (new URL(req.url()).pathname === "/api/v1/workflow-studio/submittable-definitions") reads++; });
+  try {
+    await page.goto("/approvals");
+    await expect(page.getByRole("heading", { name: t("approvals.title"), level: 1 })).toBeVisible();
+    await expect(page.locator('a[href="/approvals/new"]')).toHaveCount(0);
+    await page.goto("/approvals/new");
+    await expect(page.getByRole("region", { name: t("common.denied.title.plain") })).toBeVisible();
+    expect(reads).toBe(0);
+  } finally {
+    await page.close();
+    fixture.release();
+  }
+});
+
 for (const width of [1440, 390] as const) {
   test(`Wave 6 /approvals/new starts workflow run with optional approval-line override at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
@@ -19,6 +39,9 @@ for (const width of [1440, 390] as const) {
     await mockRoute(page, "get", "/api/v1/users/me", {
       status: 200,
       json: { ...user, employee_link_status: "LINKED", employee_id: id(1) },
+    });
+    await mockRoute(page, "get", "/api/v1/onboarding/modules", {
+      status: 200, json: [{ key: "approvals", ready: true, unblock: null }, { key: "approval_submission", ready: true, unblock: null }],
     });
     await mockRoute(page, "get", "/api/v1/workflow-studio/submittable-definitions", {
       status: 200,
@@ -79,6 +102,9 @@ for (const width of [1440, 390] as const) {
 
       await main.getByRole("button", { name: t("approvals.new.submit"), exact: true }).click();
       await expect(main).toContainText(id(450));
+      await expect(main.getByRole("button", { name: t("approvals.new.submit"), exact: true })).toHaveCount(0);
+      await expect(main.getByLabel(new RegExp(t("approvals.new.subject")))).toHaveCount(0);
+      await expect(main.getByRole("link", { name: t("approvals.new.viewRequested") })).toHaveAttribute("href", /approvals.*requested/);
       expect(starts).toHaveLength(1);
       expect(starts[0]).toMatchObject({
         definition_id: id(401),

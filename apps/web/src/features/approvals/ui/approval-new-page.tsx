@@ -34,7 +34,7 @@ export function ApprovalNewPage() {
   const [reason, setReason] = useState("");
   const [steps, setSteps] = useState<DraftStep[]>([]);
   const [tried, setTried] = useState(false);
-  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
   const [startedRunId, setStartedRunId] = useState<string | null>(null);
 
   const activeDef = defs.find((d) => d.id === selectedId) ?? defs[0];
@@ -65,12 +65,12 @@ export function ApprovalNewPage() {
     invalidates: ["/api/v1/approvals", "/api/v1/me/action-inbox"],
     onSuccess: (res) => {
       setStartedRunId(res.run.id);
-      setIdempotencyKey(crypto.randomUUID());
       announce(t("approvals.new.submitted", { id: res.run.id }));
     },
   });
 
   const handleSubmit = () => {
+    if (startedRunId || submitCmd.isPending) return;
     setTried(true);
     if (!activeDef || !subject.trim() || !reason.trim() || (allowOverride && steps.some(step => !step.assignee_role_key.trim()))) return;
     submitCmd.mutate(undefined);
@@ -88,20 +88,19 @@ export function ApprovalNewPage() {
   const removeStep = (key: string) =>
     setSteps((prev) => prev.filter((item) => item.key !== key));
 
-  const sections = (
+  const sections = startedRunId ? (
+    <Banner
+      tone="ok"
+      actions={
+        <Link to="/approvals" search={{ box: "requested" }} className={buttonClass("secondary", { size: "sm" })}>
+          {t("approvals.new.viewRequested")}
+        </Link>
+      }
+    >
+      {t("approvals.new.submitted", { id: startedRunId })}
+    </Banner>
+  ) : (
     <>
-      {startedRunId && (
-        <Banner
-          tone="ok"
-          actions={
-            <Link to="/approvals" search={{ box: "requested" }} className={buttonClass("secondary", { size: "sm" })}>
-              {t("approvals.new.viewRequested")}
-            </Link>
-          }
-        >
-          {t("approvals.new.submitted", { id: startedRunId })}
-        </Banner>
-      )}
       <FormSection>
         <h2>{t("approvals.new.templateSection")}</h2>
         {defs.length === 0 ? (
@@ -199,9 +198,9 @@ export function ApprovalNewPage() {
       <Link to="/approvals" className={buttonClass("secondary")}>
         {t("common.back")}
       </Link>
-      <Button variant="primary" disabled={!activeDef || submitCmd.isPending} onClick={handleSubmit}>
+      {!startedRunId && <Button variant="primary" disabled={!activeDef || submitCmd.isPending} onClick={handleSubmit}>
         {t("approvals.new.submit")}
-      </Button>
+      </Button>}
     </>
   );
 
