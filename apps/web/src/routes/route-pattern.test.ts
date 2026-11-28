@@ -90,6 +90,8 @@ test("the screens drawn through built patterns declare them, and no other route 
     "/audit": "list-record",
     "/audit/evidence": "list-record",
     "/audit/lifecycles/$objectType/$objectId": "record",
+    "/evaluation": "list-record",
+    "/evaluation/new": "form",
     "/me/evaluations": "list-record",
     "/audit/restricted": "list-record",
     "/audit/location-consents": "list-record",

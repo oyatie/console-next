@@ -16,13 +16,13 @@ use console_evaluation_adapter_postgres::PgEvaluationStore;
 use console_evaluation_rest::EvaluationRestState;
 use console_kernel_core::{BranchId, OrgId, UserId};
 use console_platform_auth::{AccessTokenInput, JwtIssuer, JwtSettings, JwtVerifier};
+use console_platform_test_support::runtime_role_pool;
 use http::{Request, StatusCode, header};
 use p256::ecdsa::SigningKey;
 use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::{Value, json};
 use sqlx::PgPool;
-use sqlx::postgres::PgPoolOptions;
 use time::{Duration, OffsetDateTime};
 use tower::ServiceExt;
 use uuid::Uuid;
@@ -1153,6 +1153,8 @@ impl Fixture {
             .unwrap();
         let org = OrgId::one();
         seed_org(pool, ORG_B, "evaluation-isolation").await;
+        sqlx::query("INSERT INTO tenant_module_enrollments (org_id,module_key,enabled,change_ref) VALUES ($1,'evaluation',true,'test-enrollment'), ($2,'evaluation',true,'test-enrollment')")
+            .bind(org.as_uuid()).bind(ORG_B).execute(pool).await.unwrap();
         let branch = seed_branch(pool, org, "평가-본점").await;
         let foreign_branch = seed_branch(pool, OrgId::from_uuid(ORG_B), "격리-지점").await;
 
@@ -1167,8 +1169,8 @@ impl Fixture {
         let unlinked_id = UserId::new();
         let outsider_id = UserId::new();
         let foreign_admin_id = UserId::new();
-        seed_user(pool, org, admin_id, branch, "ADMIN").await;
-        seed_user(pool, org, admin2_id, branch, "ADMIN").await;
+        seed_user(pool, org, admin_id, branch, "SUPER_ADMIN").await;
+        seed_user(pool, org, admin2_id, branch, "SUPER_ADMIN").await;
         seed_user(pool, org, manager_id, branch, "MEMBER").await;
         seed_user(pool, org, subject_user_id, branch, "MEMBER").await;
         seed_user(pool, org, unlinked_id, branch, "MEMBER").await;
@@ -1178,7 +1180,7 @@ impl Fixture {
             OrgId::from_uuid(ORG_B),
             foreign_admin_id,
             foreign_branch,
-            "ADMIN",
+            "SUPER_ADMIN",
         )
         .await;
         grant_feature(pool, org, manager_id, "evaluation_submit").await;
@@ -1219,8 +1221,8 @@ impl Fixture {
             )
         };
         Self {
-            admin: token(admin_id, org, vec!["ADMIN"], Vec::new()).await,
-            admin2: token(admin2_id, org, vec!["ADMIN"], Vec::new()).await,
+            admin: token(admin_id, org, vec!["SUPER_ADMIN"], Vec::new()).await,
+            admin2: token(admin2_id, org, vec!["SUPER_ADMIN"], Vec::new()).await,
             manager: token(manager_id, org, vec!["MEMBER"], vec![branch]).await,
             subject: token(subject_user_id, org, vec!["MEMBER"], vec![branch]).await,
             unlinked: token(unlinked_id, org, vec!["MEMBER"], vec![branch]).await,
@@ -1228,7 +1230,7 @@ impl Fixture {
             foreign_admin: token(
                 foreign_admin_id,
                 OrgId::from_uuid(ORG_B),
-                vec!["ADMIN"],
+                vec!["SUPER_ADMIN"],
                 Vec::new(),
             )
             .await,
@@ -1260,20 +1262,6 @@ fn jwt_settings() -> JwtSettings {
         audience: AUDIENCE.to_owned(),
         access_token_ttl: Duration::minutes(15),
     }
-}
-
-async fn runtime_role_pool(owner: &PgPool) -> PgPool {
-    PgPoolOptions::new()
-        .max_connections(8)
-        .after_connect(|conn, _| {
-            Box::pin(async move {
-                sqlx::query("SET ROLE console_rt").execute(conn).await?;
-                Ok(())
-            })
-        })
-        .connect_with(owner.connect_options().as_ref().clone())
-        .await
-        .unwrap()
 }
 
 fn app_state(pool: PgPool, public_key_pem: String) -> Result<AppState, console_app::AppError> {

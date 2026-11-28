@@ -8,6 +8,8 @@ export { alternativeRouteReads, routeReads } from "./route-read-data";
 export const servedRouteReads = {
   "/payroll/outlook": { access: { servedCapability: "analytics_projection" }, reads: ["/api/v1/analytics/projection"], method: "post" },
   "/audit/lifecycles/$objectType/$objectId": { access: { servedCapability: "lifecycle_manage" }, reads: ["/api/v1/lifecycles/{objectType}/{objectId}"] },
+  "/evaluation": { access: { servedCapability: "served_evaluation_cycles" }, reads: ["/api/v1/evaluation/cycles"] },
+  "/evaluation/new": { access: { servedCapability: "served_evaluation_cycle_create" }, reads: ["/api/v1/me/authz"] },
   "/me/evaluations": { access: { servedCapability: "served_evaluation_tasks" }, reads: ["/api/v1/evaluation/my-tasks"] },
   "/audit/restricted": { access: { servedCapability: "restricted_audit_stream" }, reads: ["/api/v1/audit-streams/ceo-covert/events", "/api/v1/audit-streams/ceo-covert/access-events"] },
   "/audit/location-consents": { access: { servedCapability: "served_location_consent_ledger" }, reads: ["/api/v1/location-consents/ledger"] },

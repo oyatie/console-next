@@ -161,6 +161,7 @@ pub(crate) fn served_authz_projection(
     (read_findings, triage_findings): (bool, bool),
     ledger: bool,
     evaluation_tasks: bool,
+    (read_cycles, manage_cycles): (bool, bool),
 ) -> MeAuthzResponse {
     let mut response = me_authz_projection(principal);
     if documents
@@ -180,6 +181,16 @@ pub(crate) fn served_authz_projection(
             Feature::KpiRead,
             "analytics_projection",
             analytics_projection,
+        ),
+        (
+            Feature::EvaluationRead,
+            "served_evaluation_cycles",
+            read_cycles,
+        ),
+        (
+            Feature::EvaluationManage,
+            "served_evaluation_cycle_create",
+            manage_cycles,
         ),
         (
             Feature::EvaluationSubmit,
@@ -241,10 +252,18 @@ mod me_authz_org_wide_tests {
             BranchScope::All,
         );
         let contains = |p: &Principal, served| {
-            served_authz_projection(p, served, false, (false, false), false, false)
-                .capabilities
-                .iter()
-                .any(|cap| cap.feature == "documents")
+            served_authz_projection(
+                p,
+                served,
+                false,
+                (false, false),
+                false,
+                false,
+                (false, false),
+            )
+            .capabilities
+            .iter()
+            .any(|cap| cap.feature == "documents")
         };
         assert!(!contains(&admin, false));
         assert!(contains(&admin, true));

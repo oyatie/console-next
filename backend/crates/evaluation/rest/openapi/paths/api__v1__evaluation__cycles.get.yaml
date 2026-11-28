@@ -6,6 +6,7 @@ parameters:
 - name: stage
   in: query
   required: false
+  description: Omit to list active cycles. Select ARCHIVED for archived cycles. Rows are ordered by creation time and then cycle ID, newest first.
   schema: { $ref: '#/components/schemas/EvaluationCycleStage' }
 - name: limit
   in: query

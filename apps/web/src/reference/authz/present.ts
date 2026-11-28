@@ -65,6 +65,8 @@ export const levelText = (level: components["schemas"]["AccessLevel"]) => t(`acc
 const servedPermission = {
   analytics_projection: "payrollOutlook.permission",
   lifecycle_manage: "audit.lifecycle.permission",
+  served_evaluation_cycles: "evaluation.title",
+  served_evaluation_cycle_create: "evaluation.create",
   served_evaluation_tasks: "me.evaluation.permission",
   restricted_audit_stream: "audit.restricted.permission",
   documents: "audit.vault.permission",

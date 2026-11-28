@@ -20,6 +20,8 @@ const STATIC_ROUTES: Readonly<Record<string, () => string>> = {
   "/leave": () => t("leave.title"),
   "/payslips": () => t("shell.title.payslip"),
   "/me/attendance": () => t("shell.link.meAttendance"),
+  "/evaluation": () => t("evaluation.title"),
+  "/evaluation/new": () => t("evaluation.create"),
   "/me/evaluations": () => t("me.evaluation.title"),
   "/me/desk": () => t("shell.link.meDesk"),
   "/me/dispatch-offers": () => t("shellRoutes.dispatchOffers"),
