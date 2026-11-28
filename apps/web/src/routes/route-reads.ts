@@ -27,6 +27,7 @@ const register = "POST /api/v1/employees";
 export const servedRouteReads = {
   "/payroll/outlook": { access: { servedCapability: "analytics_projection" }, reads: ["/api/v1/analytics/projection"], method: "post" },
   "/audit/lifecycles/$objectType/$objectId": { access: { servedCapability: "lifecycle_manage" }, reads: ["/api/v1/lifecycles/{objectType}/{objectId}"] },
+  "/audit/location-consents": { access: { servedCapability: "served_location_consent_ledger" }, reads: ["/api/v1/location-consents/ledger"] },
   "/audit/findings": { access: { servedCapability: "served_integrity_findings" }, reads: ["/api/v1/integrity/findings"] },
   "/audit/evidence": { access: { servedCapability: "documents" }, reads: ["/api/v1/evidence/objects"] },
 } as const;

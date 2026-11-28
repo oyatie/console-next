@@ -62,9 +62,18 @@ export const grantRefusal = (code: string) => {
 export const domainText = (key: string) => codeText(`accessCodes.domain.${key}`, key);
 export const levelText = (level: components["schemas"]["AccessLevel"]) => t(`accessCodes.level.${level}`);
 
+const servedPermission = {
+  analytics_projection: "payroll.outlook.permission",
+  lifecycle_manage: "audit.lifecycle.permission",
+  documents: "audit.vault.permission",
+  served_integrity_findings: "audit.findings.permission",
+  served_integrity_triage: "audit.findings.permission",
+  served_location_consent_ledger: "audit.consents.permission",
+} as const;
+
 /** Keep a hub's alternatives distinct from the reads a single page needs together. */
 export function requirementText(need: AccessRequirement): string {
-  if ("servedCapability" in need) return t(need.servedCapability === "analytics_projection" ? "payroll.outlook.permission" : need.servedCapability === "lifecycle_manage" ? "audit.lifecycle.permission" : need.servedCapability === "documents" ? "audit.vault.permission" : "audit.findings.permission");
+  if ("servedCapability" in need) return t(servedPermission[need.servedCapability]);
   if ("destinations" in need) return t("common.denied.alternatives", { requirements: [...new Set(need.destinations.map(requirementText))].join(" / ") });
   return ("allOf" in need ? need.allOf : [need]).map(r => "action" in r ? t(`denied.action.${r.action}`) : `${domainText(r.domain)} · ${levelText(r.level)}`).join(" / ");
 }

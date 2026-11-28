@@ -60,3 +60,7 @@ export const changeLifecycleHold = (path: LifecycleTarget, body: HoldUpdate, key
   unwrap(api.POST("/api/v1/lifecycles/{objectType}/{objectId}/hold", { params: { path }, headers: { "Idempotency-Key": key }, body }));
 export const transitionLifecycle = (path: LifecycleTarget, body: Transition, key: string) =>
   unwrap(api.POST("/api/v1/lifecycles/{objectType}/{objectId}/transition", { params: { path }, headers: { "Idempotency-Key": key }, body }));
+export type ConsentEvent = components["schemas"]["LocationConsentLedgerEntry"];
+type ConsentFilter = NonNullable<paths["/api/v1/location-consents/ledger"]["get"]["parameters"]["query"]>;
+export const consentLedgerQuery = (query: ConsentFilter) => get("/api/v1/location-consents/ledger", { params: { query } });
+export const consentLedgerCsv = (query: ConsentFilter) => unwrap(api.GET("/api/v1/location-consents/ledger.csv", { params: { query }, parseAs: "blob" }));

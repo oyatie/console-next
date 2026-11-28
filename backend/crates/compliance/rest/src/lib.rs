@@ -2,9 +2,11 @@
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 mod ledger_export;
+mod ledger_query;
 mod openapi;
 mod state;
 use ledger_export::ledger_csv;
+use ledger_query::{normalize_arrival_query, normalize_ledger_query};
 pub use openapi::OPENAPI_FRAGMENT;
 pub use state::ComplianceRestState;
 pub mod statutory;
@@ -16,14 +18,13 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use console_compliance_adapter_postgres::PgComplianceError;
 use console_compliance_application::{
-    AcceptEvidenceBindingCommand, ArrivalEventPage, ArrivalEventQuery, AuditStreamPage,
-    AuditStreamQuery, AuditStreamReadKind, CEO_COVERT_AUDIT_STREAM_KEY, ComplianceControlQuery,
+    AcceptEvidenceBindingCommand, ArrivalEventPage, AuditStreamPage, AuditStreamQuery,
+    AuditStreamReadKind, CEO_COVERT_AUDIT_STREAM_KEY, ComplianceControlQuery,
     ComplianceFrameworkQuery, ComplianceObligationQuery, ConsentTransitionCommand,
     ConsentTransitionKind, CreateComplianceControlCommand, CreateComplianceFrameworkCommand,
     CreateComplianceObligationCommand, CreateEvidenceBindingCommand, CreateRegulationImpactCommand,
     EvidenceBindingQuery, LinkControlObligationCommand, LinkObligationRegulationCommand,
-    LocationConsentLedgerEntry, LocationConsentLedgerPage, LocationConsentLedgerQuery, PageRequest,
-    RegulationImpactQuery,
+    LocationConsentLedgerEntry, LocationConsentLedgerPage, PageRequest, RegulationImpactQuery,
 };
 use console_compliance_domain::{
     ComplianceRiskLevel, ComplianceScope, ComplianceScopeKind, ControlCadence, ControlStatus,
@@ -979,47 +980,60 @@ fn status_response(consent: LocationConsent) -> LocationConsentStatusResponse {
     }
 }
 
-fn normalize_ledger_query(query: LedgerRequest) -> Result<LocationConsentLedgerQuery, RestError> {
-    let limit = query.limit.unwrap_or(100).clamp(1, 1_000);
-    let offset = query.offset.unwrap_or(0);
-    if offset < 0 {
-        return Err(RestError::from_kernel(KernelError::validation(
-            "offset must be non-negative",
-        )));
+/// Whether any branch of the caller's effective scope admits a consent ledger read.
+/// A narrowed custom grant can admit a specific branch even if it cannot cover the entire scope.
+pub fn consent_ledger_available(principal: &Principal) -> bool {
+    if console_platform_authz::authorize_capability(principal, Action::new(Feature::AuditLogRead))
+        .is_ok()
+    {
+        return true;
     }
-
-    Ok(LocationConsentLedgerQuery {
-        user_id: query.user_id,
-        branch_id: query.branch_id,
-        limit,
-        offset,
-    })
+    principal
+        .effective_feature_grants
+        .iter()
+        .filter(|g| g.feature == Feature::AuditLogRead)
+        .any(|grant| match &grant.branch_scope {
+            BranchScope::Branches(ids) => ids
+                .iter()
+                .any(|id| authorize_ledger_read(principal, Some(*id)).is_ok()),
+            BranchScope::All => false,
+        })
 }
 
 fn authorize_ledger_read(
     principal: &Principal,
     branch_id: Option<BranchId>,
 ) -> Result<(), RestError> {
-    match branch_id {
-        Some(branch_id) => authorize(principal, Action::new(Feature::AuditLogRead), branch_id)
-            .map_err(RestError::from_kernel),
+    authorize_location_read(
+        principal,
+        Feature::AuditLogRead,
+        branch_id,
+        "branch_id is required for multi-branch ledger reads",
+    )
+}
+
+fn authorize_location_read(
+    principal: &Principal,
+    feature: Feature,
+    requested: Option<BranchId>,
+    missing: &'static str,
+) -> Result<(), RestError> {
+    let branch = match requested {
+        Some(branch) => branch,
         None => match &principal.branch_scope {
-            BranchScope::All => authorize_org_wide(principal, Action::new(Feature::AuditLogRead))
-                .map_err(RestError::from_kernel),
-            BranchScope::Branches(branches) if branches.len() == 1 => {
-                let Some(branch_id) = branches.iter().copied().next() else {
-                    return Err(RestError::from_kernel(KernelError::validation(
-                        "branch_id is required",
-                    )));
-                };
-                authorize(principal, Action::new(Feature::AuditLogRead), branch_id)
-                    .map_err(RestError::from_kernel)
+            BranchScope::All => {
+                return authorize_org_wide(principal, Action::new(feature))
+                    .map_err(RestError::from_kernel);
             }
-            BranchScope::Branches(_) => Err(RestError::from_kernel(KernelError::validation(
-                "branch_id is required for multi-branch ledger reads",
-            ))),
+            BranchScope::Branches(ids) if ids.len() == 1 => *ids
+                .first()
+                .ok_or_else(|| RestError::from_kernel(KernelError::validation(missing)))?,
+            BranchScope::Branches(_) => {
+                return Err(RestError::from_kernel(KernelError::validation(missing)));
+            }
         },
-    }
+    };
+    require_branch_compliance_feature(principal, feature, branch)
 }
 
 /// GET /api/v1/location/arrival-events — the ops-facing site arrival/departure
@@ -1039,48 +1053,16 @@ async fn list_arrival_events(
     Ok(Json(page))
 }
 
-fn normalize_arrival_query(query: LedgerRequest) -> Result<ArrivalEventQuery, RestError> {
-    let limit = query.limit.unwrap_or(100).clamp(1, 1_000);
-    let offset = query.offset.unwrap_or(0);
-    if offset < 0 {
-        return Err(RestError::from_kernel(KernelError::validation(
-            "offset must be non-negative",
-        )));
-    }
-    Ok(ArrivalEventQuery {
-        user_id: query.user_id,
-        branch_id: query.branch_id,
-        limit,
-        offset,
-    })
-}
-
 fn authorize_arrival_read(
     principal: &Principal,
     branch_id: Option<BranchId>,
 ) -> Result<(), RestError> {
-    match branch_id {
-        Some(branch_id) => authorize(principal, Action::new(Feature::OpsDashboardRead), branch_id)
-            .map_err(RestError::from_kernel),
-        None => match &principal.branch_scope {
-            BranchScope::All => {
-                authorize_org_wide(principal, Action::new(Feature::OpsDashboardRead))
-                    .map_err(RestError::from_kernel)
-            }
-            BranchScope::Branches(branches) if branches.len() == 1 => {
-                let Some(branch_id) = branches.iter().copied().next() else {
-                    return Err(RestError::from_kernel(KernelError::validation(
-                        "branch_id is required",
-                    )));
-                };
-                authorize(principal, Action::new(Feature::OpsDashboardRead), branch_id)
-                    .map_err(RestError::from_kernel)
-            }
-            BranchScope::Branches(_) => Err(RestError::from_kernel(KernelError::validation(
-                "branch_id is required for multi-branch arrival reads",
-            ))),
-        },
-    }
+    authorize_location_read(
+        principal,
+        Feature::OpsDashboardRead,
+        branch_id,
+        "branch_id is required for multi-branch arrival reads",
+    )
 }
 
 async fn list_ceo_covert_audit_events(
@@ -1378,6 +1360,27 @@ mod tests {
             PermissionLevel::Allow,
             BranchScope::All,
         )])
+    }
+
+    #[test]
+    fn partial_consent_ledger_grant_reaches_only_its_branch() {
+        let branch = console_kernel_core::BranchId::new();
+        let outside = console_kernel_core::BranchId::new();
+        let principal = Principal::new(
+            UserId::new(),
+            OrgId::one(),
+            BTreeSet::new(),
+            BranchScope::All,
+        )
+        .with_effective_feature_grants(vec![EffectiveFeatureGrant::new(
+            Feature::AuditLogRead,
+            PermissionLevel::Allow,
+            BranchScope::single(branch),
+        )]);
+        assert!(super::consent_ledger_available(&principal));
+        assert!(super::authorize_ledger_read(&principal, Some(branch)).is_ok());
+        assert!(super::authorize_ledger_read(&principal, Some(outside)).is_err());
+        assert!(super::authorize_ledger_read(&principal, None).is_err());
     }
 
     #[test]

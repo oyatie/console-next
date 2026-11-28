@@ -91,7 +91,15 @@ test.describe("route requirements with a real grantless account", () => {
           const required = "destinations" in need ? need.destinations : "allOf" in need ? need.allOf : [need];
           for (const entry of required) {
             if ("servedCapability" in entry) {
-              expect(permission).toContain(ko[entry.servedCapability === "analytics_projection" ? "payroll.outlook.permission" : entry.servedCapability === "lifecycle_manage" ? "audit.lifecycle.permission" : entry.servedCapability === "documents" ? "audit.vault.permission" : "audit.findings.permission"]);
+              const expected = {
+                analytics_projection: ko["payroll.outlook.permission"],
+                lifecycle_manage: ko["audit.lifecycle.permission"],
+                documents: ko["audit.vault.permission"],
+                served_integrity_findings: ko["audit.findings.permission"],
+                served_integrity_triage: ko["audit.findings.permission"],
+                served_location_consent_ledger: ko["audit.consents.permission"],
+              };
+              expect(permission).toContain(expected[entry.servedCapability]);
               continue;
             }
             if ("action" in entry) {

@@ -19,3 +19,4 @@ export function lifecycleTarget(type?: string | null, id?: string | null) {
   const parts = type === "object_lifecycle" && id ? /^([a-z][a-z0-9_]{1,63}):([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i.exec(id) : null;
   return parts ? { objectType: parts[1]!, objectId: parts[2]! } : undefined;
 }
+export const consentCode = (code: string) => codeText(`audit.consents.code.${code}`, code);

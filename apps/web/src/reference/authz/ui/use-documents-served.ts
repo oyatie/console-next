@@ -29,5 +29,5 @@ export function useServedCapability(feature: ServedCapability, enabled = true) {
 export function useAuditDestinations(enabled = true) {
   const q = useQuery({ ...authzQuery, enabled: enabled && servedAuthzApplies() });
   const caps = q.isError ? undefined : q.data?.capabilities;
-  return { evidenceVault: canReadEvidence(caps), findings: canUseServed("served_integrity_findings", caps) };
+  return { consents: canUseServed("served_location_consent_ledger", caps), evidenceVault: canReadEvidence(caps), findings: canUseServed("served_integrity_findings", caps) };
 }
