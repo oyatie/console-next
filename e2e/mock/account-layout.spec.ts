@@ -102,3 +102,27 @@ for (const read of ["/api/v1/auth/privacy-consent/status", "/api/v1/onboarding/t
     } finally { await page.close(); fixture.release(); }
   });
 }
+
+test("a late task count keeps the next primary navigation links under the pointer", async ({ page }) => {
+  const fixture = await mockScreen(page, accountScreens[0]!, "populated");
+  const held = Promise.withResolvers<void>();
+  const requested = Promise.withResolvers<void>();
+  await page.route(url => url.pathname === "/api/v1/me/action-inbox", async route => {
+    requested.resolve();
+    await held.promise;
+    await route.fallback();
+  });
+  try {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/account");
+    await requested.promise;
+    const nav = page.getByRole("navigation", { name: t("shell.nav"), exact: true });
+    const requests = nav.locator('a[href="/people/requests"]');
+    await expect(requests).toBeVisible();
+    await page.evaluate(() => document.fonts.ready);
+    const before = await requests.boundingBox();
+    held.resolve();
+    await expect(nav.locator('a[href="/"] data[data-count]')).toBeVisible();
+    expect(await requests.boundingBox()).toEqual(before);
+  } finally { held.resolve(); fixture.release(); }
+});

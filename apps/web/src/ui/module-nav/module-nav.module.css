@@ -38,6 +38,23 @@
   cursor: pointer;
 }
 
+.countSlot {
+  display: inline-flex;
+  align-items: center;
+  inline-size: calc(6ch + var(--space-3));
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.countSlot > data {
+  display: block;
+  max-inline-size: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: var(--kbd-h);
+  text-align: center;
+}
+
 .link:hover {
   background: var(--muted);
   color: var(--ink);

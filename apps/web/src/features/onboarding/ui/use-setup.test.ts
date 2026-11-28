@@ -20,7 +20,7 @@ beforeEach(() => { vi.restoreAllMocks(); capabilities = [{ permission: "allow" }
 test("Home holds cached checklist actions until its arrival read, then keeps them during background reads", () => {
   answer();
   expect(useSetupChecklist()).toMatchObject({ loaded: false, checklist: undefined });
-  expect(useQuery).toHaveBeenLastCalledWith(expect.objectContaining({ refetchOnMount: "always" }));
+  expect(useQuery).toHaveBeenLastCalledWith(expect.objectContaining({ retryOnMount: false, refetchOnMount: expect.any(Function) }));
 
   const current = { ...cached, steps: [{ key: "workplace", state: "done" }] };
   answer({ data: current, isFetchedAfterMount: true });
@@ -53,7 +53,7 @@ test("a pending authz read keeps the checklist pending instead of claiming no wo
   capabilities = undefined;
   answer({ isFetchedAfterMount: true });
   const result = useSetupChecklist();
-  expect(useQuery).toHaveBeenLastCalledWith(expect.objectContaining({ enabled: false }));
+  expect(useQuery).toHaveBeenLastCalledWith(expect.objectContaining({ subscribed: false }));
   expect(result).toMatchObject({ checklist: undefined, loaded: false, q: { isPending: true } });
 });
 
@@ -61,14 +61,14 @@ test.each([500, 503])("an authz %s still reads the server-enforced setup checkli
   capabilities = undefined;
   answer({ isFetchedAfterMount: true }, { isPending: false, isError: true, error: new ApiError(status, "internal", "unavailable") });
   expect(useSetupChecklist()).toMatchObject({ loaded: true, checklist: cached });
-  expect(useQuery).toHaveBeenLastCalledWith(expect.objectContaining({ enabled: true }));
+  expect(useQuery).toHaveBeenLastCalledWith(expect.objectContaining({ subscribed: true }));
 });
 
 test.each([{ caps: [] }, { caps: [{ permission: "request_only" }] }])("a successful authz read without a held grant skips the checklist: $caps", ({ caps }) => {
   capabilities = caps;
   answer({ isFetchedAfterMount: true });
   const result = useSetupChecklist();
-  expect(useQuery).toHaveBeenLastCalledWith(expect.objectContaining({ enabled: false }));
+  expect(useQuery).toHaveBeenLastCalledWith(expect.objectContaining({ subscribed: false }));
   expect(result.checklist).toBeUndefined();
   expect(result.q.isPending).toBe(false);
 });
@@ -77,19 +77,19 @@ test.each(["allow", "limited"])("a Cedar-projected %s grant enables the checklis
   capabilities = [{ permission }];
   answer({ isFetchedAfterMount: true });
   expect(useSetupChecklist().checklist).toEqual(cached);
-  expect(useQuery).toHaveBeenLastCalledWith(expect.objectContaining({ enabled: true }));
+  expect(useQuery).toHaveBeenLastCalledWith(expect.objectContaining({ subscribed: true }));
 });
 
 test("the first authz failure reads the checklist in parallel with retries", () => {
   capabilities = undefined;
   answer({ isFetchedAfterMount: true }, { failureCount: 1, isPending: true });
   expect(useSetupChecklist()).toMatchObject({ checklist: cached, loaded: true });
-  expect(useQuery).toHaveBeenLastCalledWith(expect.objectContaining({ enabled: true }));
+  expect(useQuery).toHaveBeenLastCalledWith(expect.objectContaining({ subscribed: true }));
 
   capabilities = [];
   answer({ isFetchedAfterMount: true }, { failureCount: 0 });
   expect(useSetupChecklist().checklist).toBeUndefined();
-  expect(useQuery).toHaveBeenLastCalledWith(expect.objectContaining({ enabled: false }));
+  expect(useQuery).toHaveBeenLastCalledWith(expect.objectContaining({ subscribed: false }));
 });
 
 test("platform claims leave disabled authz and checklist reads settled", () => {
@@ -97,5 +97,5 @@ test("platform claims leave disabled authz and checklist reads settled", () => {
   capabilities = undefined;
   answer();
   expect(useSetupChecklist()).toMatchObject({ checklist: undefined, q: { isPending: false } });
-  expect(useQuery).toHaveBeenLastCalledWith(expect.objectContaining({ enabled: false }));
+  expect(useQuery).toHaveBeenLastCalledWith(expect.objectContaining({ subscribed: false }));
 });
