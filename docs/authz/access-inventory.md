@@ -41,7 +41,7 @@ Detector fixtures retain historical defects after the product fixes them.
 | BranchScope | backend/crates/compliance/adapter-postgres/src/lib.rs | reference | 16 |
 | BranchScope | backend/crates/compliance/application/src/lib.rs | reference | 2 |
 | BranchScope | backend/crates/compliance/integrity/src/rest.rs | reference | 1 |
-| BranchScope | backend/crates/compliance/rest/src/lib.rs | reference | 21 |
+| BranchScope | backend/crates/compliance/rest/src/lib.rs | reference | 20 |
 | BranchScope | backend/crates/consulting/rest/src/lib.rs | reference | 5 |
 | BranchScope | backend/crates/dispatch/adapter-postgres/src/lib.rs | reference | 7 |
 | BranchScope | backend/crates/dispatch/application/src/lib.rs | reference | 2 |
