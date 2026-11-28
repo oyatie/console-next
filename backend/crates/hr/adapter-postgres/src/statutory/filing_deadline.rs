@@ -50,10 +50,12 @@ pub(super) async fn load(
             .filter_map(|rule| rule.age_trigger_years)
             .min();
         let has_birth = if let Some(years) = years {
-            sqlx::query_scalar::<_, bool>("WITH clock AS MATERIALIZED (SELECT max(EXTRACT(year FROM (COALESCE($2,now()) AT TIME ZONE z.time_zone))) AS year FROM (SELECT time_zone FROM lifecycle_country_packs WHERE is_default UNION SELECT time_zone FROM workplaces WHERE org_id=$1 UNION SELECT time_zone FROM legal_entities WHERE org_id=$1) z) \
-                SELECT EXISTS (SELECT 1 FROM person_employees_current x CROSS JOIN clock WHERE x.org_id=$1 AND EXTRACT(year FROM x.birth_date)+$3<=clock.year) \
-                OR EXISTS (SELECT 1 FROM insurance_filing_records r CROSS JOIN clock WHERE r.org_id=$1 AND EXTRACT(year FROM (r.applicability_facts->>'birth_date')::date)+$3<=clock.year)")
-                .bind(principal.org_id.as_uuid()).bind(query.inbox_as_of).bind(i32::from(years)).fetch_one(tx.as_mut()).await?
+            sqlx::query_scalar::<_, bool>(include_str!("filing_birthday_exists.sql"))
+                .bind(principal.org_id.as_uuid())
+                .bind(query.inbox_as_of)
+                .bind(i32::from(years))
+                .fetch_one(tx.as_mut())
+                .await?
         } else {
             false
         };

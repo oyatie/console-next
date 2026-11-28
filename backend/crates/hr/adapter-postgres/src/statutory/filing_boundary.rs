@@ -11,22 +11,13 @@ use time::Date;
 use uuid::Uuid;
 
 pub(super) async fn load(tx: &mut Transaction<'_, Postgres>, org: Uuid) -> Result<Value, HrError> {
-    let go_live: Date = sqlx::query_scalar(
-        "SELECT min((COALESCE(p.go_live_at,now()) AT TIME ZONE z.time_zone)::date) \
-         FROM (SELECT $1::uuid AS id) tenant LEFT JOIN tenant_phase p ON p.org_id=tenant.id \
-         CROSS JOIN LATERAL (SELECT time_zone FROM lifecycle_country_packs WHERE is_default \
-           UNION SELECT time_zone FROM workplaces WHERE org_id=tenant.id \
-           UNION SELECT time_zone FROM legal_entities WHERE org_id=tenant.id) z",
-    )
-    .bind(org)
-    .fetch_one(tx.as_mut())
-    .await?;
     let rows = sqlx::query(include_str!("filing_periods.sql"))
         .bind(org)
         .fetch_all(tx.as_mut())
         .await?;
     let mut bounds = Vec::new();
     for row in rows {
+        let go_live: Date = row.try_get("go_live_on")?;
         let rule: FilingRule = serde_json::from_value(row.try_get("filing_rule")?)
             .map_err(|e| HrError::internal(e.to_string()))?;
         let cutoff = earliest_event_on(&rule, go_live, row.try_get("first_possible_on")?)?

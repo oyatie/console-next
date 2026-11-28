@@ -1,6 +1,6 @@
 #[path = "filing_query_page.rs"]
 mod page;
-use page::push_page_order;
+use page::{push_employee_join, push_page_order};
 
 use super::FilingQuery;
 use crate::HrError;
@@ -27,11 +27,7 @@ pub(super) fn non_employee_types() -> Vec<&'static str> {
         .map(EmploymentType::as_str)
         .collect()
 }
-// Keep employee and void lookups indexed before tenant statistics catch up.
-// Filter and order candidates before hydrating receipts, history and case links.
-const FROM: &str = " FROM sources l \
- JOIN LATERAL (SELECT * FROM person_employees_current WHERE org_id=l.org_id AND id=l.employee_id OFFSET 0) x ON true \
- LEFT JOIN LATERAL (SELECT a.workplace_id FROM employment_assignments a WHERE a.org_id=l.org_id AND a.employee_id=l.employee_id \
+const RULE_JOINS: &str = " LEFT JOIN LATERAL (SELECT a.workplace_id FROM employment_assignments a WHERE a.org_id=l.org_id AND a.employee_id=l.employee_id \
    AND a.superseded_at IS NULL AND a.valid_from<l.effective_date::date AND l.to_workplace_id IS NOT NULL ORDER BY a.valid_from DESC LIMIT 1) previous ON true \
  CROSS JOIN LATERAL (SELECT DISTINCT r.filing_kind AS k,r.insurer,r.recording_held, \
    r.earliest_event_on,anchor.event_on FROM rules r \
@@ -149,7 +145,8 @@ pub(super) async fn query_rows(
     if placement_filter {
         q.push(",ea.legal_entity_id,ea.workplace_id");
     }
-    q.push(FROM);
+    push_employee_join(&mut q, lightweight);
+    q.push(RULE_JOINS);
     if placement_filter {
         push_placement(&mut q, false);
     }
@@ -293,12 +290,9 @@ pub(super) async fn query_rows(
     }
     q.push(
         " LEFT JOIN employee_personal_facts personal ON personal.org_id=l.org_id AND personal.employee_id=l.employee_id LEFT JOIN LATERAL (SELECT r.* FROM insurance_filing_records r WHERE (SELECT receipts FROM presence) AND r.org_id=l.org_id AND (r.event_id=l.id OR r.request_id=l.id) AND r.insurer=l.insurer AND r.filing_kind=l.kind ORDER BY r.version DESC LIMIT 1) receipt ON true \
-      ), page_workplaces AS MATERIALIZED (SELECT DISTINCT workplace_id FROM hydrated WHERE workplace_id IS NOT NULL), \
-      page_zones AS MATERIALIZED (SELECT w.id,lifecycle_time_zone(w.org_id,NULL,current_date,w.id) AS time_zone \
-        FROM page_workplaces p JOIN workplaces w ON w.id=p.workplace_id AND w.org_id=(SELECT org_id FROM boundary) WHERE w.legal_entity_id IS NOT NULL), \
-      zoned AS MATERIALIZED (SELECT paged.*,COALESCE((SELECT shared_time_zone FROM boundary),z.time_zone,lifecycle_time_zone((SELECT org_id FROM boundary),paged.employee_id,paged.placement_on,paged.workplace_id)) AS time_zone \
-        FROM hydrated paged LEFT JOIN page_zones z ON z.id=paged.workplace_id) \
-      ");
+      )",
+    );
+    page::push_workplace_zones(&mut q, lightweight);
     q.push("SELECT ");
     if lightweight {
         q.push(ASSESSMENT_FIELDS)

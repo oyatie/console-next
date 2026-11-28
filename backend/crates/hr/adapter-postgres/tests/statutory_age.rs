@@ -28,9 +28,24 @@ async fn pension_age_loss_has_one_task_and_exact_birth_dates_stay_tenant_scoped(
         .execute(tx.as_mut())
         .await
         .unwrap();
-    sqlx::query("UPDATE employees SET birth_date=$1 WHERE id=$2")
-        .bind(birth)
+    // The reviewed person revision is the only source of the birthday.
+    sqlx::query("UPDATE employees SET birth_date=NULL WHERE id=$1")
         .bind(w.employee)
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    sqlx::query(
+        "WITH person AS (INSERT INTO persons (org_id) VALUES ($1) RETURNING id), \
+         revision AS (INSERT INTO person_revisions (org_id,person_id,version,command_id,actor_id,payload_digest,attributes,receipt) \
+           SELECT $1,id,1,gen_random_uuid(),$3,decode(repeat('00',32),'hex'),jsonb_build_object('birth_date',$4::date),'{}' \
+           FROM person RETURNING person_id) \
+         INSERT INTO employee_person_bindings (org_id,employee_id,person_id,actor_id,payload_digest) \
+         SELECT $1,$2,person_id,$3,decode(repeat('00',32),'hex') FROM revision",
+    )
+        .bind(w.tenant.org)
+        .bind(w.employee)
+        .bind(w.user.as_uuid())
+        .bind(birth)
         .execute(tx.as_mut())
         .await
         .unwrap();
