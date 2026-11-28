@@ -10,6 +10,7 @@
   "push_ci": {"workflow": "ci.yml", "name": "Candidate checks"},
   "check_app_id": 15368,
   "required_checks": [
-    {"context": "ci-ok", "integration_id": 15368}
+    {"context": "ci-ok", "integration_id": 15368},
+    {"context": "Code scanning gate", "integration_id": 15368}
   ]
 }
