@@ -51,7 +51,7 @@ export const triageFinding = (id: string, body: Triage, key: string) =>
   }));
 
 export type Lifecycle = components["schemas"]["ObjectLifecycle"];
-export type LifecycleTarget = { objectType: string; objectId: string };
+type LifecycleTarget = { objectType: string; objectId: string };
 type HoldUpdate = components["schemas"]["SetLifecycleHoldRequest"];
 type Transition = components["schemas"]["TransitionLifecycleRequest"];
 export const lifecyclePath = "/api/v1/lifecycles/{objectType}/{objectId}";

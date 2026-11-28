@@ -123,6 +123,7 @@
     "routes": [
       "src/features/account/Account.tsx",
       "src/features/approvals/ui/approval-viewer.tsx",
+      "src/features/audit/ui/lifecycle-record.tsx",
       "src/features/entity/ui/entity-record.tsx",
       "src/features/identifiers/ui/identifiers-page.tsx",
       "src/features/me/ui/me-attendance-page.tsx",
