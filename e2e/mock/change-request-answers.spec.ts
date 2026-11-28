@@ -27,7 +27,7 @@ for (const experience of ["baseline", "console"] as const) {
     await mockRoute(page, "post", "/api/v1/change-requests/{id}/decide", req => {
       calls.push(req.postDataJSON());
       decided = true;
-      return { status: 200, json: { ...row, status: "APPLIED", can_review: false } };
+      return { status: 200, json: { ...row, status: "APPLIED" as const, can_review: false } };
     });
     try {
       await page.goto(`/people/requests?sel=${row.id}`);
