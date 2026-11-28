@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: LicenseRef-Proprietary -->
 # Overtime work-rule confirmations
 
-An employer can record its rule, work-rules clause, confirmation date and worker notification method in Settings. Setup tracks whether a confirmation was recorded or the step was skipped. The step is optional for go-live.
+An employer can record its rule, work-rules clause, confirmation date and worker notification method in Settings. Setup tracks whether a confirmation was recorded or the step was skipped. The step is optional for go-live. The setup row and Settings both open the confirmations screen in Classic and Console. A settings editor or attendance approver can record a confirmation within their grant. Readers can view existing confirmations. Skipping during setup requires tenant-wide attendance approval and records a separate setup event.
 
 The policy resolver uses the nearest applicable confirmation. A configured approval basis reads as recorded through the confirmation date, and as approval from the next work date. A recorded-basis override stays recorded. These are employer policy records. The settings adapter's PostgreSQL test checks the confirmation date and the following work date for a person under the confirming workplace. [Policy test](../../backend/crates/settings/adapter-postgres/tests/wave2_policy.rs)
 

@@ -9,6 +9,8 @@ export const enSetup = {
   "setup.step.org": "Set up departments",
   "setup.step.approval": "Approval line",
   "setup.step.people": "Security contact and key people",
+  "setup.fix.confirm_overtime_rule": "Review overtime work-rule confirmations",
+  "setup.skip.overtime": "Skip overtime confirmation",
   "setup.step.overtime": "Overtime work-rule confirmation",
   "setup.why.overtime": "Record the work-rules clause and how workers were notified. Attendance and payroll calculations use their existing inputs.",
   "setup.permission.attendance::approve": "Attendance approval",

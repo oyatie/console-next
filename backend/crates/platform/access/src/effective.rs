@@ -46,6 +46,7 @@ async fn effective_of(
     tx: &mut Transaction<'_, Postgres>,
     org: OrgId,
     account: Uuid,
+    personal: bool,
 ) -> AccessResult<Value> {
     let (account_active, is_ops) = store::account(tx, org, account)
         .await?
@@ -92,12 +93,21 @@ async fn effective_of(
     let noticed = crate::notice::noticed(tx, org, account).await?;
     let mut entries = Vec::new();
     for grant in store::list(tx, org, &filter, phase, now).await? {
-        let version: i32 =
-            sqlx::query_scalar("SELECT version FROM access_roles WHERE org_id = $1 AND id = $2")
+        let (version, scope_name): (i32, Option<String>) =
+            sqlx::query_as("SELECT version, CASE WHEN $6 AND $4::uuid IS NOT NULL THEN access_review_scope_name($1,$3,$4,$5) END FROM access_roles WHERE org_id = $1 AND id = $2")
                 .bind(org.as_uuid())
                 .bind(grant.role_id)
+                .bind(grant.scope.kind.as_str())
+                .bind(grant.scope.node_id)
+                .bind(now)
+                .bind(personal && grant.account_active && matches!(grant.enforcement, Enforcement::Enforced))
                 .fetch_one(tx.as_mut())
                 .await?;
+        let bare_scope = json!(grant.scope);
+        let mut scope = bare_scope.clone();
+        if let Some(name) = scope_name {
+            scope["node_name"] = json!(name);
+        }
         for line in lines_of(tx, org, grant.role_id, version).await? {
             for level in &line.levels {
                 let enforcement = match grant.enforcement {
@@ -130,7 +140,7 @@ async fn effective_of(
                 };
                 entries.push(json!({
                     "caveats": caveats(line.domain, *level, grant.scope.kind),
-                    "domain": line.domain, "level": level, "scope": grant.scope,
+                    "domain": line.domain, "level": level, "scope": if enforcement == "ENFORCED" { &scope } else { &bare_scope },
                     "grant_id": grant.id, "role_id": grant.role_id, "role_name_ko": grant.role_name_ko,
                     "valid_from": rfc3339(grant.valid_from)?,
                     "valid_to": grant.valid_to.map(rfc3339).transpose()?,
@@ -149,7 +159,7 @@ async fn effective_of(
 pub async fn account(s: &AccessService, p: Principal, account: Uuid) -> AccessResult<Value> {
     read_actor(s, &p).await?.require_access(Level::View)?;
     let out = with_org_conn::<_, _, AccessError>(&s.pool, p.org_id, move |tx| {
-        Box::pin(async move { effective_of(tx, p.org_id, account).await })
+        Box::pin(async move { effective_of(tx, p.org_id, account, false).await })
     })
     .await?;
     Ok(out)
@@ -158,7 +168,7 @@ pub async fn account(s: &AccessService, p: Principal, account: Uuid) -> AccessRe
 pub async fn me(s: &AccessService, p: Principal) -> AccessResult<Value> {
     let me = *p.user_id.as_uuid();
     let out = with_org_conn::<_, _, AccessError>(&s.pool, p.org_id, move |tx| {
-        Box::pin(async move { effective_of(tx, p.org_id, me).await })
+        Box::pin(async move { effective_of(tx, p.org_id, me, true).await })
     })
     .await?;
     Ok(out)

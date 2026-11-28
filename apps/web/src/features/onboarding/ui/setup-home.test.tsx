@@ -31,10 +31,16 @@ const checklist = (steps: ChecklistStep[]): Checklist => ({
 });
 
 test("the nonblocking overtime step names the policy record and its effect", () => {
-  const html = render(checklist([step("overtime", true, "attendance::approve")]));
+  const overtime = step("overtime", true, "attendance::approve", { action: "confirm_overtime_rule", skippable: true });
+  const html = render(checklist([overtime]));
   expect(html).toContain(t("setup.step.overtime"));
   expect(html).toContain(t("setup.why.overtime"));
   expect(html).toContain(t("setup.permission.attendance::approve"));
+  expect(html).toContain('href="/settings/overtime"');
+  expect(html).toContain(t("setup.skip.overtime"));
+  const denied = render(checklist([{ ...overtime, can_act: false }]));
+  expect(denied).not.toContain('href="/settings/overtime"');
+  expect(denied).not.toContain(t("setup.skip.overtime"));
 });
 
 test("an unknown step key stays readable without a guessed action", () => {

@@ -16,7 +16,7 @@ export const termsQuery = { ...get("/api/v1/onboarding/terms"), staleTime: 0, re
 /** Setup changes the checklist and entities; go-live also changes lifecycle deadlines and inbox work. */
 export const SETUP_READS: PathPrefix[] = ["/api/v1/onboarding", "/api/v1/users/me", "/api/v1/legal-entities", "/api/v1/org-structure", "/api/v1/org-units", "/api/v1/employment-assignments", "/api/v1/lifecycle-case-templates", "/api/v1/lifecycle-cases", "/api/v1/employees", "/api/v1/statutory", "/api/v1/me/action-inbox"];
 
-export const skipStep = (step: "org" | "employees" | "roles") => unwrap(api.POST("/api/v1/onboarding/steps/{step}/skip", { params: { path: { step } } }));
+export const skipStep = (step: "org" | "employees" | "roles" | "overtime") => unwrap(api.POST("/api/v1/onboarding/steps/{step}/skip", { params: { path: { step } } }));
 /** The contracting admin accepts the service terms for the tenant (decision #3), bound to the exact document reviewed. */
 export const acceptTerms = (version: string, sha256: string) => unwrap(api.POST("/api/v1/onboarding/terms", { body: { version, sha256 } }));
 export const recordContact = (body: { role: "REPRESENTATIVE" | "CPO" | "SELF"; name: string; email: string }) => unwrap(api.POST("/api/v1/onboarding/security-contact", { body }));

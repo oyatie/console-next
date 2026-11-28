@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
-x-console-authz: {"permission": "settings:edit", "scope": "any"}
+x-console-authz: {"permissions": ["settings:edit", "attendance:approve"], "scope": "any"}
 tags: [settings]
 operationId: recordOvertimeRuleAttestation
 summary: Record an overtime recognition work-rule confirmation
+description: Requires settings edit or attendance approve at the requested scope.
 security:
   - bearerAuth: []
 requestBody:

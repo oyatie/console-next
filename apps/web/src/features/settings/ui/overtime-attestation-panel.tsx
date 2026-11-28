@@ -61,10 +61,8 @@ export function PolicyBoundsSection({ entry }: { entry: SettingEntry }) {
 
 export function OvertimeAttestationPanel({
   scopeEntityId,
-  canChange,
 }: {
   scopeEntityId: string | null;
-  canChange: boolean;
 }) {
   const q = useQuery(overtimeAttestationsQuery(scopeEntityId));
   const [confirmedOn, setConfirmedOn] = useState("");
@@ -79,7 +77,7 @@ export function OvertimeAttestationPanel({
         rule_reference: ruleRef.trim(),
         worker_notice_method: noticeMethod.trim(),
       }),
-    invalidates: ["/api/v1/settings/overtime-attestations", "/api/v1/onboarding/checklist"],
+    invalidates: ["/api/v1/settings/overtime-attestations", "/api/v1/onboarding/checklist", "/api/v1/me/action-inbox"],
     awaitFirstRead: true,
     announce: () => t("settingsHub.attestation.saved"),
     onSuccess: () => {
@@ -109,7 +107,7 @@ export function OvertimeAttestationPanel({
           ))}
         </QueryState>
 
-        {canChange && (
+        {q.isSuccess && q.data.can_record && (
           <div className={s.stack}>
             <CommandError error={create.error} />
             <Field label={t("settingsHub.attestation.confirmedOn")} required>

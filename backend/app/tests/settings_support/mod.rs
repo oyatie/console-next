@@ -159,6 +159,25 @@ pub async fn seed_role_and_grant(
     scope_kind: &str,
     legal_entity_id: Option<Uuid>,
 ) -> Uuid {
+    seed_grant_with_line(
+        pool,
+        org,
+        granter,
+        grantee,
+        (scope_kind, legal_entity_id),
+        ("settings", &["view", "edit"]),
+    )
+    .await
+}
+
+pub async fn seed_grant_with_line(
+    pool: &PgPool,
+    org: Uuid,
+    granter: UserId,
+    grantee: UserId,
+    (scope_kind, legal_entity_id): (&str, Option<Uuid>),
+    (domain, levels): (&str, &[&str]),
+) -> Uuid {
     let role_id = Uuid::new_v4();
     sqlx::query(
         "INSERT INTO access_roles (org_id, id, name_ko, status, version, created_by)
@@ -189,10 +208,12 @@ pub async fn seed_role_and_grant(
 
     sqlx::query(
         "INSERT INTO access_role_lines (org_id, role_id, version, domain, levels)
-         VALUES ($1, $2, 1, 'settings', ARRAY['view','edit'])",
+         VALUES ($1, $2, 1, $3, $4)",
     )
     .bind(org)
     .bind(role_id)
+    .bind(domain)
+    .bind(levels)
     .execute(pool)
     .await
     .unwrap();

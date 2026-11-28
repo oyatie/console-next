@@ -66,7 +66,7 @@ async fn only_setup_effective_grants_read_and_arm_their_step(owner: PgPool) {
         ["employees"]
     );
     store.skip_step(&hr, "employees").await.unwrap();
-    for step in ["org", "roles"] {
+    for step in ["org", "roles", "overtime"] {
         let before = snapshot(&owner, &a).await;
         refused(
             &owner,

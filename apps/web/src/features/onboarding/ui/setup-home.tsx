@@ -59,6 +59,7 @@ export function SetupHome({ c }: { c: Checklist }) {
       case "org": return <Link to="/org" search={{}} className={buttonClass(variant)}>{t("setup.action.org")}</Link>;
       // The seeded representative route resolves on its own; the only act here is inviting someone who can also decide.
       case "approval": return null;
+      case "overtime": return <FixLink code={s.action} primary={s.key === current} />;
       // The contact store (#7) may not exist on this server yet: the remedy then says so, with no button.
       case "people": return s.remedy === "security_contact_store_pending" ? null : <Button variant={variant} onClick={() => setContact(true)}>{t("setup.action.people")}</Button>;
       // governance-20: one more passkey, added here in one press (a step-up with the one this account holds).
@@ -125,7 +126,9 @@ export function SetupHome({ c }: { c: Checklist }) {
       action: s.can_act && !waiting ? (s.state === "attention" && fixFor(s.remedy) ? <FixLink code={s.remedy} /> : action(s)) : undefined,
       remedy: s.can_act && !waiting && s.remedy && s.key !== "golive" ? remedy(s.remedy, false) : undefined,
       secondary:
-        !s.can_act || waiting ? undefined : s.key === "roles" && s.state !== "done" ? (
+        !s.can_act || waiting ? undefined : s.key === "overtime" && s.skippable && s.state === "todo" ? (
+          <Button variant="ghost" onClick={() => skip.mutate("overtime")}>{t("setup.skip.overtime")}</Button>
+        ) : s.key === "roles" && s.state !== "done" ? (
           <><Link to="/people" search={{ view: "accounts" }} className={buttonClass()}>{t("setup.action.invite")}</Link>
             {s.skippable && <Button variant="ghost" onClick={() => skip.mutate("roles")}>{t("setup.skip.roles")}</Button>}</>
         ) : s.key === "entity" ? (

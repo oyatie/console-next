@@ -29,6 +29,26 @@ async fn roles_and_terms_refusals_have_status_code_no_write_and_an_audit(owner: 
         (StatusCode::CONFLICT, "step_already_skipped", None),
     )
     .await;
+    assert_eq!(
+        send(
+            &h,
+            "POST",
+            "/api/v1/onboarding/steps/overtime/skip",
+            json!({})
+        )
+        .await
+        .0,
+        StatusCode::NO_CONTENT
+    );
+    assert_refused(
+        &owner,
+        &h,
+        "POST",
+        "/api/v1/onboarding/steps/overtime/skip",
+        json!({}),
+        (StatusCode::CONFLICT, "step_already_skipped", None),
+    )
+    .await;
     assert_refused(
         &owner,
         &h,
