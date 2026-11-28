@@ -1219,7 +1219,7 @@ export interface components {
         };
         ObligationEventRequest: {
             /** @enum {string} */
-            event: "in_review" | "redated" | "done" | "waived";
+            event: "in_review" | "redated" | "done" | "waived" | "countersigned";
             fields: Record<string, never>;
         };
         ObligationItem: {
@@ -1235,6 +1235,13 @@ export interface components {
             counsel_url?: string | null;
             signed_on: string | null;
             deadline: components["schemas"]["Text"];
+            pending_signoff?: {
+                seq: number;
+                /** @enum {string} */
+                outcome: "done" | "waived";
+                reason: string | null;
+            };
+            requires_reattestation?: boolean;
         };
         /** @enum {string} */
         ObligationKind: "professional-review" | "credential-rotation" | "escrow" | "drill" | "launch-gate" | "owner-decision" | "regulatory-watch";
@@ -1250,8 +1257,10 @@ export interface components {
             operator: components["schemas"]["ObligationOperator"];
             obligation_id: components["schemas"]["Text"];
             /** @enum {string} */
-            event: "opened" | "in_review" | "redated" | "done" | "waived";
+            event: "opened" | "in_review" | "redated" | "done" | "waived" | "countersigned";
             fields: Record<string, never>;
+            /** @enum {integer} */
+            attestation_version?: 1 | 2;
         };
         /** @enum {string} */
         ObligationReviewerRole: "labor-attorney" | "lawyer" | "tax-accountant" | "owner";

@@ -958,7 +958,7 @@ components:
       required: ["event", "fields"]
       additionalProperties: false
       properties:
-        event: {"type": "string", "enum": ["in_review", "redated", "done", "waived"]}
+        event: {"type": "string", "enum": ["in_review", "redated", "done", "waived", "countersigned"]}
         fields: {"type": "object"}
     ObligationItem:
       # SPDX-License-Identifier: LicenseRef-Proprietary
@@ -977,6 +977,14 @@ components:
         counsel_url: {"anyOf": [{"type": "string"}, {"type": "null"}]}
         signed_on: {"anyOf": [{"type": "string", "format": "date", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"}, {"type": "null"}]}
         deadline: {"$ref": "#/components/schemas/Text"}
+        pending_signoff:
+          type: "object"
+          required: ["seq", "outcome", "reason"]
+          properties:
+            seq: {"type": "integer", "minimum": 1}
+            outcome: {"type":"string","enum":["done","waived"]}
+            reason: {"anyOf":[{"type":"string"},{"type":"null"}]}
+        requires_reattestation: {"type":"boolean"}
     ObligationKind:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "string"
@@ -1000,8 +1008,9 @@ components:
         at: {"$ref": "#/components/schemas/Timestamp"}
         operator: {"$ref": "#/components/schemas/ObligationOperator"}
         obligation_id: {"$ref": "#/components/schemas/Text"}
-        event: {"type": "string", "enum": ["opened", "in_review", "redated", "done", "waived"]}
+        event: {"type": "string", "enum": ["opened", "in_review", "redated", "done", "waived", "countersigned"]}
         fields: {"type": "object"}
+        attestation_version: {"type":"integer","enum":[1,2]}
     ObligationReviewerRole:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "string"

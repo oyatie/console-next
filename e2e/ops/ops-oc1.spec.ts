@@ -61,14 +61,20 @@ test.describe("Stage-1 OC1 Ops Cockpit", () => {
     await expect(page.getByText("Event history (2)")).toBeVisible();
 
     await page.getByLabel("Lifecycle transitions").selectOption("done");
-    await page.getByLabel("Evidence reference").fill("docs/ops/pitr-drill-2026-11-21.md");
-    await page.getByLabel("Signer", { exact: true }).fill("ops-lead");
-    await page.getByRole("button", { name: "Mark done" }).click();
+    await expect(page.getByLabel("Signer", { exact: true })).toHaveCount(0);
+    await page.getByRole("button", { name: "Submit for countersignature" }).click();
     await expect(page.getByText("Required obligation transition fields missing")).toBeVisible();
 
-    await page.getByLabel("Co-signer (second operator)").fill("security-lead");
+    await page.getByLabel("Evidence reference").fill("docs/ops/pitr-drill-2026-11-21.md");
     await page.getByLabel("Counsel / evidence URL (https://... or docs/...)").fill("https://counsel.cosskorea.invalid/opinions/lg-0001");
-    await page.getByRole("button", { name: "Mark done" }).click();
+    await page.getByRole("button", { name: "Submit for countersignature" }).click();
+    await expect(page.getByText("Proposed decision Done")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Countersign this decision" })).toHaveCount(0);
+
+    mock.data.me.operator.person = "00000000-0000-4000-8000-000000000003";
+    await page.reload();
+    await expect(page.getByText("Proposed decision Done")).toBeVisible();
+    await page.getByRole("button", { name: "Countersign this decision" }).click();
     await expect(page.getByText("Obligation is finalized and cannot be modified")).toBeVisible();
 
     // Create new obligation

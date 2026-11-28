@@ -47,6 +47,7 @@ fn obligation_home_parts_use_now_as_observed_at_and_handle_broken_chain() -> Tes
         hash: "h".into(),
         support_ref: "s1".into(),
         entry: Entry {
+            attestation_version: 2,
             at: old,
             operator: Operator {
                 person: "op".into(),
