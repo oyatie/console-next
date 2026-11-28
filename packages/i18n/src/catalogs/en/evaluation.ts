@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 export const enEvaluation = {
-  "evaluation.title": "Evaluation cycles",
-  "evaluation.create": "Create evaluation cycle",
   "evaluation.save": "Create draft cycle",
   "evaluation.another": "Create another cycle",
   "evaluation.created": "Created draft cycle “{name}”.",
