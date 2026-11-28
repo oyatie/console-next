@@ -254,7 +254,7 @@ impl EmployeeListFilters {
         }
         if let Some(search) = self.search.as_deref() {
             let pattern = format!("%{}%", crate::scope_sql::escape_like(search));
-            builder.push(" AND (COALESCE(console_employee_facts(e.org_id,e.id)->>'legal_name',e.name) ILIKE ");
+            builder.push(" AND (e.name ILIKE ");
             builder.push_bind(pattern.clone());
             builder.push(" ESCAPE '\\' OR e.employee_number ILIKE ");
             builder.push_bind(pattern);
