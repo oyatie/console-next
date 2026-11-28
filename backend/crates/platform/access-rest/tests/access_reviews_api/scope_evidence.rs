@@ -171,3 +171,57 @@ async fn scoped_review_keeps_its_targets_and_accepts_an_already_revoked_grant(po
     assert!(csv.lines().any(|s|s.contains("West site") && s.ends_with(&format!(",WORKPLACE,{},true",w.wp_b))));
     assert!(!csv.contains("Renamed after freeze") && !csv.contains("Future label"));
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn a_recorded_future_department_rename_is_withheld_until_its_effective_day(pool: PgPool) {
+    let mut w = world(pool).await;
+    let department = uuid::Uuid::new_v4();
+    sqlx::query("INSERT INTO org_units(org_id,id) VALUES ($1,$2)")
+        .bind(w.org)
+        .bind(department)
+        .execute(&w.owner)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO org_unit_placements(org_id,org_unit_id,legal_entity_id,workplace_id,represents_workplace,valid_from,change_mode,command_id)
+        VALUES($1,$2,$3,$4,false,'2001-01-01','MIGRATION',gen_random_uuid())")
+        .bind(w.org).bind(department).bind(w.le_a).bind(w.wp_a).execute(&w.owner).await.unwrap();
+    for (version, name, date) in [
+        (1_i64, "Assembly", "2001-01-01"),
+        (2, "New department", "2099-04-01"),
+    ] {
+        sqlx::query("INSERT INTO org_unit_revisions(org_id,org_unit_id,version,command_id,actor_id,payload_digest,attributes,receipt)
+            VALUES($1,$2,$3,gen_random_uuid(),$4,sha256('dept'::bytea),$5,'{}')")
+            .bind(w.org).bind(department).bind(version).bind(w.ops.as_uuid())
+            .bind(json!({"kind":"department","status":"active","name":name,"effective_from":date}))
+            .execute(&w.owner).await.unwrap();
+    }
+    let role = w
+        .role(
+            "Attendance reader",
+            json!([{"domain":"attendance","levels":["view"]}]),
+        )
+        .await;
+    w.grant(json!([grant_op(
+        w.hr,
+        role,
+        "DEPARTMENT",
+        Some(department),
+        true
+    )]))
+    .await;
+    let (status, access) = call_json(&w, Method::GET, "/api/v1/access/me", w.hr, None, None).await;
+    assert_eq!(status, StatusCode::OK, "{access}");
+    assert_eq!(
+        access["entries"][0]["scope"]["node_name"],
+        json!("Assembly")
+    );
+    let next: String = sqlx::query_scalar(
+        "SELECT access_review_scope_name($1,'DEPARTMENT',$2,'2099-04-01 00:00:00+09')",
+    )
+    .bind(w.org)
+    .bind(department)
+    .fetch_one(&w.owner)
+    .await
+    .unwrap();
+    assert_eq!(next, "New department");
+}
