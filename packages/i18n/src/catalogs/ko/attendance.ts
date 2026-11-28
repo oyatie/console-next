@@ -2,7 +2,6 @@
 // Rules: the header of ../ko.ts and packages/i18n/GUIDE.md; words per docs/design/copy-conventions.md.
 import type { enAttendance } from "../en/attendance";
 export const koAttendance: Record<keyof typeof enAttendance, string> = {
-  "attendance.refuse.missing_grant": "근태를 기록할 권한이 없어 처리하지 않았습니다. 권한 관리 담당자에게 해당 직원의 근태 기록 권한을 요청하십시오.",
   "attendance.period.label": "기간 이동",
   "attendance.period.thisMonth": "이번 달",
   "attendance.period.thisWeek": "이번 주",
