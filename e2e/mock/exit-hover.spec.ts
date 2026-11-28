@@ -68,10 +68,9 @@ for (const input of ["wheel", "keyboard"]) test(`exit list reads a case only aft
     await expect(page.getByRole("main").locator("h1")).toHaveCount(1);
     await page.screenshot({ path: info.outputPath("exit-phone-dark.png"), fullPage: true });
     expect(state.unexpected).toEqual([]);
-    await grid.evaluate(el => el.scrollTo(0, 0));
-    const chosen = grid.getByRole("link", { name: /^Exit person / }).first();
-    const chosenId = await chosen.evaluate(el => el.closest<HTMLElement>("[data-row-id]")!.dataset.rowId!);
-    await grid.locator(`[data-row-id="${chosenId}"]`).getByRole("link").click();
+    await grid.getByRole("link", { name: /^Exit person / }).first().click();
+    await expect(page).toHaveURL(/\/people\/exits\/[0-9a-f-]{36}/);
+    const chosenId = new URL(page.url()).pathname.split("/").at(-1);
     await expect.poll(() => reads).toEqual([chosenId]);
   } finally { await page.close(); state.release(); }
 });
