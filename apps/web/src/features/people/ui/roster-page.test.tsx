@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { loadCatalog, t } from "@console/i18n";
 import { ApiError, myAccessQuery } from "../../../reference/authz/api";
-import { RosterPage } from "./roster-page";
+import { preloadRosterScreen, RosterPage } from "./roster-page";
 import { rosterWindowQuery } from "../api/roster";
 import { VIEWS } from "../domain/roster";
 
@@ -22,7 +22,8 @@ vi.mock("./roster-panel", () => ({ RosterPanel: () => <div data-record /> }));
 vi.mock("./roster-unit-panel", () => ({ RosterUnitPanel: () => <div data-related /> }));
 const table = vi.hoisted(() => vi.fn());
 const rosterRead = vi.hoisted(() => vi.fn());
-vi.mock("@tanstack/react-router", () => ({
+vi.mock("@tanstack/react-router", async original => ({
+  ...await original<typeof import("@tanstack/react-router")>(),
   getRouteApi: () => ({ useSearch: () => state.search, useNavigate: () => vi.fn(), useRouteContext: () => ({ peopleAccess: { unplaced: { domain: "hr_basic", level: "edit", tenant: true } } }) }),
   Link: () => null,
   useNavigate: () => vi.fn(),
@@ -44,7 +45,7 @@ vi.mock("./use-roster", async original => ({ ...await original<typeof import("./
   list: { data: state.refused ? undefined : { pages: [{ items: [], total: 1 }] }, isPending: false, hasNextPage: true, error: state.refused ? new ApiError(403, "access_denied", "") : null, refetch: vi.fn() },
   rows: state.empty || state.firstRun ? [] : [{ id: "person", name: "가상직원" }], total: state.firstRun ? 0 : 1, loading: state.loading, status: { totals: { all: state.firstRun ? 0 : 1 }, failed: [] }, review: { totals: {}, failed: [] }, query: {},
 }); } }));
-beforeAll(() => loadCatalog("ko"));
+beforeAll(() => Promise.all([loadCatalog("ko"), preloadRosterScreen()]));
 beforeEach(() => { state.refused = false; state.settingsFailed = false; state.staleWindow = undefined; state.org = false; state.loading = false; state.empty = false; state.firstRun = false; state.voided = false; state.search = {}; table.mockClear(); rosterRead.mockClear(); arrangement.mockClear(); });
 const render = () => {
   const client = new QueryClient({ defaultOptions: { queries: { enabled: false } } });

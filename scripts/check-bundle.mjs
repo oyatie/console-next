@@ -102,6 +102,10 @@ export function checkRouteBudgets(dist, budgetsPathOrObj, options = {}) {
       for (const imported of chunk.imports ?? []) visit(imported);
     };
     visit(source);
+    // The default directory starts its authorized row read while its mandatory table layout loads.
+    if (source === "src/features/people/ui/people-route.tsx" && manifest["src/features/people/ui/roster-screen.tsx"]) {
+      visit("src/features/people/ui/roster-screen.tsx");
+    }
     if (source === orgTabs || orgLists.has(source)) {
       if (!manifest[orgRecord]?.isDynamicEntry) failures.push({ route: source, error: `check-bundle: ${orgRecord} must have its own dynamic entry` });
       for (const [key, chunk] of Object.entries(manifest)) {

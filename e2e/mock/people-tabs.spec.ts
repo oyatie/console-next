@@ -114,8 +114,8 @@ test("the directory waits for authorization and rechecks its roster grant on ret
     await expect.poll(() => counts.effective).toBeGreaterThan(0);
     await expect(grid).toHaveCount(0);
     expect([counts.employees, counts.inactiveTabs]).toEqual([0, 0]);
-    effective.resolve();
     await expect.poll(() => counts.capability).toBe(1);
+    effective.resolve();
     await expect(grid).toHaveCount(0);
     expect([counts.employees, counts.inactiveTabs]).toEqual([0, 0]);
     capability.resolve();
