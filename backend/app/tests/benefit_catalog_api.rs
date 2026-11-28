@@ -43,6 +43,8 @@ async fn benefit_catalog_routes_enforce_pbac_and_audit_catalog_and_lifecycle_wri
     seed_tenant_user(&owner_pool, org, member_id, "MEMBER", "Benefits Member").await;
     seed_tenant_user(&owner_pool, org, admin_id, "SUPER_ADMIN", "Benefits Admin").await;
 
+    sqlx::query("INSERT INTO tenant_module_enrollments (org_id,module_key,enabled,change_ref) VALUES ($1,'benefits',true,'test-enrollment') ON CONFLICT DO NOTHING")
+        .bind(org.as_uuid()).execute(&owner_pool).await.unwrap();
     let member_token = issue_token(
         &owner_pool,
         private_pem.as_bytes(),

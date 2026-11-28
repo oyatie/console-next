@@ -153,3 +153,75 @@ pub(super) async fn collect_calendar_events(
         as_of,
     })
 }
+
+/// Native calendar-owner adapter for the workbench aggregate. It reuses the
+/// authenticated collaboration visibility predicate, applies the aggregate's
+/// exact half-open range and one request ceiling, and never persists a second
+/// calendar projection.
+pub(crate) async fn read_workbench_calendar(
+    pool: &PgPool,
+    principal: &Principal,
+    range: crate::workbench::WorkbenchRange,
+    limit: usize,
+    as_of: OffsetDateTime,
+) -> Result<crate::workbench::CalendarPage, crate::workbench::SourceFailure> {
+    match console_platform_request_context::tenant_module::TenantModule::Calendar
+        .enabled(pool, principal.org_id)
+        .await
+    {
+        Ok(true) => {}
+        Ok(false) => {
+            return Err(crate::workbench::SourceFailure::Denied {
+                code: "module_disabled",
+            });
+        }
+        Err(_) => {
+            return Err(crate::workbench::SourceFailure::Unavailable {
+                code: "calendar_unavailable",
+            });
+        }
+    }
+    let limit = i64::try_from(limit).map_err(|_| crate::workbench::SourceFailure::Unavailable {
+        code: "calendar_limit_invalid",
+    })?;
+    let snapshot = collect_calendar_events(
+        pool,
+        principal,
+        range.from,
+        range.to,
+        (limit, None),
+        as_of,
+        true,
+    )
+    .await
+    .map_err(|error| {
+        if error.status == StatusCode::FORBIDDEN {
+            crate::workbench::SourceFailure::Denied {
+                code: "calendar_access_denied",
+            }
+        } else {
+            crate::workbench::SourceFailure::Unavailable {
+                code: "calendar_unavailable",
+            }
+        }
+    })?;
+    let items = snapshot
+        .items
+        .into_iter()
+        .map(|item| crate::workbench::CalendarItem {
+            id: item.id,
+            title: item.title,
+            starts_at: item.starts_at,
+            ends_at: item.ends_at,
+            target: crate::workbench::WorkbenchTarget {
+                module: "overview".to_owned(),
+                id: item.id.to_string(),
+            },
+        })
+        .collect();
+    Ok(crate::workbench::CalendarPage {
+        as_of: snapshot.as_of,
+        total: snapshot.total,
+        items,
+    })
+}

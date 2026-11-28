@@ -53,19 +53,21 @@ and neither module introduces any periodic loop in `run/worker.rs` or `run/serve
 
 An installation serving the evaluation build admits evaluation requests only for an enrolled organization. The tenant-wide setting `module.evaluation.enabled` defaults to true for that organization. An administrator can schedule an opt-out in Settings → Operations. Evaluation read, management and personal submission each retain their own authorization and object scope. Enrollment creates no cycles, assignments or notifications.
 
-The release operator uses the deployment database role and the approved change reference to record enrollment. Bind the organization UUID, decision and reference from the approved change. Execute this transaction with psql variables `org`, `enabled` and `change_ref`. Check the returned decision against the request. Reusing a reference for a different decision requires a new change. The operator role must have access to the confirmed tenant. The application runtime can only read that tenant's history.
+The benefits catalog and internal calendar are separately enrolled as `benefits` and `calendar`. Each enrolled tenant can opt out using `module.benefits.enabled` or `module.calendar.enabled`. The feature routers, their navigation, the benefits lifecycle routes, and the calendar section of the workbench use the same enrollment. Other lifecycle types, collaboration polls and personal tasks keep their own access. Calendar and catalog enrollment creates no event, benefit, worker, notification, invitation or mail.
+
+The release operator uses the deployment database role and the approved change reference to record enrollment. Bind the organization UUID, module key, decision and reference from the approved change. Execute this transaction with psql variables `org`, `module`, `enabled` and `change_ref`. Accepted module keys are `evaluation`, `benefits` and `calendar`. Check the returned decision against the request. Reusing a reference for a different decision requires a new change. The operator role must have access to the confirmed tenant. The application runtime can only read that tenant's history.
 
 ```sql
 BEGIN;
 SELECT set_config('app.current_org', :'org'::uuid::text, true);
 SELECT id FROM organizations WHERE id = :'org'::uuid FOR UPDATE;
 INSERT INTO tenant_module_enrollments (org_id, module_key, enabled, change_ref)
-VALUES (:'org'::uuid, 'evaluation', :'enabled'::boolean, :'change_ref')
+VALUES (:'org'::uuid, :'module', :'enabled'::boolean, :'change_ref')
 ON CONFLICT (org_id, module_key, change_ref) DO NOTHING;
 SELECT enabled, change_ref, recorded_by, recorded_at FROM tenant_module_enrollments
-WHERE org_id = :'org'::uuid AND module_key = 'evaluation'
+WHERE org_id = :'org'::uuid AND module_key = :'module'
 ORDER BY revision DESC LIMIT 1;
 COMMIT;
 ```
 
-Withdrawal appends a disabled decision using a new reference. Requests admitted after that commit, including retries carrying an earlier command key, are refused. In-flight requests can finish. Historical evaluation records are preserved. No tenant is enrolled by the migration.
+Withdrawal appends a disabled decision using a new reference. Requests admitted after that commit, including retries carrying an earlier command key, are refused. In-flight requests can finish. Historical evaluation, benefit and calendar records are preserved. No tenant is enrolled by the migration.
