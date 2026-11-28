@@ -64,7 +64,7 @@ export const levelText = (level: components["schemas"]["AccessLevel"]) => t(`acc
 
 /** Keep a hub's alternatives distinct from the reads a single page needs together. */
 export function requirementText(need: AccessRequirement): string {
-  if ("servedCapability" in need) return t(need.servedCapability === "documents" ? "audit.vault.permission" : "payroll.outlook.permission");
+  if ("servedCapability" in need) return t(need.servedCapability === "documents" ? "audit.vault.permission" : "payrollOutlook.permission");
   if ("destinations" in need) return t("common.denied.alternatives", { requirements: [...new Set(need.destinations.map(requirementText))].join(" / ") });
   return ("allOf" in need ? need.allOf : [need]).map(r => "action" in r ? t(`denied.action.${r.action}`) : `${domainText(r.domain)} · ${levelText(r.level)}`).join(" / ");
 }

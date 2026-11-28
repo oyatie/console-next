@@ -90,7 +90,7 @@ test.describe("route requirements with a real grantless account", () => {
           const required = "allOf" in need ? need.allOf : [need];
           for (const entry of required) {
             if ("servedCapability" in entry) {
-              expect(permission).toContain(ko[entry.servedCapability === "documents" ? "audit.vault.permission" : "payroll.outlook.permission"]);
+              expect(permission).toContain(ko[entry.servedCapability === "documents" ? "audit.vault.permission" : "payrollOutlook.permission"]);
               continue;
             }
             if ("action" in entry) {
