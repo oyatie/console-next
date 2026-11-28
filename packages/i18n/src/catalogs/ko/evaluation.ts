@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 export const koEvaluation = {
   "evaluation.title": "평가 주기",
-  "evaluation.create": "평가 주기 만들기",
-  "evaluation.save": "초안 주기 만들기",
-  "evaluation.another": "다른 주기 만들기",
-  "evaluation.created": "평가 주기 “{name}”을 초안으로 만들었습니다.",
+  "evaluation.create": "평가 주기 등록",
+  "evaluation.save": "초안 등록",
+  "evaluation.another": "다른 주기 등록",
+  "evaluation.created": "평가 주기 “{name}”을 초안으로 등록했습니다.",
   "evaluation.name": "주기 이름",
   "evaluation.period": "평가 기간",
   "evaluation.kind": "평가 유형",
