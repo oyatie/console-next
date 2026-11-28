@@ -49,13 +49,13 @@ and neither module introduces any periodic loop in `run/worker.rs` or `run/serve
 `inbox` route availability in `mvp` alongside unrelated-module 404s and
 `--no-default-features` compiled-out isolation.
 
-## Evaluation enrollment
+## Optional module enrollment
 
-An installation serving the evaluation build admits evaluation requests only for an enrolled organization. The tenant-wide setting `module.evaluation.enabled` defaults to true for that organization. An administrator can schedule an opt-out in Settings → Operations. Evaluation read, management and personal submission each retain their own authorization and object scope. Enrollment creates no cycles, assignments or notifications.
+An installation serving the evaluation build admits evaluation requests only for an enrolled organization. The tenant-wide setting `module.evaluation.enabled` defaults to true for that organization. An administrator can schedule an opt-out in Settings → Operations. Cycle management and cross-person ledger access require organization-wide authority. An enrolled employee or manager with a submission grant can work on their own assigned reviews. Enrollment creates no cycles, assignments or notifications.
 
 The benefits catalog and internal calendar are separately enrolled as `benefits` and `calendar`. Each enrolled tenant can opt out using `module.benefits.enabled` or `module.calendar.enabled`. The feature routers, their navigation, the benefits lifecycle routes, and the calendar section of the workbench use the same enrollment. Other lifecycle types, collaboration polls and personal tasks keep their own access. Calendar and catalog enrollment creates no event, benefit, worker, notification, invitation or mail.
 
-The release operator uses the deployment database role and the approved change reference to record enrollment. Bind the organization UUID, module key, decision and reference from the approved change. Execute this transaction with psql variables `org`, `module`, `enabled` and `change_ref`. Accepted module keys are `evaluation`, `benefits` and `calendar`. Check the returned decision against the request. Reusing a reference for a different decision requires a new change. The operator role must have access to the confirmed tenant. The application runtime can only read that tenant's history.
+The release operator uses an individually attributable database session with deployment privileges and the approved change reference to record enrollment. The realtime service suppresses maintenance events from a direct login as the migration account `console_app`. Bind the organization UUID, module key, decision and reference from the approved change. Execute this transaction with psql variables `org`, `module`, `enabled` and `change_ref`. Accepted keys are `evaluation`, `benefits` and `calendar`. Check the returned decision against the request. Reusing a reference for a different decision requires a new change. The operator role must have access to the confirmed tenant. The application runtime can only read that tenant's history.
 
 ```sql
 BEGIN;

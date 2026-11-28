@@ -17,7 +17,7 @@ ON CONFLICT (key) DO UPDATE SET
 -- Enrollment is a release decision. Runtime tenant credentials never write it.
 CREATE TABLE tenant_module_enrollments (
     revision BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE RESTRICT,
+    org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     module_key TEXT NOT NULL CHECK (module_key IN ('evaluation')),
     enabled BOOLEAN NOT NULL,
     change_ref TEXT NOT NULL CHECK (char_length(btrim(change_ref)) BETWEEN 1 AND 128),
@@ -40,3 +40,22 @@ COMMENT ON COLUMN tenant_module_enrollments.enabled IS 'pd:none — explicit enr
 COMMENT ON COLUMN tenant_module_enrollments.change_ref IS 'pd:none — opaque release change reference';
 COMMENT ON COLUMN tenant_module_enrollments.recorded_by IS 'pd:personal — database operator principal recording the decision';
 COMMENT ON COLUMN tenant_module_enrollments.recorded_at IS 'pd:none — release decision timestamp';
+
+-- Reuse the tenant-wide policy hint. The approval reference and operator identity stay private.
+INSERT INTO realtime_topic_map (target_type, action, resource_type, carries_id)
+VALUES ('tenant_module_enrollment', 'module.enrollment_change', 'tenant_settings', false);
+
+CREATE FUNCTION audit_tenant_module_enrollment() RETURNS TRIGGER
+LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog, public AS $$
+BEGIN
+    INSERT INTO public.audit_events
+        (org_id, action, target_type, target_id, after_snap, trace_id, span_id, occurred_at)
+    VALUES (NEW.org_id, 'module.enrollment_change', 'tenant_module_enrollment', NEW.revision::TEXT,
+            jsonb_build_object('module', NEW.module_key, 'enabled', NEW.enabled),
+            replace(gen_random_uuid()::TEXT, '-', ''),
+            left(replace(gen_random_uuid()::TEXT, '-', ''), 16), NEW.recorded_at);
+    RETURN NULL;
+END;
+$$;
+CREATE TRIGGER audit_enrollment AFTER INSERT ON tenant_module_enrollments
+    FOR EACH ROW EXECUTE FUNCTION audit_tenant_module_enrollment();
