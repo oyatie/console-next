@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: LicenseRef-Proprietary
--- migration-class: expand — Accept the same unexpired aliases as sign-in for active recovery holders.
+-- migration-class: contract — Restrict recovery identifier resolution to permitted holders while accepting their unexpired login aliases.
 SET LOCAL lock_timeout = '2s';
 
 CREATE OR REPLACE FUNCTION platform_resolve_recovery_identifier(p_login TEXT, p_slug TEXT)

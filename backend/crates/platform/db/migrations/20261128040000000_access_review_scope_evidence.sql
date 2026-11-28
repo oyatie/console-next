@@ -1,5 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-Proprietary
--- migration-class: expand
+-- migration-class: contract — Store the scope at review opening and restrict the tenant-scoped historical name lookup to the runtime role.
+-- contract-of: 20261127020000000
 SET LOCAL lock_timeout = '2s';
 
 ALTER TABLE access_review_items

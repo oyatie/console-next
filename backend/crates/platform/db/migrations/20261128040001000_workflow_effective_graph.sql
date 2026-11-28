@@ -1,5 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-Proprietary
--- migration-class: expand
+-- migration-class: contract — Prevent edits to a run's effective approval graph after insertion while retaining legacy NULL graphs.
+-- contract-of: 0077
 SET LOCAL lock_timeout = '2s';
 
 ALTER TABLE workflow_runs ADD COLUMN effective_definition JSONB;

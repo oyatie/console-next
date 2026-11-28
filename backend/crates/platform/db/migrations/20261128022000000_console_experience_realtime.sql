@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: LicenseRef-Proprietary
--- migration-class: expand — Notify open tenant sessions after a committed appearance change.
+-- migration-class: contract — Register tenant rollback and saved appearance changes in the existing realtime topic map.
 SET LOCAL lock_timeout = '2s';
 
 INSERT INTO realtime_topic_map (target_type, action, resource_type, carries_id) VALUES
