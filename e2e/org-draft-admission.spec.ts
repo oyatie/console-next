@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test } from "@playwright/test";
 import type { components } from "@console/api/schema";
-import { firstSignIn, go, kstDate, option } from "./flows";
+import { firstSignIn, go, kstDate, option, routeReady } from "./flows";
 import { grantAccess, inviteAccount } from "./access-flows";
 import { apiOf, bearerOf, codeOf } from "./helpers/api";
 import { openTenant } from "./helpers/tenant";
@@ -96,6 +96,7 @@ test("the move screen offers scoped destinations and keeps a real refused draft 
   const saved = await created;
   expect(saved.status()).toBe(201);
   const draft = await saved.json() as { id: string };
+  await routeReady(worker, `/org/changes/${draft.id}`);
   const before = await (await adminApi(`/org-changes/${draft.id}`)).json();
   const patched = await api(`/org-changes/${draft.id}`, "PATCH", { proposal: [{ op: "MOVE_ORG_UNIT", orgUnitId: source, parentId: outside }] });
   expect([patched.status(), await codeOf(patched)]).toEqual([404, "org_change.refuse.missing_grant"]);
