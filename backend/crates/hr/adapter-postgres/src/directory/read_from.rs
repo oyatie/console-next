@@ -137,6 +137,31 @@ pub(crate) fn push_page_details(builder: &mut QueryBuilder<Postgres>) {
 pub fn counted_employees(select: &str, filters: &EmployeeListFilters) -> QueryBuilder<Postgres> {
     let mut builder = QueryBuilder::<Postgres>::new(select);
     builder.push(" FROM person_employees_current e");
+    push_count_filters(&mut builder, filters);
+    builder
+}
+
+/// Obtain each cursor key from its own canonical person. A fresh import can otherwise plan a
+/// nested scan of every binding for each employee before statistics catch up.
+pub(crate) fn cursor_employees(
+    select: &str,
+    filters: &EmployeeListFilters,
+    lookup_name: bool,
+) -> QueryBuilder<Postgres> {
+    if !lookup_name {
+        return counted_employees(select, filters);
+    }
+    let mut builder = QueryBuilder::<Postgres>::new(select);
+    builder.push(
+        " FROM employees e JOIN LATERAL (SELECT current_person.name \
+        FROM person_employees_current current_person WHERE current_person.org_id=e.org_id \
+        AND current_person.id=e.id LIMIT 1) person ON true",
+    );
+    push_count_filters(&mut builder, filters);
+    builder
+}
+
+fn push_count_filters(builder: &mut QueryBuilder<Postgres>, filters: &EmployeeListFilters) {
     if filters.home_branch_review_required.is_some() {
         builder.push(current_placement_join!());
     }
@@ -153,8 +178,7 @@ pub fn counted_employees(select: &str, filters: &EmployeeListFilters) -> QueryBu
         builder.push(assignment_lateral!());
     }
     builder.push(" WHERE TRUE");
-    filters.push(&mut builder);
-    builder
+    filters.push(builder);
 }
 
 /// The FROM/WHERE of the one-pass facets: every join a facet group reads

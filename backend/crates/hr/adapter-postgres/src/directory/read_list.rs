@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use crate::authz::{Tier, hr_reach_in};
 use crate::directory::access_log::{DirectoryAccess, access_event, actor_employee_id};
-use crate::directory::read_from::push_page_details;
+use crate::directory::read_from::{cursor_employees, push_page_details};
 use crate::directory::read_sort::{RosterCursor, RosterPaging};
 use crate::directory::types::{
     EmployeeFailedEvent, EmployeeNextEvent, EmployeePage, EmployeeResponse,
@@ -128,10 +128,13 @@ impl HrService {
                     (rows.build().fetch_all(tx.as_mut()).await?, None)
                 }
                 RosterPaging::Keyset { sort, after } => {
-                    let select = format!("WITH page AS MATERIALIZED (SELECT e.org_id, e.id, {} AS sort_value", sort.expr());
-                    let mut rows = counted_employees(&select, &filters);
+                    // Search and register-gap filters need the canonical name or birth date in their predicates.
+                    let lookup_name = sort.by_name() && filters.search.is_none() && filters.register_review_required.is_none();
+                    let expression = if lookup_name { "person.name" } else { sort.expr() };
+                    let select = format!("WITH page AS MATERIALIZED (SELECT e.org_id, e.id, {expression} AS sort_value");
+                    let mut rows = cursor_employees(&select, &filters, lookup_name);
                     if let Some(after) = after {
-                        sort.push_after(&mut rows, after);
+                        sort.push_after(&mut rows, after, expression);
                     }
                     sort.push_order(&mut rows);
                     // One extra row tells whether a next page exists.

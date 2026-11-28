@@ -76,6 +76,10 @@ impl RosterSort {
         }
     }
 
+    pub fn by_name(self) -> bool {
+        self.key == SortKey::Name
+    }
+
     /// The SQL sort expression; a missing value sorts as `''`.
     pub fn expr(self) -> &'static str {
         match self.key {
@@ -87,9 +91,14 @@ impl RosterSort {
     }
 
     /// ` AND (key, id) >/< (value, id)` for the page after `cursor`.
-    pub fn push_after(self, builder: &mut QueryBuilder<Postgres>, cursor: &RosterCursor) {
+    pub fn push_after(
+        self,
+        builder: &mut QueryBuilder<Postgres>,
+        cursor: &RosterCursor,
+        expression: &str,
+    ) {
         let op = if self.descending { "<" } else { ">" };
-        builder.push(format!(" AND ({}, e.id) {op} (", self.expr()));
+        builder.push(format!(" AND ({expression}, e.id) {op} ("));
         builder.push_bind(cursor.value.clone());
         builder.push(", ");
         builder.push_bind(cursor.id);
