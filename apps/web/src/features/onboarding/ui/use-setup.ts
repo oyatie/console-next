@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { Checklist } from "@console/api/pending";
 import { freshOnOpen } from "../../../lib/query";
+import { isAnswer } from "../../../lib/react/query-defaults";
 import { queryView } from "../../../lib/react/query-view";
 import { authzApplies, authzQuery } from "../../../reference/authz/api";
 import { canReadSetupChecklist } from "../domain/phase";
@@ -11,7 +12,8 @@ export function useSetupChecklist(placeholderData?: Checklist) {
   const access = useQuery({ ...authzQuery, enabled: authzApplies() });
   const allowed = access.isError || access.failureCount > 0 || canReadSetupChecklist(access.data);
   // Cached step states must not paint before the arrival read and move the rail's actions.
-  const read = useQuery({ ...checklistQuery, placeholderData, enabled: allowed, retry: false, refetchOnMount: "always" });
+  const read = useQuery({ ...checklistQuery, placeholderData, subscribed: allowed, retry: false, retryOnMount: false,
+    refetchOnMount: query => isAnswer(query.state.error) ? false : "always" });
   const q = allowed ? freshOnOpen(read) : { ...read, data: undefined, isPending: access.isPending && authzApplies(), isSuccess: false, isError: false, error: null };
   return { q, phaseQ: allowed || access.isPending ? read : q, checklist: q.data?.phase === "SETUP" && queryView(q) !== "denied" ? q.data : undefined, served: q.isSuccess, loaded: !q.isPending && (q.isSuccess || q.isError) };
 }
