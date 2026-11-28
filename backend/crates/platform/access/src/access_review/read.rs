@@ -146,11 +146,20 @@ pub(super) async fn load_detail_in_tx(
     let review_id: Uuid = head.try_get("id")?;
     let rows = sqlx::query(
         "SELECT i.id, i.grant_id, i.account_id, i.account_name, i.employee_number, i.unit_name,
-                i.role_id, i.role_name_ko, i.scope_kind, i.scope_label, i.valid_from, i.valid_to,
+                i.role_id, i.role_name_ko, i.scope_kind,
+                CASE WHEN i.scope_include_descendants IS NULL THEN COALESCE(
+                    access_review_scope_name(i.org_id, i.scope_kind,
+                        COALESCE(g.legal_entity_id, g.workplace_id, g.org_unit_id), $3), i.scope_label)
+                    ELSE i.scope_label END AS scope_label,
+                COALESCE(i.scope_node_id, g.legal_entity_id, g.workplace_id, g.org_unit_id) AS scope_node_id,
+                COALESCE(i.scope_include_descendants, g.include_descendants) AS scope_include_descendants,
+                i.valid_from, i.valid_to,
                 i.last_used_at, i.signals,
                 d.decision, d.reason_code, d.reason_note, d.decided_by,
                 u.display_name AS decided_by_name, d.decided_at, d.applied_at
            FROM access_review_items i
+           LEFT JOIN access_grants g ON i.scope_include_descendants IS NULL
+             AND g.org_id = i.org_id AND g.id = i.grant_id
            LEFT JOIN access_review_decisions d
              ON d.org_id = i.org_id AND d.review_id = i.review_id AND d.item_id = i.id
            LEFT JOIN person_accounts_current u
@@ -160,6 +169,7 @@ pub(super) async fn load_detail_in_tx(
     )
     .bind(p.org_id.as_uuid())
     .bind(review_id)
+    .bind(head.try_get::<OffsetDateTime, _>("started_at")?)
     .fetch_all(tx.as_mut())
     .await?;
 
@@ -176,6 +186,8 @@ pub(super) async fn load_detail_in_tx(
             role_name_ko: row.try_get("role_name_ko")?,
             scope_kind: row.try_get("scope_kind")?,
             scope_label: row.try_get("scope_label")?,
+            scope_node_id: row.try_get("scope_node_id")?,
+            scope_include_descendants: row.try_get("scope_include_descendants")?,
             valid_from: row.try_get("valid_from")?,
             valid_to: row.try_get("valid_to")?,
             last_used_at: row.try_get("last_used_at")?,
@@ -232,7 +244,7 @@ pub async fn export_csv(
             require_review_access(tx, &p, false).await?;
             let detail = load_detail_in_tx(tx, &p, &period).await?;
             let mut lines = vec![
-                "account_name,employee_number,unit_name,role_name,scope,valid_from,valid_to,signals,decision,reason_code,decided_by"
+                "account_name,employee_number,unit_name,role_name,scope,valid_from,valid_to,signals,decision,reason_code,decided_by,scope_kind,scope_node_id,scope_include_descendants"
                     .to_owned(),
             ];
             for item in &detail.items {
@@ -253,6 +265,9 @@ pub async fn export_csv(
                     csv_cell(item.decision.as_deref().unwrap_or("UNDECIDED")),
                     csv_cell(item.reason_code.as_deref().unwrap_or("")),
                     csv_cell(item.decided_by_name.as_deref().unwrap_or("")),
+                    csv_cell(&item.scope_kind),
+                    item.scope_node_id.map(|id| id.to_string()).unwrap_or_default(),
+                    item.scope_include_descendants.map(|v| v.to_string()).unwrap_or_default(),
                 ]
                 .join(",");
                 lines.push(row);

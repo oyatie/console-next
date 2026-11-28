@@ -34,6 +34,7 @@ pub use completion::{
 };
 pub use engine::{
     AuditContext, NodeStepOutcome, ProcessNodeRequest, StartRunRequest, process_node, start_run,
+    start_run_with_definition,
 };
 pub use graph::{DriveOutcome, ExecGraph, drive_from, simulate_path};
 pub use interpreter::{

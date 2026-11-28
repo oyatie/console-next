@@ -232,3 +232,6 @@ async fn periodic_access_reviews_freeze_grants_enforce_self_review_and_revoke_on
     assert!(csv_text.contains("REVOKE"));
     assert!(csv_text.contains("KEEP"));
 }
+
+#[path = "access_reviews_api/scope_evidence.rs"]
+mod scope_evidence;

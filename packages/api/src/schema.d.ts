@@ -16373,6 +16373,8 @@ export interface components {
             role_name_ko: string;
             scope_kind: string;
             scope_label: string;
+            scope_node_id?: components["schemas"]["Uuid"];
+            scope_include_descendants?: boolean;
             valid_from: components["schemas"]["Timestamp"];
             valid_to?: components["schemas"]["Timestamp"];
             last_used_at?: components["schemas"]["Timestamp"];
@@ -31223,6 +31225,8 @@ export interface components {
         };
         SubmittableDefinitionListResponse: {
             items: components["schemas"]["SubmittableDefinitionResponse"][];
+            /** @description Assignable group-inbox roles for optional approval decisions. */
+            reviewer_role_keys?: string[];
         };
         /** @description An ACTIVE workflow definition the caller may start from the draft template gallery. Carries only the metadata definitions actually hold; active_version is the version a start binds to. */
         SubmittableDefinitionResponse: {

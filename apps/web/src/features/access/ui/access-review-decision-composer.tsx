@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { reviewScopeText } from "../present";
 import { useState } from "react";
 import { isMessageId, t } from "@console/i18n";
 import { useCommand } from "../../../lib/react/command";
@@ -79,7 +80,7 @@ export function AccessReviewDecisionComposer({
           density="dense"
           items={[
             { key: "role", label: t("accessReview.role"), value: item.role_name_ko },
-            { key: "scope", label: t("accessReview.scope"), value: item.scope_label },
+            { key: "scope", label: t("accessReview.scope"), value: reviewScopeText(item) },
           ]}
         />
         <ChoiceField

@@ -20,7 +20,7 @@ use console_workflow_domain::{
 };
 use console_workflow_runtime::{
     AuditContext, ExecGraph, FinalizeMode, FinalizePolicyOutcome, NodeKind, StartRunRequest,
-    WAITING_COMPLETION_DOMAIN, build_guard_request, drive_from, guard, start_run,
+    WAITING_COMPLETION_DOMAIN, build_guard_request, drive_from, guard, start_run_with_definition,
     workflow_coexistence_entry,
 };
 use console_workflow_runtime_adapter_postgres::{
@@ -37,9 +37,12 @@ use uuid::Uuid;
 
 #[path = "workflow_studio/approval_line_override.rs"]
 mod approval_line_override;
+#[path = "workflow_studio/submittable.rs"]
+mod submittable;
 use approval_line_override::{
     ApprovalLineOverrideStep, apply_approval_line_overrides, resolve_start_definition,
 };
+use submittable::{SubmittableDefinitionListResponse, SubmittableDefinitionResponse};
 
 pub const WORKFLOW_STUDIO_CATALOG_PATH: &str = "/api/v1/workflow-studio/catalog";
 pub const WORKFLOW_STUDIO_DEFINITIONS_PATH: &str = "/api/v1/workflow-studio/definitions";
@@ -1668,10 +1671,16 @@ async fn start_workflow_run(
     // legitimate approval payload; over that is a 422.
     check_payload_size("input_payload", &request.input_payload)?;
     check_payload_size("context_payload", &request.context_payload)?;
+    if !request.approval_line_overrides.is_empty() {
+        check_payload_size(
+            "approval_line_overrides",
+            &json!(&request.approval_line_overrides),
+        )?;
+    }
 
     let org = principal.org_id;
     let store = PgWorkflowRuntimeStore::new(state.pool.clone());
-    let (version, mut definition, allow_override) = resolve_start_definition(
+    let (version, mut definition, allow_override, required_line) = resolve_start_definition(
         &state.pool,
         org,
         request.definition_id,
@@ -1683,7 +1692,7 @@ async fn start_workflow_run(
         &mut definition,
         &mut context_payload,
         allow_override,
-        false,
+        required_line,
         &request.approval_line_overrides,
     )?;
     check_payload_size("context_payload", &context_payload)?;
@@ -1748,7 +1757,7 @@ async fn start_workflow_run(
         occurred_at: OffsetDateTime::now_utc(),
     };
 
-    let started = start_run(
+    let started = start_run_with_definition(
         &store,
         StartRunRequest {
             run_id,
@@ -1766,6 +1775,7 @@ async fn start_workflow_run(
             initiated_by: Some(principal.user_id),
             schedule_id: None,
         },
+        (!request.approval_line_overrides.is_empty()).then_some(definition),
         &audit,
     )
     .await;
@@ -2759,28 +2769,6 @@ async fn list_definitions_by_object_kind(
     }))
 }
 
-#[derive(Debug, Serialize)]
-struct SubmittableDefinitionListResponse {
-    items: Vec<SubmittableDefinitionResponse>,
-}
-
-/// A workflow definition the caller may START from the draft template gallery.
-/// Carries only the metadata definitions actually hold — no invented
-/// icon/desc/tone (those are frontend presentation keyed off `workflow_key` /
-/// `object_type`). `active_version` is the version a `POST /workflow-runs` start
-/// binds to.
-#[derive(Debug, Serialize)]
-struct SubmittableDefinitionResponse {
-    id: Uuid,
-    workflow_key: String,
-    display_name: String,
-    object_type: String,
-    active_version: i32,
-    required_approval_line: bool,
-    required_payment_line: bool,
-    allow_approval_line_override: bool,
-}
-
 /// Raw ACTIVE-definition row + its active-version graph, before the start-authority
 /// filter is applied in Rust.
 struct SubmittableCandidate {
@@ -2793,21 +2781,6 @@ struct SubmittableCandidate {
     required_approval_line: bool,
     required_payment_line: bool,
     allow_approval_line_override: bool,
-}
-
-impl From<SubmittableCandidate> for SubmittableDefinitionResponse {
-    fn from(c: SubmittableCandidate) -> Self {
-        Self {
-            id: c.id,
-            workflow_key: c.workflow_key,
-            display_name: c.display_name,
-            object_type: c.object_type,
-            active_version: c.active_version,
-            required_approval_line: c.required_approval_line,
-            required_payment_line: c.required_payment_line,
-            allow_approval_line_override: c.allow_approval_line_override,
-        }
-    }
 }
 
 /// `GET /api/v1/workflow-studio/submittable-definitions` — the all-employee draft
@@ -2882,7 +2855,7 @@ async fn list_submittable_definitions(
         .map(SubmittableDefinitionResponse::from)
         .collect();
     record_workflow_studio_request("submittable_definitions", "success");
-    Ok(Json(SubmittableDefinitionListResponse { items }))
+    Ok(Json(SubmittableDefinitionListResponse::new(items)))
 }
 
 /// Read-only mirror of `start_workflow_run`'s start authority (no shadow-audit

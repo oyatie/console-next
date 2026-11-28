@@ -23,6 +23,7 @@ for (const width of [1440, 390] as const) {
     await mockRoute(page, "get", "/api/v1/workflow-studio/submittable-definitions", {
       status: 200,
       json: {
+        reviewer_role_keys: ["executive", "hr_reviewer"],
         items: [
           {
             id: id(401),
@@ -67,7 +68,8 @@ for (const width of [1440, 390] as const) {
       await main.getByLabel(new RegExp(t("approvals.new.subject"))).fill("Equipment purchase request");
       await main.getByLabel(new RegExp(t("approvals.new.reason"))).fill("Replace worn inspection gauge");
       await main.getByRole("button", { name: t("approvals.new.addStep"), exact: true }).click();
-      await main.getByLabel(new RegExp(t("approvals.new.stepRole"))).fill("FINANCE_REVIEWER");
+      await main.getByRole("button", { name: new RegExp(t("approvals.new.stepRole")) }).click();
+      await page.getByRole("option", { name: "executive", exact: true }).click();
 
       for (const theme of ["light", "dark"] as const) {
         await page.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
@@ -81,7 +83,7 @@ for (const width of [1440, 390] as const) {
       expect(starts[0]).toMatchObject({
         definition_id: id(401),
         trigger_type: "MANUAL",
-        approval_line_overrides: [{ assignee_role_key: "FINANCE_REVIEWER" }],
+        approval_line_overrides: [{ assignee_role_key: "executive" }],
       });
       expect(fixture.unexpected).toEqual([]);
     } finally {
