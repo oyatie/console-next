@@ -4,6 +4,8 @@ Snapshot on 2026-11-28. PR 930 was open at `aa58f9ae0d60b5fdf5696ec5a66d5f056c52
 
 PR 931 merged into dev at `d27db78437` on November 28, 2026. All six automatic push workflows passed on that revision, including the four PostgreSQL shards and their reconciliation. [Database run](https://github.com/oyatie/console-next/actions/runs/46144110892)
 
+The promotion run for `d27db78437` published the preview revision. The production job recorded `PROMOTE_SUITES` and declined publication because its database run was still in progress and its full-browser and route-load runs were missing. The production channel subsequently resolved to `992ca2db93`. [Promotion run](https://github.com/oyatie/console-next/actions/runs/46147298574)
+
 ## Coverage
 
 The supplied local board export has SHA-256 `3e8cd3ad65f3c7d83c81b6546f213f60055ec861b5452561dc91cf4a134caceb`. Git does not track that HTML at the reviewed PR revision. Its embedded records contain 373 entries and 161 distinct board definitions. Of the 296 non-deferred entries, 12 carry the “Approved board” label, 171 “Proposed board”, 10 “Layout brief”, 6 “State proposal” and 97 “Shared view”. The other 77 are marked “Deferred”.
