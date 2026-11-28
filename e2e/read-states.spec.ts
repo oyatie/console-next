@@ -67,7 +67,9 @@ test.describe("route requirements with a real grantless account", () => {
       for (const read of reads) {
       const endpoint = read.replace(/\$[^/]+/g, record).replace("/api/v1", "");
       const query = new URLSearchParams(readQuery(read, record));
-      const response = await apiOf(reader, token)(`${endpoint}${query.size ? `?${query}` : ""}`);
+      const response = read === "/api/v1/analytics/projection"
+        ? await apiOf(reader, token)(endpoint, "POST", { kind: "money", series: [100, 100, 100], horizon: 1 }, { "Idempotency-Key": randomUUID() })
+        : await apiOf(reader, token)(`${endpoint}${query.size ? `?${query}` : ""}`);
       expect(response.status(), read).toBe(403);
       expect((await response.json()).error.code).toBeTruthy();
       }
@@ -88,7 +90,7 @@ test.describe("route requirements with a real grantless account", () => {
           const required = "allOf" in need ? need.allOf : [need];
           for (const entry of required) {
             if ("servedCapability" in entry) {
-              expect(permission).toContain(ko["audit.vault.permission"]);
+              expect(permission).toContain(ko[entry.servedCapability === "documents" ? "audit.vault.permission" : "payrollOutlook.permission"]);
               continue;
             }
             if ("action" in entry) {

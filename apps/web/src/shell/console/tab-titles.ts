@@ -59,6 +59,7 @@ const STATIC_ROUTES: Readonly<Record<string, () => string>> = {
   "/payroll": () => t("shell.link.payroll"),
   "/payroll/runs/new": () => t("shellRoutes.payrollRunNew"),
   "/payroll/setup": () => t("shellRoutes.payrollSetup"),
+  "/payroll/outlook": () => t("payrollOutlook.title"),
   "/payroll/reference": () => t("shellRoutes.payrollReference"),
   "/access": () => t("shellRoutes.accessRoles"),
   "/access/roles": () => t("shellRoutes.accessRoles"),

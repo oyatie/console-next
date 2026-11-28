@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
+import type { enPayrollOutlook } from "../en/payroll-outlook";
+export const koPayrollOutlook: Record<keyof typeof enPayrollOutlook, string> = {
+  "payrollOutlook.title": "급여 전망",
+  "payrollOutlook.permission": "분석 예측 조회 권한이 필요합니다.",
+  "payrollOutlook.history": "과거 급여 총액(원)",
+  "payrollOutlook.historyHint": "같은 간격의 기간별 총액을 오래된 순서대로 한 줄에 하나씩 입력하십시오.",
+  "payrollOutlook.historyInvalid": "0보다 큰 원 단위 정수 금액을 한 줄에 하나씩 세 개 이상 입력하십시오.",
+  "payrollOutlook.horizon": "예측 기간 수",
+  "payrollOutlook.stepsHint": "과거 급여 총액과 같은 기간 단위를 사용합니다.",
+  "payrollOutlook.stepsInvalid": "1부터 3,650 사이의 정수를 입력하십시오.",
+  "payrollOutlook.calculate": "전망 계산",
+  "payrollOutlook.empty": "계산한 전망이 없습니다",
+  "payrollOutlook.emptyHint": "입력한 급여 총액으로 예측 결과를 계산합니다.",
+  "payrollOutlook.result": "예측 결과",
+  "payrollOutlook.resultAt": "{count}개 기간 후 예측",
+  "payrollOutlook.point": "중앙 추정값",
+  "payrollOutlook.low": "95% 구간 하한",
+  "payrollOutlook.high": "95% 구간 상한",
+  "payrollOutlook.tail": "하위 5% 결과의 평균 추정값",
+  "payrollOutlook.assumptions": "모형 가정",
+  "payrollOutlook.simulations": "모의 경로 수",
+  "payrollOutlook.drift": "기간당 평균 변동률",
+  "payrollOutlook.volatility": "지수가중 이동평균 변동성",
+  "payrollOutlook.nu": "스튜던트 t 분포 자유도",
+};

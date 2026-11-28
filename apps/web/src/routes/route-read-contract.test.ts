@@ -33,7 +33,7 @@ test("the table covers every guarded leaf; hubs compose only those leaf requirem
 test("served route reads use their own capability projection before the declared API reads", () => {
   for (const [path, contract] of Object.entries(servedRouteReads)) {
     expect(routes[path]?.options.staticData?.access).toEqual(contract.access);
-    for (const read of contract.reads) expect(spec.paths[read]?.get).toBeDefined();
+    for (const read of contract.reads) expect(spec.paths[read]?.["method" in contract ? contract.method : "get"]).toBeDefined();
   }
 });
 

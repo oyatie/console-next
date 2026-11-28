@@ -154,7 +154,11 @@ pub(crate) fn me_authz_projection(principal: &Principal) -> MeAuthzResponse {
 }
 
 /// Served module capabilities inherit their owning Cedar permission.
-pub(crate) fn served_authz_projection(principal: &Principal, documents: bool) -> MeAuthzResponse {
+pub(crate) fn served_authz_projection(
+    principal: &Principal,
+    documents: bool,
+    analytics_projection: bool,
+) -> MeAuthzResponse {
     let mut response = me_authz_projection(principal);
     if documents
         && let Some(cap) = response
@@ -165,6 +169,19 @@ pub(crate) fn served_authz_projection(principal: &Principal, documents: bool) ->
     {
         response.capabilities.push(MeAuthzCapability {
             feature: "documents".to_owned(),
+            ..cap
+        });
+    }
+    // The mounted calculator supplies its own decision for this principal.
+    if analytics_projection
+        && let Some(cap) = response
+            .capabilities
+            .iter()
+            .find(|cap| cap.feature == Feature::KpiRead.as_str())
+            .cloned()
+    {
+        response.capabilities.push(MeAuthzCapability {
+            feature: "analytics_projection".to_owned(),
             ..cap
         });
     }
@@ -194,7 +211,7 @@ mod me_authz_org_wide_tests {
             BranchScope::All,
         );
         let contains = |p: &Principal, served| {
-            served_authz_projection(p, served)
+            served_authz_projection(p, served, false)
                 .capabilities
                 .iter()
                 .any(|cap| cap.feature == "documents")

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { get } from "../../lib/query";
+import { get, read } from "../../lib/query";
 import { api, unwrap, type components } from "@console/api";
 import type { operations } from "@console/api/schema";
 export { payGroupSchemas } from "@console/api/pay-group-schema";
@@ -87,3 +87,17 @@ export const issuePayrollPayslips = (id: string) =>
 
 export const payrollPayslipDeliveryQuery = (id: string, query?: { limit?: number; offset?: number }) =>
   ({ ...get("/api/v1/payroll/runs/{id}/payslip-delivery", { params: { path: { id }, query } }), retry: false });
+
+export type PayrollScenario = { series: number[]; horizon: number };
+export type Projection = components["schemas"]["ProjectionResult"];
+
+const projectPayroll = (request: PayrollScenario) => unwrap(api.POST("/api/v1/analytics/projection", { body: { ...request, kind: "money" } }));
+
+/** An opaque per-submit key keeps entered payroll amounts out of query keys and separates overlapping scenarios. */
+export const payrollProjectionQuery = (submitted: { key: string; request: PayrollScenario } | null) => ({
+  ...read("/api/v1/analytics/projection", async () => {
+    if (!submitted) throw new Error("No payroll scenario submitted");
+    return projectPayroll(submitted.request);
+  }, submitted?.key),
+  enabled: submitted !== null, retry: false, gcTime: 0, staleTime: Infinity,
+});
