@@ -38,6 +38,7 @@ import { enAccessGrants } from "./en/access-grants";
 import { enAccount } from "./en/account";
 import { enPeriodLocks } from "./en/period-locks";
 import { enAttendance } from "./en/attendance";
+import { enAttendanceRefusals } from "./en/attendance.refuse";
 import { enAttendanceSchedule } from "./en/attendance-schedule";
 import { enAttendancePatterns } from "./en/attendance-patterns";
 import { enAttendanceHolidays } from "./en/attendance-holidays";
@@ -170,6 +171,7 @@ export const en = {
   ...enAccount,
   ...enPeriodLocks,
   ...enAttendance,
+  ...enAttendanceRefusals,
   ...enAttendanceSchedule,
   ...enAttendancePatterns,
   ...enAttendanceHolidays,

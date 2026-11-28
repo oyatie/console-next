@@ -1,5 +1,4 @@
 export const enAttendance = {
-  "attendance.refuse.missing_grant": "Attendance was not recorded because you lack attendance write permission. Ask an access administrator for permission covering the affected employees.",
   "attendance.period.label": "Period navigation",
   "attendance.period.thisMonth": "This month",
   "attendance.period.thisWeek": "This week",
