@@ -2,7 +2,7 @@
 # Shrink-only: regenerate with `cargo run -p console-gate-file-size -- --write-baseline`.
 app/src/cedar_parity.rs	313
 app/src/collaboration.rs	1499
-app/src/hr.rs	3085
+app/src/hr.rs	2898
 app/src/hr/attendance_import_resolve.rs	328
 app/src/objects.rs	2007
 app/src/office.rs	885
@@ -20,7 +20,6 @@ app/tests/cedar_freshness_mint.rs	375
 app/tests/cedar_shadow_role_manage.rs	304
 app/tests/compliance_api.rs	520
 app/tests/compliance_catalog_api.rs	310
-app/tests/console_kill_switch.rs	304
 app/tests/console_route_telemetry.rs	312
 app/tests/consulting_engagement_api.rs	1079
 app/tests/current_authority.rs	729
@@ -64,8 +63,8 @@ ci/gates/layer-boundary/src/lib.rs	431
 ci/gates/layer-boundary/tests/gate_detects_violation.rs	948
 ci/gates/migration-safety/src/lib.rs	347
 ci/gates/migration-safety/tests/gate_detects_violation.rs	372
-ci/gates/personal-data-classification/src/lib.rs	1255
-ci/gates/personal-data-classification/tests/gate_detects_violation.rs	1364
+ci/gates/personal-data-classification/src/lib.rs	1245
+ci/gates/personal-data-classification/tests/gate_detects_violation.rs	1304
 ci/gates/pii-no-logs/src/lib.rs	399
 ci/gates/tenant-isolation/src/lib.rs	779
 ci/gates/writer-ownership/src/lib.rs	748
@@ -190,11 +189,10 @@ crates/ontology/rest/tests/object_type_lifecycle_over_http.rs	652
 crates/ontology/rest/tests/ont_gaps_as_runtime_role.rs	417
 crates/ontology/rest/tests/projected_dispatch_as_runtime_role.rs	563
 crates/orgchange/adapter-postgres/tests/preflight_persists_nothing.rs	408
-crates/payroll/adapter-postgres/src/lifecycle.rs	816
+crates/payroll/adapter-postgres/src/lifecycle.rs	712
 crates/payroll/adapter-postgres/src/pay_run.rs	485
 crates/payroll/adapter-postgres/tests/pay_run_port_as_runtime_role.rs	1190
 crates/payroll/adapter-postgres/tests/payroll_lifecycle_rls_as_runtime_role.rs	417
-crates/payroll/adapter-postgres/tests/payroll_rls_surfaces_as_runtime_role.rs	373
 crates/payroll/domain/src/lib.rs	1191
 crates/payroll/rest/src/lifecycle.rs	544
 crates/payroll/rest/src/payslip_draft.rs	370

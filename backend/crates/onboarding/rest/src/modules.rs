@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use super::*;
 
+/// Personal task routes linked into the running API binary. Each route still enforces its own permissions.
+#[derive(Clone, Copy, Default)]
+pub struct PersonalTaskRoutes {
+    pub location: bool,
+    pub dispatch: bool,
+    pub workspace: bool,
+}
+
 pub(super) async fn get(
     State(s): State<OnboardingRestState>,
     h: HeaderMap,
