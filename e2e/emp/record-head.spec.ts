@@ -61,3 +61,20 @@ test("the card head links the 법인 and 사업장, invites an account and keeps
   await links.nth(0).click();
   await expect(admin).toHaveURL(/\/org\/entities\/[^/?]+$/);
 });
+
+test("a late unit position keeps the employee's record actions in place", { tag: ["@regression", "@hr"] }, async ({ browser }) => {
+  const { admin } = await staffedTenant(browser, "cardpos", "자료");
+  // Both the record actions and employee switcher fit on a single line at this width.
+  await admin.setViewportSize({ width: 1440, height: 900 });
+  await registerEmployee(admin, { name: "머리글", number: "CP-0001", unit: "채용팀" });
+  const employeePath = new URL(admin.url()).pathname.replace("/people/", "/api/v1/employees/");
+  const unitPosition = await holdRead(admin, `**${employeePath}/unit-position`);
+  await admin.reload();
+  await unitPosition.requested;
+  const actions = admin.getByRole("group", { name: "인사카드 동작" });
+  await expect(actions).toBeVisible();
+  const bounds = await actions.boundingBox();
+  await unitPosition.release();
+  await expect(admin.getByRole("button", { name: "이전 사람", exact: true })).toBeVisible();
+  expect(await actions.boundingBox()).toEqual(bounds);
+});

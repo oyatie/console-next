@@ -102,7 +102,7 @@ export function CardConsoleNotes({
         </div>
         <EmployeePayLink employeeId={e.id} />
         {e.status !== "EXITED" && (c.readable || c.users) ? (
-          <div className="row">
+          <div className="row" role="group" aria-label={t("person.record.actions")}>
             {c.readable ? <EndActions id={e.id} onAct={open} onOpenCase={() => (onTab("card"), focusSoon("exit"))} /> : null}
             {c.users && eligibleInvite ? (
               <Button
