@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct IdentityRestState {
-    pub(crate) integrity_served: bool,
+    pub(crate) integrity_access: fn(&console_platform_authz::Principal) -> (bool, bool),
     pub(crate) documents_served: bool,
     pub(crate) store: PgOrgStore,
     pub(crate) tenant_facts: Arc<dyn TenantFactsRead>,
@@ -27,7 +27,7 @@ impl IdentityRestState {
     ) -> Self {
         Self {
             documents_served: false,
-            integrity_served: false,
+            integrity_access: |_| (false, false),
             store,
             tenant_facts: Arc::new(tenant_facts),
             jwt_verifier,
@@ -48,8 +48,11 @@ impl IdentityRestState {
     }
 
     #[must_use]
-    pub fn with_integrity_served(mut self, served: bool) -> Self {
-        self.integrity_served = served;
+    pub fn with_integrity_access(
+        mut self,
+        access: fn(&console_platform_authz::Principal) -> (bool, bool),
+    ) -> Self {
+        self.integrity_access = access;
         self
     }
 

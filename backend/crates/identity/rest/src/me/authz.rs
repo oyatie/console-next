@@ -3,7 +3,6 @@ use console_platform_authz::Action;
 use console_platform_authz::Feature;
 use console_platform_authz::PermissionLevel;
 use console_platform_authz::Principal;
-use console_platform_authz::authorize_capability;
 use console_platform_authz::authorize_org_wide;
 use console_platform_authz::permission_for;
 use serde::Serialize;
@@ -158,7 +157,7 @@ pub(crate) fn me_authz_projection(principal: &Principal) -> MeAuthzResponse {
 pub(crate) fn served_authz_projection(
     principal: &Principal,
     documents: bool,
-    integrity: bool,
+    (read_findings, triage_findings): (bool, bool),
 ) -> MeAuthzResponse {
     let mut response = me_authz_projection(principal);
     if documents
@@ -173,23 +172,29 @@ pub(crate) fn served_authz_projection(
             ..cap
         });
     }
-    if integrity {
-        for (feature, name) in [
-            (Feature::IntegrityFindingsRead, "served_integrity_findings"),
-            (Feature::IntegrityFindingTriage, "served_integrity_triage"),
-        ] {
-            if authorize_capability(principal, Action::new(feature)).is_ok()
-                && let Some(cap) = response
-                    .capabilities
-                    .iter()
-                    .find(|cap| cap.feature == feature.as_str())
-                    .cloned()
-            {
-                response.capabilities.push(MeAuthzCapability {
-                    feature: name.to_owned(),
-                    ..cap
-                });
-            }
+    for (feature, name, allowed) in [
+        (
+            Feature::IntegrityFindingsRead,
+            "served_integrity_findings",
+            read_findings,
+        ),
+        (
+            Feature::IntegrityFindingTriage,
+            "served_integrity_triage",
+            triage_findings,
+        ),
+    ] {
+        if allowed
+            && let Some(cap) = response
+                .capabilities
+                .iter()
+                .find(|cap| cap.feature == feature.as_str())
+                .cloned()
+        {
+            response.capabilities.push(MeAuthzCapability {
+                feature: name.to_owned(),
+                ..cap
+            });
         }
     }
     response
@@ -218,7 +223,7 @@ mod me_authz_org_wide_tests {
             BranchScope::All,
         );
         let contains = |p: &Principal, served| {
-            served_authz_projection(p, served, false)
+            served_authz_projection(p, served, (false, false))
                 .capabilities
                 .iter()
                 .any(|cap| cap.feature == "documents")
