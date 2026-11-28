@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { dirname, resolve } from "node:path";
 import { readFileSync, realpathSync } from "node:fs";
-import { afterAll, afterEach, beforeAll, beforeEach, test } from "vitest";
+import { afterAll, beforeAll, beforeEach, test } from "vitest";
 import { expect } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 import { browserEngine, browserTestOptimizeDeps, openBrowserTestPage, type Browser, type Page } from "../../lib/browser-test";
@@ -14,6 +14,7 @@ const PREFS_JS = readFileSync(new URL("../../../public/prefs.js", import.meta.ur
 let server: ViteDevServer;
 let browser: Browser;
 let page: Page;
+let resetStorageOnBoot = true;
 let workspaceLayout: Record<string, unknown> = { tabs: ["/people"] };
 let tenantStyle: "console" | "baseline" | "warm-clear" = "console";
 let writes: Record<string, unknown>[] = [];
@@ -89,14 +90,16 @@ beforeAll(async () => {
   });
   await server.listen();
   browser = await browserEngine().launch();
-}, 60_000);
-
-beforeEach(async () => {
   page = await browser.newPage();
-  await page.route("**/prefs.js", route => route.fulfill({
-    contentType: "application/javascript",
-    body: `${PREFS_JS}\nwindow.experienceAtBoot = document.documentElement.dataset.experience ?? null;`,
-  }));
+  await page.route("**/prefs.js", route => {
+    // Start each case on a fresh device. Reloads within the same case must see its saved preference.
+    const reset = resetStorageOnBoot ? "localStorage.clear(); sessionStorage.clear();" : "";
+    resetStorageOnBoot = false;
+    return route.fulfill({
+      contentType: "application/javascript",
+      body: `${reset}\n${PREFS_JS}\nwindow.experienceAtBoot = document.documentElement.dataset.experience ?? null;`,
+    });
+  });
   await page.route("**/experience-switch-test", route => route.fulfill({
     contentType: "text/html",
     body: '<html lang="ko"><head><title>Experience</title><script src="/prefs.js"></script></head><body><div id="root"></div><script type="module" src="/experience-switch-test.js"></script></body></html>',
@@ -132,8 +135,8 @@ beforeEach(async () => {
   }));
 }, 60_000);
 
-afterEach(async () => { await page?.close(); });
-afterAll(async () => { await browser?.close(); await server?.close(); });
+beforeEach(() => { resetStorageOnBoot = true; });
+afterAll(async () => { await page?.close(); await browser?.close(); await server?.close(); });
 
 test("style choice switches in place without reloading, saves personal override, and reverts to organization default", async () => {
   workspaceLayout = { tabs: ["/people"] };
