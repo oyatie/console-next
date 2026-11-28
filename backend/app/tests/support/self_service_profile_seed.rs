@@ -11,6 +11,7 @@ pub(crate) struct SeededProfileFixture {
     pub(crate) org_a: OrgId,
     pub(crate) org_b: OrgId,
     pub(crate) entity_a: Uuid,
+    pub(crate) unit_a: Uuid,
     pub(crate) emp_a: Uuid,
     pub(crate) user_a: UserId,
     pub(crate) user_b: UserId,
@@ -66,9 +67,16 @@ pub(crate) async fn seed_profile_fixture(
         .bind(org_a.as_uuid()).bind(wp_a).bind(entity_a).bind(br_a).execute(pool).await.unwrap();
     sqlx::query("INSERT INTO job_titles (id, org_id, kind, label, grade_rank, active, created_by) VALUES ($1, $2, 'GRADE', 'Senior', 30, TRUE, $3)")
         .bind(grade_id).bind(org_a.as_uuid()).bind(admin_a.as_uuid()).execute(pool).await.unwrap();
+    let unit_a = Uuid::new_v4();
+    sqlx::query("INSERT INTO org_units (org_id,id) VALUES ($1,$2)")
+        .bind(org_a.as_uuid())
+        .bind(unit_a)
+        .execute(pool)
+        .await
+        .unwrap();
     for (org, eid, name) in [(org_a, emp_a, "Hong"), (org_b, emp_b, "OutsiderEmp")] {
-        sqlx::query("INSERT INTO employees (id, org_id, company, name, position, employee_number, hire_date, hire_on, grade_id, employment_status, source_filename, source_sheet, source_row, source_key) VALUES ($1, $2, 'Co', $3, 'Engineer', 'E-001', '2024-03-01', '2024-03-01', $4, 'ACTIVE', 'f', 's', 1, $1::text)")
-            .bind(eid).bind(org.as_uuid()).bind(name).bind((org == org_a).then_some(grade_id)).execute(pool).await.unwrap();
+        sqlx::query("INSERT INTO employees (id, org_id, company, name, position, employee_number, hire_date, hire_on, grade_id, org_unit_id, employment_status, source_filename, source_sheet, source_row, source_key) VALUES ($1, $2, 'Co', $3, 'Engineer', 'E-001', '2024-03-01', '2024-03-01', $4, $5, 'ACTIVE', 'f', 's', 1, $1::text)")
+            .bind(eid).bind(org.as_uuid()).bind(name).bind((org == org_a).then_some(grade_id)).bind((org == org_a).then_some(unit_a)).execute(pool).await.unwrap();
     }
     sqlx::query("INSERT INTO employment_assignments (org_id, employee_id, legal_entity_id, workplace_id, valid_from, cause, actor_id, command_id) VALUES ($1, $2, $3, $4, '2024-03-01', 'HIRE', $5, gen_random_uuid())")
         .bind(org_a.as_uuid()).bind(emp_a).bind(entity_a).bind(wp_a).bind(admin_a.as_uuid()).execute(pool).await.unwrap();
@@ -102,6 +110,7 @@ pub(crate) async fn seed_profile_fixture(
         org_a,
         org_b,
         entity_a,
+        unit_a,
         emp_a,
         user_a,
         user_b,

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { getRouteApi, Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
 import { announce } from "../../../lib/react/announce";
@@ -25,6 +25,12 @@ import {
   type DispatchResponseKind,
   type MyDispatchOffer,
 } from "../api/dispatch-offers";
+
+const route = getRouteApi("/app/me/dispatch-offers");
+
+function UnavailableOffer() {
+  return <div role="status"><EmptyState title={t("me.dispatch.unavailable")} reason={null} compact /></div>;
+}
 
 function DispatchOfferDetail({
   offer,
@@ -53,8 +59,8 @@ function DispatchOfferDetail({
             label: t("me.dispatch.col.windowEnd"),
             value: <time dateTime={offer.accept_window_ends_at}>{fmtDateTime(offer.accept_window_ends_at)}</time>,
           },
-          { key: "wo", label: t("me.dispatch.workOrder"), value: <code className="code">{offer.work_order_id}</code> },
-          { key: "branch", label: t("me.dispatch.branch"), value: <code className="code">{offer.branch_id}</code> },
+          { key: "site", label: t("me.dispatch.site"), value: offer.site_name },
+          { key: "symptom", label: t("me.dispatch.symptom"), value: offer.symptom },
         ]}
       />
       <CommandError error={error} />
@@ -74,7 +80,8 @@ function ConsoleDispatchOffersPage() {
   const offersQ = useQuery(myDispatchOffersQuery);
   const isDesktop = useIsDesktop();
   const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState<string | undefined>();
+  const { sel: selectedId } = route.useSearch();
+  const navigate = route.useNavigate();
   const [dismissed, setDismissed] = useState(false);
 
   const allItems = offersQ.data?.items ?? [];
@@ -82,29 +89,25 @@ function ConsoleDispatchOffersPage() {
   const visible = qNorm
     ? allItems.filter((item) => item.request_no.toLowerCase().includes(qNorm))
     : allItems;
-  const activeSel =
-    selectedId && visible.some((o) => o.dispatch_id === selectedId)
-      ? selectedId
-      : isDesktop && !dismissed
-        ? visible[0]?.dispatch_id
-        : undefined;
-  const selected = visible.find((o) => o.dispatch_id === activeSel);
+  const activeSel = selectedId ?? (isDesktop && !dismissed ? visible[0]?.dispatch_id : undefined);
+  const selected = visible.find(o => o.dispatch_id === activeSel);
+  const unavailable = Boolean(selectedId && offersQ.data && !allItems.some(o => o.dispatch_id === selectedId));
 
   const handleSelect = (id: string) => {
     setDismissed(false);
-    setSelectedId(id);
+    void navigate({ search: { sel: id } });
   };
 
   const handleClose = () => {
     setDismissed(true);
-    setSelectedId(undefined);
+    void navigate({ search: {}, replace: true });
   };
 
   const respondCmd = useCommand({
     run: (input: { id: string; kind: DispatchResponseKind }) => respondDispatchOffer(input.id, input.kind),
     invalidates: ["/api/v1/me/dispatch-offers", "/api/v1/me/action-inbox"],
     onSuccess: (_res, input) => {
-      setSelectedId(undefined);
+      handleClose();
       announce(t("me.dispatch.responded", { response: input.kind }));
     },
   });
@@ -149,6 +152,7 @@ function ConsoleDispatchOffersPage() {
           <WorklistSearchField label={t("me.dispatch.search")} value={search} onChange={setSearch} />
         </div>
       }
+      notes={unavailable ? <UnavailableOffer /> : undefined}
       list={() =>
         visible.length === 0 ? (
           <EmptyState title={t("me.dispatch.emptyTitle")} reason={t("me.dispatch.emptyReason")} />
@@ -188,21 +192,29 @@ function ConsoleDispatchOffersPage() {
 }
 
 function BaselineDispatchOffersPage() {
+  const { sel } = route.useSearch();
+  const navigate = route.useNavigate();
   const offersQ = useQuery(myDispatchOffersQuery);
   const respondCmd = useCommand({
     run: (input: { id: string; kind: DispatchResponseKind }) => respondDispatchOffer(input.id, input.kind),
-    invalidates: ["/api/v1/me/dispatch-offers"],
-    onSuccess: (_res, input) => announce(t("me.dispatch.responded", { response: input.kind })),
+    invalidates: ["/api/v1/me/dispatch-offers", "/api/v1/me/action-inbox"],
+    onSuccess: (_res, input) => {
+      if (sel) void navigate({ search: {}, replace: true });
+      announce(t("me.dispatch.responded", { response: input.kind }));
+    },
   });
   return (
     <main className="page" data-floorplan="P-03">
       <PageHead title={t("me.dispatch.title")} />
+      {sel && <Link to="/me/dispatch-offers" search={{}}>{t("me.dispatch.link")}</Link>}
       <QueryState q={offersQ} layout="list">
         {(data) =>
-          data.items.length === 0 ? (
+          sel && !data.items.some(offer => offer.dispatch_id === sel) ? (
+            <UnavailableOffer />
+          ) : data.items.length === 0 ? (
             <EmptyState title={t("me.dispatch.emptyTitle")} reason={t("me.dispatch.emptyReason")} />
           ) : (
-            data.items.map((offer) => (
+            data.items.filter(offer => !sel || offer.dispatch_id === sel).map((offer) => (
               <Card key={offer.dispatch_id} title={offer.request_no}>
                 <DispatchOfferDetail
                   offer={offer}

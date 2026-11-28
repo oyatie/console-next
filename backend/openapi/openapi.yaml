@@ -8769,6 +8769,14 @@ paths:
         schema:
           type: string
         description: Case-insensitive name or employee-number typeahead query.
+      - name: team_review_required
+        in: query
+        schema: {type: boolean}
+        description: Select employees with a register gap, an identity review, or a missing employment type.
+      - name: contract_ending_on_or_after
+        in: query
+        schema: {type: string, format: date}
+        description: Inclusive lower bound for the current contract end date.
       - name: register_review_required
         in: query
         schema:
@@ -9183,6 +9191,14 @@ paths:
         schema:
           type: string
         description: Case-insensitive name or employee-number typeahead query.
+      - name: team_review_required
+        in: query
+        schema: {type: boolean}
+        description: Select employees with a register gap, an identity review, or a missing employment type.
+      - name: contract_ending_on_or_after
+        in: query
+        schema: {type: string, format: date}
+        description: Inclusive lower bound for the current contract end date.
       - name: register_review_required
         in: query
         schema:
@@ -9321,6 +9337,14 @@ paths:
         schema:
           type: string
         description: Case-insensitive name or employee-number typeahead query.
+      - name: team_review_required
+        in: query
+        schema: {type: boolean}
+        description: Select employees with a register gap, an identity review, or a missing employment type.
+      - name: contract_ending_on_or_after
+        in: query
+        schema: {type: string, format: date}
+        description: Inclusive lower bound for the current contract end date.
       - name: register_review_required
         in: query
         schema:
@@ -37776,7 +37800,7 @@ components:
       description: >-
         One server-ordered canonical source-object reference for an action-inbox
         item. Clients resolve only explicitly registered kind/id pairs; current
-        browser-linkable kinds are approval_run, work_order, and support_ticket.
+        registered kinds include approval_run, work_order, support_ticket, and dispatch_offer.
         Unknown kinds remain valid for forward compatibility and MUST stay inert
         until a client registry adds support. Clients MUST NOT accept a server URL
         or infer a destination from the enclosing item kind, item id, label, or a
@@ -37788,8 +37812,8 @@ components:
         kind:
           type: string
           description: >-
-            Canonical source-object kind. Current browser-linkable values are
-            approval_run, work_order, and support_ticket; other strings are
+            Canonical source-object kind. Registered values include
+            approval_run, work_order, support_ticket, and dispatch_offer; other strings are
             forward-compatible but inert.
         id:
           type: string
@@ -44302,6 +44326,10 @@ components:
       - $ref: '#/components/schemas/UserSummary'
       - type: object
         properties:
+          employee_org_unit_id:
+            type: [string, "null"]
+            format: uuid
+            description: Direct org unit of the linked employee when available.
           tenant:
             $ref: '#/components/schemas/UserTenant'
     CustodyEventView:
@@ -55392,6 +55420,8 @@ components:
       - work_order_id
       - branch_id
       - request_no
+      - site_name
+      - symptom
       - accept_window_started_at
       - accept_window_ends_at
       properties:
@@ -55402,6 +55432,10 @@ components:
         branch_id:
           $ref: '#/components/schemas/Uuid'
         request_no:
+          type: string
+        site_name:
+          type: string
+        symptom:
           type: string
         accept_window_started_at:
           $ref: '#/components/schemas/Timestamp'

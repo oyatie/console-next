@@ -22,6 +22,14 @@ parameters:
   schema:
     type: string
   description: Case-insensitive name or employee-number typeahead query.
+- name: team_review_required
+  in: query
+  schema: {type: boolean}
+  description: Select employees with a register gap, an identity review, or a missing employment type.
+- name: contract_ending_on_or_after
+  in: query
+  schema: {type: string, format: date}
+  description: Inclusive lower bound for the current contract end date.
 - name: register_review_required
   in: query
   schema:

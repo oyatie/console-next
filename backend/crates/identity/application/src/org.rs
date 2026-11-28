@@ -638,6 +638,7 @@ mod tests {
             employee_company: None,
             employee_org_unit: None,
             employee_position: None,
+            employee_org_unit_id: None,
             employee_hire_date: None,
             employee_employment_status: None,
             employee_grade: None,

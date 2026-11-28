@@ -8,6 +8,8 @@ required:
 - work_order_id
 - branch_id
 - request_no
+- site_name
+- symptom
 - accept_window_started_at
 - accept_window_ends_at
 properties:
@@ -18,6 +20,10 @@ properties:
   branch_id:
     $ref: '#/components/schemas/Uuid'
   request_no:
+    type: string
+  site_name:
+    type: string
+  symptom:
     type: string
   accept_window_started_at:
     $ref: '#/components/schemas/Timestamp'

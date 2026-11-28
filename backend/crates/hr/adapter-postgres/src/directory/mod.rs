@@ -26,6 +26,7 @@ pub mod read_detail;
 pub mod read_export;
 pub mod read_export_register;
 pub mod read_facets;
+mod read_filter_groups;
 pub mod read_filters;
 pub mod read_from;
 pub mod read_list;

@@ -132,7 +132,11 @@ pub fn counted_employees(select: &str, filters: &EmployeeListFilters) -> QueryBu
     if filters.home_branch_review_required.is_some() {
         builder.push(current_placement_join!());
     }
-    if filters.contract_ending_before.is_some() || filters.register_review_required.is_some() {
+    if filters.contract_ending_before.is_some()
+        || filters.contract_ending_on_or_after.is_some()
+        || filters.team_review_required.is_some()
+        || filters.register_review_required.is_some()
+    {
         builder.push(PROFILE_JOIN);
     }
     if filters.lifecycle_apply_failed.is_some() {
