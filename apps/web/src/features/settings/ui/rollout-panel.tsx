@@ -45,7 +45,7 @@ export function RolloutPanel() {
         enabled,
         ...(note.trim() ? { rollout_note: note.trim() } : {}),
       }),
-    invalidates: ["/api/v1/console/rollout"],
+    invalidates: ["/api/v1/console/rollout", "/api/v1/me/workspace"],
     awaitFirstRead: true,
     onSuccess: () => setNote(""),
   });

@@ -16,8 +16,7 @@ pub(crate) fn effective_grants_with_shift(
     oncall: Option<&OncallConfig>,
 ) -> Vec<Grant> {
     let mut effective_grants = base.to_vec();
-    if let Some(cfg) = oncall {
-        let shift = cfg.active_shift(now);
+    if let Some(shift) = oncall.and_then(|cfg| cfg.active_shift(now)) {
         let person_str = person.to_string();
         if shift.active_person.as_deref() == Some(person_str.as_str())
             && shift.shift_from <= now

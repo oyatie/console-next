@@ -299,7 +299,7 @@ pub(crate) fn run_summary_from_row(
         period_end: row.try_get("period_end")?,
         variable_period_start: row.try_get("variable_period_start")?,
         variable_period_end: row.try_get("variable_period_end")?,
-        attendance_cutoff_date: row.try_get("attendance_cutoff_date").ok().flatten(),
+        attendance_cutoff_date: row.try_get("attendance_cutoff_date")?,
         source_label: row.try_get("source_label")?,
         status: row.try_get("status")?,
         calculation_enabled: row.try_get("calculation_enabled")?,

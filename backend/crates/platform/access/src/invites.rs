@@ -80,9 +80,9 @@ pub struct CreateInviteIn {
     pub step_up: Option<StepUp>,
 }
 
-pub(crate) fn require_invite_authority(p: &Principal, actor: &Actor) -> AccessResult<()> {
+pub(crate) fn require_invite_authority(actor: &Actor) -> AccessResult<()> {
     let can_manage_users =
-        p.is_tenant_ops || actor.may(Domain::Access, Level::Edit, &actor.tenant());
+        actor.subject.is_ops || actor.may(Domain::Access, Level::Edit, &actor.tenant());
     if can_manage_users {
         Ok(())
     } else {
@@ -172,7 +172,7 @@ pub async fn preview(
     with_org_conn::<_, _, AccessError>(&s.pool, p.org_id, move |tx| {
         Box::pin(async move {
             let actor = Actor::load(tx, &p).await?;
-            require_invite_authority(&p, &actor)?;
+            require_invite_authority(&actor)?;
             let org = actor.org();
             validate_invite_target_tx(
                 tx,

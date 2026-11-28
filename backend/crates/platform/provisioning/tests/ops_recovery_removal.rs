@@ -5,7 +5,7 @@
 //! `recovery_contact_challenges` under `console_rt` (`FORCE RLS`).
 
 use console_kernel_core::{OrgId, UserId};
-use console_platform_email::DisabledEmailSender;
+use console_platform_email::{StubEmailMode, StubEmailSender};
 use console_platform_provisioning::ops_self_recovery::{
     RecoveryChannel, RecoveryContactCipher, generate_recovery_codes, issue_recovery_challenge,
     upsert_recovery_contact,
@@ -54,9 +54,16 @@ async fn guarded_tenant_removal_cascades_ops_holders_and_recovery_tables(owner: 
     .fetch_one(&owner)
     .await
     .unwrap();
-    issue_recovery_challenge(&rt, &store, &cipher, &DisabledEmailSender, &identifier, now)
-        .await
-        .unwrap();
+    issue_recovery_challenge(
+        &rt,
+        &store,
+        &cipher,
+        &StubEmailSender::new(StubEmailMode::Test),
+        &identifier,
+        now,
+    )
+    .await
+    .unwrap();
 
     let actor = console_platform_test_support::seed_active_user(
         &owner,

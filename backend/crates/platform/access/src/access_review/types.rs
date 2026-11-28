@@ -42,6 +42,10 @@ pub struct AccessReviewItemOut {
     pub role_name_ko: String,
     pub scope_kind: String,
     pub scope_label: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scope_node_id: Option<Uuid>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scope_include_descendants: Option<bool>,
     #[serde(with = "time::serde::rfc3339")]
     pub valid_from: OffsetDateTime,
     #[serde(

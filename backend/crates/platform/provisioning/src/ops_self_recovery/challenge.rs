@@ -103,7 +103,7 @@ pub async fn issue_recovery_challenge(
             debug_contact_code: None,
         });
     };
-    if login.is_empty() || slug.is_empty() {
+    if login.is_empty() || slug.is_empty() || !email_sender.can_send() {
         return Ok(RecoveryChallengeIssue {
             sent: true,
             expires_at,
@@ -132,6 +132,15 @@ pub async fn issue_recovery_challenge(
         org,
         move |tx| {
             Box::pin(async move {
+                let active_holder: Option<bool> = sqlx::query_scalar(
+                    "SELECT is_tenant_ops AND is_active FROM users WHERE org_id = $1 AND id = $2 FOR SHARE",
+                )
+                .bind(org.as_uuid())
+                .bind(user_id)
+                .fetch_optional(tx.as_mut()).await?;
+                if active_holder != Some(true) {
+                    return Ok((None, Vec::new()));
+                }
                 let summary = load_recovery_codes_summary_tx(tx, org, user_id).await?;
                 if summary.remaining <= 0 {
                     return Ok((None, Vec::new()));
@@ -141,6 +150,9 @@ pub async fn issue_recovery_challenge(
                 else {
                     return Ok((None, Vec::new()));
                 };
+                if channel != RecoveryChannel::Email {
+                    return Ok((None, Vec::new()));
+                }
                 let token = generate_bootstrap_token()?;
                 let code_str = token.as_str().to_owned();
                 let Some(challenge_hash) = hash_recovery_challenge(&hmac_key, &code_str) else {
@@ -174,26 +186,25 @@ pub async fn issue_recovery_challenge(
     )
     .await?;
 
-    let mut debug_code = None;
-    if let Some((channel, dest, code_str)) = prepared {
-        if channel == RecoveryChannel::Email && email_sender.can_send() {
-            let _ = email_sender
-                .send_otp(
-                    dest.expose_secret(),
-                    &code_str,
-                    std::time::Duration::from_secs(600),
-                )
-                .await;
-        }
-        #[cfg(any(test, debug_assertions))]
+    let debug_code = if let Some((_channel, dest, code)) = prepared {
+        match email_sender
+            .send_otp(
+                dest.expose_secret(),
+                &code,
+                std::time::Duration::from_secs(600),
+            )
+            .await
         {
-            debug_code = Some(code_str);
+            Ok(()) if cfg!(debug_assertions) => Some(code),
+            Ok(()) => None,
+            Err(_) => {
+                tracing::warn!("recovery challenge transport failed");
+                None
+            }
         }
-        #[cfg(not(any(test, debug_assertions)))]
-        {
-            let _ = code_str;
-        }
-    }
+    } else {
+        None
+    };
     Ok(RecoveryChallengeIssue {
         sent: true,
         expires_at,

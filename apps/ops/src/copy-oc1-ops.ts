@@ -42,7 +42,7 @@ export const COPY_OC1_OPS = {
     blockedReason: "Check deploy freeze, release gates, blocked signoffs and open P0/P1 feedback",
     watchingReason: "Awaiting a ready staging signoff for this candidate digest",
     unknownReason: "Candidate digest or staging status is unknown",
-    readyNote: "All 5 gates passed · deploy freeze clear · 0 open P0/P1 blockers",
+    readyNote: "Release gates passed · deploy freeze clear · 0 open P0/P1 blockers",
     signoffsTitle: "Staging signoffs",
     signoffBtn: "Record signoff",
     verdictLabel: "Verdict",

@@ -60,7 +60,7 @@ function taskStatusChip(r: FilingTask) {
   return <Chip>{t("statutory.pending")}</Chip>;
 }
 
-export function buildFilingColumns(onInspect: (id: string) => void): LongColumn<FilingTask>[] {
+export function buildFilingColumns(onInspect: (id: string) => void, state: "PENDING" | "DONE"): LongColumn<FilingTask>[] {
   return [
     {
       id: "employee",
@@ -112,14 +112,14 @@ export function buildFilingColumns(onInspect: (id: string) => void): LongColumn<
     {
       id: "deadline",
       header: t("statutory.deadline"),
-      card: "status",
+      card: state === "PENDING" ? "status" : "omit",
       minWidth: 140,
       cell: (r) => <DueCell days={r.due_in_days} fill />,
     },
     {
       id: "status",
       header: t("statutory.evidence"),
-      card: "omit",
+      card: state === "DONE" ? "status" : "omit",
       minWidth: 150,
       cell: (r) => <bdi className={s.nowrap}>{taskStatusChip(r)}</bdi>,
     },

@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { commitLabel } from "../apps/web/src/ui/composer/actions";
+import { loadCatalog, t } from "@console/i18n";
 import { expect, test, type Browser, type Page, type Request } from "@playwright/test";
 import { authenticatorOf, virtualAuthenticator } from "./auth";
 import { go, kstDate, newContext, passkeyLogin, registerEmployee } from "./flows";
@@ -167,4 +169,77 @@ test("a sheet holds a change made elsewhere to the record under it, and closing 
   await open.getByRole("button", { name: "닫기", exact: true }).last().click();
   await expect(open).toBeHidden();
   await expect(exitPanel(b.page)).toContainText("보고됨", { timeout: 15_000 });
+});
+
+test("a tenant emergency switch reaches a second signed-in console and preserves its unsaved work and style", { tag: "@live" }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  await loadCatalog("ko");
+  const admin = await openTenant(browser, "style-live", "Display Style Company");
+  const { page: reader } = await sameUserElsewhere(browser, admin);
+  await go(reader, "/account");
+  await go(admin, "/account");
+  const chooser = (page: Page) => page.getByRole("combobox", { name: t("account.experience"), exact: true });
+  await go(admin, "/settings?section=rollout");
+  await admin.getByRole("button", { name: t("settingsHub.experience.change"), exact: true }).click();
+  const defaultSheet = admin.getByRole("dialog", { name: t("settingsHub.experience.sheetTitle"), exact: true });
+  await defaultSheet.getByText(t("account.experience.baseline"), { exact: true }).click();
+  await defaultSheet.getByText(t("reason.settings_change.POLICY_REVIEW"), { exact: true }).click();
+  await defaultSheet.getByRole("button", { name: commitLabel({ kind: "screenStyle", mode: "save" }), exact: true }).click();
+  await expect(defaultSheet).toBeHidden();
+  await expect(reader.locator("html")).toHaveAttribute("data-experience", "baseline");
+  await expect(chooser(reader)).toHaveValue("tenant");
+  await go(admin, "/account");
+  await chooser(admin).selectOption("console");
+  await expect(chooser(reader)).toHaveValue("console");
+
+  await go(admin, "/settings?section=rollout");
+  const html = reader.locator("html");
+  await expect(html).toHaveAttribute("data-experience", "console");
+  let loads = 0;
+  reader.on("load", () => { loads++; });
+  await reader.getByRole("button", { name: t("account.name.edit"), exact: true }).click();
+  const editor = reader.getByRole("dialog", { name: t("account.name.edit"), exact: true });
+  const input = editor.getByLabel(t("account.field.name"));
+  const original = await input.inputValue();
+  await input.fill("Preserved draft");
+  const readsRollback = (enabled: boolean) => reader.waitForResponse(async response =>
+    response.url().endsWith("/api/v1/me/workspace") && response.ok() && (await response.json()).legacy_kill_switch_enabled === enabled);
+  const activated = readsRollback(true);
+  await admin.getByRole("button", { name: t("settingsHub.rollout.activateKillSwitch"), exact: true }).click();
+  await activated;
+  await expect(html).toHaveAttribute("data-experience", "console");
+  await expect(input).toHaveValue("Preserved draft");
+  await input.fill(original);
+  await reader.keyboard.press("Escape");
+  await expect(editor).toBeHidden();
+  await expect(html).toHaveAttribute("data-experience", "baseline");
+  await expect(chooser(reader)).toBeDisabled();
+  expect(loads).toBe(0);
+
+  await reader.reload();
+  await expect(chooser(reader)).toBeDisabled();
+  await expect(html).toHaveAttribute("data-experience", "baseline");
+  const afterReload = loads;
+  await go(admin, "/settings");
+  await admin.getByRole("button", { name: t("settingsHub.section.rollout"), exact: true }).click();
+  await admin.getByRole("button", { name: t("settingsHub.rollout.releaseKillSwitch"), exact: true }).click();
+  await expect(html).toHaveAttribute("data-experience", "console");
+  await expect(chooser(reader)).toHaveValue("console");
+  await expect(chooser(reader)).toBeEnabled();
+  expect(loads).toBe(afterReload);
+
+  await reader.getByRole("button", { name: t("account.name.edit"), exact: true }).click();
+  await input.fill("Second draft");
+  const nextActivation = readsRollback(true);
+  await admin.getByRole("button", { name: t("settingsHub.rollout.activateKillSwitch"), exact: true }).click();
+  await nextActivation;
+  const quickRelease = readsRollback(false);
+  await admin.getByRole("button", { name: t("settingsHub.rollout.releaseKillSwitch"), exact: true }).click();
+  await quickRelease;
+  await expect(input).toHaveValue("Second draft");
+  await input.fill(original);
+  await editor.press("Escape");
+  await expect(chooser(reader)).toBeEnabled();
+  await expect(html).toHaveAttribute("data-experience", "console");
+  expect(loads).toBe(afterReload);
 });

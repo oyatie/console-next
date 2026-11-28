@@ -136,7 +136,7 @@ pub(crate) async fn group_run(
     kind: &str,
     period: (Date, Date),
 ) -> Fixture {
-    let run = sqlx::query_scalar("INSERT INTO payroll_draft_runs (org_id,pay_group_id,kind,attribution_month,pay_date,period_start,period_end,variable_period_start,variable_period_end,source_label) VALUES ($1,$2,$3,DATE '2026-06-01',DATE '2026-06-30',$4,$5,$4,$5,'group-run') RETURNING id")
+    let run = sqlx::query_scalar("INSERT INTO payroll_draft_runs (org_id,pay_group_id,kind,attribution_month,pay_date,period_start,period_end,variable_period_start,variable_period_end,source_label) VALUES ($1,$2,$3,DATE '2026-06-01',DATE '2026-06-30',$4,$5,$4,$5,gen_random_uuid()::text) RETURNING id")
         .bind(org).bind(group).bind(kind).bind(period.0).bind(period.1)
         .fetch_one(pool).await.unwrap();
     Fixture { org, run }

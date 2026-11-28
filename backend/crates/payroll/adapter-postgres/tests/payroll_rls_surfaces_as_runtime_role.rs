@@ -150,6 +150,13 @@ async fn runs_and_lines_are_org_isolated(pool: PgPool) {
     let actor_b = seed_actor(&pool, org_b).await;
     let run_a = seed_run(&pool, org_a, actor_a).await;
     let run_b = seed_run(&pool, org_b, actor_b).await;
+    let cutoff = date!(2026 - 06 - 22);
+    sqlx::query("UPDATE payroll_draft_runs SET attendance_cutoff_date = $2 WHERE id = $1")
+        .bind(run_a)
+        .bind(cutoff)
+        .execute(&pool)
+        .await
+        .unwrap();
     let emp_a = seed_employee(&pool, org_a, "Alice").await;
     seed_line(&pool, org_a, run_a, emp_a, "Alice").await;
 
@@ -164,6 +171,7 @@ async fn runs_and_lines_are_org_isolated(pool: PgPool) {
     .unwrap();
     assert_eq!(page_a.total, 1);
     assert_eq!(page_a.items[0].id, run_a);
+    assert_eq!(page_a.items[0].attendance_cutoff_date, Some(cutoff));
 
     // Org B's GUC sees only its own run.
     let page_b = console_platform_request_context::scope_org(OrgId::from_uuid(org_b), async {
@@ -173,6 +181,7 @@ async fn runs_and_lines_are_org_isolated(pool: PgPool) {
     .unwrap();
     assert_eq!(page_b.total, 1);
     assert_eq!(page_b.items[0].id, run_b);
+    assert_eq!(page_b.items[0].attendance_cutoff_date, None);
 
     // Direct id lookup of org A's run under org B's GUC is a miss, not a leak.
     let cross_org_detail =
@@ -193,6 +202,7 @@ async fn runs_and_lines_are_org_isolated(pool: PgPool) {
     .await
     .unwrap()
     .unwrap();
+    assert_eq!(detail.run.attendance_cutoff_date, Some(cutoff));
     assert_eq!(detail.lines_total, 1);
     assert_eq!(detail.lines[0].employee_display_name, "Alice");
 }

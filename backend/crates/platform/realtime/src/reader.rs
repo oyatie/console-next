@@ -79,6 +79,34 @@ mod tests {
     }
 
     #[test]
+    fn appearance_hints_are_tenant_wide_or_restricted_to_the_workspace_owner() {
+        let user = UserId::new();
+        let reader = ChangeReader::from(Principal::new(
+            user,
+            OrgId::one(),
+            Default::default(),
+            BranchScope::All,
+        ));
+        for (kind, id, allowed) in [
+            ("workspace", Some(user.to_string()), true),
+            ("workspace", Some(UserId::new().to_string()), false),
+            ("workspace", None, false),
+            ("console_rollout", None, true),
+            ("tenant_settings", None, true),
+            ("console_rollout", Some(user.to_string()), false),
+            ("tenant_settings", Some(user.to_string()), false),
+        ] {
+            let row = ChangeRow {
+                seq: 1,
+                resource_type: kind.into(),
+                resource_id: id,
+                branch_id: None,
+                ver: None,
+            };
+            assert_eq!(reader.may_read(&row), allowed);
+        }
+    }
+    #[test]
     fn platform_stream_has_only_authorized_operator_hints() {
         let reader = ChangeReader::Platform(PlatformPrincipal::new(UserId::new()));
         for (kind, allowed) in [

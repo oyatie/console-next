@@ -601,7 +601,8 @@ export async function mountOpsMock(
         (f) => (f.severity === "P0" || f.severity === "P1") && f.disposition === "open",
       );
       const blockedSignoff = data.oc1.promote.signoffs.some((s) => s.verdict !== "ready");
-      return frozen || openBlocker || blockedSignoff ? "Blocked" : "Ready";
+      if (frozen || openBlocker || blockedSignoff) return "Blocked";
+      return data.oc1.promote.signoffs.length ? "Ready" : "Watching";
     };
 
     if (path === "/api/ops/v1/promote") {
@@ -623,11 +624,11 @@ export async function mountOpsMock(
       return json(201, { evaluated_at: TS, signoff: entry });
     }
     if (path === "/api/ops/v1/promote/request" && method === "POST") {
-      if (data.oc1.changes.freeze.value === true) {
-        return json(400, { evaluated_at: TS, support_ref: "sup-promo-frz", code: "bad_request", message: "deploy freeze is active" });
-      }
       const body = req.postDataJSON() as S["PromoteRequest"];
-      return json(201, { evaluated_at: TS, action: makeHandOff("promote", `APPROVER=oncall BAKE=${body.bake} scripts/tb release ${body.digest}`, body.digest) });
+      if (recomputePromoteState() !== "Ready" || body.digest !== data.oc1.promote.candidate_digest.value || body.bake !== data.oc1.promote.signed_bake) {
+        return json(409, { evaluated_at: TS, support_ref: "sup-promo", code: "OPS_PROMOTE_NOT_READY", message: "candidate digest is not ready for promotion" });
+      }
+      return json(201, { evaluated_at: TS, action: makeHandOff("promote", `APPROVER='oncall' scripts/tb release ${data.oc1.promote.release_image}`, body.digest) });
     }
 
     if (path === "/api/ops/v1/actions") {
@@ -722,20 +723,16 @@ export async function mountOpsMock(
       const id = path.slice("/api/ops/v1/obligations/".length, -"/events".length);
       const item = data.oc1.obligations.find((o) => o.id === id);
       if (!item) return json(404, { evaluated_at: TS, support_ref: "sup-obl-404", code: "OPS_OBLIGATION_NOT_FOUND", message: "obligation not found" });
-      const body = req.postDataJSON() as { event: "in_review" | "redated" | "done" | "waived"; fields: Record<string, string> };
+      const body = req.postDataJSON() as { event: "in_review" | "redated" | "done" | "waived" | "countersigned"; fields: Record<string, string> };
       const isStructuredRef = (raw: string | undefined) =>
         Boolean(raw && !/\s/.test(raw) && !raw.includes("..") && (/^https:\/\/[^/]+\/.+/.test(raw) || /^docs\/.+/.test(raw) || /^ops\/.+/.test(raw)));
-      if (item.kind === "launch-gate" && (body.event === "done" || body.event === "waived")) {
-        const signer = (body.fields.signer ?? "").trim();
-        const coSigner = (body.fields.co_signer ?? "").trim();
-        const counselUrl = (body.fields.counsel_url ?? "").trim();
-        const evidenceRef = (body.fields.evidence_ref ?? "").trim();
-        if (!signer || !coSigner || (body.event === "waived" && !counselUrl)) {
-          return json(422, { evaluated_at: TS, support_ref: "sup-obl-422", code: "OPS_OBLIGATION_INCOMPLETE", message: "Launch gate requires two distinct signers and counsel URL." });
+      const isGateDecision = item.kind === "launch-gate" && (body.event === "done" || body.event === "waived");
+      if (isGateDecision) {
+        if (body.event === "waived" ? !body.fields.reason || !body.fields.counsel_url : !body.fields.evidence_ref || !body.fields.signed_on) {
+          return json(422, { evaluated_at: TS, support_ref: "sup-obl-422", code: "OPS_OBLIGATION_INCOMPLETE", message: "Missing gate evidence." });
         }
-        const refToCheck = counselUrl || evidenceRef;
-        if (signer.toLowerCase() === coSigner.toLowerCase() || !isStructuredRef(refToCheck)) {
-          return json(400, { evaluated_at: TS, support_ref: "sup-obl-400", code: "OPS_OBLIGATION_INVALID", message: "Distinct signers and structured counsel URL required." });
+        if (body.fields.signer || body.fields.co_signer || !isStructuredRef(body.fields.counsel_url || body.fields.evidence_ref)) {
+          return json(400, { evaluated_at: TS, support_ref: "sup-obl-400", code: "OPS_OBLIGATION_INVALID", message: "Invalid gate proposal." });
         }
       }
       if (body.event === "in_review") item.state = "in-review";
@@ -755,6 +752,19 @@ export async function mountOpsMock(
         item.due = body.fields.due ?? item.due;
       }
       const hist = data.oc1.obligationHistory[id] ?? [];
+      if (isGateDecision && (body.event === "done" || body.event === "waived")) {
+        item.state = "in-review";
+        item.signer = data.me.operator.person;
+        item.pending_signoff = { seq: hist.length + 1, outcome: body.event, reason: body.fields.reason ?? null };
+      } else if (body.event === "countersigned") {
+        const pending = item.pending_signoff;
+        if (!pending || pending.seq !== Number(body.fields.proposal_seq) || item.signer === data.me.operator.person) {
+          return json(400, { evaluated_at: TS, support_ref: "sup-obl-400", code: "OPS_OBLIGATION_INVALID", message: "Invalid countersignature." });
+        }
+        item.state = pending.outcome;
+        item.co_signer = data.me.operator.person;
+        delete item.pending_signoff;
+      }
       const record: S["ObligationRecord"] = {
         seq: hist.length + 1,
         hash: `h-${id}-${hist.length + 1}`,

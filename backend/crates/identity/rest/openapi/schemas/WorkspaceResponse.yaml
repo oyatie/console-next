@@ -1,5 +1,8 @@
 type: object
 properties:
+  legacy_kill_switch_enabled:
+    type: boolean
+    description: On reads, whether the tenant currently requires Classic regardless of personal preferences.
   layout:
     type: object
     additionalProperties: true

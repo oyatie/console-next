@@ -128,6 +128,20 @@ pub fn from_promote_error(
     route: &'static str,
 ) -> OpsApiError {
     match err {
+        PromoteError::EvidenceUnavailable => OpsApiError::with_code(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "OPS_PROMOTE_EVIDENCE_UNAVAILABLE",
+            support_ref,
+            route,
+            "promotion readiness evidence unavailable",
+        ),
+        PromoteError::NotReady => OpsApiError::with_code(
+            StatusCode::CONFLICT,
+            "OPS_PROMOTE_NOT_READY",
+            support_ref,
+            route,
+            "candidate digest is not ready for promotion",
+        ),
         PromoteError::InvalidInput(msg) => OpsApiError::bad_request(support_ref, route, msg),
         PromoteError::Spool(err) => from_spool_error(err, support_ref, route),
     }

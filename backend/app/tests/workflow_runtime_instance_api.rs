@@ -28,6 +28,10 @@ use time::{Duration, OffsetDateTime};
 use tower::ServiceExt;
 use uuid::Uuid;
 
+#[path = "workflow_runtime_instance_api/approval_line.rs"]
+mod approval_line;
+use approval_line::seed_custom_approval_definition;
+
 const TEST_ISSUER: &str = "console-platform-auth";
 const TEST_AUDIENCE: &str = "console-api";
 
@@ -1187,48 +1191,7 @@ async fn seed_run_with_open_task(
 /// A linear approval definition: submit (gate) → review.hr → approve.manager →
 /// finalize.author. Seeded ACTIVE with one PUBLISHED wf.exec.v1 version.
 async fn seed_approval_definition(pool: &PgPool, workflow_key: &str) -> Uuid {
-    let org = OrgId::one();
-    let definition = json!({
-        "schema_version": "wf.exec.v1",
-        "workflow_key": workflow_key,
-        "nodes": [
-            { "node_key": "submit", "node_type": "object_gate", "title": "Submit" },
-            { "node_key": "review.hr", "node_type": "human_task", "title": "HR review",
-              "assignee_role_key": "hr_reviewer", "required_policy": "approval_review" },
-            { "node_key": "approve.manager", "node_type": "human_task", "title": "Manager approval",
-              "assignee_role_key": "manager_approver", "required_policy": "approval_decide" },
-            { "node_key": "finalize.author", "node_type": "human_task", "title": "Author finalize",
-              "assignee_role_key": "initiator", "required_policy": "approval_finalize" }
-        ],
-        "edges": [
-            { "from": "submit", "to": "review.hr" },
-            { "from": "review.hr", "to": "approve.manager" },
-            { "from": "approve.manager", "to": "finalize.author" }
-        ]
-    });
-    let definition_id: Uuid = sqlx::query_scalar(
-        "INSERT INTO workflow_definitions \
-             (org_id, workflow_key, display_name, object_type, status, latest_version, active_version) \
-         VALUES ($1, $2, 'Instance Approval', 'approval_document', 'ACTIVE', 1, 1) \
-         RETURNING id",
-    )
-    .bind(*org.as_uuid())
-    .bind(workflow_key)
-    .fetch_one(pool)
-    .await
-    .unwrap();
-    sqlx::query(
-        "INSERT INTO workflow_definition_versions \
-             (org_id, definition_id, version, status, definition, required_approval_line, required_payment_line) \
-         VALUES ($1, $2, 1, 'PUBLISHED', $3, TRUE, FALSE)",
-    )
-    .bind(*org.as_uuid())
-    .bind(definition_id)
-    .bind(definition)
-    .execute(pool)
-    .await
-    .unwrap();
-    definition_id
+    seed_custom_approval_definition(pool, workflow_key, |_| {}).await
 }
 
 async fn count_runs(pool: &PgPool) -> i64 {

@@ -133,6 +133,34 @@ async fn peer_ops_reset_never_returns_screen_otp_and_suspended_tenant_never_canc
     );
 
     let ops1_jwt = login_and_consent(&rig, &rig.ops_identifier, &mut key1).await;
+    rig.mailer
+        .1
+        .store(true, std::sync::atomic::Ordering::Relaxed);
+    let step = key1.step_up(&rig.owner).await;
+    let (failed, _) = rig
+        .call(
+            Method::POST,
+            ADMIN_CREDENTIAL_RESET_PATH,
+            Some(&ops1_jwt),
+            Some(json!({ "user_id": ops2_uuid, "step_up": step })),
+        )
+        .await;
+    assert_eq!(failed, StatusCode::SERVICE_UNAVAILABLE);
+    let credentials: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM auth_webauthn_credentials WHERE org_id=$1 AND user_id=$2",
+    )
+    .bind(org.as_uuid())
+    .bind(ops2_uuid)
+    .fetch_one(&rig.owner)
+    .await
+    .unwrap();
+    assert_eq!(
+        credentials, 1,
+        "transport refusal rolls back removal of the target passkey"
+    );
+    rig.mailer
+        .1
+        .store(false, std::sync::atomic::Ordering::Relaxed);
     let ops1_step = key1.step_up(&rig.owner).await;
     let (st_reset, body_reset) = rig
         .call(

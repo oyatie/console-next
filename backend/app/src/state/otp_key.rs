@@ -68,8 +68,21 @@ pub(crate) fn build_auth_rest_state(
     match database {
         DatabaseDependency::Postgres(pool) => match &config.auth_rest {
             Some(auth_config) => {
-                let mut state = AuthRestState::new(pool.clone(), auth_config.clone())
-                    .map_err(|err| AppError::Config(format!("invalid auth REST config: {err}")))?;
+                use crate::config::secret_files::secret_env;
+                use console_platform_provisioning::ops_self_recovery::{
+                    KEYRING_ENV, MASTER_KEY_ENV, RecoveryContactCipher,
+                };
+                let cipher = RecoveryContactCipher::from_env_values(
+                    secret_env(KEYRING_ENV)?,
+                    secret_env(MASTER_KEY_ENV)?,
+                )
+                .map_err(|err| AppError::Config(format!("invalid recovery contact key: {err}")))?;
+                let mut state = AuthRestState::new_with_recovery_cipher(
+                    pool.clone(),
+                    auth_config.clone(),
+                    cipher,
+                )
+                .map_err(|err| AppError::Config(format!("invalid auth REST config: {err}")))?;
                 if let Some(key) = otp_hmac_key {
                     state = state
                         .with_bootstrap_credentials(BootstrapCredentialStore::new(key.clone()));

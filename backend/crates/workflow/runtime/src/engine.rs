@@ -88,8 +88,8 @@ pub struct NodeStepOutcome {
 
 #[path = "start.rs"]
 mod start;
-pub use start::start_run;
 pub(crate) use start::{recover_started_status, start_run_owned};
+pub use start::{start_run, start_run_with_definition};
 
 /// Process one node atomically: interpret it, validate the node walk
 /// (PENDING→RUNNING→final) and the run transition against the FSM tables, then

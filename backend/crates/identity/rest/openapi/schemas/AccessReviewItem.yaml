@@ -35,6 +35,10 @@ properties:
     type: string
   scope_label:
     type: string
+  scope_node_id:
+    $ref: '#/components/schemas/Uuid'
+  scope_include_descendants:
+    type: boolean
   valid_from:
     $ref: '#/components/schemas/Timestamp'
   valid_to:

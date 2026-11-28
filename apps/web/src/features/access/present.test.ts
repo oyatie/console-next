@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { beforeAll, expect, test } from "vitest";
 import { loadCatalog, t } from "@console/i18n";
-import { accessRefusal, accountLabel } from "./present";
+import { accessRefusal, accountLabel, reviewScopeText } from "./present";
 
 beforeAll(() => loadCatalog("ko"));
 
@@ -39,4 +39,11 @@ test("all five access refusal codes resolve in both ko and en catalogs", async (
     }
   }
   await loadCatalog("ko");
+});
+
+test("same-name frozen workplace scopes retain distinct target identities and descendant reach", () => {
+  const site = { scope_kind: "WORKPLACE", scope_label: "Shared site", scope_node_id: "site-a", scope_include_descendants: true };
+  expect(reviewScopeText(site)).toBe(t("access.scope.below.short", { name: "Shared site (site-a)" }));
+  expect(reviewScopeText({ ...site, scope_node_id: "site-b", scope_include_descendants: false })).toBe(t("access.scope.only.short", { name: "Shared site (site-b)" }));
+  expect(reviewScopeText({ scope_kind: "WORKPLACE", scope_label: "WORKPLACE" })).toBe("WORKPLACE");
 });

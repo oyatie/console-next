@@ -11,10 +11,16 @@ const task = { event_id: "evt-1", employee_id: "emp-1", name: "Filer One", kind:
 
 // The row opens its filing in the pane; a row button that says "record" but opens the pane names one action for another.
 test("the filing row's command opens the filing, named for the person and the filing it opens", () => {
-  const action = buildFilingColumns(vi.fn()).find(c => c.id === "action")!;
+  const action = buildFilingColumns(vi.fn(), "PENDING").find(c => c.id === "action")!;
   expect(renderToStaticMarkup(<>{action.header}</>)).toBe(`<bdi class="sr-only">${t("statutory.openCol")}</bdi>`);
   const button = renderToStaticMarkup(<>{action.cell(task)}</>);
   expect(button).toContain(`aria-label="${t("statutory.openRow", { name: "Filer One", insurer: t("statutory.NPS"), kind: t("statutory.ACQUIRE") })}"`);
   expect(button).toContain(`>${t("statutory.openCol")}</button>`);
   expect(button).not.toContain(t("statutory.record"));
+});
+
+test("compact filing history shows the recorded disposition and the open queue shows its deadline", () => {
+  for (const [view, column] of [["PENDING", "deadline"], ["DONE", "status"]] as const) {
+    expect(buildFilingColumns(vi.fn(), view).filter(item => item.card === "status").map(item => item.id)).toEqual([column]);
+  }
 });

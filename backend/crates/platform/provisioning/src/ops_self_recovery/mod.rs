@@ -21,8 +21,8 @@ pub use contact_store::{
     upsert_recovery_contact_tx,
 };
 pub use crypto::{
-    RECOVERY_CONTACT_NOTICE_VERSION, RecoveryChannel, RecoveryContactCipher, RecoveryContactStatus,
-    mask_recovery_contact,
+    KEYRING_ENV, MASTER_KEY_ENV, RECOVERY_CONTACT_NOTICE_VERSION, RecoveryChannel,
+    RecoveryContactCipher, RecoveryContactStatus, mask_recovery_contact,
 };
 pub use redeem::{RecoveryCodeRedemption, redeem_recovery_code_in_tx};
 pub use secrecy::ExposeSecret;

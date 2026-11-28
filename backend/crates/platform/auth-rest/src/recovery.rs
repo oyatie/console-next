@@ -135,6 +135,11 @@ pub(crate) async fn upsert_contact(
     let services = state.services()?;
     let (uid, org_id, _) = enrollment_user_context(&state.pool, services, &headers).await?;
     verify_step_up_if_enrolled(&state, uid, org_id, body.step_up).await?;
+    if !services.email_sender.can_send() {
+        return Err(RestError::unavailable(
+            "recovery email delivery is unavailable",
+        ));
+    }
     let status = upsert_recovery_contact(
         &state.pool,
         &services.recovery_cipher,

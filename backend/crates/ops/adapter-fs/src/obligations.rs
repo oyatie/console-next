@@ -35,6 +35,11 @@ fn decode(record: &crate::Record) -> Result<Record, Error> {
         hash: record.hash.clone(),
         support_ref: context.support_ref,
         entry: Entry {
+            attestation_version: match record.document.get("attestation_version") {
+                None => 1,
+                Some(version) if version.as_u64() == Some(2) => 2,
+                _ => return Err(Error::ChainBroken(seq)),
+            },
             at: context.at,
             operator: context.operator,
             obligation_id,

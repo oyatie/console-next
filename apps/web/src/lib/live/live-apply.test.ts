@@ -120,3 +120,25 @@ test("the held refresh stays applying until the shown reads have published their
     release();
   }
 });
+
+test("a stream gap on a held dashboard refetches current appearance and preserves the dashboard snapshot", async () => {
+  const release = holdLive(true);
+  const workspace = vi.fn(async () => ({ layout: {} }));
+  const employee = vi.fn(async () => ({} as never));
+  const unwatchWorkspace = new QueryObserver(qc, { ...get("/api/v1/me/workspace"), queryFn: workspace }).subscribe(() => {});
+  const unwatchEmployee = new QueryObserver(qc, { ...get("/api/v1/employees"), queryFn: employee }).subscribe(() => {});
+  try {
+    await vi.advanceTimersByTimeAsync(0);
+    workspace.mockClear();
+    employee.mockClear();
+    frame("reset", { reason: "gap" });
+    await vi.advanceTimersByTimeAsync(11_000);
+    expect(workspace).toHaveBeenCalledOnce();
+    expect(employee).not.toHaveBeenCalled();
+    expect(liveHeld.get()).toBe(1);
+  } finally {
+    unwatchWorkspace();
+    unwatchEmployee();
+    release();
+  }
+});

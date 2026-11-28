@@ -8,7 +8,6 @@ import {
   recoveryStatus,
   subscribeCancelledRecovery,
   upsertRecoveryContact,
-  type RecoveryChannel,
 } from "@console/api/recovery";
 import { t } from "@console/i18n";
 import { tr } from "@console/i18n/auth-recovery";
@@ -19,7 +18,6 @@ import { Banner } from "../ui/banner/banner";
 import { Button } from "../ui/button/button";
 import { Card } from "../ui/card/card";
 import { Checks } from "../ui/choice/checks";
-import { ChoiceField } from "../ui/choice/choice-field";
 import { Chip } from "../ui/chip";
 import { Dialog } from "../ui/dialog";
 import { Field, TextInput } from "../ui/field/field";
@@ -34,7 +32,6 @@ export function SetupPasskeyRecovery({
   onError: (msg: string | null) => void;
 }) {
   const recoveryConsentDesc = useId();
-  const [channel, setChannel] = useState<RecoveryChannel>("EMAIL");
   const [contactValue, setContactValue] = useState("");
   const [contactConsent, setContactConsent] = useState<string[]>([]);
   const [issuedCodes, setIssuedCodes] = useState<string[] | null>(null);
@@ -53,7 +50,7 @@ export function SetupPasskeyRecovery({
     setBusy(true);
     onError(null);
     try {
-      await upsertRecoveryContact({ channel, value: contactValue.trim(), consentAccepted: true });
+      await upsertRecoveryContact({ channel: "EMAIL", value: contactValue.trim(), consentAccepted: true });
       const batch = await generateRecoveryCodes();
       setIssuedCodes(batch.codes);
       await recStatus.refetch();
@@ -87,19 +84,13 @@ export function SetupPasskeyRecovery({
                 {recStatus.data.contact.review_pending && <Chip>{tr("auth.setup.recovery.reviewPending")}</Chip>}
               </div>
             )}
-            <ChoiceField
-              label={tr("auth.setup.recovery.channel")}
-              required={false}
-              options={(["EMAIL", "PHONE"] as const).map((k) => ({ value: k, label: tr(`auth.setup.recovery.channel.${k}`) }))}
-              value={channel}
-              onChange={(v) => setChannel((v as RecoveryChannel) ?? "EMAIL")}
-            />
-            <Field label={tr("auth.setup.recovery.value")} required={false}>
+            {recStatus.data.contact?.channel === "PHONE" && <Banner>{tr("auth.setup.recovery.replacePhone")}</Banner>}
+            <Field label={tr("auth.setup.recovery.channel.EMAIL")} required={false}>
               {(p) => (
                 <TextInput
                   {...p}
                   readOnly={busy}
-                  inputMode={channel === "EMAIL" ? "email" : "tel"}
+                  type="email"
                   autoCapitalize="none"
                   autoCorrect="off"
                   spellCheck={false}
