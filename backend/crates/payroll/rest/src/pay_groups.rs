@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! HTTP boundary; the store owns Cedar, validation and audit in one transaction.
+#[path = "membership.rs"]
+mod membership;
 #[path = "run_preview.rs"]
 mod run_preview;
 use axum::{
@@ -22,6 +24,7 @@ pub const PAYROLL_PAY_GROUPS_PATH: &str = "/api/v1/payroll/pay-groups";
 
 pub(crate) fn router() -> Router<PayrollRestState> {
     Router::new()
+        .merge(membership::router())
         .route(PAYROLL_PAY_GROUPS_PATH, get(list).post(create))
         .route(crate::PAYROLL_RUNS_PATH, post(create_run))
 }
@@ -51,7 +54,10 @@ fn read_outcome<'a>(
             return record_access::all_readable(pool, principal, &outcome.touched).await;
         };
         let (target_type, pay_group_id) = match outcome.command.as_str() {
-            command if command == format!("POST {PAYROLL_PAY_GROUPS_PATH}") => {
+            command
+                if command == format!("POST {PAYROLL_PAY_GROUPS_PATH}")
+                    || command == format!("POST {}", membership::PATH) =>
+            {
                 ("pay_group", Some(id))
             }
             command if command == format!("POST {}", crate::PAYROLL_RUNS_PATH) => (

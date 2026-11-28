@@ -87,3 +87,9 @@ export const issuePayrollPayslips = (id: string) =>
 
 export const payrollPayslipDeliveryQuery = (id: string, query?: { limit?: number; offset?: number }) =>
   ({ ...get("/api/v1/payroll/runs/{id}/payslip-delivery", { params: { path: { id }, query } }), retry: false });
+
+type Membership = operations["assignPayGroupMember"]["requestBody"]["content"]["application/json"];
+export const payGroupCandidates = (query: operations["searchPayGroupMembers"]["parameters"]["query"]) =>
+  get("/api/v1/payroll/pay-group-memberships", { params: { query } });
+export const assignMembership = (body: Membership, key: string) =>
+  unwrap(api.POST("/api/v1/payroll/pay-group-memberships", { body, headers: { "idempotency-key": key } }));

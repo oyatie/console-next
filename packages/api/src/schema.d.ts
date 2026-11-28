@@ -11727,6 +11727,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/payroll/pay-group-memberships": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Find employees eligible for a pay group on the selected date */
+        get: operations["searchPayGroupMembers"];
+        put?: never;
+        /** Add or move an employee from the effective date until the next scheduled membership boundary */
+        post: operations["assignPayGroupMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/payroll/pay-groups": {
         parameters: {
             query?: never;
@@ -27443,6 +27461,8 @@ export interface components {
             member_employee_ids?: string[];
         };
         PayGroupPage: {
+            /** @description Listed groups whose membership the current caller may manage. */
+            manageable_group_ids?: string[];
             items: components["schemas"]["PayGroup"][];
             legal_entities: {
                 /** Format: uuid */
@@ -57972,6 +57992,112 @@ export interface operations {
             422: components["responses"]["ValidationError"];
         };
     };
+    searchPayGroupMembers: {
+        parameters: {
+            query: {
+                pay_group_id: string;
+                effective_from: string;
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Up to 30 matching employees in the group’s legal entity on that date. Both their source group and destination must be manageable. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        employee_id: string;
+                        name: string;
+                        employee_number: string | null;
+                        /** Format: uuid */
+                        current_pay_group_id: string | null;
+                    }[];
+                };
+            };
+            /** @description Invalid query fields. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Empty or overlong search. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    assignPayGroupMember: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    pay_group_id: string;
+                    /** Format: uuid */
+                    employee_id: string;
+                    /** Format: date */
+                    effective_from: string;
+                    /** Format: uuid */
+                    expected_pay_group_id: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Membership committed or already in this group on that date. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * Format: uuid
+                         * @description Destination pay group.
+                         */
+                        id: string;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Membership changed since selection or the change overlaps a closed run or active payroll freeze. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Invalid employee or date for this group. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     listPayGroups: {
         parameters: {
             query?: never;
@@ -58240,12 +58366,14 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description pay_group_roster_ambiguous when the group's legal entity has more than one pay group, so its members are not known. */
+            /** @description pay_group_roster_ambiguous when the group's legal entity has more than one pay group, and its members are not known. Assign outstanding employees from pay group setup, then retry. */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
             };
             /** @description run_kind_unsupported for non-REGULAR kinds; validation for missing group or invalid kind. */
             422: {

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Typed configuration only; scheduling consumes these explicit choices.
 mod facts;
+pub mod membership;
 pub(crate) use facts::require_run_command_in_tx;
 pub use facts::{RlsPayGroupFacts, manageable_pay_groups_in_tx, run_pay_group_in_tx};
 pub mod run_preview;
@@ -89,6 +90,7 @@ pub struct PayGroupEntity {
 
 #[derive(Debug, Serialize)]
 pub struct PayGroupPage {
+    pub manageable_group_ids: Vec<Uuid>,
     pub items: Vec<PayGroup>,
     pub legal_entities: Vec<PayGroupEntity>,
 }
@@ -149,28 +151,13 @@ impl PgPayrollStore {
             ).bind(org.as_uuid()).bind(id).bind(input.legal_entity_id).bind(Json(&input))
                 .fetch_one(tx.as_mut()).await?.0;
             if !input.member_employee_ids.is_empty() {
-                sqlx::query(
-                    "UPDATE employee_pay_group_assignments
-                     SET superseded_at = CASE WHEN effective_from >= entity_today() THEN now() ELSE NULL END,
-                         effective_to_exclusive = CASE WHEN effective_from < entity_today() THEN entity_today() ELSE effective_to_exclusive END
-                     WHERE org_id = $1 AND employee_id = ANY($2) AND superseded_at IS NULL AND effective_to_exclusive IS NULL",
-                )
-                .bind(org.as_uuid())
-                .bind(&input.member_employee_ids)
-                .execute(tx.as_mut())
-                .await?;
-                sqlx::query(
-                    "INSERT INTO employee_pay_group_assignments(org_id, employee_id, pay_group_id, effective_from, created_by)
-                     SELECT $1, e.id, $3, entity_today(), $4
-                     FROM employees e
-                     WHERE e.org_id = $1 AND e.id = ANY($2)",
-                )
-                .bind(org.as_uuid())
-                .bind(&input.member_employee_ids)
-                .bind(id)
-                .bind(actor.as_uuid())
-                .execute(tx.as_mut())
-                .await?;
+                let date = sqlx::query_scalar("SELECT entity_today()").fetch_one(tx.as_mut()).await?;
+                let managed = facts.visible_pay_groups(tx, Feature::PayrollRunManage, &RlsPayGroupFacts).await?;
+                for employee_id in input.member_employee_ids {
+                    membership::assign_in_tx(tx, org, actor, &managed, &membership::AssignMembership {
+                        pay_group_id: id, employee_id, effective_from: date, expected_pay_group_id: None
+                    }, false).await?;
+                }
             }
             Ok(created)
         })).await
@@ -211,7 +198,7 @@ impl PgPayrollStore {
                     );
                 }
                 let ids = facts.visible_pay_groups(tx, Feature::PayrollRunRead, &loader).await?;
-                let items = sqlx::query_scalar::<_, Json<PayGroup>>(
+                let items: Vec<PayGroup> = sqlx::query_scalar::<_, Json<PayGroup>>(
                     "SELECT to_jsonb(g) FROM pay_groups g WHERE g.org_id=$1 AND g.id=ANY($2)
                      ORDER BY g.legal_entity_id,g.name,g.id",
                 ).bind(org.as_uuid()).bind(ids)
@@ -220,6 +207,12 @@ impl PgPayrollStore {
                     .into_iter()
                     .map(|row| row.0)
                     .collect();
+                let mut manageable_group_ids = Vec::new();
+                for group in &items {
+                    if facts.authorize_pay_group_creation(group.legal_entity_id, group.sensitive.unwrap_or(true)).map_err(cedar_error)? {
+                        manageable_group_ids.push(group.id);
+                    }
+                }
                 let sql = format!(
                     "SELECT jsonb_build_object('id',g.legal_entity_id,'name',r.name)
                      FROM (SELECT org_id,id AS legal_entity_id FROM legal_entities WHERE voided_at IS NULL) g
@@ -233,7 +226,7 @@ impl PgPayrollStore {
                     query = query.bind(values);
                 }
                 let legal_entities = query.fetch_all(tx.as_mut()).await?.into_iter().map(|row| row.0).collect();
-                Ok(PayGroupPage { items, legal_entities })
+                Ok(PayGroupPage { items, legal_entities, manageable_group_ids })
             })
         })
         .await

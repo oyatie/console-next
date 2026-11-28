@@ -6,6 +6,7 @@ import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
+import { membershipRemedy } from "./membership-remedy";
 import { QueryState } from "../../../lib/react/query-state";
 import { Button } from "../../../ui/button/button";
 import { buttonClass } from "../../../ui/button/button-class";
@@ -108,7 +109,7 @@ function PayrollRunCreateConsoleContent({ baseline }: { baseline: () => ReactNod
 
         {input ? (
           <RecordSection id="run-create-preview" title={t("payroll.create.preview")}>
-            <QueryState q={preview} layout="form">
+            <QueryState q={preview} layout="form" failedActions={membershipRemedy(preview.error)}>
               {facts => (
                 <KeyValue
                   readOnly

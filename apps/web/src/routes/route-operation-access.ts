@@ -17,8 +17,8 @@ const r11 = {"domain":"org","level":"edit","tenant":true,"scopes":["TENANT"]} as
 const r12 = {"domain":"tenant","level":"approve","tenant":true,"scopes":[]} as const satisfies AccessRequirement;
 const r13 = {"domain":"org","level":"edit","scopes":["TENANT","LEGAL_ENTITY","WORKPLACE"]} as const satisfies AccessRequirement;
 const r14 = {"domain":"pay","level":"edit","tenant":true,"scopes":["TENANT"]} as const satisfies AccessRequirement;
-const r15 = {"domain":"pay","level":"view","scopes":["TENANT","LEGAL_ENTITY","WORKPLACE"]} as const satisfies AccessRequirement;
-const r16 = {"domain":"pay","level":"edit","scopes":["TENANT","LEGAL_ENTITY","WORKPLACE"]} as const satisfies AccessRequirement;
+const r15 = {"domain":"pay","level":"edit","scopes":["TENANT","LEGAL_ENTITY","WORKPLACE"]} as const satisfies AccessRequirement;
+const r16 = {"domain":"pay","level":"view","scopes":["TENANT","LEGAL_ENTITY","WORKPLACE"]} as const satisfies AccessRequirement;
 const r17 = {"domain":"pay","level":"view","tenant":true,"scopes":["TENANT"]} as const satisfies AccessRequirement;
 const r18 = {"domain":"exceptions","level":"edit","tenant":true,"scopes":["TENANT"]} as const satisfies AccessRequirement;
 const r19 = {"destinations":[{"domain":"settings","level":"view"},{"domain":"attendance","level":"view"}]} as const satisfies AccessRequirement;
@@ -61,12 +61,13 @@ export const routeOperationAccess = {
   "GET /api/v1/org-units": r10,
   "POST /api/v1/payroll/employees/{employeeId}/contract-wages": r14,
   "GET /api/v1/payroll/employees/{employeeId}/payslip-draft": r14,
-  "GET /api/v1/payroll/pay-groups": r15,
-  "POST /api/v1/payroll/pay-groups": r16,
-  "GET /api/v1/payroll/reference/rates": r15,
+  "POST /api/v1/payroll/pay-group-memberships": r15,
+  "GET /api/v1/payroll/pay-groups": r16,
+  "POST /api/v1/payroll/pay-groups": r15,
+  "GET /api/v1/payroll/reference/rates": r16,
   "GET /api/v1/payroll/runs": r17,
-  "POST /api/v1/payroll/runs": r16,
-  "GET /api/v1/payroll/runs/preview": r16,
+  "POST /api/v1/payroll/runs": r15,
+  "GET /api/v1/payroll/runs/preview": r15,
   "GET /api/v1/payroll/runs/{id}": r17,
   "GET /api/v1/period-locks": r18,
   "POST /api/v1/policy/authorize": r4,

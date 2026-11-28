@@ -219,6 +219,18 @@ pub async fn close_attendance_in_tx(
     actor: Uuid,
     now: OffsetDateTime,
 ) -> Result<Value, LifecycleError> {
+    // Acquire the same lock as membership and freeze writers before locking the run row.
+    let org: Option<Uuid> = sqlx::query_scalar(
+        "SELECT org_id FROM payroll_draft_runs WHERE id=$1 AND kind='REGULAR' AND pay_group_id IS NOT NULL"
+    ).bind(run_id).fetch_optional(tx.as_mut()).await?;
+    if let Some(org) = org {
+        console_platform_db::lock_period_lock_key(
+            tx,
+            console_platform_db::PeriodLockDomain::Payroll,
+            org,
+        )
+        .await?;
+    }
     let Some(run) = run_head(tx, run_id, true).await? else {
         return Err(LifecycleError::NotFound);
     };

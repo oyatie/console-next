@@ -90,6 +90,7 @@ test("the screens drawn through built patterns declare them, and no other route 
     "/audit": "list-record",
     "/payroll": "list-record",
     "/payroll/setup": "wizard",
+    "/payroll/setup/members": "wizard",
     "/payroll/runs/new": "wizard",
     "/payroll/runs/$id": "register-totals",
     "/payroll/reference": "list-record",
