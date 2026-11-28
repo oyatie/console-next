@@ -53,9 +53,9 @@ test("branch manager creates in an authorized branch and keeps the original item
   await mockRoute(page, "post", list, req => {
     const body: S["BenefitCatalogCreateRequest"] = req.postDataJSON();
     expect(body.scope).toEqual({ scope_type: "BRANCH", branch_id: branch });
-    expect(body.estimatedAnnualCostWon).toBe(1200);
+    expect(body.estimatedAnnualCostWon).toBe(1200); expect(body.effectiveOn).toBe("2026-04-11"); expect(body.retiresOn).toBe("2027-04-10");
     expect(req.headers()["idempotency-key"]).toBeTruthy();
-    current = { ...original, id: id(11), name: body.name, scope: body.scope, tiers: [], conditions: [] };
+    current = { ...original, id: id(11), name: body.name, scope: body.scope, effective_on: body.effectiveOn, retires_on: body.retiresOn, tiers: [], conditions: [] };
     return { status: 201, json: current };
   });
   await mockRoute(page, "patch", detail, req => {
@@ -76,6 +76,12 @@ test("branch manager creates in an authorized branch and keeps the original item
   await form.getByRole("textbox", { name: "Coverage" }).fill("Central staff");
   await form.getByRole("textbox", { name: /^Cost\b/ }).fill("Annual");
   await form.getByRole("spinbutton", { name: "Estimated annual cost" }).fill("1200");
+  const start = form.getByRole("textbox", { name: /Effective from/ });
+  const end = form.getByRole("textbox", { name: /Effective through/ });
+  await start.fill("2026-04-11"); await start.press("Tab");
+  await end.fill("2026-04-10"); await end.press("Tab");
+  await expect(form.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
+  await end.fill("2027-04-10"); await end.press("Tab");
   await form.getByRole("button", { name: "Save", exact: true }).click();
   await page.getByRole("button", { name: "Edit benefit", exact: true }).click();
   await expect(form.getByRole("combobox", { name: "Applies to" })).toHaveCount(0);

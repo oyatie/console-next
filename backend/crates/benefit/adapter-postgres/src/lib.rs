@@ -236,6 +236,10 @@ impl PgBenefitCatalogStore {
                     ensure_scope_mutation_allowed(&input.branch_scope, scope.branch_id)?;
                 }
 
+                validate_dates(
+                    input.fields.effective_on.unwrap_or(before.effective_on),
+                    input.fields.retires_on.unwrap_or(before.retires_on),
+                )?;
                 update_item_tx(tx, &input).await?;
                 let after = fetch_item_tx(tx, input.item_id).await?.ok_or_else(|| {
                     KernelError::internal("updated benefit-catalog item was not readable")
@@ -732,11 +736,6 @@ fn normalize_update_fields(
     if let Some(metadata) = &metadata {
         validate_metadata_object(metadata)?;
     }
-    let effective_on = fields.effective_on;
-    let retires_on = fields.retires_on;
-    if let (Some(Some(effective_on)), Some(Some(retires_on))) = (effective_on, retires_on) {
-        validate_dates(Some(effective_on), Some(retires_on))?;
-    }
     Ok(NormalizedUpdateFields {
         category: fields.category,
         name: fields
@@ -787,8 +786,8 @@ fn normalize_update_fields(
             .map(normalize_related_domain)
             .transpose()?,
         related_object_id: fields.related_object_id,
-        effective_on,
-        retires_on,
+        effective_on: fields.effective_on,
+        retires_on: fields.retires_on,
         display_order: fields.display_order,
         metadata,
     })

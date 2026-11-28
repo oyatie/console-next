@@ -73,7 +73,7 @@ crates/attendance/adapter-postgres/tests/cancel_substitution.rs	895
 crates/attendance/adapter-postgres/tests/concurrency.rs	403
 crates/attendance/application/src/lib.rs	400
 crates/attendance/rest/src/lib.rs	1107
-crates/benefit/adapter-postgres/src/lib.rs	1252
+crates/benefit/adapter-postgres/src/lib.rs	1251
 crates/benefit/domain/src/lib.rs	307
 crates/benefit/rest/src/lib.rs	480
 crates/comms/adapter-postgres/src/lib.rs	1257

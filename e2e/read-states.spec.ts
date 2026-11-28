@@ -88,15 +88,7 @@ test.describe("route requirements with a real grantless account", () => {
           const required = "allOf" in need ? need.allOf : [need];
           for (const entry of required) {
             if ("servedCapability" in entry) {
-              const expected = {
-                served_benefit_catalog: ko["benefits.readPermission"],
-                served_benefit_catalog_manage: ko["benefits.managePermission"],
-                documents: ko["audit.vault.permission"],
-                served_integrity_findings: ko["audit.findings.permission"],
-                served_integrity_triage: ko["audit.findings.permission"],
-                served_location_consent_ledger: ko["audit.consents.permission"],
-              };
-              expect(permission).toContain(expected[entry.servedCapability]);
+              expect(permission).toContain(ko[`denied.capability.${entry.servedCapability}`]);
               continue;
             }
             if ("action" in entry) {

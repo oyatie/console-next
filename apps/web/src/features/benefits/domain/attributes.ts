@@ -9,17 +9,12 @@ export const numbers = [
   ["estimatedAnnualCostWon", "estimated_annual_cost_won", "benefits.annualCost", Number.MAX_SAFE_INTEGER],
   ["employerRateBps", "employer_rate_bps", "benefits.employerRate", 10_000],
 ] as const;
-export const dates = [["effectiveOn", "effective_on", "benefits.effective"], ["retiresOn", "retires_on", "benefits.retires"]] as const;
 
 export function changedAttributes(values: { get(key: string): unknown }, item?: Item) {
-  const result: Pick<Edit, "coveredCount" | "estimatedAnnualCostWon" | "employerRateBps" | "effectiveOn" | "retiresOn" | "legalBasis"> = {};
+  const result: Pick<Edit, "coveredCount" | "estimatedAnnualCostWon" | "employerRateBps" | "legalBasis"> = {};
   for (const [name, key] of numbers) {
     const value = values.get(name);
     if (typeof value === "string" && value !== String(item?.[key] ?? "")) result[name] = value ? Number(value) : null;
-  }
-  for (const [name, key] of dates) {
-    const value = values.get(name);
-    if (typeof value === "string" && value !== (item?.[key] ?? "")) result[name] = value || null;
   }
   const basis = values.get("legalBasis");
   if (typeof basis === "string" && basis.trim() !== (item?.legal_basis ?? "")) result.legalBasis = basis.trim() || null;

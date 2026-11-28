@@ -161,6 +161,20 @@ async fn benefit_catalog_routes_enforce_pbac_and_audit_catalog_and_lifecycle_wri
         .await;
         assert_eq!(stale.status(), StatusCode::CONFLICT);
     }
+    for change in [
+        json!({"retiresOn": "2026-04-10"}),
+        json!({"effectiveOn": "2027-04-11"}),
+    ] {
+        let refused = request(
+            service.clone(),
+            "PATCH",
+            &format!("/api/v1/benefit-catalog/items/{item_id}"),
+            &admin_token,
+            Some(change),
+        )
+        .await;
+        assert_eq!(refused.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
     let reread = request(
         service.clone(),
         "GET",
