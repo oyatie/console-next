@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
-import type { TeamSearch, TeamStatusFilter, TeamView } from "../features/team/ui/team-page";
+import type { TeamSearch, TeamStatusFilter, TeamView } from "../features/team/domain/team-scope";
 import { app, screen, str } from "./app";
 import { readRequirement } from "./route-reads";
 

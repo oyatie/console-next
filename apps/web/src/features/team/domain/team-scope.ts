@@ -6,6 +6,17 @@ type S = components["schemas"];
 export type TeamEmployee = S["Employee"];
 export type TeamLeaveRequest = S["LeaveRequestV2View"];
 
+export type TeamView = "all" | "direct" | "concurrent";
+export type TeamStatusFilter = "all" | "ACTIVE" | "ON_LEAVE" | "SOON" | "MISSING";
+export type TeamSearch = {
+  view?: TeamView;
+  scopeId?: string;
+  status?: TeamStatusFilter;
+  q?: string;
+  sort?: string;
+  sel?: string;
+};
+
 type TeamScopeNode = {
   id: string;
   kind: string;
@@ -63,9 +74,9 @@ export function filterTeamEmployees(
     statusFilter,
     today,
   }: {
-    view: "all" | "direct" | "concurrent";
+    view: TeamView;
     directUnitId: string | null;
-    statusFilter: "all" | "ACTIVE" | "ON_LEAVE" | "SOON" | "MISSING";
+    statusFilter: TeamStatusFilter;
     today: string;
   },
 ): TeamEmployee[] {
@@ -96,11 +107,11 @@ export function buildTeamQueryParams({
   search,
   sort,
 }: {
-  view: "all" | "direct" | "concurrent";
+  view: TeamView;
   selectedScope?: TeamScopeNode;
   directUnitId?: string | null;
   today: string;
-  statusFilter: "all" | "ACTIVE" | "ON_LEAVE" | "SOON" | "MISSING";
+  statusFilter: TeamStatusFilter;
   search?: string;
   sort?: string;
 }) {

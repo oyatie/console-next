@@ -28,6 +28,9 @@ import {
   teamMeQuery,
 } from "../api";
 import {
+  type TeamSearch,
+  type TeamStatusFilter,
+  type TeamView,
   buildTeamQueryParams,
   contractWindow,
   deriveTeamScopes,
@@ -37,17 +40,6 @@ import {
 import { buildTeamColumns } from "./team-columns";
 import { TeamRecordPane } from "./team-record-pane";
 import s from "./team.module.css";
-
-export type TeamView = "all" | "direct" | "concurrent";
-export type TeamStatusFilter = "all" | "ACTIVE" | "ON_LEAVE" | "SOON" | "MISSING";
-export type TeamSearch = {
-  view?: TeamView;
-  scopeId?: string;
-  status?: TeamStatusFilter;
-  q?: string;
-  sort?: string;
-  sel?: string;
-};
 
 const route = getRouteApi("/app/team");
 
