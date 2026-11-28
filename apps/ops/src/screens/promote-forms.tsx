@@ -11,13 +11,6 @@ import { InlineError } from "../ui/inline-error";
 import { SelectField } from "../ui/select-field";
 import s from "./promote-screen.module.css";
 
-function getBakeOptions() {
-  return [
-    { value: "normal", label: COPY.promote.bakeNormal },
-    { value: "long", label: COPY.promote.bakeLong },
-  ] as const;
-}
-
 function getVerdictOptions() {
   return [
     { value: "ready", label: formatPromoteVerdict("ready") },
@@ -43,9 +36,11 @@ function getDispositionOptions() {
 export function PromoteForms({
   digest,
   promoState,
+  bake,
 }: {
   digest: string;
   promoState: string | null;
+  bake: "normal" | "long" | null;
 }) {
   const { me } = useOpsContext();
   const canPromote = hasOpsAction(me, "change.request.promote");
@@ -56,7 +51,6 @@ export function PromoteForms({
   const signMut = usePromoteSignoffMutation();
   const fbMut = usePromoteFeedbackMutation();
 
-  const [bake, setBake] = useState<"normal" | "long">("normal");
   const [verdict, setVerdict] = useState<"ready" | "blocked">("ready");
   const [signNote, setSignNote] = useState("");
   const [feedbackId, setFeedbackId] = useState("");
@@ -66,7 +60,7 @@ export function PromoteForms({
 
   const promoteBlockedReason = !canPromote
     ? COPY.o0.reasons.actionDenied
-    : !digest
+    : !digest || !bake
       ? COPY.promote.unknownReason
       : promoState === "Blocked"
         ? COPY.promote.blockedReason
@@ -82,12 +76,12 @@ export function PromoteForms({
         <div className={s.bandHead}><h2 id="promote-request" className={s.bandTitle}>{COPY.promote.requestBtn}</h2></div>
         <div className={s.formBody}>
           <div className={s.inlineRow}>
-            <SelectField label={COPY.promote.bakeLabel} value={bake} options={getBakeOptions()} onChange={(v) => setBake(v as "normal" | "long")} />
+            {bake ? <span>{COPY.promote.bakeLabel} · {bake === "long" ? COPY.promote.bakeLong : COPY.promote.bakeNormal}</span> : null}
             <button
               type="button"
               className="btn btn--sm btn--primary"
               disabled={Boolean(promoteBlockedReason) || reqMut.isPending}
-              onClick={() => reqMut.mutate({ digest, bake })}
+              onClick={() => bake && reqMut.mutate({ digest, bake })}
             >
               {COPY.promote.requestBtn}
             </button>

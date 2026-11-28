@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { type RefObject } from "react";
+import { useRef, type RefObject } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Building2 } from "lucide-react";
@@ -8,6 +8,7 @@ import { t } from "@console/i18n";
 import { fmtDate, fmtKrw } from "@console/i18n/format";
 import { EMPLOYMENT_TYPE, LIFECYCLE_EVENT, label } from "../../../lib/labels";
 import { QueryState } from "../../../lib/react/query-state";
+import { useMountFocus } from "../../../ui/page/use-mount-focus";
 import { Button } from "../../../ui/button/button";
 import { Chip } from "../../../ui/chip";
 import { Kbd } from "../../../ui/record/record-section";
@@ -40,6 +41,13 @@ export function RosterPanel({ id, today, unitTriggerRef, onOpenUnit }: { id: str
 
 function Peek({ d, today, unitTriggerRef, onOpenUnit }: { d: Detail; today: string; unitTriggerRef?: RefObject<HTMLButtonElement | null>; onOpenUnit?: (unitId: string) => void }) {
   const c = useCard(d);
+  const heading = useRef<HTMLHeadingElement>(null);
+  // The phone pane opens before an uncached record loads. Move focus off its temporary Back
+  // control only while the user is still there; the identity stays visible through rotation.
+  useMountFocus(d.employee.id, () => {
+    const back = heading.current?.closest("aside")?.querySelector("[data-pane-back]");
+    return back && back === document.activeElement ? heading.current : null;
+  });
   const navigate = useNavigate();
   const e = d.employee;
   const place = [c.place.entity, ...(e.workplace_id ? [c.place.workplace, ...c.place.path] : [t("empCard.unplaced")])].filter(Boolean).join(" › ");
@@ -68,7 +76,7 @@ function Peek({ d, today, unitTriggerRef, onOpenUnit }: { d: Detail; today: stri
       <div className={s.peekHead}>
         <Avatar name={e.name} />
         <div className="grow">
-          <h2 className={s.peekName}>{e.name} <span className="code">{e.employee_number ?? t("people.number.none")}</span></h2>
+          <h2 ref={heading} data-pane-focus tabIndex={-1} className={s.peekName}>{e.name} <span className="code">{e.employee_number ?? t("people.number.none")}</span></h2>
           <span className={s.peekSub}>{sub}</span>
         </div>
         <StatusChip status={e.status} />
@@ -85,6 +93,8 @@ function Peek({ d, today, unitTriggerRef, onOpenUnit }: { d: Detail; today: stri
         )}
         {e.identity_review_required && <Chip tone="warn">{t("people.identityReview")}</Chip>}
       </div>
+      {/* Keep record actions together so arriving register facts cannot move a visible control. */}
+      <nav className="row" aria-label={t("crud.person.ends")}><EndActions id={e.id} /></nav>
       {e.status === "EXITED" && e.exit_date && <ExitPeek id={e.id} exitDate={e.exit_date} today={today} />}
       {next && (
         <Banner tone="warn" title={t("roster.peek.next", { days: daysBetween(today, next.date) })}>{t("empCard.next.what", { date: fmtDate(next.date), what: next.what })}</Banner>
@@ -113,8 +123,6 @@ function Peek({ d, today, unitTriggerRef, onOpenUnit }: { d: Detail; today: stri
           </dl>
         </section>}</QueryState>
       )}
-      {/* CRUD: exit and registration cancel from the roster's peek, each opening on the record. */}
-      <nav className="row" aria-label={t("crud.person.ends")}><EndActions id={e.id} /></nav>
     </>
   );
 }

@@ -51,7 +51,7 @@ async function collect(github, merge) {
   }
   const required = rules.filter(rule => rule.type === 'required_status_checks')
     .flatMap(rule => rule.parameters.required_status_checks).map(check => ({
-      context: check.context, integration_id: check.integration_id ?? policy.check_app_id,
+      context: check.context, integration_id: check.integration_id ?? null,
     }));
   if (!required.length || !policy.required_checks.every(expected =>
     required.some(check => check.context === expected.context && check.integration_id === expected.integration_id))) {
@@ -60,7 +60,7 @@ async function collect(github, merge) {
   const runs = (await readCheckRuns(github, head))
     .filter(run => Date.parse(run.started_at) < mergedAt).sort((a, b) => b.id - a.id);
   const checks = required.map(check => runs.find(run => run.name === check.context &&
-    run.app.id === check.integration_id));
+    run.app?.id === (check.integration_id ?? policy.check_app_id)));
   if (!checks.every(run => run && Number.isInteger(run.id) && run.id > 0 && run.head_sha === head &&
       run.status === 'completed' && run.conclusion === 'success' && Date.parse(run.completed_at) < mergedAt)) {
     throw new Error('Required PR-head checks did not pass before merge');

@@ -15,6 +15,7 @@ pub const CONFIGURED_ROUTE_SURFACES: &[ConfiguredRouteSurface] = &[
     surface("support-reference", crate::http::support_reference::PATHS),
     surface("public-status", crate::http::status::STATUS_ROUTE_PATHS),
     surface("requests", crate::requests::REQUEST_ROUTE_PATHS),
+    surface("lifecycle", crate::lifecycle::LIFECYCLE_ROUTE_PATHS),
     surface("audit", crate::AUDIT_ROUTE_PATHS),
     #[cfg(feature = "attendance")]
     surface(
@@ -311,8 +312,7 @@ pub const CONFIGURED_ROUTE_SURFACES: &[ConfiguredRouteSurface] = &[
     ),
 ];
 
-#[cfg(all(test, feature = "production"))]
-#[cfg(not(feature = "test-postgres"))]
+#[cfg(all(test, feature = "production", not(feature = "test-postgres")))]
 mod production_route_surface_tests {
     use super::*;
     use console_production_rest::{

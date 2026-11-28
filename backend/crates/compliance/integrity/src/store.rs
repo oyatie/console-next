@@ -120,7 +120,7 @@ impl PgIntegrityStore {
             Box::pin(async move {
                 // Verify the finding exists and belongs to this org.
                 let existing = sqlx::query(
-                    "SELECT id, status FROM governance_findings WHERE id = $1 AND org_id = $2",
+                    "SELECT id, status FROM governance_findings WHERE id = $1 AND org_id = $2 FOR UPDATE",
                 )
                 .bind(finding_id)
                 .bind(org_uuid)

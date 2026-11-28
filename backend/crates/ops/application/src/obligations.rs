@@ -22,6 +22,7 @@ pub struct Context {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Entry {
+    pub attestation_version: u8,
     #[serde(with = "time::serde::rfc3339")]
     pub at: OffsetDateTime,
     pub operator: Operator,
@@ -198,9 +199,15 @@ impl<'a, S: RecordSpool> Register<'a, S> {
                 return Err(Error::Obligation(Refusal::Invalid));
             }
             let current = id.and_then(|id| items.iter().find(|item| item.id == id));
-            Obligation::evolve(current.map(|item| &item.obligation), &event)
-                .map_err(Error::Obligation)?;
+            Obligation::apply_record(
+                current.map(|item| &item.obligation),
+                &event,
+                &context.operator.person,
+                records.len() as u64 + 1,
+            )
+            .map_err(Error::Obligation)?;
             Ok(Entry {
+                attestation_version: 2,
                 at: context.at.to_offset(UtcOffset::UTC),
                 operator: context.operator.clone(),
                 // The opening record's global sequence is unique under the append lock.
@@ -227,10 +234,14 @@ fn replay(records: &[Record]) -> Result<Vec<Item>, Error> {
             return Err(Error::ChainBroken(record.seq));
         }
         let current = items.iter_mut().find(|item| item.id == entry.obligation_id);
-        let obligation = Obligation::evolve(
-            current.as_deref().map(|item| &item.obligation),
-            &entry.event,
-        )
+        let previous = current.as_deref().map(|item| &item.obligation);
+        let obligation = match entry.attestation_version {
+            1 => Obligation::replay_legacy(previous, &entry.event),
+            2 => {
+                Obligation::apply_record(previous, &entry.event, &entry.operator.person, record.seq)
+            }
+            _ => return Err(Error::ChainBroken(record.seq)),
+        }
         .map_err(|_| Error::ChainBroken(record.seq))?;
         if let Some(item) = current {
             item.obligation = obligation;

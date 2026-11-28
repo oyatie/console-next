@@ -88,9 +88,8 @@ const FAILED_SET_JOIN: &str = " LEFT JOIN (SELECT DISTINCT f.org_id, f.employee_
              AND r.created_at > f.created_at)) fe \
      ON fe.org_id = e.org_id AND fe.id = e.id AND e.employment_status <> 'EXITED'";
 
-const FILTERED_FROM: &str = concat!(
-    " FROM person_employees_current e \
-     LEFT JOIN branches b ON b.id = e.home_branch_id \
+const ROW_DETAILS: &str = concat!(
+    " LEFT JOIN branches b ON b.id = e.home_branch_id \
        AND b.org_id = e.org_id AND b.deactivated_at IS NULL \
      LEFT JOIN employee_employment_profiles p \
        ON p.employee_id = e.id AND p.org_id = e.org_id \
@@ -102,8 +101,7 @@ const FILTERED_FROM: &str = concat!(
     leave_return_lateral!(),
     status_since_lateral!(),
     assignment_lateral!(),
-    current_placement_join!(),
-    " WHERE TRUE"
+    current_placement_join!()
 );
 
 /// `<select>` over the employees the list filters admit. The one FROM/WHERE
@@ -117,8 +115,18 @@ pub fn filtered_employees(select: &str, filters: &EmployeeListFilters) -> QueryB
 
 /// The FROM/WHERE of [`filtered_employees`], for a select that binds values.
 pub fn push_filtered_from(builder: &mut QueryBuilder<Postgres>, filters: &EmployeeListFilters) {
-    builder.push(FILTERED_FROM);
+    builder.push(" FROM person_employees_current e");
+    builder.push(ROW_DETAILS);
+    builder.push(" WHERE TRUE");
     filters.push(builder);
+}
+
+/// Hydrate just the authorized, ordered cursor page with its employment and lifecycle details.
+pub(crate) fn push_page_details(builder: &mut QueryBuilder<Postgres>) {
+    builder.push(
+        " FROM page JOIN person_employees_current e ON e.org_id=page.org_id AND e.id=page.id",
+    );
+    builder.push(ROW_DETAILS);
 }
 
 /// `<select>` over the same rows as [`filtered_employees`], joining only what
@@ -129,10 +137,39 @@ pub fn push_filtered_from(builder: &mut QueryBuilder<Postgres>, filters: &Employ
 pub fn counted_employees(select: &str, filters: &EmployeeListFilters) -> QueryBuilder<Postgres> {
     let mut builder = QueryBuilder::<Postgres>::new(select);
     builder.push(" FROM person_employees_current e");
+    push_count_filters(&mut builder, filters);
+    builder
+}
+
+/// Obtain each cursor key from its own canonical person. A fresh import can otherwise plan a
+/// nested scan of every binding for each employee before statistics catch up.
+pub(crate) fn cursor_employees(
+    select: &str,
+    filters: &EmployeeListFilters,
+    lookup_name: bool,
+) -> QueryBuilder<Postgres> {
+    if !lookup_name {
+        return counted_employees(select, filters);
+    }
+    let mut builder = QueryBuilder::<Postgres>::new(select);
+    builder.push(
+        " FROM employees e JOIN LATERAL (SELECT current_person.name \
+        FROM person_employees_current current_person WHERE current_person.org_id=e.org_id \
+        AND current_person.id=e.id LIMIT 1) person ON true",
+    );
+    push_count_filters(&mut builder, filters);
+    builder
+}
+
+fn push_count_filters(builder: &mut QueryBuilder<Postgres>, filters: &EmployeeListFilters) {
     if filters.home_branch_review_required.is_some() {
         builder.push(current_placement_join!());
     }
-    if filters.contract_ending_before.is_some() || filters.register_review_required.is_some() {
+    if filters.contract_ending_before.is_some()
+        || filters.contract_ending_on_or_after.is_some()
+        || filters.team_review_required.is_some()
+        || filters.register_review_required.is_some()
+    {
         builder.push(PROFILE_JOIN);
     }
     if filters.lifecycle_apply_failed.is_some() {
@@ -145,8 +182,7 @@ pub fn counted_employees(select: &str, filters: &EmployeeListFilters) -> QueryBu
         builder.push(assignment_lateral!());
     }
     builder.push(" WHERE TRUE");
-    filters.push(&mut builder);
-    builder
+    filters.push(builder);
 }
 
 /// The FROM/WHERE of the one-pass facets: every join a facet group reads

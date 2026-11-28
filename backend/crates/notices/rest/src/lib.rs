@@ -10,6 +10,8 @@
 //! existence is not a secret, its data is).
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
+mod error;
+use error::RestError;
 mod openapi;
 pub use openapi::OPENAPI_FRAGMENT;
 
@@ -18,17 +20,17 @@ use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use console_kernel_core::{KernelError, NoticeId, TraceContext};
-use console_notices_adapter_postgres::{PgNoticeError, PgNoticeStore};
+use console_kernel_core::{BranchId, KernelError, NoticeId, TraceContext};
+use console_notices_adapter_postgres::PgNoticeStore;
 use console_notices_application::{
     AcknowledgeNoticeCommand, CreateDraftNoticeCommand, GetNoticeQuery, ListNoticeReceiptsQuery,
     ListNoticesQuery, NoticeAudienceInput, NoticeProgressQuery, PublishNoticeCommand,
     UpdateDraftNoticeCommand,
 };
 use console_platform_auth::JwtVerifier;
-use console_platform_authz::{Action, Feature, Principal, authorize_org_wide};
+use console_platform_authz::{Action, Feature, Principal, authorize, authorize_org_wide};
 use console_platform_request_context::RequestContextError;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 pub const NOTICES_PATH: &str = "/api/v1/notices";
 pub const NOTICE_PATH_TEMPLATE: &str = "/api/v1/notices/{id}";
@@ -91,17 +93,29 @@ struct ReceiptsParams {
     offset: Option<i64>,
 }
 
+/// Check notice publication against its intended audience. Only a concrete branch
+/// permits a branch-scoped publisher; a shared audience requires tenant-wide authority.
+pub fn authorize_publication(
+    principal: &Principal,
+    branch: Option<BranchId>,
+) -> Result<(), KernelError> {
+    let action = Action::new(Feature::NoticeManage);
+    match branch {
+        Some(branch) => authorize(principal, action, branch),
+        None => authorize_org_wide(principal, action),
+    }
+}
+
 /// `true` when the principal holds the publish tier (draft visibility +
 /// publish/progress/receipts + per-row progress hydration). Deny-by-default
 /// on the authz check: any error (missing grant, scope failure, …) is treated
 /// as "not a manager", not surfaced.
 fn is_notice_manager(principal: &Principal) -> bool {
-    authorize_org_wide(principal, Action::new(Feature::NoticeManage)).is_ok()
+    authorize_publication(principal, None).is_ok()
 }
 
 fn require_notice_manager(principal: &Principal) -> Result<(), RestError> {
-    authorize_org_wide(principal, Action::new(Feature::NoticeManage))
-        .map_err(RestError::from_kernel)
+    authorize_publication(principal, None).map_err(RestError::from_kernel)
 }
 
 async fn create_draft(
@@ -266,80 +280,6 @@ async fn notice_receipts(
         .await
         .map_err(RestError::from_store)?;
     Ok(Json(page).into_response())
-}
-
-#[derive(Debug, Serialize)]
-struct ErrorBody {
-    error: ErrorPayload,
-}
-
-#[derive(Debug, Serialize)]
-struct ErrorPayload {
-    code: &'static str,
-    message: String,
-}
-
-#[derive(Debug)]
-struct RestError {
-    status: StatusCode,
-    code: &'static str,
-    message: String,
-}
-
-impl RestError {
-    fn new(status: StatusCode, code: &'static str, message: impl Into<String>) -> Self {
-        Self {
-            status,
-            code,
-            message: message.into(),
-        }
-    }
-
-    fn unauthorized(message: impl Into<String>) -> Self {
-        Self::new(StatusCode::UNAUTHORIZED, "unauthorized", message)
-    }
-
-    fn unavailable(message: impl Into<String>) -> Self {
-        Self::new(StatusCode::SERVICE_UNAVAILABLE, "unavailable", message)
-    }
-
-    fn from_kernel(err: KernelError) -> Self {
-        Self::new(
-            StatusCode::from_u16(err.status_code()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
-            err.code.unwrap_or(err.kind.code()),
-            err.message,
-        )
-    }
-
-    fn from_store(err: PgNoticeError) -> Self {
-        match err {
-            PgNoticeError::Domain(err) => Self::from_kernel(err),
-            PgNoticeError::Db(_) => {
-                // Never leak sqlx/schema internals (OWASP A05). Log server-side.
-                tracing::error!(error = %err, "notice store error");
-                Self::new(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "internal",
-                    "internal server error",
-                )
-            }
-        }
-    }
-}
-
-impl IntoResponse for RestError {
-    fn into_response(self) -> Response {
-        (
-            self.status,
-            Json(ErrorBody {
-                error: ErrorPayload {
-                    code: self.code,
-                    message: self.message,
-                },
-            }),
-        )
-            .into_response()
-    }
 }
 
 async fn principal_from_headers(

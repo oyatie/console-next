@@ -1,0 +1,15 @@
+{
+  "baseline": {
+    "apps/web/src/features/audit/ui/evidence-vault.tsx#EvidenceVault": 32
+  },
+  "newScreens": {
+    "apps/web/src/features/audit/ui/evidence-vault.tsx#EvidenceVault": {
+      "FACT": 13,
+      "REFUSAL": 9,
+      "EMPTY": 3,
+      "LEGAL": 3,
+      "RECEIPT": 4,
+      "EXPLANATION": 0
+    }
+  }
+}

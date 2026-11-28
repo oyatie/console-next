@@ -2,4 +2,5 @@ type: object
 additionalProperties: false
 required: [tiers]
 properties:
+  expectedUpdatedAt: { type: string, format: date-time, description: Current item revision returned by the last catalog read. }
   tiers: { type: array, items: { $ref: '#/components/schemas/BenefitCatalogTier' } }

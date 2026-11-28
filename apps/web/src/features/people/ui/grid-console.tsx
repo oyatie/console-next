@@ -83,7 +83,7 @@ export function GridConsole({
         ),
       }}
       steps={<StepLine steps={[...steps]} label={t("bulk.page.steps")} />}
-      body={<div ref={bodyRef}>{body}</div>}
+      body={<div ref={bodyRef} data-sheet-grid-step={step === "edit" || undefined}>{body}</div>}
       notice={
         step !== "done" ? (
           <CommandError

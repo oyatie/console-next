@@ -10,7 +10,6 @@ import { personName } from "../../../reference/person/present";
 import { Button, Form } from "../../../ui/button/button";
 import { Card } from "../../../ui/card/card";
 import { Checks } from "../../../ui/choice/checks";
-import { ChoiceField } from "../../../ui/choice/choice-field";
 import { Chip } from "../../../ui/chip";
 import { Dialog } from "../../../ui/dialog";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
@@ -26,7 +25,6 @@ import {
   regenerateMyRecoveryCodes,
   releaseSelfOpsHolder,
   saveMyRecoveryContact,
-  type RecoveryChannel,
 } from "../api";
 import { useOpsGroupInvitesItem } from "./ops-group-invites";
 import s from "./account.module.css";
@@ -42,7 +40,6 @@ export function OpsSecurityBody({ myId }: { myId: string }) {
   const opsQ = useQuery(opsHoldersQuery);
   const groupInvitesItem = useOpsGroupInvitesItem();
   const [modal, setModal] = useState<"contact" | "designate" | "release" | null>(null);
-  const [channel, setChannel] = useState<RecoveryChannel>("EMAIL");
   const [contactVal, setContactVal] = useState("");
   const [consent, setConsent] = useState<string[]>([]);
   const [candidateId, setCandidateId] = useState<string | null>(null);
@@ -52,7 +49,7 @@ export function OpsSecurityBody({ myId }: { myId: string }) {
   const grantsQ = useQuery({ ...activeGrantsQuery, enabled: modal === "designate" });
 
   const saveContact = useCommand({
-    run: () => saveMyRecoveryContact(channel, contactVal.trim()),
+    run: () => saveMyRecoveryContact(contactVal.trim()),
     invalidates: ["/api/v1/auth/recovery/status", "/api/v1/access/ops"],
     onSuccess: () => {
       setModal(null);
@@ -112,6 +109,7 @@ export function OpsSecurityBody({ myId }: { myId: string }) {
       value: (
         <div className="row">
           <span>{contact ? contact.masked_value : t("account.opsSecurity.contactUnset")}</span>
+          {contact?.channel === "PHONE" && <span>{t("auth.setup.recovery.replacePhone")}</span>}
           {contact?.review_pending && <Chip>{t("auth.setup.recovery.reviewPending")}</Chip>}
           <Button size="sm" variant="ghost" onClick={() => setModal("contact")}>
             {t(contact ? "account.opsSecurity.contactEdit" : "account.opsSecurity.contactSet")}
@@ -184,18 +182,11 @@ export function OpsSecurityBody({ myId }: { myId: string }) {
       {modal === "contact" && (
         <Dialog open title={t(contact ? "account.opsSecurity.contactEdit" : "account.opsSecurity.contactSet")} onClose={() => setModal(null)} dismissable={!saveContact.isPending}>
           <Form className="form" onSubmit={() => contactVal.trim() && consent.includes("recovery") && saveContact.mutate(undefined)}>
-            <ChoiceField
-              label={t("auth.setup.recovery.channel")}
-              required
-              options={(["EMAIL", "PHONE"] as const).map((k) => ({ value: k, label: t(`auth.setup.recovery.channel.${k}`) }))}
-              value={channel}
-              onChange={(v) => setChannel((v as RecoveryChannel) ?? "EMAIL")}
-            />
-            <Field label={t("auth.setup.recovery.value")} required>
+            <Field label={t("auth.setup.recovery.channel.EMAIL")} required>
               {(p) => (
                 <TextInput
                   {...p}
-                  inputMode={channel === "EMAIL" ? "email" : "tel"}
+                  type="email"
                   autoCapitalize="none"
                   autoCorrect="off"
                   spellCheck={false}

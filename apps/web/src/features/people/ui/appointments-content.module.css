@@ -1,0 +1,6 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+/* The composer sits above the notice list. Reserve the viewport for its
+   initial read so the notice controls cannot move out from under a pointer. */
+.workspace:has([data-read-layout]) {
+  min-block-size: 100svh;
+}

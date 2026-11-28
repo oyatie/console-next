@@ -8,7 +8,7 @@ import { codeText } from "../lib/labels";
 import { isAnswer } from "../lib/react/query-defaults";
 import { myAccessQuery } from "../reference/authz/api";
 import { useSetupChecklist } from "../features/onboarding/ui/use-setup";
-import { phaseBand, receiptDuration } from "../features/onboarding/domain/phase";
+import { canReadSetupChecklist, phaseBand, receiptDuration } from "../features/onboarding/domain/phase";
 import { settingsQuery } from "../reference/settings/api";
 import { Banner } from "../ui/banner/banner";
 import { Button } from "../ui/button/button";
@@ -23,18 +23,22 @@ const PHASE_HOLD_MS = 2000;
 const deadlines = new Map<typeof session.principal, number | null>();
 
 /** One page-head notice while setup needs attention or the go-live receipt is current. */
-export function PhaseBand({ children }: { children: ReactNode }) {
+export function PhaseBand({ children, operatingSince }: { children: ReactNode; operatingSince?: string | null }) {
   const principal = session.principal;
   const dismissKey = principal ? `console.phase.dismissed.${principal}` : null;
   const [dismissed, setDismissed] = useState(() => {
     try { return dismissKey ? localStorage.getItem(dismissKey) : null; } catch { return null; }
   });
-  const { phaseQ: q } = useSetupChecklist();
+  const { phaseQ: q, readable } = useSetupChecklist();
   const access = useQuery(myAccessQuery);
   const settings = useQuery(settingsQuery);
+  // The shell identity and the checklist read the same go-live timestamp. Only setup needs the step list here.
+  const needsTimestamp = q.data === undefined && !isAnswer(q.error) && (q.isPending || q.isError);
+  const useIdentity = needsTimestamp && readable && access.isSuccess && access.data.phase === "OPERATING"
+    && canReadSetupChecklist(access.data) && operatingSince !== undefined && settings.isSuccess && settings.data.items !== undefined;
   const [settled, setSettled] = useState(() => deadlines.get(principal) === null);
   const decided = settled || (access.data !== undefined || access.failureCount > 0)
-    && (access.data?.phase === "SETUP" || !q.isPending || q.failureCount > 0);
+    && (access.data?.phase === "SETUP" || useIdentity || !q.isPending || q.failureCount > 0);
   if (decided && !settled) setSettled(true);
   useEffect(() => {
     if (decided) {
@@ -49,9 +53,10 @@ export function PhaseBand({ children }: { children: ReactNode }) {
   const duration = receiptDuration(settings.data?.items);
   const [now, setNow] = useState(Date.now);
   const data = q.isError && isAnswer(q.error) ? undefined : q.data;
-  const goLiveAt = data?.go_live_at;
+  const goLiveAt = useIdentity ? operatingSince : data?.go_live_at;
   const band = access.data ? phaseBand(access.data.phase, goLiveAt, Math.max(now, q.dataUpdatedAt), duration) : null;
-  const receipt = data ? `${data.phase}:${goLiveAt ?? ""}` : null;
+  const receiptPhase = useIdentity ? "OPERATING" : data?.phase;
+  const receipt = receiptPhase ? `${receiptPhase}:${goLiveAt ?? ""}` : null;
   useEffect(() => {
     if (band !== "started" || !goLiveAt) return;
     const remaining = Date.parse(goLiveAt) + duration - Math.max(now, Date.now());
@@ -66,7 +71,9 @@ export function PhaseBand({ children }: { children: ReactNode }) {
   const label = t("shell.phase.setup");
   const text = next ? `${label} · ${codeText(`setup.step.${next}`, "")}` : label;
   const autoCancelled = useSyncExternalStore(subscribeCancelledRecovery, cancelledRecoveryNotice, () => false);
-  const slot = <PhaseSlot phase={band === "started" && dismissed === receipt ? null : band} text={text} dismiss={dismiss} />;
+  // Access can observe go-live before the matching checklist refresh supplies its receipt.
+  const transitioning = access.data?.phase === "OPERATING" && data?.phase === "SETUP" && q.isFetching;
+  const slot = transitioning ? <div className={s.band} aria-hidden="true" /> : <PhaseSlot phase={band === "started" && dismissed === receipt ? null : band} text={text} dismiss={dismiss} />;
   return <PagePhase value={{ slot, settled: decided }}>
     {!decided && <div className="page"><Skeleton bones={["crumb", "title", "line", "row", "row", "row"]} label={t("common.loading")} /></div>}
     <div className={s.content} data-phase-pending={!decided || undefined} inert={!decided} aria-hidden={!decided || undefined}>

@@ -73,6 +73,17 @@ async fn inbox_first_page_budget_scales_without_per_person_statements_or_cross_t
             1,
             "numeric and filing rules must share one register scan"
         );
+        let filing_period_scans = events
+            .iter()
+            .filter_map(|event| event["fields"]["db.statement"].as_str())
+            .filter(|sql| {
+                sql.contains("FROM lifecycle_filing_rules") && sql.contains("AS loss_days")
+            })
+            .count();
+        assert_eq!(
+            filing_period_scans, 1,
+            "ranking and hydration must reuse the same resolved filing periods"
+        );
         let statements = events
             .iter()
             .filter(|e| e["target"] == "sqlx::query")

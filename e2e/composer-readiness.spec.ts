@@ -28,8 +28,9 @@ test("empty composers explain their blocks, keep focus and reveal access field e
 
   await go(admin, "/people?bulk=paste");
   const bulk = admin.getByRole("dialog", { name: "일괄 발령", exact: true });
-  await blocked(bulk.getByRole("button", { name: "0명 발령", exact: true }), "4개 항목을 채워야 합니다");
-  await bulk.getByRole("button", { name: "돌아가기" }).click();
+  await expect(bulk.getByRole("region", { name: t("composer.section.effects") })).toContainText(t("bulk.consequence.none", { count: 0 }));
+  await blocked(bulk.getByRole("button", { name: t("composer.commit", { action: t("composer.action.appointment"), verb: t("composer.verb.apply") }), exact: true }), "4개 항목을 채워야 합니다");
+  await bulk.getByRole("button", { name: t("composer.dismiss"), exact: true }).click();
 
   await go(admin, "/people?view=accounts");
   await admin.getByRole("button", { name: "계정 초대", exact: true }).click();

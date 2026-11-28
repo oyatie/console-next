@@ -84,6 +84,7 @@ async function targets(table: Table, style: string, width: number, layout: "card
       },
       head: Math.round(el.querySelector('[role="columnheader"]')!.getBoundingClientRect().height),
       row: Math.max(...cells.map(cell => Math.round(cell.getBoundingClientRect().height))),
+      scrollTargetHeight: Math.round(row.getBoundingClientRect().height),
       clipped: cells.filter(cell => cell.scrollHeight > cell.clientHeight + 1).length,
     };
   });
@@ -95,6 +96,11 @@ const heights = (boxes: Record<string, Box>) => Object.fromEntries(Object.entrie
 const DESK = { select: 24, selectAll: 24, link: 24, ghost: 24, action: 24 };
 // The header heights the table lays out for regular and compact density.
 const HEAD = { Cards: 40, Compact: 36 };
+
+test.each(["cards", "rows"] as const)("virtual row scroll bounds cover the cells in the %s layout", async layout => {
+  const { row, scrollTargetHeight } = await targets("Cards", "baseline", layout === "cards" ? 390 : 1440, layout);
+  expect(scrollTargetHeight).toBeGreaterThanOrEqual(row);
+});
 
 test("in Console a phone card row keeps 44px touch targets for its checkbox, buttons and name link, as cards and as rows", async () => {
   for (const [width, layout] of [[390, "cards"], [700, "rows"]] as const) {

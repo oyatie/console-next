@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use super::*;
 
+/// Personal task routes linked into the running API binary. Each route still enforces its own permissions.
+#[derive(Clone, Copy, Default)]
+pub struct PersonalTaskRoutes {
+    pub location: bool,
+    pub dispatch: bool,
+    pub workspace: bool,
+}
+
 pub(super) async fn get(
     State(s): State<OnboardingRestState>,
     h: HeaderMap,
@@ -12,10 +20,20 @@ pub(super) async fn get(
             module.ready &= s.payroll_compiled;
         }
     }
-    modules.push(console_onboarding_domain::Module {
-        key: "approvals",
-        ready: s.approvals_released,
-        unblock: None,
-    });
+    for (key, ready) in [
+        ("approvals", s.approvals_released),
+        (
+            "approval_submission",
+            s.approvals_released && s.personal_tasks.workspace,
+        ),
+        ("personal_location", s.personal_tasks.location),
+        ("dispatch_offers", s.personal_tasks.dispatch),
+    ] {
+        modules.push(console_onboarding_domain::Module {
+            key,
+            ready,
+            unblock: None,
+        });
+    }
     Ok(Json(modules).into_response())
 }

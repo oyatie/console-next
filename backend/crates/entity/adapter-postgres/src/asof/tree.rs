@@ -65,7 +65,7 @@ pub(crate) async fn load(tx: &mut Tx<'_>, point: ReadPoint) -> Result<Tree, PgEn
         "SELECT DISTINCT ON (r.org_unit_id) r.org_unit_id, r.version, r.attributes, p.position \
          FROM org_unit_revisions r LEFT JOIN org_unit_positions p ON p.org_unit_id = r.org_unit_id \
          WHERE COALESCE(entity_try_iso_date(r.attributes->>'effective_from'), (r.created_at AT TIME ZONE 'Asia/Seoul')::date) <= $1 \
-           AND r.created_at <= COALESCE($2::timestamptz, now()) \
+           AND r.created_at <= COALESCE($2::timestamptz, 'infinity') \
          ORDER BY r.org_unit_id, COALESCE(entity_try_iso_date(r.attributes->>'effective_from'), (r.created_at AT TIME ZONE 'Asia/Seoul')::date) DESC, r.version DESC"
     )
     .bind(point.as_of)

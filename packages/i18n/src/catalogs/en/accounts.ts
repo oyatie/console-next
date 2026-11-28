@@ -139,6 +139,7 @@ export const enAccounts = {
   "accounts.invite.removeRoles": "Invite without initial role",
   "accounts.invite.consequenceWithRoles": "Creates an account for {name}, applies {count, plural, one {# initial role grant} other {# initial role grants}} ({grants}), and issues a first sign-in code in one step.",
   "accounts.invite.doneWithRoles": "Created the account for {name}, applied {count, plural, one {# role grant} other {# role grants}}, and issued a first sign-in code",
+  "accounts.issued.replayed": "The invite for {name} was saved. If you did not receive the first sign-in code, issue a new one from the account.",
   "accounts.issued.granted": "Initial access applied ({count, plural, one {# grant} other {# grants}}). It takes effect after first sign-in.",
   "accounts.reset.peerDelivered": "Sent the sign-in code to the registered recovery contact ({masked}) for {name}. For security, peer ops reset codes are never shown on screen.",
   "accounts.reset.peerOpsOnly": "Only another active ops account holder can reset an ops account holder.",

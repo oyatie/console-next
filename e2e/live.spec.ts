@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { commitLabel } from "../apps/web/src/ui/composer/actions";
+import { loadCatalog, t } from "@console/i18n";
 import { expect, test, type Browser, type Page, type Request } from "@playwright/test";
 import { authenticatorOf, virtualAuthenticator } from "./auth";
 import { go, kstDate, newContext, passkeyLogin, registerEmployee } from "./flows";
 import { openTenant } from "./helpers/tenant";
 import { expectAccessible } from "./a11y";
-import { homeRail, staffedTenant, tenantInSetup } from "./setup-flows";
+import { homeRail, registerEntity, registerWorkplace, staffedTenant } from "./setup-flows";
 import { expectStable } from "./stability";
-import { addDepartments } from "./structure-flows";
 import { sheet as actSheet } from "./sheet";
+import { addDepartments } from "./structure-flows";
 import { hrAct } from "./record";
 
 // Decision #27 (FE-RT-7 subset): what one session changes reaches another session's open screen through the shell's
@@ -118,23 +120,42 @@ test("a change in one session reaches another without reload or polling, survive
 test("Home applies another session's setup change through its inbox without reload or a refresh press", { tag: "@live" }, async ({ browser }) => {
   test.setTimeout(180_000);
   // The one queue updates over SSE, including its grouped setup work.
-  const { admin, exec } = await tenantInSetup(browser, "livehome", "홈실시간");
-  await go(exec, "/");
-  const rail = await homeRail(exec);
+  const admin = await openTenant(browser, "livehome", "홈실시간");
+  const { page: observer } = await sameUserElsewhere(browser, admin);
+  await go(observer, "/");
+  const rail = await homeRail(observer);
   await expect(rail).toBeVisible();
-  await expectStable(exec, "Home before the change elsewhere");
-  const before = await rail.innerText();
+  await expectStable(observer, "Home before the change elsewhere");
+  const progress = rail.getByRole("progressbar");
   let loads = 0;
-  exec.on("load", () => { loads++; });
-  const updated = exec.waitForResponse((response) => new URL(response.url()).pathname === "/api/v1/me/action-inbox" && response.ok());
+  observer.on("load", () => { loads++; });
+  async function advance(step: string, change: () => Promise<void>) {
+    const before = Number(await progress.getAttribute("aria-valuenow"));
+    await Promise.all([
+      observer.waitForResponse(response => new URL(response.url()).pathname === "/api/v1/me/action-inbox" && response.ok()),
+      change(),
+    ]);
+    await expect.poll(async () => Number(await progress.getAttribute("aria-valuenow")), { timeout: 15_000 }).toBeGreaterThan(before);
+    await expectStable(observer, `Home after ${step}`);
+  }
 
-  await go(admin, "/org");
-  await addDepartments(admin, "본점", ["총무부"]);
-  await updated;
-  await expect.poll(() => rail.innerText(), { timeout: 15_000 }).not.toBe(before);
+  await advance("entity registration", async () => {
+    await (await homeRail(admin)).getByRole("link", { name: "법인 등록" }).first().click();
+    await registerEntity(admin, "홈실시간");
+  });
+  await advance("workplace registration", async () => {
+    await go(admin, "/");
+    const workplace = (await homeRail(admin)).getByRole("link", { name: "사업장 등록" }).first();
+    await expect(workplace).toHaveAttribute("href", /\/workplaces\/new$/);
+    await workplace.click();
+    await registerWorkplace(admin, "홈실시간", "본점");
+  });
+  await advance("the first department", async () => {
+    await go(admin, "/org");
+    await addDepartments(admin, "본점", ["총무부"]);
+  });
   expect(loads, "setup work updates without a document reload").toBe(0);
-  await expectStable(exec, "Home after the live setup change");
-  await expectAccessible(exec, "Home with live setup work");
+  await expectAccessible(observer, "Home with live setup work");
 });
 
 test("a sheet holds a change made elsewhere to the record under it, and closing it shows the change", { tag: "@live" }, async ({ browser }) => {
@@ -167,4 +188,77 @@ test("a sheet holds a change made elsewhere to the record under it, and closing 
   await open.getByRole("button", { name: "닫기", exact: true }).last().click();
   await expect(open).toBeHidden();
   await expect(exitPanel(b.page)).toContainText("보고됨", { timeout: 15_000 });
+});
+
+test("a tenant emergency switch reaches a second signed-in console and preserves its unsaved work and style", { tag: "@live" }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  await loadCatalog("ko");
+  const admin = await openTenant(browser, "style-live", "Display Style Company");
+  const { page: reader } = await sameUserElsewhere(browser, admin);
+  await go(reader, "/account");
+  await go(admin, "/account");
+  const chooser = (page: Page) => page.getByRole("combobox", { name: t("account.experience"), exact: true });
+  await go(admin, "/settings?section=rollout");
+  await admin.getByRole("button", { name: t("settingsHub.experience.change"), exact: true }).click();
+  const defaultSheet = admin.getByRole("dialog", { name: t("settingsHub.experience.sheetTitle"), exact: true });
+  await defaultSheet.getByText(t("account.experience.baseline"), { exact: true }).click();
+  await defaultSheet.getByText(t("reason.settings_change.POLICY_REVIEW"), { exact: true }).click();
+  await defaultSheet.getByRole("button", { name: commitLabel({ kind: "screenStyle", mode: "save" }), exact: true }).click();
+  await expect(defaultSheet).toBeHidden();
+  await expect(reader.locator("html")).toHaveAttribute("data-experience", "baseline");
+  await expect(chooser(reader)).toHaveValue("tenant");
+  await go(admin, "/account");
+  await chooser(admin).selectOption("console");
+  await expect(chooser(reader)).toHaveValue("console");
+
+  await go(admin, "/settings?section=rollout");
+  const html = reader.locator("html");
+  await expect(html).toHaveAttribute("data-experience", "console");
+  let loads = 0;
+  reader.on("load", () => { loads++; });
+  await reader.getByRole("button", { name: t("account.name.edit"), exact: true }).click();
+  const editor = reader.getByRole("dialog", { name: t("account.name.edit"), exact: true });
+  const input = editor.getByLabel(t("account.field.name"));
+  const original = await input.inputValue();
+  await input.fill("Preserved draft");
+  const readsRollback = (enabled: boolean) => reader.waitForResponse(async response =>
+    response.url().endsWith("/api/v1/me/workspace") && response.ok() && (await response.json()).legacy_kill_switch_enabled === enabled);
+  const activated = readsRollback(true);
+  await admin.getByRole("button", { name: t("settingsHub.rollout.activateKillSwitch"), exact: true }).click();
+  await activated;
+  await expect(html).toHaveAttribute("data-experience", "console");
+  await expect(input).toHaveValue("Preserved draft");
+  await input.fill(original);
+  await reader.keyboard.press("Escape");
+  await expect(editor).toBeHidden();
+  await expect(html).toHaveAttribute("data-experience", "baseline");
+  await expect(chooser(reader)).toBeDisabled();
+  expect(loads).toBe(0);
+
+  await reader.reload();
+  await expect(chooser(reader)).toBeDisabled();
+  await expect(html).toHaveAttribute("data-experience", "baseline");
+  const afterReload = loads;
+  await go(admin, "/settings");
+  await admin.getByRole("button", { name: t("settingsHub.section.rollout"), exact: true }).click();
+  await admin.getByRole("button", { name: t("settingsHub.rollout.releaseKillSwitch"), exact: true }).click();
+  await expect(html).toHaveAttribute("data-experience", "console");
+  await expect(chooser(reader)).toHaveValue("console");
+  await expect(chooser(reader)).toBeEnabled();
+  expect(loads).toBe(afterReload);
+
+  await reader.getByRole("button", { name: t("account.name.edit"), exact: true }).click();
+  await input.fill("Second draft");
+  const nextActivation = readsRollback(true);
+  await admin.getByRole("button", { name: t("settingsHub.rollout.activateKillSwitch"), exact: true }).click();
+  await nextActivation;
+  const quickRelease = readsRollback(false);
+  await admin.getByRole("button", { name: t("settingsHub.rollout.releaseKillSwitch"), exact: true }).click();
+  await quickRelease;
+  await expect(input).toHaveValue("Second draft");
+  await input.fill(original);
+  await editor.press("Escape");
+  await expect(chooser(reader)).toBeEnabled();
+  await expect(html).toHaveAttribute("data-experience", "console");
+  expect(loads).toBe(afterReload);
 });

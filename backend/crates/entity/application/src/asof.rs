@@ -51,7 +51,7 @@ pub struct ReadPoint {
     pub as_of: Date,
     pub today: Date,
     pub known_at: Option<OffsetDateTime>,
-    /// Live counts exclude confirmed exits; dated membership includes the last working day.
+    /// Whether this read uses the live projection. Employment includes the last working day.
     pub live: bool,
 }
 

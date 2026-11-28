@@ -33,7 +33,7 @@ test("Inbox ranks deadline rows before undated work and explains a failed read",
   await admin.setViewportSize({ width: 1440, height: 900 });
   await admin.goto("/inbox");
   const queue = admin.getByRole("region", { name: t("home.inbox.title"), exact: true });
-  await expect(queue.getByRole("table")).toHaveCount(4);
+  await expect(queue.getByRole("grid")).toHaveCount(4);
   await expect(queue.getByRole("heading", { level: 3 })).toHaveText(["기한 지남", "기한 임박", "그 뒤", "기한 없음"]);
   const rows = queue.locator("[data-id]");
   await expect(rows.nth(0)).toContainText("지난 기한 업무");
@@ -49,7 +49,7 @@ test("Inbox ranks deadline rows before undated work and explains a failed read",
   await fold.click();
   await admin.locator("main").evaluate(el => { el.scrollTop = 0; });
   const walk = async (width: number) => {
-    await expect(queue.getByRole("table", { name: "기한 임박", exact: true }).getByRole("row").last()).toBeInViewport();
+    await expect(queue.getByRole("grid", { name: "기한 임박", exact: true }).getByRole("row").last()).toBeInViewport();
     await expect(queue.getByText("오늘 퇴직", { exact: true })).toHaveCount(1);
     await expect(queue.getByRole("button", { name: "명부 확인 1 작업", exact: true })).toHaveCount(0);
     await expectAccessible(admin, `Home deadline groups at ${width}px`);
@@ -57,7 +57,7 @@ test("Inbox ranks deadline rows before undated work and explains a failed read",
       await admin.locator("html").evaluate((el, value) => el.dataset.theme = value, theme);
       expect(await rows.evaluateAll(elements => elements.flatMap(row => {
         const box = row.getBoundingClientRect();
-        return [...row.querySelectorAll('[role="cell"], td')].filter(cell => cell.closest("[data-id]") === row && getComputedStyle(cell).display !== "none").flatMap(cell => {
+        return [...row.querySelectorAll('[role="gridcell"], td')].filter(cell => cell.closest("[data-id]") === row && getComputedStyle(cell).display !== "none").flatMap(cell => {
           const b = cell.getBoundingClientRect();
           return b.width && (b.left < box.left - 1 || b.right > box.right + 1 || b.top < box.top - 1 || b.bottom > box.bottom + 1)
             ? [{ row: row.getAttribute("data-id"), cell: cell.textContent }] : [];

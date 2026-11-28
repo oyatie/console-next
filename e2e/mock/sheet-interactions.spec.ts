@@ -31,9 +31,13 @@ test("a dirty Sheet asks before Escape and keeps its draft", { tag: "@webkit-pr"
   const sheet = await openFormSheet(page);
   const draft = sheet.getByRole("textbox", { name: tg("sheet.reason") });
   await draft.fill("검토 중인 내용");
+  const footer = sheet.locator(":scope > div").filter({ has: page.getByRole("button", { name: tg("sheet.commit"), exact: true }) });
+  await expect(footer).toBeVisible();
+  const before = await footer.boundingBox();
   await page.keyboard.press("Escape");
   await expect(sheet).toBeVisible();
   await expect(sheet.getByRole("status")).toHaveText(t("composer.unsaved"));
+  expect(await footer.boundingBox()).toEqual(before);
   await expect(draft).toHaveValue("검토 중인 내용");
   await expectAxe(page, "dirty Sheet close prompt", { include: "[role=dialog]" });
 

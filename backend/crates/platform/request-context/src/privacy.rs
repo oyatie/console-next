@@ -214,6 +214,14 @@ pub(super) async fn run_tenant(
         return error_response_for(&err);
     }
     let org = principal.org_id;
+    if let Some(module) = request
+        .extensions()
+        .get::<crate::tenant_module::TenantModule>()
+        .copied()
+        && let Some(response) = module.refusal(pool, org).await
+    {
+        return response;
+    }
     let session_id = session_family_id(verifier, request.headers());
     let audit_context = request_audit_context(&request, session_id);
     request.extensions_mut().insert(principal.clone());

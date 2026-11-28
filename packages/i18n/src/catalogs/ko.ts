@@ -11,6 +11,7 @@ import { koPrivacyRefusals } from "./ko/privacy";
 import { koLeave } from "./ko/leave";
 import { koOrgChangeRefusals } from "./ko/org_change";
 import { koPayroll } from "./ko/payroll";
+import { koPayrollOutlook } from "./ko/payroll-outlook";
 import { koPayrollRun } from "./ko/payroll-run";
 import { koPayslip } from "./ko/payslip";
 import { koUiShiftBar } from "./ko/ui-shift-bar";
@@ -37,6 +38,8 @@ import { koAccounts } from "./ko/accounts";
 import { koAccess } from "./ko/access";
 import { koAccessReview } from "./ko/access-review";
 import { koAccessLog } from "./ko/access-log";
+import { koInternalCalendar } from "./ko/internal-calendar";
+import { koBenefits } from "./ko/benefits";
 import { koAudit } from "./ko/audit";
 import { koAccessCodes } from "./ko/access-codes";
 import { koDenied } from "./ko/denied";
@@ -44,12 +47,14 @@ import { koAccessGrants } from "./ko/access-grants";
 import { koAccount } from "./ko/account";
 import { koPeriodLocks } from "./ko/period-locks";
 import { koAttendance } from "./ko/attendance";
+import { koAttendanceRefusals } from "./ko/attendance.refuse";
 import { koAttendanceSchedule } from "./ko/attendance-schedule";
 import { koAttendancePatterns } from "./ko/attendance-patterns";
 import { koAttendanceHolidays } from "./ko/attendance-holidays";
 import { koAttendanceCrews } from "./ko/attendance-crews";
 import { koAttendanceOverview } from "./ko/attendance-overview";
 import { koAttendanceRecords } from "./ko/attendance-records";
+import { koEvaluation } from "./ko/evaluation";
 import { koMe } from "./ko/me";
 import { koTeam } from "./ko/team";
 import { koImport } from "./ko/import";
@@ -141,6 +146,7 @@ import { koEmpFix } from "./ko/emp-fix";
 import { koEmpRec } from "./ko/emp-rec";
 import { koEmpDoc } from "./ko/emp-doc";
 import { koPeopleJump } from "./ko/people-jump";
+import { koOvertimeAttestation } from "./ko/settings-hub.attestation";
 import { koSettingsHub } from "./ko/settings-hub";
 import { koUiWorklist } from "./ko/ui-worklist";
 import { koUiLedger } from "./ko/ui-ledger";
@@ -148,6 +154,7 @@ import { koUiLedger } from "./ko/ui-ledger";
 export const ko: Record<ScreenMessageId, string> = {
   ...koUiFlexibleColumns,
   ...koSettingsHub,
+  ...koOvertimeAttestation,
   ...koGovernanceRefusals,
   ...koAccountLinkRefusals,
   ...koPeriodUnlockRefusals,
@@ -166,6 +173,8 @@ export const ko: Record<ScreenMessageId, string> = {
   ...koAccess,
   ...koAccessReview,
   ...koAccessLog,
+  ...koInternalCalendar,
+  ...koBenefits,
   ...koAudit,
   ...koAccessCodes,
   ...koDenied,
@@ -173,6 +182,7 @@ export const ko: Record<ScreenMessageId, string> = {
   ...koAccount,
   ...koPeriodLocks,
   ...koAttendance,
+  ...koAttendanceRefusals,
   ...koAttendanceSchedule,
   ...koAttendancePatterns,
   ...koAttendanceHolidays,
@@ -273,7 +283,7 @@ export const ko: Record<ScreenMessageId, string> = {
   ...koEmpDoc,
   ...koPeopleJump,
   ...koOpsRecovery,
-  ...koNts, ...koPayroll, ...koPayrollRun, ...koPayslip,
+  ...koNts, ...koPayroll, ...koPayrollOutlook, ...koPayrollRun, ...koPayslip,
   ...koCommon,
   ...koSupport,
   ...koSupportAccess,
@@ -281,5 +291,5 @@ export const ko: Record<ScreenMessageId, string> = {
   ...koDirectoryViews,
   ...koUiWorklist,
   ...koUiLedger,
-  ...koMe, ...koTeam, ...koShellRoutes, ...koAccessPolicies, ...koAccessCheck, ...koAuth,
+  ...koEvaluation, ...koMe, ...koTeam, ...koShellRoutes, ...koAccessPolicies, ...koAccessCheck, ...koAuth,
 };

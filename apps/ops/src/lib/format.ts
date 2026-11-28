@@ -136,6 +136,7 @@ const INCIDENT_TIMELINE_LABELS: Record<string, string> = {
 };
 
 const OBLIGATION_EVENT_LABELS: Record<string, string> = {
+    countersigned: "Countersigned",
   opened: "Opened",
   in_review: "In review",
   redated: "Redated",

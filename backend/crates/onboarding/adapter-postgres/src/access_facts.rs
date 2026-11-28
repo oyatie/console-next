@@ -12,6 +12,7 @@ use uuid::Uuid;
 pub(crate) async fn load(
     tx: &mut Transaction<'_, Postgres>,
     org: OrgId,
+    prospective_holders: bool,
 ) -> Result<(SetupFacts, PreviewDetails), PgOnboardingError> {
     let accounts = sqlx::query("SELECT id, display_name, is_tenant_ops, EXISTS (SELECT 1 FROM auth_webauthn_credentials c WHERE c.user_id = users.id) AS enrolled FROM person_accounts_current users WHERE is_active ORDER BY id")
         .fetch_all(tx.as_mut()).await?;
@@ -119,6 +120,11 @@ pub(crate) async fn load(
                 activation.holders.push(holder.clone());
             }
         }
+    }
+    // An operating checklist uses current grant counts; only setup blockers and the
+    // detailed preview need to evaluate which accounts could approve after go-live.
+    if !prospective_holders {
+        return Ok((facts, PreviewDetails::default()));
     }
     for ((account, _), grant) in grants {
         if let Some(s) = subjects.get_mut(&account) {

@@ -3,7 +3,7 @@
 import type { components } from "@console/api/schema";
 import { isMessageId, t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
-import { codeText } from "../../lib/labels";
+import { codeText } from "../../lib/code-text";
 import { todayKst } from "../../lib/pure/today";
 import type { AccessEffectiveEntry } from "./api";
 import type { AccessRequirement } from "./domain/access";
@@ -64,6 +64,7 @@ export const levelText = (level: components["schemas"]["AccessLevel"]) => t(`acc
 
 /** Keep a hub's alternatives distinct from the reads a single page needs together. */
 export function requirementText(need: AccessRequirement): string {
+  if ("servedCapability" in need) return t(`denied.capability.${need.servedCapability}`);
   if ("destinations" in need) return t("common.denied.alternatives", { requirements: [...new Set(need.destinations.map(requirementText))].join(" / ") });
   return ("allOf" in need ? need.allOf : [need]).map(r => "action" in r ? t(`denied.action.${r.action}`) : `${domainText(r.domain)} · ${levelText(r.level)}`).join(" / ");
 }

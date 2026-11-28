@@ -48,8 +48,10 @@ test.each([200, 403, 404, 405, 503])("saved views reserve a disabled slot until 
   let release!: () => void;
   const held = new Promise<void>(resolve => { release = resolve; });
   const writes: string[] = [];
+  let editorReads = 0;
   let available = false;
   await page.unrouteAll({ behavior: "wait" });
+  await page.route("**/roster-saved-content.tsx*", async route => { editorReads++; await route.continue(); });
   await page.route("**/api/v1/me/employee-views", async route => {
     if (route.request().method() !== "GET") writes.push(route.request().method());
     await held;
@@ -68,8 +70,17 @@ test.each([200, 403, 404, 405, 503])("saved views reserve a disabled slot until 
     expect((await response).status()).toBe(status);
     await browserExpect(open).toHaveCount(1);
     expect(await slot!.evaluate(el => el.isConnected)).toBe(true);
-    if (status === 200) await browserExpect(open).toBeEnabled();
-    else await browserExpect(open).toBeDisabled();
+    expect(editorReads).toBe(0);
+    if (status === 200) {
+      await browserExpect(open).toBeEnabled();
+      await open.press("Enter");
+      const dialog = page.getByRole("dialog", { name: t("directoryViews.open"), exact: true });
+      await browserExpect(dialog).toBeVisible();
+      expect(editorReads).toBe(1);
+      await page.keyboard.press("Escape");
+      await browserExpect(dialog).toBeHidden();
+      await browserExpect(open).toBeFocused();
+    } else await browserExpect(open).toBeDisabled();
     const retry = page.getByRole("button", { name: t("common.retry"), exact: true });
     if (status === 503) {
       await browserExpect(retry).toBeVisible();

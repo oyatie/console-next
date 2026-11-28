@@ -39,72 +39,18 @@ fn distinct_signers(primary: &Option<String>, secondary: &Option<String>) -> boo
     }
 }
 
-pub(crate) fn validate_done(
-    kind: Kind,
-    evidence_ref: &Option<String>,
+pub(crate) fn validate_signer_fields(
     signer: &Option<String>,
     co_signer: &Option<String>,
     counsel_url: &Option<String>,
 ) -> Result<(), Refusal> {
-    if kind == Kind::LaunchGate {
-        if !present(co_signer) {
-            return Err(Refusal::Incomplete);
-        }
-        let structured_ok = if present(counsel_url) {
-            counsel_url
-                .as_deref()
-                .is_some_and(is_structured_counsel_url)
-        } else {
-            evidence_ref
-                .as_deref()
-                .is_some_and(is_structured_counsel_url)
-        };
-        if !distinct_signers(signer, co_signer) || !structured_ok {
-            return Err(Refusal::Invalid);
-        }
-    } else {
-        if present(co_signer) && !distinct_signers(signer, co_signer) {
-            return Err(Refusal::Invalid);
-        }
-        if present(counsel_url)
+    if !distinct_signers(signer, co_signer)
+        || present(counsel_url)
             && !counsel_url
                 .as_deref()
                 .is_some_and(is_structured_counsel_url)
-        {
-            return Err(Refusal::Invalid);
-        }
-    }
-    Ok(())
-}
-
-pub(crate) fn validate_waived(
-    kind: Kind,
-    signer: &Option<String>,
-    co_signer: &Option<String>,
-    counsel_url: &Option<String>,
-) -> Result<(), Refusal> {
-    if kind == Kind::LaunchGate {
-        if !present(co_signer) || !present(counsel_url) {
-            return Err(Refusal::Incomplete);
-        }
-        if !distinct_signers(signer, co_signer)
-            || !counsel_url
-                .as_deref()
-                .is_some_and(is_structured_counsel_url)
-        {
-            return Err(Refusal::Invalid);
-        }
-    } else {
-        if present(co_signer) && !distinct_signers(signer, co_signer) {
-            return Err(Refusal::Invalid);
-        }
-        if present(counsel_url)
-            && !counsel_url
-                .as_deref()
-                .is_some_and(is_structured_counsel_url)
-        {
-            return Err(Refusal::Invalid);
-        }
+    {
+        return Err(Refusal::Invalid);
     }
     Ok(())
 }

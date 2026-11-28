@@ -107,6 +107,20 @@ async fn worked_time_is_paid_on_every_projection_without_approval(owner: PgPool)
         )
         .await
         .unwrap();
+    // rls-arming: ok owner seeds a scoped confirmation after the entry is saved.
+    // A later rule record must leave historical work and its open excess visible.
+    sqlx::query(
+        "INSERT INTO overtime_rule_attestations
+            (org_id,scope_entity_id,confirmed_on,rule_reference,worker_notice_method,recorded_by)
+         VALUES ($1,$2,$3,'Synthetic clause','Written notice',$4)",
+    )
+    .bind(w.org)
+    .bind(w.workplaces[0])
+    .bind(date!(2026 - 10 - 05))
+    .bind(w.admin)
+    .execute(&w.owner)
+    .await
+    .unwrap();
     let grid = w
         .store
         .month_grid(

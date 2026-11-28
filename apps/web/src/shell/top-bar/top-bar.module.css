@@ -5,6 +5,7 @@
 .account, .needsMe { composes: btn btn--ghost from global; min-width: 0; max-width: var(--rail-w); flex-shrink: 0; }
 .account svg, .needsMe svg { flex-shrink: 0; }
 .badge { composes: t-xs t-medium num from global; display: inline-flex; align-items: center; justify-content: center; min-width: calc(var(--space-4) + var(--space-1)); height: calc(var(--space-4) + var(--space-1)); padding: 0 var(--space-1); border-radius: var(--radius-lg); background: var(--primary); color: var(--on-primary); }
+.badge:empty { visibility: hidden; }
 .taskPop { z-index: var(--z-sheet); width: min(var(--queue-w), calc(100vw - var(--space-4) * 2)); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-pop); }
 .taskPanel { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); max-height: min(70vh, calc(var(--qrow-h) * 7)); overflow-y: auto; outline: none; }
 .taskHead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding-bottom: var(--space-2); border-bottom: 1px solid var(--border-soft); }

@@ -67,6 +67,7 @@ function OnboardForm({ existing, onDirty, onCancel, onIssued, onLost }: {
       return { lost: null, issued: { org: r.org.name, otp: r.otp, expiresAt: r.admin_otp_expires_at, signInId: r.admin_sign_in_id, onboarded: { id: r.org.id, slug: r.org.slug } } };
     },
     invalidates: ["/api/platform"],
+    settle: true,
     onSuccess: (r) => (r.issued ? onIssued(r.issued) : onLost(r.lost!)),
     forget: true, // the first SUPER_ADMIN's code is not kept once handed to the code dialog
   });

@@ -1,6 +1,6 @@
 import { inlineUnitDetails } from "./structure-flows";
 import { readdirSync, readFileSync } from "node:fs";
-import AxeBuilder from "@axe-core/playwright";
+import { rawAnchors } from "./helpers/link-style";
 import { expect, test, type Page } from "@playwright/test";
 import { go, kstDate, registerEmployee, vendorPage } from "./flows";
 import { openUnit } from "./helpers/structure";
@@ -23,47 +23,14 @@ const declared = readdirSync(ROUTES)
 // passkey enrolment only exists mid sign-in, and the gallery is dev-only (visual.spec.ts audits it).
 // A 발령 공고 exists only after a bulk batch; people-actions/notice.spec walks the notice page itself. An issued
 // 증명서 exists only after issuance (its register opens rows, not links); certificates.spec walks and audits it.
-const ELSEWHERE = new Set(["/login", "/setup-passkey", "/platform", "/_gallery", "/people/notices/$noticeId", "/people/certificates/$certificateId"]);
+// The record-routes journey creates the approval, privacy request and payroll run and audits their links.
+const ELSEWHERE = new Set(["/account/privacy/intake/$id", "/approvals/$approvalId", "/payroll/runs/$id", "/login", "/setup-passkey", "/platform", "/_gallery", "/people/notices/$noticeId", "/people/certificates/$certificateId"]);
 const statics = new Set(declared.filter((p) => !p.includes("$")));
 /** A dynamic route's matcher: any value for its params, but never a static path (/people/new is not /people/$id). */
 const pattern = (p: string) => {
   const re = new RegExp(`^${p.replace(/\$[A-Za-z]+/g, "[^/]+")}$`);
   return { test: (path: string) => re.test(path) && !statics.has(path) };
 };
-
-// The browsers' own link and visited colours: Chromium and WebKit light, Chromium dark (color-scheme: dark), Firefox dark.
-const UA_COLOURS = ["rgb(0,0,238)", "rgb(85,26,139)", "rgb(158,158,255)", "rgb(208,173,240)", "rgb(140,140,255)", "rgb(255,173,255)"];
-
-/** Anchors in the browser's default look on the current screen, in the light and the dark theme. */
-async function rawAnchors(page: Page, where: string) {
-  await page.mouse.move(0, 0);
-  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-  const found: string[] = [];
-  const html = page.locator("html");
-  const original = await html.getAttribute("data-theme");
-  const anchors = await page.locator("a").count();
-  for (const theme of ["light", "dark"]) {
-    await html.evaluate((el, t) => (el.dataset.theme = t), theme);
-    const bad = await page.evaluate((ua) => {
-      const flat = (c: string) => c.replace(/\s+/g, "");
-      return [...document.querySelectorAll("a")].flatMap((a) => {
-        const s = getComputedStyle(a);
-        const colour = flat(s.color);
-        const what = `${a.textContent?.trim().slice(0, 30) || a.getAttribute("href")} (${colour}, ${s.textDecorationLine})`;
-        if (ua.includes(colour)) return [`UA colour: ${what}`];
-        if (s.textDecorationLine.includes("underline") && flat(s.textDecorationColor) === colour) return [`underline at rest: ${what}`];
-        return [];
-      });
-    }, UA_COLOURS);
-    found.push(...bad.map((b) => `[${theme}] ${where}: ${b}`));
-    // Links read apart from the text around them (WCAG 1.4.1) and keep their contrast, in both themes.
-    if (!anchors) continue;
-    const { violations } = await new AxeBuilder({ page }).withRules(["link-in-text-block", "color-contrast"]).include("a").analyze();
-    for (const v of violations) found.push(`[${theme}] ${where}: axe ${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(" | ")}`);
-  }
-  await html.evaluate((el, t) => (t === null ? delete el.dataset.theme : (el.dataset.theme = t)), original);
-  return found;
-}
 
 /**
  * In-app navigation to `path`, then waits for its screen: a fresh h1 (the last screen's stays while a lazy chunk loads;

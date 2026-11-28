@@ -66,7 +66,7 @@ async fn only_setup_effective_grants_read_and_arm_their_step(owner: PgPool) {
         ["employees"]
     );
     store.skip_step(&hr, "employees").await.unwrap();
-    for step in ["org", "roles"] {
+    for step in ["org", "roles", "overtime"] {
         let before = snapshot(&owner, &a).await;
         refused(
             &owner,
@@ -126,6 +126,21 @@ async fn prepared_grants_count_their_holders_without_unlocking_the_setup_rail(ow
     assert_eq!(
         p.details.access_admin_holders[0].id,
         a.user.as_uuid().to_string()
+    );
+
+    operating(&owner, &a).await;
+    let c = store.checklist(&prepared).await.unwrap();
+    let roles = c.steps.iter().find(|step| step.key == "roles").unwrap();
+    assert_eq!(roles.state, console_onboarding_domain::StepState::Done);
+    assert!(!roles.can_act);
+    assert_eq!(
+        store
+            .preview(&a)
+            .await
+            .unwrap()
+            .details
+            .access_admin_holders,
+        p.details.access_admin_holders
     );
 }
 

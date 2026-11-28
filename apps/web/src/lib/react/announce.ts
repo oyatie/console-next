@@ -2,13 +2,14 @@ import { useEffect } from "react";
 import { t } from "@console/i18n";
 import { useLocation, useRouter } from "@tanstack/react-router";
 
-let say: ((message: string) => void) | null = null;
+export type Speak = (message: string, source?: "route") => void;
+let say: Speak | null = null;
 
 /** Speaks a confirmation through the shell's single polite live region (ui/announcer.tsx). */
-export const announce = (message: string) => say?.(message);
+export const announce: Speak = (...args) => say?.(...args);
 
 /** The shell's <Announcer> hands its setter here; the returned function unbinds it. */
-export const bindAnnouncer = (fn: (message: string) => void) => {
+export const bindAnnouncer = (fn: Speak) => {
   say = fn;
   return () => {
     if (say === fn) say = null;
@@ -91,18 +92,17 @@ let focusedPath: string | undefined;
 /** The rendered heading and identity own the tab title; search-state changes keep the user's current focus. */
 export function useRoutePresentation(pathname: string, ready: boolean) {
   useEffect(() => {
-    if (!ready) return;
     let frame = 0;
     let cancelFocus: (() => void) | undefined;
-    let interacted = false;
-    const stopFocus = () => { interacted = true; cancelFocus?.(); };
+    // The shell accepts input before the route settles. That interaction owns focus on this pathname.
+    const stopFocus = () => { focusedPath = pathname; cancelFocus?.(); };
     const update = () => {
       const heading = [...document.querySelectorAll<HTMLElement>("main h1, h1"), ...document.querySelectorAll<HTMLElement>("main .state__title")].find(el => !el.closest("[data-phase-pending], [hidden]"));
       const page = heading?.textContent?.trim();
       if (!heading || !page) return;
       if (focusedPath !== pathname) {
         focusedPath = pathname;
-        if (!interacted && !document.activeElement?.closest("[data-side-panel]")) {
+        if (!document.activeElement?.closest("[data-side-panel]")) {
           heading.id ||= "route-heading";
           heading.tabIndex = -1;
           cancelFocus = focusWhen(() => !document.activeElement?.closest("main"), false, heading.id);
@@ -114,15 +114,17 @@ export function useRoutePresentation(pathname: string, ready: boolean) {
       document.title = title;
       if (presented?.pathname !== pathname || presented.title !== title) {
         presented = { pathname, title };
-        announce(title);
+        announce(title, "route");
       }
     };
     const schedule = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(update); };
     const observer = new MutationObserver(schedule);
-    observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["data-console-scope", "data-phase-pending", "hidden"] });
     document.addEventListener("pointerdown", stopFocus, true);
     document.addEventListener("keydown", stopFocus, true);
-    schedule();
+    if (ready) {
+      observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["data-console-scope", "data-phase-pending", "hidden"] });
+      schedule();
+    }
     return () => {
       observer.disconnect();
       cancelAnimationFrame(frame);

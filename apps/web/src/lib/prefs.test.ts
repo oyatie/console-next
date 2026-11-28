@@ -12,7 +12,7 @@ type Published = Record<"theme" | "experience", { key: string; values: string[] 
  * One page load of public/prefs.js over what the device has stored and the theme its system prefers (none given: a
  * browser with no matchMedia): the attributes it put on <html>, and what it published.
  */
-function boot(stored: Record<string, string> | "blocked" | "unreadable", source = SRC, system?: "light" | "dark" | "throws") {
+function boot(stored: Record<string, string> | "blocked" | "unreadable", source = SRC, system?: "light" | "dark" | "throws", rollback: boolean | "blocked" = false) {
   const attributes: Record<string, string> = {};
   const window: { consolePrefs?: Published } = {};
   const document = { documentElement: { setAttribute: (name: string, value: string) => void (attributes[name] = value) } };
@@ -20,7 +20,11 @@ function boot(stored: Record<string, string> | "blocked" | "unreadable", source 
     if (system === "throws") throw new Error("matchMedia is refused");
     return { matches: query === `(prefers-color-scheme: ${system})` };
   };
-  const context = Object.defineProperty({ window, document, ...(system && { matchMedia }) }, "localStorage", {
+  const sessionStorage = { getItem(key: string) {
+    if (rollback === "blocked") throw new Error("tab storage is blocked");
+    return rollback && key === "console.experience.rollback" ? "previous-signed-in-session" : null;
+  } };
+  const context = Object.defineProperty({ window, document, sessionStorage, ...(system && { matchMedia }) }, "localStorage", {
     get() {
       if (stored === "blocked") throw new Error("storage is blocked");
       return {
@@ -34,6 +38,13 @@ function boot(stored: Record<string, string> | "blocked" | "unreadable", source 
   runInNewContext(source, context);
   return { attributes, published: window.consolePrefs! };
 }
+
+test("a known emergency fallback paints Classic before the entry reads the server, retaining the stored user preference", () => {
+  const personal = { "console.experience": "console" };
+  expect(boot(personal, SRC, "light", true).attributes["data-experience"]).toBe("baseline");
+  expect(boot(personal, SRC, "light", "blocked").attributes["data-experience"]).toBe("console");
+  expect(boot(personal, SRC, "light").attributes["data-experience"]).toBe("console");
+});
 
 test("a stored theme is on <html> as soon as the script has run, whatever the system prefers", () => {
   expect(boot({ "console.theme": "dark" }, SRC, "light").attributes).toEqual({ "data-theme": "dark", "data-experience": "console" });

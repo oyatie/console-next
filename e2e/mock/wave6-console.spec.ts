@@ -11,6 +11,26 @@ import { mockScreen } from "./screen";
 
 test.beforeAll(() => loadCatalog("ko"));
 
+test("an approvals-enabled tenant can read its inbox when the build omits workflow submission", async ({ page }) => {
+  const fixture = await mockScreen(page, screens[0], "populated");
+  await mockRoute(page, "get", "/api/v1/onboarding/modules", {
+    status: 200, json: [{ key: "approvals", ready: true, unblock: null }],
+  });
+  let reads = 0;
+  page.on("request", req => { if (new URL(req.url()).pathname === "/api/v1/workflow-studio/submittable-definitions") reads++; });
+  try {
+    await page.goto("/approvals");
+    await expect(page.getByRole("heading", { name: t("approvals.title"), level: 1 })).toBeVisible();
+    await expect(page.locator('a[href="/approvals/new"]')).toHaveCount(0);
+    await page.goto("/approvals/new");
+    await expect(page.getByRole("region", { name: t("common.denied.title.plain") })).toBeVisible();
+    expect(reads).toBe(0);
+  } finally {
+    await page.close();
+    fixture.release();
+  }
+});
+
 for (const width of [1440, 390] as const) {
   test(`Wave 6 /approvals/new starts workflow run with optional approval-line override at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
@@ -20,9 +40,13 @@ for (const width of [1440, 390] as const) {
       status: 200,
       json: { ...user, employee_link_status: "LINKED", employee_id: id(1) },
     });
+    await mockRoute(page, "get", "/api/v1/onboarding/modules", {
+      status: 200, json: [{ key: "approvals", ready: true, unblock: null }, { key: "approval_submission", ready: true, unblock: null }],
+    });
     await mockRoute(page, "get", "/api/v1/workflow-studio/submittable-definitions", {
       status: 200,
       json: {
+        reviewer_role_keys: ["executive", "hr_reviewer"],
         items: [
           {
             id: id(401),
@@ -67,7 +91,8 @@ for (const width of [1440, 390] as const) {
       await main.getByLabel(new RegExp(t("approvals.new.subject"))).fill("Equipment purchase request");
       await main.getByLabel(new RegExp(t("approvals.new.reason"))).fill("Replace worn inspection gauge");
       await main.getByRole("button", { name: t("approvals.new.addStep"), exact: true }).click();
-      await main.getByLabel(new RegExp(t("approvals.new.stepRole"))).fill("FINANCE_REVIEWER");
+      await main.getByRole("button", { name: new RegExp(t("approvals.new.stepRole")) }).click();
+      await page.getByRole("option", { name: "executive", exact: true }).click();
 
       for (const theme of ["light", "dark"] as const) {
         await page.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
@@ -77,11 +102,14 @@ for (const width of [1440, 390] as const) {
 
       await main.getByRole("button", { name: t("approvals.new.submit"), exact: true }).click();
       await expect(main).toContainText(id(450));
+      await expect(main.getByRole("button", { name: t("approvals.new.submit"), exact: true })).toHaveCount(0);
+      await expect(main.getByLabel(new RegExp(t("approvals.new.subject")))).toHaveCount(0);
+      await expect(main.getByRole("link", { name: t("approvals.new.viewRequested") })).toHaveAttribute("href", /approvals.*requested/);
       expect(starts).toHaveLength(1);
       expect(starts[0]).toMatchObject({
         definition_id: id(401),
         trigger_type: "MANUAL",
-        approval_line_overrides: [{ assignee_role_key: "FINANCE_REVIEWER" }],
+        approval_line_overrides: [{ assignee_role_key: "executive" }],
       });
       expect(fixture.unexpected).toEqual([]);
     } finally {
@@ -150,13 +178,18 @@ for (const width of [1440, 390] as const) {
         work_order_id: id(602),
         branch_id: id(4),
         request_no: "WO-2026-0601",
+        site_name: "North service bay",
+        symptom: "Lift reports a pressure fault",
         accept_window_started_at: AT,
         accept_window_ends_at: "2026-12-01T09:15:00Z",
       },
     ];
+    const other = { ...offers[0]!, dispatch_id: id(603), request_no: "WO-2026-0603" };
+    offers.unshift(other);
     await mockRoute(page, "get", "/api/v1/me/dispatch-offers", () => ({ status: 200, json: { items: offers } }));
-    await mockRoute(page, "post", "/api/v1/p1-dispatches/{dispatchId}/responses", () => {
-      offers = [];
+    await mockRoute(page, "post", "/api/v1/p1-dispatches/{dispatchId}/responses", request => {
+      expect(new URL(request.url()).pathname).toContain(id(601));
+      offers = [other];
       return {
         status: 200 as const,
         json: {
@@ -186,12 +219,16 @@ for (const width of [1440, 390] as const) {
         await fits(page, `/me/dispatch-offers/${width}/${theme}`);
       }
       await expectAxe(page, `/me/dispatch-offers/${width}`);
-
-      if (width === 390) {
-        await main.locator("[data-id]").first().click();
-      }
+      await main.locator(`[data-id="${id(601)}"]`).click();
+      await expect(page).toHaveURL(new RegExp(`sel=${id(601)}`));
+      await page.reload();
+      await expect(main.getByText("North service bay", { exact: true })).toBeVisible();
+      await expect(main.getByText("Lift reports a pressure fault", { exact: true })).toBeVisible();
       await main.getByRole("button", { name: t("me.dispatch.accept"), exact: true }).click();
-      await expect(main.getByText(t("me.dispatch.emptyTitle"))).toBeVisible();
+      await expect(page).not.toHaveURL(/sel=/);
+      await page.goto(`/me/dispatch-offers?sel=${id(601)}`);
+      await expect(main.getByText(t("me.dispatch.unavailable"), { exact: true })).toBeVisible();
+      await expect(main.getByRole("button", { name: t("me.dispatch.accept"), exact: true })).toHaveCount(0);
       expect(fixture.unexpected).toEqual([]);
     } finally {
       await page.close();

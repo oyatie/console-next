@@ -4,7 +4,7 @@ import type { StaticDataRouteOption } from "@tanstack/react-router";
 import type { MessageId } from "@console/i18n";
 import type { AllPaths } from "@console/api/pending";
 import type { AccessEffective } from "../reference/authz/api";
-import { accessRefusal } from "../reference/authz/domain/access";
+import { accessRefusal, type ServedCapability } from "../reference/authz/domain/access";
 import { SETTINGS_VIEWS } from "./settings-views";
 import { APPROVALS_MODULE, moduleReady, PAYROLL_MODULE } from "../reference/onboarding/api";
 
@@ -14,7 +14,7 @@ export type NavLink = { to: string; label: MessageId; icon: LucideIcon; countKey
 export type NavHub = { hub: MessageId; links: readonly NavLink[] };
 type Routes = Readonly<Record<string, { options: { staticData?: StaticDataRouteOption } }>>;
 // null preserves an unanswered modules read across reloads without treating it as ready.
-type NavContext = { pathname: string; phase?: string; setupTargets?: readonly string[]; modules?: Modules | null };
+type NavContext = { served?: readonly ServedCapability[]; evidenceVault?: boolean; findings?: boolean; payrollOutlook?: boolean; consents?: boolean; pathname: string; phase?: string; setupTargets?: readonly string[]; modules?: Modules | null };
 
 const REQUESTS: NavLink = { to: "/people/requests", label: "shell.link.requests", icon: ListChecks };
 // One entry table; future destinations appear only when their route is served.
@@ -31,6 +31,7 @@ export const TENANT_NAV: readonly NavHub[] = [
     { to: "/org", label: "shell.link.org", icon: Building2, module: "org" },
     { to: "/team", label: "shell.link.team", icon: UsersRound, module: "people" },
     { to: "/people", label: "shell.link.people", icon: Users, module: "people" },
+    { to: "/evaluation", label: "evaluation.title", icon: ClipboardCheck },
     { to: "/attendance", label: "shell.link.attendance", icon: Clock, module: "attendance" },
     { to: "/payroll", label: "shell.link.payroll", icon: FileText, module: PAYROLL_MODULE, requireReadiness: true },
     { to: "/statutory", label: "shell.link.statutory", icon: ScrollText, module: "statutory" },
@@ -45,11 +46,15 @@ export const PLATFORM_NAV: readonly NavHub[] = [{ hub: "shell.hub.platform", lin
 
 /** Served destinations use their own requirement; readiness remains a server fact. */
 export function tenantNav(access: AccessEffective | undefined, routes: Routes, supportApproval = false,
-  { phase, setupTargets, modules }: NavContext = { pathname: "/" }) {
+  { phase, setupTargets, modules, evidenceVault, findings, payrollOutlook, consents, served }: NavContext = { pathname: "/" }) {
   const expand = (link: NavLink): readonly NavLink[] => {
     const hasPrimary = !!routes[link.to];
     const auditFallback = link.to === "/audit" && link.supportApproval && supportApproval && routes["/audit/support-access"];
-    if (!hasPrimary && !auditFallback) return [];
+    const vaultFallback = link.to === "/audit" && evidenceVault && routes["/audit/evidence"];
+    const outlookFallback = link.to === "/payroll" && payrollOutlook && routes["/payroll/outlook"];
+    const findingsFallback = link.to === "/audit" && findings && routes["/audit/findings"];
+    const consentsFallback = link.to === "/audit" && consents && routes["/audit/location-consents"];
+    if (!hasPrimary && !auditFallback && !vaultFallback && !findingsFallback && !consentsFallback && !outlookFallback) return [];
     if (link.to === "/") return [link];
     if (!access) return [];
     if (link.requireReadiness && !modules) return [];
@@ -60,9 +65,17 @@ export function tenantNav(access: AccessEffective | undefined, routes: Routes, s
       if (!targets.some(to => to === link.to || to.startsWith(link.to + "/"))) return [];
     }
     const need = routes[link.to]?.options.staticData?.access;
-    const allowedPrimary = hasPrimary && (need === "signed-in" || !!need && accessRefusal(access, need) === null);
+    const allowedPrimary = hasPrimary && (need === "signed-in" || !!need && accessRefusal(access, need, served) === null);
     if (allowedPrimary) return [link];
+    const create = routes["/evaluation/new"]?.options.staticData?.access;
+    if (link.to === "/evaluation" && create && create !== "signed-in" && accessRefusal(access, create, served) === null) {
+      return [{ ...link, to: "/evaluation/new", label: "evaluation.create" }];
+    }
     if (auditFallback) return [{ ...link, to: "/audit/support-access" }];
+    if (vaultFallback) return [{ ...link, to: "/audit/evidence" }];
+    if (outlookFallback) return [{ ...link, to: "/payroll/outlook" }];
+    if (findingsFallback) return [{ ...link, to: "/audit/findings" }];
+    if (consentsFallback) return [{ ...link, to: "/audit/location-consents" }];
     return [];
   };
   return TENANT_NAV.map(g => ({ ...g, links: g.links.flatMap(expand) })).filter(g => g.links.length);

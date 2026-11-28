@@ -27,15 +27,15 @@ test("served 2,000-person Home and its inbox stay within 2 seconds under burst",
     const permits = Number(process.env.CONSOLE_ACTION_INBOX_SOURCE_CONCURRENCY ?? configured);
     expect(permits).toBeGreaterThan(0);
     await admin.setViewportSize({ width: 1440, height: 900 });
-    await admin.addInitScript((inboxTitle) => {
+    await admin.addInitScript(() => {
       const observer = new MutationObserver(() => {
-        const row = document.querySelector(`[aria-labelledby="inbox-title"] [data-id], [role="grid"][aria-label=${JSON.stringify(inboxTitle)}] [data-id]`);
+        const row = document.querySelector('[aria-labelledby="inbox-title"] [data-id], [data-pattern="worklist"] table tbody tr[data-id]');
         if (!row?.textContent?.trim()) return;
         observer.disconnect();
         requestAnimationFrame(() => performance.mark("home:first-rows"));
       });
-      observer.observe(document, { subtree: true, childList: true });
-    }, t("home.inbox.title"));
+      observer.observe(document, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["data-id", "aria-label", "aria-labelledby"] });
+    });
     let arrivalReads = 0;
     const isArrival = (message: { url(): string }) => {
       const url = new URL(message.url());
@@ -67,11 +67,13 @@ test("served 2,000-person Home and its inbox stay within 2 seconds under burst",
         expect(next.items.every(item => !firstIds.has(item.id))).toBe(true);
       }
       await expect(admin.getByRole("region", { name: t("home.inbox.title"), exact: true }).or(admin.getByRole("grid", { name: t("home.inbox.title"), exact: true })).first().locator("[data-id]").first()).toBeVisible();
-      await admin.waitForFunction(() => performance.getEntriesByName("home:first-rows").length > 0);
+      await admin.waitForFunction(() => performance.getEntriesByName("home:first-rows").length > 0, undefined, { timeout: 10_000 });
       const timing = await admin.evaluate(() => {
         const navigation = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming;
         const resource = (performance.getEntriesByType("resource") as PerformanceResourceTiming[]).find(r => new URL(r.name).pathname === "/api/v1/me/action-inbox");
-        return { responseStart: navigation.responseStart, firstRows: performance.measure("home:response-to-first-rows", { start: navigation.responseStart, end: "home:first-rows" }).duration, inbox: resource?.duration ?? 0 };
+        const [paint] = performance.getEntriesByName("home:first-rows", "mark");
+        // Firefox can report an early response just before the document time origin.
+        return { responseStart: navigation.responseStart, firstRows: paint!.startTime - navigation.responseStart, inbox: resource?.duration ?? 0 };
       });
       for (const reply of await burst) {
         expect(reply.status()).toBe(200);
@@ -91,7 +93,7 @@ test("served 2,000-person Home and its inbox stay within 2 seconds under burst",
     console.log(JSON.stringify(report));
     for (const sample of samples) {
       expect(sample.arrivalReads).toBe(1);
-      expect(sample.responseStart).toBeGreaterThan(0);
+      expect(sample.firstRows).toBeGreaterThan(0);
       expect(sample.inbox).toBeGreaterThan(0);
       expect(sample.inbox).toBeLessThanOrEqual(report.budgetMs);
       expect(sample.firstRows).toBeLessThanOrEqual(report.budgetMs);

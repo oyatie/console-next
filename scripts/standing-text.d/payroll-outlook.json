@@ -1,0 +1,15 @@
+{
+  "baseline": {
+    "apps/web/src/features/payroll/ui/payroll-outlook.tsx#PayrollOutlook": 12
+  },
+  "newScreens": {
+    "apps/web/src/features/payroll/ui/payroll-outlook.tsx#PayrollOutlook": {
+      "FACT": 9,
+      "REFUSAL": 2,
+      "EMPTY": 1,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    }
+  }
+}

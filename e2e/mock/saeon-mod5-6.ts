@@ -95,6 +95,7 @@ export function saeonTeamEmployees(): S["EmployeePage"] {
   const items: S["Employee"][] = page.items.slice(0, 8).map((emp, idx) => ({
     ...emp,
     org_unit: idx < 5 ? team1Name : secondaryUnit,
+    org_unit_id: idx < 5 ? "00000000-0000-4000-8210-000000000001" : "00000000-0000-4000-8210-000000000002",
     workplace_id: idx < 5 ? pyeongtaek.id : ulsan.id,
     status: idx === 2 ? "ON_LEAVE" : "ACTIVE",
     next_event:

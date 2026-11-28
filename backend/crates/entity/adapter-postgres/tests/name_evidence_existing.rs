@@ -30,6 +30,10 @@ async fn candidates(owner: &PgPool, org: Uuid) -> Vec<String> {
         .execute(tx.as_mut())
         .await
         .unwrap();
+    sqlx::query("SET LOCAL lock_timeout = '500ms'")
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
     let names = console_entity_adapter_postgres::name_evidence::company_candidates(&mut tx, org)
         .await
         .unwrap()
@@ -122,7 +126,14 @@ async fn the_registration_name_is_the_entity_name_and_follows_its_edit(owner: Pg
         "주식회사 누리"
     );
     assert!(codes(&view).is_empty(), "{:?}", codes(&view));
+    // Import checks the certificate even while an independent roster change holds the chart source.
+    let mut roster = owner.begin().await.unwrap();
+    sqlx::query("LOCK TABLE employee_lifecycle_events IN ACCESS EXCLUSIVE MODE")
+        .execute(roster.as_mut())
+        .await
+        .unwrap();
     assert_eq!(candidates(&owner, org).await, ["주식회사 누리"]);
+    roster.rollback().await.unwrap();
 
     // A branch number saved as the representative registration number before the
     // classification rule existed.

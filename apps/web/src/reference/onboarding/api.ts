@@ -4,7 +4,10 @@ import type { components } from "@console/api";
 
 type Modules = components["schemas"]["OnboardingModules"];
 export type ModuleKey = Modules[number]["key"];
+export const PERSONAL_LOCATION_MODULE = "personal_location" satisfies ModuleKey;
+export const DISPATCH_OFFERS_MODULE = "dispatch_offers" satisfies ModuleKey;
 export const APPROVALS_MODULE = "approvals" satisfies ModuleKey;
+export const APPROVAL_SUBMISSION_MODULE = "approval_submission" satisfies ModuleKey;
 export const PAYROLL_MODULE = "payroll" satisfies Modules[number]["key"];
 export const moduleReady = (modules: Modules | null | undefined, key: ModuleKey) => modules?.some(module => module.key === key && module.ready) ?? false;
 

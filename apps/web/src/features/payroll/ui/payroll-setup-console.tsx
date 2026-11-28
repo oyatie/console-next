@@ -99,6 +99,8 @@ function PayrollSetupConsoleContent({ baseline }: { baseline: () => ReactNode })
       <EmptyState title={t("payroll.setup.noEntities")} reason={t("payroll.setup.entityDetail")} />
     ) : (
       <div className={s.sectionStack}>
+        {Boolean(groups.data?.manageable_group_ids?.length) &&
+          <Link to="/payroll/setup/members" className={buttonClass("secondary", { size: "sm" })}>{t("payroll.members.title")}</Link>}
         <RecordSection id="setup-step-basics" title={t("payroll.setup.stepBasics")}>
           <div className={s.fieldGrid}>
             <Choice

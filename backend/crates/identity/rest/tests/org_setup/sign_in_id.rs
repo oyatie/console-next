@@ -129,12 +129,13 @@ async fn a_rename_keeps_the_old_id_as_an_alias_and_never_reissues_it(pool: PgPoo
     .await;
     let b = b["id"].as_str().unwrap().to_owned();
 
+    let effective_date = today();
     let (status, changed) = rename(
         &harness,
         &token,
         &a,
         json!({
-            "login": "kim.new", "effective_date": today(), "reason_code": "NAME_CHANGE",
+            "login": "kim.new", "effective_date": effective_date, "reason_code": "NAME_CHANGE",
         }),
     )
     .await;
@@ -143,7 +144,9 @@ async fn a_rename_keeps_the_old_id_as_an_alias_and_never_reissues_it(pool: PgPoo
         (changed["login"].as_str(), changed["state"].as_str()),
         (Some("kim.new"), Some("CURRENT"))
     );
+    assert_eq!(changed["effective_date"], effective_date);
     let rows = history(&harness, &token, &a).await;
+    assert_eq!(rows[0]["effective_date"], effective_date);
     assert_eq!(rows.len(), 2);
     assert_eq!(
         (rows[0]["login"].as_str(), rows[0]["state"].as_str()),

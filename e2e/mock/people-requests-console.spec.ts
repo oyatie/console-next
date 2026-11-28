@@ -37,7 +37,8 @@ function saeonRequests() {
       assignee_role: "HR" as const,
       review_required: false,
       requested_by: "other-requester",
-      assigned_to: admin.id,
+      assignee_user_id: admin.id,
+      can_review: true,
       created_at: "2026-11-10T08:30:00Z",
       decided_at: null,
       decision_reason_code: null,
@@ -57,7 +58,7 @@ function saeonRequests() {
       assignee_role: "HR" as const,
       review_required: true,
       requested_by: "other-requester",
-      assigned_to: null,
+      assignee_user_id: null,
       created_at: "2026-11-10T07:15:00Z",
       decided_at: null,
       decision_reason_code: null,
@@ -77,7 +78,7 @@ function saeonRequests() {
       assignee_role: "HR" as const,
       review_required: false,
       requested_by: admin.id,
-      assigned_to: null,
+      assignee_user_id: null,
       created_at: "2026-11-09T16:20:00Z",
       decided_at: null,
       decision_reason_code: null,
@@ -97,7 +98,7 @@ function saeonRequests() {
       assignee_role: "HR" as const,
       review_required: false,
       requested_by: "other-requester",
-      assigned_to: null,
+      assignee_user_id: null,
       created_at: "2026-11-09T14:10:00Z",
       decided_at: null,
       decision_reason_code: null,
@@ -117,7 +118,7 @@ function saeonRequests() {
       assignee_role: "HR" as const,
       review_required: false,
       requested_by: "other-requester",
-      assigned_to: null,
+      assignee_user_id: null,
       created_at: "2026-11-09T11:05:00Z",
       decided_at: null,
       decision_reason_code: null,
@@ -137,7 +138,7 @@ function saeonRequests() {
       assignee_role: "HR" as const,
       review_required: false,
       requested_by: "other-requester",
-      assigned_to: null,
+      assignee_user_id: null,
       created_at: "2026-11-08T17:45:00Z",
       decided_at: null,
       decision_reason_code: null,
@@ -275,3 +276,66 @@ test("Console /people/requests handles 403 refusal and preserves baseline experi
     baseline.release();
   }
 });
+
+for (const experience of ["baseline", "console"] as const) {
+  test(`direct request selection survives page and status filters in ${experience}`, async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const fixture = await setupConsoleSaeonPeople(page, { experience });
+    const [target,other] = saeonRequests();
+    const selectedNote = "Selection proof for an off-page request";
+    const offPage = { ...target!, note: selectedNote };
+    const reads: URLSearchParams[] = [];
+    await mockRoute(page, "get", "/api/v1/change-requests", req => {
+      const query = new URL(req.url()).searchParams;
+      reads.push(query);
+      if (query.has("id")) return { status: 200, json: { items: [offPage], total: 1, limit: 1, offset: 0 } };
+      if (query.get("status") === "DECLINED") return { status: 200, json: { items: [], total: 0, limit: 20, offset: 0 } };
+      const offset = Number(query.get("offset") ?? 0);
+      return { status: 200, json: { items: offset === 20 ? [offPage] : [other!], total: 21, limit: 20, offset } };
+    });
+    try {
+      await page.goto(`/people/requests?sel=${offPage.id}`);
+      await expect(page.getByText(selectedNote, { exact: true })).toBeVisible();
+      expect(reads.some(q => q.get("offset") === "0" && q.get("status") === "OPEN")).toBe(true);
+      const exact = reads.find(q => q.has("id"))!;
+      expect(Object.fromEntries(exact)).toEqual({ id: offPage.id, limit: "1" });
+      await page.goto(`/people/requests?status=DECLINED&sel=${offPage.id}`);
+      await expect(page.getByText(selectedNote, { exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { name: t("requests.none.title") })).toBeVisible();
+      reads.length = 0;
+      await page.goto(`/people/requests?page=1&sel=${offPage.id}`);
+      await expect(page.getByText(selectedNote, { exact: true })).toBeVisible();
+      expect(reads.some(q => q.get("offset") === "20")).toBe(true);
+      expect(reads.some(q => q.has("id"))).toBe(false);
+      await page.getByRole("button", { name: t("requests.panel.close"), exact: true }).click();
+      await expect(page).toHaveURL(/page=1/);
+      await expect(page).not.toHaveURL(/sel=/);
+      expect(fixture.unexpected).toEqual([]);
+    } finally { await page.close(); fixture.release(); }
+  });
+
+  test(`direct request selection distinguishes retry, unavailable and denied states in ${experience}`, async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const fixture = await setupConsoleSaeonPeople(page, { experience });
+    let outcome: "unavailable" | "failed" | "denied" = "failed";
+    await mockRoute(page, "get", "/api/v1/change-requests", req => {
+      const query = new URL(req.url()).searchParams;
+      if (query.has("id") && outcome === "failed") return { status: 503, json: failure("service_unavailable") };
+      if (query.has("id") && outcome === "denied") return { status: 403, json: failure("forbidden") };
+      return { status: 200, json: { items: [], total: 0, limit: query.has("id") ? 1 : 20, offset: 0 } };
+    });
+    try {
+      await page.goto(`/people/requests?sel=${id(902)}`);
+      await expect(page.getByRole("heading", { name: t("common.loadFailed.title") })).toBeVisible();
+      outcome = "unavailable";
+      await page.getByRole("button", { name: t("common.retry"), exact: true }).click();
+      await expect(page.getByRole("heading", { name: t("common.read.notFound.title") })).toBeVisible();
+      outcome = "denied";
+      await page.goto(`/people/requests?sel=${id(903)}`);
+      await expect(page.getByText(t("common.read.notFound.title"), { exact: true })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: t("requests.panel.close"), exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { name: t("common.denied.panel"), exact: true })).toBeVisible();
+      expect(fixture.unexpected).toEqual([]);
+    } finally { await page.close(); fixture.release(); }
+  });
+}

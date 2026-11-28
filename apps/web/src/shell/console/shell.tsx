@@ -21,6 +21,7 @@ import { ConsoleTopBar } from "./console-top-bar";
 import { tabIconForHref } from "./tab-icon";
 import { useResolvedTabTitle } from "./tab-titles";
 import { useConsoleCounts } from "./use-console-counts";
+import { useDesktopChromeHeld } from "./use-desktop-chrome-held";
 import { useWorkspaceTabs } from "./workspace-tabs-state";
 import s from "./shell.module.css";
 
@@ -98,8 +99,8 @@ function ConsoleLayout({
   const navItems: readonly ModuleNavItem[] = useMemo(() => {
     const base = allLinks.map(link =>
       link.countKey === "inbox"
-        ? { id: link.to, href: link.to, label: t(link.label), count: inboxCount, countMore: !inboxExact, name: inboxName, description: inboxDescription }
-        : { id: link.to, href: link.to, label: t(link.label), count: link.countKey === "approvals" ? approvalsCount : undefined },
+        ? { id: link.to, href: link.to, label: t(link.label), reserveCount: true, count: inboxCount, countMore: !inboxExact, name: inboxName, description: inboxDescription }
+        : { id: link.to, href: link.to, label: t(link.label), reserveCount: link.countKey === "approvals", count: link.countKey === "approvals" ? approvalsCount : undefined },
     );
     return showMyDesk ? [...base, { id: "/me/desk", href: "/me/desk", label: t("shell.link.meDesk") }] : base;
   }, [allLinks, inboxCount, inboxExact, inboxName, inboxDescription, approvalsCount, showMyDesk]);
@@ -201,9 +202,8 @@ function ConsoleLayout({
   // My profile alone would span the bottom bar until the menu lands, then jump to its own slot. It stays reachable while
   // the menu is away, in the last of the bar's five places, and keeps that place if the menu's read fails.
   const menuAway = !platform && navigationState !== "ready" && phoneHeader?.phoneNav !== "self-service";
-  // With a session, a desktop bar draws once the reader's own read has settled too: the tenant's name sets the brand's
-  // width, and the scope chip, the nav and the status segments sit after it.
-  const holding = restoring || (Boolean(session.token) && !platform && !pending && profileRead.isPending);
+  const awaitingProfile = Boolean(session.token) && !platform && !pending && profileRead.isPending;
+  const holding = useDesktopChromeHeld(restoring, awaitingProfile);
 
   return (
     <PagePhoneHeader value={phoneHeaderValue}>

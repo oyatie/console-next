@@ -170,7 +170,7 @@ pub(super) async fn list(
             Box::pin(async move {
                 // An org change's decisions are audited on its approval steps; they belong to the request.
                 Ok(sqlx::query_as(
-                    "SELECT a.action, a.occurred_at, p.display_name FROM audit_events a \
+                    "SELECT a.action, a.occurred_at, p.display_name FROM ordinary_audit_events a \
                      LEFT JOIN person_accounts_current p ON p.org_id = a.org_id AND p.id = a.actor \
                      WHERE a.org_id = $1 AND ((a.target_type = ANY($2) AND a.target_id = $3) \
                         OR ($4 AND a.target_type = 'org_change_approval_step' AND a.target_id IN \

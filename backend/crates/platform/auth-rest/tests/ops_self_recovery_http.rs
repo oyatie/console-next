@@ -48,6 +48,16 @@ async fn recovery_codes_redeem_strictly_once_encrypt_contacts_and_cancel_open_re
         )
     );
 
+    let (phone_status, _) = rig
+        .call(
+            Method::PUT,
+            "/api/v1/auth/recovery/contact",
+            Some(enroll_jwt),
+            Some(json!({ "channel":"PHONE","value":"01000000000","consent_accepted":true })),
+        )
+        .await;
+    assert_eq!(phone_status, StatusCode::UNPROCESSABLE_ENTITY);
+
     let (st, contact) = rig
         .call(
             Method::PUT,
@@ -200,6 +210,31 @@ async fn recovery_codes_redeem_strictly_once_encrypt_contacts_and_cancel_open_re
     );
     let contact_code = rig.mailer.0.lock().unwrap().last().unwrap().1.clone();
 
+    let step = old_key.step_up(&rig.owner).await;
+    let (changed, _) = rig.call(Method::PUT, "/api/v1/auth/recovery/contact", Some(full_jwt),
+        Some(json!({ "channel":"EMAIL","value":"new-contact@example.com","consent_accepted":true,"step_up": step }))).await;
+    assert_eq!(changed, StatusCode::OK);
+    let (outdated, _) = rig
+        .call(
+            Method::POST,
+            "/api/v1/auth/recovery/redeem",
+            None,
+            Some(json!({ "recovery_code": fresh_code, "contact_code": contact_code })),
+        )
+        .await;
+    assert_eq!(outdated, StatusCode::UNAUTHORIZED);
+    let (new_issue, _) = rig
+        .call(
+            Method::POST,
+            "/api/v1/auth/recovery/challenge",
+            None,
+            Some(json!({"identifier": rig.ops_identifier})),
+        )
+        .await;
+    assert_eq!(new_issue, StatusCode::OK);
+    let (recipient, contact_code) = rig.mailer.0.lock().unwrap().last().unwrap().clone();
+    assert_eq!(recipient, "new-contact@example.com");
+
     let (st_old, _) = rig
         .call(
             Method::POST,
@@ -280,3 +315,6 @@ async fn recovery_codes_redeem_strictly_once_encrypt_contacts_and_cancel_open_re
         "consumed recovery code must never redeem twice"
     );
 }
+
+#[path = "ops_self_recovery_http/contact_and_alias.rs"]
+mod contact_and_alias;

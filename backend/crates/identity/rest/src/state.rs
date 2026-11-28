@@ -10,7 +10,14 @@ use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct IdentityRestState {
+    pub(crate) integrity_access: fn(&console_platform_authz::Principal) -> (bool, bool),
+    pub(crate) evaluation_tasks: fn(&console_platform_authz::Principal) -> bool,
+    pub(crate) evaluation_cycles: fn(&console_platform_authz::Principal) -> (bool, bool),
+    pub(crate) calendar_access: fn(&console_platform_authz::Principal) -> bool,
+    pub(crate) benefit_access: fn(&console_platform_authz::Principal) -> (bool, bool),
+    pub(crate) ledger_access: fn(&console_platform_authz::Principal) -> bool,
     pub(crate) documents_served: bool,
+    pub(crate) projection_available: fn(&console_platform_authz::Principal) -> bool,
     pub(crate) store: PgOrgStore,
     pub(crate) tenant_facts: Arc<dyn TenantFactsRead>,
     pub(crate) jwt_verifier: Option<JwtVerifier>,
@@ -25,7 +32,14 @@ impl IdentityRestState {
         tenant_facts: impl TenantFactsRead + 'static,
     ) -> Self {
         Self {
+            evaluation_tasks: |_| false,
+            evaluation_cycles: |_| (false, false),
+            calendar_access: |_| false,
+            benefit_access: |_| (false, false),
+            ledger_access: |_| false,
             documents_served: false,
+            projection_available: |_| false,
+            integrity_access: |_| (false, false),
             store,
             tenant_facts: Arc::new(tenant_facts),
             jwt_verifier,
@@ -42,6 +56,67 @@ impl IdentityRestState {
     #[must_use]
     pub fn with_documents_served(mut self, served: bool) -> Self {
         self.documents_served = served;
+        self
+    }
+
+    #[must_use]
+    pub fn with_projection_access(
+        mut self,
+        projection_available: fn(&console_platform_authz::Principal) -> bool,
+    ) -> Self {
+        self.projection_available = projection_available;
+        self
+    }
+
+    #[must_use]
+    pub fn with_integrity_access(
+        mut self,
+        access: fn(&console_platform_authz::Principal) -> (bool, bool),
+    ) -> Self {
+        self.integrity_access = access;
+        self
+    }
+
+    #[must_use]
+    pub fn with_evaluation_tasks(
+        mut self,
+        access: fn(&console_platform_authz::Principal) -> bool,
+    ) -> Self {
+        self.evaluation_tasks = access;
+        self
+    }
+
+    pub fn with_calendar_access(
+        mut self,
+        access: fn(&console_platform_authz::Principal) -> bool,
+    ) -> Self {
+        self.calendar_access = access;
+        self
+    }
+
+    #[must_use]
+    pub fn with_evaluation_cycles(
+        mut self,
+        access: fn(&console_platform_authz::Principal) -> (bool, bool),
+    ) -> Self {
+        self.evaluation_cycles = access;
+        self
+    }
+
+    pub fn with_benefit_access(
+        mut self,
+        access: fn(&console_platform_authz::Principal) -> (bool, bool),
+    ) -> Self {
+        self.benefit_access = access;
+        self
+    }
+
+    #[must_use]
+    pub fn with_ledger_access(
+        mut self,
+        access: fn(&console_platform_authz::Principal) -> bool,
+    ) -> Self {
+        self.ledger_access = access;
         self
     }
 

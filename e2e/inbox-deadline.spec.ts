@@ -48,6 +48,6 @@ test("scheduled system actions keep a neutral deadline under the registered wind
   const inbox = admin.getByRole("region", { name: t("home.inbox.title"), exact: true });
   await inbox.getByRole("link", { name: t("home.inbox.viewInbox"), exact: true }).click();
   await expect(admin).toHaveURL(/\/inbox$/);
-  await inbox.getByRole("link", { name: /^예정 \d+\+?$/ }).click();
+  await inbox.getByRole("button", { name: /^예정 \d+\+?$/ }).click();
   await expect(inbox.locator(`a[href="/org/changes/${change.id}"]`)).toBeVisible();
 });

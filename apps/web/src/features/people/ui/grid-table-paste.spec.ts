@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import type { Locator } from "@playwright/test";
-import { expect, test, mount } from "./grid-table-fixture.playwright";
+import { expect, test, gridActionBar, mount } from "./grid-table-fixture.playwright";
 import { expectAxe } from "../../../../../../e2e/a11y";
 
 // Synthetic because Excel is unavailable here; follows Microsoft's CF_HTML grammar:
@@ -126,17 +126,19 @@ for (const [width, locale] of [[1440, "en"], [390, "ko"]] as const) {
       await expect(announcer).toHaveText(notice);
     }
     await expect(target.locator("input")).toBeFocused();
-    const layout = await banner.evaluate((el) => {
+    const layout = await banner.evaluate((el, selector) => {
       const box = el.getBoundingClientRect();
       const cell = document.getElementById("grid-72-2")!.getBoundingClientRect();
-      const bar = document.querySelector("#gallery-grid-table footer")!.getBoundingClientRect();
+      const bar = document.querySelector(selector)!.getBoundingClientRect();
       return {
         bannerInView: box.top >= 0 && box.bottom <= innerHeight && box.left >= 0 && box.right <= innerWidth,
         cellAboveBar: cell.bottom <= bar.top && cell.top >= box.bottom,
       };
-    });
+    }, gridActionBar);
     expect(layout).toEqual({ bannerInView: true, cellAboveBar: true });
-    await expect(page.locator("[class*='verbs']")).not.toContainText(await banner.innerText());
+    const tools = page.locator("#gallery-grid-table [class*='toolbar'], #gallery-grid-table [class*='verbs']");
+    await expect(tools.first()).toBeVisible();
+    await expect(tools.filter({ hasText: await banner.innerText() })).toHaveCount(0);
     await expectAxe(page, `GridPage paste notice ${width} ${locale}`, { include: "#gallery-grid-table" });
   });
 }

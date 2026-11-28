@@ -30,6 +30,10 @@ pub struct EmployeeListQuery {
     pub home_branch_review_required: Option<bool>,
     pub identity_review_required: Option<bool>,
     pub register_review_required: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub team_review_required: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub contract_ending_on_or_after: Option<String>,
     // Preserve N-1 bulk-selection fingerprints when this filter is absent.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub department_missing: Option<bool>,
@@ -74,6 +78,8 @@ pub struct EmployeeListFilters {
     pub home_branch_review_required: Option<bool>,
     pub identity_review_required: Option<bool>,
     pub register_review_required: Option<bool>,
+    pub team_review_required: Option<bool>,
+    pub contract_ending_on_or_after: Option<Date>,
     pub department_missing: Option<bool>,
     pub org_unit_id: Option<Uuid>,
     pub legal_entity_id: Option<Uuid>,
@@ -167,6 +173,10 @@ impl EmployeeListFilters {
             home_branch_review_required: query.home_branch_review_required,
             identity_review_required: query.identity_review_required,
             register_review_required: query.register_review_required,
+            team_review_required: query.team_review_required,
+            contract_ending_on_or_after: trimmed(&query.contract_ending_on_or_after)
+                .map(|s| parse_yyyy_mm_dd(&s))
+                .transpose()?,
             department_missing: query.department_missing,
             org_unit_id: query.org_unit_id,
             legal_entity_id: query.legal_entity_id,
@@ -254,7 +264,7 @@ impl EmployeeListFilters {
         }
         if let Some(search) = self.search.as_deref() {
             let pattern = format!("%{}%", crate::scope_sql::escape_like(search));
-            builder.push(" AND (COALESCE(console_employee_facts(e.org_id,e.id)->>'legal_name',e.name) ILIKE ");
+            builder.push(" AND (e.name ILIKE ");
             builder.push_bind(pattern.clone());
             builder.push(" ESCAPE '\\' OR e.employee_number ILIKE ");
             builder.push_bind(pattern);
@@ -278,71 +288,5 @@ impl EmployeeListFilters {
             builder.push_bind(self.ids.clone());
             builder.push(")");
         }
-    }
-
-    /// One facet group's filters as a boolean expression (`TRUE` when none
-    /// is set), so the facets can count each group without its own filter
-    /// in one scan.
-    pub(crate) fn push_group(&self, group: FacetGroup, builder: &mut QueryBuilder<Postgres>) {
-        let mut terms = 0;
-        let mut and = |builder: &mut QueryBuilder<Postgres>, sql: &str| {
-            builder.push(if terms == 0 { "(" } else { " AND " });
-            builder.push(sql);
-            terms += 1;
-        };
-        match group {
-            FacetGroup::Status => {
-                if !self.statuses.is_empty() {
-                    and(
-                        builder,
-                        "entity_employment_status_on(entity_today(), e.hire_on, e.exit_on, e.employment_status) = ANY(",
-                    );
-                    builder.push_bind(self.statuses.clone());
-                    builder.push(")");
-                }
-            }
-            FacetGroup::LegalEntity => {
-                if let Some(legal_entity_id) = self.legal_entity_id {
-                    and(builder, "ea.legal_entity_id = ");
-                    builder.push_bind(legal_entity_id);
-                }
-            }
-            FacetGroup::Workplace => {
-                if let Some(workplace_id) = self.workplace_id {
-                    and(builder, "ea.workplace_id = ");
-                    builder.push_bind(workplace_id);
-                }
-            }
-            FacetGroup::Review => {
-                if let Some(required) = self.department_missing {
-                    and(builder, DEPARTMENT_MISSING);
-                    builder.push(" = ");
-                    builder.push_bind(required);
-                }
-                if let Some(required) = self.register_review_required {
-                    and(builder, crate::register_review_sql!());
-                    builder.push(" = ");
-                    builder.push_bind(required);
-                }
-                if let Some(required) = self.home_branch_review_required {
-                    and(builder, "(cp.employee_id IS NULL) = ");
-                    builder.push_bind(required);
-                }
-                if let Some(required) = self.identity_review_required {
-                    and(builder, crate::identity_review_sql!());
-                    builder.push(" = ");
-                    builder.push_bind(required);
-                }
-                if let Some(before) = self.contract_ending_before {
-                    and(builder, "p.contract_end_date < ");
-                    builder.push_bind(before);
-                }
-                if let Some(failed) = self.lifecycle_apply_failed {
-                    and(builder, "(fe.id IS NOT NULL) = ");
-                    builder.push_bind(failed);
-                }
-            }
-        }
-        builder.push(if terms == 0 { "TRUE" } else { ")" });
     }
 }

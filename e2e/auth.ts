@@ -149,3 +149,13 @@ export async function passkeyAssertion(page: Page, ceremony: { ceremony_id: stri
   expect(credential).toBeTruthy();
   return { ceremony_id: ceremony.ceremony_id, credential: credential as Record<string, unknown> };
 }
+
+/** The next WebAuthn registration lands on a second device (the first holds this account's credential, which is excluded). */
+export async function onSecondDevice(page: Page) {
+  const first = authenticatorOf(page);
+  await page.route("**/api/v1/auth/passkey/register/start", async (route) => {
+    await first.remove();
+    await virtualAuthenticator(page);
+    await route.continue();
+  }, { times: 1 });
+}

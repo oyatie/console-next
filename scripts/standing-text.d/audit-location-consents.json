@@ -1,0 +1,15 @@
+{
+  "baseline": {
+    "apps/web/src/features/audit/ui/location-consents.tsx#LocationConsents": 25
+  },
+  "newScreens": {
+    "apps/web/src/features/audit/ui/location-consents.tsx#LocationConsents": {
+      "FACT": 14,
+      "REFUSAL": 7,
+      "EMPTY": 1,
+      "LEGAL": 0,
+      "RECEIPT": 3,
+      "EXPLANATION": 0
+    }
+  }
+}

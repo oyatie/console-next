@@ -42,11 +42,11 @@ test("the rail grows from setup facts and keeps module navigation flat", async (
   await admin.reload();
   await routeReady(admin, "/");
   await expect(topLinks(admin)).toHaveText([t("shell.link.todo"), t("shell.link.org"), t("shell.link.access")]);
-  // If both reads fail, preserve S1's useful, permitted fallback.
+  // If both reads fail, retain the last confirmed module readiness for this account.
   await admin.route("**/api/v1/onboarding/modules", route => route.fulfill({ status: 503, json: { error: { code: "unavailable" } } }));
   await admin.reload();
   await routeReady(admin, "/");
-  await expect(topLinks(admin)).toHaveText([t("shell.link.todo"), t("shell.link.org"), t("shell.link.people"), t("shell.link.access")]);
+  await expect(topLinks(admin)).toHaveText([t("shell.link.todo"), t("shell.link.org"), t("shell.link.access")]);
   await admin.unroute("**/api/v1/onboarding/checklist");
   await admin.unroute("**/api/v1/onboarding/modules");
   await admin.reload();
@@ -59,7 +59,7 @@ test("the rail grows from setup facts and keeps module navigation flat", async (
   await go(admin, "/people");
   await registerEmployee(admin, { name: "메뉴직원", number: "NAV-001", unit: SETUP_DEPARTMENT });
   await startOperations(admin);
-  await expect(topLinks(admin)).toHaveText([t("shell.link.todo"), t("shell.link.requests"), t("shell.link.org"), t("shell.link.people"), t("shell.link.attendance"), t("shell.link.statutory"), t("shell.link.access"), t("shell.link.audit"), t("shell.link.settings")]);
+  await expect(topLinks(admin)).toHaveText([t("shell.link.todo"), t("shell.link.requests"), t("shell.link.approvals"), t("shell.link.org"), t("shell.link.team"), t("shell.link.people"), t("shell.link.attendance"), t("shell.link.payroll"), t("shell.link.statutory"), t("shell.link.access"), t("shell.link.audit"), t("shell.link.settings")]);
   await go(admin, "/people");
   await expectAccessible(admin, "operating return to people");
   await captureRail(admin, info, "operating");
@@ -88,7 +88,7 @@ test("the rail grows from setup facts and keeps module navigation flat", async (
 
   await exec.reload();
   await go(exec, "/");
-  await expect(topLinks(exec)).toHaveText([t("shell.link.todo"), t("shell.link.requests")]);
+  await expect(topLinks(exec)).toHaveText([t("shell.link.todo"), t("shell.link.requests"), t("shell.link.approvals")]);
   await rail(exec).getByRole("link", { name: "변경 요청", exact: true }).click();
   await expect(exec).toHaveURL(/\/people\/requests$/);
   await expect(exec.getByRole("main").getByRole("heading", { level: 1 })).toBeVisible();

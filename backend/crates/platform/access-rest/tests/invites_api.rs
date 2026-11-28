@@ -65,7 +65,8 @@ async fn combined_invite_commits_atomically_and_leaves_zero_partial_state_on_gra
             json!([{ "domain": "access", "levels": ["edit"] }]),
         )
         .await;
-    w.grant(json!([grant_op(w.hr, access_role, "TENANT", None, true)]))
+    let manager_grant = w
+        .grant(json!([grant_op(w.hr, access_role, "TENANT", None, true)]))
         .await;
 
     let baseline_users: i64 = sqlx::query_scalar("SELECT count(*) FROM users WHERE org_id = $1")
@@ -204,7 +205,7 @@ async fn combined_invite_commits_atomically_and_leaves_zero_partial_state_on_gra
         "/api/v1/access/invites",
         w.ops,
         Some("idem-ok-invite-0003"),
-        Some(body),
+        Some(body.clone()),
     )
     .await;
     assert_eq!(st, StatusCode::CREATED, "{created}");
@@ -212,6 +213,46 @@ async fn combined_invite_commits_atomically_and_leaves_zero_partial_state_on_gra
     assert!(!otp.is_empty());
     assert_eq!(created["grants"].as_array().unwrap().len(), 1);
     assert_eq!(created["grants"][0]["enforcement"], "ENFORCED");
+
+    let mut replay = body;
+    replay["step_up"] = w.ops_key.step_up(&w.owner).await;
+    let (status, receipt) = call_idem(
+        &w,
+        Method::POST,
+        "/api/v1/access/invites",
+        w.ops,
+        Some("idem-ok-invite-0003"),
+        Some(replay.clone()),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{receipt}");
+    assert_eq!(receipt["operation_id"], created["operation_id"]);
+    assert!(receipt["otp"].is_null());
+
+    replay["step_up"] = w.hr_key.step_up(&w.owner).await;
+    let (other, _) = call_idem(
+        &w,
+        Method::POST,
+        "/api/v1/access/invites",
+        w.hr,
+        Some("idem-ok-invite-0003"),
+        Some(replay),
+    )
+    .await;
+    assert_eq!(
+        other,
+        StatusCode::FORBIDDEN,
+        "a different account manager cannot read the receipt"
+    );
+
+    let central: Option<String> = sqlx::query_scalar(
+        "SELECT result::text FROM command_outcomes WHERE org_id=$1 AND actor_id=$2 AND idempotency_key='idem-ok-invite-0003'",
+    )
+    .bind(w.org).bind(w.ops.as_uuid()).fetch_one(&w.owner).await.unwrap();
+    assert!(
+        central.is_none(),
+        "invites may be recovered only through a new step-up"
+    );
 
     let stored: String = sqlx::query_scalar(
         "SELECT response::text FROM api_idempotency_keys WHERE org_id = $1 AND operation = 'access.invites.create'",
@@ -235,4 +276,34 @@ async fn combined_invite_commits_atomically_and_leaves_zero_partial_state_on_gra
         bootstrap_rows, 1,
         "exactly one unredeemed bootstrap OTP must exist"
     );
+    let own_key = "idem-manager-receipt";
+    let mut own =
+        json!({"display_name":"Former Manager Invite", "sign_in_id":"manager_invite", "grants":[]});
+    own["step_up"] = w.hr_key.step_up(&w.owner).await;
+    let (fresh, _) = call_idem(
+        &w,
+        Method::POST,
+        "/api/v1/access/invites",
+        w.hr,
+        Some(own_key),
+        Some(own.clone()),
+    )
+    .await;
+    assert_eq!(fresh, StatusCode::CREATED);
+    w.grant(json!([{ "op":"revoke", "grant_id":manager_grant[0]["id"] }]))
+        .await;
+    own["step_up"] = w.hr_key.step_up(&w.owner).await;
+    let (revoked, _) = call_idem(
+        &w,
+        Method::POST,
+        "/api/v1/access/invites",
+        w.hr,
+        Some(own_key),
+        Some(own),
+    )
+    .await;
+    assert_eq!(revoked, StatusCode::FORBIDDEN);
 }
+
+#[path = "invites_api/receipt_upgrade.rs"]
+mod receipt_upgrade;

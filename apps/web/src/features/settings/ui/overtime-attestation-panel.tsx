@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { isMessageId, t } from "@console/i18n";
 import { useCommand } from "../../../lib/react/command";
+import { QueryState } from "../../../lib/react/query-state";
 import { CommandError } from "../../../lib/react/command-error";
 import { overtimeAttestationsQuery, recordOvertimeAttestation } from "../../../reference/settings/api";
 import { Banner } from "../../../ui/banner/banner";
@@ -60,10 +61,8 @@ export function PolicyBoundsSection({ entry }: { entry: SettingEntry }) {
 
 export function OvertimeAttestationPanel({
   scopeEntityId,
-  canChange,
 }: {
   scopeEntityId: string | null;
-  canChange: boolean;
 }) {
   const q = useQuery(overtimeAttestationsQuery(scopeEntityId));
   const [confirmedOn, setConfirmedOn] = useState("");
@@ -78,7 +77,7 @@ export function OvertimeAttestationPanel({
         rule_reference: ruleRef.trim(),
         worker_notice_method: noticeMethod.trim(),
       }),
-    invalidates: ["/api/v1/settings/overtime-attestations", "/api/v1/onboarding/checklist"],
+    invalidates: ["/api/v1/settings/overtime-attestations", "/api/v1/onboarding/checklist", "/api/v1/me/action-inbox"],
     awaitFirstRead: true,
     announce: () => t("settingsHub.attestation.saved"),
     onSuccess: () => {
@@ -93,10 +92,9 @@ export function OvertimeAttestationPanel({
   return (
     <RecordPaneSection title={t("settingsHub.attestation.title")}>
       <div className={s.stack}>
-        {(q.data?.items.length ?? 0) === 0 ? (
-          <Banner tone="info">{t("settingsHub.attestation.empty")}</Banner>
-        ) : (
-          q.data!.items.map((item) => (
+        <Banner tone="info">{t("settingsHub.attestation.effect")}</Banner>
+        <QueryState q={q} inline empty={({ items }) => items.length === 0 ? t("settingsHub.attestation.empty") : null}>
+          {({ items }) => items.map((item) => (
             <div key={item.id} className={s.row}>
               <div>
                 <div>{item.rule_reference}</div>
@@ -106,10 +104,10 @@ export function OvertimeAttestationPanel({
               </div>
               <Chip tone="ok">{item.confirmed_on}</Chip>
             </div>
-          ))
-        )}
+          ))}
+        </QueryState>
 
-        {canChange && (
+        {q.isSuccess && q.data.can_record && (
           <div className={s.stack}>
             <CommandError error={create.error} />
             <Field label={t("settingsHub.attestation.confirmedOn")} required>

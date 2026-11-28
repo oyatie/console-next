@@ -44,12 +44,15 @@ pub const ONBOARDING_ROUTE_PATHS: &[&str] = &[
     STEP_SKIP_PATH,
 ];
 
+pub use modules::PersonalTaskRoutes;
+
 #[derive(Clone)]
 pub struct OnboardingRestState {
     store: PgOnboardingStore,
     jwt_verifier: Option<JwtVerifier>,
     passkey_step_up: Option<PasskeyService>,
     payroll_compiled: bool,
+    personal_tasks: PersonalTaskRoutes,
     approvals_released: bool,
 }
 
@@ -65,6 +68,7 @@ impl OnboardingRestState {
             jwt_verifier,
             passkey_step_up,
             payroll_compiled: false,
+            personal_tasks: PersonalTaskRoutes::default(),
             approvals_released: false,
         }
     }
@@ -72,6 +76,12 @@ impl OnboardingRestState {
     #[must_use]
     pub fn with_payroll(mut self, compiled: bool) -> Self {
         self.payroll_compiled = compiled;
+        self
+    }
+
+    #[must_use]
+    pub fn with_personal_tasks(mut self, tasks: PersonalTaskRoutes) -> Self {
+        self.personal_tasks = tasks;
         self
     }
 

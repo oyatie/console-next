@@ -89,6 +89,7 @@ function TenantExperienceChooser({ id }: { id: string }) {
   const activeId = useActiveExperienceId();
   const workspace = useQuery(workspaceQuery);
   const settings = useQuery(settingsQuery);
+  const forced = workspace.data?.legacy_kill_switch_enabled === true;
   useEffect(() => {
     installDirtyTracker();
   }, []);
@@ -109,16 +110,16 @@ function TenantExperienceChooser({ id }: { id: string }) {
     invalidates: ["/api/v1/me/workspace"],
     awaitFirstRead: true,
     onSuccess: (_response, input) => {
+      // The shell applies the resolved choice after the workspace read, including any active emergency rollback.
       const stored = writeStoredExperience(input.id, input.source);
       setPersistedStorageFailure(!stored);
-      applyDomExperience(input.id, input.source);
     },
   });
 
   const currentForListing = resolved.choice === "tenant" ? activeId : resolved.choice;
   return <>
     <SelectInput id={id} data-experience-ignore-dirty aria-label={t("account.experience")} aria-describedby={`${id}-hint`}
-      value={resolved.choice} onChange={event => {
+      disabled={forced} value={resolved.choice} onChange={event => {
         if (hasUnsavedInput(document, event.currentTarget)) {
           setUnsavedProblem(true);
           return;
@@ -137,7 +138,7 @@ function TenantExperienceChooser({ id }: { id: string }) {
         {formatOptionLabel(experience.id)}
       </option>)}
     </SelectInput>
-    <p id={`${id}-hint`} className="muted">{t("account.experience.personal")}</p>
+    <p id={`${id}-hint`} className="muted">{t(forced ? "settingsHub.rollout.killSwitchActive" : "account.experience.personal")}</p>
     {unsavedProblem && <span role="alert">{t("account.experience.unsaved")}</span>}
     {!unsavedProblem && storageProblem && <span role="alert">{t("account.experience.failed")}</span>}
     <CommandError error={save.error} />

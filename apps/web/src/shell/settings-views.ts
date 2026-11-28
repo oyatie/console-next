@@ -25,8 +25,19 @@ function servedViews(routes: readonly Route[]) {
   });
 }
 
+function overtimeRequirement(routes: readonly Route[]) {
+  const need = routes.find(route => route.options.path === "/settings/overtime")?.options.staticData?.access;
+  return need && need !== "signed-in" ? need : undefined;
+}
+
+export function canOpenOvertimeSettings(routes: readonly Route[], access: AccessEffective | undefined) {
+  const need = overtimeRequirement(routes);
+  return Boolean(access && need && accessRefusal(access, need) === null);
+}
+
 export function settingsRequirement(routes: readonly Route[]): AccessRequirement {
-  return { destinations: servedViews(routes).map(view => view.need) };
+  const overtime = overtimeRequirement(routes);
+  return { destinations: [...servedViews(routes).map(view => view.need), ...(overtime ? [overtime] : [])] };
 }
 
 export function settingsViews(routes: readonly Route[], access: AccessEffective | undefined) {

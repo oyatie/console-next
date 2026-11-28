@@ -188,6 +188,7 @@ fn user_from_row_with_phone(
         employee_company: row.try_get("employee_company")?,
         employee_org_unit: row.try_get("employee_org_unit")?,
         employee_position: row.try_get("employee_position")?,
+        employee_org_unit_id: None,
         employee_hire_date: None,
         employee_employment_status: None,
         employee_grade: None,

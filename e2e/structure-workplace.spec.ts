@@ -49,7 +49,7 @@ test("사업장: add with no defaults, the panel, change the representative work
   const pangyo = await openUnit(admin, "판교지점");
   await expect(pangyo.getByRole("definition").filter({ hasText: "본점 번호로 함께 신고" })).toBeVisible();
   const opened = t("workplace.field.openedOn");
-  await expect(pangyo.getByRole("button", { name: t("uiRecordActions.of", { field: opened, verb: t("uiRecordActions.edit") }), exact: true })).toHaveText(t("uiRecordActions.edit"));
+  await expect(pangyo.getByRole("button", { name: t("uiRecordActions.of", { field: opened, verb: t("uiRecordVerbs.verb.correct") }), exact: true })).toHaveText(t("uiRecordVerbs.verb.correct"));
   await expect(pangyo.getByRole("button", { name: t("uiRecordActions.more", { field: opened }), exact: true })).toHaveCount(0);
   await expect(pangyo.getByRole("button", { name: "부서 추가" })).toHaveAccessibleDescription("판교지점 바로 아래에 부서가 생깁니다");
   await expectAccessible(admin, "workplace panel");

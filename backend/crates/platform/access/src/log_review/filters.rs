@@ -86,7 +86,7 @@ impl Prepared {
     ) -> AccessResult<Value> {
         Ok(sqlx::query_scalar(
             "WITH events AS MATERIALIZED (SELECT a.actor,a.action,a.target_type,a.created_at,a.id, \
-             a.actor_display FROM audit_events a \
+             a.actor_display FROM ordinary_audit_events a \
              WHERE a.org_id=$1 AND a.created_at >= $2 AND a.created_at < $3 \
              AND a.created_at < $4 AND a.after_snap ? 'self_read'), \
              actors AS (SELECT DISTINCT ON(actor) actor,actor_display FROM events WHERE actor IS NOT NULL ORDER BY actor,(actor_display IS NULL),created_at DESC,id DESC), \

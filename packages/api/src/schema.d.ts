@@ -2437,6 +2437,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/audit-streams/availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Check which restricted audit reads the current session may perform
+         * @description Applies the existing read decisions without reading events or recording a stream access.
+         */
+        get: operations["getAuditStreamAvailability"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/audit-streams/ceo-covert/access-events": {
         parameters: {
             query?: never;
@@ -3606,7 +3626,7 @@ export interface paths {
         };
         /**
          * List change requests
-         * @description BW-17. HR (org-wide employee_directory_manage) sees the organization's requests; any other caller sees only the requests it filed ("waiting") or is named on. `assignee=me` lists the requests named to the caller (an explanation request to answer); `assignee=role` is HR-only. A correction carries the values it asks for, so an HR page with PROFILE_CORRECTION rows leaves one employee.list_read access log row naming the employees they are about, never the values.
+         * @description BW-17. HR sees requests about subjects in its directory management scope. A caller also sees requests it filed or is named on. `assignee=me` lists the requests named to the caller (an explanation request to answer); `assignee=role` is HR-only. A correction carries the values it asks for, so an HR page with PROFILE_CORRECTION rows leaves one employee.list_read access log row naming the employees they are about, never the values.
          */
         get: operations["listChangeRequests"];
         put?: never;
@@ -3795,13 +3815,19 @@ export interface paths {
         };
         /**
          * List tenant-scoped collaboration calendar events
-         * @description Returns server-filtered collaboration calendar events for the caller's tenant. Personal events are visible only to the creator, while org/team/department scopes carry explicit server policy metadata for future PBAC/ABAC expansion.
+         * @description Lists active internal events visible to this tenant member over the given range. Personal events belong to the creator,
+         *     department events to authorized branches and team events to team members. Creators can inspect their own events.
+         *     Follow next_cursor with the original range to read subsequent pages in stable order at the first page's snapshot time.
          */
         get: operations["listCollaborationCalendarEvents"];
         put?: never;
         /**
          * Create an audited collaboration calendar event
-         * @description Creates a tenant-scoped calendar event with explicit audience scope and optional source object link. The server records an audit event and an append-only lifecycle event under forced RLS.
+         * @description Creates an internal event, an append-only lifecycle record and a platform audit record in one tenant transaction.
+         *     Members create PERSONAL events for themselves. DEPARTMENT publication requires NoticeManage for the referenced
+         *     active branch. TENANT, ORG and TEAM publication require organization-wide NoticeManage. A branch-scoped administrator
+         *     previously allowed to publish a tenant event now receives 403. Personal events and authorized branch publishing remain available.
+         *     This operation sends no invitations or email and does not start a delivery worker.
          */
         post: operations["createCollaborationCalendarEvent"];
         delete?: never;
@@ -10751,7 +10777,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Skip a setup step ("proceed without departments" / "add employees later") */
+        /** Skip an optional setup step with tenant-wide authority for that step */
         post: operations["skipSetupStep"];
         delete?: never;
         options?: never;
@@ -11721,6 +11747,24 @@ export interface paths {
         get: operations["getEmployeePayslipDraft"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payroll/pay-group-memberships": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Find employees eligible for a pay group on the selected date */
+        get: operations["searchPayGroupMembers"];
+        put?: never;
+        /** Add or move an employee from the effective date until the next scheduled membership boundary */
+        post: operations["assignPayGroupMember"];
         delete?: never;
         options?: never;
         head?: never;
@@ -13739,10 +13783,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List overtime recognition work-rule confirmations */
+        /**
+         * List overtime recognition work-rule confirmations
+         * @description Requires settings view or attendance view at the requested scope.
+         */
         get: operations["listOvertimeRuleAttestations"];
         put?: never;
-        /** Record an overtime recognition work-rule confirmation */
+        /**
+         * Record an overtime recognition work-rule confirmation
+         * @description Requires settings edit or attendance approve at the requested scope.
+         */
         post: operations["recordOvertimeRuleAttestation"];
         delete?: never;
         options?: never;
@@ -16373,6 +16423,8 @@ export interface components {
             role_name_ko: string;
             scope_kind: string;
             scope_label: string;
+            scope_node_id?: components["schemas"]["Uuid"];
+            scope_include_descendants?: boolean;
             valid_from: components["schemas"]["Timestamp"];
             valid_to?: components["schemas"]["Timestamp"];
             last_used_at?: components["schemas"]["Timestamp"];
@@ -16629,9 +16681,9 @@ export interface components {
             /** @description Command refusal code when can_decide is false; absent when allowed. */
             cannot_reason?: string;
         };
-        /** @description One server-ordered canonical source-object reference for an action-inbox item. Clients resolve only explicitly registered kind/id pairs; current browser-linkable kinds are approval_run, work_order, and support_ticket. Unknown kinds remain valid for forward compatibility and MUST stay inert until a client registry adds support. Clients MUST NOT accept a server URL or infer a destination from the enclosing item kind, item id, label, or a code prefix. */
+        /** @description One server-ordered canonical source-object reference for an action-inbox item. Clients resolve only explicitly registered kind/id pairs; current registered kinds include approval_run, work_order, support_ticket, and dispatch_offer. Unknown kinds remain valid for forward compatibility and MUST stay inert until a client registry adds support. Clients MUST NOT accept a server URL or infer a destination from the enclosing item kind, item id, label, or a code prefix. */
         ActionInboxLink: {
-            /** @description Canonical source-object kind. Current browser-linkable values are approval_run, work_order, and support_ticket; other strings are forward-compatible but inert. */
+            /** @description Canonical source-object kind. Registered values include approval_run, work_order, support_ticket, and dispatch_offer; other strings are forward-compatible but inert. */
             kind: string;
             /** @description Canonical source-object identifier. Clients trim surrounding whitespace and reject a blank result before route construction. */
             id: string;
@@ -18274,6 +18326,8 @@ export interface components {
             conditions?: components["schemas"]["BenefitCatalogCondition"][];
         };
         BenefitCatalogItem: {
+            /** Format: date-time */
+            updated_at: string;
             id: components["schemas"]["Uuid"];
             benefit_code: string;
             /** @enum {string} */
@@ -18314,9 +18368,19 @@ export interface components {
             retention_until?: string | null;
         };
         BenefitCatalogReplaceConditionsRequest: {
+            /**
+             * Format: date-time
+             * @description Current item revision returned by the last catalog read.
+             */
+            expectedUpdatedAt?: string;
             conditions: components["schemas"]["BenefitCatalogCondition"][];
         };
         BenefitCatalogReplaceTiersRequest: {
+            /**
+             * Format: date-time
+             * @description Current item revision returned by the last catalog read.
+             */
+            expectedUpdatedAt?: string;
             tiers: components["schemas"]["BenefitCatalogTier"][];
         };
         BenefitCatalogScope: {
@@ -18342,6 +18406,11 @@ export interface components {
         };
         /** @description Mutable catalog fields only; tenant, actor, identifiers, and lifecycle state are server-owned. */
         BenefitCatalogUpdateRequest: {
+            /**
+             * Format: date-time
+             * @description Current item revision returned by the last catalog read.
+             */
+            expectedUpdatedAt?: string;
             /** @enum {string} */
             category?: "legal" | "extra";
             name?: string;
@@ -18703,6 +18772,7 @@ export interface components {
             voided?: boolean;
         };
         CalendarEventListResponse: {
+            next_cursor: string | null;
             items: components["schemas"]["CalendarEventResponse"][];
         };
         CalendarEventResponse: {
@@ -18853,6 +18923,8 @@ export interface components {
             assignee_user_id?: components["schemas"]["Uuid"] | null;
             /** @enum {string} */
             status: "OPEN" | "APPLIED" | "DECLINED" | "WITHDRAWN";
+            /** @description The viewer meets this open request's assignee and subject-scope rules for apply or decline. The decision command rechecks the current row and policy. */
+            can_review?: boolean;
             /** @description OTHER requests are reviewed after the fact. */
             review_required: boolean;
             decided_by?: components["schemas"]["Uuid"] | null;
@@ -20465,6 +20537,11 @@ export interface components {
             contact_email: string | null;
         };
         CurrentUser: components["schemas"]["UserSummary"] & {
+            /**
+             * Format: uuid
+             * @description Direct org unit of the linked employee when available.
+             */
+            employee_org_unit_id?: string | null;
             tenant?: components["schemas"]["UserTenant"];
         };
         CustodyEventView: {
@@ -21001,6 +21078,8 @@ export interface components {
             duplicate: boolean;
         };
         EmployeeAttendanceRecordPage: {
+            /** @description Whether the current employee may clock out from the console under the effective policy. Returned by the self endpoint. */
+            console_clock_out?: boolean;
             items: components["schemas"]["EmployeeAttendanceRecord"][];
             /** Format: int64 */
             total: number;
@@ -26053,6 +26132,8 @@ export interface components {
             work_order_id: components["schemas"]["Uuid"];
             branch_id: components["schemas"]["Uuid"];
             request_no: string;
+            site_name: string;
+            symptom: string;
             accept_window_started_at: components["schemas"]["Timestamp"];
             accept_window_ends_at: components["schemas"]["Timestamp"];
         };
@@ -26376,6 +26457,8 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             transitions: components["schemas"]["ObjectLifecycleTransition"][];
+            /** @description Present on a read. Rule-defined next states currently available to the caller after maker/checker, hold and retention checks. */
+            availableTransitions?: string[];
         };
         ObjectLifecycleTransition: {
             fromState: string;
@@ -27426,6 +27509,8 @@ export interface components {
             member_employee_ids?: string[];
         };
         PayGroupPage: {
+            /** @description Listed groups whose membership the current caller may manage. */
+            manageable_group_ids?: string[];
             items: components["schemas"]["PayGroup"][];
             legal_entities: {
                 /** Format: uuid */
@@ -30616,6 +30701,11 @@ export interface components {
              * @description ISO date; omit or null to clear the retention deadline.
              */
             retentionUntil?: string;
+            /**
+             * Format: date-time
+             * @description Optional revision from the lifecycle read. A changed or absent record returns 409 without changing the hold or retention.
+             */
+            expectedUpdatedAt?: string;
         };
         SetMessengerThreadMuteRequest: {
             muted: boolean;
@@ -31223,6 +31313,8 @@ export interface components {
         };
         SubmittableDefinitionListResponse: {
             items: components["schemas"]["SubmittableDefinitionResponse"][];
+            /** @description Assignable group-inbox roles for optional approval decisions. */
+            reviewer_role_keys?: string[];
         };
         /** @description An ACTIVE workflow definition the caller may start from the draft template gallery. Carries only the metadata definitions actually hold; active_version is the version a start binds to. */
         SubmittableDefinitionResponse: {
@@ -32125,7 +32217,8 @@ export interface components {
             link?: components["schemas"]["NotificationLink"];
         };
         UpsertRecoveryContactRequest: {
-            channel: components["schemas"]["RecoveryChannel"];
+            /** @enum {string} */
+            channel: "EMAIL";
             value: string;
             consent_accepted: boolean;
             step_up?: components["schemas"]["PasskeyStepUpAssertion"];
@@ -33137,6 +33230,8 @@ export interface components {
             change_mode: components["schemas"]["EntityChangeMode"];
         };
         WorkspaceResponse: {
+            /** @description On reads, whether the tenant currently requires Classic regardless of personal preferences. */
+            legacy_kill_switch_enabled?: boolean;
             /** @description Opaque, frontend-owned console layout object. Stored and returned verbatim; empty default is `{}`. */
             layout: {
                 [key: string]: unknown;
@@ -38283,6 +38378,30 @@ export interface operations {
             422: components["responses"]["ValidationError"];
         };
     };
+    getAuditStreamAvailability: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current read permissions for this principal and tenant. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        events: boolean;
+                        access_events: boolean;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
     listCeoCovertAuditAccessEvents: {
         parameters: {
             query?: {
@@ -38886,6 +39005,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
         };
     };
@@ -38916,6 +39036,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
         };
     };
@@ -38946,6 +39067,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
         };
     };
@@ -39652,6 +39774,8 @@ export interface operations {
     listChangeRequests: {
         parameters: {
             query?: {
+                /** @description Select one visible request by ID. A missing or inaccessible request returns an empty page. */
+                id?: string;
                 /** @description me = named to the caller; role = open to any HR person. */
                 assignee?: "me" | "role";
                 /** @description me = only the requests the caller filed ("waiting"). */
@@ -40110,6 +40234,8 @@ export interface operations {
             query?: {
                 from?: components["schemas"]["Timestamp"];
                 to?: components["schemas"]["Timestamp"];
+                /** @description Opaque continuation returned by the preceding page for this range. */
+                cursor?: string;
                 limit?: number;
             };
             header?: never;
@@ -41605,6 +41731,10 @@ export interface operations {
                 company?: string;
                 /** @description Case-insensitive name or employee-number typeahead query. */
                 search?: string;
+                /** @description Select employees with a register gap, an identity review, or a missing employment type. */
+                team_review_required?: boolean;
+                /** @description Inclusive lower bound for the current contract end date. */
+                contract_ending_on_or_after?: string;
                 /** @description Only records with missing statutory register facts. */
                 register_review_required?: boolean;
                 /** @description Filter to employees whose active authoritative home branch is missing/inactive (true) or usable (false). */
@@ -41860,6 +41990,10 @@ export interface operations {
                 company?: string;
                 /** @description Case-insensitive name or employee-number typeahead query. */
                 search?: string;
+                /** @description Select employees with a register gap, an identity review, or a missing employment type. */
+                team_review_required?: boolean;
+                /** @description Inclusive lower bound for the current contract end date. */
+                contract_ending_on_or_after?: string;
                 /** @description Only records with missing statutory register facts. */
                 register_review_required?: boolean;
                 /** @description Filter to employees whose active authoritative home branch is missing/inactive (true) or usable (false). */
@@ -41913,6 +42047,10 @@ export interface operations {
                 company?: string;
                 /** @description Case-insensitive name or employee-number typeahead query. */
                 search?: string;
+                /** @description Select employees with a register gap, an identity review, or a missing employment type. */
+                team_review_required?: boolean;
+                /** @description Inclusive lower bound for the current contract end date. */
+                contract_ending_on_or_after?: string;
                 /** @description Only records with missing statutory register facts. */
                 register_review_required?: boolean;
                 /** @description Filter to employees whose active authoritative home branch is missing/inactive (true) or usable (false). */
@@ -46247,6 +46385,7 @@ export interface operations {
     listEvaluationCycles: {
         parameters: {
             query?: {
+                /** @description Omit to list active cycles. Select ARCHIVED for archived cycles. Rows are ordered by creation time and then cycle ID, newest first. */
                 stage?: components["schemas"]["EvaluationCycleStage"];
                 /** @description Normalized to the inclusive range 1 through 100; defaults to 50. */
                 limit?: number;
@@ -46277,7 +46416,10 @@ export interface operations {
     createEvaluationCycle: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Reuse this key for the same create intent. */
+                "Idempotency-Key"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -46298,6 +46440,15 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            /** @description A previous command with this key was already applied or is processing. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
             422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalServerError"];
             503: components["responses"]["ServiceUnavailable"];
@@ -52057,6 +52208,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
             /** @description JWT verification is not configured. */
             503: {
@@ -55597,7 +55749,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                step: "org" | "employees" | "roles";
+                step: "org" | "employees" | "roles" | "overtime";
             };
             cookie?: never;
         };
@@ -57936,6 +58088,112 @@ export interface operations {
             422: components["responses"]["ValidationError"];
         };
     };
+    searchPayGroupMembers: {
+        parameters: {
+            query: {
+                pay_group_id: string;
+                effective_from: string;
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Up to 30 matching employees in the group’s legal entity on that date. Both their source group and destination must be manageable. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        employee_id: string;
+                        name: string;
+                        employee_number: string | null;
+                        /** Format: uuid */
+                        current_pay_group_id: string | null;
+                    }[];
+                };
+            };
+            /** @description Invalid query fields. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Empty or overlong search. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    assignPayGroupMember: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    pay_group_id: string;
+                    /** Format: uuid */
+                    employee_id: string;
+                    /** Format: date */
+                    effective_from: string;
+                    /** Format: uuid */
+                    expected_pay_group_id: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Membership committed or already in this group on that date. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * Format: uuid
+                         * @description Destination pay group.
+                         */
+                        id: string;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Membership changed since selection or the change overlaps a closed run or active payroll freeze. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Invalid employee or date for this group. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     listPayGroups: {
         parameters: {
             query?: never;
@@ -58204,12 +58462,14 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description pay_group_roster_ambiguous when the group's legal entity has more than one pay group, so its members are not known. */
+            /** @description pay_group_roster_ambiguous when the group's legal entity has more than one pay group, and its members are not known. Assign outstanding employees from pay group setup, then retry. */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
             };
             /** @description run_kind_unsupported for non-REGULAR kinds; validation for missing group or invalid kind. */
             422: {
@@ -62042,6 +62302,8 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
+                        /** @description Whether the caller may record a work-rule confirmation for the requested scope. */
+                        can_record: boolean;
                         items: components["schemas"]["OvertimeRuleAttestation"][];
                     };
                 };

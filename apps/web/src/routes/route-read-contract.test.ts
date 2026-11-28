@@ -4,7 +4,7 @@ import { createRequire } from "node:module";
 import { createRouter, type AnyRoute } from "@tanstack/react-router";
 import { expect, test } from "vitest";
 import { routeTree } from "./tree";
-import { routeReads, readRequirement } from "./route-reads";
+import { alternativeRouteReads, routeReads, readRequirement, servedRouteReads } from "./route-reads";
 import { accessRefusal, type Requirement } from "../reference/authz/domain/access";
 import type { AccessEffective } from "../reference/authz/api";
 import { queryPath } from "../lib/query";
@@ -19,15 +19,23 @@ const scopeKinds: AccessEffective["entries"][number]["scope"]["kind"][] = spec.c
 const source = (file: string) => readFileSync(`backend/crates/${file}`, "utf8");
 
 test("the table covers every guarded leaf; hubs compose only those leaf requirements", () => {
+  const leafPaths = [...Object.keys(routeReads), ...Object.keys(alternativeRouteReads)];
   const guarded = Object.values(routes).filter(route => {
     const need = route.options.staticData?.access;
     if (!need || need === "signed-in") return false;
-    if (!("destinations" in need)) return true;
+    if (!("destinations" in need) || Object.hasOwn(alternativeRouteReads, route.fullPath)) return true;
     expect(need.destinations.length, route.fullPath).toBeGreaterThan(0);
-    for (const destination of need.destinations) expect(Object.keys(routeReads).some(path => routes[path]?.options.staticData?.access === destination), route.fullPath).toBe(true);
+    for (const destination of need.destinations) expect(leafPaths.some(path => routes[path]?.options.staticData?.access === destination), route.fullPath).toBe(true);
     return false;
   }).map(route => route.fullPath);
-  expect(Object.keys(routeReads).sort()).toEqual(guarded.sort());
+  expect([...leafPaths, ...Object.keys(servedRouteReads)].sort()).toEqual(guarded.sort());
+});
+
+test("served route reads use their own capability projection before the declared API reads", () => {
+  for (const [path, contract] of Object.entries(servedRouteReads)) {
+    expect(routes[path]?.options.staticData?.access).toEqual(contract.access);
+    for (const read of contract.reads) expect(spec.paths[read]?.["method" in contract ? contract.method : "get"]).toBeDefined();
+  }
 });
 
 test("access person declares its account read without changing the effective-read scope", () => {
@@ -43,7 +51,11 @@ for (const [path, contract] of Object.entries(routeReads)) {
   test(`${path}: exact generated contract, including scopes and all prerequisites`, () => {
     expect(contract.reads.length).toBeGreaterThan(0);
     expect(contract.reads.every(op => op.startsWith("GET "))).toBe(true);
-    expect(routes[path]!.options.staticData?.access).toEqual(readRequirement(path as keyof typeof routeReads));
+    const unique = new Map(ops.map(op => [JSON.stringify(operationAccess[op]), operationAccess[op]]));
+    const requirements = [...unique.values()];
+    const expected = requirements.length === 1 ? requirements[0] : { allOf: requirements };
+    expect(routes[path]!.options.staticData?.access).toEqual(expected);
+    expect(readRequirement(path as keyof typeof routeReads)).toEqual(expected);
   });
   for (const kind of [...scopeKinds, null]) {
     test(`${path} × ${kind ?? "no grant"}: route admits iff required first reads and form door admit`, () => {
@@ -98,4 +110,23 @@ test("payroll reference uses the generated entity pay:view contract", () => {
 
 test.each(SETTINGS_VIEWS)("$to hub summary shares its destination read path", view => {
   expect(queryPath(view.summary)).toBe(routeReads[view.to].reads[0].slice(4));
+});
+
+test("either enforced scope read grants entry to overtime, with writes authorized separately", () => {
+  const get = alternativeRouteReads["/settings/overtime"];
+  const need = routes["/settings/overtime"]!.options.staticData!.access!;
+  expect(need).toEqual(operationAccess[get]);
+  expect(operationAccess[get].destinations).toEqual([{ domain: "settings", level: "view" }, { domain: "attendance", level: "view" }]);
+  expect(operationAccess["POST /api/v1/settings/overtime-attestations"].destinations).toEqual([
+    { domain: "settings", level: "edit" }, { domain: "attendance", level: "approve" },
+  ]);
+  if (need === "signed-in") throw new Error("Missing overtime read guard");
+  for (const { domain, level } of operationAccess[get].destinations) {
+    for (const kind of scopeKinds) {
+      const access = { is_ops: false, entries: [{ domain, level, enforcement: "ENFORCED", scope: { kind } }] } as AccessEffective;
+      expect(accessRefusal(access, need)).toBeNull();
+      access.entries[0]!.enforcement = "REVOKED";
+      expect(accessRefusal(access, need)).toBe("access_denied");
+    }
+  }
 });

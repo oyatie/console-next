@@ -2,4 +2,5 @@ type: object
 additionalProperties: false
 required: [conditions]
 properties:
+  expectedUpdatedAt: { type: string, format: date-time, description: Current item revision returned by the last catalog read. }
   conditions: { type: array, items: { $ref: '#/components/schemas/BenefitCatalogCondition' } }

@@ -2,8 +2,10 @@ import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { atPhoneWidth, expectAccessible, fits } from "./a11y";
 import { clickCounter } from "./clicks";
-import { koDate, kstDate, option } from "./flows";
-import { tenantWithExecutive } from "./setup-flows";
+import { firstSignIn, go, koDate, kstDate, option, registerEmployee, stepUp, takeCode, unique } from "./flows";
+import { confirmGrantNotice, grantAccess } from "./access-flows";
+import { letGrantsAge } from "./second-person-fixture";
+import { SETUP_DEPARTMENT, startOperations, tenantInSetup } from "./setup-flows";
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -17,17 +19,30 @@ const monthName = (m: string) => new Intl.DateTimeFormat("ko-KR", { timeZone: "U
 // Period locks: nothing preselected, a month lock derived from the month, an overlapping window blocked
 // with its fixes before the server is asked, and a time-boxed unlock with a reason and a passkey that leaves a receipt.
 test("period locks: month lock, overlap blocked with fixes, unlock with a reason", { tag: "@hr" }, async ({ browser }) => {
-  const { admin } = await tenantWithExecutive(browser, "lockco", "마감주식회사");
+  const slug = "lockco";
+  const { admin: operator } = await tenantInSetup(browser, slug, "마감주식회사", false, "본사", "none");
+  await registerEmployee(operator, { name: "마감담당", unit: SETUP_DEPARTMENT });
+  await operator.getByRole("button", { name: "계정 초대" }).click();
+  await stepUp(operator.getByRole("dialog", { name: "계정 초대" }), "패스키로 확인하고 계정 초대", operator.getByLabel("일회용 코드"));
+  const admin = await firstSignIn(browser, await takeCode(operator));
+  await grantAccess(operator, "마감담당", "full");
+  await go(admin, "/", true);
+  await confirmGrantNotice(admin, "full");
+  await admin.reload();
+  letGrantsAge(unique(slug), "마감담당");
+  await startOperations(operator);
   const c = clickCounter();
-  const nav = admin.getByRole("navigation", { name: "주 메뉴" });
+  const nav = operator.getByRole("navigation", { name: "주 메뉴" });
   await c.click(nav.getByRole("link", { name: "설정", exact: true }));
-  await c.click(admin.getByRole("main").getByRole("link", { name: "기간 잠금", exact: true }));
-  await expect(admin.getByText("잠긴 기간이 없습니다")).toBeVisible();
+  await c.click(operator.getByRole("main").getByRole("link", { name: "기간 잠금", exact: true }));
+  await expect(operator.getByText("잠긴 기간이 없습니다")).toBeVisible();
   // Settings views keep 설정 current.
   await expect(nav.getByRole("link", { name: "설정", exact: true })).toHaveAttribute("aria-current", "page");
   await expect(nav.getByRole("link", { name: "기간 잠금" })).toHaveCount(0);
   await expect(nav.getByRole("link", { name: t("shell.link.people"), exact: true })).not.toHaveAttribute("aria-current", "page");
-  await expectAccessible(admin, "period locks (empty)");
+  await expectAccessible(operator, "period locks (empty)");
+
+  await go(admin, "/people/period-locks");
 
   // Nothing is chosen: pressing the primary lists the errors and moves to the first.
   const payroll = admin.getByRole("radio", { name: "급여", exact: true });

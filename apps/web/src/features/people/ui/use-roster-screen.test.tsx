@@ -6,7 +6,6 @@ import { useRosterScreen } from "./use-roster-screen";
 const state = vi.hoisted(() => ({ search: {} as Record<string, string>, navigate: vi.fn(), read: vi.fn(), windowFailed: false }));
 vi.mock("@tanstack/react-router", () => ({ getRouteApi: () => ({ useSearch: () => state.search, useNavigate: () => state.navigate }) }));
 vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: undefined, isError: state.windowFailed, isPending: false }) }));
-vi.mock("../../../lib/react/prefetch", () => ({ usePrefetch: () => vi.fn() }));
 vi.mock("../../../lib/react/announce", () => ({ focusSoon: vi.fn() }));
 vi.mock("../../../lib/reason-codes", () => ({ useReasonCodesReady: () => false }));
 vi.mock("../../../reference/authz/ui/use-can", () => ({ useCan: () => () => false }));

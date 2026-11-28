@@ -5,6 +5,7 @@ import { beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { loadCatalog, t } from "@console/i18n";
 import { ApiError, myAccessQuery } from "../../../reference/authz/api";
 import { RosterPage } from "./roster-page";
+import { baselineRosterLayout } from "./use-roster-layout";
 import { rosterWindowQuery } from "../api/roster";
 import { VIEWS } from "../domain/roster";
 
@@ -37,14 +38,13 @@ vi.mock("@tanstack/react-query", async original => ({
   } : ({ data: undefined, isPending: false, isFetching: false, isFetchedAfterMount: true, error: new ApiError(403, "access_denied", ""), refetch: vi.fn() }),
 }));
 vi.mock("../../../reference/authz/ui/use-can", () => ({ useCan: () => () => false }));
-vi.mock("../../../lib/react/prefetch", () => ({ usePrefetch: () => vi.fn() }));
 vi.mock("../../../lib/reason-codes", () => ({ useReasonCodesReady: () => false }));
 vi.mock("./roster-table", () => ({ RosterTable: (props: { empty: React.ReactNode }) => { table(props); return <div>{state.empty ? props.empty : state.body}</div>; } }));
 vi.mock("./use-roster", async original => ({ ...await original<typeof import("./use-roster")>(), useRoster: (...args: unknown[]) => { rosterRead(...args); return ({
   list: { data: state.refused ? undefined : { pages: [{ items: [], total: 1 }] }, isPending: false, hasNextPage: true, error: state.refused ? new ApiError(403, "access_denied", "") : null, refetch: vi.fn() },
   rows: state.empty || state.firstRun ? [] : [{ id: "person", name: "가상직원" }], total: state.firstRun ? 0 : 1, loading: state.loading, status: { totals: { all: state.firstRun ? 0 : 1 }, failed: [] }, review: { totals: {}, failed: [] }, query: {},
 }); } }));
-beforeAll(() => loadCatalog("ko"));
+beforeAll(() => Promise.all([loadCatalog("ko"), baselineRosterLayout.preload()]));
 beforeEach(() => { state.refused = false; state.settingsFailed = false; state.staleWindow = undefined; state.org = false; state.loading = false; state.empty = false; state.firstRun = false; state.voided = false; state.search = {}; table.mockClear(); rosterRead.mockClear(); arrangement.mockClear(); });
 const render = () => {
   const client = new QueryClient({ defaultOptions: { queries: { enabled: false } } });

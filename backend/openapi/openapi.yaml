@@ -5150,6 +5150,30 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/ValidationError' }
+  /api/v1/audit-streams/availability:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      tags:
+      - audit
+      operationId: getAuditStreamAvailability
+      summary: Check which restricted audit reads the current session may perform
+      description: Applies the existing read decisions without reading events or recording a stream access.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Current read permissions for this principal and tenant.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [events, access_events]
+                properties:
+                  events: { type: boolean }
+                  access_events: { type: boolean }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /api/v1/audit-streams/ceo-covert/access-events:
     get:
       tags:
@@ -6076,6 +6100,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/ValidationError' }
   /api/v1/benefit-catalog/items/{benefit_id}/conditions:
     put:
@@ -6090,6 +6115,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/ValidationError' }
   /api/v1/benefit-catalog/items/{benefit_id}/tiers:
     put:
@@ -6104,6 +6130,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/ValidationError' }
   /api/v1/branches:
     get:
@@ -6846,9 +6873,8 @@ paths:
       operationId: listChangeRequests
       summary: List change requests
       description: >-
-        BW-17. HR (org-wide employee_directory_manage) sees the organization's
-        requests; any other caller sees only the requests it filed ("waiting")
-        or is named on. `assignee=me` lists the requests named to the
+        BW-17. HR sees requests about subjects in its directory management scope.
+        A caller also sees requests it filed or is named on. `assignee=me` lists the requests named to the
         caller (an explanation request to answer); `assignee=role` is HR-only.
         A correction carries the values it asks for, so an HR page with
         PROFILE_CORRECTION rows leaves one employee.list_read access log row
@@ -6856,6 +6882,11 @@ paths:
       security:
       - bearerAuth: []
       parameters:
+      - name: id
+        in: query
+        required: false
+        description: Select one visible request by ID. A missing or inaccessible request returns an empty page.
+        schema: {type: string, format: uuid}
       - name: assignee
         in: query
         required: false
@@ -7449,8 +7480,10 @@ paths:
         - collaboration
       operationId: listCollaborationCalendarEvents
       summary: List tenant-scoped collaboration calendar events
-      description: Returns server-filtered collaboration calendar events for the caller's tenant. Personal events are visible
-        only to the creator, while org/team/department scopes carry explicit server policy metadata for future PBAC/ABAC expansion.
+      description: |
+        Lists active internal events visible to this tenant member over the given range. Personal events belong to the creator,
+        department events to authorized branches and team events to team members. Creators can inspect their own events.
+        Follow next_cursor with the original range to read subsequent pages in stable order at the first page's snapshot time.
       security:
       - bearerAuth: []
       parameters:
@@ -7464,6 +7497,10 @@ paths:
         required: false
         schema:
           $ref: '#/components/schemas/Timestamp'
+      - name: cursor
+        in: query
+        description: Opaque continuation returned by the preceding page for this range.
+        schema: { type: string }
       - name: limit
         in: query
         required: false
@@ -7491,8 +7528,12 @@ paths:
         - collaboration
       operationId: createCollaborationCalendarEvent
       summary: Create an audited collaboration calendar event
-      description: Creates a tenant-scoped calendar event with explicit audience scope and optional source object link. The
-        server records an audit event and an append-only lifecycle event under forced RLS.
+      description: |
+        Creates an internal event, an append-only lifecycle record and a platform audit record in one tenant transaction.
+        Members create PERSONAL events for themselves. DEPARTMENT publication requires NoticeManage for the referenced
+        active branch. TENANT, ORG and TEAM publication require organization-wide NoticeManage. A branch-scoped administrator
+        previously allowed to publish a tenant event now receives 403. Personal events and authorized branch publishing remain available.
+        This operation sends no invitations or email and does not start a delivery worker.
       security:
       - bearerAuth: []
       requestBody:
@@ -8765,6 +8806,14 @@ paths:
         schema:
           type: string
         description: Case-insensitive name or employee-number typeahead query.
+      - name: team_review_required
+        in: query
+        schema: {type: boolean}
+        description: Select employees with a register gap, an identity review, or a missing employment type.
+      - name: contract_ending_on_or_after
+        in: query
+        schema: {type: string, format: date}
+        description: Inclusive lower bound for the current contract end date.
       - name: register_review_required
         in: query
         schema:
@@ -9179,6 +9228,14 @@ paths:
         schema:
           type: string
         description: Case-insensitive name or employee-number typeahead query.
+      - name: team_review_required
+        in: query
+        schema: {type: boolean}
+        description: Select employees with a register gap, an identity review, or a missing employment type.
+      - name: contract_ending_on_or_after
+        in: query
+        schema: {type: string, format: date}
+        description: Inclusive lower bound for the current contract end date.
       - name: register_review_required
         in: query
         schema:
@@ -9317,6 +9374,14 @@ paths:
         schema:
           type: string
         description: Case-insensitive name or employee-number typeahead query.
+      - name: team_review_required
+        in: query
+        schema: {type: boolean}
+        description: Select employees with a register gap, an identity review, or a missing employment type.
+      - name: contract_ending_on_or_after
+        in: query
+        schema: {type: string, format: date}
+        description: Inclusive lower bound for the current contract end date.
       - name: register_review_required
         in: query
         schema:
@@ -14265,6 +14330,7 @@ paths:
       - name: stage
         in: query
         required: false
+        description: Omit to list active cycles. Select ARCHIVED for archived cycles. Rows are ordered by creation time and then cycle ID, newest first.
         schema: { $ref: '#/components/schemas/EvaluationCycleStage' }
       - name: limit
         in: query
@@ -14287,11 +14353,18 @@ paths:
       operationId: createEvaluationCycle
       summary: Create a draft evaluation cycle
       security: [{ bearerAuth: [] }]
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Reuse this key for the same create intent.
+        schema: { type: string }
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CreateEvaluationCycleRequest' } } } }
       responses:
         '201': { description: Draft cycle created., content: { application/json: { schema: { $ref: '#/components/schemas/EvaluationCycleDetail' } } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: A previous command with this key was already applied or is processing., content: { application/json: { schema: { $ref: '#/components/schemas/ErrorBody' } } } }
         '422': { $ref: '#/components/responses/ValidationError' }
         '500': { $ref: '#/components/responses/InternalServerError' }
         '503': { $ref: '#/components/responses/ServiceUnavailable' }
@@ -19850,6 +19923,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationError'
         '503':
@@ -23447,7 +23522,7 @@ paths:
       tags:
       - onboarding
       operationId: skipSetupStep
-      summary: Skip a setup step ("proceed without departments" / "add employees later")
+      summary: Skip an optional setup step with tenant-wide authority for that step
       security:
       - bearerAuth: []
       parameters:
@@ -23460,6 +23535,7 @@ paths:
           - org
           - employees
           - roles
+          - overtime
       responses:
         '204':
           description: Recorded.
@@ -26080,6 +26156,77 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationError'
+  /api/v1/payroll/pay-group-memberships:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "pay:edit", "scope": "entity"}
+      tags: [payroll]
+      operationId: searchPayGroupMembers
+      summary: Find employees eligible for a pay group on the selected date
+      security: [{bearerAuth: []}]
+      parameters:
+      - {in: query, required: true, name: pay_group_id, schema: {type: string, format: uuid}}
+      - {in: query, required: true, name: effective_from, schema: {type: string, format: date}}
+      - {in: query, required: true, name: q, schema: {type: string, minLength: 1, maxLength: 100}}
+      responses:
+        '200':
+          description: Up to 30 matching employees in the group’s legal entity on that date. Both their source group and destination must be manageable.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [employee_id, name, employee_number, current_pay_group_id]
+                  properties:
+                    employee_id: {type: string, format: uuid}
+                    name: {type: string}
+                    employee_number: {type: [string, 'null']}
+                    current_pay_group_id: {type: [string, 'null'], format: uuid}
+        '400': {description: Invalid query fields.}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '422': {description: Empty or overlong search.}
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "pay:edit", "scope": "entity"}
+      tags: [payroll]
+      operationId: assignPayGroupMember
+      summary: Add or move an employee from the effective date until the next scheduled membership boundary
+      security: [{bearerAuth: []}]
+      parameters:
+      - {name: Idempotency-Key, in: header, required: false, schema: {type: string, minLength: 16, maxLength: 200}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [pay_group_id, employee_id, effective_from, expected_pay_group_id]
+              properties:
+                pay_group_id: {type: string, format: uuid}
+                employee_id: {type: string, format: uuid}
+                effective_from: {type: string, format: date}
+                expected_pay_group_id: {type: [string, 'null'], format: uuid}
+      responses:
+        '200':
+          description: Membership committed or already in this group on that date.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id]
+                properties:
+                  id: {type: string, format: uuid, description: Destination pay group.}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409':
+          description: Membership changed since selection or the change overlaps a closed run or active payroll freeze.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ErrorBody'}
+        '422': {description: Invalid employee or date for this group.}
   /api/v1/payroll/pay-groups:
     get:
       # SPDX-License-Identifier: LicenseRef-Proprietary
@@ -26291,7 +26438,11 @@ paths:
               schema: {$ref: '#/components/schemas/PayrollRunPreview'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {description: Cedar refuses pay-group edit or sensitive edit clearance. Unknown and foreign groups also refuse.}
-        '409': {description: "pay_group_roster_ambiguous when the group's legal entity has more than one pay group, so its members are not known."}
+        '409':
+          description: "pay_group_roster_ambiguous when the group's legal entity has more than one pay group, and its members are not known. Assign outstanding employees from pay group setup, then retry."
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ErrorBody'}
         '422': {description: run_kind_unsupported for non-REGULAR kinds; validation for missing group or invalid kind.}
         '503': {description: holiday_calendar_missing when an adjustment requires an unloaded calendar year; or unavailable Cedar facts.}
   /api/v1/payroll/runs/{id}:
@@ -30410,10 +30561,11 @@ paths:
   /api/v1/settings/overtime-attestations:
     get:
       # SPDX-License-Identifier: LicenseRef-Proprietary
-      x-console-authz: {"permission": "settings:view", "scope": "any"}
+      x-console-authz: {"permissions": ["settings:view", "attendance:view"], "scope": "any"}
       tags: [settings]
       operationId: listOvertimeRuleAttestations
       summary: List overtime recognition work-rule confirmations
+      description: Requires settings view or attendance view at the requested scope.
       security:
         - bearerAuth: []
       parameters:
@@ -30430,8 +30582,11 @@ paths:
               schema:
                 type: object
                 additionalProperties: false
-                required: [items]
+                required: [items, can_record]
                 properties:
+                  can_record:
+                    type: boolean
+                    description: Whether the caller may record a work-rule confirmation for the requested scope.
                   items:
                     type: array
                     items:
@@ -30442,10 +30597,11 @@ paths:
           $ref: '#/components/responses/Forbidden'
     post:
       # SPDX-License-Identifier: LicenseRef-Proprietary
-      x-console-authz: {"permission": "settings:edit", "scope": "any"}
+      x-console-authz: {"permissions": ["settings:edit", "attendance:approve"], "scope": "any"}
       tags: [settings]
       operationId: recordOvertimeRuleAttestation
       summary: Record an overtime recognition work-rule confirmation
+      description: Requires settings edit or attendance approve at the requested scope.
       security:
         - bearerAuth: []
       requestBody:
@@ -37139,6 +37295,10 @@ components:
           type: string
         scope_label:
           type: string
+        scope_node_id:
+          $ref: '#/components/schemas/Uuid'
+        scope_include_descendants:
+          type: boolean
         valid_from:
           $ref: '#/components/schemas/Timestamp'
         valid_to:
@@ -37762,7 +37922,7 @@ components:
       description: >-
         One server-ordered canonical source-object reference for an action-inbox
         item. Clients resolve only explicitly registered kind/id pairs; current
-        browser-linkable kinds are approval_run, work_order, and support_ticket.
+        registered kinds include approval_run, work_order, support_ticket, and dispatch_offer.
         Unknown kinds remain valid for forward compatibility and MUST stay inert
         until a client registry adds support. Clients MUST NOT accept a server URL
         or infer a destination from the enclosing item kind, item id, label, or a
@@ -37774,8 +37934,8 @@ components:
         kind:
           type: string
           description: >-
-            Canonical source-object kind. Current browser-linkable values are
-            approval_run, work_order, and support_ticket; other strings are
+            Canonical source-object kind. Registered values include
+            approval_run, work_order, support_ticket, and dispatch_offer; other strings are
             forward-compatible but inert.
         id:
           type: string
@@ -39965,8 +40125,9 @@ components:
         conditions: { type: array, items: { $ref: '#/components/schemas/BenefitCatalogCondition' } }
     BenefitCatalogItem:
       type: object
-      required: [id, benefit_code, category, name, scope, coverage_label, cost_label, tiers, conditions, lifecycle]
+      required: [id, benefit_code, category, name, scope, coverage_label, cost_label, tiers, conditions, lifecycle, updated_at]
       properties:
+        updated_at: { type: string, format: date-time }
         id: { $ref: '#/components/schemas/Uuid' }
         benefit_code: { type: string }
         category: { type: string, enum: [legal, extra] }
@@ -40009,12 +40170,14 @@ components:
       additionalProperties: false
       required: [conditions]
       properties:
+        expectedUpdatedAt: { type: string, format: date-time, description: Current item revision returned by the last catalog read. }
         conditions: { type: array, items: { $ref: '#/components/schemas/BenefitCatalogCondition' } }
     BenefitCatalogReplaceTiersRequest:
       type: object
       additionalProperties: false
       required: [tiers]
       properties:
+        expectedUpdatedAt: { type: string, format: date-time, description: Current item revision returned by the last catalog read. }
         tiers: { type: array, items: { $ref: '#/components/schemas/BenefitCatalogTier' } }
     BenefitCatalogScope:
       type: object
@@ -40044,6 +40207,7 @@ components:
       description: Mutable catalog fields only; tenant, actor, identifiers, and lifecycle state are server-owned.
       additionalProperties: false
       properties:
+        expectedUpdatedAt: { type: string, format: date-time, description: Current item revision returned by the last catalog read. }
         category: { type: string, enum: [legal, extra] }
         name: { type: string, minLength: 1 }
         scope: { $ref: '#/components/schemas/BenefitCatalogScope' }
@@ -40808,7 +40972,9 @@ components:
       type: object
       required:
       - items
+      - next_cursor
       properties:
+        next_cursor: { type: [string, 'null'] }
         items:
           type: array
           items:
@@ -41215,6 +41381,9 @@ components:
         status:
           type: string
           enum: [OPEN, APPLIED, DECLINED, WITHDRAWN]
+        can_review:
+          type: boolean
+          description: The viewer meets this open request's assignee and subject-scope rules for apply or decline. The decision command rechecks the current row and policy.
         review_required:
           type: boolean
           description: OTHER requests are reviewed after the fact.
@@ -44285,6 +44454,10 @@ components:
       - $ref: '#/components/schemas/UserSummary'
       - type: object
         properties:
+          employee_org_unit_id:
+            type: [string, "null"]
+            format: uuid
+            description: Direct org unit of the linked employee when available.
           tenant:
             $ref: '#/components/schemas/UserTenant'
     CustodyEventView:
@@ -45269,6 +45442,9 @@ components:
       - limit
       - offset
       properties:
+        console_clock_out:
+          type: boolean
+          description: Whether the current employee may clock out from the console under the effective policy. Returned by the self endpoint.
         items:
           type: array
           items:
@@ -55372,6 +55548,8 @@ components:
       - work_order_id
       - branch_id
       - request_no
+      - site_name
+      - symptom
       - accept_window_started_at
       - accept_window_ends_at
       properties:
@@ -55382,6 +55560,10 @@ components:
         branch_id:
           $ref: '#/components/schemas/Uuid'
         request_no:
+          type: string
+        site_name:
+          type: string
+        symptom:
           type: string
         accept_window_started_at:
           $ref: '#/components/schemas/Timestamp'
@@ -56130,6 +56312,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ObjectLifecycleTransition'
+        availableTransitions:
+          type: array
+          description: Present on a read. Rule-defined next states currently available to the caller after maker/checker, hold and retention checks.
+          items:
+            type: string
     ObjectLifecycleTransition:
       type: object
       required:
@@ -56267,7 +56454,7 @@ components:
         properties:
           key:
             type: string
-            x-extensible-enum: [home, org, access, approvals, people, exits, attendance, statutory, payroll]
+            x-extensible-enum: [home, org, access, approvals, people, exits, attendance, statutory, payroll, personal_location, dispatch_offers, approval_submission]
           ready:
             type: boolean
           unblock:
@@ -58355,6 +58542,10 @@ components:
       type: object
       required: [items, legal_entities]
       properties:
+        manageable_group_ids:
+          type: array
+          description: Listed groups whose membership the current caller may manage.
+          items: {type: string, format: uuid}
         items:
           type: array
           items: {$ref: '#/components/schemas/PayGroup'}
@@ -65393,6 +65584,10 @@ components:
           type: string
           format: date
           description: ISO date; omit or null to clear the retention deadline.
+        expectedUpdatedAt:
+          type: string
+          format: date-time
+          description: Optional revision from the lifecycle read. A changed or absent record returns 409 without changing the hold or retention.
     SetMessengerThreadMuteRequest:
       type: object
       required:
@@ -66719,6 +66914,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SubmittableDefinitionResponse'
+        reviewer_role_keys:
+          type: array
+          items:
+            type: string
+          description: Assignable group-inbox roles for optional approval decisions.
     SubmittableDefinitionResponse:
       type: object
       description: An ACTIVE workflow definition the caller may start from the draft template gallery. Carries only the
@@ -68817,7 +69017,8 @@ components:
       additionalProperties: false
       properties:
         channel:
-          $ref: '#/components/schemas/RecoveryChannel'
+          type: string
+          enum: [EMAIL]
         value:
           type: string
         consent_accepted:
@@ -71391,6 +71592,9 @@ components:
     WorkspaceResponse:
       type: object
       properties:
+        legacy_kill_switch_enabled:
+          type: boolean
+          description: On reads, whether the tenant currently requires Classic regardless of personal preferences.
         layout:
           type: object
           additionalProperties: true

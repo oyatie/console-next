@@ -111,7 +111,8 @@ async fn oncall_jobs_health_changes_promote_recovery_actions_and_runbooks() -> T
         ),
     )
     .await?;
-    assert_eq!(st, StatusCode::CREATED, "{pr}");
+    assert_eq!(st, StatusCode::SERVICE_UNAVAILABLE, "{pr}");
+    assert_eq!(pr["code"], "OPS_PROMOTE_EVIDENCE_UNAVAILABLE");
     let (st, _, pv) = send_json(&h.app, req_get("/api/ops/v1/promote", &h.operator_jwt)).await?;
     assert_eq!(st, StatusCode::OK, "{pv}");
     assert_eq!(pv["signoffs"].as_array().map(Vec::len), Some(1));
@@ -161,7 +162,9 @@ async fn oncall_jobs_health_changes_promote_recovery_actions_and_runbooks() -> T
     // Actions list reflects recorded Cmds
     let (st, _, acts) = send_json(&h.app, req_get("/api/ops/v1/actions", &h.operator_jwt)).await?;
     assert_eq!(st, StatusCode::OK, "{acts}");
-    assert!(acts["actions"].as_array().is_some_and(|a| a.len() >= 6));
+    let actions = acts["actions"].as_array().ok_or("missing actions")?;
+    assert!(actions.len() >= 6);
+    assert!(actions.iter().all(|a| a["kind"] != "promote"));
 
     // Runbooks list + read + traversal + symlink refusal
     let (st, _, rbs) = send_json(&h.app, req_get("/api/ops/v1/runbooks", &h.operator_jwt)).await?;

@@ -10,8 +10,8 @@ export function Pager({ offset, limit, total, more, onPage }: { offset: number; 
   return (
     <nav className="pager" aria-label={t("common.page.label")}>
       {total !== undefined && <span className="muted num">{t("common.page.range", { from: Math.min(total, offset + 1), to: Math.min(total, offset + limit), total })}</span>}
-      <button className="btn" disabled={offset === 0} onClick={() => onPage(Math.max(0, offset - limit))}>{t("common.page.prev")}</button>
-      <button className="btn" disabled={!next} onClick={() => onPage(offset + limit)}>{t("common.page.next")}</button>
+      <button type="button" className="btn" disabled={offset === 0} onClick={() => onPage(Math.max(0, offset - limit))}>{t("common.page.prev")}</button>
+      <button type="button" className="btn" disabled={!next} onClick={() => onPage(offset + limit)}>{t("common.page.next")}</button>
     </nav>
   );
 }

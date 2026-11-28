@@ -1,0 +1,15 @@
+{
+  "baseline": {
+    "apps/web/src/features/audit/ui/restricted-stream.tsx#RestrictedStream": 11
+  },
+  "newScreens": {
+    "apps/web/src/features/audit/ui/restricted-stream.tsx#RestrictedStream": {
+      "FACT": 6,
+      "REFUSAL": 3,
+      "EMPTY": 1,
+      "LEGAL": 0,
+      "RECEIPT": 1,
+      "EXPLANATION": 0
+    }
+  }
+}

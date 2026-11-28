@@ -15,6 +15,14 @@ worker loops and state initialization; test its routes and isolation, and confir
 the default build still excludes unrelated modules. `dev-auth` remains opt-in and
 is excluded from `default`, `mvp` and `full`.
 
+## Tenant activation for additional modules
+
+A module may become default-on for tenants whose plan includes it after its server routes, navigation, tenant isolation and opt-out have passed release qualification. Start with designated tenants. Preserve each tenant's explicit choice when the platform default changes. A missing entitlement, a disabled tenant setting or a failed policy read must withhold the module.
+
+Resolve admission on the server before returning protected data, accepting writes or replaying receipts. The same decision governs discovery, exports and background jobs. Each operation still requires its own role, resource scope and effective date. Record who changed the tenant setting and when it took effect.
+
+Location collection, external delivery, financial posting and other consequential effects require their own explicit authorization or activation. A tenant opt-out stops new work. Define how pending operations, historical records and legally required self-service access continue before promotion. Published candidate artifacts and Cargo features describe what the build can serve.
+
 Payroll promotion decision (2026-11-02): the owner approved payroll in the
 production build for closed alpha, enabled by default for all tenants. No tenant
 override rows are created; existing overrides continue to apply. Readiness also
@@ -48,3 +56,26 @@ and neither module introduces any periodic loop in `run/worker.rs` or `run/serve
 `console-gate-dev-auth-absence`), and `mvp_build_surface` verifies `leave` and
 `inbox` route availability in `mvp` alongside unrelated-module 404s and
 `--no-default-features` compiled-out isolation.
+
+## Optional module enrollment
+
+An installation serving the evaluation build admits evaluation requests only for an enrolled organization. The tenant-wide setting `module.evaluation.enabled` defaults to true for that organization. An administrator can schedule an opt-out in Settings → Operations. Cycle management and cross-person ledger access require organization-wide authority. An enrolled employee or manager with a submission grant can work on their own assigned reviews. Enrollment creates no cycles, assignments or notifications.
+
+The benefits catalog and internal calendar are separately enrolled as `benefits` and `calendar`. Each enrolled tenant can opt out using `module.benefits.enabled` or `module.calendar.enabled`. The feature routers, their navigation, the benefits lifecycle routes, and the calendar section of the workbench use the same enrollment. Other lifecycle types, collaboration polls and personal tasks keep their own access. Calendar and catalog enrollment creates no event, benefit, worker, notification, invitation or mail.
+
+The release operator uses an individually attributable database session with deployment privileges and the approved change reference to record enrollment. The realtime service suppresses maintenance events from a direct login as the migration account `console_app`. Bind the organization UUID, module key, decision and reference from the approved change. Execute this transaction with psql variables `org`, `module`, `enabled` and `change_ref`. Release migrations register supported module keys in `release_modules` after their tenant opt-out settings exist. The initial keys are `evaluation`, `benefits` and `calendar`. A later release inserts its own key without modifying other registrations. Check the returned decision against the request. Reusing a reference for a different decision requires a new change. The operator role must have access to the confirmed tenant. The application runtime can only read that tenant's history.
+
+```sql
+BEGIN;
+SELECT set_config('app.current_org', :'org'::uuid::text, true);
+SELECT id FROM organizations WHERE id = :'org'::uuid FOR UPDATE;
+INSERT INTO tenant_module_enrollments (org_id, module_key, enabled, change_ref)
+VALUES (:'org'::uuid, :'module', :'enabled'::boolean, :'change_ref')
+ON CONFLICT (org_id, module_key, change_ref) DO NOTHING;
+SELECT enabled, change_ref, recorded_by, recorded_at FROM tenant_module_enrollments
+WHERE org_id = :'org'::uuid AND module_key = :'module'
+ORDER BY revision DESC LIMIT 1;
+COMMIT;
+```
+
+Withdrawal appends a disabled decision using a new reference. Requests admitted after that commit, including retries carrying an earlier command key, are refused. In-flight requests can finish. Historical evaluation, benefit and calendar records are preserved. No tenant is enrolled by the migration.

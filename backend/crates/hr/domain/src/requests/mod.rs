@@ -90,6 +90,12 @@ impl ChangeRequestKind {
         matches!(self, Self::Other)
     }
 
+    /// The role that may act before the requester's and named assignee's close checks.
+    #[must_use]
+    pub const fn reviewer(self, hr_in_reach: bool, named: bool) -> bool {
+        hr_in_reach || (named && self.answered_by_assignee())
+    }
+
     /// Answered (closed APPLY/DECLINE) by the named assignee even outside the
     /// HR tier; the answer carries a note. Applying it changes no record.
     #[must_use]

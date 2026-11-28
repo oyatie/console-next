@@ -30,3 +30,8 @@ properties:
     type: array
     items:
       $ref: '#/components/schemas/ObjectLifecycleTransition'
+  availableTransitions:
+    type: array
+    description: Present on a read. Rule-defined next states currently available to the caller after maker/checker, hold and retention checks.
+    items:
+      type: string

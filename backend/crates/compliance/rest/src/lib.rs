@@ -1,10 +1,16 @@
 //! REST API for Location Information Act consent controls.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
+mod audit_stream;
 mod ledger_export;
+mod ledger_query;
 mod openapi;
 mod state;
+use audit_stream::{
+    audit_stream_availability, list_ceo_covert_audit_access_events, list_ceo_covert_audit_events,
+};
 use ledger_export::ledger_csv;
+use ledger_query::{normalize_arrival_query, normalize_ledger_query};
 pub use openapi::OPENAPI_FRAGMENT;
 pub use state::ComplianceRestState;
 pub mod statutory;
@@ -16,14 +22,13 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use console_compliance_adapter_postgres::PgComplianceError;
 use console_compliance_application::{
-    AcceptEvidenceBindingCommand, ArrivalEventPage, ArrivalEventQuery, AuditStreamPage,
-    AuditStreamQuery, AuditStreamReadKind, CEO_COVERT_AUDIT_STREAM_KEY, ComplianceControlQuery,
-    ComplianceFrameworkQuery, ComplianceObligationQuery, ConsentTransitionCommand,
-    ConsentTransitionKind, CreateComplianceControlCommand, CreateComplianceFrameworkCommand,
+    AcceptEvidenceBindingCommand, ArrivalEventPage, AuditStreamQuery, AuditStreamReadKind,
+    CEO_COVERT_AUDIT_STREAM_KEY, ComplianceControlQuery, ComplianceFrameworkQuery,
+    ComplianceObligationQuery, ConsentTransitionCommand, ConsentTransitionKind,
+    CreateComplianceControlCommand, CreateComplianceFrameworkCommand,
     CreateComplianceObligationCommand, CreateEvidenceBindingCommand, CreateRegulationImpactCommand,
     EvidenceBindingQuery, LinkControlObligationCommand, LinkObligationRegulationCommand,
-    LocationConsentLedgerEntry, LocationConsentLedgerPage, LocationConsentLedgerQuery, PageRequest,
-    RegulationImpactQuery,
+    LocationConsentLedgerEntry, LocationConsentLedgerPage, PageRequest, RegulationImpactQuery,
 };
 use console_compliance_domain::{
     ComplianceRiskLevel, ComplianceScope, ComplianceScopeKind, ControlCadence, ControlStatus,
@@ -61,6 +66,7 @@ pub const COMPLIANCE_ROUTE_PATHS: &[&str] = &[
     "/api/v1/location-consents/ledger",
     "/api/v1/location-consents/ledger.csv",
     "/api/v1/location/arrival-events",
+    "/api/v1/audit-streams/availability",
     "/api/v1/audit-streams/ceo-covert/events",
     "/api/v1/audit-streams/ceo-covert/access-events",
 ];
@@ -113,6 +119,10 @@ pub fn router(state: ComplianceRestState) -> Router {
             get(export_ledger_csv),
         )
         .route("/api/v1/location/arrival-events", get(list_arrival_events))
+        .route(
+            "/api/v1/audit-streams/availability",
+            get(audit_stream_availability),
+        )
         .route(
             "/api/v1/audit-streams/ceo-covert/events",
             get(list_ceo_covert_audit_events),
@@ -979,47 +989,59 @@ fn status_response(consent: LocationConsent) -> LocationConsentStatusResponse {
     }
 }
 
-fn normalize_ledger_query(query: LedgerRequest) -> Result<LocationConsentLedgerQuery, RestError> {
-    let limit = query.limit.unwrap_or(100).clamp(1, 1_000);
-    let offset = query.offset.unwrap_or(0);
-    if offset < 0 {
-        return Err(RestError::from_kernel(KernelError::validation(
-            "offset must be non-negative",
-        )));
+/// Whether any branch of the caller's effective scope admits a consent ledger read.
+/// A narrowed custom grant can admit a specific branch even if it cannot cover the entire scope.
+pub fn consent_ledger_available(principal: &Principal) -> bool {
+    let action = Action::new(Feature::AuditLogRead);
+    if console_platform_authz::authorize_capability(principal, action).is_ok() {
+        return true;
     }
-
-    Ok(LocationConsentLedgerQuery {
-        user_id: query.user_id,
-        branch_id: query.branch_id,
-        limit,
-        offset,
-    })
+    // Navigation may offer a specific branch; the ledger handler still authorizes the requested branch.
+    principal.support.is_none()
+        && principal.effective_feature_grants.iter().any(|grant| {
+            grant.feature == action.feature()
+                && grant.permission == console_platform_authz::PermissionLevel::Allow
+                && !grant
+                    .branch_scope
+                    .intersect(&principal.branch_scope)
+                    .is_empty()
+        })
 }
 
 fn authorize_ledger_read(
     principal: &Principal,
     branch_id: Option<BranchId>,
 ) -> Result<(), RestError> {
-    match branch_id {
-        Some(branch_id) => authorize(principal, Action::new(Feature::AuditLogRead), branch_id)
-            .map_err(RestError::from_kernel),
+    authorize_location_read(
+        principal,
+        Feature::AuditLogRead,
+        branch_id,
+        "branch_id is required for multi-branch ledger reads",
+    )
+}
+
+fn authorize_location_read(
+    principal: &Principal,
+    feature: Feature,
+    requested: Option<BranchId>,
+    missing: &'static str,
+) -> Result<(), RestError> {
+    let branch = match requested {
+        Some(branch) => branch,
         None => match &principal.branch_scope {
-            BranchScope::All => authorize_org_wide(principal, Action::new(Feature::AuditLogRead))
-                .map_err(RestError::from_kernel),
-            BranchScope::Branches(branches) if branches.len() == 1 => {
-                let Some(branch_id) = branches.iter().copied().next() else {
-                    return Err(RestError::from_kernel(KernelError::validation(
-                        "branch_id is required",
-                    )));
-                };
-                authorize(principal, Action::new(Feature::AuditLogRead), branch_id)
-                    .map_err(RestError::from_kernel)
+            BranchScope::All => {
+                return authorize_org_wide(principal, Action::new(feature))
+                    .map_err(RestError::from_kernel);
             }
-            BranchScope::Branches(_) => Err(RestError::from_kernel(KernelError::validation(
-                "branch_id is required for multi-branch ledger reads",
-            ))),
+            BranchScope::Branches(ids) if ids.len() == 1 => *ids
+                .first()
+                .ok_or_else(|| RestError::from_kernel(KernelError::validation(missing)))?,
+            BranchScope::Branches(_) => {
+                return Err(RestError::from_kernel(KernelError::validation(missing)));
+            }
         },
-    }
+    };
+    require_branch_compliance_feature(principal, feature, branch)
 }
 
 /// GET /api/v1/location/arrival-events — the ops-facing site arrival/departure
@@ -1039,105 +1061,23 @@ async fn list_arrival_events(
     Ok(Json(page))
 }
 
-fn normalize_arrival_query(query: LedgerRequest) -> Result<ArrivalEventQuery, RestError> {
-    let limit = query.limit.unwrap_or(100).clamp(1, 1_000);
-    let offset = query.offset.unwrap_or(0);
-    if offset < 0 {
-        return Err(RestError::from_kernel(KernelError::validation(
-            "offset must be non-negative",
-        )));
-    }
-    Ok(ArrivalEventQuery {
-        user_id: query.user_id,
-        branch_id: query.branch_id,
-        limit,
-        offset,
-    })
-}
-
 fn authorize_arrival_read(
     principal: &Principal,
     branch_id: Option<BranchId>,
 ) -> Result<(), RestError> {
-    match branch_id {
-        Some(branch_id) => authorize(principal, Action::new(Feature::OpsDashboardRead), branch_id)
-            .map_err(RestError::from_kernel),
-        None => match &principal.branch_scope {
-            BranchScope::All => {
-                authorize_org_wide(principal, Action::new(Feature::OpsDashboardRead))
-                    .map_err(RestError::from_kernel)
-            }
-            BranchScope::Branches(branches) if branches.len() == 1 => {
-                let Some(branch_id) = branches.iter().copied().next() else {
-                    return Err(RestError::from_kernel(KernelError::validation(
-                        "branch_id is required",
-                    )));
-                };
-                authorize(principal, Action::new(Feature::OpsDashboardRead), branch_id)
-                    .map_err(RestError::from_kernel)
-            }
-            BranchScope::Branches(_) => Err(RestError::from_kernel(KernelError::validation(
-                "branch_id is required for multi-branch arrival reads",
-            ))),
-        },
-    }
+    authorize_location_read(
+        principal,
+        Feature::OpsDashboardRead,
+        branch_id,
+        "branch_id is required for multi-branch arrival reads",
+    )
 }
 
-async fn list_ceo_covert_audit_events(
-    State(state): State<ComplianceRestState>,
-    headers: HeaderMap,
-    Query(query): Query<AuditStreamRequest>,
-) -> Result<Json<AuditStreamPage>, RestError> {
-    list_ceo_covert_audit_stream(state, headers, query, AuditStreamReadKind::Events).await
-}
-
-async fn list_ceo_covert_audit_access_events(
-    State(state): State<ComplianceRestState>,
-    headers: HeaderMap,
-    Query(query): Query<AuditStreamRequest>,
-) -> Result<Json<AuditStreamPage>, RestError> {
-    list_ceo_covert_audit_stream(state, headers, query, AuditStreamReadKind::AccessEvents).await
-}
-
-async fn list_ceo_covert_audit_stream(
-    state: ComplianceRestState,
-    headers: HeaderMap,
-    query: AuditStreamRequest,
-    read_kind: AuditStreamReadKind,
-) -> Result<Json<AuditStreamPage>, RestError> {
-    let principal = principal_from_headers(&state, &headers).await?;
-    let query = normalize_audit_stream_query(query)?;
-    authorize_ceo_covert_audit_stream(&state, &principal, read_kind, &query).await?;
-    let page = state
-        .store
-        .list_ceo_covert_audit_stream(principal.user_id, read_kind, query)
-        .await
-        .map_err(RestError::from_store)?;
-    Ok(Json(page))
-}
-
-fn normalize_audit_stream_query(query: AuditStreamRequest) -> Result<AuditStreamQuery, RestError> {
-    let limit = query.limit.unwrap_or(100).clamp(1, 1_000);
-    let offset = query.offset.unwrap_or(0);
-    if offset < 0 {
-        return Err(RestError::from_kernel(KernelError::validation(
-            "offset must be non-negative",
-        )));
-    }
-    Ok(AuditStreamQuery {
-        limit,
-        offset,
-        purpose: "ceo_covert_audit_review".to_owned(),
-        channel: "web".to_owned(),
-    })
-}
-
-async fn authorize_ceo_covert_audit_stream(
+async fn audit_stream_authorizer<'a>(
     state: &ComplianceRestState,
-    principal: &Principal,
-    read_kind: AuditStreamReadKind,
-    query: &AuditStreamQuery,
-) -> Result<(), RestError> {
+    principal: &'a Principal,
+    query: &'a AuditStreamQuery,
+) -> Result<impl Fn(AuditStreamReadKind) -> Result<(), RestError> + use<'a>, RestError> {
     let org =
         console_platform_request_context::current_org().map_err(rest_error_from_request_context)?;
     let facts = state
@@ -1151,46 +1091,49 @@ async fn authorize_ceo_covert_audit_stream(
     let bundle = engine::compile_audit_stream_bundle(org, policy_version).map_err(|err| {
         RestError::internal(format!("Cedar audit-stream policy unavailable: {err}"))
     })?;
-    let feature = match read_kind {
-        AuditStreamReadKind::Events => Feature::AuditStreamRead,
-        AuditStreamReadKind::AccessEvents => Feature::AuditStreamAccessLogRead,
-    };
-    let resource = AuthorizationResource::org_wide(org, "audit_stream")
-        .with_resource_id(CEO_COVERT_AUDIT_STREAM_KEY);
-    let mut request = AuthorizationRequest::new(principal.clone(), Action::new(feature), resource)
-        .with_policy_domain("compliance.audit_stream")
-        .with_subject_freshness(principal.authz_freshness)
-        .with_clearance_keys(facts.active_clearance_keys)
-        .requiring_freshness(SubjectFreshnessRequirement {
-            min_policy_version: policy_version,
-            min_subject_version: subject_version,
-            min_session_generation: session_generation,
-            required_step_up_generation: None,
-        })
-        .with_rls_scope_proof(RlsScopeProof::runtime_role_guc(org));
-    request.context = AuthorizationContext {
-        purpose: Some(query.purpose.clone()),
-        channel: Some(query.channel.clone()),
-        request_id: None,
-    };
-    let entry = CoexistenceMapEntry::new(
-        format!("compliance.audit_stream.{}", feature.as_str()),
-        "compliance.audit_stream",
-        feature,
-        "audit_stream",
-        DualEngineMode::CedarOnly,
-        Some(bundle.key.clone()),
-    );
-    let cedar = engine::evaluate(&request, &bundle);
-    let decision = evaluate_cedar_pbac_boundary(&request, Some(&entry), cedar);
-    if decision.effect.is_allow() {
-        Ok(())
-    } else {
-        Err(RestError::from_kernel(KernelError::forbidden(format!(
-            "Cedar denied CEO audit stream access: {:?}",
-            decision.reason
-        ))))
-    }
+    Ok(move |read_kind| {
+        let feature = match read_kind {
+            AuditStreamReadKind::Events => Feature::AuditStreamRead,
+            AuditStreamReadKind::AccessEvents => Feature::AuditStreamAccessLogRead,
+        };
+        let resource = AuthorizationResource::org_wide(org, "audit_stream")
+            .with_resource_id(CEO_COVERT_AUDIT_STREAM_KEY);
+        let mut request =
+            AuthorizationRequest::new(principal.clone(), Action::new(feature), resource)
+                .with_policy_domain("compliance.audit_stream")
+                .with_subject_freshness(principal.authz_freshness)
+                .with_clearance_keys(facts.active_clearance_keys.clone())
+                .requiring_freshness(SubjectFreshnessRequirement {
+                    min_policy_version: policy_version,
+                    min_subject_version: subject_version,
+                    min_session_generation: session_generation,
+                    required_step_up_generation: None,
+                })
+                .with_rls_scope_proof(RlsScopeProof::runtime_role_guc(org));
+        request.context = AuthorizationContext {
+            purpose: Some(query.purpose.clone()),
+            channel: Some(query.channel.clone()),
+            request_id: None,
+        };
+        let entry = CoexistenceMapEntry::new(
+            format!("compliance.audit_stream.{}", feature.as_str()),
+            "compliance.audit_stream",
+            feature,
+            "audit_stream",
+            DualEngineMode::CedarOnly,
+            Some(bundle.key.clone()),
+        );
+        let cedar = engine::evaluate(&request, &bundle);
+        let decision = evaluate_cedar_pbac_boundary(&request, Some(&entry), cedar);
+        if decision.effect.is_allow() {
+            Ok(())
+        } else {
+            Err(RestError::from_kernel(KernelError::forbidden(format!(
+                "Cedar denied CEO audit stream access: {:?}",
+                decision.reason
+            ))))
+        }
+    })
 }
 
 fn freshness_u64(field: &'static str, value: i64) -> Result<u64, RestError> {
@@ -1378,6 +1321,33 @@ mod tests {
             PermissionLevel::Allow,
             BranchScope::All,
         )])
+    }
+
+    #[test]
+    fn partial_consent_ledger_grant_reaches_only_its_branch() {
+        let branch = console_kernel_core::BranchId::new();
+        let outside = console_kernel_core::BranchId::new();
+        let principal = Principal::new(
+            UserId::new(),
+            OrgId::one(),
+            BTreeSet::new(),
+            BranchScope::All,
+        )
+        .with_effective_feature_grants(vec![EffectiveFeatureGrant::new(
+            Feature::AuditLogRead,
+            PermissionLevel::Allow,
+            BranchScope::single(branch),
+        )]);
+        assert!(super::consent_ledger_available(&principal));
+        assert!(super::authorize_ledger_read(&principal, Some(branch)).is_ok());
+        assert!(super::authorize_ledger_read(&principal, Some(outside)).is_err());
+        assert!(super::authorize_ledger_read(&principal, None).is_err());
+        let mut disjoint = principal;
+        disjoint.branch_scope = BranchScope::single(outside);
+        assert!(!super::consent_ledger_available(&disjoint));
+        disjoint.branch_scope = BranchScope::single(branch);
+        disjoint.effective_feature_grants[0].permission = PermissionLevel::Limited;
+        assert!(!super::consent_ledger_available(&disjoint));
     }
 
     #[test]

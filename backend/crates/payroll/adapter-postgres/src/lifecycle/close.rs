@@ -219,12 +219,34 @@ pub async fn close_attendance_in_tx(
     actor: Uuid,
     now: OffsetDateTime,
 ) -> Result<Value, LifecycleError> {
+    // Acquire the same lock as membership and freeze writers before locking the run row.
+    let org: Option<Uuid> = sqlx::query_scalar(
+        "SELECT org_id FROM payroll_draft_runs WHERE id=$1 AND kind='REGULAR' AND pay_group_id IS NOT NULL"
+    ).bind(run_id).fetch_optional(tx.as_mut()).await?;
+    if let Some(org) = org {
+        console_platform_db::lock_period_lock_key(
+            tx,
+            console_platform_db::PeriodLockDomain::Payroll,
+            org,
+        )
+        .await?;
+    }
     let Some(run) = run_head(tx, run_id, true).await? else {
         return Err(LifecycleError::NotFound);
     };
     if !CLOSEABLE.contains(&run.status.as_str()) {
         return Err(invalid_state("close attendance for", &run.status));
     }
+    // Different regular runs for one entity and month must see each other's committed
+    // rosters before freezing. Import runs and off-cycle runs have independent rosters.
+    sqlx::query(
+        "SELECT pg_advisory_xact_lock(hashtextextended('payroll-roster:' || pg.legal_entity_id::text || ':' || r.attribution_month::text, 0))
+         FROM payroll_draft_runs r JOIN pay_groups pg ON pg.org_id = r.org_id AND pg.id = r.pay_group_id
+         WHERE r.id = $1 AND r.kind = 'REGULAR'",
+    )
+    .bind(run_id)
+    .execute(tx.as_mut())
+    .await?;
     let saved = saved_lines(tx, run_id).await?;
     // The last write to the lines: from ATTENDANCE_CLOSED on nothing rewrites them.
     refresh_in_tx(tx, run_id).await?;

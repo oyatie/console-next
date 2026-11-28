@@ -7,6 +7,13 @@ pub struct Action {
     required: PermissionLevel,
 }
 
+/// A feature on its own requires full authority. Lower levels use the explicit constructors.
+impl From<Feature> for Action {
+    fn from(feature: Feature) -> Self {
+        Self::new(feature)
+    }
+}
+
 impl Action {
     /// Full/direct use of a feature (only cells marked allowed, "ganeung").
     #[must_use]
@@ -44,5 +51,19 @@ impl Action {
     #[must_use]
     pub const fn required_permission(self) -> PermissionLevel {
         self.required
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_feature_requires_its_full_permission() {
+        for feature in Feature::ALL {
+            let action = Action::from(feature);
+            assert_eq!(action.feature(), feature);
+            assert_eq!(action.required_permission(), PermissionLevel::Allow);
+        }
     }
 }

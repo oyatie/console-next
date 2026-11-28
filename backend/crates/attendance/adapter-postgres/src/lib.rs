@@ -461,7 +461,7 @@ impl PgAttendanceStore {
                 )
                 .await?;
                 let existing: Option<Uuid> = sqlx::query_scalar(
-                    "SELECT id FROM period_locks WHERE domain='payroll' AND period_lock_effective(period_locks) AND period_start <= $1 AND period_end >= $2 ORDER BY locked_at DESC LIMIT 1",
+                    "SELECT id FROM period_locks WHERE domain='payroll' AND pay_group_id IS NULL AND unlocked_at IS NULL AND period_start = $1 AND period_end = $2 ORDER BY locked_at DESC LIMIT 1",
                 ).bind(month).bind(last).fetch_optional(tx.as_mut()).await?;
                 match existing {
                     Some(id) => (Some(id), false),

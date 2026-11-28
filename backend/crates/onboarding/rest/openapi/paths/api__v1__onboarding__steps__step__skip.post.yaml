@@ -1,7 +1,7 @@
 tags:
 - onboarding
 operationId: skipSetupStep
-summary: Skip a setup step ("proceed without departments" / "add employees later")
+summary: Skip an optional setup step with tenant-wide authority for that step
 security:
 - bearerAuth: []
 parameters:
@@ -14,6 +14,7 @@ parameters:
     - org
     - employees
     - roles
+    - overtime
 responses:
   '204':
     description: Recorded.

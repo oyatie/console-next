@@ -36,6 +36,14 @@
   flex: 1 0 auto;
 }
 
+/* The bulk editor scrolls its rows while the step controls stay in the wizard. */
+.frame[data-pattern="wizard"]:has([data-sheet-grid-step]) {
+  flex: 1 1 0%;
+  min-height: 0;
+  height: calc(100dvh - var(--frame-top, 0px) - var(--frame-bottom, 0px));
+  max-height: 100%;
+}
+
 @media (min-width: 768px) {
   :where([data-experience]:not([data-experience="baseline"])) .frame:has([data-day-board]) {
     flex: 1 1 0%;

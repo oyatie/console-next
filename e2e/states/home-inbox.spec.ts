@@ -30,7 +30,7 @@ for (const width of [1440, 390]) {
         await page.goto(path);
         const main = shellMain(page);
         if (path === "/requests") {
-          await expect(main.getByText(t("requestOutcome.empty"), { exact: true })).toBeVisible();
+          await expect(main.getByText(t("requestOutcome.myHistory.empty"), { exact: true })).toBeVisible();
           await expect(main.getByRole("textbox")).toHaveValue("");
         } else if (path.startsWith("/requests/")) {
           await expect(main.getByRole("heading", { name: t("common.read.notFound.title"), exact: true })).toBeVisible();

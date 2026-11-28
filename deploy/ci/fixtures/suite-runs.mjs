@@ -1,4 +1,25 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import {readFileSync} from 'node:fs';
+import yaml from 'js-yaml';
+
+// Exercise the job and step names actually emitted by the workflows, independently of promotion policy.
+function liveBrowserJobs() {
+  const {jobs} = yaml.load(readFileSync(new URL('../../../.github/workflows/e2e-live.yml', import.meta.url), 'utf8'));
+  return Object.values(jobs).flatMap(job => {
+    let names = [job.name];
+    if (job.strategy) {
+      const matrix = job.strategy.matrix;
+      const shards = Array.isArray(matrix.shard) ? matrix.shard : Array.from({length:8}, (_, index) => index + 1);
+      names = [...shards, ...(matrix.include ?? []).map(entry => entry.shard)].map(shard => job.name.replace('${{ matrix.shard }}', shard));
+    }
+    const steps = job.steps.filter(step => step.name).map(step => ({
+      name:step.name.startsWith('Planned browser shards · ') ? 'Planned browser shards · 8/8/8' : step.name,
+      status:'completed', conclusion:'success',
+    }));
+    return names.map(name => ({name, steps}));
+  });
+}
+
 export function suiteRunsFixture(sha, repository) {
   const events = {'db-tests.yml':'push', 'e2e-live.yml':'schedule', 'route-load.yml':'workflow_dispatch'};
   const runs = {};
@@ -9,7 +30,8 @@ export function suiteRunsFixture(sha, repository) {
       path:`.github/workflows/${workflow}`, run_attempt:1, status:'completed', conclusion:'success',
       html_url:`https://github.com/${repository}/actions/runs/${id}`};
     (runs[workflow] ??= []).unshift(run);
-    jobs.set(id, ['build', 'tests'].map(name => ({name, run_id:id, head_sha:sha, run_attempt:1,
+    const expected = workflow === 'e2e-live.yml' ? liveBrowserJobs() : [{name:'build'}, {name:'tests'}];
+    jobs.set(id, expected.map(job => ({...job, run_id:id, head_sha:sha, run_attempt:1,
       status:'completed', conclusion:'success'})));
     return run;
   }
@@ -22,6 +44,6 @@ export function suiteRunsFixture(sha, repository) {
   const [database] = runs['db-tests.yml'];
   const [liveBrowser] = runs['e2e-live.yml'];
   const [routeLoad] = runs['route-load.yml'];
-  const testsJob = run => jobs.get(run.id).find(job => job.name === 'tests');
+  const testsJob = run => jobs.get(run.id).find(job => job.name === (run === liveBrowser ? 'Chromium journeys · 1' : 'tests'));
   return {github, requests, runs, jobs, addRun, database, liveBrowser, routeLoad, testsJob};
 }

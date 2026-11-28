@@ -167,7 +167,6 @@ export const koAccount: Record<keyof typeof enAccount, string> = {
   "account.hub.attendanceMeta": "근로시간 · 근무 일정 · 출퇴근 기록",
   "account.hub.payslip": "급여명세서",
   "account.hub.payslipPayDate": "{period} · 지급일 {date}",
-  "account.hub.payslipIssued": "발급된 명세서 보기",
   "account.hub.payslipSheetTitle": "급여명세서 상세",
   "account.hub.payslipIssuedAt": "발급 일시",
   "account.hub.certificates": "증명서 발급",

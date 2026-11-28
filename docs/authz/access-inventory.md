@@ -41,7 +41,7 @@ Detector fixtures retain historical defects after the product fixes them.
 | BranchScope | backend/crates/compliance/adapter-postgres/src/lib.rs | reference | 16 |
 | BranchScope | backend/crates/compliance/application/src/lib.rs | reference | 2 |
 | BranchScope | backend/crates/compliance/integrity/src/rest.rs | reference | 1 |
-| BranchScope | backend/crates/compliance/rest/src/lib.rs | reference | 22 |
+| BranchScope | backend/crates/compliance/rest/src/lib.rs | reference | 20 |
 | BranchScope | backend/crates/consulting/rest/src/lib.rs | reference | 5 |
 | BranchScope | backend/crates/dispatch/adapter-postgres/src/lib.rs | reference | 7 |
 | BranchScope | backend/crates/dispatch/application/src/lib.rs | reference | 2 |
@@ -190,7 +190,7 @@ Detector fixtures retain historical defects after the product fixes them.
 | matrix | backend/crates/benefit/rest/src/lib.rs | reference | 3 |
 | matrix | backend/crates/comms/rest/src/lib.rs | reference | 2 |
 | matrix | backend/crates/compliance/integrity/src/rest.rs | reference | 4 |
-| matrix | backend/crates/compliance/rest/src/lib.rs | reference | 23 |
+| matrix | backend/crates/compliance/rest/src/lib.rs | reference | 15 |
 | matrix | backend/crates/consulting/rest/src/lib.rs | reference | 2 |
 | matrix | backend/crates/dispatch/rest/src/lib.rs | reference | 12 |
 | matrix | backend/crates/docs/rest/src/lib.rs | reference | 6 |
@@ -215,7 +215,7 @@ Detector fixtures retain historical defects after the product fixes them.
 | matrix | backend/crates/inventory/rest/src/lib.rs | reference | 14 |
 | matrix | backend/crates/leave/rest/src/lib.rs | reference | 5 |
 | matrix | backend/crates/logistics/rest/src/lib.rs | reference | 3 |
-| matrix | backend/crates/notices/rest/src/lib.rs | reference | 4 |
+| matrix | backend/crates/notices/rest/src/lib.rs | reference | 3 |
 | matrix | backend/crates/ontology/rest/src/lib.rs | reference | 3 |
 | matrix | backend/crates/orgchange/rest/src/access.rs | reference | 2 |
 | matrix | backend/crates/platform/auth-rest/src/admin.rs | reference | 6 |

@@ -32,6 +32,23 @@ test("roster reads wait for the configured window without inventing a filter", (
   expect(vi.mocked(useQuery).mock.calls.every(([options]) => options!.enabled === false)).toBe(true);
 });
 
+test("a window-independent list fetches early while its displayed rows and facets wait for settings", async () => {
+  function PendingWindow() {
+    const result = useRoster({ status: "current", review: ["identity"], sort: "employee_number" }, undefined);
+    expect(result.loading).toBe(true);
+    expect(result.rows).toEqual([]);
+    expect(result.total).toBeUndefined();
+    return null;
+  }
+  renderToStaticMarkup(<PendingWindow />);
+  const options = vi.mocked(useInfiniteQuery).mock.calls.at(-1)![0];
+  expect(options.enabled).toBe(true);
+  const read = options.queryFn as (context: { pageParam?: string }) => Promise<unknown>;
+  await read({});
+  expect(http.get).toHaveBeenLastCalledWith("/api/v1/employees", { params: { query: expect.objectContaining({ sort: "employee_number", identity_review_required: true, limit: PAGE }) } });
+  expect(vi.mocked(useQuery).mock.calls.every(([read]) => read!.enabled === false)).toBe(true);
+});
+
 function Read({ sort }: { sort?: RosterOrder }) {
   useRoster({ status: "current", review: ["identity"], unit: "department", q: "가상", sort }, 21);
   return null;

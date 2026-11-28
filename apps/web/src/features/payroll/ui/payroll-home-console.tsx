@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { PayrollOutlookLink } from "./payroll-outlook-link";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { QueryState } from "../../../lib/react/query-state";
@@ -89,6 +90,7 @@ function GroupRunsConsole({ group }: { group: PayGroup }) {
               />
               {runs.hasNextPage ? (
                 <div className={s.headActions}>
+            <PayrollOutlookLink />
                   <Button size="sm" onClick={() => void runs.fetchNextPage()} disabled={runs.isFetchingNextPage}>
                     {t("common.more")}
                   </Button>

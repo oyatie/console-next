@@ -78,7 +78,8 @@ test("unplaced people: grouped by the file's value, placed in a unit or directly
 
 test("an operating placement before opening names the refusal and leaves no transfer or assignment", { tag: ["@hr", "@negative"] }, async ({ browser }) => {
   test.setTimeout(300_000);
-  const admin = await world(browser, 0, "unplacedopening", undefined, true);
+  // Keep the hire before the workplace opening so only the workplace boundary refuses this placement.
+  const admin = await world(browser, 0, "unplacedopening", "2019-01-01", true);
   const api = apiOf(admin, bearerOf(admin));
   await go(admin, "/people/unplaced");
   const groups = admin.getByRole("complementary", { name: /원본 값별/ });

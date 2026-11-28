@@ -175,7 +175,7 @@ pub fn validate_triage_memo(
         Some(m) if m.trim().is_empty() => {
             Err(KernelError::validation("review_memo must not be blank"))
         }
-        Some(m) if m.len() > 2000 => Err(KernelError::validation(
+        Some(m) if m.chars().count() > 2000 => Err(KernelError::validation(
             "review_memo must not exceed 2000 characters",
         )),
         None if matches!(target, TriageTarget::Dismissed | TriageTarget::Escalated) => {

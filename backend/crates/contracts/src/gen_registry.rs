@@ -1761,6 +1761,15 @@ const COMPLIANCE_FRAGMENT_EXTERNAL: &[&str] = &["MobilePasskeyStepUpEnvelope", "
 
 const COMPLIANCE_FRAGMENT_PATHS: &[PathItem] = &[
     PathItem {
+        path: "/api/v1/audit-streams/availability",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../compliance/rest/openapi/paths/api__v1__audit-streams__availability.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/audit-streams/ceo-covert/access-events",
         operations: &[Operation {
             method: "get",
@@ -12736,6 +12745,23 @@ const PAYROLL_FRAGMENT_PATHS: &[PathItem] = &[
                 "../../payroll/rest/openapi/paths/api__v1__payroll__employees__employeeId__payslip-draft.get.yaml"
             ),
         }],
+    },
+    PathItem {
+        path: "/api/v1/payroll/pay-group-memberships",
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!(
+                    "../../payroll/rest/openapi/paths/api__v1__payroll__pay-group-memberships.get.yaml"
+                ),
+            },
+            Operation {
+                method: "post",
+                body: include_str!(
+                    "../../payroll/rest/openapi/paths/api__v1__payroll__pay-group-memberships.post.yaml"
+                ),
+            },
+        ],
     },
     PathItem {
         path: "/api/v1/payroll/pay-groups",

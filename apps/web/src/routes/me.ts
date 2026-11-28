@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { DISPATCH_OFFERS_MODULE } from "../reference/onboarding/api";
 import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
 import type { MeAttendanceSearch } from "../features/me/ui/me-attendance-page";
 import type { MeDeskSearch, MeDeskView } from "../features/me/ui/me-desk-page";
-import { app, screen } from "./app";
+import { app, screen, str } from "./app";
+import { servedRouteReads } from "./route-reads";
 
 const DESK_VIEWS: readonly MeDeskView[] = ["overview", "attendance", "requests", "documents"];
 
@@ -31,8 +33,21 @@ const meDesk = createRoute({
 const meDispatchOffers = createRoute({
   getParentRoute: () => app,
   path: "/me/dispatch-offers",
-  staticData: { access: "signed-in", floorplan: "P-03", pattern: "worklist" },
+  staticData: { access: "signed-in", module: DISPATCH_OFFERS_MODULE, floorplan: "P-03", pattern: "worklist" },
+  validateSearch: (s: Record<string, unknown>): { sel?: string } => ({ sel: str(s.sel) }),
   component: lazyRouteComponent(screen(loadMeDesk), "MeDispatchOffers"),
 });
 
-export const meRoutes = [meAttendance, meDesk, meDispatchOffers];
+const meEvaluations = createRoute({
+  getParentRoute: () => app,
+  path: "/me/evaluations",
+  staticData: { access: servedRouteReads["/me/evaluations"].access, floorplan: "P-01", pattern: "list-record" },
+  component: lazyRouteComponent(screen(() => import("../features/me/ui/evaluation-tasks")), "EvaluationTasks"),
+});
+
+const calendar = createRoute({
+  getParentRoute: () => app, path: "/calendar",
+  staticData: { access: servedRouteReads["/calendar"].access, floorplan: "P-03", pattern: "month-grid" },
+  component: lazyRouteComponent(screen(() => import("../features/calendar/ui/calendar-page")), "CalendarPage"),
+});
+export const meRoutes = [meAttendance, meDesk, meDispatchOffers, meEvaluations, calendar];

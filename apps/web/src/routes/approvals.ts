@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
 import { approvalBox, type ApprovalBox } from "../features/approvals/domain/inbox";
-import { APPROVALS_MODULE } from "../reference/onboarding/api";
+import { APPROVALS_MODULE, APPROVAL_SUBMISSION_MODULE } from "../reference/onboarding/api";
 import { app, screen, str } from "./app";
 
 const loadApprovals = () => import("../features/approvals/ui/approvals-page");
@@ -22,7 +22,7 @@ export const approvalsRoute = createRoute({
 export const approvalNewRoute = createRoute({
   getParentRoute: () => app,
   path: "/approvals/new",
-  staticData: { access: "signed-in", module: APPROVALS_MODULE, floorplan: "P-04", pattern: "form" },
+  staticData: { access: "signed-in", module: APPROVAL_SUBMISSION_MODULE, floorplan: "P-04", pattern: "form" },
   component: lazyRouteComponent(screen(loadApprovals), "ApprovalNew"),
 });
 

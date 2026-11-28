@@ -1,3 +1,4 @@
+import { loadCatalog, t } from "@console/i18n";
 import ExcelJS from "exceljs";
 import { fillDate } from "./sheet";
 import { expect, test, type Locator, type Page } from "@playwright/test";
@@ -18,7 +19,7 @@ async function sheet(): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("부서");
   for (const r of [
-    ["회사", "근무지", "본부", "팀", "부서코드", "비고"],
+    ["회사", "사업장", "본부", "팀", "부서코드", "비고"],
     [`주식회사 ${ENTITY}`, "서울 본사", "경영지원본부", "인사팀", "HQ-HR", ""],
     [ENTITY, "서울 본사", "경영지원본부", "재무팀", "HQ-FI", ""],
     [`주식회사 ${ENTITY}`, "서울본사", "영업본부", "해외영업팀", "", ""],
@@ -90,6 +91,10 @@ test("import an org sheet: columns, exact-only values, preview with an error row
   await receipt.getByRole("button", { name: "되돌리기" }).click();
   await expect(receipt).toContainText("되돌렸습니다");
   await receipt.getByRole("link", { name: "변경 이력" }).click();
-  const table = page.getByRole("table", { name: "변경 이력" });
-  await expect(table.getByRole("cell", { name: "되돌림", exact: true })).toHaveCount(2);
+  await loadCatalog("ko");
+  const table = page.getByRole("table", { name: t("orgHistory.title") });
+  for (const source of ["org", "entity"] as const) {
+    const kind = t(`orgHistory.kind.${source}`, { actions: t("orgHistory.kind.UNDO") });
+    await expect(table.getByRole("cell", { name: kind, exact: true })).toHaveCount(1);
+  }
 });

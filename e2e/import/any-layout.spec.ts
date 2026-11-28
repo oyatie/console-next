@@ -1,6 +1,7 @@
+import { ko } from "../../packages/i18n/src/catalogs/ko";
 import { expect, test, type Page } from "@playwright/test";
 import { expectAccessible } from "../a11y";
-import { go } from "../flows";
+import { go, koDate } from "../flows";
 import { tenantInSetup } from "../setup-flows";
 import { addDepartments } from "../structure-flows";
 import { confirmImportColumns, chooseWorkbook, payPeriod } from "../helpers/import";
@@ -118,7 +119,7 @@ test("any layout from an empty company: map the sheet no catalog reads, skip the
 
   // The rows: 휴직 people with their leave, crew numbered by the rule.
   await button(admin, /^휴직 3$/).click();
-  await expect(await openRow(admin, "이서연")).toContainText("육아휴직 휴직으로 들어옵니다: 2026-03-01부터, 복직 예정 2027-02-28");
+  await expect(await openRow(admin, "이서연")).toContainText(`육아휴직 휴직으로 들어옵니다: ${koDate("2026-03-01")}부터, 복직 예정 ${koDate("2027-02-28")}`);
   await button(admin, /^전체 8$/).click();
   await expect(await gridRow(rowsGrid(admin), "강시우")).toContainText("규칙으로 부여");
   await expect(await gridRow(rowsGrid(admin), "강시우")).toContainText("HJ-");
@@ -141,12 +142,17 @@ test("any layout from an empty company: map the sheet no catalog reads, skip the
   await expect(step(admin)).toHaveText("모의 반영", { timeout: 30_000 });
   // 품질팀 is answered from the company's memory: listed among the value links, tagged so.
   await expect(await gridRow(queue(admin), "품질팀")).toContainText("전에 선택한 값");
-  await expect(await gridRow(rowsGrid(admin), "이서연")).toContainText("주민등록번호");
-  await openItem(admin, "누구인지 확인");
+  await expect(await gridRow(rowsGrid(admin), "이서연")).toContainText(ko["import.outcome.unresolved_identity"]);
+  await openItem(admin, "본사 시트 B2");
   // r3:hire-01 (regression): a person's 법인 is the registered one, never the sheet's name (this sheet is 「본사」).
   for (const t of ["HJ-0101", "HJ-0102", "주식회사 한결 · 인사팀", "주식회사 한결 · 생산팀", "생년월일 1985-04-**", "생년월일 1992-11-**"]) await expect(panel(admin)).toContainText(t);
   await expectAccessible(admin, "import: a namesake to tell apart");
   await panel(admin).getByRole("button", { name: "이 사람입니다 (HJ-0102)" }).click();
+  await settled(admin);
+  // A matching protected identifier proposes a candidate for the operator to confirm.
+  await openItem(admin, "본사 시트 B3");
+  await expect(panel(admin)).toContainText(ko["import.decide.basis.rrn"]);
+  await panel(admin).getByRole("button", { name: /HJ-0103/ }).click();
   await settled(admin);
   const apply = admin.getByRole("button", { name: /^명부 반영: 신규 1명 · 갱신 \d+명$/ });
   await expect(apply).toBeEnabled();

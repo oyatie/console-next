@@ -29,7 +29,7 @@ mod current_claims;
 pub use current_claims::{validate_current_claims, validate_current_claims_in_tx};
 pub mod audit_context;
 mod commands;
-pub use commands::SupportsDryRun;
+pub use commands::{ReadInviteReceipt, SupportsDryRun};
 pub mod conflict;
 pub mod record_access;
 mod refusals;
@@ -42,6 +42,7 @@ pub mod privacy;
 pub mod rate_limit;
 pub mod support;
 mod support_problem;
+pub mod tenant_module;
 pub use principal::resolve_principal_from_bearer_token;
 
 use audit_context::{request_audit_context, session_family_id};

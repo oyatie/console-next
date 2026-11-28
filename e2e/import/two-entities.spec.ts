@@ -243,6 +243,7 @@ test("a second person rolls an applied import back within its configured window"
   expect(policy.status(), await policy.text()).toBe(201);
   const [admin, signedInReviewer] = holders as [Page, Page];
   const reviewApi = apiOf(signedInReviewer, bearerOf(signedInReviewer));
+  await signedInReviewer.bringToFront();
   await go(signedInReviewer, "/inbox?tab=reference");
   const acknowledged = await reviewApi(`/access/grants/${grants.find(grant => grant.account_id === accounts[1])!.id}/notice`, "POST");
   expect(acknowledged.status(), await acknowledged.text()).toBe(200);

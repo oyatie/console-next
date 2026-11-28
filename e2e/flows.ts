@@ -285,8 +285,8 @@ export async function stepUp(dialog: Locator, button: string, done: Locator) {
 const RUN = Date.now().toString(36);
 // --repeat-each runs a spec again on the same database, so each repetition gets its own suffix too.
 export const unique = (s: string) => {
-  const r = test.info().repeatEachIndex;
-  return `${s}${process.env.E2E_REUSE === "1" ? `-${RUN}` : ""}${r ? `-r${r}` : ""}`;
+  const { repeatEachIndex, retry } = test.info();
+  return `${s}${process.env.E2E_REUSE === "1" ? `-${RUN}` : ""}${repeatEachIndex ? `-r${repeatEachIndex}` : ""}${retry ? `-try${retry}` : ""}`;
 };
 
 type Clicks = ReturnType<typeof clickCounter>;
@@ -369,7 +369,9 @@ export { registerSheet };
 /** Fills the 직원 등록 sheet from the unit's row and presses 「등록하고 닫기」, without waiting for the record (it may be refused). */
 export async function submitRegistration(admin: Page, e: NewEmployee, c: Pick<Clicks, "click" | "select"> = plain) {
   const unit = e.unit ?? "인사부";
-  await go(admin, "/org");
+  // An open inspector is part of the current chart. Find the hiring unit there without first closing it.
+  const current = new URL(admin.url());
+  if (current.pathname !== "/org" || [...current.searchParams.keys()].some(key => key !== "sel")) await go(admin, "/org");
   await revealUnit(admin, unit);
   await c.click(admin.getByRole("complementary", { name: unit, exact: true }).getByRole("link", { name: `${unit}에 직원 등록` }));
   await fillRegister(admin, { name: e.name, number: e.number, hired: e.hired ?? kstDate(), contractEnd: e.contractEnd }, c);

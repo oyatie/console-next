@@ -3,7 +3,7 @@ import type { components } from "@console/api";
 import { get } from "../../lib/query";
 export type Outcome = components["schemas"]["CommandOutcome"];
 export const outcomeQuery = (key: string) => get("/api/v1/requests/{key}", {params:{path:{key}}});
-export const myRequestsQuery = get("/api/v1/me/requests", { params: { query: { limit: 50, offset: 0 } } });
+export const myRequestsQuery = (offset: number) => get("/api/v1/me/requests", { params: { query: { limit: 50, offset } } });
 export const recordHref = (kind: string, id: string): string | undefined => {
   const value = encodeURIComponent(id);
   switch (kind) {

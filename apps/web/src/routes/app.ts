@@ -1,5 +1,6 @@
 // The route frame: sign-in, passkey set-up, the signed-in app and its small screens. Each feature's
 // screens hang off `app` in their own file here (routes compose slices; slices never import routes).
+import { PERSONAL_LOCATION_MODULE } from "../reference/onboarding/api";
 import { createRootRoute, createRoute, lazyRouteComponent } from "@tanstack/react-router";
 import { chunk } from "../lib/chunk-guard";
 import { bootScreen, screen } from "../lib/fonts";
@@ -16,6 +17,7 @@ export { FLOORPLANS as ROUTE_FLOORPLANS };
 declare module "@tanstack/react-router" {
   interface StaticDataRouteOption {
     access?: AccessRequirement | "signed-in";
+    preloadUserCapabilities?: boolean;
     floorplan?: Floorplan;
     pattern?: PatternId;
     module?: ModuleKey;
@@ -67,7 +69,7 @@ const account = createRoute({ getParentRoute: () => app, path: "/account", stati
 const accountLocation = createRoute({
   getParentRoute: () => app,
   path: "/account/location",
-  staticData: { access: "signed-in", floorplan: "P-04", pattern: "form" },
+  staticData: { access: "signed-in", module: PERSONAL_LOCATION_MODULE, floorplan: "P-04", pattern: "form" },
   component: lazyRouteComponent(screen(loadPrivacy), "LocationConsent"),
 });
 const privacyIntake = createRoute({ getParentRoute: () => app, path: "/account/privacy/intake/$id", staticData: { access: "signed-in", floorplan: "P-01", pattern: "record" }, component: lazyRouteComponent(screen(loadPrivacy), "PrivacyIntake") });

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
 import { app, screen, str } from "./app";
-import { readRequirement } from "./route-reads";
+import { readRequirement, servedRouteReads } from "./route-reads";
 
 const audit = createRoute({
   getParentRoute: () => app,
@@ -35,4 +35,39 @@ const supportAccess = createRoute({
   component: lazyRouteComponent(screen(() => import("../features/support-access/ui/support-access")), "SupportAccess"),
 });
 
-export const auditRoutes = [audit, accessLog, supportAccess];
+const evidence = createRoute({
+  getParentRoute: () => app,
+  path: "/audit/evidence",
+  staticData: { access: servedRouteReads["/audit/evidence"].access, floorplan: "P-01", pattern: "list-record" },
+  component: lazyRouteComponent(screen(() => import("../features/audit/ui/evidence-vault")), "EvidenceVault"),
+});
+
+const findings = createRoute({
+  getParentRoute: () => app,
+  path: "/audit/findings",
+  staticData: { access: servedRouteReads["/audit/findings"].access, floorplan: "P-03", pattern: "worklist" },
+  component: lazyRouteComponent(screen(() => import("../features/audit/ui/findings")), "Findings"),
+});
+
+const lifecycle = createRoute({
+  getParentRoute: () => app,
+  path: "/audit/lifecycles/$objectType/$objectId",
+  staticData: { access: servedRouteReads["/audit/lifecycles/$objectType/$objectId"].access, floorplan: "P-02", pattern: "record" },
+  component: lazyRouteComponent(screen(() => import("../features/audit/ui/lifecycle-record")), "LifecycleRecord"),
+});
+
+const locationConsents = createRoute({
+  getParentRoute: () => app,
+  path: "/audit/location-consents",
+  staticData: { access: servedRouteReads["/audit/location-consents"].access, floorplan: "P-01", pattern: "list-record" },
+  component: lazyRouteComponent(screen(() => import("../features/audit/ui/location-consents")), "LocationConsents"),
+});
+
+const restricted = createRoute({
+  getParentRoute: () => app,
+  path: "/audit/restricted",
+  staticData: { access: servedRouteReads["/audit/restricted"].access, floorplan: "P-01", pattern: "list-record" },
+  component: lazyRouteComponent(screen(() => import("../features/audit/ui/restricted-stream")), "RestrictedStream"),
+});
+
+export const auditRoutes = [audit, accessLog, supportAccess, evidence, findings, lifecycle, locationConsents, restricted];

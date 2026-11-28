@@ -92,16 +92,16 @@ impl PgEntityStore {
             let p = ReadPoint::new(crate::today_kst(tx).await?, q);
             let events: Vec<(Uuid, Date)> = sqlx::query_as(
                 "SELECT DISTINCT subject,d FROM ( \
-                    SELECT legal_entity_id AS subject,effective_from AS d FROM legal_entity_revisions WHERE legal_entity_id = ANY($1) AND created_at <= COALESCE($4::timestamptz,now()) \
-                    UNION SELECT workplace_id,effective_from FROM workplace_revisions WHERE workplace_id = ANY($1) AND created_at <= COALESCE($4::timestamptz,now()) \
-                    UNION SELECT org_unit_id,COALESCE(entity_try_iso_date(attributes->>'effective_from'), (created_at AT TIME ZONE 'Asia/Seoul')::date) FROM org_unit_revisions WHERE org_unit_id = ANY($1) AND created_at <= COALESCE($4::timestamptz,now()) \
-                    UNION SELECT subject,valid_from FROM org_unit_placements CROSS JOIN LATERAL unnest(ARRAY[org_unit_id,workplace_id]) AS subjects(subject) WHERE (org_unit_id = ANY($1) OR workplace_id = ANY($1)) AND created_at <= COALESCE($4::timestamptz,now()) \
-                    UNION SELECT subject,valid_to FROM org_unit_placements CROSS JOIN LATERAL unnest(ARRAY[org_unit_id,workplace_id]) AS subjects(subject) WHERE (org_unit_id = ANY($1) OR workplace_id = ANY($1)) AND valid_to_recorded_at <= COALESCE($4::timestamptz,now()) \
+                    SELECT legal_entity_id AS subject,effective_from AS d FROM legal_entity_revisions WHERE legal_entity_id = ANY($1) AND created_at <= COALESCE($4::timestamptz,'infinity') \
+                    UNION SELECT workplace_id,effective_from FROM workplace_revisions WHERE workplace_id = ANY($1) AND created_at <= COALESCE($4::timestamptz,'infinity') \
+                    UNION SELECT org_unit_id,COALESCE(entity_try_iso_date(attributes->>'effective_from'), (created_at AT TIME ZONE 'Asia/Seoul')::date) FROM org_unit_revisions WHERE org_unit_id = ANY($1) AND created_at <= COALESCE($4::timestamptz,'infinity') \
+                    UNION SELECT subject,valid_from FROM org_unit_placements CROSS JOIN LATERAL unnest(ARRAY[org_unit_id,workplace_id]) AS subjects(subject) WHERE (org_unit_id = ANY($1) OR workplace_id = ANY($1)) AND created_at <= COALESCE($4::timestamptz,'infinity') \
+                    UNION SELECT subject,valid_to FROM org_unit_placements CROSS JOIN LATERAL unnest(ARRAY[org_unit_id,workplace_id]) AS subjects(subject) WHERE (org_unit_id = ANY($1) OR workplace_id = ANY($1)) AND valid_to_recorded_at <= COALESCE($4::timestamptz,'infinity') \
                     UNION SELECT subject,entity_try_iso_date(x.effective_date) FROM (SELECT (jsonb_populate_record(NULL::employee_lifecycle_events,entity_known_row(to_jsonb(e),$4))).* FROM employee_lifecycle_events e) x \
                         CROSS JOIN LATERAL unnest(ARRAY[x.from_org_unit_id,x.to_org_unit_id,x.to_workplace_id]) AS subjects(subject) \
                         WHERE (x.from_org_unit_id = ANY($1) OR x.to_org_unit_id = ANY($1) OR x.to_workplace_id = ANY($1)) AND x.state NOT IN ('CANCELLED','APPLY_FAILED') \
-                    UNION SELECT subject,valid_from FROM employment_assignments CROSS JOIN LATERAL unnest(ARRAY[legal_entity_id,workplace_id]) AS subjects(subject) WHERE (legal_entity_id = ANY($1) OR workplace_id = ANY($1)) AND created_at <= COALESCE($4::timestamptz,now()) \
-                    UNION SELECT subject,valid_to FROM employment_assignments CROSS JOIN LATERAL unnest(ARRAY[legal_entity_id,workplace_id]) AS subjects(subject) WHERE (legal_entity_id = ANY($1) OR workplace_id = ANY($1)) AND valid_to_recorded_at <= COALESCE($4::timestamptz,now()) \
+                    UNION SELECT subject,valid_from FROM employment_assignments CROSS JOIN LATERAL unnest(ARRAY[legal_entity_id,workplace_id]) AS subjects(subject) WHERE (legal_entity_id = ANY($1) OR workplace_id = ANY($1)) AND created_at <= COALESCE($4::timestamptz,'infinity') \
+                    UNION SELECT subject,valid_to FROM employment_assignments CROSS JOIN LATERAL unnest(ARRAY[legal_entity_id,workplace_id]) AS subjects(subject) WHERE (legal_entity_id = ANY($1) OR workplace_id = ANY($1)) AND valid_to_recorded_at <= COALESCE($4::timestamptz,'infinity') \
                 ) days WHERE subject IS NOT NULL AND d BETWEEN $2 AND $3 ORDER BY d",
             ).bind(&ids).bind(from).bind(to).bind(p.known_at).fetch_all(tx.as_mut()).await?;
             let mut dates: Vec<Date> = events.into_iter()

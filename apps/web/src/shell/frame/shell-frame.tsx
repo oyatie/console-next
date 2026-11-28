@@ -9,12 +9,14 @@ import { refresh, session } from "@console/api";
 import { t } from "@console/i18n";
 import { ChangeNotice } from "../../ui/live/change-notice";
 import { HeldNotice } from "../../ui/live/held-notice";
-import { navigationRead, read } from "../../lib/query";
+import { fetchSharedRead, navigationRead, read } from "../../lib/query";
 import { isAnswer } from "../../lib/react/query-defaults";
 import { QueryState } from "../../lib/react/query-state";
 import { ReadFailureContext } from "../../lib/react/read-failure-context";
 import { chunk } from "../../lib/chunk-guard";
 import { myAccessQuery } from "../../reference/authz/api";
+import { accessRefusal } from "../../reference/authz/domain/access";
+import { useServedDestinations } from "../../reference/authz/ui/use-documents-served";
 import { PLATFORM_NAV, rememberedRail, tenantNav } from "../nav";
 import { ReadSkeleton } from "../../ui/skeleton/skeleton";
 import { PhaseBand } from "../phase-band";
@@ -80,18 +82,24 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
   const platform = !!claims?.platform;
   useExperienceSync(!platform && active && !pending);
   const identity = useQuery({ ...meQuery, enabled: !platform && active && !pending });
+  // The directory needs the operating notice only. Home also needs the detailed checklist receipt.
+  const operatingSince = pathname === "/people" && identity.isSuccess && identity.isFetchedAfterMount && identity.data.tenant?.phase === "OPERATING"
+    ? identity.data.tenant.go_live_at : undefined;
   const router = useRouter();
   useMainScrollRestoration(router);
   const access = useQuery({ ...myAccessQuery, enabled: !platform && active });
   const support = useQuery({ ...activeSupportQuery, enabled: !platform && active });
   // Keep the rail snapshot separate, but share the identity request with the shell and page.
   // Allow fresh cache reuse on remount so an experience-pack swap on the same route does not duplicate /api/v1/users/me.
-  const me = useQuery({ ...navigationRead(meQuery), refetchOnMount: true, queryFn: ({ client }) => client.fetchQuery({ ...meQuery, staleTime: 0, retry: false }), enabled: !platform && active && !pending });
+  const me = useQuery({ ...navigationRead(meQuery), refetchOnMount: true, queryFn: ({ client }) => fetchSharedRead(client, meQuery), enabled: !platform && active && !pending });
   const phase = me.isSuccess ? me.data?.tenant?.phase : undefined;
-  const checklist = useQuery({ ...checklistQuery, enabled: !platform && active && phase === "SETUP" && canReadSetupChecklist(access.data), retry: false });
+  const checklistEnabled = !platform && active && phase === "SETUP" && canReadSetupChecklist(access.data);
+  // Attach after the grants arrive. An already answered page refusal should wait for an explicit read.
+  const checklist = useQuery({ ...checklistQuery, subscribed: checklistEnabled, retry: false, retryOnMount: false,
+    refetchOnMount: query => !isAnswer(query.state.error) });
   const modules = useQuery({ ...modulesQuery, enabled: !platform && active });
   const { refetch: refetchMe, isEnabled: meEnabled } = me;
-  const { refetch: refetchChecklist, isEnabled: checklistEnabled } = checklist;
+  const { refetch: refetchChecklist } = checklist;
   const { isEnabled: modulesEnabled } = modules;
   const previousPath = useRef(pathname);
   useEffect(() => {
@@ -143,8 +151,16 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
   const railError = [access, support, me].find(q => q.isError);
   const displayed = answer ?? (railFault || railTargets?.key === railKey ? savedRail.answer : undefined);
   const supportOwnsFailure = supportFault && !access.isError && !me.isError && pageFailures === 0 && !hasSupportNotice;
+  const auditNeed = router.routesByPath["/audit"]?.options.staticData?.access;
+  const checkAuditFallback = !platform && active && !pending && !!displayed && !displayed.supportApproval &&
+    !!auditNeed && auditNeed !== "signed-in" && accessRefusal(displayed.access, auditNeed) !== null;
+  const payNeed = router.routesByPath["/payroll"]?.options.staticData?.access;
+  const checkPayroll = !platform && active && !pending && !!displayed &&
+    !!payNeed && payNeed !== "signed-in" && accessRefusal(displayed.access, payNeed) !== null;
+  const checkEvaluation = !platform && active && !pending && !!displayed && displayed.context.phase !== "SETUP";
+  const destinations = useServedDestinations(checkAuditFallback || checkEvaluation || checkPayroll);
   const menu: readonly NavHub[] = platform ? PLATFORM_NAV : displayed ? tenantNav(displayed.access, router.routesByPath,
-    displayed.supportApproval, displayed.context) : [];
+    displayed.supportApproval, { ...displayed.context, ...destinations }) : [];
   // ⌘K / Ctrl+K opens the jump palette anywhere in the tenant app (a modifier chord, so not a single-key shortcut).
   const [jump, setJump] = useState(false);
   useEffect(() => {
@@ -216,7 +232,7 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
         </ReadFailureContext.Provider>
         <ReadFailureContext.Provider value={recovery}>
           <InviteWithRolesSlot.Provider value={renderInviteWithRoles}>
-            <RouteGuard>{platform || pathname === "/org/entities/new" || pathname === "/people/new" ? children : <PhaseBand key={principal}><Suspense fallback={<ReadSkeleton layout="list" />}>{children}</Suspense></PhaseBand>}</RouteGuard>
+            <RouteGuard>{platform || pathname === "/org/entities/new" || pathname === "/people/new" ? children : <PhaseBand key={principal} operatingSince={operatingSince}><Suspense fallback={<ReadSkeleton layout="list" />}>{children}</Suspense></PhaseBand>}</RouteGuard>
           </InviteWithRolesSlot.Provider>
         </ReadFailureContext.Provider>
         </SessionRecovery>

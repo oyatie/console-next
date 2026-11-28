@@ -68,12 +68,15 @@ function ColumnPane({ kind, pane, paneRef, listRef, onCloseRequest, full, onFull
   useMountFocus(pane.id, () => {
     const singleCol = listRef.current && getComputedStyle(listRef.current).display === "none";
     if (!singleCol && kind !== "related") return null;
+    // A pane can nominate a focus target that stays visible across rotations.
+    const heading = paneRef.current?.querySelector<HTMLElement>("[data-pane-focus]");
+    if (singleCol && heading) return heading;
     return backRef.current && getComputedStyle(backRef.current).display !== "none" ? backRef.current : titleRef.current ?? closeRef.current;
   });
   return (
     <aside ref={paneRef} className={s[kind]} aria-label={pane.label}>
       <div className={s.head} data-titled={titled || undefined}>
-        <Button ref={backRef} variant="ghost" className={s.back} onClick={() => onCloseRequest(pane)}><ArrowLeft size={16} aria-hidden />{t("common.back")}</Button>
+        <Button ref={backRef} data-pane-back variant="ghost" className={s.back} onClick={() => onCloseRequest(pane)}><ArrowLeft size={16} aria-hidden />{t("common.back")}</Button>
         {pane.crumb != null && <div className={s.crumb}>{pane.crumb}</div>}
         <div className={s.headRow}>
           {pane.title != null && <h2 ref={titleRef} tabIndex={-1} className={s.title}>{pane.title}</h2>}

@@ -4,6 +4,9 @@ import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
 import { cursorPages } from "../../../lib/query";
 import type { AttentionFilter, InboxFilter } from "../domain/inbox-filter";
 
+/** The setup rail renders its steps separately from the worklist rows. */
+export const isInboxRow = (kind: string, hasChecklist: boolean) => !hasChecklist || !kind.startsWith("setup_");
+
 export function useInboxArrival(preview: boolean, filter: InboxFilter) {
   const [attention, setAttention] = useState<AttentionFilter>("all");
   // Consumers can mount after a read settles, so their property access cannot drive notifications.

@@ -7,7 +7,7 @@ test("the worker register never returns a clear personal phone by default", { ta
   const { admin } = await staffedTenant(browser, "register-masking", "명부확인회사");
   await registerEmployee(admin, { name: "김명부", number: "MASK-1", hired: kstDate(-1) });
   await go(admin, "/statutory?tab=register");
-  await admin.getByRole("button", { name: /사업장/ }).click();
+  await admin.getByRole("main").getByRole("button", { name: /사업장/ }).click();
   const read = admin.waitForResponse(r => new URL(r.url()).pathname === "/api/v1/statutory/worker-register");
   await admin.getByRole("option", { name: /본사/ }).click();
   const response = await read;

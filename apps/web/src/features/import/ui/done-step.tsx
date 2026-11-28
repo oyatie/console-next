@@ -67,8 +67,11 @@ export function DoneStep({ report, runId }: { report?: ImportReport; runId: stri
       </div>
     </section>
     {report?.register_gaps && <RegisterGaps gaps={report.register_gaps} />}
-    {["APPLIED", "ROLLBACK_REQUESTED", "ROLLBACK_RUNNING", "ROLLED_BACK"].includes(r.status) && <RollbackPanel run={r} onChanged={completed} />}
-    {r.status === "APPLIED" && <ReconcilePanel runId={runId} />}
+    {["APPLIED", "ROLLBACK_REQUESTED", "ROLLBACK_RUNNING", "ROLLED_BACK"].includes(r.status) && (
+      <RollbackPanel run={r} onChanged={completed}>
+        {r.status === "APPLIED" && <ReconcilePanel runId={runId} />}
+      </RollbackPanel>
+    )}
     </>;
     }}
     </QueryState>
