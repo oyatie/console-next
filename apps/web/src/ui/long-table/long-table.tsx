@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEventHandler, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEventHandler, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Button, Cell, Checkbox, Collection, Column, Input, Label, ResizableTableContainer, Row, SearchField, Table, TableBody, TableHeader, TableLoadMoreItem, Virtualizer, type CellProps, type ColumnProps, type SortDescriptor } from "react-aria-components";
 import { ArrowDown, ArrowUp } from "lucide-react";
@@ -6,11 +6,12 @@ import { t } from "@console/i18n";
 import { applyKeys, shownKeys, type Selection } from "./selection";
 import { SelectionBar } from "./selection-bar";
 import { Box, Skeleton } from "./long-table-parts";
-import { LAYOUT, rowId, rowKey, SELECT, SELECT_WIDTH, SKELETON_ROWS, tokenRowHeight } from "./long-table-constants";
+import { LAYOUT, rowId, rowKey, SELECT, SELECT_WIDTH, SKELETON_ROWS } from "./long-table-constants";
 import { FocusableTableLayout } from "./focusable-table-layout";
 import { editable, leaveImeKey, listenRowKeys, rowIdOf } from "./row-keys";
 import css from "./long-table.module.css";
 import { useSettledHover } from "./use-settled-hover";
+import { useMeasuredHeight } from "./use-measured-height";
 import cards from "./table-cards.module.css";
 import type { CardColumn } from "./card-columns";
 import { CardContent, CompactCardContent } from "./card-content";
@@ -129,14 +130,8 @@ export function LongTable<R>(p: {
   // The select-all checkbox may stand taller than the header is drawn (a phone's touch size); the header then grows to
   // hold it above its 1px rule. It is measured once as it mounts too, before the first frame paints, so the rows under the
   // header never move down a frame later.
-  const [headCheckHeight, setHeadCheckHeight] = useState(0);
-  const observeHeadCheck = useCallback((check: HTMLLabelElement | null) => {
-    if (!check) return;
-    setHeadCheckHeight(check.getBoundingClientRect().height);
-    const resize = new ResizeObserver(([entry]) => setHeadCheckHeight(entry?.borderBoxSize[0]?.blockSize ?? 0));
-    resize.observe(check);
-    return () => resize.disconnect();
-  }, []);
+  const [headCheckHeight, observeHeadCheck] = useMeasuredHeight();
+  const [rowHeight, measureRow] = useMeasuredHeight();
   const captionId = useId();
   const open = p.rowKeys?.onOpen ?? p.onRowAction;
   const hasFind = Boolean(p.find);
@@ -162,12 +157,17 @@ export function LongTable<R>(p: {
     return () => (el.removeEventListener("focusin", focus), keys?.());
   }, [hasFind, hasRowKeys]);
   const density = p.density ?? "regular";
-  const rowH = tokenRowHeight(density);
+  // React Aria retains the last explicit height on a layout instance. Cards and editors must start unmeasured.
+  const tableLayout = useMemo(() => new FocusableTableLayout(cardLayout || p.editable ? {} : { rowHeight: LAYOUT[density].estimatedRowHeight }), [cardLayout, p.editable, density]);
+  const rowEstimate = rowHeight || LAYOUT[density].estimatedRowHeight;
   const layout = useMemo(() => ({
     ...LAYOUT[density],
+    rowHeight: cardLayout || p.editable ? undefined : rowEstimate,
     headingHeight: cardLayout && !p.selection ? 0 : Math.max(LAYOUT[density].headingHeight, p.selection ? Math.ceil(headCheckHeight) + 1 : 0),
-    estimatedRowHeight: cardLayout ? (cardHeight ?? (mobileLayout === "compact" ? 56 : rowH)) : p.editable ? rowH * 2 : rowH,
-  }), [cardLayout, cardHeight, density, headCheckHeight, mobileLayout, p.editable, p.selection, rowH]);
+    estimatedRowHeight: cardLayout
+      ? (cardHeight ?? (mobileLayout === "compact" ? 56 : rowEstimate))
+      : p.editable ? rowEstimate * 2 : rowEstimate,
+  }), [cardLayout, cardHeight, density, headCheckHeight, mobileLayout, p.editable, p.selection, rowEstimate]);
   const loaded = p.rows.map(p.rowId);
   const indices = new Map(p.rows.map((r, i) => [p.rowId(r), p.rowIndex?.(r) ?? i + 1]));
   const sel = p.selection;
@@ -199,6 +199,7 @@ export function LongTable<R>(p: {
         e.stopPropagation();
         p.onRowAction(id);
       }}>
+      <span ref={measureRow} className={css.rowMeasure} aria-hidden="true" />
       {((!slotted && Boolean(finder)) || p.caption != null) && (
         <div className={css.bar}>
           {/* Held while the count loads: the hints and the search beside it must not slide over when it lands. */}
@@ -224,7 +225,7 @@ export function LongTable<R>(p: {
         <SelectionBar sel={sel} loaded={loaded.length} total={p.total ?? undefined} hasMore={p.hasMore} limit={p.selectAllLimit} actions={p.selectionActions} unit={p.countUnit ?? "item"} onChange={p.onSelectionChange} />
       )}
       <ResizableTableContainer>
-      <Virtualizer layout={FocusableTableLayout} layoutOptions={layout}>
+      <Virtualizer layout={tableLayout} layoutOptions={layout}>
         <Table
           ref={el => { grid.current = el; p.scrollRef?.(el); }}
           aria-label={p.label}
