@@ -19190,9 +19190,7 @@ export interface components {
             /** @enum {string|null} */
             cadence?: "CONTINUOUS" | "DAILY" | "WEEKLY" | "MONTHLY" | "QUARTERLY" | "ANNUAL" | "EVENT_DRIVEN" | null;
             status: components["schemas"]["ControlStatus"];
-            evidence_requirements: {
-                [key: string]: unknown;
-            };
+            evidence_requirements: unknown[];
             /** Format: uuid */
             owner_user_id?: string | null;
             created_by: components["schemas"]["Uuid"];
@@ -19747,9 +19745,7 @@ export interface components {
             control_type: components["schemas"]["ControlType"];
             /** @enum {string|null} */
             cadence?: "CONTINUOUS" | "DAILY" | "WEEKLY" | "MONTHLY" | "QUARTERLY" | "ANNUAL" | "EVENT_DRIVEN" | null;
-            evidence_requirements?: {
-                [key: string]: unknown;
-            };
+            evidence_requirements?: unknown[];
             /** Format: uuid */
             owner_user_id?: string | null;
         };
@@ -40470,7 +40466,10 @@ export interface operations {
     createComplianceEvidenceBinding: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Reuse this key for a retry of the same evidence command. */
+                "Idempotency-Key"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -40491,6 +40490,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalServerError"];
             503: components["responses"]["ServiceUnavailable"];
@@ -40499,7 +40499,10 @@ export interface operations {
     acceptComplianceEvidenceBinding: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Reuse this key for a retry of the same evidence command. */
+                "Idempotency-Key"?: string;
+            };
             path: {
                 id: components["schemas"]["Uuid"];
             };

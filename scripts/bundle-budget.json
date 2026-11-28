@@ -79,6 +79,7 @@
       "src/features/audit/ui/evidence-vault.tsx",
       "src/features/audit/ui/findings.tsx",
       "src/features/audit/ui/location-consents.tsx",
+      "src/features/compliance/ui/evidence.tsx",
       "src/features/compliance/ui/catalog.tsx",
       "src/features/consulting/ui/register.tsx",
       "src/features/consulting/ui/engagement.tsx",
@@ -169,6 +170,7 @@
     "css_budget_kb": 16,
     "deferred": ["src/ui/date/date-calendar.tsx", "src/features/import/ui/resolve-controls.tsx", "src/features/people/ui/register-classic-footer.tsx", "src/features/people/ui/register-console-footer.tsx"],
     "routes": [
+      "src/features/compliance/ui/evidence-proposal.tsx",
       "src/features/compliance/ui/catalog-form.tsx",
       "src/features/evaluation/ui/create-cycle.tsx",
       "src/features/entity/ui/entity-wizard-baseline.tsx",

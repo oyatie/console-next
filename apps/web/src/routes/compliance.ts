@@ -1,16 +1,26 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
 import { app, screen } from "./app";
-import { servedRouteAccess } from "./route-reads";
+import { complianceCatalogAccess, evidenceBindingsAccess, manageComplianceAccess, proposeEvidenceAccess } from "./route-reads";
 
 const catalog = createRoute({
   getParentRoute: () => app, path: "/compliance",
-  staticData: { access: servedRouteAccess["/compliance"], floorplan: "P-01", pattern: "list-record" },
+  staticData: { access: complianceCatalogAccess, floorplan: "P-01", pattern: "list-record" },
   component: lazyRouteComponent(screen(() => import("../features/compliance/ui/catalog")), "ComplianceCatalog"),
 });
 const create = createRoute({
   getParentRoute: () => app, path: "/compliance/new",
-  staticData: { access: servedRouteAccess["/compliance/new"], floorplan: "P-04", pattern: "form" },
+  staticData: { access: manageComplianceAccess, floorplan: "P-04", pattern: "form" },
   component: lazyRouteComponent(screen(() => import("../features/compliance/ui/catalog-form")), "ComplianceCatalogForm"),
 });
-export const complianceRoutes = [catalog, create] as const;
+const evidence = createRoute({
+  getParentRoute: () => app, path: "/compliance/evidence",
+  staticData: { access: evidenceBindingsAccess, floorplan: "P-03", pattern: "worklist" },
+  component: lazyRouteComponent(screen(() => import("../features/compliance/ui/evidence")), "EvidenceWorklist"),
+});
+const propose = createRoute({
+  getParentRoute: () => app, path: "/compliance/evidence/new",
+  staticData: { access: proposeEvidenceAccess, floorplan: "P-04", pattern: "form" },
+  component: lazyRouteComponent(screen(() => import("../features/compliance/ui/evidence-proposal")), "EvidenceProposal"),
+});
+export const complianceRoutes = [catalog, create, evidence, propose] as const;

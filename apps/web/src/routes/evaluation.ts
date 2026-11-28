@@ -2,12 +2,12 @@
 import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
 import { PAGE_SIZE, stages, type CycleStage } from "../features/evaluation/domain/cycles";
 import { app, screen } from "./app";
-import { servedRouteAccess } from "./route-reads";
+import { createEvaluationAccess, evaluationCyclesAccess } from "./route-reads";
 
 const register = createRoute({
   getParentRoute: () => app,
   path: "/evaluation",
-  staticData: { access: servedRouteAccess["/evaluation"], floorplan: "P-01", pattern: "list-record" },
+  staticData: { access: evaluationCyclesAccess, floorplan: "P-01", pattern: "list-record" },
   validateSearch: (s: Record<string, unknown>): { page?: number; stage?: CycleStage } => {
     const page = Number(s.page);
     return { stage: stages.find(stage => stage === s.stage),
@@ -19,7 +19,7 @@ const register = createRoute({
 const create = createRoute({
   getParentRoute: () => app,
   path: "/evaluation/new",
-  staticData: { access: servedRouteAccess["/evaluation/new"], floorplan: "P-04", pattern: "form" },
+  staticData: { access: createEvaluationAccess, floorplan: "P-04", pattern: "form" },
   component: lazyRouteComponent(screen(() => import("../features/evaluation/ui/create-cycle")), "CreateEvaluationCycle"),
 });
 

@@ -3,7 +3,8 @@
 
 mod audit_stream;
 mod catalog;
-pub use catalog::catalog_access;
+pub use catalog::{catalog_access, evidence_access};
+use catalog::{require_evidence_accept_with_read, require_evidence_link_with_read};
 mod ledger_export;
 mod ledger_query;
 mod openapi;
@@ -265,13 +266,15 @@ struct CreateEvidenceBindingRequest {
     evidence_target_id: String,
     source_audit_event_id: Option<String>,
     confidence: EvidenceConfidence,
-    #[serde(with = "time::serde::rfc3339::option")]
+    #[serde(default, with = "time::serde::rfc3339::option")]
     collected_at: Option<Timestamp>,
     collected_by: Option<UserId>,
+    #[serde(default, deserialize_with = "catalog::optional_date")]
     valid_from: Option<time::Date>,
+    #[serde(default, deserialize_with = "catalog::optional_date")]
     valid_to: Option<time::Date>,
     hash_sha256: Option<String>,
-    #[serde(default)]
+    #[serde(default = "catalog::empty_metadata")]
     metadata: serde_json::Value,
 }
 
@@ -356,16 +359,6 @@ fn require_compliance_manage(principal: &Principal) -> Result<(), RestError> {
 
 fn require_compliance_evidence_link(principal: &Principal) -> Result<(), RestError> {
     require_org_catalog_feature(principal, Feature::ComplianceEvidenceLink)
-}
-
-fn require_evidence_link_with_read(principal: &Principal) -> Result<(), RestError> {
-    require_compliance_read(principal)?;
-    require_compliance_evidence_link(principal)
-}
-
-fn require_evidence_accept_with_read(principal: &Principal) -> Result<(), RestError> {
-    require_compliance_read(principal)?;
-    require_compliance_manage(principal)
 }
 
 fn require_org_catalog_feature(principal: &Principal, feature: Feature) -> Result<(), RestError> {

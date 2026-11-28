@@ -9,6 +9,8 @@ import type { BootMessageId } from "./boot";
 export const bootKo: Record<BootMessageId, string> = {
   ...bootBootstrapKo,
   ...bootConsentKo,
+  "compliance.evidence": "증빙 연결",
+  "compliance.propose": "증빙 연결 제안",
   "compliance.title": "준법 카탈로그",
   "compliance.create": "준법 기록 등록",
   "consulting.title": "컨설팅 수행 건",

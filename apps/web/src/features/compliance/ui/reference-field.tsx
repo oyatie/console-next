@@ -9,8 +9,8 @@ import { Pager } from "../../../ui/pager";
 import { controlsQuery, frameworksQuery, obligationsQuery, PAGE_SIZE, regulationsQuery } from "../api";
 
 export type ReferenceKind = "framework" | "control" | "obligation" | "regulation";
-export function ReferenceField({ kind, canRead, value, onChange, framework = "", disabled }: {
-  kind: ReferenceKind; canRead: boolean; value: string; onChange: (value: string) => void; framework?: string; disabled: boolean;
+export function ReferenceField({ kind, canRead, value, onChange, framework = "", disabled, optional = false }: {
+  kind: ReferenceKind; canRead: boolean; value: string; onChange: (value: string) => void; framework?: string; disabled: boolean; optional?: boolean;
 }) {
   const [page, setPage] = useState(0);
   const frameworks = useQuery({ ...frameworksQuery(page), enabled: canRead && kind === "framework" });
@@ -24,7 +24,7 @@ export function ReferenceField({ kind, canRead, value, onChange, framework = "",
   const opts = kind === "framework" ? frameworks.data?.items.map(r => ({ id: r.id, name: r.name })) :
     (kind === "control" ? controls.data?.items : kind === "regulation" ? regulations.data?.items : obligations.data?.items)?.map(r => ({ id: r.id, name: r.title }));
   return <QueryState<unknown> q={query}>{() => <>
-    <Field label={label} required>{p => <SelectInput {...p} disabled={disabled} value={value} onChange={e => onChange(e.target.value)}>
+    <Field label={label} required={!optional}>{p => <SelectInput {...p} disabled={disabled} value={value} onChange={e => onChange(e.target.value)}>
       <option value="">{t("compliance.choose")}</option>
       {opts?.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
     </SelectInput>}</Field>
