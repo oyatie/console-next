@@ -2,9 +2,11 @@
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 mod ledger_export;
+mod ledger_query;
 mod openapi;
 mod state;
 use ledger_export::ledger_csv;
+use ledger_query::{normalize_arrival_query, normalize_ledger_query};
 pub use openapi::OPENAPI_FRAGMENT;
 pub use state::ComplianceRestState;
 pub mod statutory;
@@ -16,14 +18,13 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use console_compliance_adapter_postgres::PgComplianceError;
 use console_compliance_application::{
-    AcceptEvidenceBindingCommand, ArrivalEventPage, ArrivalEventQuery, AuditStreamPage,
-    AuditStreamQuery, AuditStreamReadKind, CEO_COVERT_AUDIT_STREAM_KEY, ComplianceControlQuery,
+    AcceptEvidenceBindingCommand, ArrivalEventPage, AuditStreamPage, AuditStreamQuery,
+    AuditStreamReadKind, CEO_COVERT_AUDIT_STREAM_KEY, ComplianceControlQuery,
     ComplianceFrameworkQuery, ComplianceObligationQuery, ConsentTransitionCommand,
     ConsentTransitionKind, CreateComplianceControlCommand, CreateComplianceFrameworkCommand,
     CreateComplianceObligationCommand, CreateEvidenceBindingCommand, CreateRegulationImpactCommand,
     EvidenceBindingQuery, LinkControlObligationCommand, LinkObligationRegulationCommand,
-    LocationConsentLedgerEntry, LocationConsentLedgerPage, LocationConsentLedgerQuery, PageRequest,
-    RegulationImpactQuery,
+    LocationConsentLedgerEntry, LocationConsentLedgerPage, PageRequest, RegulationImpactQuery,
 };
 use console_compliance_domain::{
     ComplianceRiskLevel, ComplianceScope, ComplianceScopeKind, ControlCadence, ControlStatus,
@@ -979,23 +980,6 @@ fn status_response(consent: LocationConsent) -> LocationConsentStatusResponse {
     }
 }
 
-fn normalize_ledger_query(query: LedgerRequest) -> Result<LocationConsentLedgerQuery, RestError> {
-    let limit = query.limit.unwrap_or(100).clamp(1, 1_000);
-    let offset = query.offset.unwrap_or(0);
-    if offset < 0 {
-        return Err(RestError::from_kernel(KernelError::validation(
-            "offset must be non-negative",
-        )));
-    }
-
-    Ok(LocationConsentLedgerQuery {
-        user_id: query.user_id,
-        branch_id: query.branch_id,
-        limit,
-        offset,
-    })
-}
-
 /// Whether any branch of the caller's effective scope admits a consent ledger read.
 /// A narrowed custom grant can admit a specific branch even if it cannot cover the entire scope.
 pub fn consent_ledger_available(principal: &Principal) -> bool {
@@ -1067,22 +1051,6 @@ async fn list_arrival_events(
         .await
         .map_err(RestError::from_store)?;
     Ok(Json(page))
-}
-
-fn normalize_arrival_query(query: LedgerRequest) -> Result<ArrivalEventQuery, RestError> {
-    let limit = query.limit.unwrap_or(100).clamp(1, 1_000);
-    let offset = query.offset.unwrap_or(0);
-    if offset < 0 {
-        return Err(RestError::from_kernel(KernelError::validation(
-            "offset must be non-negative",
-        )));
-    }
-    Ok(ArrivalEventQuery {
-        user_id: query.user_id,
-        branch_id: query.branch_id,
-        limit,
-        offset,
-    })
 }
 
 fn authorize_arrival_read(
