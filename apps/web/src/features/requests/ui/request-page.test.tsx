@@ -23,7 +23,13 @@ vi.mock("react", async (original) => {
 });
 vi.mock("@tanstack/react-query", async (original) => ({
   ...await original<typeof import("@tanstack/react-query")>(),
-  useQuery: (options: Record<string, unknown>) => { view.options = options; return view.query; },
+  useQuery: (options: Record<string, unknown>) => {
+    if (JSON.stringify(options.queryKey).includes("/api/v1/me/requests")) {
+      return { ...view.query, data: { items: [], total: 0, offset: 0, limit: 50 } };
+    }
+    view.options = options;
+    return view.query;
+  },
 }));
 vi.mock("@tanstack/react-router", async (original) => ({
   ...await original<typeof import("@tanstack/react-router")>(),

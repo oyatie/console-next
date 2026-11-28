@@ -190,12 +190,14 @@ function renderMe(shellOwnsH1 = false) {
 test("MePage keeps baseline Card rendering unaltered and switches to PhoneHub in Console mode", () => {
   state.experience = "baseline";
   const baselineHtml = renderMe(false);
+  expect(baselineHtml).toContain('data-href="/requests"');
   expect(baselineHtml).not.toContain('data-pattern="phone-hub"');
   expect(baselineHtml).toContain(`>${t("account.title")}</h1>`);
 
   state.experience = "console";
   const consoleDesktop = renderMe(false);
   expect(consoleDesktop).toContain('data-pattern="phone-hub"');
+  expect(consoleDesktop).toContain('data-href="/requests"');
   expect(consoleDesktop).toContain(`>${t("shell.profile")}</h1>`);
   expect(consoleDesktop).toContain("Hajun Yun");
   expect(consoleDesktop).toContain(t("enum.employeeStatus.ACTIVE"));
@@ -237,6 +239,7 @@ test("MePage adapts cleanly for unlinked tenant and platform vendor accounts", (
   expect(vendor).toContain(t("account.field.platform"));
   expect(vendor).not.toContain(t("account.access.title"));
   expect(vendor).not.toContain("/account/privacy");
+  expect(vendor).not.toContain('data-href="/requests"');
 
   state.platform = false;
   state.me.employee_link_status = "LINKED";

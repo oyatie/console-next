@@ -44,6 +44,7 @@ function LegacyMePage({
           <ProfileCard locale={locale} experience={experience} singleKeys={singleKeys} me={me} />
           <PasskeysCard ops={vendor ? false : me.data?.is_tenant_ops} passkeys={keys} />
           <ConsentCard />
+          {!vendor && <div><Link to="/requests">{t("requestOutcome.myHistory.title")}</Link></div>}
           {!vendor && <div><Link to="/account/privacy">{t("account.privacy.title")}</Link></div>}
           {!vendor && me.data?.is_tenant_ops && <OpsSecurityCard myId={me.data.id} />}
           {!vendor && <OpsRecoveryNotice />}

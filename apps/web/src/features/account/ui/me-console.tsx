@@ -160,6 +160,7 @@ export function MeConsole({
         </div>
       ),
     },
+    ...(vendor ? [] : [{ key: "history", label: t("requestOutcome.title"), value: <Link to="/requests">{t("requestOutcome.myHistory.title")}</Link> }]),
     ...(vendor ? [] : [{ key: "signInId", label: t("account.field.signInId"), value: <bdi className="code">{u?.sign_in_id ?? "—"}</bdi> }]),
     ...(vendor ? [] : [{ key: "domain", label: t("account.domain.title"), value: <Link to="/settings/company-domain" className={s.plainLink}>{u?.sign_in_id?.split("@")[1] ?? "—"}</Link> }]),
     ...(vendor || isLinked ? [] : [{ key: "unit", label: t("account.field.unit"), value: <bdi className="muted">{t("account.field.unlinked")}</bdi> }]),
