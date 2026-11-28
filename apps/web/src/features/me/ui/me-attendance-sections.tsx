@@ -102,7 +102,6 @@ export function MeAttendanceStrip({
 
 export function MeAttendanceSections({
   schedule,
-  records,
   exceptions,
   recordsQuery,
   exceptionsQuery,
@@ -110,26 +109,21 @@ export function MeAttendanceSections({
   fullScheduleLink,
 }: {
   schedule: UseQueryResult<OwnScheduleCalendar>;
-  records: readonly OwnAttendanceRecord[];
   exceptions: readonly OwnException[];
-  recordsQuery?: UseQueryResult<{ items: OwnAttendanceRecord[] }>;
+  recordsQuery: UseQueryResult<{ items: OwnAttendanceRecord[]; console_clock_out?: boolean }>;
   exceptionsQuery?: UseQueryResult<{ items: OwnException[] }>;
   compactScheduleWeekStart?: string;
   fullScheduleLink?: boolean;
 }) {
   const access = useQuery(myAccessQuery);
   const [receipt, setReceipt] = useState<string | null>(null);
-  const canClock = Boolean(
-    access.data &&
-      (access.data.is_ops ||
-        access.data.entries.some(
-          entry =>
-            entry.domain === "attendance" &&
-            entry.enforcement === "ENFORCED" &&
-            (entry.level === "edit" || entry.level === "approve"),
-        )),
+  const canClock = access.data?.is_ops || access.data?.entries.some(entry =>
+    entry.domain === "attendance" && entry.enforcement === "ENFORCED" &&
+    (entry.level === "edit" || entry.level === "approve"),
   );
-  const nextKind = nextPunchKind(records);
+  const nextKind = nextPunchKind(recordsQuery.data?.items ?? []);
+  const canPunch = canClock && recordsQuery.data && !recordsQuery.error &&
+    (nextKind !== "CLOCK_OUT" || recordsQuery.data.console_clock_out === true);
   const punch = useCommand<AttendanceRecordKind, OwnAttendanceRecord>({
     run: (kind, idempotency_key) => createMyAttendanceRecord({ kind, idempotency_key }),
     invalidates: ["/api/v1/hr/attendance-records/me", "/api/v1/attendance/me/week52"],
@@ -186,7 +180,7 @@ export function MeAttendanceSections({
         id="me-att-records"
         title={t("me.attendance.records.title")}
         tools={
-          canClock ? (
+          canPunch ? (
             <div className={s.sectionTools}>
               <Button
                 size="sm"
@@ -205,35 +199,22 @@ export function MeAttendanceSections({
           {receipt ? <Receipt state="recorded" message={receipt} /> : null}
           <CommandError
             error={punch.error}
-            own={code => (code === "attendance.refuse.missing_grant" ? t("attendance.refuse.missing_grant") : undefined)}
+            own={code => (code === "attendance.refuse.missing_grant" || code === "attendance.refuse.console_clock_out_disabled" ? t(code) : undefined)}
           />
-          {recordsQuery ? (
-            <QueryState q={recordsQuery} compact>
-              {data => (
-                <LongTable
-                  label={t("me.attendance.records.title")}
-                  rows={[...data.items]}
-                  rowId={r => r.id}
-                  hasMore={false}
-                  onLoadMore={() => {}}
-                  mobileLayout="compact"
-                  empty={<EmptyState compact title={t("me.attendance.records.empty")} reason={null} />}
-                  columns={recordCols}
-                />
-              )}
-            </QueryState>
-          ) : (
-            <LongTable
-              label={t("me.attendance.records.title")}
-              rows={[...records]}
-              rowId={r => r.id}
-              hasMore={false}
-              onLoadMore={() => {}}
-              mobileLayout="compact"
-              empty={<EmptyState compact title={t("me.attendance.records.empty")} reason={null} />}
-              columns={recordCols}
-            />
-          )}
+          <QueryState q={recordsQuery} compact>
+            {data => (
+              <LongTable
+                label={t("me.attendance.records.title")}
+                rows={[...data.items]}
+                rowId={r => r.id}
+                hasMore={false}
+                onLoadMore={() => {}}
+                mobileLayout="compact"
+                empty={<EmptyState compact title={t("me.attendance.records.empty")} reason={null} />}
+                columns={recordCols}
+              />
+            )}
+          </QueryState>
         </div>
       </RecordSection>
 
