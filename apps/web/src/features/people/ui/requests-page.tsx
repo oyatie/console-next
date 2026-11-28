@@ -25,7 +25,7 @@ import { kindText, reasonText, statusOf, subjectText } from "../present";
 import s from "./requests.module.css";
 
 const route = getRouteApi("/app/people/requests");
-const LANES: readonly Lane[] = ["all", "me", "role"];
+const LANES: readonly Lane[] = ["all", "me", "role", "filed"];
 const STATUSES: readonly (RequestStatus | undefined)[] = ["OPEN", "APPLIED", "DECLINED", "WITHDRAWN", undefined];
 
 /**
@@ -42,10 +42,10 @@ export function RequestsPage() {
   const set = (patch: { lane?: Lane; status?: RequestStatus | "ALL"; sel?: string; page?: number }) =>
     void navigate({ search: (x) => ({ ...x, page: undefined, ...patch }), replace: true });
   const select = (nextSel?: string) => void navigate({ search: (x) => ({ ...x, sel: nextSel }), replace: true });
-  const active = hr ? lane : "all";
-  const filtered = active !== "all" || status !== "ALL";
+  const active = hr ? lane : "filed";
+  const filtered = (hr && active !== "all") || status !== "ALL";
   const filters = [t(hr ? `requests.lane.${active}` : "requests.mine"), status !== "ALL" && t(`requests.status.${status}`)].filter(Boolean).join(" · ");
-  const list = useQuery({ ...requestsQuery({ lane: active, mine: !hr, status: status === "ALL" ? undefined : status, offset: page * REQUEST_PAGE }), enabled: !authz.isLoading });
+  const list = useQuery({ ...requestsQuery({ lane: active, status: status === "ALL" ? undefined : status, offset: page * REQUEST_PAGE }), enabled: !authz.isLoading });
   const counts = useQuery({ ...changeRequestCountsQuery, enabled: !authz.isLoading && hr });
   const makeColumns = (compact: boolean): Column<ChangeRequest>[] => [
     { header: t("requests.col.kind"), cell: (r) => kindText(r.kind), fit: true, card: compact ? "fact" : undefined },
@@ -120,7 +120,7 @@ export function RequestsPage() {
             {hr && <div className="tabs" role="group" aria-label={t("requests.lanes")}>
               {LANES.map((l) => (
                 <ToggleButton key={l} pressed={active === l} onClick={() => set({ lane: l })}>
-                  {t(`requests.lane.${l}`)} <Count n={counts.data?.[l]} />
+                  {t(`requests.lane.${l}`)} {l !== "filed" && <Count n={counts.data?.[l]} />}
                 </ToggleButton>
               ))}
             </div>}
@@ -173,7 +173,7 @@ export function RequestsPage() {
                     aria-current={active === l ? "page" : undefined}
                   >
                     {t(`requests.lane.${l}`)}
-                    <TabCount>{counts.data?.[l]}</TabCount>
+                    {l !== "filed" && <TabCount>{counts.data?.[l]}</TabCount>}
                   </Link>
                 ))}
               </TabNav>

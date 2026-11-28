@@ -15,6 +15,7 @@ export const koRequests: Record<keyof typeof enRequests, string> = {
   "requests.list": "요청 목록",
   "requests.lanes": "누구의 차례",
   "requests.lane.all": "모든 요청",
+  "requests.lane.filed": "내가 제출함",
   "requests.lane.me": "나에게 지정됨",
   "requests.lane.role": "인사팀 공통",
   "requests.statuses": "요청 상태",

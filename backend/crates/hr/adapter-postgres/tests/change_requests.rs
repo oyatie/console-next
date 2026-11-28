@@ -252,3 +252,37 @@ async fn exact_selection_finds_a_later_page_only_with_the_original_row_visibilit
     let foreign = w.hr.list_change_requests(other, query()).await.unwrap();
     assert_eq!((foreign.total, foreign.items.len()), (0, 0));
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn hr_personal_totals_exceed_the_desk_page_and_exclude_named_assignments(pool: PgPool) {
+    let w = world(&pool).await;
+    let actor = w.hr(w.hr_one);
+    for _ in 0..7 {
+        w.hr.create_change_request(
+            actor.clone(),
+            create("OTHER", "BRANCH", w.branch_a, json!({})),
+        )
+        .await
+        .unwrap();
+    }
+    let mut incoming = create("OTHER", "BRANCH", w.branch_a, json!({}));
+    incoming.assignee_user_id = Some(w.hr_one);
+    let incoming =
+        w.hr.create_change_request(w.hr(w.hr_two), incoming)
+            .await
+            .unwrap();
+    let own =
+        w.hr.list_change_requests(
+            actor.clone(),
+            serde_json::from_value(json!({"requester":"me","status":"OPEN","limit":5})).unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!((own.total, own.items.len()), (7, 5));
+    assert!(own.items.iter().all(|r| r.requested_by == w.hr_one));
+    let assigned =
+        w.hr.list_change_requests(actor, list(Some("me")))
+            .await
+            .unwrap();
+    assert_eq!((assigned.total, assigned.items[0].id), (1, incoming.id));
+}

@@ -12,6 +12,7 @@ export const enRequests = {
   "requests.list": "Requests",
   "requests.lanes": "Whose turn",
   "requests.lane.all": "All requests",
+  "requests.lane.filed": "Filed by me",
   "requests.lane.me": "Assigned to me",
   "requests.lane.role": "Any HR person",
   "requests.statuses": "Request status",

@@ -65,7 +65,6 @@ export function MeDeskPage() {
 
   const primary = readGroup([me]);
   const availableWeek52 = week52.data?.status === "available" ? week52.data.projection : undefined;
-  const openRequestsCount = changes.data?.items.length ?? 0;
 
   const summary = isLinked ? (
     <StatRow
@@ -91,7 +90,9 @@ export function MeDeskPage() {
         {
           key: "requests",
           label: t("me.desk.stat.requests"),
-          value: t("me.desk.stat.requestsValue", { count: openRequestsCount }),
+          value: changes.isSuccess ? t("me.desk.stat.requestsValue", { count: changes.data.total })
+            : t(changes.isError ? "me.desk.stat.requestsUnavailable" : "common.loading"),
+          tone: changes.isSuccess ? undefined : "muted",
         },
       ]}
     />
@@ -194,7 +195,7 @@ export function MeDeskPage() {
         <RecordSection
           id="me-desk-changes"
           title={t("me.desk.requests.title")}
-          tools={<Link to="/people/requests" search={{ lane: "me" }} className={buttonClass("secondary", { size: "sm", className: s.nowrap })}>{t("me.desk.links.requests")}</Link>}
+          tools={<Link to="/people/requests" search={{ lane: "filed" }} className={buttonClass("secondary", { size: "sm", className: s.nowrap })}>{t("me.desk.links.requests")}</Link>}
         >
           <QueryState q={changes} compact>
             {data => (

@@ -228,11 +228,11 @@ export type CorrectionChanges = components["schemas"]["CorrectEmployeeRequest"][
 export type Resolution = components["schemas"]["EmployeeIdentityResolution"];
 
 /** HR's lanes (org-wide manage): named to me, open to any HR person, or every request; anyone else reads `mine`, the requests they filed. */
-export type Lane = "me" | "role" | "all";
+export type Lane = "me" | "role" | "all" | "filed";
 export const REQUEST_PAGE = 20;
-export const requestsQuery = (q: { lane: Lane; mine?: boolean; status?: RequestStatus; offset: number }) =>
+export const requestsQuery = (q: { lane: Lane; status?: RequestStatus; offset: number }) =>
   get("/api/v1/change-requests", {
-    params: { query: { assignee: q.lane === "all" ? undefined : q.lane, requester: q.mine ? "me" : undefined, status: q.status, limit: REQUEST_PAGE, offset: q.offset } },
+    params: { query: { assignee: q.lane === "me" || q.lane === "role" ? q.lane : undefined, requester: q.lane === "filed" ? "me" : undefined, status: q.status, limit: REQUEST_PAGE, offset: q.offset } },
   });
 /** A record link can point beyond the active lane, status and page. The server applies the same row visibility. */
 export const selectedRequestQuery = (id: string | undefined) => get("/api/v1/change-requests", {
