@@ -14,7 +14,6 @@ app/tests/action_inbox_api.rs	877
 app/tests/attendance_persona_api.rs	415
 app/tests/audit_api.rs	754
 app/tests/auth_rest.rs	4469
-app/tests/benefit_catalog_api.rs	317
 app/tests/board_ack_api.rs	358
 app/tests/cedar_freshness_mint.rs	375
 app/tests/cedar_shadow_role_manage.rs	304
@@ -74,9 +73,9 @@ crates/attendance/adapter-postgres/tests/cancel_substitution.rs	895
 crates/attendance/adapter-postgres/tests/concurrency.rs	403
 crates/attendance/application/src/lib.rs	400
 crates/attendance/rest/src/lib.rs	1107
-crates/benefit/adapter-postgres/src/lib.rs	1260
+crates/benefit/adapter-postgres/src/lib.rs	1252
 crates/benefit/domain/src/lib.rs	307
-crates/benefit/rest/src/lib.rs	484
+crates/benefit/rest/src/lib.rs	480
 crates/comms/adapter-postgres/src/lib.rs	1257
 crates/comms/adapter-postgres/tests/mail_account_rls_surfaces_as_runtime_role.rs	528
 crates/comms/adapter-postgres/tests/mail_sync_rls_surfaces_as_runtime_role.rs	689

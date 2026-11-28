@@ -5,6 +5,10 @@
 //! same tenant-armed transaction. Client input never supplies org/tenant scope.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
+mod revision;
+mod validation;
+use validation::{normalize_non_negative_i32, validate_dates};
+
 use console_benefit_application::{
     BenefitCatalogConditionView, BenefitCatalogItemPage, BenefitCatalogItemView,
     BenefitCatalogLifecycleBinding, BenefitCatalogScopeDraft, BenefitCatalogTierView,
@@ -227,6 +231,7 @@ impl PgBenefitCatalogStore {
                     .await?
                     .ok_or_else(|| KernelError::not_found("benefit-catalog item was not found"))?;
                 ensure_scope_mutation_allowed(&input.branch_scope, before.scope.branch_id)?;
+                revision::verify(before.updated_at, input.expected_updated_at)?;
                 if let Some(scope) = &input.fields.scope {
                     ensure_scope_mutation_allowed(&input.branch_scope, scope.branch_id)?;
                 }
@@ -266,6 +271,7 @@ impl PgBenefitCatalogStore {
                     .await?
                     .ok_or_else(|| KernelError::not_found("benefit-catalog item was not found"))?;
                 ensure_scope_mutation_allowed(&command.branch_scope, before.scope.branch_id)?;
+                revision::verify(before.updated_at, command.expected_updated_at)?;
 
                 sqlx::query(
                     r#"
@@ -289,6 +295,7 @@ impl PgBenefitCatalogStore {
                 )
                 .await?;
 
+                revision::touch(tx, command.item_id, command.actor, command.occurred_at).await?;
                 let after = fetch_item_tx(tx, command.item_id).await?.ok_or_else(|| {
                     KernelError::internal(
                         "benefit-catalog item was not readable after tier replacement",
@@ -325,6 +332,7 @@ impl PgBenefitCatalogStore {
                     .await?
                     .ok_or_else(|| KernelError::not_found("benefit-catalog item was not found"))?;
                 ensure_scope_mutation_allowed(&command.branch_scope, before.scope.branch_id)?;
+                revision::verify(before.updated_at, command.expected_updated_at)?;
 
                 sqlx::query(
                     r#"
@@ -348,6 +356,7 @@ impl PgBenefitCatalogStore {
                 )
                 .await?;
 
+                revision::touch(tx, command.item_id, command.actor, command.occurred_at).await?;
                 let after = fetch_item_tx(tx, command.item_id).await?.ok_or_else(|| {
                     KernelError::internal(
                         "benefit-catalog item was not readable after condition replacement",
@@ -459,6 +468,7 @@ impl TryFrom<CreateBenefitCatalogItemCommand> for NormalizedCreateInput {
 
 #[derive(Debug, Clone)]
 struct NormalizedUpdateInput {
+    expected_updated_at: Option<OffsetDateTime>,
     actor: console_kernel_core::UserId,
     branch_scope: BranchScope,
     item_id: BenefitCatalogItemId,
@@ -472,6 +482,7 @@ impl TryFrom<UpdateBenefitCatalogItemCommand> for NormalizedUpdateInput {
 
     fn try_from(command: UpdateBenefitCatalogItemCommand) -> Result<Self, Self::Error> {
         Ok(Self {
+            expected_updated_at: command.expected_updated_at,
             actor: command.actor,
             branch_scope: command.branch_scope,
             item_id: command.item_id,
@@ -526,27 +537,6 @@ struct NormalizedCondition {
 
 fn normalized_limit(limit: Option<i64>) -> i64 {
     limit.unwrap_or(DEFAULT_LIMIT).clamp(1, MAX_LIMIT)
-}
-
-fn normalize_non_negative_i32(value: Option<i32>, field: &str) -> Result<Option<i32>, KernelError> {
-    if value.is_some_and(|value| value < 0) {
-        Err(KernelError::validation(format!(
-            "{field} must be non-negative"
-        )))
-    } else {
-        Ok(value)
-    }
-}
-
-fn validate_dates(effective_on: Option<Date>, retires_on: Option<Date>) -> Result<(), KernelError> {
-    if let (Some(effective_on), Some(retires_on)) = (effective_on, retires_on)
-        && retires_on < effective_on
-    {
-        return Err(KernelError::validation(
-            "retires_on must be on or after effective_on",
-        ));
-    }
-    Ok(())
 }
 
 fn normalize_scope(scope: BenefitCatalogScopeDraft) -> Result<NormalizedScope, KernelError> {
@@ -973,8 +963,9 @@ async fn update_item_tx(
     }
     sep.push("updated_by = ");
     sep.push_bind_unseparated(*input.actor.as_uuid());
-    sep.push("updated_at = ");
+    sep.push("updated_at = GREATEST(updated_at + INTERVAL '1 microsecond', ");
     sep.push_bind_unseparated(input.occurred_at);
+    sep.push_unseparated(")");
     builder.push(" WHERE id = ");
     builder.push_bind(*input.item_id.as_uuid());
     builder.build().execute(tx.as_mut()).await?;

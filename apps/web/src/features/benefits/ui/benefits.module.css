@@ -1,0 +1,11 @@
+.form, .list, .record {
+  display: grid;
+  gap: var(--space-3);
+  min-inline-size: 0;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 export const enAudit = {
   "audit.consents.title": "Location consent ledger",
-  "audit.consents.permission": "Requires audit access for the selected branch.",
   "audit.consents.branch": "Branch",
   "audit.consents.all": "All authorized branches",
   "audit.consents.pick": "Select a branch",
@@ -30,7 +29,6 @@ export const enAudit = {
   "audit.consents.code.WITHDRAWN": "Withdrawn",
   "audit.consents.page": "{start}–{end} of {total}",
   "audit.findings.title": "Findings to review",
-  "audit.findings.permission": "Requires access to integrity findings.",
   "audit.findings.empty": "No findings to review",
   "audit.findings.emptyReason": "No detector has recorded a finding for this organization.",
   "audit.findings.record": "Finding",
@@ -61,7 +59,6 @@ export const enAudit = {
   "audit.findings.code.HIGH": "High",
   "audit.findings.code.CRITICAL": "Critical",
   "audit.vault.title": "Evidence vault",
-  "audit.vault.permission": "Requires organization-wide evidence access.",
   "audit.vault.search": "Find evidence",
   "audit.vault.empty": "No evidence found",
   "audit.vault.emptyReason": "No registered object matches this search.",

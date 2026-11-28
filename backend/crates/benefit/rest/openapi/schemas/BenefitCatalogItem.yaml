@@ -1,6 +1,7 @@
 type: object
-required: [id, benefit_code, category, name, scope, coverage_label, cost_label, tiers, conditions, lifecycle]
+required: [id, benefit_code, category, name, scope, coverage_label, cost_label, tiers, conditions, lifecycle, updated_at]
 properties:
+  updated_at: { type: string, format: date-time }
   id: { $ref: '#/components/schemas/Uuid' }
   benefit_code: { type: string }
   category: { type: string, enum: [legal, extra] }

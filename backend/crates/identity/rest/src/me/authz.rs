@@ -159,6 +159,7 @@ pub(crate) fn served_authz_projection(
     documents: bool,
     (read_findings, triage_findings): (bool, bool),
     ledger: bool,
+    (read_benefits, manage_benefits): (bool, bool),
 ) -> MeAuthzResponse {
     let mut response = me_authz_projection(principal);
     if documents
@@ -174,6 +175,16 @@ pub(crate) fn served_authz_projection(
         });
     }
     for (feature, name, allowed) in [
+        (
+            Feature::BenefitCatalogRead,
+            "served_benefit_catalog",
+            read_benefits,
+        ),
+        (
+            Feature::BenefitCatalogManage,
+            "served_benefit_catalog_manage",
+            manage_benefits,
+        ),
         (
             Feature::AuditLogRead,
             "served_location_consent_ledger",
@@ -229,7 +240,7 @@ mod me_authz_org_wide_tests {
             BranchScope::All,
         );
         let contains = |p: &Principal, served| {
-            served_authz_projection(p, served, (false, false), false)
+            served_authz_projection(p, served, (false, false), false, (false, false))
                 .capabilities
                 .iter()
                 .any(|cap| cap.feature == "documents")

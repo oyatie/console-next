@@ -37,6 +37,7 @@ import { koAccounts } from "./ko/accounts";
 import { koAccess } from "./ko/access";
 import { koAccessReview } from "./ko/access-review";
 import { koAccessLog } from "./ko/access-log";
+import { koBenefits } from "./ko/benefits";
 import { koAudit } from "./ko/audit";
 import { koAccessCodes } from "./ko/access-codes";
 import { koDenied } from "./ko/denied";
@@ -167,6 +168,7 @@ export const ko: Record<ScreenMessageId, string> = {
   ...koAccess,
   ...koAccessReview,
   ...koAccessLog,
+  ...koBenefits,
   ...koAudit,
   ...koAccessCodes,
   ...koDenied,

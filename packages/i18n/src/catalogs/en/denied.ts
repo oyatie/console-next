@@ -1,5 +1,10 @@
 // English for `denied.` ids (source: ../ko/denied.ts).
 export const enDenied = {
+  "denied.capability.documents": "Requires organization-wide evidence access.",
+  "denied.capability.served_integrity_findings": "Requires access to integrity findings.",
+  "denied.capability.served_integrity_triage": "Requires access to integrity findings.",
+  "denied.capability.served_location_consent_ledger": "Requires audit access for the selected branch.",
+  "denied.capability.served_benefit_catalog": "Requires benefit catalog access.",
   "denied.action.bulk_appointment": "“HR records · Create & edit · All” or “Appointments · Create & edit · All”",
   "denied.action.certificate_settings_manage": "Manage certificate numbering and seals",
   "denied.scopeKind.LEGAL_ENTITY": "Entity scope",

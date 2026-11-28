@@ -2,6 +2,7 @@ type: object
 description: Mutable catalog fields only; tenant, actor, identifiers, and lifecycle state are server-owned.
 additionalProperties: false
 properties:
+  expectedUpdatedAt: { type: string, format: date-time, description: Current item revision returned by the last catalog read. }
   category: { type: string, enum: [legal, extra] }
   name: { type: string, minLength: 1 }
   scope: { $ref: '#/components/schemas/BenefitCatalogScope' }

@@ -18276,6 +18276,8 @@ export interface components {
             conditions?: components["schemas"]["BenefitCatalogCondition"][];
         };
         BenefitCatalogItem: {
+            /** Format: date-time */
+            updated_at: string;
             id: components["schemas"]["Uuid"];
             benefit_code: string;
             /** @enum {string} */
@@ -18316,9 +18318,19 @@ export interface components {
             retention_until?: string | null;
         };
         BenefitCatalogReplaceConditionsRequest: {
+            /**
+             * Format: date-time
+             * @description Current item revision returned by the last catalog read.
+             */
+            expectedUpdatedAt?: string;
             conditions: components["schemas"]["BenefitCatalogCondition"][];
         };
         BenefitCatalogReplaceTiersRequest: {
+            /**
+             * Format: date-time
+             * @description Current item revision returned by the last catalog read.
+             */
+            expectedUpdatedAt?: string;
             tiers: components["schemas"]["BenefitCatalogTier"][];
         };
         BenefitCatalogScope: {
@@ -18344,6 +18356,11 @@ export interface components {
         };
         /** @description Mutable catalog fields only; tenant, actor, identifiers, and lifecycle state are server-owned. */
         BenefitCatalogUpdateRequest: {
+            /**
+             * Format: date-time
+             * @description Current item revision returned by the last catalog read.
+             */
+            expectedUpdatedAt?: string;
             /** @enum {string} */
             category?: "legal" | "extra";
             name?: string;
@@ -38895,6 +38912,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
         };
     };
@@ -38925,6 +38943,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
         };
     };
@@ -38955,6 +38974,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
         };
     };

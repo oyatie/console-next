@@ -101,6 +101,7 @@
       "src/features/periods/ui/period-lock-page.tsx",
       "src/features/platform/Tenants.tsx",
       "src/features/settings/ui/screen-style-sheet.tsx",
+      "src/features/benefits/ui/benefits-page.tsx",
       "src/features/settings/ui/settings-hub.tsx",
       "src/features/statutory/ui/statutory-page.tsx",
       "src/features/structure/ui/structure-console.tsx",

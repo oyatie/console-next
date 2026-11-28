@@ -2,6 +2,11 @@
 // worst-case-44). Rules: the header of ../ko.ts and GUIDE.md.
 import type { enDenied } from "../en/denied";
 export const koDenied: Record<keyof typeof enDenied, string> = {
+  "denied.capability.documents": "조직 전체 증거 접근 권한이 필요합니다.",
+  "denied.capability.served_integrity_findings": "무결성 검토 항목 조회 권한이 필요합니다.",
+  "denied.capability.served_integrity_triage": "무결성 검토 항목 조회 권한이 필요합니다.",
+  "denied.capability.served_location_consent_ledger": "선택한 지점의 감사 조회 권한이 필요합니다.",
+  "denied.capability.served_benefit_catalog": "복리후생 항목 조회 권한이 필요합니다.",
   "denied.action.bulk_appointment": "「인사기본 · 등록·수정 · 전체」 또는 「발령 · 등록·수정 · 전체」",
   "denied.action.certificate_settings_manage": "번호·직인 설정 관리",
   "denied.scopeKind.LEGAL_ENTITY": "법인 범위",

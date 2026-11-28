@@ -2,7 +2,6 @@
 import type { enAudit } from "../en/audit";
 export const koAudit: Record<keyof typeof enAudit, string> = {
   "audit.consents.title": "위치정보 동의 이력",
-  "audit.consents.permission": "선택한 지점의 감사 조회 권한이 필요합니다.",
   "audit.consents.branch": "지점",
   "audit.consents.all": "권한이 있는 전체 지점",
   "audit.consents.pick": "지점 선택",
@@ -31,7 +30,6 @@ export const koAudit: Record<keyof typeof enAudit, string> = {
   "audit.consents.code.WITHDRAWN": "동의 회수",
   "audit.consents.page": "{total}건 중 {start}–{end}",
   "audit.findings.title": "검토 항목",
-  "audit.findings.permission": "무결성 검토 항목 조회 권한이 필요합니다.",
   "audit.findings.empty": "검토 항목 없음",
   "audit.findings.emptyReason": "이 조직에서 탐지된 검토 항목이 없습니다.",
   "audit.findings.record": "검토 항목",
@@ -62,7 +60,6 @@ export const koAudit: Record<keyof typeof enAudit, string> = {
   "audit.findings.code.HIGH": "높음",
   "audit.findings.code.CRITICAL": "긴급",
   "audit.vault.title": "증거 보관함",
-  "audit.vault.permission": "조직 전체 증거 접근 권한이 필요합니다.",
   "audit.vault.search": "증거 검색",
   "audit.vault.empty": "검색된 증거가 없습니다",
   "audit.vault.emptyReason": "조건에 맞는 등록 증거가 없습니다.",

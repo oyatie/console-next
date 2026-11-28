@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { createRoute, lazyRouteComponent, type AnyRoute } from "@tanstack/react-router";
 import { app, screen } from "./app";
+import { servedRouteReads } from "./route-reads";
 import { settingsRequirement } from "../shell/settings-views";
 
 export const settingsRoute = createRoute({
@@ -16,4 +17,11 @@ export const settingsRoute = createRoute({
     section: typeof search.section === "string" ? search.section : undefined,
   }),
   component: lazyRouteComponent(screen(() => import("../features/settings/ui/settings-hub")), "SettingsHub"),
+});
+
+export const benefitsRoute = createRoute({
+  getParentRoute: () => app,
+  path: "/benefits",
+  staticData: { access: servedRouteReads["/benefits"].access, floorplan: "P-05", pattern: "settings" },
+  component: lazyRouteComponent(screen(() => import("../features/benefits/ui/benefits-page")), "BenefitsPage"),
 });

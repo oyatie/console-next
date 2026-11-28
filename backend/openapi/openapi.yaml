@@ -6076,6 +6076,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/ValidationError' }
   /api/v1/benefit-catalog/items/{benefit_id}/conditions:
     put:
@@ -6090,6 +6091,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/ValidationError' }
   /api/v1/benefit-catalog/items/{benefit_id}/tiers:
     put:
@@ -6104,6 +6106,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/ValidationError' }
   /api/v1/branches:
     get:
@@ -39969,8 +39972,9 @@ components:
         conditions: { type: array, items: { $ref: '#/components/schemas/BenefitCatalogCondition' } }
     BenefitCatalogItem:
       type: object
-      required: [id, benefit_code, category, name, scope, coverage_label, cost_label, tiers, conditions, lifecycle]
+      required: [id, benefit_code, category, name, scope, coverage_label, cost_label, tiers, conditions, lifecycle, updated_at]
       properties:
+        updated_at: { type: string, format: date-time }
         id: { $ref: '#/components/schemas/Uuid' }
         benefit_code: { type: string }
         category: { type: string, enum: [legal, extra] }
@@ -40013,12 +40017,14 @@ components:
       additionalProperties: false
       required: [conditions]
       properties:
+        expectedUpdatedAt: { type: string, format: date-time, description: Current item revision returned by the last catalog read. }
         conditions: { type: array, items: { $ref: '#/components/schemas/BenefitCatalogCondition' } }
     BenefitCatalogReplaceTiersRequest:
       type: object
       additionalProperties: false
       required: [tiers]
       properties:
+        expectedUpdatedAt: { type: string, format: date-time, description: Current item revision returned by the last catalog read. }
         tiers: { type: array, items: { $ref: '#/components/schemas/BenefitCatalogTier' } }
     BenefitCatalogScope:
       type: object
@@ -40048,6 +40054,7 @@ components:
       description: Mutable catalog fields only; tenant, actor, identifiers, and lifecycle state are server-owned.
       additionalProperties: false
       properties:
+        expectedUpdatedAt: { type: string, format: date-time, description: Current item revision returned by the last catalog read. }
         category: { type: string, enum: [legal, extra] }
         name: { type: string, minLength: 1 }
         scope: { $ref: '#/components/schemas/BenefitCatalogScope' }
