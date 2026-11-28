@@ -57,7 +57,8 @@ jobs:
       matrix:
         shard: [1, 2, 3, 4]
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 120
+    # A cold build of both Rust profiles can take 82 minutes before tests start.
+    timeout-minutes: 150
     permissions:
       actions: read
       contents: read
