@@ -17,10 +17,16 @@ for (const kind of ["CORPORATION", "INDIVIDUAL"] as const) for (const width of [
     if (kind === "CORPORATION") await mockRoute(page, "get", "/api/v1/legal-entities", { status: 200, json: { items: [entityRecord("populated")] } });
     try {
       await page.goto(`/org/entities/new?kind=${kind}&name=${encodeURIComponent("검증사업자")}`);
-      await expectAxe(page, `entity-create/${kind === "CORPORATION" ? "certificate" : "individual"}/${width}`);
       // Main only: the Console bar's search button names the same field among what it finds.
       const brn = page.getByRole("main").getByLabel(t("entityCreate.field.brn"));
       const opened = page.getByLabel(t("entityCreate.field.openedOn"));
+      await expect(opened).toBeVisible();
+      if (width === 390) {
+        // Exercise both controls with the real phone navigation pinned before scanning the settled form.
+        await opened.click({ trial: true });
+        await opened.locator("..").getByRole("button", { name: t("uiDate.calendar.open") }).click({ trial: true });
+      }
+      await expectAxe(page, `entity-create/${kind === "CORPORATION" ? "certificate" : "individual"}/${width}`);
       const business = page.getByRole("group", { name: t("entityCreate.business.label"), exact: true });
       const sector = business.getByRole("textbox", { name: t("entityCreate.business.sectorOf", { n: 1 }), exact: true });
       const item = business.getByRole("textbox", { name: t("entityCreate.business.itemOf", { n: 1 }), exact: true });

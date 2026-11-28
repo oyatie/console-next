@@ -98,8 +98,8 @@ function ConsoleLayout({
   const navItems: readonly ModuleNavItem[] = useMemo(() => {
     const base = allLinks.map(link =>
       link.countKey === "inbox"
-        ? { id: link.to, href: link.to, label: t(link.label), count: inboxCount, countMore: !inboxExact, name: inboxName, description: inboxDescription }
-        : { id: link.to, href: link.to, label: t(link.label), count: link.countKey === "approvals" ? approvalsCount : undefined },
+        ? { id: link.to, href: link.to, label: t(link.label), reserveCount: true, count: inboxCount, countMore: !inboxExact, name: inboxName, description: inboxDescription }
+        : { id: link.to, href: link.to, label: t(link.label), reserveCount: link.countKey === "approvals", count: link.countKey === "approvals" ? approvalsCount : undefined },
     );
     return showMyDesk ? [...base, { id: "/me/desk", href: "/me/desk", label: t("shell.link.meDesk") }] : base;
   }, [allLinks, inboxCount, inboxExact, inboxName, inboxDescription, approvalsCount, showMyDesk]);
