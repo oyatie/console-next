@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Page } from "@playwright/test";
-import AxeBuilder from "@axe-core/playwright";
 import { loadCatalog, t } from "@console/i18n";
 import { mockScreen } from "./screen";
 import { mockRoute } from "./route";
@@ -134,7 +133,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await expect(queueRows(page)).toHaveCount(8);
     await expect(queueRows(page).first()).toContainText("추가 확인 사유");
     await page.screenshot({ path: info.outputPath(`inbox-populated-${width}-${theme}.png`), fullPage: true });
-    expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze()).violations).toEqual([]);
+    await expectAxe(page, `inbox populated at ${width}px ${theme}`);
     await main.getByRole("button", { name: t("home.inbox.more"), exact: true }).click();
     await expect(queueRows(page).and(page.locator('[data-id="second-page"]'))).toContainText("다음 페이지 직원");
     await scheduled.click();
@@ -145,7 +144,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await page.reload();
     await expect(scheduled).toHaveAttribute("aria-pressed", "true");
     expect(await page.locator("main").evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
-    expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze()).violations).toEqual([]);
+    await expectAxe(page, `inbox scheduled at ${width}px ${theme}`);
     await page.screenshot({ path: info.outputPath(`inbox-${width}-${theme}.png`), fullPage: true });
     await page.goBack();
     await expect(page).toHaveURL(/\/$/);

@@ -67,7 +67,7 @@ export function RegisterTabMain({
           ...data.headers.map((header, i) => ({
             id: `col-${i}`,
             header,
-            card: (i === 1 ? "title" : i === 0 || i === 2 ? "fact" : "omit") as LongColumn<RegisterPage["items"][number]>["card"],
+            card: (i === 1 ? "title" : "fact") as LongColumn<RegisterPage["items"][number]>["card"],
             rowHeader: i === 1,
             minWidth: i === 1 ? 120 : 100,
             cell: (r: RegisterPage["items"][number]) =>
@@ -118,6 +118,7 @@ export function RegisterTabMain({
                 <Table
                   label={t("statutory.register")}
                   mobileLayout="rows"
+                  onSelect={() => undefined}
                   rows={data.items}
                   rowId={(r) => r.employee_id}
                   columns={regCols.map(({ width: _width, ...col }) => col)}

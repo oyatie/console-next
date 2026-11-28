@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { lazy, Suspense, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
+import { getRouteApi, Link } from "@tanstack/react-router";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { HeartPulse, SlidersHorizontal, Upload } from "lucide-react";
@@ -78,7 +78,6 @@ export function RosterConsole({
   } = screen;
 
   const isPhone = useSyncExternalStore(subscribePhone, getPhoneSnapshot, getPhoneServerSnapshot);
-  const consoleNavigate = useNavigate();
   const [colsOpen, setColsOpen] = useState(false);
   const [expandedEntities, setExpandedEntities] = useState<Set<string>>(() => new Set());
   const [empTypes, setEmpTypes] = useState<Set<EmpType>>(() => new Set());
@@ -164,7 +163,7 @@ export function RosterConsole({
             {actions}
           </div>
         ),
-        primary: manage ? { id: "register", label: t("people.tools.add"), onAction: () => void consoleNavigate({ to: "/people/new", search: {} }) } : undefined,
+        primary: manage ? <Link className={buttonClass("primary")} to="/people/new" search={{}}>{t("people.register")}</Link> : undefined,
       }}
       find={<div ref={findInputRef} className={s.consoleFind} data-list-find=""><WorklistSearchField label={t("roster.find")} value={q} onChange={find} /></div>}
       // A phone moves the sort and saved views together to the filter bar, which comes with the read list, so the head keeps one row.
@@ -232,10 +231,8 @@ export function RosterConsole({
       foot={
         !voided && !firstRun && displayedRows.length > 0 ? (
           <ListSummaryFooter
-            label={t("roster.foot.label")}
             start={
               <>
-                <strong className={s.footRange}>{t("roster.foot.range", { shown: displayedRows.length, total: rangeTotal })}</strong>
                 <bdi>{t("people.foot.typeCount", { label: label(EMPLOYMENT_TYPE, "REGULAR"), count: displayedRows.filter(e => e.employment_type === "REGULAR").length })}</bdi>
                 <bdi>{t("people.foot.typeCount", { label: label(EMPLOYMENT_TYPE, "CONTRACT"), count: displayedRows.filter(e => e.employment_type === "CONTRACT").length })}</bdi>
                 <bdi>{t("people.foot.typeCount", { label: label(EMPLOYMENT_TYPE, "PART_TIME"), count: displayedRows.filter(e => e.employment_type === "PART_TIME").length })}</bdi>

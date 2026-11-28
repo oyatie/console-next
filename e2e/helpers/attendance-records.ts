@@ -10,11 +10,13 @@ import { sheet } from "../sheet";
  * month timesheet has past work days to record.
  */
 export async function officeSchedule(admin: Page, entry: AttendanceEntry = "direct") {
+  await loadCatalog("ko");
+  const viewsNav = admin.getByRole("navigation", { name: t("attendance.views"), exact: true });
   await openSchedule(admin, entry);
-  await admin.getByRole("tab", { name: /근무 유형/ }).click();
+  await admin.getByRole("tab", { name: /근무 유형/ }).or(viewsNav.getByRole("button", { name: t("attendance.view.types"), exact: true })).click();
   const p = await draftWeekly(admin, "사무 09–18", ["09:00", "18:00", "12:00", "13:00"]);
   await p.getByRole("button", { name: "사무 09–18 추가" }).click();
-  await admin.getByRole("tab", { name: "달력" }).click();
+  await admin.getByRole("tab", { name: "달력" }).or(viewsNav.getByRole("button", { name: t("attendance.view.calendar"), exact: true })).click();
   await admin.getByRole("button", { name: "이 범위에 근무 일정 지정" }).click();
   const s = sheet(admin, "근무 일정 지정");
   await s.getByRole("combobox", { name: /^근무 유형/ }).selectOption({ label: "사무 09–18" });

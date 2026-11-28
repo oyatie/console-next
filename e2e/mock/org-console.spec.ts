@@ -193,7 +193,7 @@ for (const width of [1440, 390] as const) {
         await page.goto("/org");
         await expect(page.locator('[data-pattern="canvas"]')).toBeVisible();
         await expect(page.locator("h1")).toHaveCount(1);
-        await expect(page.getByRole("button", { name: t(`structure.view.${width === 390 ? "list" : "chart"}`), exact: true })).toHaveAttribute("aria-pressed", "true");
+        await expect(page.getByRole("button", { name: t("structure.view.chart"), exact: true })).toHaveAttribute("aria-pressed", "true");
         await expectAxe(page, `/org/${width}/${theme}`);
         await fits(page, `/org/${width}/${theme}`);
         await capture(page, width, "org", theme, width === 1440);

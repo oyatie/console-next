@@ -190,7 +190,6 @@ export const enPeople = {
   "people.col.role": "Role",
   "people.col.missing": "Missing",
   "people.tools.columns": "Columns",
-  "people.tools.add": "Register",
   "people.foot.typeCount": "{label} {count, number}",
   "people.foot.missingCount": "{count, number} missing info",
   "people.status.barCount": "{status} {count, number}",

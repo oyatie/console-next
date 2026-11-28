@@ -192,6 +192,7 @@ export function ExitCaseListContent({ status, onStatus: pick, tabs }: { status?:
           views={
             <WorklistSegmentBar
               label={t("exit.list.chips")}
+              phoneSelect
               size="sm"
               value={status ?? "__all__"}
               onChange={(id) => pick(id === "__all__" ? undefined : (id as ExitFilter))}

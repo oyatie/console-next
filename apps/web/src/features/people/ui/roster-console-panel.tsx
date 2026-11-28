@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useState, type RefObject } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { Building2, FileText, MoveRight, Pencil } from "lucide-react";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
@@ -12,7 +12,6 @@ import { accessRefusal } from "../../../reference/authz/domain/access";
 import { operationAccess } from "../../../reference/authz/domain/operation-access";
 import { moduleReady, modulesQuery } from "../../../reference/onboarding/api";
 import { Button } from "../../../ui/button/button";
-import { buttonClass } from "../../../ui/button/button-class";
 import { Chip } from "../../../ui/chip";
 import { RecordIdentityBar, RecordPaneSection } from "../../../ui/patterns/list-record-parts";
 import { Tabs, type TabItem } from "../../../ui/tabs/tabs";
@@ -179,29 +178,24 @@ function ConsolePeek({
           )
         }
         actions={
-          <>
-            <Link className={buttonClass("secondary", { size: "sm" })} to="/people/$id" params={{ id: e.id }}>
-              {t("people.panel.open")}
-            </Link>
-            {c.editable ? (
-              <>
-                {firstAct ? (
-                  <Button size="sm" variant="secondary" onClick={() => openCard(firstAct)}>
-                    <MoveRight size={12} aria-hidden="true" />
-                    {t("people.panel.act.appoint")}
-                  </Button>
-                ) : null}
-                <Button size="sm" variant="secondary" onClick={() => openCard("multi")}>
-                  <Pencil size={12} aria-hidden="true" />
-                  {t("people.panel.act.edit")}
+          c.editable ? (
+            <>
+              {firstAct ? (
+                <Button size="sm" variant="secondary" onClick={() => openCard(firstAct)}>
+                  <MoveRight size={12} aria-hidden="true" />
+                  {t("people.panel.act.appoint")}
                 </Button>
-                <Button size="sm" variant="secondary" onClick={() => openCard("cert")}>
-                  <FileText size={12} aria-hidden="true" />
-                  {t("people.panel.act.cert")}
-                </Button>
-              </>
-            ) : null}
-          </>
+              ) : null}
+              <Button size="sm" variant="secondary" onClick={() => openCard("multi")}>
+                <Pencil size={12} aria-hidden="true" />
+                {t("people.panel.act.edit")}
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => openCard("cert")}>
+                <FileText size={12} aria-hidden="true" />
+                {t("people.panel.act.cert")}
+              </Button>
+            </>
+          ) : null
         }
       />
 

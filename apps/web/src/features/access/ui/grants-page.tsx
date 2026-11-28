@@ -123,7 +123,7 @@ export function GrantsPage({ role }: { role?: string }) {
             )}
       </Card>}</QueryState>
       {/* Last on the page: it appears once its read lands, so it moves nothing above it. */}
-      {!pageRead.error && <AccessRequests accounts={ctx.accounts} onGrant={setGranting} />}
+      {Boolean(pageRead.data && !pageRead.error) && <AccessRequests accounts={ctx.accounts} onGrant={setGranting} />}
       {picking && <Dialog open title={t("access.grants.new")} onClose={() => setPicking(false)}>
         <QueryState q={ctx.q} layout="list">{() => <AccountPick
           accounts={ctx.accounts} ops={ctx.opsIds} loading={ctx.accountsQ.isFetching}

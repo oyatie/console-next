@@ -217,8 +217,8 @@ test("Console /people interactive filters (StatRow, FilterRail, IndexBar), side-
     await sidePane.getByRole("tab", { name: t("people.panel.tab.basic"), exact: true }).click();
 
     // FilterRail: check CONTRACT employment type across full roster, then reset with Clear button
-    const viewSummary = page.getByRole("note", { name: t("roster.foot.label") }).locator("strong").first();
-    const parseViewCount = async () => Number(((await viewSummary.innerText()).split("/")[0] ?? "").replace(/[^\d]/g, ""));
+    const indexRegion = page.getByRole("region", { name: t("people.index.label"), exact: true });
+    const parseViewCount = async () => Number(((await indexRegion.innerText()).split("/")[1] ?? "").replace(/[^\d]/g, ""));
     const regularFooter = pattern.getByText(t("people.foot.typeCount", { label: t("enum.employmentType.REGULAR"), count: 0 }), { exact: true });
     const beforeContract = await parseViewCount();
     expect(beforeContract).toBeGreaterThan(0);

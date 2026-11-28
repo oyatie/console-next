@@ -32,7 +32,8 @@ for (const state of Object.keys(screen.states) as AttendanceState[]) for (const 
   });
 }
 
-test("a held date read reserves the day panel without the previous date's notice", async ({ page }) => {
+test("a held date read reserves the day panel without the previous date's notice", async ({ page }, { project: { use: { storageState } } }) => {
+  const baseline = seededExperience(storageState) === "baseline";
   await page.addInitScript(recordShifts);
   const fixture = await mockScreen(page, screens[0], "populated");
   let release!: () => void;
@@ -69,12 +70,16 @@ test("a held date read reserves the day panel without the previous date's notice
   await previous.click();
   await expect.poll(() => requested).toBe(true);
   await expect(page.locator('[data-read-layout="grid"]')).toBeVisible();
+  const population = baseline
+    ? page.getByText(/^근태 대상/)
+    : page.getByRole("term").filter({ hasText: new RegExp(`^${t("attendance.monthConsole.summary.scope")}$`) }).locator("xpath=following-sibling::dd[1]");
   await expect(notice).toHaveCount(0);
-  await expect(page.getByText(/^근태 대상/)).toHaveCount(0);
+  await expect(population).toHaveCount(0);
   expect(await nav.boundingBox()).toEqual(navBox);
   await expect(previous).toBeFocused();
   release();
-  await expect(page.getByText(/^근태 대상 1명/)).toBeVisible();
+  if (baseline) await expect(page.getByText(/^근태 대상 1명/)).toBeVisible();
+  else await expect(population).toHaveText(t("attendance.people", { count: 1 }));
   await expect(page.locator("[data-read-layout]")).toHaveCount(0);
   expect(await nav.boundingBox()).toEqual(navBox);
   await expect(previous).toBeFocused();

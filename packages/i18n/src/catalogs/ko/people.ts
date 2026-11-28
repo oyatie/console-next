@@ -196,7 +196,6 @@ export const koPeople: Record<keyof typeof enPeople, string> = {
   "people.col.role": "직책",
   "people.col.missing": "누락",
   "people.tools.columns": "열 설정",
-  "people.tools.add": "등록",
   "people.foot.typeCount": "{label} {count, number}",
   "people.foot.missingCount": "누락 정보 {count, number}명",
   "people.status.barCount": "{status} {count, number}명",

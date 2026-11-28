@@ -122,7 +122,7 @@
     padding: 0;
   }
 
-  :where([data-experience]:not([data-experience="baseline"])) .canvasHost {
+  :where([data-experience]:not([data-experience="baseline"])) .canvasHost:not(:has([role="grid"])) {
     height: calc(var(--row-h) * 7);
     min-height: calc(var(--row-h) * 7);
     flex: none;

@@ -6,7 +6,7 @@ import { t } from "@console/i18n";
 import { applyKeys, shownKeys, type Selection } from "./selection";
 import { SelectionBar } from "./selection-bar";
 import { Box, Skeleton } from "./long-table-parts";
-import { LAYOUT, rowId, rowKey, SELECT, SELECT_WIDTH, SKELETON_ROWS } from "./long-table-constants";
+import { LAYOUT, rowId, rowKey, SELECT, SELECT_WIDTH, SKELETON_ROWS, tokenRowHeight } from "./long-table-constants";
 import { editable, leaveImeKey, listenRowKeys, rowIdOf } from "./row-keys";
 import css from "./long-table.module.css";
 import { useSettledHover } from "./use-settled-hover";
@@ -161,13 +161,12 @@ export function LongTable<R>(p: {
     return () => (el.removeEventListener("focusin", focus), keys?.());
   }, [hasFind, hasRowKeys]);
   const density = p.density ?? "regular";
+  const rowH = tokenRowHeight(density);
   const layout = useMemo(() => ({
     ...LAYOUT[density],
     headingHeight: cardLayout && !p.selection ? 0 : Math.max(LAYOUT[density].headingHeight, p.selection ? Math.ceil(headCheckHeight) + 1 : 0),
-    estimatedRowHeight: cardLayout
-      ? (cardHeight ?? (mobileLayout === "compact" ? 56 : LAYOUT[density].estimatedRowHeight))
-      : p.editable ? LAYOUT[density].estimatedRowHeight * 2 : LAYOUT[density].estimatedRowHeight,
-  }), [cardLayout, cardHeight, density, headCheckHeight, mobileLayout, p.editable, p.selection]);
+    estimatedRowHeight: cardLayout ? (cardHeight ?? (mobileLayout === "compact" ? 56 : rowH)) : p.editable ? rowH * 2 : rowH,
+  }), [cardLayout, cardHeight, density, headCheckHeight, mobileLayout, p.editable, p.selection, rowH]);
   const loaded = p.rows.map(p.rowId);
   const indices = new Map(p.rows.map((r, i) => [p.rowId(r), p.rowIndex?.(r) ?? i + 1]));
   const sel = p.selection;

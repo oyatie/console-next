@@ -17,7 +17,7 @@
 .th svg { flex-shrink: 0; }
 .thLabel { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; min-width: 0; overflow: hidden; }
 /* Keep rendered rows tappable during the virtualizer's scroll debounce. */
-.row { border-bottom: 1px solid var(--border-soft); background: var(--surface); outline: none; cursor: default; pointer-events: auto; }
+.row { height: 100%; box-sizing: border-box; border-bottom: 1px solid var(--border-soft); background: var(--surface); outline: none; cursor: default; pointer-events: auto; }
 .row[data-href], .row[data-action] { cursor: pointer; }
 .row[data-hovered] { background: var(--muted); }
 .row[data-selected] { background: var(--primary-soft); }

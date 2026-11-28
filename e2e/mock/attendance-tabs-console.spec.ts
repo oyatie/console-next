@@ -164,7 +164,7 @@ test("Console /attendance Issues opens detail pane via exceptionDetailQuery and 
   const { fixture, exceptionsPage, dayBoard } = await setupAttendanceTabs(page, "light");
   try {
     await page.goto("/attendance?tab=issues&month=2026-10");
-    await page.getByText(exceptionsPage.items[0]!.employee_name, { exact: true }).first().click();
+    await page.getByRole("grid", { name: t("attendance.tab.issues"), exact: true }).locator('[data-row-id] [role="gridcell"]').first().click();
     const pane = page.locator('aside[data-pane="record"]');
     await expect(pane).toBeVisible();
     await expect(pane).toContainText(exceptionsPage.items[0]!.detail);

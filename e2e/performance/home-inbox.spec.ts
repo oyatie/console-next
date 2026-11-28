@@ -27,15 +27,15 @@ test("served 2,000-person Home and its inbox stay within 2 seconds under burst",
     const permits = Number(process.env.CONSOLE_ACTION_INBOX_SOURCE_CONCURRENCY ?? configured);
     expect(permits).toBeGreaterThan(0);
     await admin.setViewportSize({ width: 1440, height: 900 });
-    await admin.addInitScript(() => {
+    await admin.addInitScript((inboxTitle) => {
       const observer = new MutationObserver(() => {
-        const row = document.querySelector('[aria-labelledby="inbox-title"] [data-id]');
+        const row = document.querySelector(`[aria-labelledby="inbox-title"] [data-id], [role="grid"][aria-label=${JSON.stringify(inboxTitle)}] [data-id]`);
         if (!row?.textContent?.trim()) return;
         observer.disconnect();
         requestAnimationFrame(() => performance.mark("home:first-rows"));
       });
       observer.observe(document, { subtree: true, childList: true });
-    });
+    }, t("home.inbox.title"));
     let arrivalReads = 0;
     const isArrival = (message: { url(): string }) => {
       const url = new URL(message.url());

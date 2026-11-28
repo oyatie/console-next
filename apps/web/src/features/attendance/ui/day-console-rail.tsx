@@ -28,7 +28,7 @@ export function DayLedgerStats({ ledger }: { ledger: DayBoard["ledger"] }) {
     <StatRow
       label={t("attendanceRecords.toolbar.label")}
       items={[
-        { key: "people", label: t("attendance.monthConsole.summary.scope"), value: t("attendanceRecords.board.ledgerHead", { people: ledger.people }) },
+        { key: "people", label: t("attendance.monthConsole.summary.scope"), value: t("attendance.people", { count: ledger.people }) },
         ...(ledger.normal > 0 ? [{ key: "normal", label: t("attendanceRecords.ledger.normal", { count: ledger.normal }), value: ledger.normal, tone: "ok" as const }] : []),
         ...(ledger.no_record > 0 ? [{ key: "noRecord", label: t("attendanceRecords.mark.NO_RECORD"), value: ledger.no_record, tone: "danger" as const }] : []),
         ...(ledger.missing_out > 0 ? [{ key: "missingOut", label: t("attendanceRecords.mark.MISSING_OUT"), value: ledger.missing_out, tone: "danger" as const }] : []),
