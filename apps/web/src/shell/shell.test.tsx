@@ -98,7 +98,7 @@ test.each([
   try {
     session.set(token());
     const rail = renderToStaticMarkup(<QueryClientProvider client={client}><Shell /></QueryClientProvider>).split("</nav>")[0]!;
-    expect(client.getQueryCache().find(checklistQuery)?.options).toMatchObject({ enabled });
+    expect(client.getQueryCache().find(checklistQuery)?.options).toMatchObject({ subscribed: enabled });
     expect(rail.includes('href="/"')).toBe(!enabled);
   } finally { session.set(null); client.clear(); }
 });
