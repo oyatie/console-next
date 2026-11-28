@@ -1,24 +1,18 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
-import { ClipboardPaste, ListPlus, Users } from "lucide-react";
+import { Users } from "lucide-react";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { chunk } from "../../../lib/chunk-guard";
 import { phoneE164 } from "../../../lib/pure/formats";
-import { modHint } from "../../../lib/mod-hint";
 import { todayKst } from "../../../lib/pure/today";
 import { CommandError } from "../../../lib/react/command-error";
 import { useKeys } from "../../../lib/react/use-keys";
 import { checklistRef, entitiesRef, orgStructureRef } from "../../../reference/entity/api";
 import { entityName } from "../../../reference/entity/domain/names";
 import { unitsQuery } from "../../../reference/org/api";
-import { Button } from "../../../ui/button/button";
-import { buttonClass } from "../../../ui/button/button-class";
-import { commitLabel } from "../../../ui/composer/actions";
 import { Composer } from "../../../ui/composer/composer";
-import { Kbd } from "../../../ui/kbd/kbd";
 import { ExperienceSwitch } from "../../../ui/patterns/experience-switch";
 import { duplicateCandidates, numberHolder, problemOf } from "../api";
 import { EMPTY, gaps, nextPerson, NO_PICK, type Draft, type DupPick } from "../domain/register";
@@ -35,6 +29,7 @@ import s from "./register.module.css";
 
 const RegisterDup = lazy(() => chunk(import("./register-dup")).then((m) => ({ default: m.RegisterDup })));
 const RegisterToast = lazy(() => chunk(import("./register-toast")).then((m) => ({ default: m.RegisterToast })));
+const RegisterClassicFooter = lazy(() => chunk(import("./register-classic-footer")).then(m => ({ default: m.RegisterClassicFooter })));
 const RegisterConsoleFooter = lazy(() => chunk(import("./register-console-footer")).then((m) => ({ default: m.RegisterConsoleFooter })));
 
 const focusFirst = (root: HTMLElement | null) =>
@@ -149,11 +144,7 @@ function RegisterSheetInner({ preset, onClose, onOpen, onRehire, consoleMode }: 
         </Suspense>
       ) : undefined}
       secondary={consoleMode ? undefined : (
-        <>
-          <Link to="/people/import" className={buttonClass("ghost", { className: s.many })}><ClipboardPaste size={16} aria-hidden />{t("register.many")}</Link>
-          <Link to="/people/run" className={buttonClass("ghost")}><ListPlus size={16} aria-hidden />{t("register.run.open")}</Link>
-          <Button disabled={reg.isPending} onClick={() => submit(false)}>{commitLabel({ kind: "ONBOARD", mode: "apply", count: 1 })}<Kbd keys={modHint("⇧↵")} /></Button>
-        </>
+        <Suspense fallback={null}><RegisterClassicFooter disabled={reg.isPending} onSubmit={() => submit(false)} /></Suspense>
       )}
     >
       <div ref={body} className={s.form}>
