@@ -38,6 +38,7 @@ export const TENANT_NAV: readonly NavHub[] = [
     { to: "/statutory", label: "shell.link.statutory", icon: ScrollText, module: "statutory" },
   ] },
   { hub: "shell.hub.admin", links: [
+    { to: "/compliance/evidence", label: "compliance.evidence", icon: ClipboardCheck },
     { to: "/compliance", label: "compliance.title", icon: ClipboardCheck },
     { to: "/access", label: "shell.link.access", icon: KeyRound, module: "access" },
     { to: "/audit", label: "shell.link.audit", icon: FileText, supportApproval: true },

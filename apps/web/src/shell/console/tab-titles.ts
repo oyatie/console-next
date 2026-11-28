@@ -21,6 +21,7 @@ const STATIC_ROUTES: Readonly<Record<string, MessageId>> = {
   "/payslips": "shell.title.payslip",
   "/me/attendance": "shell.link.meAttendance",
   "/evaluation": "evaluation.title",
+  "/compliance/evidence/new": "compliance.propose",
   "/compliance/new": "compliance.create",
   "/evaluation/new": "evaluation.create",
   "/me/evaluations": "me.evaluation.title",

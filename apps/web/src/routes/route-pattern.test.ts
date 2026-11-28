@@ -94,6 +94,8 @@ test("the screens drawn through built patterns declare them, and no other route 
     "/consulting/engagements/$engagementId": "record",
     "/compliance": "list-record",
     "/compliance/new": "form",
+    "/compliance/evidence": "worklist",
+    "/compliance/evidence/new": "form",
     "/evaluation": "list-record",
     "/evaluation/new": "form",
     "/me/evaluations": "list-record",

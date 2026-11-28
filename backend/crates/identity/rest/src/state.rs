@@ -10,6 +10,7 @@ use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct IdentityRestState {
+    pub(crate) evidence_access: fn(&console_platform_authz::Principal) -> (bool, bool, bool),
     pub(crate) compliance_access: fn(&console_platform_authz::Principal) -> (bool, bool),
     pub(crate) integrity_access: fn(&console_platform_authz::Principal) -> (bool, bool),
     pub(crate) evaluation_tasks: fn(&console_platform_authz::Principal) -> bool,
@@ -42,6 +43,7 @@ impl IdentityRestState {
             ledger_access: |_| false,
             documents_served: false,
             projection_available: |_| false,
+            evidence_access: |_| (false, false, false),
             compliance_access: |_| (false, false),
             integrity_access: |_| (false, false),
             store,
@@ -87,6 +89,15 @@ impl IdentityRestState {
         access: fn(&console_platform_authz::Principal) -> bool,
     ) -> Self {
         self.evaluation_tasks = access;
+        self
+    }
+
+    #[must_use]
+    pub fn with_evidence_access(
+        mut self,
+        access: fn(&console_platform_authz::Principal) -> (bool, bool, bool),
+    ) -> Self {
+        self.evidence_access = access;
         self
     }
 

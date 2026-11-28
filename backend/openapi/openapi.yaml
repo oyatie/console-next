@@ -7705,11 +7705,14 @@ paths:
       operationId: createComplianceEvidenceBinding
       summary: Create an audited evidence binding
       security: [{ bearerAuth: [] }]
+      parameters:
+      - { name: Idempotency-Key, in: header, required: false, schema: { type: string }, description: Reuse this key for a retry of the same evidence command. }
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CreateEvidenceBindingRequest' } } } }
       responses:
         '200': { description: Created evidence binding., content: { application/json: { schema: { $ref: '#/components/schemas/EvidenceBinding' } } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/ValidationError' }
         '500': { $ref: '#/components/responses/InternalServerError' }
         '503': { $ref: '#/components/responses/ServiceUnavailable' }
@@ -7723,6 +7726,7 @@ paths:
         preserves evidence identity and provenance and records an audit snapshot.
       security: [{ bearerAuth: [] }]
       parameters:
+      - { name: Idempotency-Key, in: header, required: false, schema: { type: string }, description: Reuse this key for a retry of the same evidence command. }
       - { name: id, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
       responses:
         '200': { description: Accepted evidence binding., content: { application/json: { schema: { $ref: '#/components/schemas/EvidenceBinding' } } } }
@@ -41916,7 +41920,7 @@ components:
         control_type: { $ref: '#/components/schemas/ControlType' }
         cadence: { type: [string, 'null'], enum: [CONTINUOUS, DAILY, WEEKLY, MONTHLY, QUARTERLY, ANNUAL, EVENT_DRIVEN, null] }
         status: { $ref: '#/components/schemas/ControlStatus' }
-        evidence_requirements: { type: object, additionalProperties: true }
+        evidence_requirements: { type: array, items: {} }
         owner_user_id: { type: [string, 'null'], format: uuid }
         created_by: { $ref: '#/components/schemas/Uuid' }
         updated_by: { $ref: '#/components/schemas/Uuid' }
@@ -42756,7 +42760,7 @@ components:
         objective: { type: string }
         control_type: { $ref: '#/components/schemas/ControlType' }
         cadence: { type: [string, 'null'], enum: [CONTINUOUS, DAILY, WEEKLY, MONTHLY, QUARTERLY, ANNUAL, EVENT_DRIVEN, null] }
-        evidence_requirements: { type: object, additionalProperties: true }
+        evidence_requirements: { type: array, items: {} }
         owner_user_id: { type: [string, 'null'], format: uuid }
     CreateComplianceFrameworkRequest:
       type: object

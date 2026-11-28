@@ -102,6 +102,11 @@ pub(crate) async fn get_me_authz(
             analytics_projection: (state.projection_available)(&principal),
             integrity: (state.integrity_access)(&principal),
             ledger: (state.ledger_access)(&principal),
+            evidence: if compliance {
+                (state.evidence_access)(&principal)
+            } else {
+                (false, false, false)
+            },
             compliance: (
                 compliance && read_compliance,
                 compliance && manage_compliance,

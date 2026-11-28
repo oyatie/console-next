@@ -7,5 +7,5 @@ properties:
   objective: { type: string }
   control_type: { $ref: '#/components/schemas/ControlType' }
   cadence: { type: [string, 'null'], enum: [CONTINUOUS, DAILY, WEEKLY, MONTHLY, QUARTERLY, ANNUAL, EVENT_DRIVEN, null] }
-  evidence_requirements: { type: object, additionalProperties: true }
+  evidence_requirements: { type: array, items: {} }
   owner_user_id: { type: [string, 'null'], format: uuid }

@@ -52,6 +52,8 @@ const paths = [
   "/me/evaluations",
   "/compliance",
   "/compliance/new",
+  "/compliance/evidence",
+  "/compliance/evidence/new",
   "/evaluation",
   "/evaluation/new",
   "/me/desk",

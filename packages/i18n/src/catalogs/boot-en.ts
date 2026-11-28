@@ -8,6 +8,8 @@ import { bootBootstrapEn } from "./boot-bootstrap";
 export const bootEn = {
   ...bootBootstrapEn,
   ...bootConsentEn,
+  "compliance.evidence": "Evidence bindings",
+  "compliance.propose": "Propose evidence",
   "compliance.title": "Compliance catalog",
   "compliance.create": "Add a compliance record",
   "consulting.title": "Consulting engagements",

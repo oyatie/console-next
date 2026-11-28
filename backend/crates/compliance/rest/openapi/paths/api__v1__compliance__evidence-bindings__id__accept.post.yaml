@@ -6,6 +6,7 @@ description: >-
   preserves evidence identity and provenance and records an audit snapshot.
 security: [{ bearerAuth: [] }]
 parameters:
+- { name: Idempotency-Key, in: header, required: false, schema: { type: string }, description: Reuse this key for a retry of the same evidence command. }
 - { name: id, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }
 responses:
   '200': { description: Accepted evidence binding., content: { application/json: { schema: { $ref: '#/components/schemas/EvidenceBinding' } } } }

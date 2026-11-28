@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use super::{
-    ComplianceRestState, Feature, Principal, accept_evidence_binding, branch_navigation_available,
-    create_evidence_binding, create_framework, create_framework_control, create_obligation,
-    create_regulation, link_control_obligation, link_obligation_regulation, list_evidence_bindings,
-    list_framework_controls, list_frameworks, list_obligations, list_regulations,
+    ComplianceRestState, Feature, Principal, RestError, accept_evidence_binding,
+    branch_navigation_available, create_evidence_binding, create_framework,
+    create_framework_control, create_obligation, create_regulation, link_control_obligation,
+    link_obligation_regulation, list_evidence_bindings, list_framework_controls, list_frameworks,
+    list_obligations, list_regulations, require_compliance_evidence_link,
+    require_compliance_manage, require_compliance_read,
 };
 use axum::{
     Router,
@@ -42,6 +44,24 @@ pub fn catalog_access(principal: &Principal) -> (bool, bool) {
     (
         branch_navigation_available(principal, Feature::ComplianceDomainRead),
         branch_navigation_available(principal, Feature::ComplianceDomainManage),
+    )
+}
+
+pub(super) fn require_evidence_link_with_read(principal: &Principal) -> Result<(), RestError> {
+    require_compliance_read(principal)?;
+    require_compliance_evidence_link(principal)
+}
+
+pub(super) fn require_evidence_accept_with_read(principal: &Principal) -> Result<(), RestError> {
+    require_compliance_read(principal)?;
+    require_compliance_manage(principal)
+}
+
+pub fn evidence_access(principal: &Principal) -> (bool, bool, bool) {
+    (
+        super::require_compliance_read(principal).is_ok(),
+        require_evidence_link_with_read(principal).is_ok(),
+        require_evidence_accept_with_read(principal).is_ok(),
     )
 }
 

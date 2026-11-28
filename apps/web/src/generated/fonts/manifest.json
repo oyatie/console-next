@@ -6,8 +6,8 @@
     "node_modules/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css": "2973bcae80262dcb630cfb793fbf6af29bd986c769ee54953fb3e5b3e32323ca"
   },
   "outputs": {
-    "catalog.woff2": "563e484412bdecb9cb3ed9510b17ae37582fa6296b8bdbd7dcbcccdb6bf34a34",
-    "catalog.css": "bdc750942919459da45da7434c274bd0896de40d786595e9a4b0db590e6dc21a"
+    "catalog.woff2": "8c326d418230eee26f1ab222d79e72aeddf0cef7f9636de3f1c813ddd7d76183",
+    "catalog.css": "7b84881c5f5fddab259dfd45fc91461f691530b71d5e65fcd1a555d0392d54c8"
   },
   "family": "Pretendard Variable Catalog",
   "codepoints": [
@@ -252,6 +252,7 @@
     48537,
     48652,
     48708,
+    48729,
     48736,
     49324,
     49325,
@@ -682,6 +683,7 @@
     48537,
     48652,
     48708,
+    48729,
     48736,
     49324,
     49325,
