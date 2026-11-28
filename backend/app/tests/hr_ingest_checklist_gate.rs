@@ -11,37 +11,20 @@
 //!     real mutation runs (run flips to `APPLIED`), and the audit trail carries
 //!     the gate outcome.
 
-use axum::body::{Body, to_bytes};
-use console_app::{AppConfig, AppRole, AppState, DatabaseDependency, build_router};
-use console_kernel_core::{OrgId, UserId};
-use console_platform_auth::{AccessTokenInput, JwtIssuer, JwtSettings};
-use http::{Request, StatusCode, header};
-use p256::ecdsa::SigningKey;
-use p256::elliptic_curve::Generate;
-use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
+use console_app::build_router;
+use console_kernel_core::OrgId;
+use console_platform_test_support::{seed_active_user, seed_branch};
+use http::StatusCode;
 use serde_json::{Value, json};
 use sqlx::PgPool;
-use sqlx::postgres::PgPoolOptions;
-use time::{Duration, OffsetDateTime};
-use tower::ServiceExt;
 use uuid::Uuid;
 
 #[path = "auth_fixtures/attendance_grants.rs"]
 mod attendance_grants;
-
-const TEST_ISSUER: &str = "console-platform-auth";
-const TEST_AUDIENCE: &str = "console-api";
-const SOURCE_SHA256: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-
-struct Keys {
-    private_pem: String,
-    public_pem: String,
-}
-
-struct JsonResponse {
-    status: StatusCode,
-    json: Value,
-}
+#[path = "access_log_reads/support.rs"]
+mod requests;
+mod settings_support;
+use settings_support::{app_state, keys, runtime_pool, send, token};
 
 // ===========================================================================
 // Deny path: no checklist evidence ⇒ 403, before the run row is even touched.
@@ -49,52 +32,37 @@ struct JsonResponse {
 // ===========================================================================
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn apply_without_checklist_denies_and_writes_nothing(owner_pool: PgPool) {
-    let keys = keys();
-    let admin = UserId::new();
-    seed_admin(&owner_pool, admin).await;
-    let run_id = seed_dry_run(&owner_pool, "checklist-deny").await;
-
-    let service = build_router(
-        app_state(
-            runtime_role_pool(&owner_pool).await,
-            keys.public_pem.clone(),
-        )
-        .unwrap(),
-    );
-    let token = bearer(&owner_pool, &keys, admin).await;
+    let (service, bearer, run_id) = ready_dry_run(&owner_pool, "checklist-deny").await;
 
     // No body at all (no Content-Type ⇒ `checklist_all_acknowledged: None`).
-    let denied = send(
-        service.clone(),
+    let (status, denied) = send(
+        &service,
+        "POST",
         &format!("/api/v1/hr/attendance-import/{run_id}/apply"),
-        &token,
+        Some(&bearer),
         None,
     )
     .await;
-    assert_eq!(denied.status, StatusCode::FORBIDDEN, "{:?}", denied.json);
+    assert_eq!(status, StatusCode::FORBIDDEN, "{denied}");
     assert!(
-        denied.json["error"]["message"]
+        denied["error"]["message"]
             .as_str()
             .unwrap()
             .contains("checklist"),
         "must deny for the checklist gate specifically, not some other 403: {:?}",
-        denied.json
+        denied
     );
 
     // Explicit `false` must deny identically (not just "missing").
-    let denied_explicit = send(
-        service.clone(),
+    let (status, denied_explicit) = send(
+        &service,
+        "POST",
         &format!("/api/v1/hr/attendance-import/{run_id}/apply"),
-        &token,
+        Some(&bearer),
         Some(json!({ "checklist_all_acknowledged": false })),
     )
     .await;
-    assert_eq!(
-        denied_explicit.status,
-        StatusCode::FORBIDDEN,
-        "{:?}",
-        denied_explicit.json
-    );
+    assert_eq!(status, StatusCode::FORBIDDEN, "{:?}", denied_explicit);
 
     let status: String = sqlx::query_scalar("SELECT status FROM data_import_runs WHERE id = $1")
         .bind(run_id)
@@ -118,28 +86,25 @@ async fn apply_without_checklist_denies_and_writes_nothing(owner_pool: PgPool) {
 // ===========================================================================
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn apply_with_checklist_admits_and_applies(owner_pool: PgPool) {
-    let keys = keys();
-    let admin = UserId::new();
-    seed_admin(&owner_pool, admin).await;
-    let run_id = seed_dry_run(&owner_pool, "checklist-allow").await;
+    let (service, bearer, run_id) = ready_dry_run(&owner_pool, "checklist-allow").await;
 
-    let service = build_router(
-        app_state(
-            runtime_role_pool(&owner_pool).await,
-            keys.public_pem.clone(),
-        )
-        .unwrap(),
-    );
-    let token = bearer(&owner_pool, &keys, admin).await;
-
-    let applied = send(
-        service,
+    let (status, applied) = send(
+        &service,
+        "POST",
         &format!("/api/v1/hr/attendance-import/{run_id}/apply"),
-        &token,
+        Some(&bearer),
         Some(json!({ "checklist_all_acknowledged": true })),
     )
     .await;
-    assert_eq!(applied.status, StatusCode::OK, "{:?}", applied.json);
+    assert_eq!(status, StatusCode::OK, "{applied}");
+    assert_eq!(applied["inserted"], 1);
+    let events: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM attendance_direct_import_events WHERE run_id=$1")
+            .bind(run_id)
+            .fetch_one(&owner_pool)
+            .await
+            .unwrap();
+    assert_eq!(events, 1);
 
     let status: String = sqlx::query_scalar("SELECT status FROM data_import_runs WHERE id = $1")
         .bind(run_id)
@@ -150,7 +115,7 @@ async fn apply_with_checklist_admits_and_applies(owner_pool: PgPool) {
 
     let gate_outcome: Value = sqlx::query_scalar(
         "SELECT after_snap -> 'gate_outcome' FROM audit_events \
-         WHERE target_type = 'data_import_run' AND target_id = $1 \
+         WHERE action = 'attendance_import.apply' AND target_type = 'data_import_run' AND target_id = $1 \
          ORDER BY created_at DESC LIMIT 1",
     )
     .bind(run_id.to_string())
@@ -164,135 +129,37 @@ async fn apply_with_checklist_admits_and_applies(owner_pool: PgPool) {
     );
 }
 
-// ===========================================================================
-// Helpers.
-// ===========================================================================
-
-/// Tenant attendance authority keeps this test focused on checklist admission.
-async fn seed_admin(pool: &PgPool, user_id: UserId) {
-    sqlx::query("INSERT INTO users (id, display_name, roles, org_id) VALUES ($1, $2, $3, $4)")
-        .bind(*user_id.as_uuid())
-        .bind(format!("ingest-gate-admin-{}", user_id.as_uuid()))
-        .bind(vec!["SUPER_ADMIN"])
-        .bind(*OrgId::one().as_uuid())
-        .execute(pool)
+/// Preview and resolve the same valid input for both sides of the checklist gate.
+async fn ready_dry_run(pool: &PgPool, tag: &str) -> (axum::Router, String, Uuid) {
+    let org = OrgId::one();
+    let admin = seed_active_user(pool, *org.as_uuid(), "SUPER_ADMIN", tag).await;
+    attendance_grants::grant(pool, org, admin, None).await;
+    let branch = seed_branch(pool, tag, tag).await;
+    let branch_name: String = sqlx::query_scalar("SELECT name FROM branches WHERE id=$1")
+        .bind(branch.as_uuid())
+        .fetch_one(pool)
         .await
         .unwrap();
-    attendance_grants::grant(pool, OrgId::one(), user_id, None).await;
-}
-
-/// Seed a `data_import_runs` row already at `DRY_RUN` with zero candidate rows,
-/// so `apply` (once past the checklist gate) resolves an empty, error-free
-/// summary and applies cleanly — exercising the real mutation path without
-/// reconstructing the upload/preview/dry-run pipeline.
-async fn seed_dry_run(pool: &PgPool, tag: &str) -> Uuid {
-    let run_id = Uuid::new_v4();
-    sqlx::query(
-        r#"
-        INSERT INTO data_import_runs (
-            id, org_id, entity_type, status, source_filename, source_format, source_sha256, pay_period_start, pay_period_end)
-         VALUES ($1, $2, 'attendance_direct', 'DRY_RUN', $3, 'csv', $4, DATE '2026-06-01', DATE '2026-06-30')
-        "#,
+    sqlx::query("INSERT INTO employees(org_id,company,employee_number,name,source_filename,source_sheet,source_row,source_key) VALUES($1,'Checklist','E001','Worker','roster.csv','CSV',1,'E001')")
+        .bind(org.as_uuid()).execute(pool).await.unwrap();
+    let keys = keys();
+    let bearer = token(pool, &keys, *org.as_uuid(), admin, "SUPER_ADMIN").await;
+    let service = build_router(app_state(runtime_pool(pool).await, keys.1).unwrap());
+    let csv = format!(
+        "employee_number,branch_name,work_date,check_in,check_out,minutes_worked\nE001,{branch_name},2026-06-01,09:00,18:00,540\n"
+    );
+    let (status, preview) = requests::send(&service, requests::import_preview(&bearer, &csv)).await;
+    assert_eq!(status, StatusCode::OK, "{preview}");
+    let run_id: Uuid = serde_json::from_value(preview["run_id"].clone()).unwrap();
+    let (status, dry) = send(
+        &service,
+        "POST",
+        &format!("/api/v1/hr/attendance-import/{run_id}/dry-run"),
+        Some(&bearer),
+        Some(json!({})),
     )
-    .bind(run_id)
-    .bind(*OrgId::one().as_uuid())
-    .bind(format!("{tag}.csv"))
-    .bind(SOURCE_SHA256)
-    .execute(pool)
-    .await
-    .unwrap();
-    run_id
-}
-
-async fn send(service: axum::Router, uri: &str, token: &str, body: Option<Value>) -> JsonResponse {
-    let mut builder = Request::builder()
-        .uri(uri)
-        .method("POST")
-        .header(header::AUTHORIZATION, format!("Bearer {token}"));
-    let request = if let Some(body) = body {
-        builder = builder.header(header::CONTENT_TYPE, "application/json");
-        builder.body(Body::from(body.to_string())).unwrap()
-    } else {
-        builder.body(Body::empty()).unwrap()
-    };
-    let response = service.oneshot(request).await.unwrap();
-    let status = response.status();
-    let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
-    let json = serde_json::from_slice(&bytes).unwrap_or_else(|_| json!({}));
-    JsonResponse { status, json }
-}
-
-fn keys() -> Keys {
-    let signing_key = SigningKey::generate();
-    Keys {
-        private_pem: signing_key
-            .to_pkcs8_pem(LineEnding::LF)
-            .unwrap()
-            .to_string(),
-        public_pem: signing_key
-            .verifying_key()
-            .to_public_key_pem(LineEnding::LF)
-            .unwrap(),
-    }
-}
-
-async fn bearer(pool: &sqlx::PgPool, keys: &Keys, user_id: UserId) -> String {
-    let issuer = JwtIssuer::from_es256_pem(
-        JwtSettings {
-            issuer: TEST_ISSUER.to_owned(),
-            audience: TEST_AUDIENCE.to_owned(),
-            access_token_ttl: Duration::minutes(15),
-        },
-        keys.private_pem.as_bytes(),
-        keys.public_pem.as_bytes(),
-    )
-    .unwrap();
-    console_platform_test_support::issue_session_token(
-        pool,
-        &issuer,
-        AccessTokenInput {
-            subject: user_id,
-            org_id: OrgId::one(),
-            roles: vec!["SUPER_ADMIN".to_owned()],
-            branches: Vec::new(),
-            platform: false,
-            support: None,
-            read_only: false,
-            display_name: None,
-            feature_grants: Vec::new(),
-            authz_subject_version: 0,
-            authz_policy_version: 0,
-            session_generation: 0,
-            issued_at: OffsetDateTime::now_utc(),
-        },
-        None,
-        Vec::new(),
-    )
-    .await
-}
-
-async fn runtime_role_pool(owner_pool: &PgPool) -> PgPool {
-    let options = owner_pool.connect_options().as_ref().clone();
-    PgPoolOptions::new()
-        .max_connections(4)
-        .after_connect(|conn, _meta| {
-            Box::pin(async move {
-                sqlx::query("SET ROLE console_rt").execute(conn).await?;
-                Ok(())
-            })
-        })
-        .connect_with(options)
-        .await
-        .unwrap()
-}
-
-fn app_state(pool: PgPool, public_key_pem: String) -> Result<AppState, console_app::AppError> {
-    let config = AppConfig::from_pairs([
-        ("CONSOLE_APP_ROLE", AppRole::Api.to_string()),
-        ("CONSOLE_HTTP_ADDR", "127.0.0.1:0".to_owned()),
-        ("CONSOLE_JWT_ISSUER", TEST_ISSUER.to_owned()),
-        ("CONSOLE_JWT_AUDIENCE", TEST_AUDIENCE.to_owned()),
-        ("CONSOLE_JWT_PUBLIC_KEY_PEM", public_key_pem),
-    ])?;
-    AppState::new(config, DatabaseDependency::Postgres(pool))
+    .await;
+    assert_eq!(status, StatusCode::OK, "{dry}");
+    assert_eq!(dry["ready_rows"], 1, "{dry}");
+    (service, bearer, run_id)
 }
