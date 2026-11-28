@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
+import { ReadReference } from "../../../lib/react/read-reference";
 import { QueryState } from "../../../lib/react/query-state";
 import { authzApplies, authzQuery } from "../../../reference/authz/api";
 import { useCan } from "../../../reference/authz/ui/use-can";
@@ -18,13 +19,13 @@ import { Receipt } from "../../../ui/receipt/receipt";
 import { Table, type Column } from "../../../ui/table";
 import { tabClass } from "../../../ui/tabs/tab-class";
 import { TabCount, TabNav } from "../../../ui/tabs/tabs";
-import { changeRequestCountsQuery, mySub, REQUEST_PAGE, requestsQuery, type ChangeRequest, type Lane, type RequestStatus } from "../api";
+import { changeRequestCountsQuery, mySub, REQUEST_PAGE, requestsQuery, selectedRequestQuery, type ChangeRequest, type Lane, type RequestStatus } from "../api";
 import { RequestPanel, RequestPanelBody } from "./request-panel";
 import { kindText, reasonText, statusOf, subjectText } from "../present";
 import s from "./requests.module.css";
 
 const route = getRouteApi("/app/people/requests");
-const LANES: readonly Lane[] = ["all", "me", "role"];
+const LANES: readonly Lane[] = ["all", "me", "role", "filed"];
 const STATUSES: readonly (RequestStatus | undefined)[] = ["OPEN", "APPLIED", "DECLINED", "WITHDRAWN", undefined];
 
 /**
@@ -41,10 +42,10 @@ export function RequestsPage() {
   const set = (patch: { lane?: Lane; status?: RequestStatus | "ALL"; sel?: string; page?: number }) =>
     void navigate({ search: (x) => ({ ...x, page: undefined, ...patch }), replace: true });
   const select = (nextSel?: string) => void navigate({ search: (x) => ({ ...x, sel: nextSel }), replace: true });
-  const active = hr ? lane : "all";
-  const filtered = active !== "all" || status !== "ALL";
+  const active = hr ? lane : "filed";
+  const filtered = (hr && active !== "all") || status !== "ALL";
   const filters = [t(hr ? `requests.lane.${active}` : "requests.mine"), status !== "ALL" && t(`requests.status.${status}`)].filter(Boolean).join(" · ");
-  const list = useQuery({ ...requestsQuery({ lane: active, mine: !hr, status: status === "ALL" ? undefined : status, offset: page * REQUEST_PAGE }), enabled: !authz.isLoading });
+  const list = useQuery({ ...requestsQuery({ lane: active, status: status === "ALL" ? undefined : status, offset: page * REQUEST_PAGE }), enabled: !authz.isLoading });
   const counts = useQuery({ ...changeRequestCountsQuery, enabled: !authz.isLoading && hr });
   const makeColumns = (compact: boolean): Column<ChangeRequest>[] => [
     { header: t("requests.col.kind"), cell: (r) => kindText(r.kind), fit: true, card: compact ? "fact" : undefined },
@@ -73,7 +74,7 @@ export function RequestsPage() {
         <Button
           size={compact ? "sm" : undefined}
           variant={compact ? "secondary" : "ghost"}
-          onClick={compact ? (e) => { e.stopPropagation(); select(r.id); } : () => set({ sel: r.id })}
+          onClick={compact ? (e) => { e.stopPropagation(); select(r.id); } : () => select(r.id)}
         >
           {t("requests.open")}
         </Button>
@@ -82,7 +83,17 @@ export function RequestsPage() {
       card: compact ? "action" : undefined,
     },
   ];
-  const selected = list.data?.items.find((r) => r.id === sel);
+  const listReady = !authz.isLoading && !!list.data && !list.isPlaceholderData && !list.isError;
+  const onPage = listReady ? list.data?.items.find(r => r.id === sel) : undefined;
+  const offPage = Boolean(sel && listReady && !onPage);
+  const exact = useQuery({ ...selectedRequestQuery(sel), enabled: offPage, retry: false });
+  const selected = onPage ?? (offPage && !exact.isError && !exact.isPlaceholderData ? exact.data?.items.find(r => r.id === sel) : undefined);
+  const selectionState = offPage && !selected && (
+    <QueryState q={exact.error ? { ...exact, data: undefined } : exact} layout="form" compact
+      denied={<EmptyState alert compact title={t("common.denied.panel")} reason={t("requests.selection.unavailable")} meta={<ReadReference error={exact.error} />} />}>
+      {() => <EmptyState alert compact title={t("common.read.notFound.title")} reason={t("requests.selection.unavailable")} />}
+    </QueryState>
+  );
   const [decided, setDecided] = useState<ChangeRequest | null>(null);
   const tableWrapRef = useRef<HTMLDivElement>(null);
 
@@ -109,7 +120,7 @@ export function RequestsPage() {
             {hr && <div className="tabs" role="group" aria-label={t("requests.lanes")}>
               {LANES.map((l) => (
                 <ToggleButton key={l} pressed={active === l} onClick={() => set({ lane: l })}>
-                  {t(`requests.lane.${l}`)} <Count n={counts.data?.[l]} />
+                  {t(`requests.lane.${l}`)} {l !== "filed" && <Count n={counts.data?.[l]} />}
                 </ToggleButton>
               ))}
             </div>}
@@ -123,14 +134,19 @@ export function RequestsPage() {
             <QueryState q={list} empty={(d) => (d.items.length ? null : emptyNode)}>
               {(d) => (
                 <>
-                  <Table label={t("requests.list")} rows={d.items} rowId={(r) => r.id} columns={makeColumns(false)} selected={sel} onSelect={(id) => set({ sel: id })} />
+                  <Table label={t("requests.list")} rows={d.items} rowId={(r) => r.id} columns={makeColumns(false)} selected={sel} onSelect={select} />
                   <Pager offset={d.offset} limit={REQUEST_PAGE} total={d.total} onPage={(o) => set({ page: Math.floor(o / REQUEST_PAGE), sel })} />
                 </>
               )}
             </QueryState>
           </>}
         </section>
-        {selected && <RequestPanel r={selected} hr={hr} onClose={() => set({ sel: undefined })} onDecided={(out) => (setDecided(out), set({ sel: undefined }))} />}
+        {selected ? <RequestPanel r={selected} hr={hr} onClose={() => select(undefined)} onDecided={(out) => { setDecided(out); select(undefined); }} /> :
+          selectionState && <aside className="card panel" aria-label={t("requests.panel")}>
+            <div className="panel__head"><h2 className="panel__title">{t("requests.panel")}</h2>
+              <Button variant="ghost" onClick={() => select(undefined)}>{t("requests.panel.close")}</Button></div>
+            {selectionState}
+          </aside>}
       </div>
     </div>
   );
@@ -157,7 +173,7 @@ export function RequestsPage() {
                     aria-current={active === l ? "page" : undefined}
                   >
                     {t(`requests.lane.${l}`)}
-                    <TabCount>{counts.data?.[l]}</TabCount>
+                    {l !== "filed" && <TabCount>{counts.data?.[l]}</TabCount>}
                   </Link>
                 ))}
               </TabNav>
@@ -205,16 +221,16 @@ export function RequestsPage() {
             ) : undefined
           }
           record={
-            selected
+            sel && (selected || selectionState)
               ? {
-                  id: selected.id,
+                  id: sel,
                   label: t("requests.panel"),
-                  title: kindText(selected.kind),
-                  meta: <Chip tone={statusOf(selected.status).tone}>{statusOf(selected.status).label}</Chip>,
+                  title: selected ? kindText(selected.kind) : t("requests.panel"),
+                  meta: selected && <Chip tone={statusOf(selected.status).tone}>{statusOf(selected.status).label}</Chip>,
                   closeLabel: t("requests.panel.close"),
                   onClose: () => select(undefined),
-                  returnFocus: () => tableWrapRef.current?.querySelector<HTMLElement>(`[data-id="${CSS.escape(selected.id)}"]`),
-                  children: <RequestPanelBody r={selected} hr={hr} onDecided={(out) => { setDecided(out); select(undefined); }} />,
+                  returnFocus: () => tableWrapRef.current?.querySelector<HTMLElement>(`[data-id="${CSS.escape(sel)}"]`),
+                  children: selected ? <RequestPanelBody r={selected} hr={hr} onDecided={(out) => { setDecided(out); select(undefined); }} /> : selectionState,
                 }
               : null
           }

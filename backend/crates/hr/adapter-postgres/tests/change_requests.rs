@@ -205,3 +205,84 @@ async fn profile_corrections_are_validated_and_hr_sees_them_in_its_inbox(pool: P
         .unwrap();
     assert_eq!(declined.status, "DECLINED");
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn exact_selection_finds_a_later_page_only_with_the_original_row_visibility(pool: PgPool) {
+    let w = world(&pool).await;
+    let requester = w.admin(w.admin_a, w.branch_a);
+    let create_one = || {
+        w.hr.create_change_request(
+            requester.clone(),
+            create("SCOPE_ACTION", "EMPLOYEE", w.in_a, json!({})),
+        )
+    };
+    let target = create_one().await.unwrap();
+    for _ in 0..20 {
+        create_one().await.unwrap();
+    }
+    let first =
+        w.hr.list_change_requests(
+            requester.clone(),
+            serde_json::from_value(json!({"limit":20})).unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!((first.items.len(), first.total), (20, 21));
+    assert!(!first.items.iter().any(|row| row.id == target.id));
+    let query = || serde_json::from_value(json!({"id":target.id,"limit":1})).unwrap();
+    for principal in [requester.clone(), w.hr(w.hr_one)] {
+        let found = w.hr.list_change_requests(principal, query()).await.unwrap();
+        assert_eq!((found.total, found.items[0].id), (1, target.id));
+    }
+    let mismatch = serde_json::from_value(json!({"id":target.id,"status":"DECLINED"})).unwrap();
+    assert_eq!(
+        w.hr.list_change_requests(requester, mismatch)
+            .await
+            .unwrap()
+            .total,
+        0
+    );
+    let stranger = w.admin(w.admin_b, w.branch_a);
+    let hidden = w.hr.list_change_requests(stranger, query()).await.unwrap();
+    assert_eq!((hidden.total, hidden.items.len()), (0, 0));
+    let other = support::principal(
+        uuid::Uuid::new_v4(),
+        console_kernel_core::UserId::from_uuid(w.admin_a),
+    );
+    let foreign = w.hr.list_change_requests(other, query()).await.unwrap();
+    assert_eq!((foreign.total, foreign.items.len()), (0, 0));
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn hr_personal_totals_exceed_the_desk_page_and_exclude_named_assignments(pool: PgPool) {
+    let w = world(&pool).await;
+    let actor = w.hr(w.hr_one);
+    for _ in 0..7 {
+        w.hr.create_change_request(
+            actor.clone(),
+            create("OTHER", "BRANCH", w.branch_a, json!({})),
+        )
+        .await
+        .unwrap();
+    }
+    let mut incoming = create("OTHER", "BRANCH", w.branch_a, json!({}));
+    incoming.assignee_user_id = Some(w.hr_one);
+    let incoming =
+        w.hr.create_change_request(w.hr(w.hr_two), incoming)
+            .await
+            .unwrap();
+    let own =
+        w.hr.list_change_requests(
+            actor.clone(),
+            serde_json::from_value(json!({"requester":"me","status":"OPEN","limit":5})).unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!((own.total, own.items.len()), (7, 5));
+    assert!(own.items.iter().all(|r| r.requested_by == w.hr_one));
+    let assigned =
+        w.hr.list_change_requests(actor, list(Some("me")))
+            .await
+            .unwrap();
+    assert_eq!((assigned.total, assigned.items[0].id), (1, incoming.id));
+}

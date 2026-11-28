@@ -63,6 +63,7 @@ pub struct DecideChangeRequest {
 
 #[derive(Debug, Deserialize)]
 pub struct ChangeRequestListQuery {
+    pub id: Option<Uuid>,
     /// `me`: named to the caller; `role`: open to any HR person. HR only.
     pub assignee: Option<String>,
     /// `me`: only the requests the caller filed (its "Waiting").
