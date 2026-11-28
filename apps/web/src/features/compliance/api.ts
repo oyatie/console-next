@@ -1,14 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { api, ApiError, unwrap } from "@console/api";
-import type { components } from "@console/api/schema";
+import type { CatalogCommand } from "./domain/catalog-draft";
 import { get } from "../../lib/query";
 
-type Schema = components["schemas"];
 export const PAGE_SIZE = 25;
 export const views = ["frameworks", "regulations", "obligations", "controls"] as const;
 export type View = typeof views[number];
-export const actions = ["framework", "regulation", "obligation", "control", "regulationLink", "coverage"] as const;
-export type CatalogAction = typeof actions[number];
 
 const paths = {
   framework: "/api/v1/compliance/frameworks", regulation: "/api/v1/compliance/regulations",
@@ -22,13 +19,6 @@ export const regulationsQuery = (page: number, q?: string) => get(paths.regulati
 export const obligationsQuery = (page: number, branch?: string, q?: string) => get(paths.obligation, { params: { query: { ...pageQuery(page, q), branch_id: branch } } });
 export const controlsQuery = (page: number, framework: string, q?: string) => get(paths.control, { params: { query: { ...pageQuery(page, q), framework_id: framework } } });
 
-export type CatalogCommand =
-  | { action: "framework"; body: Schema["CreateComplianceFrameworkRequest"] }
-  | { action: "regulation"; body: Schema["CreateRegulationImpactRequest"] }
-  | { action: "obligation"; body: Schema["CreateComplianceObligationRequest"] }
-  | { action: "control"; body: Schema["CreateComplianceControlRequest"] }
-  | { action: "regulationLink"; body: Schema["LinkObligationRegulationRequest"] }
-  | { action: "coverage"; body: Schema["LinkControlObligationRequest"] };
 export async function saveCatalog(command: CatalogCommand, key: string) {
   const params = { header: { "Idempotency-Key": key } };
   try {

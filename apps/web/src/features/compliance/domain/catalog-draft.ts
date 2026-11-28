@@ -1,6 +1,18 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import type { CatalogAction, CatalogCommand } from "../api";
+import type { components } from "@console/api/schema";
 import { controlTypes, coverage, frameworkKinds, obligationTypes, relationships, risk } from "../present";
+
+type Schema = components["schemas"];
+export const actions = ["framework", "regulation", "obligation", "control", "regulationLink", "coverage"] as const;
+export type CatalogAction = typeof actions[number];
+
+export type CatalogCommand =
+  | { action: "framework"; body: Schema["CreateComplianceFrameworkRequest"] }
+  | { action: "regulation"; body: Schema["CreateRegulationImpactRequest"] }
+  | { action: "obligation"; body: Schema["CreateComplianceObligationRequest"] }
+  | { action: "control"; body: Schema["CreateComplianceControlRequest"] }
+  | { action: "regulationLink"; body: Schema["LinkObligationRegulationRequest"] }
+  | { action: "coverage"; body: Schema["LinkControlObligationRequest"] };
 
 export const initial = {
   name: "", version: "", jurisdiction: "", citation: "", area: "", detail: "", controlKey: "",
