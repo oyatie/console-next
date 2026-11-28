@@ -90,6 +90,8 @@ pub struct ChangeRequestResponse {
     pub assignee_role: String,
     pub assignee_user_id: Option<Uuid>,
     pub status: String,
+    /// Current actor meets row-level apply/decline eligibility. The command rechecks its own policy.
+    pub can_review: bool,
     /// OTHER requests are reviewed after the fact (the "Other" path).
     pub review_required: bool,
     pub decided_by: Option<Uuid>,

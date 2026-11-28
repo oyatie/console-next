@@ -42,42 +42,42 @@ function decidedNode(r: ChangeRequest) {
   );
 }
 
-function DecisionBlock({
-  r,
-  choices,
-  open,
-  hr,
-  mine,
-  onDecided,
-}: {
+function answerKind(r: ChangeRequest) {
+  return r.kind === "ACCESS_EXPLANATION" || r.kind === "POLICY_QUESTION";
+}
+
+function decisionChoices(r: ChangeRequest, hr: boolean): Decision[] {
+  if (r.status !== "OPEN") return [];
+  const me = mySub();
+  if (!me) return [];
+  if (r.requested_by === me) return ["WITHDRAW"];
+  // Older API responses have no row-level projection. Their named-assignee rule still applies.
+  const named = r.assignee_user_id === me;
+  const eligible = r.can_review ?? ((!r.assignee_user_id || named) && (hr || (named && answerKind(r))));
+  return eligible ? ["APPLY", "DECLINE"] : [];
+}
+
+function DecisionBlock({ r, choices, onDecided }: {
   r: ChangeRequest;
   choices: Decision[];
-  open: boolean;
-  hr: boolean;
-  mine: boolean;
   onDecided: (out: ChangeRequest) => void;
 }) {
   return (
     <>
-      {r.review_required ? <p className="muted">{t("requests.review")}</p> : null}
-      {choices.length > 0 ? (
-        <Decide key={r.id} r={r} choices={choices} onDecided={onDecided} />
-      ) : open && !hr && !mine ? null : open ? (
-        <p className="muted">{t(mine ? "requests.waiting" : "requests.notYours")}</p>
-      ) : null}
+      {r.review_required && <p className="muted">{t("requests.review")}</p>}
+      {choices.length > 0 && <Decide key={r.id} r={r} choices={choices} onDecided={onDecided} />}
     </>
   );
 }
 
 /**
  * One request beside the list: what it asks (each field's requested value), why, who filed it and when, and how it
- * closed. HR applies or declines an open request filed by someone else; its requester alone may withdraw it. The
- * decision takes a reason; applying a correction writes it to the record in the same step.
+ * closed. The requester can withdraw it. Eligible reviewers can apply or decline, and an
+ * explanation or policy question requires an answer that the requester can read.
  */
 export function RequestPanel({ r, subject, hr, onClose, onDecided }: { r: ChangeRequest; subject?: Employee; hr: boolean; onClose: () => void; onDecided: (out: ChangeRequest) => void }) {
   const mine = r.requested_by === mySub();
-  const open = r.status === "OPEN";
-  const choices: Decision[] = !open ? [] : mine ? ["WITHDRAW"] : hr ? ["APPLY", "DECLINE"] : [];
+  const choices = decisionChoices(r, hr);
   const status = statusOf(r.status);
   const changes = requestedChanges(r);
   return (
@@ -115,7 +115,7 @@ export function RequestPanel({ r, subject, hr, onClose, onDecided }: { r: Change
           </ul>
         </section>
       )}
-      <DecisionBlock r={r} choices={choices} open={open} hr={hr} mine={mine} onDecided={onDecided} />
+      <DecisionBlock r={r} choices={choices} onDecided={onDecided} />
     </aside>
   );
 }
@@ -123,8 +123,7 @@ export function RequestPanel({ r, subject, hr, onClose, onDecided }: { r: Change
 /** Console `PaneGrid.record` body for `/people/requests` (SidePane owns `<aside>` and `.paneHead`). */
 export function RequestPanelBody({ r, hr, onDecided }: { r: ChangeRequest; hr: boolean; onDecided: (out: ChangeRequest) => void }) {
   const mine = r.requested_by === mySub();
-  const open = r.status === "OPEN";
-  const choices: Decision[] = !open ? [] : mine ? ["WITHDRAW"] : hr ? ["APPLY", "DECLINE"] : [];
+  const choices = decisionChoices(r, hr);
   const changes = requestedChanges(r);
   const items: KeyValueItem[] = [
     { key: "subject", label: t("requests.col.subject"), value: subjectNode(r) },
@@ -142,7 +141,7 @@ export function RequestPanelBody({ r, hr, onDecided }: { r: ChangeRequest; hr: b
     ...(r.note ? [{ key: "note", label: t("requests.note"), value: r.note }] : []),
     ...(r.decided_at ? [{ key: "decided", label: t("requests.decided"), value: decidedNode(r) }] : []),
   ];
-  const hasDecisionSection = Boolean(r.review_required || choices.length > 0 || (open && (hr || mine)));
+  const hasDecisionSection = Boolean(r.review_required || choices.length > 0);
   return (
     <>
       <RecordPaneSection title={t("requests.panel")} padded={false}>
@@ -159,7 +158,7 @@ export function RequestPanelBody({ r, hr, onDecided }: { r: ChangeRequest; hr: b
       ) : null}
       {hasDecisionSection ? (
         <RecordPaneSection title={t("requests.decision")}>
-          <DecisionBlock r={r} choices={choices} open={open} hr={hr} mine={mine} onDecided={onDecided} />
+          <DecisionBlock r={r} choices={choices} onDecided={onDecided} />
         </RecordPaneSection>
       ) : null}
     </>
@@ -172,6 +171,7 @@ function Decide({ r, choices, onDecided }: { r: ChangeRequest; choices: Decision
   const [reason, setReason] = useState("");
   const [note, setNote] = useState("");
   const [tried, setTried] = useState(false);
+  const needsAnswer = answerKind(r) && decision !== "WITHDRAW";
   const run = useCommand({
     run: () => decideRequest(r.id, { decision: decision!, reason: reason.trim(), note: note.trim() }),
     invalidates: ["/api/v1/change-requests", "/api/v1/employees"],
@@ -184,7 +184,7 @@ function Decide({ r, choices, onDecided }: { r: ChangeRequest; choices: Decision
       noValidate
       onSubmit={() => {
         setTried(true);
-        if (decision && reason.trim()) run.mutate(undefined);
+        if (decision && reason.trim() && (!needsAnswer || note.trim())) run.mutate(undefined);
       }}
     >
       {choices.length > 1 && (
@@ -195,11 +195,11 @@ function Decide({ r, choices, onDecided }: { r: ChangeRequest; choices: Decision
         </div>
       )}
       {tried && !decision && <p className="field__error">{t("requests.decision.missing")}</p>}
-      {decision && <p className="muted">{t(r.kind === "IMPORT_ROLLBACK" && decision === "APPLY" ? "importRollback.applyConsequence" : `requests.consequence.${decision}`)}</p>}
+      {decision && <p className="muted">{t(needsAnswer ? "requests.answer.consequence" : r.kind === "IMPORT_ROLLBACK" && decision === "APPLY" ? "importRollback.applyConsequence" : `requests.consequence.${decision}`)}</p>}
       <Field label={t("requests.decision.reason")} required hint={t("lifecycle.reason.count", { count: reason.length, max: REASON_MAX })} error={tried && !reason.trim() ? t("lifecycle.reason.missing") : undefined}>
         {(p) => <TextInput {...p} value={reason} maxLength={REASON_MAX} onChange={(e) => (run.reset(), setReason(e.target.value))} />}
       </Field>
-      <Field label={t("requests.note")} required={false} hint={t("lifecycle.reason.count", { count: note.length, max: NOTE_MAX })}>
+      <Field label={t(needsAnswer ? "requests.answer" : "requests.note")} required={needsAnswer} error={tried && needsAnswer && !note.trim() ? t("requests.answer.missing") : undefined} hint={t("lifecycle.reason.count", { count: note.length, max: NOTE_MAX })}>
         {(p) => <TextArea {...p} value={note} maxLength={NOTE_MAX} onChange={(e) => setNote(e.target.value)} />}
       </Field>
       <CommandError error={run.error} />

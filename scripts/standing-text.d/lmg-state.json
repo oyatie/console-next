@@ -32,7 +32,7 @@
     "apps/web/src/features/people/ui/job-titles-page.tsx#JobTitlesPage": 26,
     "apps/web/src/features/people/ui/notice-list-page.tsx#NoticeListPage": 6,
     "apps/web/src/features/people/ui/notice-page.tsx#NoticePage": 10,
-    "apps/web/src/features/people/ui/requests-page.tsx#RequestsPage": 39,
+    "apps/web/src/features/people/ui/requests-page.tsx#RequestsPage": 38,
     "apps/web/src/features/people/ui/unplaced-page.tsx#UnplacedPage": 58,
     "apps/web/src/features/periods/ui/period-lock-page.tsx#PeriodLockPage": 81,
     "apps/web/src/features/platform/Tenants.tsx#Tenants": 48,

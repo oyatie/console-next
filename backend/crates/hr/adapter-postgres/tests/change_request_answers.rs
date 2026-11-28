@@ -77,6 +77,18 @@ async fn a_named_handler_answers_its_access_explanation_without_directory_access
             .await
             .unwrap();
     assert_eq!((linked.total, linked.items[0].id), (1, asked.id));
+    assert!(linked.items[0].can_review);
+    for other in [w.hr_one, w.hr_two] {
+        let selected = serde_json::from_value(json!({"id": asked.id})).unwrap();
+        let rows =
+            w.hr.list_change_requests(w.hr(other), selected)
+                .await
+                .unwrap();
+        assert!(
+            !rows.items[0].can_review,
+            "requester and other HR cannot decide a named answer"
+        );
+    }
     let inbox =
         w.hr.change_request_inbox_page(&handler, as_of, None, 50)
             .await
@@ -164,9 +176,69 @@ async fn a_named_handler_answers_its_access_explanation_without_directory_access
         )
         .await
         .unwrap();
+    let selected = serde_json::from_value(json!({"id": scope_action.id})).unwrap();
+    let rows =
+        w.hr.list_change_requests(handler.clone(), selected)
+            .await
+            .unwrap();
+    assert!(!rows.items[0].can_review);
     let err =
         w.hr.decide_change_request(handler, scope_action.id, answer(Some("x")), support::SECOND)
             .await
             .unwrap_err();
     assert_eq!(err.status, StatusCode::FORBIDDEN);
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn named_hr_sees_each_assignment_but_can_review_only_an_employee_inside_their_scope(
+    pool: PgPool,
+) {
+    let w = support::world(&pool).await;
+    use console_platform_authz::{
+        Feature,
+        access::{NodeKind, ScopeGrant},
+    };
+    let entity = Uuid::new_v4();
+    sqlx::query("INSERT INTO legal_entities(org_id,id,needs_confirmation,created_change_mode) VALUES($1,$2,true,'MIGRATION')")
+        .bind(w.org).bind(entity).execute(&pool).await.unwrap();
+    sqlx::query("INSERT INTO employment_assignments(org_id,employee_id,legal_entity_id,valid_from,cause,command_id) VALUES($1,$2,$3,'2020-01-01','MIGRATION',gen_random_uuid())")
+        .bind(w.org).bind(w.in_a).bind(entity).execute(&pool).await.unwrap();
+    let reviewer = Principal::new(
+        UserId::from_uuid(w.hr_two),
+        OrgId::from_uuid(w.org),
+        Default::default(),
+        BranchScope::All,
+    )
+    .with_scope_grants(vec![ScopeGrant {
+        feature: Feature::EmployeeDirectoryManage,
+        kind: NodeKind::LegalEntity,
+        id: entity,
+    }]);
+    for (employee, inside) in [(w.in_a, true), (w.in_b, false)] {
+        let mut input = support::create("SCOPE_ACTION", "EMPLOYEE", employee, json!({}));
+        input.assignee_user_id = Some(w.hr_two);
+        let request =
+            w.hr.create_change_request(w.hr(w.hr_one), input)
+                .await
+                .unwrap();
+        let selected = serde_json::from_value(json!({"id": request.id})).unwrap();
+        let page =
+            w.hr.list_change_requests(reviewer.clone(), selected)
+                .await
+                .unwrap();
+        assert_eq!((page.total, page.items[0].can_review), (1, inside));
+        let decision =
+            w.hr.decide_change_request(
+                reviewer.clone(),
+                request.id,
+                answer(Some("reviewed")),
+                support::SECOND,
+            )
+            .await;
+        if inside {
+            assert_eq!(decision.unwrap().status, "APPLIED");
+        } else {
+            assert_eq!(decision.unwrap_err().status, StatusCode::FORBIDDEN);
+        }
+    }
 }
