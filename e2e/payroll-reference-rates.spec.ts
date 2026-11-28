@@ -39,16 +39,14 @@ test("payroll reference renders the entity's live statutory register", { tag: ["
   await expect(admin.getByRole("link", { name: `${active.instrument_ko} · ${active.article_ko} · ${active.promulgation_ko}`, exact: true })).toHaveCount(0);
   await expect(admin.getByText(`${active.instrument_ko} · ${active.article_ko} · ${active.promulgation_ko} · ${new URL(active.source_url).href}`, { exact: true }).first()).toBeVisible();
   const grid = admin.getByRole("grid");
-  await grid.press("Control+Home");
-  const reveal = async (value: string) => {
-    const displayed = admin.getByText(value, { exact: false }).first();
-    await expect(async () => {
-      if (!(await displayed.isVisible())) await grid.press("ArrowDown");
-      await displayed.scrollIntoViewIfNeeded({ timeout: 500 });
-      await expect(displayed).toBeInViewport({ timeout: 500 });
-    }).toPass({ intervals: [100], timeout: 15_000 });
-  };
-  for (const value of [wage.value, scheduled.value, table.name]) await reveal(value);
+  await grid.locator('[aria-rowindex="2"]').getByRole("rowheader").focus();
+  for (const [index, rate] of rates.items.entries()) {
+    if (index > 0) await admin.keyboard.press("ArrowDown");
+    const row = grid.locator(`[aria-rowindex="${index + 2}"]`);
+    await expect(row.getByRole("rowheader")).toBeFocused();
+    if (rate === wage || rate === scheduled) await expect(row.getByRole("gridcell", { name: rate.value, exact: true })).toBeInViewport();
+    if (rate === table) await expect(row.getByRole("rowheader", { name: table.name })).toBeInViewport();
+  }
   await expect(admin.getByText("근거 확인 필요", { exact: true }).first()).toBeVisible();
   await expect(admin.getByText(active.provenance_ko, { exact: false })).toHaveCount(0);
   await admin.screenshot({ path: testInfo.outputPath("reference-desktop-light.png"), fullPage: true });
