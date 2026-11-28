@@ -3,7 +3,6 @@ use console_platform_authz::Action;
 use console_platform_authz::Feature;
 use console_platform_authz::PermissionLevel;
 use console_platform_authz::Principal;
-use console_platform_authz::authorize_capability;
 use console_platform_authz::authorize_org_wide;
 use console_platform_authz::permission_for;
 use serde::Serialize;
@@ -173,10 +172,8 @@ pub(crate) fn served_authz_projection(
             ..cap
         });
     }
-    // This calculator has no target row. Match the mounted handler's exact branch-less gate,
-    // including its refusal of a grant that covers only part of the caller's branch scope.
+    // The mounted calculator supplies its own decision for this principal.
     if analytics_projection
-        && authorize_capability(principal, Action::new(Feature::KpiRead)).is_ok()
         && let Some(cap) = response
             .capabilities
             .iter()
@@ -228,27 +225,6 @@ mod me_authz_org_wide_tests {
             BranchScope::All,
         );
         assert!(!contains(&no_roles, true));
-    }
-
-    #[test]
-    fn projection_requires_the_served_calculator_and_the_handlers_kpi_read() {
-        for roles in [BTreeSet::new(), BTreeSet::from([Role::SuperAdmin])] {
-            for scope in [BranchScope::All, BranchScope::Branches(BTreeSet::new())] {
-                let principal = Principal::new(UserId::new(), OrgId::one(), roles.clone(), scope);
-                for served in [false, true] {
-                    let listed = served_authz_projection(&principal, false, served)
-                        .capabilities
-                        .iter()
-                        .any(|cap| cap.feature == "analytics_projection");
-                    assert_eq!(
-                        listed,
-                        served
-                            && authorize_capability(&principal, Action::new(Feature::KpiRead))
-                                .is_ok()
-                    );
-                }
-            }
-        }
     }
 
     fn period_lock(principal: &Principal) -> Option<bool> {

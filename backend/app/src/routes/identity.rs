@@ -14,17 +14,18 @@ use super::TenantDeps;
 
 pub(super) fn mount(router: Router, deps: &TenantDeps<'_>) -> Router {
     let (state, pool) = (deps.state, deps.pool);
+    let identity = IdentityRestState::new(
+        PgOrgStore::new(pool.clone()),
+        state.jwt_verifier.clone(),
+        PgOnboardingStore::new(pool.clone()),
+    )
+    .with_passkey_step_up(state.policy_step_up.clone())
+    .with_documents_served(cfg!(feature = "docs"));
+    #[cfg(feature = "analytics-quant")]
+    let identity = identity
+        .with_projection_access(|p| console_analytics_quant_rest::projection_access(p).is_ok());
     router
-        .merge(console_identity_rest::router(
-            IdentityRestState::new(
-                PgOrgStore::new(pool.clone()),
-                state.jwt_verifier.clone(),
-                PgOnboardingStore::new(pool.clone()),
-            )
-            .with_passkey_step_up(state.policy_step_up.clone())
-            .with_documents_served(cfg!(feature = "docs"))
-            .with_analytics_projection_served(cfg!(feature = "analytics-quant")),
-        ))
+        .merge(console_identity_rest::router(identity))
         .merge(console_platform_authz_rest::router(
             CedarPolicyRestState::new(
                 PgCedarPolicyStore::new(pool.clone()),

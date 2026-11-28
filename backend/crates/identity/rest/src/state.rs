@@ -11,7 +11,7 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub struct IdentityRestState {
     pub(crate) documents_served: bool,
-    pub(crate) analytics_projection_served: bool,
+    pub(crate) projection_available: fn(&console_platform_authz::Principal) -> bool,
     pub(crate) store: PgOrgStore,
     pub(crate) tenant_facts: Arc<dyn TenantFactsRead>,
     pub(crate) jwt_verifier: Option<JwtVerifier>,
@@ -27,7 +27,7 @@ impl IdentityRestState {
     ) -> Self {
         Self {
             documents_served: false,
-            analytics_projection_served: false,
+            projection_available: |_| false,
             store,
             tenant_facts: Arc::new(tenant_facts),
             jwt_verifier,
@@ -48,8 +48,11 @@ impl IdentityRestState {
     }
 
     #[must_use]
-    pub fn with_analytics_projection_served(mut self, served: bool) -> Self {
-        self.analytics_projection_served = served;
+    pub fn with_projection_access(
+        mut self,
+        projection_available: fn(&console_platform_authz::Principal) -> bool,
+    ) -> Self {
+        self.projection_available = projection_available;
         self
     }
 

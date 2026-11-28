@@ -80,6 +80,7 @@
       "src/features/org/ui/propose-card.tsx",
       "src/features/org/ui/structure-sheets.tsx",
       "src/features/payroll/ui/payroll-home.tsx",
+      "src/features/payroll/ui/payroll-outlook.tsx",
       "src/features/payroll/ui/reference-page.tsx",
       "src/features/people/ui/appointments-content.tsx",
       "src/features/people/ui/certificates-page.tsx",
