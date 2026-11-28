@@ -57,7 +57,7 @@ pub(super) async fn may_read_saved(pool: &PgPool, p: &Principal, item: &Value) -
     let (p, kind) = (p.clone(), kind.to_owned());
     with_org_conn::<_,_,DbError>(pool, p.org_id, move |tx| Box::pin(async move {
         let org = p.org_id.as_uuid();
-        let Some(action) = sqlx::query_scalar::<_,String>("SELECT action FROM audit_events WHERE org_id=$1 AND id=$2 AND target_type=$3 AND target_id=$4 AND outcome='ALLOWED'")
+        let Some(action) = sqlx::query_scalar::<_,String>("SELECT action FROM ordinary_audit_events WHERE org_id=$1 AND id=$2 AND target_type=$3 AND target_id=$4 AND outcome='ALLOWED'")
             .bind(org).bind(audit).bind(&kind).bind(id.to_string()).fetch_optional(tx.as_mut()).await? else { return Ok(false); };
         let Some(feature) = feature(&kind, &action) else { return Ok(false); };
         let Some(branch) = sqlx::query_scalar::<_,Uuid>(sqlx::AssertSqlSafe(sql)).bind(org).bind(id).fetch_optional(tx.as_mut()).await? else { return Ok(false); };

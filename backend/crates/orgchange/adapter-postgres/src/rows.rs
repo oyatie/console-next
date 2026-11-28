@@ -6,7 +6,7 @@ pub(crate) const SELECT_REQUEST: &str = "SELECT r.id, r.code, r.kind, r.status, 
      r.target_ref, r.target_label, r.effective_date, r.reason, r.proposal, r.preflight, \
      r.headcount, r.site_count, r.team_count, r.supersedes_id, r.drafted_by, \
      du.display_name AS drafted_by_name, r.created_at, r.updated_at, \
-     (SELECT e.command_id FROM audit_events e WHERE e.org_id=r.org_id \
+     (SELECT e.command_id FROM ordinary_audit_events e WHERE e.org_id=r.org_id \
        AND e.target_type='org_change_request' AND e.target_id=r.id::text \
        AND e.outcome='ALLOWED' AND e.command_id IS NOT NULL \
        ORDER BY e.created_at DESC,e.id DESC LIMIT 1) AS command_id \
@@ -20,7 +20,7 @@ pub(crate) const SELECT_REQUEST_PAGE: &str = "SELECT r.id, r.code, r.kind, r.sta
      r.target_ref, r.target_label, r.effective_date, r.reason, r.proposal, r.preflight, \
      r.headcount, r.site_count, r.team_count, r.supersedes_id, r.drafted_by, \
      du.display_name AS drafted_by_name, r.created_at, r.updated_at, \
-     (SELECT e.command_id FROM audit_events e WHERE e.org_id=r.org_id \
+     (SELECT e.command_id FROM ordinary_audit_events e WHERE e.org_id=r.org_id \
        AND e.target_type='org_change_request' AND e.target_id=r.id::text \
        AND e.outcome='ALLOWED' AND e.command_id IS NOT NULL \
        ORDER BY e.created_at DESC,e.id DESC LIMIT 1) AS command_id \

@@ -89,7 +89,7 @@ impl PgOrgChangeStore {
                          u.display_name AS actor_name, r.created_at, h.name AS head_name, a.actor_kind, a.command_id \
                          FROM org_unit_revisions r LEFT JOIN person_accounts_current u ON u.id = r.actor_id \
                          LEFT JOIN employees h ON h.id::text = r.attributes->>'head_employee_id' \
-                         LEFT JOIN LATERAL (SELECT a.actor_kind, a.command_id FROM audit_events a \
+                         LEFT JOIN LATERAL (SELECT a.actor_kind, a.command_id FROM ordinary_audit_events a \
                            WHERE a.org_id = r.org_id AND a.target_type = 'org_unit' \
                              AND a.target_id = r.org_unit_id::text AND a.actor = r.actor_id \
                              AND a.created_at = r.created_at AND (a.outcome IS NULL OR a.outcome = 'ALLOWED') \

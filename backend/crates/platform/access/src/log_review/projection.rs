@@ -22,7 +22,7 @@ pub(super) async fn in_tx(
         .await?;
     let rows: Vec<(Uuid, Option<Uuid>, OffsetDateTime, String, Value)> = sqlx::query_as(
         "SELECT DISTINCT ON (action,COALESCE(after_snap->>'event_id',after_snap->>'summary','')) id,actor,created_at,action,\
-         after_snap - 'evidence' - 'evidence_header' - 'chunk_ends' FROM audit_events \
+         after_snap - 'evidence' - 'evidence_header' - 'chunk_ends' FROM ordinary_audit_register \
          WHERE org_id=$1 AND target_type='access_log_review' AND target_id=$2 \
          AND action IN ('access_log_review.start','access_log_review.finding','access_log_review.complete') \
          ORDER BY action,COALESCE(after_snap->>'event_id',after_snap->>'summary',''),created_at DESC,id DESC")

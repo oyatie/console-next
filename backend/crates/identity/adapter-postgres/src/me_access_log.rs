@@ -115,7 +115,7 @@ impl PgOrgStore {
                                NULLIF(a.reason_code, '')
                            ) AS reason_code
                     FROM public.me_access_log_subject_event_ids($1, $2, $3) s
-                    JOIN audit_events a
+                    JOIN ordinary_audit_events a
                       ON a.org_id = $1 AND a.id = s.id
                     LEFT JOIN person_accounts_current u
                            ON u.org_id = a.org_id AND u.id = a.actor
