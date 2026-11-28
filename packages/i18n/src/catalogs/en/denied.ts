@@ -1,5 +1,8 @@
 // English for `denied.` ids (source: ../ko/denied.ts).
 export const enDenied = {
+  "denied.capability.served_evaluation_cycles": "Requires access to evaluation cycles.",
+  "denied.capability.served_evaluation_cycle_create": "Requires permission to create evaluation cycles.",
+  "denied.capability.served_evaluation_tasks": "Requires evaluation submission access.",
   "denied.capability.served_calendar": "Requires internal calendar access.",
   "denied.capability.documents": "Requires organization-wide evidence access.",
   "denied.capability.served_integrity_findings": "Requires access to integrity findings.",

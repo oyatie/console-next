@@ -16,13 +16,13 @@ use console_evaluation_adapter_postgres::PgEvaluationStore;
 use console_evaluation_rest::EvaluationRestState;
 use console_kernel_core::{BranchId, OrgId, UserId};
 use console_platform_auth::{AccessTokenInput, JwtIssuer, JwtSettings, JwtVerifier};
+use console_platform_test_support::runtime_role_pool;
 use http::{Request, StatusCode, header};
 use p256::ecdsa::SigningKey;
 use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::{Value, json};
 use sqlx::PgPool;
-use sqlx::postgres::PgPoolOptions;
 use time::{Duration, OffsetDateTime};
 use tower::ServiceExt;
 use uuid::Uuid;
@@ -1153,6 +1153,8 @@ impl Fixture {
             .unwrap();
         let org = OrgId::one();
         seed_org(pool, ORG_B, "evaluation-isolation").await;
+        sqlx::query("INSERT INTO tenant_module_enrollments (org_id,module_key,enabled,change_ref) VALUES ($1,'evaluation',true,'test-enrollment'), ($2,'evaluation',true,'test-enrollment')")
+            .bind(org.as_uuid()).bind(ORG_B).execute(pool).await.unwrap();
         let branch = seed_branch(pool, org, "평가-본점").await;
         let foreign_branch = seed_branch(pool, OrgId::from_uuid(ORG_B), "격리-지점").await;
 
@@ -1260,20 +1262,6 @@ fn jwt_settings() -> JwtSettings {
         audience: AUDIENCE.to_owned(),
         access_token_ttl: Duration::minutes(15),
     }
-}
-
-async fn runtime_role_pool(owner: &PgPool) -> PgPool {
-    PgPoolOptions::new()
-        .max_connections(8)
-        .after_connect(|conn, _| {
-            Box::pin(async move {
-                sqlx::query("SET ROLE console_rt").execute(conn).await?;
-                Ok(())
-            })
-        })
-        .connect_with(owner.connect_options().as_ref().clone())
-        .await
-        .unwrap()
 }
 
 fn app_state(pool: PgPool, public_key_pem: String) -> Result<AppState, console_app::AppError> {

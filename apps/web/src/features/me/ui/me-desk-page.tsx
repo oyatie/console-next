@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { useServedCapability } from "../../../reference/authz/ui/use-documents-served";
 import { DISPATCH_OFFERS_MODULE, moduleReady, modulesQuery } from "../../../reference/onboarding/api";
 import { lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -55,6 +56,7 @@ export function MeDeskPage() {
   const calendar = useServedCapability("served_calendar");
   const me = useQuery(meUserQuery);
   const modules = useQuery(modulesQuery);
+  const evaluations = useServedCapability("served_evaluation_tasks");
   const isLinked = me.data?.employee_link_status === "LINKED";
   const profile = useQuery({ ...myProfileQuery, enabled: isLinked, retry: false });
   const leave = useQuery({ ...myLeaveOverviewQuery, enabled: isLinked, retry: false });
@@ -118,6 +120,7 @@ export function MeDeskPage() {
       </div>
       <div className={s.railLinks}>
         <Link to="/me/attendance" className={buttonClass("secondary", { size: "sm", className: s.nowrap })}>{t("me.desk.links.attendance")}</Link>
+        {evaluations && <Link to="/me/evaluations" className={buttonClass("secondary", { size: "sm", className: s.nowrap })}>{t("me.evaluation.title")}</Link>}
         {moduleReady(modules.data, DISPATCH_OFFERS_MODULE) && <Link to="/me/dispatch-offers" className={buttonClass("secondary", { size: "sm", className: s.nowrap })}>{t("me.dispatch.link")}</Link>}
         <Link to="/payslips" className={buttonClass("secondary", { size: "sm", className: s.nowrap })}>{t("shell.title.payslip")}</Link>
         <Link to="/account/privacy" className={buttonClass("secondary", { size: "sm", className: s.nowrap })}>{t("me.desk.links.privacy")}</Link>

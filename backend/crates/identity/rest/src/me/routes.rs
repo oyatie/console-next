@@ -1,6 +1,6 @@
 use crate::context::principal_from_headers;
 use crate::error::RestError;
-use crate::me::authz::served_authz_projection;
+use crate::me::authz::{ServedModules, served_authz_projection};
 use crate::state::IdentityRestState;
 use crate::users::dto::UpdateSelfRequest;
 use axum::Json;
@@ -61,16 +61,24 @@ pub(crate) async fn get_me_authz(
     State(state): State<IdentityRestState>,
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, RestError> {
-    // The resolved Principal already carries the live branch scope + runtime
-    // custom-role grants (armed under this request's org), so the projection is
-    // pure — no DB read beyond principal resolution.
     let principal = principal_from_headers(&state, &headers).await?;
+    let tasks = (state.evaluation_tasks)(&principal);
+    let (read_cycles, create_cycles) = (state.evaluation_cycles)(&principal);
+    let evaluation = (tasks || read_cycles || create_cycles)
+        && console_platform_request_context::tenant_module::TenantModule::Evaluation
+            .enabled(state.pool(), principal.org_id)
+            .await
+            .map_err(RestError::from_kernel)?;
     Ok(Json(served_authz_projection(
         &principal,
-        state.documents_served,
-        (state.integrity_access)(&principal),
-        (state.ledger_access)(&principal),
-        (state.benefit_access)(&principal),
-        (state.calendar_access)(&principal),
+        ServedModules {
+            documents: state.documents_served,
+            integrity: (state.integrity_access)(&principal),
+            ledger: (state.ledger_access)(&principal),
+            benefits: (state.benefit_access)(&principal),
+            calendar: (state.calendar_access)(&principal),
+            evaluation_tasks: evaluation && tasks,
+            evaluation_cycles: (evaluation && read_cycles, evaluation && create_cycles),
+        },
     )))
 }
