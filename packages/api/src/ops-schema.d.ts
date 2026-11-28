@@ -484,7 +484,7 @@ export interface paths {
         put?: never;
         /**
          * Draft Promote Cmd
-         * @description Records signed promote Cmd hand-off in actions spool.
+         * @description Records a signed hand-off for the ready preview digest after checking fresh deployment freeze evidence.
          */
         post: operations["opsPromoteRequest"];
         delete?: never;
@@ -2323,6 +2323,24 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            /** @description The requested candidate is not ready for promotion. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Promotion evidence is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     opsPromoteSignoff: {
