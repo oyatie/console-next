@@ -62,7 +62,7 @@ ci/gates/layer-boundary/src/lib.rs	431
 ci/gates/layer-boundary/tests/gate_detects_violation.rs	948
 ci/gates/migration-safety/src/lib.rs	347
 ci/gates/migration-safety/tests/gate_detects_violation.rs	372
-ci/gates/personal-data-classification/src/lib.rs	1245
+ci/gates/personal-data-classification/src/lib.rs	1235
 ci/gates/personal-data-classification/tests/gate_detects_violation.rs	1304
 ci/gates/pii-no-logs/src/lib.rs	399
 ci/gates/tenant-isolation/src/lib.rs	779

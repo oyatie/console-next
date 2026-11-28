@@ -56,7 +56,9 @@ mod finite_foreach;
 mod markers;
 mod statement_names;
 pub use markers::parse_markers;
-use statement_names::{read_qualified_name, sets_constraint_timing};
+use statement_names::{
+    alter_action_is_column_neutral, read_qualified_name, renames_constraint, sets_constraint_timing,
+};
 mod waivers;
 pub use waivers::UNSUPPORTED_WAIVERS;
 
@@ -1050,23 +1052,6 @@ fn top_level_action_count(tokens: &[Tok]) -> Option<usize> {
     (depth == 0).then_some(commas + 1)
 }
 
-fn alter_action_is_column_neutral(action: &[Tok]) -> bool {
-    let mut words = action.iter().filter_map(Tok::word);
-    let Some(head) = words.next() else {
-        return false;
-    };
-    if COLUMN_NEUTRAL_ALTER_ACTIONS.contains(&head) {
-        return true;
-    }
-    // `ADD`/`DROP CONSTRAINT` is neutral, `ADD`/`DROP COLUMN` is not, and a
-    // bare `ADD colname TYPE` is the implicit column form: the same distinction
-    // `apply_alter_table` draws on parsed SQL, drawn here on opaque text.
-    matches!(head, "add" | "drop")
-        && words
-            .next()
-            .is_some_and(|next| CONSTRAINT_HEADS.contains(&next))
-}
-
 /// Consume `[IF NOT EXISTS]` / `[IF EXISTS]` and return the index of the name.
 fn skip_if_clause(statement: &[Tok], mut index: usize) -> usize {
     while let Some(word) = statement.get(index).and_then(Tok::word) {
@@ -1255,6 +1240,7 @@ fn apply_alter_table(statement: &[Tok], file: &Path, schema: &mut Schema) {
             // follow the identity Postgres actually tracks. No migration uses
             // the form today; the day one does, the gate says so instead of
             // quietly reporting the old column set.
+            Some("rename") if renames_constraint(action) => {}
             Some("rename") => {
                 schema.unsupported(
                     file,
