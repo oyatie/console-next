@@ -26,10 +26,12 @@ const employees = (query: object) => get("/api/v1/employees", { params: { query 
  */
 export function useRoster(f: OrderedRoster, soonDays: number | undefined, enabled = soonDays !== undefined) {
   const today = todayKst();
-  const query = enabled ? orderedQuery(f, today, soonDays) : {};
+  // Only the upcoming-contract filter needs the tenant window to select its rows.
+  const rowsEnabled = enabled || !f.review.includes("contractSoon");
+  const query = rowsEnabled ? orderedQuery(f, today, soonDays) : {};
   const list = useInfiniteQuery({
     ...cursorPages("/api/v1/employees", { ...query, limit: PAGE }),
-    enabled,
+    enabled: rowsEnabled,
     placeholderData: keepPreviousData,
     refetchOnWindowFocus: false,
     refetchInterval: false,

@@ -4,16 +4,20 @@ import { ReadSkeleton } from "../../../ui/skeleton/skeleton";
 import { useCan } from "../../../reference/authz/ui/use-can";
 import { RosterExport } from "./roster-export";
 import { useRosterScreen } from "./use-roster-screen";
-import { useRosterLayout } from "./use-roster-layout";
+import { baselineRosterLayout, consoleRosterLayout, useRosterLayout } from "./use-roster-layout";
+import { ExperienceSwitch } from "../../../ui/patterns/pattern-shell";
 
-export function RosterPage(props: { manage: boolean; scoped?: boolean; switcher?: ReactNode; notice?: ReactNode; tabs?: ReactNode }) {
+type RosterPageProps = { manage: boolean; scoped?: boolean; switcher?: ReactNode; notice?: ReactNode; tabs?: ReactNode };
+
+export function RosterPage(props: RosterPageProps) {
+  return <ExperienceSwitch baseline={() => <SelectedRosterPage {...props} layout={baselineRosterLayout} />}>
+    {() => <SelectedRosterPage {...props} layout={consoleRosterLayout} />}
+  </ExperienceSwitch>;
+}
+
+function SelectedRosterPage({ layout, ...props }: RosterPageProps & { layout: typeof baselineRosterLayout }) {
   const screen = useRosterScreen();
-  const RosterScreen = useRosterLayout();
   const can = useCan();
-  if (!RosterScreen) return <ReadSkeleton layout="list" />;
-  return (
-    <Suspense fallback={<ReadSkeleton layout="list" />}>
-      <RosterScreen {...props} screen={screen} actions={can("excel_download") && <RosterExport query={screen.r.query} total={screen.r.total} />} />
-    </Suspense>
-  );
+  const content = useRosterLayout(layout, { ...props, screen, actions: can("excel_download") && <RosterExport query={screen.r.query} total={screen.r.total} /> });
+  return <Suspense fallback={<ReadSkeleton layout="list" />}>{content}</Suspense>;
 }

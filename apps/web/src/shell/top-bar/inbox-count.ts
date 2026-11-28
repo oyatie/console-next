@@ -31,9 +31,11 @@ export function useNewestPage(read: InboxRead) {
 
 /** Give the first route its reads before starting the header's background count. */
 export function useCountAfterArrival(active: boolean, routeKey: string | undefined) {
+  const [firstEntry] = useState(routeKey);
   const [ready, setReady] = useState(false);
+  const wait = active && !ready && firstEntry === routeKey;
   useEffect(() => {
-    if (!active || ready) return;
+    if (!wait) return;
     const marker = document.querySelector<HTMLElement>("[data-route-key]");
     const arrived = () => marker?.dataset.routeKey === routeKey && !!marker?.dataset.routeReady;
     const observer = new MutationObserver(() => { if (arrived()) setReady(true); });
@@ -41,6 +43,6 @@ export function useCountAfterArrival(active: boolean, routeKey: string | undefin
     // A slow or paused route still gets its count, and opening the panel always reads immediately.
     const timeout = window.setTimeout(() => setReady(true), marker && !arrived() ? BACKGROUND_SETTLE_MS : 0);
     return () => { observer.disconnect(); window.clearTimeout(timeout); };
-  }, [active, ready, routeKey]);
-  return ready;
+  }, [wait, routeKey]);
+  return !wait;
 }
