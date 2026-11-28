@@ -69,6 +69,18 @@ The benefit catalog enforces resource scope for branch items and organization-wi
 
 The combined #930 repair and #931 rehearsal passed 7,819 frontend assertions in 886 files and 216 downstream checks. Two frontend assertions and one downstream check were skipped. At 09:33 UTC, #930 still had six hosted failures at its published head, the current #931 candidate and database workflows were unfinished, and the original dev database run still had three failed shards. The required request-contract gate proposed for dev passed all 118 local checks on the original dev inventory. [Cutover](https://github.com/oyatie/console-next/pull/930) · [Dev repair](https://github.com/oyatie/console-next/pull/931) · [Request contract gate](https://github.com/oyatie/console-next/pull/951)
 
+### PostgreSQL regressions found during cutover
+
+The four-shard run on `20560f367a` exposed failures that the web and backend unit suites had passed. [Database run](https://github.com/oyatie/console-next/actions/runs/46143142057)
+
+| Surface | Failure and verified repair |
+|---|---|
+| Document retention | Closing a legal entity made its retained settings and those of its workplaces unreadable. The historical query now resolves their tenant-owned scope chain. The live registry and database write guard still reject closed scopes. |
+| Attendance policy | Ordinary members received the registry’s clock-out setting in addition to the employee-specific decision on the attendance endpoint. Both Console and Classic read the employee-specific decision. The registry now keeps this setting behind settings access. |
+| Access catalog | The overtime decision feature was missing from the PostgreSQL catalog, preventing an explicit grant. A forward migration registers the key. Its upgrade test verifies that existing role permissions survive and the new permission can be granted explicitly. |
+| Inbox deadlines and paging | The inbox changed statutory dates after the source had calculated them, including moving a Saturday due date to Monday. A setup item could also produce a cursor the API refused on the next page. The inbox now retains the source date and accepts the cursor it emits. |
+| Privacy and imports | The privacy intake fixtures omitted the independently verified identities required for the decision. The HR import fixture supplied an empty dry run. The repaired tests exercise both authorization outcomes and verify the stored event and audit result after an acknowledged import. |
+
 ### Tenant module controls under review
 
 Evaluation, benefits and the internal calendar each require operator enrollment, an effective tenant-wide preference and the caller's existing authority. The preference defaults on for enrolled tenants. Enrollment migrations activate zero tenants. Calendar creation persists an internal event and its two audit records. The policy starts no invitation, mail or delivery worker. A disabled calendar removes its events from the workbench. A disabled benefits catalog also closes the catalog item's generic lifecycle endpoints. The 24 combined Chromium and Firefox journeys and the PostgreSQL admission and replay tests passed locally. [Evaluation policy](https://github.com/oyatie/console-next/pull/949) · [Benefits and calendar admission](https://github.com/oyatie/console-next/pull/952)
