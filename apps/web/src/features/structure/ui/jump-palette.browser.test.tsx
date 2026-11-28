@@ -210,10 +210,15 @@ test("a pasted request key is opened by Enter", async () => {
   await open("chord");
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.evaluate(key => navigator.clipboard.writeText(key), KEY);
-  const kinds = page.evaluate(() => new Promise<string>(done => document.addEventListener("beforeinput", e => done(e.inputType), { once: true, capture: true })));
+  await element(box()).toBeFocused();
+  await box().evaluate(input => {
+    input.addEventListener("beforeinput", event => {
+      input.setAttribute("data-paste-type", (event as InputEvent).inputType);
+    }, { once: true });
+  });
   await page.keyboard.press("ControlOrMeta+V");
-  expect(await kinds).toBe("insertFromPaste");
   await element(box()).toHaveValue(KEY);
+  await element(box()).toHaveAttribute("data-paste-type", "insertFromPaste");
   await lit(t("requestOutcome.find"));
   await page.keyboard.press("Enter");
   await element(at()).toHaveText(`/requests/${KEY}`);

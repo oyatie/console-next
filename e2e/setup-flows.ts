@@ -259,9 +259,10 @@ export async function acceptSetupTerms(admin: Page, c: C = plain) {
     await expect(accept).toBeVisible();
   }
   if (await accept.isVisible()) {
-    const preview = admin.waitForResponse(response => response.request().method() === "GET" && new URL(response.url()).pathname === "/api/v1/onboarding/go-live/preview");
+    await expect(accept).toBeEnabled();
+    const accepted = answer(admin, "POST", /^\/api\/v1\/onboarding\/terms$/);
     await c.click(accept);
-    await preview;
+    await expectSuccess(accepted, "service terms acceptance");
     await expect(accept).toBeHidden();
   }
 }
