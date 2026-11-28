@@ -56,6 +56,14 @@ mod workflow;
 pub(crate) use workbench::read_workbench_action_inbox;
 
 pub const ME_ACTION_INBOX_PATH: &str = "/api/v1/me/action-inbox";
+pub(crate) const ROUTE_PATHS: &[&str] = &[
+    ME_ACTION_INBOX_PATH,
+    tabs::ME_ACTION_INBOX_DONE_PATH,
+    tabs::ME_ACTION_INBOX_REFERENCE_PATH,
+    tabs::ME_ACTION_INBOX_REFERENCE_READ_PATH,
+    tabs::ME_ACTION_INBOX_ITEM_ACTIVITY_PATH,
+    tabs::ME_ACTION_INBOX_ITEM_SNOOZE_PATH,
+];
 #[derive(Clone)]
 pub struct ActionInboxState {
     pool: PgPool,

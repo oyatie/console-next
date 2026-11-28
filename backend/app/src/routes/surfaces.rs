@@ -51,17 +51,7 @@ pub const CONFIGURED_ROUTE_SURFACES: &[ConfiguredRouteSurface] = &[
     ),
     #[cfg(feature = "support")]
     surface("support", console_support_rest::SUPPORT_ROUTE_PATHS),
-    surface(
-        "action-inbox",
-        &[
-            crate::action_inbox::ME_ACTION_INBOX_PATH,
-            crate::action_inbox::tabs::ME_ACTION_INBOX_DONE_PATH,
-            crate::action_inbox::tabs::ME_ACTION_INBOX_REFERENCE_PATH,
-            crate::action_inbox::tabs::ME_ACTION_INBOX_REFERENCE_READ_PATH,
-            crate::action_inbox::tabs::ME_ACTION_INBOX_ITEM_ACTIVITY_PATH,
-            crate::action_inbox::tabs::ME_ACTION_INBOX_ITEM_SNOOZE_PATH,
-        ],
-    ),
+    surface("action-inbox", crate::action_inbox::ROUTE_PATHS),
     surface(
         "approvals",
         &[
@@ -312,7 +302,8 @@ pub const CONFIGURED_ROUTE_SURFACES: &[ConfiguredRouteSurface] = &[
     ),
 ];
 
-#[cfg(all(test, feature = "production", not(feature = "test-postgres")))]
+#[cfg(all(test, feature = "production"))]
+#[cfg(not(feature = "test-postgres"))]
 mod production_route_surface_tests {
     use super::*;
     use console_production_rest::{
