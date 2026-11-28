@@ -10,7 +10,7 @@ import { cursorPages } from "../../lib/query";
 import { inboxReadFilter, inboxView } from "../../features/home/domain/inbox-filter";
 import { chunk } from "../../lib/chunk-guard";
 import { ReadSkeleton } from "../../ui/skeleton/skeleton";
-import { countRead, useNewestPage, type InboxPage } from "./inbox-count";
+import { countRead, useCountAfterArrival, useNewestPage, type InboxPage } from "./inbox-count";
 import s from "./top-bar.module.css";
 
 const NeedsMePanel = lazy(() => chunk(import("./needs-me-panel")).then(m => ({ default: m.NeedsMePanel })));
@@ -19,14 +19,15 @@ const NeedsMePanel = lazy(() => chunk(import("./needs-me-panel")).then(m => ({ d
 export function NeedsMeMenu({ id, seed }: { id: string; seed?: InboxPage }) {
   const claims = useSyncExternalStore(session.subscribe, () => session.claims);
   const platform = !seed && !!claims?.platform;
-  const { pathname, search } = useLocation();
+  const { pathname, search, state } = useLocation();
   const [open, setOpen] = useState(false);
   const home = pathname === "/";
   const fullInbox = pathname === "/inbox";
   const shared = home || fullInbox;
+  const backgroundReady = useCountAfterArrival(!seed && !platform && !shared, state.__TSR_key);
   const filter = fullInbox ? inboxReadFilter(inboxView(search.tab)) : "turn";
   // Queue pages start their arrival read; keep the shared observer live after that answer.
-  const inbox = useInfiniteQuery({ ...(shared ? cursorPages("/api/v1/me/action-inbox", home ? { filter, attention: "all" } : { filter }) : countRead), enabled: query => !seed && !platform && (!shared || !!query.state.data), staleTime: Infinity, placeholderData: keepPreviousData, notifyOnChangeProps: "all" });
+  const inbox = useInfiniteQuery({ ...(shared ? cursorPages("/api/v1/me/action-inbox", home ? { filter, attention: "all" } : { filter }) : countRead), enabled: query => !seed && !platform && (shared ? !!query.state.data : open || backgroundReady), staleTime: Infinity, placeholderData: keepPreviousData, notifyOnChangeProps: "all" });
   const separate = fullInbox && filter !== "turn";
   // Other inbox tabs supply counts, but the task panel always reads my turn when opened.
   const tasks = useInfiniteQuery({ ...cursorPages("/api/v1/me/action-inbox", { filter: "turn" }), enabled: !seed && !platform && separate && open, notifyOnChangeProps: "all" });
