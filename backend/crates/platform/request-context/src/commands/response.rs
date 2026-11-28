@@ -96,6 +96,19 @@ pub(super) async fn refusal_code(response: Response) -> (Response, String) {
     }
 }
 
+pub(super) async fn audited_refusal(
+    pool: &PgPool,
+    p: &Principal,
+    status: StatusCode,
+    code: &str,
+    id: Option<Uuid>,
+) -> Response {
+    if crate::record_refusal(pool, p, code, id).await.is_err() {
+        return refusal(StatusCode::SERVICE_UNAVAILABLE, "service_unavailable", id);
+    }
+    refusal(status, code, id)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -186,17 +199,4 @@ mod tests {
             .contains_key("location")
         );
     }
-}
-
-pub(super) async fn audited_refusal(
-    pool: &PgPool,
-    p: &Principal,
-    status: StatusCode,
-    code: &str,
-    id: Option<Uuid>,
-) -> Response {
-    if crate::record_refusal(pool, p, code, id).await.is_err() {
-        return refusal(StatusCode::SERVICE_UNAVAILABLE, "service_unavailable", id);
-    }
-    refusal(status, code, id)
 }
