@@ -11,7 +11,6 @@ import { ExperienceSwitch } from "../../../ui/patterns/pattern-shell";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { rowById } from "../../../ui/long-table/row-keys";
 import { unitPath } from "../../../reference/org/present";
-import { employeeQuery } from "../api";
 import { BulkRescind } from "./bulk-rescind";
 import { BulkSheet } from "./bulk-sheet";
 import { RosterBulk } from "./roster-bulk";
@@ -75,7 +74,7 @@ function BaselineRosterScreen({ manage, scoped = false, switcher, notice, screen
     open, openUnit, select, selectRelated, full, expand, restore, unitTrigger, unitItems, selectedUnit,
     sort, q, exitView, setExitView, findSlot, setFindSlot, sel, setSel,
     recorded, batch, setBatch, rescinding, setRescinding, setRecorded, rescindReady,
-    r, view, prefetch, setFilter, find, reset, viewFilters, applyView, closePaste, bulkDone, openRecord,
+    r, view, setFilter, find, reset, viewFilters, applyView, closePaste, bulkDone, openRecord,
     scroller, rowCount, scrollRef, onRowFocus, filtered, customFilters, sameName, onRowAction,
   } = screen;
   const { tabs: views, ...head } = useRosterHead({ manage, soonDays, status, review, onView: v => setFilter({ status: v.status, review: v.review }), actions, switcher });
@@ -148,7 +147,6 @@ function BaselineRosterScreen({ manage, scoped = false, switcher, notice, screen
               loading={r.loading}
               empty={r.list.error && !r.list.data ? null : empty}
               onRowAction={onRowAction}
-              onRowHover={(id) => prefetch(employeeQuery(id))}
               onRowFocus={onRowFocus}
               rowKeys={{ onOpen: openRecord }}
               find={{ label: t("roster.find"), onFind: find, defaultValue: q }}
