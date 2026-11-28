@@ -38,7 +38,14 @@ for (const width of [1440, 390]) test(`a user-entered payroll scenario at ${widt
   if (width === 1440) {
     await page.goto("/");
     const entry = page.getByRole("navigation", { name: "Main menu" }).locator('a[href="/payroll/outlook"]');
-    await entry.focus();
+    await expect(entry).toBeVisible();
+    // Home gives its heading initial focus. A keyboard user moves back through the header to Payroll.
+    await expect(page.getByRole("heading", { level: 1, name: "To-dos" })).toBeFocused();
+    for (let step = 0; step < 20; step++) {
+      await page.keyboard.press("Shift+Tab");
+      if (await entry.evaluate(link => link === document.activeElement)) break;
+    }
+    await expect(entry).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/\/payroll\/outlook$/);
   } else {
