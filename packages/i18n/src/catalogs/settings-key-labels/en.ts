@@ -25,6 +25,7 @@ export const enSettingLabels = {
   "settingsHub.key.corporate.small_company_383_proviso": "Small company Commercial Act Art. 383 proviso",
   "settingsHub.key.module.benefits.enabled": "Benefits catalog",
   "settingsHub.key.module.calendar.enabled": "Internal calendar",
+  "settingsHub.key.module.compliance.enabled": "Compliance catalog and evidence",
   "settingsHub.key.module.evaluation.enabled": "Evaluations module",
   "settingsHub.key.module.payroll.enabled": "Payroll module",
   "settingsHub.key.attendance.week52.warn_hours": "Weekly 52-hour warning threshold",

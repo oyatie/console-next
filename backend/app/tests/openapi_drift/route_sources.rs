@@ -96,6 +96,12 @@ pub(super) const CONFIGURED_ROUTE_SOURCES: &[RouteSource] = &[
         ignored_route_refs: &[],
     },
     RouteSource {
+        name: "compliance catalog REST router",
+        surface: "compliance",
+        source: include_str!("../../../crates/compliance/rest/src/catalog.rs"),
+        ignored_route_refs: &[],
+    },
+    RouteSource {
         name: "integrity REST router",
         surface: "integrity",
         source: include_str!("../../../crates/compliance/integrity/src/rest.rs"),

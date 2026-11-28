@@ -8,6 +8,8 @@ import { bootBootstrapEn } from "./boot-bootstrap";
 export const bootEn = {
   ...bootBootstrapEn,
   ...bootConsentEn,
+  "compliance.title": "Compliance catalog",
+  "compliance.create": "Add a compliance record",
   "evaluation.title": "Evaluation cycles",
   "evaluation.create": "Create evaluation cycle",
   "shell.link.payroll": "Payroll",

@@ -37,6 +37,7 @@ export const TENANT_NAV: readonly NavHub[] = [
     { to: "/statutory", label: "shell.link.statutory", icon: ScrollText, module: "statutory" },
   ] },
   { hub: "shell.hub.admin", links: [
+    { to: "/compliance", label: "compliance.title", icon: ClipboardCheck },
     { to: "/access", label: "shell.link.access", icon: KeyRound, module: "access" },
     { to: "/audit", label: "shell.link.audit", icon: FileText, supportApproval: true },
     { to: "/settings", label: "shell.link.settings", icon: Settings, views: SETTINGS_VIEWS },
@@ -67,10 +68,10 @@ export function tenantNav(access: AccessEffective | undefined, routes: Routes, s
     const need = routes[link.to]?.options.staticData?.access;
     const allowedPrimary = hasPrimary && (need === "signed-in" || !!need && accessRefusal(access, need, served) === null);
     if (allowedPrimary) return [link];
-    const create = routes["/evaluation/new"]?.options.staticData?.access;
-    if (link.to === "/evaluation" && create && create !== "signed-in" && accessRefusal(access, create, served) === null) {
-      return [{ ...link, to: "/evaluation/new", label: "evaluation.create" }];
-    }
+    const creation = link.to === "/evaluation" ? { to: "/evaluation/new", label: "evaluation.create" as const }
+      : link.to === "/compliance" ? { to: "/compliance/new", label: "compliance.create" as const } : undefined;
+    const create = creation && routes[creation.to]?.options.staticData?.access;
+    if (creation && create && create !== "signed-in" && accessRefusal(access, create, served) === null) return [{ ...link, ...creation }];
     if (auditFallback) return [{ ...link, to: "/audit/support-access" }];
     if (vaultFallback) return [{ ...link, to: "/audit/evidence" }];
     if (outlookFallback) return [{ ...link, to: "/payroll/outlook" }];

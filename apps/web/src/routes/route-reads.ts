@@ -6,6 +6,8 @@ export { alternativeRouteReads, routeReads } from "./route-read-data";
 
 /** Served routes require their own server permission decision before the register reads. */
 export const servedRouteReads = {
+  "/compliance": { access: { servedCapability: "served_compliance_catalog" }, reads: ["/api/v1/compliance/frameworks", "/api/v1/compliance/obligations"] },
+  "/compliance/new": { access: { servedCapability: "served_compliance_catalog_manage" }, reads: ["/api/v1/me/authz"] },
   "/payroll/outlook": { access: { servedCapability: "analytics_projection" }, reads: ["/api/v1/analytics/projection"], method: "post" },
   "/audit/lifecycles/$objectType/$objectId": { access: { servedCapability: "lifecycle_manage" }, reads: ["/api/v1/lifecycles/{objectType}/{objectId}"] },
   "/evaluation": { access: { servedCapability: "served_evaluation_cycles" }, reads: ["/api/v1/evaluation/cycles"] },

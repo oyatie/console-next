@@ -40371,7 +40371,10 @@ export interface operations {
     linkComplianceControlObligation: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Reuse this key for a retry of the same catalog command. */
+                "Idempotency-Key"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -40392,6 +40395,15 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            /** @description A previous command with this key was already applied or is processing. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
             422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalServerError"];
             503: components["responses"]["ServiceUnavailable"];
@@ -40521,7 +40533,10 @@ export interface operations {
     createComplianceFrameworkControl: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Reuse this key for a retry of the same catalog command. */
+                "Idempotency-Key"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -40542,6 +40557,15 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            /** @description A previous command with this key was already applied or is processing. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
             422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalServerError"];
             503: components["responses"]["ServiceUnavailable"];
@@ -40581,7 +40605,10 @@ export interface operations {
     createComplianceFramework: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Reuse this key for a retry of the same catalog command. */
+                "Idempotency-Key"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -40602,6 +40629,15 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            /** @description A previous command with this key was already applied or is processing. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
             422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalServerError"];
             503: components["responses"]["ServiceUnavailable"];
@@ -40610,7 +40646,10 @@ export interface operations {
     linkComplianceObligationRegulation: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Reuse this key for a retry of the same catalog command. */
+                "Idempotency-Key"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -40631,6 +40670,15 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            /** @description A previous command with this key was already applied or is processing. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
             422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalServerError"];
             503: components["responses"]["ServiceUnavailable"];
@@ -40673,7 +40721,10 @@ export interface operations {
     createComplianceObligation: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Reuse this key for a retry of the same catalog command. */
+                "Idempotency-Key"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -40694,6 +40745,15 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            /** @description A previous command with this key was already applied or is processing. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
             422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalServerError"];
             503: components["responses"]["ServiceUnavailable"];
@@ -40733,7 +40793,10 @@ export interface operations {
     createComplianceRegulation: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Reuse this key for a retry of the same catalog command. */
+                "Idempotency-Key"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -40754,6 +40817,15 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            /** @description A previous command with this key was already applied or is processing. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
             422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalServerError"];
             503: components["responses"]["ServiceUnavailable"];

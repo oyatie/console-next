@@ -41,7 +41,9 @@ pub(super) fn mount(router: Router, deps: &TenantDeps<'_>) -> Router {
     #[cfg(feature = "benefit")]
     let identity = identity.with_benefit_access(console_benefit_rest::catalog_access);
     #[cfg(feature = "compliance")]
-    let identity = identity.with_ledger_access(console_compliance_rest::consent_ledger_available);
+    let identity = identity
+        .with_ledger_access(console_compliance_rest::consent_ledger_available)
+        .with_compliance_access(console_compliance_rest::catalog_access);
     router
         .merge(console_identity_rest::router(identity))
         .merge(console_platform_authz_rest::router(

@@ -18,7 +18,6 @@ app/tests/board_ack_api.rs	358
 app/tests/cedar_freshness_mint.rs	375
 app/tests/cedar_shadow_role_manage.rs	304
 app/tests/compliance_api.rs	449
-app/tests/compliance_catalog_api.rs	310
 app/tests/console_route_telemetry.rs	312
 app/tests/consulting_engagement_api.rs	1079
 app/tests/current_authority.rs	729
@@ -83,11 +82,11 @@ crates/comms/application/src/lib.rs	1359
 crates/comms/mailbox/src/lib.rs	493
 crates/comms/rest/src/lib.rs	873
 crates/comms/rest/tests/mox_webhook.rs	331
-crates/compliance/adapter-postgres/src/lib.rs	2108
+crates/compliance/adapter-postgres/src/lib.rs	2047
 crates/compliance/adapter-postgres/tests/location_store.rs	883
 crates/compliance/application/src/lib.rs	463
-crates/compliance/domain/src/lib.rs	930
-crates/compliance/rest/src/lib.rs	1197
+crates/compliance/domain/src/lib.rs	810
+crates/compliance/rest/src/lib.rs	1187
 crates/consulting/rest/src/lib.rs	966
 crates/consulting/rest/tests/audit_atomicity.rs	501
 crates/contracts/src/lib.rs	651

@@ -79,3 +79,5 @@ COMMIT;
 ```
 
 Withdrawal appends a disabled decision using a new reference. Requests admitted after that commit, including retries carrying an earlier command key, are refused. In-flight requests can finish. Historical evaluation, benefit and calendar records are preserved. No tenant is enrolled by the migration.
+
+The compliance feature serves the catalog and evidence-binding API to organizations enrolled in `compliance`. The tenant-wide preference `module.compliance.enabled` defaults to true after enrollment. Catalog enrollment creates no obligation, control, evidence record or notification. Privacy-rights intake, personal location consent, oversight, and the statutory register keep their existing permission and build requirements.

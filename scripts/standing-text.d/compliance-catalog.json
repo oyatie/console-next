@@ -1,0 +1,10 @@
+{
+  "baseline": {
+    "apps/web/src/features/compliance/ui/catalog.tsx#ComplianceCatalog": 17,
+    "apps/web/src/features/compliance/ui/catalog-form.tsx#ComplianceCatalogForm": 32
+  },
+  "newScreens": {
+    "apps/web/src/features/compliance/ui/catalog.tsx#ComplianceCatalog": { "FACT": 13, "REFUSAL": 3, "EMPTY": 1, "LEGAL": 0, "RECEIPT": 0, "EXPLANATION": 0 },
+    "apps/web/src/features/compliance/ui/catalog-form.tsx#ComplianceCatalogForm": { "FACT": 9, "REFUSAL": 22, "EMPTY": 0, "LEGAL": 0, "RECEIPT": 1, "EXPLANATION": 0 }
+  }
+}

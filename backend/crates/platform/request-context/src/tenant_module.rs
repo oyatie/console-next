@@ -18,6 +18,7 @@ use std::collections::BTreeSet;
 pub enum TenantModule {
     Benefits,
     Calendar,
+    Compliance,
     Evaluation,
 }
 
@@ -36,6 +37,7 @@ impl TenantModule {
         match self {
             Self::Benefits => ("benefits", SettingKey::ModuleBenefitsEnabled),
             Self::Calendar => ("calendar", SettingKey::ModuleCalendarEnabled),
+            Self::Compliance => ("compliance", SettingKey::ModuleComplianceEnabled),
             Self::Evaluation => ("evaluation", SettingKey::ModuleEvaluationEnabled),
         }
     }

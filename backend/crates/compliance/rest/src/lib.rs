@@ -2,6 +2,8 @@
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 mod audit_stream;
+mod catalog;
+pub use catalog::catalog_access;
 mod ledger_export;
 mod ledger_query;
 mod openapi;
@@ -73,40 +75,16 @@ pub const COMPLIANCE_ROUTE_PATHS: &[&str] = &[
 
 pub fn router(state: ComplianceRestState) -> Router {
     let (verifier, pool) = (state.jwt_verifier.clone(), state.store.pool().clone());
-    // The BW-30 statutory read routes seed the chain (shared state and request context).
+    let catalog = catalog::routes().with_state(state.clone());
+    let catalog = console_platform_request_context::with_request_context(
+        catalog,
+        verifier.clone(),
+        pool.clone(),
+    )
+    .layer(axum::Extension(
+        console_platform_request_context::tenant_module::TenantModule::Compliance,
+    ));
     let router = statutory::routes()
-        .route(
-            "/api/v1/compliance/regulations",
-            get(list_regulations).post(create_regulation),
-        )
-        .route(
-            "/api/v1/compliance/obligations",
-            get(list_obligations).post(create_obligation),
-        )
-        .route(
-            "/api/v1/compliance/obligation-regulation-links",
-            post(link_obligation_regulation),
-        )
-        .route(
-            "/api/v1/compliance/frameworks",
-            get(list_frameworks).post(create_framework),
-        )
-        .route(
-            "/api/v1/compliance/framework-controls",
-            get(list_framework_controls).post(create_framework_control),
-        )
-        .route(
-            "/api/v1/compliance/control-obligation-coverage",
-            post(link_control_obligation),
-        )
-        .route(
-            "/api/v1/compliance/evidence-bindings",
-            get(list_evidence_bindings).post(create_evidence_binding),
-        )
-        .route(
-            "/api/v1/compliance/evidence-bindings/{id}/accept",
-            post(accept_evidence_binding),
-        )
         .route("/api/v1/location-consent/status", get(get_status))
         .route("/api/v1/location-consent/grant", post(grant_consent))
         .route("/api/v1/location-consent/suspend", post(suspend_consent))
@@ -132,7 +110,7 @@ pub fn router(state: ComplianceRestState) -> Router {
             get(list_ceo_covert_audit_access_events),
         )
         .with_state(state);
-    console_platform_request_context::with_request_context(router, verifier, pool)
+    console_platform_request_context::with_request_context(router, verifier, pool).merge(catalog)
 }
 
 /// All compliance catalog writes derive the actor, trace, timestamp, and tenant
@@ -197,11 +175,14 @@ struct CreateRegulationRequest {
     impact_area: String,
     impact_summary: String,
     risk_level: ComplianceRiskLevel,
+    #[serde(default, deserialize_with = "catalog::optional_date")]
     effective_from: Option<time::Date>,
+    #[serde(default, deserialize_with = "catalog::optional_date")]
     effective_to: Option<time::Date>,
+    #[serde(default, deserialize_with = "catalog::optional_date")]
     review_due_on: Option<time::Date>,
     owner_user_id: Option<UserId>,
-    #[serde(default)]
+    #[serde(default = "catalog::empty_metadata")]
     metadata: serde_json::Value,
 }
 
@@ -220,11 +201,14 @@ struct CreateObligationRequest {
     scope: ComplianceScope,
     owner_user_id: Option<UserId>,
     severity: ComplianceRiskLevel,
+    #[serde(default, deserialize_with = "catalog::optional_date")]
     effective_from: Option<time::Date>,
+    #[serde(default, deserialize_with = "catalog::optional_date")]
     effective_to: Option<time::Date>,
     review_cadence: Option<ReviewCadence>,
+    #[serde(default, deserialize_with = "catalog::optional_date")]
     next_review_on: Option<time::Date>,
-    #[serde(default)]
+    #[serde(default = "catalog::empty_metadata")]
     metadata: serde_json::Value,
     #[serde(default)]
     regulation_links: Vec<RegulationLinkRequest>,
@@ -244,9 +228,11 @@ struct CreateFrameworkRequest {
     version_label: String,
     framework_kind: FrameworkKind,
     owner_user_id: Option<UserId>,
+    #[serde(default, deserialize_with = "catalog::optional_date")]
     effective_from: Option<time::Date>,
+    #[serde(default, deserialize_with = "catalog::optional_date")]
     effective_to: Option<time::Date>,
-    #[serde(default)]
+    #[serde(default = "catalog::empty_metadata")]
     metadata: serde_json::Value,
 }
 
@@ -258,7 +244,7 @@ struct CreateControlRequest {
     objective: String,
     control_type: ControlType,
     cadence: Option<ControlCadence>,
-    #[serde(default)]
+    #[serde(default = "catalog::empty_requirements")]
     evidence_requirements: serde_json::Value,
     owner_user_id: Option<UserId>,
 }
@@ -992,11 +978,15 @@ fn status_response(consent: LocationConsent) -> LocationConsentStatusResponse {
 /// Whether any branch of the caller's effective scope admits a consent ledger read.
 /// A narrowed custom grant can admit a specific branch even if it cannot cover the entire scope.
 pub fn consent_ledger_available(principal: &Principal) -> bool {
-    let action = Action::new(Feature::AuditLogRead);
+    branch_navigation_available(principal, Feature::AuditLogRead)
+}
+
+fn branch_navigation_available(principal: &Principal, feature: Feature) -> bool {
+    let action = Action::new(feature);
     if console_platform_authz::authorize_capability(principal, action).is_ok() {
         return true;
     }
-    // Navigation may offer a specific branch; the ledger handler still authorizes the requested branch.
+    // Navigation may offer a specific branch. Each handler still authorizes the requested branch.
     principal.support.is_none()
         && principal.effective_feature_grants.iter().any(|grant| {
             grant.feature == action.feature()

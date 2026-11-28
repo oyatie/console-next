@@ -481,49 +481,49 @@
     },
     {
       "operation": "POST /api/v1/compliance/control-obligation-coverage",
-      "rust_file": "backend/crates/compliance/rest/src/lib.rs",
+      "rust_file": "backend/crates/compliance/rest/src/catalog.rs",
       "handler": "link_control_obligation",
       "body_type": "LinkControlObligationRequest",
       "reason": "rust_struct_not_strict"
     },
     {
       "operation": "POST /api/v1/compliance/evidence-bindings",
-      "rust_file": "backend/crates/compliance/rest/src/lib.rs",
+      "rust_file": "backend/crates/compliance/rest/src/catalog.rs",
       "handler": "create_evidence_binding",
       "body_type": "CreateEvidenceBindingRequest",
       "reason": "rust_struct_not_strict"
     },
     {
       "operation": "POST /api/v1/compliance/framework-controls",
-      "rust_file": "backend/crates/compliance/rest/src/lib.rs",
+      "rust_file": "backend/crates/compliance/rest/src/catalog.rs",
       "handler": "create_framework_control",
       "body_type": "CreateControlRequest",
       "reason": "rust_struct_not_strict"
     },
     {
       "operation": "POST /api/v1/compliance/frameworks",
-      "rust_file": "backend/crates/compliance/rest/src/lib.rs",
+      "rust_file": "backend/crates/compliance/rest/src/catalog.rs",
       "handler": "create_framework",
       "body_type": "CreateFrameworkRequest",
       "reason": "rust_struct_not_strict"
     },
     {
       "operation": "POST /api/v1/compliance/obligation-regulation-links",
-      "rust_file": "backend/crates/compliance/rest/src/lib.rs",
+      "rust_file": "backend/crates/compliance/rest/src/catalog.rs",
       "handler": "link_obligation_regulation",
       "body_type": "LinkObligationRegulationRequest",
       "reason": "rust_struct_not_strict"
     },
     {
       "operation": "POST /api/v1/compliance/obligations",
-      "rust_file": "backend/crates/compliance/rest/src/lib.rs",
+      "rust_file": "backend/crates/compliance/rest/src/catalog.rs",
       "handler": "create_obligation",
       "body_type": "CreateObligationRequest",
       "reason": "rust_struct_not_strict"
     },
     {
       "operation": "POST /api/v1/compliance/regulations",
-      "rust_file": "backend/crates/compliance/rest/src/lib.rs",
+      "rust_file": "backend/crates/compliance/rest/src/catalog.rs",
       "handler": "create_regulation",
       "body_type": "CreateRegulationRequest",
       "reason": "rust_struct_not_strict"

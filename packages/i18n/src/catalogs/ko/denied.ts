@@ -6,6 +6,8 @@ export const koDenied: Record<keyof typeof enDenied, string> = {
   "denied.capability.lifecycle_manage": "조직 전체의 생애주기 관리 권한이 필요합니다.",
   "denied.capability.restricted_audit_stream": "제한 감사 기록 열람 권한이 필요합니다.",
   "denied.capability.served_evaluation_cycles": "평가 주기 조회 권한이 필요합니다.",
+  "denied.capability.served_compliance_catalog": "준법 카탈로그 조회 권한이 필요합니다.",
+  "denied.capability.served_compliance_catalog_manage": "준법 기록 관리 권한이 필요합니다.",
   "denied.capability.served_evaluation_cycle_create": "평가 주기 생성 권한이 필요합니다.",
   "denied.capability.served_evaluation_tasks": "평가 제출 권한이 필요합니다.",
   "denied.capability.served_calendar": "내부 일정 조회 권한이 필요합니다.",

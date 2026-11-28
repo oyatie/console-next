@@ -3,11 +3,18 @@ operationId: linkComplianceControlObligation
 summary: Create an audited control-to-obligation coverage link
 description: Relation links are write-only in this catalog API; no coverage-list route is implemented.
 security: [{ bearerAuth: [] }]
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: false
+  description: Reuse this key for a retry of the same catalog command.
+  schema: { type: string }
 requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/LinkControlObligationRequest' } } } }
 responses:
   '200': { description: Created control-obligation coverage link., content: { application/json: { schema: { $ref: '#/components/schemas/ControlObligationCoverage' } } } }
   '401': { $ref: '#/components/responses/Unauthorized' }
   '403': { $ref: '#/components/responses/Forbidden' }
+  '409': { description: A previous command with this key was already applied or is processing., content: { application/json: { schema: { $ref: '#/components/schemas/ErrorBody' } } } }
   '422': { $ref: '#/components/responses/ValidationError' }
   '500': { $ref: '#/components/responses/InternalServerError' }
   '503': { $ref: '#/components/responses/ServiceUnavailable' }

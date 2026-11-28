@@ -4,6 +4,8 @@ export const enDenied = {
   "denied.capability.lifecycle_manage": "Requires organization-wide lifecycle management access.",
   "denied.capability.restricted_audit_stream": "Requires clearance for the restricted audit stream.",
   "denied.capability.served_evaluation_cycles": "Requires access to evaluation cycles.",
+  "denied.capability.served_compliance_catalog": "Permission to read the compliance catalog is required.",
+  "denied.capability.served_compliance_catalog_manage": "Permission to manage compliance records is required.",
   "denied.capability.served_evaluation_cycle_create": "Requires permission to create evaluation cycles.",
   "denied.capability.served_evaluation_tasks": "Requires evaluation submission access.",
   "denied.capability.served_calendar": "Requires internal calendar access.",

@@ -159,6 +159,7 @@ pub(crate) struct ServedModules {
     pub(crate) analytics_projection: bool,
     pub(crate) integrity: (bool, bool),
     pub(crate) ledger: bool,
+    pub(crate) compliance: (bool, bool),
     pub(crate) benefits: (bool, bool),
     pub(crate) calendar: bool,
     pub(crate) evaluation_tasks: bool,
@@ -175,6 +176,7 @@ pub(crate) fn served_authz_projection(
         analytics_projection,
         integrity: (read_findings, triage_findings),
         ledger,
+        compliance: (read_compliance, manage_compliance),
         benefits: (read_benefits, manage_benefits),
         calendar,
         evaluation_tasks,
@@ -200,6 +202,16 @@ pub(crate) fn served_authz_projection(
             analytics_projection,
         ),
         (Feature::Login, "served_calendar", calendar),
+        (
+            Feature::ComplianceDomainRead,
+            "served_compliance_catalog",
+            read_compliance,
+        ),
+        (
+            Feature::ComplianceDomainManage,
+            "served_compliance_catalog_manage",
+            manage_compliance,
+        ),
         (
             Feature::BenefitCatalogRead,
             "served_benefit_catalog",

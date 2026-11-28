@@ -130,6 +130,7 @@ fn only_neutral_keys_skip_a_risk_direction() {
                     // Module availability does not alter payroll authority or pay rules.
                     || *key == SettingKey::ModuleBenefitsEnabled
                     || *key == SettingKey::ModuleCalendarEnabled
+                    || *key == SettingKey::ModuleComplianceEnabled
                     || *key == SettingKey::ModuleEvaluationEnabled
                     || *key == SettingKey::ModulePayrollEnabled
                     // Visual style alters layout and chrome only, never access or statutory rules.

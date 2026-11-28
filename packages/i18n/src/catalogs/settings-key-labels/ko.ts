@@ -26,6 +26,7 @@ export const koSettingLabels: Record<keyof typeof enSettingLabels, string> = {
   "settingsHub.key.corporate.small_company_383_proviso": "소규모 법인 상법 제383조 단서 해당",
   "settingsHub.key.module.benefits.enabled": "복리후생 카탈로그",
   "settingsHub.key.module.calendar.enabled": "내부 일정",
+  "settingsHub.key.module.compliance.enabled": "준법 카탈로그 및 증빙",
   "settingsHub.key.module.evaluation.enabled": "평가 모듈 사용",
   "settingsHub.key.module.payroll.enabled": "급여 모듈 사용",
   "settingsHub.key.attendance.week52.warn_hours": "주 52시간 경고 기준",

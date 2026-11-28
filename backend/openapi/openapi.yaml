@@ -7665,11 +7665,18 @@ paths:
       summary: Create an audited control-to-obligation coverage link
       description: Relation links are write-only in this catalog API; no coverage-list route is implemented.
       security: [{ bearerAuth: [] }]
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Reuse this key for a retry of the same catalog command.
+        schema: { type: string }
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/LinkControlObligationRequest' } } } }
       responses:
         '200': { description: Created control-obligation coverage link., content: { application/json: { schema: { $ref: '#/components/schemas/ControlObligationCoverage' } } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: A previous command with this key was already applied or is processing., content: { application/json: { schema: { $ref: '#/components/schemas/ErrorBody' } } } }
         '422': { $ref: '#/components/responses/ValidationError' }
         '500': { $ref: '#/components/responses/InternalServerError' }
         '503': { $ref: '#/components/responses/ServiceUnavailable' }
@@ -7750,11 +7757,18 @@ paths:
       operationId: createComplianceFrameworkControl
       summary: Create an audited framework control
       security: [{ bearerAuth: [] }]
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Reuse this key for a retry of the same catalog command.
+        schema: { type: string }
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CreateComplianceControlRequest' } } } }
       responses:
         '200': { description: Created framework control., content: { application/json: { schema: { $ref: '#/components/schemas/ComplianceControl' } } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: A previous command with this key was already applied or is processing., content: { application/json: { schema: { $ref: '#/components/schemas/ErrorBody' } } } }
         '422': { $ref: '#/components/responses/ValidationError' }
         '500': { $ref: '#/components/responses/InternalServerError' }
         '503': { $ref: '#/components/responses/ServiceUnavailable' }
@@ -7782,11 +7796,18 @@ paths:
       operationId: createComplianceFramework
       summary: Create an audited compliance framework
       security: [{ bearerAuth: [] }]
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Reuse this key for a retry of the same catalog command.
+        schema: { type: string }
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CreateComplianceFrameworkRequest' } } } }
       responses:
         '200': { description: Created framework., content: { application/json: { schema: { $ref: '#/components/schemas/ComplianceFramework' } } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: A previous command with this key was already applied or is processing., content: { application/json: { schema: { $ref: '#/components/schemas/ErrorBody' } } } }
         '422': { $ref: '#/components/responses/ValidationError' }
         '500': { $ref: '#/components/responses/InternalServerError' }
         '503': { $ref: '#/components/responses/ServiceUnavailable' }
@@ -7797,11 +7818,18 @@ paths:
       summary: Create an audited obligation-to-regulation link
       description: Relation links are write-only in this catalog API; no relation-list route is implemented.
       security: [{ bearerAuth: [] }]
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Reuse this key for a retry of the same catalog command.
+        schema: { type: string }
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/LinkObligationRegulationRequest' } } } }
       responses:
         '200': { description: Created obligation-regulation link., content: { application/json: { schema: { $ref: '#/components/schemas/ObligationRegulationLink' } } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: A previous command with this key was already applied or is processing., content: { application/json: { schema: { $ref: '#/components/schemas/ErrorBody' } } } }
         '422': { $ref: '#/components/responses/ValidationError' }
         '500': { $ref: '#/components/responses/InternalServerError' }
         '503': { $ref: '#/components/responses/ServiceUnavailable' }
@@ -7832,11 +7860,18 @@ paths:
       operationId: createComplianceObligation
       summary: Create an audited obligation and optional regulation links
       security: [{ bearerAuth: [] }]
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Reuse this key for a retry of the same catalog command.
+        schema: { type: string }
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CreateComplianceObligationRequest' } } } }
       responses:
         '200': { description: Created obligation., content: { application/json: { schema: { $ref: '#/components/schemas/ComplianceObligation' } } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: A previous command with this key was already applied or is processing., content: { application/json: { schema: { $ref: '#/components/schemas/ErrorBody' } } } }
         '422': { $ref: '#/components/responses/ValidationError' }
         '500': { $ref: '#/components/responses/InternalServerError' }
         '503': { $ref: '#/components/responses/ServiceUnavailable' }
@@ -7864,11 +7899,18 @@ paths:
       operationId: createComplianceRegulation
       summary: Create an audited regulation impact
       security: [{ bearerAuth: [] }]
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: false
+        description: Reuse this key for a retry of the same catalog command.
+        schema: { type: string }
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CreateRegulationImpactRequest' } } } }
       responses:
         '200': { description: Created regulation impact., content: { application/json: { schema: { $ref: '#/components/schemas/RegulationImpact' } } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: A previous command with this key was already applied or is processing., content: { application/json: { schema: { $ref: '#/components/schemas/ErrorBody' } } } }
         '422': { $ref: '#/components/responses/ValidationError' }
         '500': { $ref: '#/components/responses/InternalServerError' }
         '503': { $ref: '#/components/responses/ServiceUnavailable' }
