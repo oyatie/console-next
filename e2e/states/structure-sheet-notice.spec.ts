@@ -33,9 +33,11 @@ for (const act of ["wp-create", "wp-close", "wp-kind"] as const) for (const widt
     const selected = act === "wp-create" ? id(3) : id(4);
     const title = act === "wp-create" ? t("workplace.add") : t(act === "wp-close" ? "workplace.close.title" : "workplace.kind.title", { name: tree.entities[0]!.children[0]!.name });
     const chart = page.getByRole("region", { name: t("structure.chart.label"), exact: true, includeHidden: true });
-    const chartSize = () => chart.evaluate(element => {
-      const { width, height } = element.getBoundingClientRect();
-      return { width, height };
+    const chartBox = () => chart.evaluate(element => {
+      // A reconnect can show the global staleness bar above main. A sheet notice must never move the chart inside main.
+      const main = element.closest("main")!;
+      const { x, y, width, height } = element.getBoundingClientRect();
+      return { x, y: y - main.getBoundingClientRect().y, width, height };
     });
     try {
       await go(page, `/org?sel=${selected}`);
@@ -43,7 +45,7 @@ for (const act of ["wp-create", "wp-close", "wp-kind"] as const) for (const widt
       // Connectivity also changes page chrome; compare the sheet against the same offline page.
       await context.setOffline(true);
       await expect(page.getByText(t("common.read.offline"), { exact: true }).first()).toBeVisible();
-      const offlineSize = await chartSize();
+      const { width: offlineWidth, height: offlineHeight } = await chartBox();
       await context.setOffline(false);
       await go(page, `/org?sel=${selected}&act=${act}`);
       const sheet = page.getByRole("dialog", { name: title, exact: true });
@@ -59,13 +61,13 @@ for (const act of ["wp-create", "wp-close", "wp-kind"] as const) for (const widt
       await field.focus();
       const fieldBox = await field.boundingBox();
       const mountedField = await field.elementHandle();
-      const readyBox = await chart.boundingBox();
+      const readyBox = await chartBox();
       await context.setOffline(true);
       const notices = sheet.getByRole("status").filter({ hasText: t("common.read.offline") });
       await expect(notices).toHaveCount(1);
       await expect(notices.first()).toBeVisible();
       expect(await field.boundingBox()).toEqual(fieldBox);
-      expect(await chartSize()).toEqual(offlineSize);
+      expect(await chartBox()).toMatchObject({ width: offlineWidth, height: offlineHeight });
       await expect(page.getByRole("dialog")).toHaveCount(1);
       await expect(field).toBeFocused();
       await fitsSheet();
@@ -79,7 +81,7 @@ for (const act of ["wp-create", "wp-close", "wp-kind"] as const) for (const widt
       await expect(stale).toBeVisible();
       expect(await field.boundingBox()).toEqual(fieldBox);
       await expect(page.getByRole("dialog")).toHaveCount(1);
-      expect(await chart.boundingBox()).toEqual(readyBox);
+      expect(await chartBox()).toEqual(readyBox);
       expect(await mountedField!.evaluate(element => element.isConnected)).toBe(true);
       if (act === "wp-create") await expect(field).toHaveValue("New workplace");
       await page.screenshot({ path: info.outputPath("stale.png") });
@@ -91,7 +93,7 @@ for (const act of ["wp-create", "wp-close", "wp-kind"] as const) for (const widt
       expect(await field.boundingBox()).toEqual(fieldBox);
       expect(await mountedField!.evaluate(element => element.isConnected)).toBe(true);
       if (act === "wp-create") await expect(field).toHaveValue("New workplace");
-      expect(await chart.boundingBox()).toEqual(readyBox);
+      expect(await chartBox()).toEqual(readyBox);
       expect(fixture.unexpected).toEqual([]);
     } finally { await context.setOffline(false); await page.close(); fixture.release(); }
   });

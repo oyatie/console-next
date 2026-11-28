@@ -71,11 +71,17 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       await page.keyboard.press("Enter");
       await expect(links.nth(2)).toHaveAttribute("aria-current", "page");
       await expect(main.getByRole("grid", { name: t("exit.list.title"), exact: true })).toBeVisible();
-      await main.getByRole("button", { name: new RegExp(t("exit.list.chip.closed")) }).click();
+      const statusSelect = main.getByRole("combobox", { name: t("exit.list.chips"), exact: true });
+      const closedButton = main.getByRole("button", { name: new RegExp(t("exit.list.chip.closed")) });
+      if (width === 390) {
+        await expect(statusSelect.getByRole("option", { name: new RegExp(t("exit.list.chip.closed")) })).toHaveAttribute("value", "closed");
+        await statusSelect.selectOption("closed");
+      } else await closedButton.click();
       await expect(page).toHaveURL(/exitStatus=closed/);
       await page.reload();
       await expect(links.nth(2)).toHaveAttribute("aria-current", "page");
-      await expect(main.getByRole("button", { name: new RegExp(t("exit.list.chip.closed")) })).toHaveAttribute("aria-pressed", "true");
+      if (width === 390) await expect(statusSelect).toHaveValue("closed");
+      else await expect(closedButton).toHaveAttribute("aria-pressed", "true");
       await fits(page, `exits ${width} ${theme}`);
       await expectAxe(page, "exits");
       await page.screenshot({ path: info.outputPath(`exits-${width}-${theme}.png`), fullPage: true });

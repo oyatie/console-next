@@ -71,12 +71,13 @@ const decisionButtons = (scope: Page | Locator) => scope.getByRole("button", { n
   .or(scope.getByRole("button", { name: t("uiApprovalCard.reject"), exact: true }))
   .or(scope.getByRole("button", { name: t("uiApprovalCard.return"), exact: true }));
 
-async function mockApprovals(page: Page, reply: "ready" | "failed" | "refused" = "ready") {
+async function mockApprovals(page: Page, reply: "ready" | "failed" | "refused" = "ready", pending?: Promise<void>) {
   const queries: URLSearchParams[] = [];
   await page.route(url => url.pathname === "/api/v1/approvals", async route => {
     if (route.request().method() !== "GET") return route.fallback();
     const query = new URL(route.request().url()).searchParams;
     queries.push(query);
+    await pending;
     if (reply === "failed") return route.fulfill({ status: 503, json: failure("service_unavailable") });
     if (reply === "refused") return route.fulfill({ status: 403, json: failure("forbidden") });
     return route.fulfill({ status: 200, json: response(query.get("box") ?? "pending") });
@@ -90,13 +91,23 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await page.addInitScript(recordShifts);
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const mock = await mockScreen(page, screens[0], "empty");
-    const queries = await mockApprovals(page);
+    const initial = Promise.withResolvers<void>();
+    const queries = await mockApprovals(page, "ready", initial.promise);
     await mockDocument(page);
     await page.goto("/approvals");
+    const tabs = page.getByRole("navigation", { name: t("approvals.tabs"), exact: true });
+    const tabBoxes = () => tabs.getByRole("link").evaluateAll(links => links.map(link => {
+      const { x, width, height } = link.getBoundingClientRect();
+      return { x, width, height };
+    }));
+    await expect(tabs.getByRole("link")).toHaveCount(5);
+    await page.evaluate(() => document.fonts.ready);
+    const pendingTabs = await tabBoxes();
+    expect(await tabs.evaluate(nav => nav.scrollHeight - nav.clientHeight)).toBe(0);
+    initial.resolve();
     await expect(page.getByRole("heading", { level: 1, name: t("approvals.title"), exact: true })).toBeVisible();
     await expect((await openNav(page)).getByRole("link", { name: new RegExp(`^${t("approvals.title")}`) })).toBeVisible();
     await page.keyboard.press("Escape");
-    const tabs = page.getByRole("navigation", { name: t("approvals.tabs"), exact: true });
     await expect(tabs.getByRole("link")).toHaveCount(5);
     await expect(tabs.getByRole("link", { name: /대기/ })).toHaveAttribute("aria-current", "page");
     const row = page.getByRole("row", { name: /영업 조직 개편안/ });
@@ -104,6 +115,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await expect(row.getByText(item.document_no).filter({ visible: true }).first()).toBeVisible();
     if (width === 390) expect((await row.boundingBox())!.height).toBeLessThanOrEqual(280);
     await expect(row.getByText(item.requester.name).filter({ visible: true }).first()).toBeVisible();
+    expect(await tabBoxes()).toEqual(pendingTabs);
     await expectAccessible(page, `approval list ${width}px ${theme}`);
     if (width === 390) await fits(page, "approval list");
     await page.screenshot({ path: info.outputPath(`approvals-${width}-${theme}-before.png`), fullPage: true });
