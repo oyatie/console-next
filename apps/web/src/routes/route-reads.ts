@@ -3,6 +3,11 @@ import type { Requirement } from "../reference/authz/domain/access";
 import { routeOperationAccess } from "./route-operation-access";
 
 const readAccess = routeOperationAccess;
+/** These reads accept any published permission at the requested scope. */
+export const alternativeRouteReads = {
+  "/settings/overtime": "GET /api/v1/settings/overtime-attestations",
+} as const;
+export const overtimeReadAccess = readAccess[alternativeRouteReads["/settings/overtime"]];
 type Operation = keyof typeof readAccess;
 type Reads = { reads: readonly Operation[]; command?: Operation };
 const structure = "GET /api/v1/org-structure";
@@ -79,8 +84,8 @@ export const routeReads = {
 } as const satisfies Record<string, Reads>;
 
 export function readRequirement(path: keyof typeof routeReads): Requirement | { allOf: readonly Requirement[] } {
-  const { reads, command } = routeReads[path] as Reads;
-  const needs: Requirement[] = [...reads, ...(command ? [command] : [])].map(op => readAccess[op]!);
+  const route = routeReads[path];
+  const needs: Requirement[] = [...route.reads, ...("command" in route ? [route.command] : [])].map(op => readAccess[op]!);
   const allOf = needs.filter((need, i) => needs.findIndex(other => JSON.stringify(other) === JSON.stringify(need)) === i);
   return allOf.length === 1 ? allOf[0]! : { allOf };
 }

@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: LicenseRef-Proprietary
-x-console-authz: {"permission": "settings:view", "scope": "any"}
+x-console-authz: {"permissions": ["settings:view", "attendance:view"], "scope": "any"}
 tags: [settings]
 operationId: listOvertimeRuleAttestations
 summary: List overtime recognition work-rule confirmations
+description: Requires settings view or attendance view at the requested scope.
 security:
   - bearerAuth: []
 parameters:
@@ -19,8 +20,11 @@ responses:
         schema:
           type: object
           additionalProperties: false
-          required: [items]
+          required: [items, can_record]
           properties:
+            can_record:
+              type: boolean
+              description: Whether the caller may record a work-rule confirmation for the requested scope.
             items:
               type: array
               items:

@@ -157,7 +157,8 @@ test("an account manager without a directory grant cannot reach people", () => {
 });
 
 test.each(["attendance", "exit"])("a %s writer does not get a directory read link the server refuses", domain => {
-  expect(links(access(domain, "edit"))).toEqual(links({ is_ops: false, entries: [] } as unknown as AccessEffective));
+  const signedIn = links({ is_ops: false, entries: [] } as unknown as AccessEffective);
+  expect(links(access(domain, "edit"))).toEqual(domain === "attendance" ? [...signedIn, "/settings"] : signedIn);
 });
 
 test.each(["org", "hr_basic", "access", "exceptions", "attendance", "exit", "audit"])("navigation agrees with every destination's requirement for %s", domain => {

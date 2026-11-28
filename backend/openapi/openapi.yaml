@@ -23447,7 +23447,7 @@ paths:
       tags:
       - onboarding
       operationId: skipSetupStep
-      summary: Skip a setup step ("proceed without departments" / "add employees later")
+      summary: Skip an optional setup step with tenant-wide authority for that step
       security:
       - bearerAuth: []
       parameters:
@@ -23460,6 +23460,7 @@ paths:
           - org
           - employees
           - roles
+          - overtime
       responses:
         '204':
           description: Recorded.
@@ -30410,10 +30411,11 @@ paths:
   /api/v1/settings/overtime-attestations:
     get:
       # SPDX-License-Identifier: LicenseRef-Proprietary
-      x-console-authz: {"permission": "settings:view", "scope": "any"}
+      x-console-authz: {"permissions": ["settings:view", "attendance:view"], "scope": "any"}
       tags: [settings]
       operationId: listOvertimeRuleAttestations
       summary: List overtime recognition work-rule confirmations
+      description: Requires settings view or attendance view at the requested scope.
       security:
         - bearerAuth: []
       parameters:
@@ -30430,8 +30432,11 @@ paths:
               schema:
                 type: object
                 additionalProperties: false
-                required: [items]
+                required: [items, can_record]
                 properties:
+                  can_record:
+                    type: boolean
+                    description: Whether the caller may record a work-rule confirmation for the requested scope.
                   items:
                     type: array
                     items:
@@ -30442,10 +30447,11 @@ paths:
           $ref: '#/components/responses/Forbidden'
     post:
       # SPDX-License-Identifier: LicenseRef-Proprietary
-      x-console-authz: {"permission": "settings:edit", "scope": "any"}
+      x-console-authz: {"permissions": ["settings:edit", "attendance:approve"], "scope": "any"}
       tags: [settings]
       operationId: recordOvertimeRuleAttestation
       summary: Record an overtime recognition work-rule confirmation
+      description: Requires settings edit or attendance approve at the requested scope.
       security:
         - bearerAuth: []
       requestBody:

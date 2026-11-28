@@ -42,23 +42,17 @@ struct CreateAttestationRequest {
     statutory_basis: Option<String>,
 }
 
-async fn authorize_attestation(
+async fn attestation_access(
     state: &SettingsRestState,
     principal: &Principal,
     scope_entity_id: Option<Uuid>,
-    write: bool,
-) -> Result<(), KernelError> {
+) -> Result<(bool, bool), KernelError> {
     if principal.is_tenant_ops {
-        return Ok(());
+        return Ok((true, true));
     }
     let facts = Authorization::default()
         .load(state.store.pool(), principal)
         .await?;
-    let actions: &[&str] = if write {
-        &["settings::edit", "attendance::approve"]
-    } else {
-        &["settings::view", "attendance::view"]
-    };
     let nodes: Vec<NodeRef> = match scope_entity_id {
         None => vec![NodeRef {
             kind: NodeKind::Tenant,
@@ -77,18 +71,22 @@ async fn authorize_attestation(
         }])
         .collect(),
     };
-    for &action in actions {
-        for &node in &nodes {
-            if facts
-                .authorize(action, node)
-                .map_err(|e| KernelError::internal(e.to_string()))?
-            {
-                return Ok(());
+    let allowed = |actions: &[&str]| -> Result<bool, KernelError> {
+        for &action in actions {
+            for &node in &nodes {
+                if facts
+                    .authorize(action, node)
+                    .map_err(|e| KernelError::internal(e.to_string()))?
+                {
+                    return Ok(true);
+                }
             }
         }
-    }
-    Err(KernelError::forbidden(
-        "not authorized for overtime recognition attestations",
+        Ok(false)
+    };
+    Ok((
+        allowed(&["settings::view", "attendance::view"])?,
+        allowed(&["settings::edit", "attendance::approve"])?,
     ))
 }
 
@@ -97,10 +95,18 @@ async fn list(
     Extension(principal): Extension<Principal>,
     Query(query): Query<AttestationQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
-    authorize_attestation(&state, &principal, query.scope_entity_id, false).await?;
+    let (can_read, can_record) =
+        attestation_access(&state, &principal, query.scope_entity_id).await?;
+    if !can_read {
+        return Err(
+            KernelError::forbidden("not authorized to view overtime rule confirmations").into(),
+        );
+    }
     let items =
         list_attestations(state.store.pool(), principal.org_id, query.scope_entity_id).await?;
-    Ok(Json(serde_json::json!({ "items": items })))
+    Ok(Json(
+        serde_json::json!({ "items": items, "can_record": can_record }),
+    ))
 }
 
 async fn create(
@@ -110,7 +116,14 @@ async fn create(
 ) -> Result<impl IntoResponse, ApiError> {
     let audit = current_audit_context()
         .ok_or_else(|| KernelError::internal("request audit context is missing"))?;
-    authorize_attestation(&state, &principal, body.scope_entity_id, true).await?;
+    if !attestation_access(&state, &principal, body.scope_entity_id)
+        .await?
+        .1
+    {
+        return Err(
+            KernelError::forbidden("not authorized to record overtime rule confirmations").into(),
+        );
+    }
     let confirmed_on = Date::parse(
         &body.confirmed_on,
         format_description!("[year]-[month]-[day]"),
