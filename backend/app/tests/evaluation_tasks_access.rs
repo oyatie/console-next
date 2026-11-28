@@ -129,3 +129,28 @@ async fn tenant_role_cannot_enroll_itself_or_read_another_tenants_enrollment(poo
         Some("42501")
     );
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn changing_enrollment_emits_a_tenant_scoped_hint_and_allows_empty_tenant_removal(
+    pool: PgPool,
+) {
+    let org: uuid::Uuid = sqlx::query_scalar("INSERT INTO organizations (slug,name) VALUES ('evaluation-retirement','Empty enrollment') RETURNING id")
+        .fetch_one(&pool).await.unwrap();
+    enroll(&pool, org).await;
+    let rows: Vec<(String, Option<String>)> = sqlx::query_as(
+        "SELECT resource_type, resource_id FROM resource_changes
+         WHERE org_id=$1 AND audit_event_id IN
+         (SELECT id FROM audit_events WHERE org_id=$1 AND action='module.enrollment_change')",
+    )
+    .bind(org)
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(rows, vec![("tenant_settings".to_owned(), None)]);
+    let outcome: String = sqlx::query_scalar("SELECT platform_remove_organization($1)")
+        .bind(org)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(outcome, "removed");
+}

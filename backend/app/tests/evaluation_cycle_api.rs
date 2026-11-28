@@ -1169,8 +1169,8 @@ impl Fixture {
         let unlinked_id = UserId::new();
         let outsider_id = UserId::new();
         let foreign_admin_id = UserId::new();
-        seed_user(pool, org, admin_id, branch, "ADMIN").await;
-        seed_user(pool, org, admin2_id, branch, "ADMIN").await;
+        seed_user(pool, org, admin_id, branch, "SUPER_ADMIN").await;
+        seed_user(pool, org, admin2_id, branch, "SUPER_ADMIN").await;
         seed_user(pool, org, manager_id, branch, "MEMBER").await;
         seed_user(pool, org, subject_user_id, branch, "MEMBER").await;
         seed_user(pool, org, unlinked_id, branch, "MEMBER").await;
@@ -1180,7 +1180,7 @@ impl Fixture {
             OrgId::from_uuid(ORG_B),
             foreign_admin_id,
             foreign_branch,
-            "ADMIN",
+            "SUPER_ADMIN",
         )
         .await;
         grant_feature(pool, org, manager_id, "evaluation_submit").await;
@@ -1221,8 +1221,8 @@ impl Fixture {
             )
         };
         Self {
-            admin: token(admin_id, org, vec!["ADMIN"], Vec::new()).await,
-            admin2: token(admin2_id, org, vec!["ADMIN"], Vec::new()).await,
+            admin: token(admin_id, org, vec!["SUPER_ADMIN"], Vec::new()).await,
+            admin2: token(admin2_id, org, vec!["SUPER_ADMIN"], Vec::new()).await,
             manager: token(manager_id, org, vec!["MEMBER"], vec![branch]).await,
             subject: token(subject_user_id, org, vec!["MEMBER"], vec![branch]).await,
             unlinked: token(unlinked_id, org, vec!["MEMBER"], vec![branch]).await,
@@ -1230,7 +1230,7 @@ impl Fixture {
             foreign_admin: token(
                 foreign_admin_id,
                 OrgId::from_uuid(ORG_B),
-                vec!["ADMIN"],
+                vec!["SUPER_ADMIN"],
                 Vec::new(),
             )
             .await,
