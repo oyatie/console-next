@@ -225,6 +225,16 @@ pub async fn close_attendance_in_tx(
     if !CLOSEABLE.contains(&run.status.as_str()) {
         return Err(invalid_state("close attendance for", &run.status));
     }
+    // Different regular runs for one entity and month must see each other's committed
+    // rosters before freezing. Import runs and off-cycle runs have independent rosters.
+    sqlx::query(
+        "SELECT pg_advisory_xact_lock(hashtextextended('payroll-roster:' || pg.legal_entity_id::text || ':' || r.attribution_month::text, 0))
+         FROM payroll_draft_runs r JOIN pay_groups pg ON pg.org_id = r.org_id AND pg.id = r.pay_group_id
+         WHERE r.id = $1 AND r.kind = 'REGULAR'",
+    )
+    .bind(run_id)
+    .execute(tx.as_mut())
+    .await?;
     let saved = saved_lines(tx, run_id).await?;
     // The last write to the lines: from ATTENDANCE_CLOSED on nothing rewrites them.
     refresh_in_tx(tx, run_id).await?;

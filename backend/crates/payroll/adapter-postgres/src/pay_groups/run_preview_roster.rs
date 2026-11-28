@@ -78,8 +78,8 @@ pub(crate) async fn entity_roster_ambiguous_in_tx(
                    JOIN pay_groups pg2 ON pg2.org_id = pga.org_id AND pg2.id = pga.pay_group_id
                    WHERE pga.org_id = em.org_id AND pga.employee_id = em.id
                      AND pg2.legal_entity_id = $2 AND pga.superseded_at IS NULL
-                     AND pga.effective_from <= $4
-                     AND (pga.effective_to_exclusive IS NULL OR pga.effective_to_exclusive > $3)
+                     AND pga.effective_from <= LEAST($4, em.exit_on)
+                     AND (pga.effective_to_exclusive IS NULL OR pga.effective_to_exclusive > GREATEST($3, em.hire_on))
                )
          )",
     )
