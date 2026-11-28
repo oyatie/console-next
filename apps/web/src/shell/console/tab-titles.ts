@@ -136,6 +136,7 @@ export function resolveRouteTabMeta({
   locale?: string;
 }): RouteTabMeta {
   const path = normalizeAppPath(pathname);
+  if (/^\/audit\/lifecycles\/[^/]+\/[^/]+$/.test(path)) return { title: t("audit.lifecycle.title"), isFallback: false, recordSpec: null };
   if (path === "/") {
     return { title: platform ? t("shell.link.tenants") : t("shell.link.todo"), isFallback: false, recordSpec: null };
   }

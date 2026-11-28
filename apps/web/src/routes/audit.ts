@@ -49,4 +49,11 @@ const findings = createRoute({
   component: lazyRouteComponent(screen(() => import("../features/audit/ui/findings")), "Findings"),
 });
 
-export const auditRoutes = [audit, accessLog, supportAccess, evidence, findings];
+const lifecycle = createRoute({
+  getParentRoute: () => app,
+  path: "/audit/lifecycles/$objectType/$objectId",
+  staticData: { access: servedRouteReads["/audit/lifecycles/$objectType/$objectId"].access, floorplan: "P-02", pattern: "record" },
+  component: lazyRouteComponent(screen(() => import("../features/audit/ui/lifecycle-record")), "LifecycleRecord"),
+});
+
+export const auditRoutes = [audit, accessLog, supportAccess, evidence, findings, lifecycle];

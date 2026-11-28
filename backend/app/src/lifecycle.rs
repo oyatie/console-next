@@ -151,6 +151,8 @@ struct LifecycleResponse {
     created_at: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339")]
     updated_at: OffsetDateTime,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    available_transitions: Option<Vec<String>>,
     transitions: Vec<LifecycleTransitionResponse>,
 }
 
@@ -166,6 +168,7 @@ fn lifecycle_response(
         retention_until: record.retention_until.map(|d| d.to_string()),
         created_at: record.created_at,
         updated_at: record.updated_at,
+        available_transitions: None,
         transitions: transitions
             .into_iter()
             .map(|t| LifecycleTransitionResponse {
@@ -202,6 +205,7 @@ async fn get_lifecycle(
     authorize_lifecycle_manage(&principal)?;
     validate_object_type(&object_type)?;
     let org = principal.org_id;
+    let actor = *principal.user_id.as_uuid();
 
     let response = with_org_conn::<_, _, LifecycleError>(&state.pool, org, move |tx| {
         Box::pin(async move {
@@ -213,7 +217,17 @@ async fn get_lifecycle(
                     ))
                 })?;
             let transitions = lifecycle_db::list_transitions(tx, record.id).await?;
-            Ok(lifecycle_response(record, transitions))
+            let available = lifecycle_db::available_transitions(
+                tx,
+                &record,
+                actor,
+                OffsetDateTime::now_utc().date(),
+            )
+            .await
+            .map_err(LifecycleError::from_kernel)?;
+            let mut response = lifecycle_response(record, transitions);
+            response.available_transitions = Some(available);
+            Ok(response)
         })
     })
     .await?;
@@ -313,6 +327,11 @@ async fn set_lifecycle_hold(
 
     let response = with_audit::<_, _, LifecycleError>(&state.pool, audit_event, move |tx| {
         Box::pin(async move {
+            if let Some(revision) = body.expected_updated_at {
+                lifecycle_db::require_current_revision(tx, &object_type, object_id, revision)
+                    .await
+                    .map_err(LifecycleError::from_kernel)?;
+            }
             let record = lifecycle_db::set_lifecycle_hold(
                 tx,
                 *org.as_uuid(),
