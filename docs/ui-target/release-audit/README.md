@@ -83,6 +83,19 @@ The four-shard run on `20560f367a` exposed failures that the web and backend uni
 | Inbox deadlines and paging | The inbox changed statutory dates after the source had calculated them, including moving a Saturday due date to Monday. A setup item could also produce a cursor the API refused on the next page. The inbox now retains the source date and accepts the cursor it emits. |
 | Privacy and imports | The privacy intake fixtures omitted the independently verified identities required for the decision. The HR import fixture supplied an empty dry run. The repaired tests exercise both authorization outcomes and verify the stored event and audit result after an acknowledged import. |
 
+### Cutover database and merge-queue findings
+
+The insurance filing rank repeatedly looked up the same employee roster when loading the inbox. The hosted 2,000-person fixture measured 313 ms p95 against its 300 ms budget. After the query change, all 3,785 hosted database tests passed, including the original latency, pagination and tenant-isolation assertions. A separate shard had exhausted its two-hour job limit after cold builds took 82 minutes. The matrix now allows 150 minutes for builds and tests. [Database failure](https://github.com/oyatie/console-next/actions/runs/46157140358) · [Passing database suite](https://github.com/oyatie/console-next/actions/runs/46169325215)
+
+The first-run and support-reference journeys on Chromium run in the merge queue. The queue reported three control movements on the same source tree that passed the PR workflows. [PR checks](https://github.com/oyatie/console-next/actions/runs/46169325320) · [Queue browser evidence](https://github.com/oyatie/console-next/actions/runs/46180687717/job/141091315002)
+
+| Area | Verified behavior and repair |
+|---|---|
+| Workspace tabs | Reusing a tab for a route with a different title moved its close button by 20 px. A stable width now keeps the close and new-tab controls in place. |
+| Employee card | Loading unit navigation moved the record actions by 229 px in a controlled browser run. The switcher now appears beside the breadcrumbs. Actions wait for the required reads, and the correction group again has an accessible name. |
+| Operator support lookup | On an empty tenant list, the lookup action moved 202 px while loading. A second, collapsed disclosure inside the dialog also hid its input. The action keeps its position, and opening either platform lookup dialog now exposes the form immediately. |
+| Tenant group invitations | A signed-in employee outside the tenant ops group received a passkey challenge for an action they could never take. The endpoint now checks membership before requesting the assertion and rechecks it when recording acceptance. PostgreSQL integration tests distinguish a forbidden employee, an invalid session, an eligible holder who still needs to step up, and successful acceptance. |
+
 ### Tenant module controls under review
 
 Evaluation, benefits and the internal calendar each require operator enrollment, an effective tenant-wide preference and the caller's existing authority. The preference defaults on for enrolled tenants. Enrollment migrations activate zero tenants. Calendar creation persists an internal event and its two audit records. The policy starts no invitation, mail or delivery worker. A disabled calendar removes its events from the workbench. A disabled benefits catalog also closes the catalog item's generic lifecycle endpoints. The 24 combined Chromium and Firefox journeys and the PostgreSQL admission and replay tests passed locally. [Evaluation policy](https://github.com/oyatie/console-next/pull/949) · [Benefits and calendar admission](https://github.com/oyatie/console-next/pull/952)

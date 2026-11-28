@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "../a11y";
 import { registerEmployee } from "../flows";
 import { staffedTenant } from "../setup-flows";
@@ -63,6 +64,7 @@ test("the card head links the 법인 and 사업장, invites an account and keeps
 });
 
 test("a late unit position keeps the employee's record actions in place", { tag: ["@regression", "@hr"] }, async ({ browser }) => {
+  await loadCatalog("ko");
   const { admin } = await staffedTenant(browser, "cardpos", "자료");
   // Both the record actions and employee switcher fit on a single line at this width.
   await admin.setViewportSize({ width: 1440, height: 900 });
@@ -71,10 +73,14 @@ test("a late unit position keeps the employee's record actions in place", { tag:
   const unitPosition = await holdRead(admin, `**${employeePath}/unit-position`);
   await admin.reload();
   await unitPosition.requested;
-  const actions = admin.getByRole("group", { name: "인사카드 동작" });
-  await expect(actions).toBeVisible();
-  const bounds = await actions.boundingBox();
-  await unitPosition.release();
-  await expect(admin.getByRole("button", { name: "이전 사람", exact: true })).toBeVisible();
+  const actions = admin.getByRole("group", { name: t("empCard.verbs") });
+  let bounds;
+  try {
+    await expect(actions).toBeVisible();
+    bounds = await actions.boundingBox();
+  } finally {
+    await unitPosition.release();
+  }
+  await expect(admin.getByRole("button", { name: t("empCard.prev"), exact: true })).toBeVisible();
   expect(await actions.boundingBox()).toEqual(bounds);
 });
