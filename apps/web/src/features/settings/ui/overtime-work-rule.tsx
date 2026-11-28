@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
 import { myAccessQuery, type AccessEffective } from "../../../reference/authz/api";
+import { chunk } from "../../../lib/chunk-guard";
 import { enforcedRows } from "../../../reference/authz/domain/access";
+import { ReadSkeleton } from "../../../ui/skeleton/skeleton";
 import { EmptyState } from "../../../ui/empty-state";
 import { SettingsPattern } from "../../../ui/patterns/settings";
 import { SelectField } from "../../../ui/select/select-field";
-import { OvertimeAttestationPanel } from "./overtime-attestation-panel";
+const OvertimeAttestationPanel = lazy(() => chunk(import("./overtime-attestation-panel")).then(m => ({ default: m.OvertimeAttestationPanel })));
 
 function scopeOptions(access: AccessEffective) {
   const names = new Map<string, string>();
@@ -32,7 +34,9 @@ export function OvertimeWorkRule() {
       placeholder={t("settingsHub.workplace.selectPlaceholder")} value={selected?.id ?? null} onChange={setChoice} />}
     {selected && <section aria-label={selected.label}>
       <h2>{selected.label}</h2>
-      <OvertimeAttestationPanel key={selected.id} scopeEntityId={selected.id === "tenant" ? null : selected.id} />
+      <Suspense fallback={<ReadSkeleton layout="record" />}>
+        <OvertimeAttestationPanel key={selected.id} scopeEntityId={selected.id === "tenant" ? null : selected.id} />
+      </Suspense>
     </section>}
   </>} />;
 }
