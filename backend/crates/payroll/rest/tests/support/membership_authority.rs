@@ -114,3 +114,44 @@ async fn membership_resolves_competing_moves_once_and_requires_source_and_tenant
         StatusCode::FORBIDDEN
     );
 }
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn membership_guards_a_closed_sole_group_roster_without_an_explicit_assignment(pool: PgPool) {
+    let (service, token, original, actor, _) = setup(&pool).await;
+    let entity = group_entity(&pool, original).await;
+    let site = workplace(&pool, entity).await;
+    let recorded = employee(&pool, Some((entity, site)), None).await;
+    let run = create(
+        service.clone(),
+        &token,
+        original,
+        "REGULAR",
+        &Uuid::new_v4().to_string(),
+    )
+    .await;
+    assert_eq!(run.status, StatusCode::CREATED, "{}", run.json);
+    let id: Uuid = serde_json::from_value(run.json["id"].clone()).unwrap();
+    assert_eq!(roster(&pool, id).await[0].0, Some(recorded));
+    // rls-arming: ok owner advances this materialised synthetic run to the closed attendance phase.
+    let date: String = sqlx::query_scalar("UPDATE payroll_draft_runs SET status='ATTENDANCE_CLOSED' WHERE id=$1 RETURNING period_start::text")
+        .bind(id).fetch_one(&pool).await.unwrap();
+    let mut body = pay_groups_api::input(entity);
+    body["name"] = json!("New group");
+    let target = PgPayrollStore::new(runtime_role_pool(&pool).await)
+        .create_pay_group(OrgId::one(), actor, serde_json::from_value(body).unwrap())
+        .await
+        .unwrap()
+        .id;
+    let later = employee(&pool, Some((entity, site)), None).await;
+    assert_eq!(
+        assign(&service, &token, later, target, None, &date)
+            .await
+            .status,
+        StatusCode::OK
+    );
+    let result = assign(&service, &token, recorded, target, None, &date).await;
+    assert_eq!(
+        (result.status, result.json["error"]["code"].as_str()),
+        (StatusCode::CONFLICT, Some("pay_group_membership_frozen"))
+    );
+}

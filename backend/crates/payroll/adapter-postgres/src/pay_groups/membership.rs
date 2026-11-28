@@ -63,9 +63,10 @@ async fn accessible_groups(
 }
 
 // Share the dated employment and source-group authorization predicates between selection and write.
-const CANDIDATES: &str = "SELECT e.id AS employee_id, COALESCE(console_employee_facts(e.org_id,e.id)->>'legal_name',e.name) AS name,
+const CANDIDATES: &str = "SELECT e.id AS employee_id, person.name,
   e.employee_number, m.pay_group_id AS current_pay_group_id
-  FROM employees e JOIN pay_groups g ON g.org_id=e.org_id AND g.id=$2
+  FROM employees e JOIN person_employees_current person ON person.org_id=e.org_id AND person.id=e.id
+  JOIN pay_groups g ON g.org_id=e.org_id AND g.id=$2
   LEFT JOIN employee_pay_group_assignments m ON m.org_id=e.org_id AND m.employee_id=e.id AND m.superseded_at IS NULL
     AND m.effective_from<=$3 AND (m.effective_to_exclusive IS NULL OR m.effective_to_exclusive>$3)
   WHERE e.org_id=$1 AND e.merged_into_employee_id IS NULL AND e.employment_status <> 'VOIDED'
@@ -169,10 +170,17 @@ pub(super) async fn assign_in_tx(
     let frozen: bool = sqlx::query_scalar("SELECT EXISTS(
         SELECT 1 FROM period_locks pl WHERE org_id=$1 AND domain='payroll' AND period_lock_effective(pl)
             AND (pay_group_id IS NULL OR pay_group_id=ANY($4)) AND period_end>=$2 AND ($3::date IS NULL OR period_start<$3)
-        UNION ALL SELECT 1 FROM payroll_draft_runs WHERE org_id=$1 AND kind='REGULAR' AND pay_group_id=ANY($4)
-            AND status NOT IN ('STAGED','BLOCKED_LEGAL_GATE','READY_FOR_REVIEW','VOID')
-            AND period_end>=$2 AND ($3::date IS NULL OR period_start<$3))")
-        .bind(org.as_uuid()).bind(date).bind(end).bind(&affected[..]).fetch_one(tx.as_mut()).await?;
+        UNION ALL SELECT 1 FROM payroll_draft_runs r WHERE r.org_id=$1 AND r.kind='REGULAR'
+            AND r.status NOT IN ('STAGED','BLOCKED_LEGAL_GATE','READY_FOR_REVIEW','VOID')
+            AND r.period_end>=$2 AND ($3::date IS NULL OR r.period_start<$3)
+            AND (r.pay_group_id=ANY($4) OR EXISTS (
+                SELECT 1 FROM payroll_draft_lines line
+                JOIN pay_groups paid ON paid.org_id=line.org_id AND paid.id=r.pay_group_id
+                JOIN pay_groups target ON target.org_id=paid.org_id AND target.id=$6
+                    AND target.legal_entity_id=paid.legal_entity_id
+                WHERE line.org_id=r.org_id AND line.run_id=r.id AND line.employee_id=$5
+                    AND line.calculation_status<>'VOID')))")
+        .bind(org.as_uuid()).bind(date).bind(end).bind(&affected[..]).bind(employee).bind(target).fetch_one(tx.as_mut()).await?;
     if frozen {
         return Err(KernelError::conflict(
             "the membership overlaps a frozen payroll period or closed run",
