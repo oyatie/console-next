@@ -16,6 +16,7 @@ import { PageHead } from "../../../ui/page-head/page-head";
 import { buttonClass } from "../../../ui/button/button-class";
 import { ExperienceSwitch } from "../../../ui/patterns/pattern-shell";
 import { ApiError, outcomeQuery, recordHref } from "../api";
+import { RequestHistory } from "./request-history";
 import { requestKey } from "../../../lib/pure/request-key";
 
 const RequestLookupConsole = lazy(() => chunk(import("./request-console")).then((m) => ({ default: m.RequestLookupConsole })));
@@ -26,10 +27,7 @@ export function RequestLookup() {
   const input=useRef<HTMLInputElement>(null);
   const valid=requestKey(key);
   const fieldNode = (
-    <>
-      <p>{t("requestOutcome.empty")}</p>
-      <Field label={t("requestOutcome.lookup")} required hint={t("requestOutcome.invalid")}>{c=><TextInput {...c} ref={input} value={key} onChange={e=>setKey(e.target.value)} autoComplete="off" />}</Field>
-    </>
+    <Field label={t("requestOutcome.lookup")} required hint={t("requestOutcome.invalid")}>{c=><TextInput {...c} ref={input} value={key} onChange={e=>setKey(e.target.value)} autoComplete="off" />}</Field>
   );
   const actionNode = (disclosure: boolean) => valid
     ? <Button onClick={()=>void nav({to:"/requests/$id",params:{id:valid}})}>{t("requestOutcome.find")}</Button>
@@ -40,6 +38,7 @@ export function RequestLookup() {
         <main className="page">
           <PageHead title={t("requestOutcome.title")} />
           <Card><div className="form">{fieldNode}{actionNode(false)}</div></Card>
+          <Card><RequestHistory /></Card>
         </main>
       )}
     >
@@ -59,14 +58,14 @@ export function RequestPage() {
   const renderOutcome = (out: NonNullable<typeof q.data>) => (
     <>
       <h2 role="status">{t(`requestOutcome.${out.state}`)}</h2>
-      <p className="code">{out.id}</p>
-      <dl><dt>{t("requestOutcome.created")}</dt><dd>{fmtDateTime(out.created_at)}</dd>
+      <dl><dt>{t("requestOutcome.myHistory.col.id")}</dt><dd><code className="code">{out.id}</code></dd>
+        <dt>{t("requestOutcome.created")}</dt><dd>{fmtDateTime(out.created_at)}</dd>
         {out.deadline && <><dt>{t("requestOutcome.deadline")}</dt><dd>{fmtDateTime(out.deadline)}</dd></>}</dl>
       {out.masked && <Banner tone="warn">{t("requestOutcome.masked")}</Banner>}
       {out.refusal_code && <Banner tone="danger" actions={out.refusal_code.startsWith("change_request_") && <Link to="/people/requests" className={buttonClass("ghost")}>{t("requests.title")}</Link>}>{failureText(new ApiError(409,out.refusal_code,out.refusal_code))}</Banner>}
       {out.state === "PROCESSING" && <p>{t("requestOutcome.remedy")}</p>}
       <h3>{t("requestOutcome.result")}</h3>
-      {out.result==null ? <p>{t("requestOutcome.none")}</p> : <p>{resultText(out.result)}</p>}
+      <p>{out.result == null ? t("requestOutcome.none") : resultText(out.result)}</p>
       {out.touched.length>0 && <><h3>{t("requestOutcome.touched")}</h3><ul>{out.touched.map((ref,i)=>
         <li key={`${ref.audit_id}-${i}`}>{recordHref(ref.type,ref.id) ? <Link to={recordHref(ref.type,ref.id) as "/"}>{t("requestOutcome.history")} · <code className="code">{ref.id}</code></Link> : <code className="code">{ref.id}</code>}</li>)}</ul></>}
     </>
