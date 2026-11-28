@@ -115,6 +115,8 @@ pub async fn get_promote(
     if state.promotions.is_none() || state.feedback.is_none() {
         return Ok(no_store_json(PromoteView {
             evaluated_at: now,
+            release_image: None,
+            signed_bake: None,
             candidate_digest: Observed::unknown(
                 "promotions".to_owned(),
                 "records unreadable".to_owned(),

@@ -36,15 +36,17 @@ fn promotion_uses_complete_gates_and_the_current_spool_verdicts() -> TestResult 
         .keys()
         .map(|name| json!({"name":name, "result":"pass"}))
         .collect();
-    let set_gates = |gates: &[serde_json::Value]| {
+    let write_gates = |gates: &[serde_json::Value], inputs: serde_json::Value| {
         fs::write(gate_dir.join("gates.json"),
         json!({
             "_type": "https://in-toto.io/Statement/v1",
             "predicateType": "https://cosskorea.com/attestations/console-gates/v1",
-            "subject": [{"digest": {"sha256": hex}}],
-            "predicate": {"inputs": {}, "gates": gates, "runner": {"kind": "gha"}, "bake": "normal"}
+            "subject": [{"name":"registry.example/tenant/console-app","digest": {"sha256": hex}}],
+            "predicate": {"inputs": inputs, "gates": gates, "runner": {"kind": "gha"}, "bake": "normal"}
         }).to_string())
     };
+
+    let set_gates = |gates: &[serde_json::Value]| write_gates(gates, json!({}));
 
     let spools = SpoolSet::open_resilient(&tmp.0);
     let releases = FsReleasesStore::new(&tmp.0);
@@ -113,6 +115,17 @@ fn promotion_uses_complete_gates_and_the_current_spool_verdicts() -> TestResult 
     let mut failed = passing.clone();
     failed[0]["result"] = json!("fail");
     set_gates(&failed)?;
+    assert_eq!(state()?, Some(Promotion::Blocked));
+    let mut host = passing.clone();
+    host.extend([
+        json!({"name":"candidate","result":"pass"}),
+        json!({"name":"rehearse","result":"pass"}),
+        json!({"name":"repro","result":"skip"}),
+    ]);
+    write_gates(&host, json!({"infra": "infra-commit"}))?;
+    assert_eq!(state()?, Some(Promotion::Ready));
+    host[passing.len() + 1]["result"] = json!("skip");
+    write_gates(&host, json!({"infra": "infra-commit"}))?;
     assert_eq!(state()?, Some(Promotion::Blocked));
     set_gates(&passing[1..])?;
     assert_eq!(state()?, Some(Promotion::Blocked));

@@ -111,7 +111,7 @@ impl ReleasesStore for AllGatesPass {
         let raw = serde_json::json!({
             "_type": "https://in-toto.io/Statement/v1",
             "predicateType": "https://cosskorea.com/attestations/console-gates/v1",
-            "subject": [{"digest": {"sha256": hex}}],
+            "subject": [{"name":"registry.example/tenant/console-app","digest": {"sha256": hex}}],
             "predicate": {
                 "inputs": {},
                 "gates": [
@@ -170,6 +170,21 @@ fn promote_service_watches_without_signoffs_and_blocks_ready_on_freeze() -> Test
     let actions = MemActions(Mutex::new(vec![]));
     let digest = format!("sha256:{}", "a".repeat(64));
 
+    let mut statement = AllGatesPass
+        .get_gates(&digest)?
+        .ok_or("missing statement")?;
+    for invalid in [
+        "-bad.example/repo",
+        "registry.example/tool;extra",
+        "registry.example/",
+        "unqualified/repo",
+    ] {
+        statement.subject[0].name = Some(invalid.into());
+        assert!(statement.release_image(&digest).is_none());
+    }
+    statement.subject[0].name = Some("registry.example/repo".into());
+    statement.subject.push(statement.subject[0].clone());
+    assert!(statement.release_image(&digest).is_none());
     let gates_store = AllGatesPass;
     let watching_svc = PromoteService {
         releases: Some(&gates_store),
@@ -284,6 +299,16 @@ fn promote_service_watches_without_signoffs_and_blocks_ready_on_freeze() -> Test
         ready_svc
             .request_promote(&digest, "normal", &promo_vm, &ctx)
             .is_ok()
+    );
+    assert!(
+        ready_svc
+            .request_promote(&digest, "long", &promo_vm, &ctx)
+            .is_err()
+    );
+    let recorded = actions.list_actions().map_err(|e| format!("{e:?}"))?;
+    assert_eq!(
+        recorded[0].handoff.command,
+        format!("APPROVER='op-1' scripts/tb release registry.example/tenant/console-app@{digest}")
     );
     let watching_view = watching_svc
         .build_view(&promo_vm, now)

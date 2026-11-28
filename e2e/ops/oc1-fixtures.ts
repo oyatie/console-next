@@ -281,6 +281,8 @@ export function buildOc1Fixtures() {
   const promote: S["PromoteView"] = {
     evaluated_at: TS,
     candidate_digest: ok(digestA, "bundle"),
+    signed_bake: "normal",
+    release_image: `registry.example/tenant/console-app@${digestA}`,
     state: { state: "Verified", value: "Blocked", unit: null, source: "promote", observed_at: TS, age_s: 5, reason: null },
     signoffs: [],
     feedback: [

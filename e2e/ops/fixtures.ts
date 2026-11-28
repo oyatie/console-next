@@ -601,7 +601,8 @@ export async function mountOpsMock(
         (f) => (f.severity === "P0" || f.severity === "P1") && f.disposition === "open",
       );
       const blockedSignoff = data.oc1.promote.signoffs.some((s) => s.verdict !== "ready");
-      return frozen || openBlocker || blockedSignoff ? "Blocked" : "Ready";
+      if (frozen || openBlocker || blockedSignoff) return "Blocked";
+      return data.oc1.promote.signoffs.length ? "Ready" : "Watching";
     };
 
     if (path === "/api/ops/v1/promote") {
@@ -623,11 +624,11 @@ export async function mountOpsMock(
       return json(201, { evaluated_at: TS, signoff: entry });
     }
     if (path === "/api/ops/v1/promote/request" && method === "POST") {
-      if (data.oc1.changes.freeze.value === true) {
-        return json(400, { evaluated_at: TS, support_ref: "sup-promo-frz", code: "bad_request", message: "deploy freeze is active" });
-      }
       const body = req.postDataJSON() as S["PromoteRequest"];
-      return json(201, { evaluated_at: TS, action: makeHandOff("promote", `APPROVER=oncall BAKE=${body.bake} scripts/tb release ${body.digest}`, body.digest) });
+      if (recomputePromoteState() !== "Ready" || body.digest !== data.oc1.promote.candidate_digest.value || body.bake !== data.oc1.promote.signed_bake) {
+        return json(409, { evaluated_at: TS, support_ref: "sup-promo", code: "OPS_PROMOTE_NOT_READY", message: "candidate digest is not ready for promotion" });
+      }
+      return json(201, { evaluated_at: TS, action: makeHandOff("promote", `APPROVER='oncall' scripts/tb release ${data.oc1.promote.release_image}`, body.digest) });
     }
 
     if (path === "/api/ops/v1/actions") {

@@ -1135,6 +1135,8 @@ components:
       required: ["evaluated_at", "candidate_digest", "state", "signoffs", "feedback"]
       properties:
         evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+        signed_bake: {"type": ["string", "null"], "enum": ["normal", "long", null]}
+        release_image: {"type": ["string", "null"]}
         candidate_digest: {"$ref": "#/components/schemas/ObservedText"}
         state:
           allOf: [{"$ref": "#/components/schemas/Observation"}, {"properties": {"value": {"anyOf": [{"$ref": "#/components/schemas/Promotion"}, {"type": "null"}]}}}]

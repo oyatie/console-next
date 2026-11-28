@@ -73,6 +73,8 @@ pub struct PromoteView {
     #[serde(with = "time::serde::rfc3339")]
     pub evaluated_at: OffsetDateTime,
     pub candidate_digest: Observed<String>,
+    pub release_image: Option<String>,
+    pub signed_bake: Option<String>,
     pub state: Observed<Promotion>,
     pub signoffs: Vec<PromotionSignoff>,
     pub feedback: Vec<FeedbackTriage>,
@@ -121,22 +123,18 @@ impl<'a> PromoteService<'a> {
         });
         let freeze = vm.deployment_freeze(now);
 
+        let statement = preview_digest
+            .as_deref()
+            .and_then(|digest| self.releases?.get_gates(digest).ok().flatten());
+        let release_image = statement
+            .as_ref()
+            .and_then(|s| s.release_image(preview_digest.as_deref()?));
+        let gates_ok =
+            statement.as_ref().is_some_and(|s| s.promotion_gates_pass()) && release_image.is_some();
         let state_val = preview_digest
             .as_deref()
             .filter(|_| preview_running)
             .map(|digest| {
-                // The console-gates/v1 producer emits one outcome for each required check.
-                const REQUIRED: [&str; 5] = ["code-gates", "api-compat", "sbom", "scan", "smoke"];
-                let gates_ok = self
-                    .releases
-                    .and_then(|r| r.get_gates(digest).ok().flatten())
-                    .is_some_and(|statement| {
-                        let gates = &statement.predicate.gates;
-                        gates.len() == REQUIRED.len()
-                            && REQUIRED.iter().all(|name| {
-                                gates.iter().any(|g| g.name == *name && g.result == "pass")
-                            })
-                    });
                 let mut seen_feedback = BTreeSet::new();
                 let has_open_blocker = feedback
                     .iter()
@@ -163,6 +161,8 @@ impl<'a> PromoteService<'a> {
 
         Ok(PromoteView {
             evaluated_at: now,
+            release_image,
+            signed_bake: statement.map(|s| s.predicate.bake),
             candidate_digest: vm.observe(preview_digest, None, now),
             state: if freeze.value().is_some() {
                 vm.observe(state_val, None, now)
@@ -253,10 +253,14 @@ impl<'a> PromoteService<'a> {
         {
             return Err(PromoteError::NotReady);
         }
-        let cmd = format!(
-            "APPROVER={} BAKE={} scripts/tb release {d}",
-            context.operator.person, bake
-        );
+        if view.signed_bake.as_deref() != Some(bake) {
+            return Err(PromoteError::NotReady);
+        }
+        let image = view
+            .release_image
+            .ok_or(PromoteError::EvidenceUnavailable)?;
+        let operator = context.operator.person.replace('\'', "'\\''");
+        let cmd = format!("APPROVER='{operator}' scripts/tb release {image}");
         let consequence = format!("Promotes {d} with {bake} bake");
         let record = self.actions.record_handoff(
             &CmdHandOffInput {
