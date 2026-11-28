@@ -74,4 +74,7 @@ export const koShellRoutes: Record<keyof typeof enShellRoutes, string> = {
   "shellRoutes.companyDomain": "회사 도메인",
   "shellRoutes.privacy": "개인정보 권리 행사",
   "shellRoutes.privacyIntake": "권리 요구 상세",
+  "shellRoutes.approvalNew": "새 결재 작성",
+  "shellRoutes.locationConsent": "위치정보 동의",
+  "shellRoutes.dispatchOffers": "긴급 출동 제안",
 };

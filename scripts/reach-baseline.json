@@ -355,16 +355,6 @@
    "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
-  "GET /api/v1/audit-streams/ceo-covert/access-events": {
-   "lane": "K4",
-   "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/v1/audit-streams/ceo-covert/events": {
-   "lane": "K4",
-   "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
   "GET /api/v1/branches/{id}": {
    "lane": "O3",
    "reason": "O3 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
@@ -385,16 +375,6 @@
    "reason": "Ops realm capability awaits the ops-cockpit owner lanes; units/maturity/plan.md §3.",
    "when": "excluded"
   },
-  "GET /api/v1/console/rollout": {
-   "lane": "MAT-PARITY",
-   "reason": "Ops realm capability awaits the ops-cockpit owner lanes; units/maturity/plan.md §3.",
-   "when": "excluded"
-  },
-  "GET /api/v1/employee-records/{section}": {
-   "lane": "P1b",
-   "reason": "P1b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
   "GET /api/v1/employees/corrections/bulk/{id}": {
    "lane": "P2",
    "reason": "P2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
@@ -403,16 +383,6 @@
   "GET /api/v1/employees/lifecycle-events/bulk/jobs/{job_id}": {
    "lane": "P5b",
    "reason": "P5b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/v1/evidence/objects": {
-   "lane": "S1",
-   "reason": "S1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/v1/evidence/objects/{id}": {
-   "lane": "S1",
-   "reason": "S1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
   "GET /api/v1/evidence/{evidenceId}/status": {
@@ -460,16 +430,6 @@
    "reason": "K5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
-  "GET /api/v1/integrity/findings": {
-   "lane": "K4",
-   "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/v1/leave/balances": {
-   "lane": "leave",
-   "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
-   "when": "mvp"
-  },
   "GET /api/v1/leave/requests": {
    "lane": "leave",
    "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
@@ -478,11 +438,6 @@
   "GET /api/v1/legal-entities/{entityId}/workplaces": {
    "lane": "E3a",
    "reason": "E3a owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/v1/lifecycles/{objectType}/{objectId}": {
-   "lane": "P5a",
-   "reason": "P5a owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
   "GET /api/v1/me/notification-policies": {
@@ -536,31 +491,6 @@
    "when": "2026-11-18"
   },
   "GET /api/v1/policy/assignments": {
-   "lane": "K2",
-   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/v1/policy/audit-events": {
-   "lane": "K4",
-   "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/v1/policy/catalog": {
-   "lane": "K2",
-   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/v1/policy/decisions": {
-   "lane": "MAT-ACC",
-   "reason": "MAT-ACC owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/v1/policy/drafts": {
-   "lane": "K2",
-   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/v1/policy/drafts/{draft_id}": {
    "lane": "K2",
    "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
@@ -675,25 +605,10 @@
    "reason": "K3 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
-  "POST /api/v1/console/kill-switch": {
-   "lane": "MAT-PARITY",
-   "reason": "Ops realm capability awaits the ops-cockpit owner lanes; units/maturity/plan.md §3.",
-   "when": "excluded"
-  },
   "POST /api/v1/console/telemetry/route": {
    "lane": "MAT-PARITY",
    "reason": "Ops realm capability awaits the ops-cockpit owner lanes; units/maturity/plan.md §3.",
    "when": "excluded"
-  },
-  "POST /api/v1/employee-records/{section}/import/apply": {
-   "lane": "P1b",
-   "reason": "P1b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/employee-records/{section}/import/preview": {
-   "lane": "P1b",
-   "reason": "P1b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
   },
   "POST /api/v1/employees/import": {
    "lane": "P3a",
@@ -703,16 +618,6 @@
   "POST /api/v1/employees/register-facts/bulk": {
    "lane": "S2",
    "reason": "S2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/evidence/objects/{id}/hold": {
-   "lane": "S1",
-   "reason": "S1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/evidence/objects/{id}/verify": {
-   "lane": "S1",
-   "reason": "S1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
   "POST /api/v1/evidence/presign": {
@@ -765,34 +670,9 @@
    "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
-  "POST /api/v1/integrity/findings/{id}/triage": {
-   "lane": "K4",
-   "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/leave/promotions": {
-   "lane": "leave",
-   "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
-   "when": "mvp"
-  },
-  "POST /api/v1/leave/refusal-notices": {
-   "lane": "leave",
-   "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
-   "when": "mvp"
-  },
   "POST /api/v1/leave/requests/{id}/decide": {
    "lane": "leave",
    "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
-   "when": "mvp"
-  },
-  "POST /api/v1/lifecycles/{objectType}/{objectId}/hold": {
-   "lane": "P5a",
-   "reason": "P5a owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/lifecycles/{objectType}/{objectId}/transition": {
-   "lane": "P5a",
-   "reason": "P5a owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
   "POST /api/v1/me/inbox-docs/{id}/confirm-receipt": {
@@ -835,36 +715,6 @@
    "reason": "O4b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
-  "POST /api/v1/policy/authorize": {
-   "lane": "K2",
-   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/policy/authorize/bulk": {
-   "lane": "K2",
-   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/policy/drafts": {
-   "lane": "K2",
-   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/policy/drafts/{draft_id}/review": {
-   "lane": "K2",
-   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/policy/drafts/{draft_id}/submit": {
-   "lane": "K2",
-   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/policy/drafts/{draft_id}/validate": {
-   "lane": "K2",
-   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
   "POST /api/v1/policy/roles": {
    "lane": "K2",
    "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
@@ -873,11 +723,6 @@
   "POST /api/v1/policy/roles/{id}/status-preview": {
    "lane": "K2",
    "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/policy/simulate": {
-   "lane": "MAT-ACC",
-   "reason": "MAT-ACC owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
   "POST /api/v1/workflow-tasks/{task_id}/claim": {
@@ -910,25 +755,10 @@
    "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
    "when": "mvp"
   },
-  "PUT /api/v1/console/rollout/opt-in": {
-   "lane": "MAT-PARITY",
-   "reason": "Ops realm capability awaits the ops-cockpit owner lanes; units/maturity/plan.md §3.",
-   "when": "excluded"
-  },
-  "PUT /api/v1/console/rollout/org-flag": {
-   "lane": "MAT-PARITY",
-   "reason": "Ops realm capability awaits the ops-cockpit owner lanes; units/maturity/plan.md §3.",
-   "when": "excluded"
-  },
   "PUT /api/v1/me/notification-policies": {
    "lane": "MAT-PARITY",
    "reason": "Notification centre is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
    "when": "ideal"
-  },
-  "PUT /api/v1/policy/drafts/{draft_id}": {
-   "lane": "K2",
-   "reason": "K2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
   },
   "PUT /api/v1/policy/users/{id}/assignments": {
    "lane": "K2",

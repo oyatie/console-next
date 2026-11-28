@@ -32,7 +32,7 @@ async function setupSaeonTeam(
 
   const empPage = saeonTeamEmployees();
   await mockRoute(page, "post", "/api/v1/auth/token/refresh", { status: 200, json: saeonHeroToken() });
-  await mockRoute(page, "get", "/api/v1/users/me", { status: 200, json: saeonHeroUser() });
+  await mockRoute(page, "get", "/api/v1/users/me", { status: 200, json: { ...saeonHeroUser(), employee_org_unit_id: "00000000-0000-4000-8210-000000000001" } });
   await mockRoute(page, "get", "/api/v1/me/authz", {
     status: 200,
     json: {
@@ -51,8 +51,18 @@ async function setupSaeonTeam(
       canManage: opts?.canManage ?? true,
     }),
   });
-  await mockRoute(page, "get", "/api/v1/employees", { status: 200, json: empPage });
-  await mockRoute(page, "get", "/api/v1/employees/facets", { status: 200, json: saeonTeamFacets() });
+  await mockRoute(page, "get", "/api/v1/employees", req => {
+    const unit = new URL(req.url()).searchParams.get("org_unit_id");
+    const items = unit ? empPage.items.filter(person => person.org_unit_id === unit) : empPage.items;
+    return { status: 200, json: { ...empPage, items, total: items.length } };
+  });
+  await mockRoute(page, "get", "/api/v1/employees/facets", req => {
+    const query = new URL(req.url()).searchParams;
+    const unit = query.get("org_unit_id");
+    const items = unit ? empPage.items.filter(person => person.org_unit_id === unit) : empPage.items;
+    const total = query.has("contract_ending_on_or_after") ? 0 : items.length;
+    return { status: 200, json: { ...saeonTeamFacets(), total } };
+  });
   await mockRoute(page, "get", "/api/v2/leave/requests", { status: 200, json: saeonTeamLeaveQueue(empPage.items) });
 
   return { fixture, empPage, orgStructureCalled: () => orgStructureCalled };
@@ -135,7 +145,7 @@ test("Console /team concurrent view scopes attentionCount and leave banner to th
   const ulsanId = saeonUniverse.entities[0]!.workplaces[0]!.id;
 
   await mockRoute(page, "post", "/api/v1/auth/token/refresh", { status: 200, json: saeonHeroToken() });
-  await mockRoute(page, "get", "/api/v1/users/me", { status: 200, json: saeonHeroUser() });
+  await mockRoute(page, "get", "/api/v1/users/me", { status: 200, json: { ...saeonHeroUser(), employee_org_unit_id: "00000000-0000-4000-8210-000000000001" } });
   await mockRoute(page, "get", "/api/v1/me/authz", { status: 200, json: authz });
   await mockRoute(page, "get", "/api/v1/access/me", {
     status: 200,
@@ -154,7 +164,7 @@ test("Console /team concurrent view scopes attentionCount and leave banner to th
       status: 200,
       json: {
         ...base,
-        total: 2,
+        total: query.has("contract_ending_on_or_after") ? (isScope2 ? 0 : 1) : 2,
         status: [
           { value: "ACTIVE", count: 2 },
           { value: "ON_LEAVE", count: 0 },
@@ -174,6 +184,31 @@ test("Console /team concurrent view scopes attentionCount and leave banner to th
     await expect(stats).toContainText(`${t("team.stats.attention")}0`);
     await expect(page.getByText(t("team.notes.leaveOnly", { leaveCount: 1 }))).toHaveCount(0);
     expect(fixture.unexpected).toEqual([]);
+  } finally {
+    fixture.release();
+  }
+});
+
+test("the team can read the next page of pending leave and update the attention total", async ({ page }) => {
+  const { fixture, empPage } = await setupSaeonTeam(page, { theme: "light", tenantWide: true });
+  const leave = saeonTeamLeaveQueue(empPage.items).items[0]!;
+  const cursor = leave.id;
+  let requested = false;
+  await mockRoute(page, "get", "/api/v2/leave/requests", req => {
+    if (new URL(req.url()).searchParams.get("cursor") === cursor) {
+      requested = true;
+      return { status: 200, json: { items: [{ ...leave, id: "00000000-0000-4000-8120-000000000099", subject_employee_id: empPage.items[1]!.id }], next_cursor: null } };
+    }
+    return { status: 200, json: { items: [leave], next_cursor: cursor } };
+  });
+  try {
+    await page.goto("/team");
+    const stats = page.getByLabel(t("team.stats.label"));
+    await expect(stats).toContainText(`${t("team.stats.attention")}≥ 1`);
+    await page.getByRole("button", { name: t("team.leave.more") }).click();
+    expect(requested).toBe(true);
+    await expect(stats).toContainText(`${t("team.stats.attention")}2`);
+    await expect(page.getByText(t("team.notes.leaveOnly", { leaveCount: 2 }))).toBeVisible();
   } finally {
     fixture.release();
   }

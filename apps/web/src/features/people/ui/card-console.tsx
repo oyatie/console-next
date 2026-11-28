@@ -67,7 +67,7 @@ export function CardConsole({
 
   return (
     <ConsoleCardShell
-      d={d}
+      d={coldWait ? undefined : d}
       q={patternQ}
       act={act}
       back={back}

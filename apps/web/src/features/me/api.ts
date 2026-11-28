@@ -37,3 +37,5 @@ export function createMyAttendanceRecord(body: S["CreateEmployeeAttendanceRecord
 export function isForbiddenError(error: unknown): boolean {
   return error instanceof ApiError && error.status === 403;
 }
+
+export const evaluationTasksQuery = get("/api/v1/evaluation/my-tasks");

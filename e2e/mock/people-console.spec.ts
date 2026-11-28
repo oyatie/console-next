@@ -217,9 +217,8 @@ test("Console /people interactive filters (StatRow, FilterRail, IndexBar), side-
     await sidePane.getByRole("tab", { name: t("people.panel.tab.basic"), exact: true }).click();
 
     // FilterRail: check CONTRACT employment type across full roster, then reset with Clear button
-    const summaryPrefix = t("people.foot.viewSummary", { count: 12345 }).split("12,345")[0] ?? "";
-    const viewSummary = pattern.locator("strong").filter({ hasText: summaryPrefix }).first();
-    const parseViewCount = async () => Number((await viewSummary.innerText()).replace(/[^\d]/g, ""));
+    const indexRegion = page.getByRole("region", { name: t("people.index.label"), exact: true });
+    const parseViewCount = async () => Number(((await indexRegion.innerText()).split("/")[1] ?? "").replace(/[^\d]/g, ""));
     const regularFooter = pattern.getByText(t("people.foot.typeCount", { label: t("enum.employmentType.REGULAR"), count: 0 }), { exact: true });
     const beforeContract = await parseViewCount();
     expect(beforeContract).toBeGreaterThan(0);
@@ -256,7 +255,7 @@ test("Console /people interactive filters (StatRow, FilterRail, IndexBar), side-
     await expect(indexLast).toHaveAttribute("aria-pressed", "false");
 
     // Search q stays strictly in memory (never in URL, localStorage, or sessionStorage)
-    const searchInput = page.getByPlaceholder(t("people.find.placeholder"));
+    const searchInput = page.getByPlaceholder(t("roster.find"));
     await searchInput.fill(saeonUniverse.hero.name);
     await expect(rows).toHaveCount(1);
     expect(page.url()).not.toContain(encodeURIComponent(saeonUniverse.hero.name));
@@ -268,7 +267,8 @@ test("Console /people interactive filters (StatRow, FilterRail, IndexBar), side-
     await expect.poll(() => rows.count()).toBeGreaterThanOrEqual(8);
 
     // StatRow Exited tile switches to EXITED retention view and shows ExitPeek in side pane
-    await page.getByRole("button", { name: new RegExp(t("people.stat.exited")) }).click();
+    const exitedStatBtn = page.getByLabel(t("people.stat.label")).getByRole("button", { name: new RegExp(t("people.stat.exited")) });
+    await exitedStatBtn.click();
     const exitedRow = pattern.locator(`[role="row"][data-row-id="${SAEON_EXITED_ID}"]`);
     await expect(exitedRow).toBeVisible();
     await expect(exitedRow).toContainText("2029-11-01");
@@ -276,7 +276,7 @@ test("Console /people interactive filters (StatRow, FilterRail, IndexBar), side-
     await expect(sidePane).toContainText("2029-11-01");
 
     // Return to active, open hero, and use open-in-tab link to reach /people/$id (P3)
-    await page.getByRole("button", { name: new RegExp(t("people.stat.exited")) }).click();
+    await exitedStatBtn.click();
     await pattern.locator(`[role="row"][data-row-id="${SAEON_HERO_ID}"]`).click();
     await sidePane.getByRole("button", { name: t("uiFlexibleColumns.openInTab"), exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/people/${SAEON_HERO_ID}`));
@@ -357,6 +357,7 @@ test("Capability-gated peek queries do not fire 403s for read-only users and EXI
     const sidePane = page.locator('aside[data-pane="record"]');
     await expect(sidePane).toBeVisible();
     await expect(sidePane).toContainText(saeonUniverse.hero.name);
+    await sidePane.getByRole("tab", { name: t("people.panel.tab.attendance"), exact: true }).click();
     await expect(sidePane).toContainText(t("people.panel.summary.monthAtt", { month: 11 }));
 
     await page.goto(`/people/${SAEON_EXITED_ID}`);

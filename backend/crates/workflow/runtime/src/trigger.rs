@@ -77,7 +77,7 @@ pub async fn start_bound_run<P: WorkflowRuntimePort + ?Sized>(
     // identically.
     let context = request.context_payload.clone();
 
-    match start_run_owned(port, request, audit).await {
+    match start_run_owned(port, request, None, audit).await {
         Ok(run_id) => {
             let outcome = drive_from(
                 port,

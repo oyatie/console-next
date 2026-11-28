@@ -51,15 +51,15 @@ test.each(["reordered", "deleted"])("the offline font check accepts %s copy and 
       import { catalogCharacters, check } from "./scripts/font-subsets.mjs";
       check();
       const edit = ${JSON.stringify(edit)};
-      const catalog = edit === "deleted" ? "packages/i18n/src/catalogs/boot-consent.ts" : "packages/i18n/src/catalogs/ko/asof.ts";
+      const catalog = edit === "deleted" ? "packages/i18n/src/catalogs/boot-bootstrap.ts" : "packages/i18n/src/catalogs/ko/asof.ts";
       const original = readFileSync(catalog, "utf8");
       const requested = catalogCharacters();
-      const edited = edit === "deleted" ? original.replace("토", "") : original.replace('"기준일"', '"일준기"');
+      const edited = edit === "deleted" ? original.replace("콘", "") : original.replace('"기준일"', '"일준기"');
       assert.notEqual(edited, original);
       writeFileSync(catalog, edited);
       if (edit === "deleted") {
-        assert.ok(requested.includes("토".codePointAt(0)));
-        assert.ok(!catalogCharacters().includes("토".codePointAt(0)));
+        assert.ok(requested.includes("콘".codePointAt(0)));
+        assert.ok(!catalogCharacters().includes("콘".codePointAt(0)));
       } else assert.deepEqual(catalogCharacters(), requested);
       check();
       const assets = check().outputs;

@@ -188,6 +188,9 @@
     "/api/v1/workplaces/{workplaceId}/end-options": [
       "get"
     ],
+    "/api/v1/workplaces/{workplaceId}/head": [
+      "put"
+    ],
     "/api/v1/workplaces/{workplaceId}/insurance": [
       "put"
     ],
@@ -313,6 +316,7 @@
     "SavedLegalEntity",
     "SavedWorkplace",
     "SetWorkplaceCodeRequest",
+    "SetWorkplaceHeadRequest",
     "SetWorkplaceKindRequest",
     "SettleNameReviewRequest",
     "SetupOrgUnitResult",

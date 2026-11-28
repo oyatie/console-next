@@ -1,0 +1,15 @@
+{
+  "baseline": {
+    "apps/web/src/features/calendar/ui/calendar-page.tsx#CalendarPage": 27
+  },
+  "newScreens": {
+    "apps/web/src/features/calendar/ui/calendar-page.tsx#CalendarPage": {
+      "FACT": 13,
+      "REFUSAL": 8,
+      "EMPTY": 3,
+      "LEGAL": 0,
+      "RECEIPT": 3,
+      "EXPLANATION": 0
+    }
+  }
+}

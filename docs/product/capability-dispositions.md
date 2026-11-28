@@ -49,10 +49,10 @@ Partially exposed operations keep their current route and component; their refus
 | `GET /api/v1/branches/{id}` | hidden | allow-list | Organization structure: Only legacy region and branch closures remain supported. These pre-workplace cleanup commands stay outside the primary organization editor until place-model compatibility retirement. Release gate: place-model compatibility retirement. |
 | `PATCH /api/v1/branches/{id}` | hidden | allow-list | Organization structure: Separate branch and region drafting is retired under the workplace model. Workplace changes own placement; retain these protocol URLs until compatibility retirement. Release gate: place-model compatibility retirement. |
 | `DELETE /api/v1/branches/{id}` | hidden | allow-list | Organization structure: Separate branch and region drafting is retired under the workplace model. Workplace changes own placement; retain these protocol URLs until compatibility retirement. Release gate: place-model compatibility retirement. |
-| `POST /api/v1/console/kill-switch` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `GET /api/v1/console/rollout` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `PUT /api/v1/console/rollout/opt-in` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `PUT /api/v1/console/rollout/org-flag` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
+| `POST /api/v1/console/kill-switch` | exposed | expose | `/settings?section=rollout` · `RolloutPanel` activates or clears emergency Classic fallback with audit note. |
+| `GET /api/v1/console/rollout` | exposed | expose | `/settings?section=rollout` · `RolloutPanel` reads tenant rollout flag, personal opt-in, and emergency fallback state. |
+| `PUT /api/v1/console/rollout/opt-in` | exposed | expose | `/settings?section=rollout` · `RolloutPanel` updates personal Console rollout opt-in. |
+| `PUT /api/v1/console/rollout/org-flag` | exposed | expose | `/settings?section=rollout` · `RolloutPanel` updates tenant Console rollout flag with audit note. |
 | `POST /api/v1/console/telemetry/route` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `GET /api/v1/group-admin/groups` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `POST /api/v1/group-admin/tenant-context` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
@@ -61,18 +61,18 @@ Partially exposed operations keep their current route and component; their refus
 | `GET /api/v1/me/workspace` | exposed | expose | `/account` · `ExperienceChooser` reads the signed-in user's workspace preferences, including personal screen style override. |
 | `PUT /api/v1/me/workspace` | exposed | expose | `/account` · `ExperienceChooser` persists the signed-in user's personal screen style override without clobbering other workspace layout keys. |
 | `GET /api/v1/policy/assignments` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `GET /api/v1/policy/audit-events` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/policy/authorize` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/policy/authorize/bulk` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `GET /api/v1/policy/catalog` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `GET /api/v1/policy/decisions` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `GET /api/v1/policy/drafts` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/policy/drafts` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `GET /api/v1/policy/drafts/{draft_id}` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `PUT /api/v1/policy/drafts/{draft_id}` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/policy/drafts/{draft_id}/review` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/policy/drafts/{draft_id}/submit` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/policy/drafts/{draft_id}/validate` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
+| `GET /api/v1/policy/audit-events` | exposed | expose | `/access/policies` · `PoliciesPage` displays policy governance audit events. |
+| `POST /api/v1/policy/authorize` | exposed | expose | `/access/check` · `AccessCheckPage` runs interactive point authorization checks. |
+| `POST /api/v1/policy/authorize/bulk` | exposed | expose | `/access/check` · `AccessCheckPage` runs standard multi-action authorization matrix checks. |
+| `GET /api/v1/policy/catalog` | exposed | expose | `/access/policies` · `PoliciesPage` lists Cedar policy catalog entries. |
+| `GET /api/v1/policy/decisions` | exposed | expose | `/access/policies` · `PoliciesPage` displays recorded Cedar authorization decisions. |
+| `GET /api/v1/policy/drafts` | exposed | expose | `/access/policies` · `PoliciesPage` lists no-code Cedar policy drafts. |
+| `POST /api/v1/policy/drafts` | exposed | expose | `/access/policies` · `PoliciesPage` creates a new Cedar policy draft. |
+| `GET /api/v1/policy/drafts/{draft_id}` | exposed | expose | `/access/policies/$draftId` · `PolicyDraftPage` loads a Cedar policy draft for editing and review. |
+| `PUT /api/v1/policy/drafts/{draft_id}` | exposed | expose | `/access/policies/$draftId` · `PolicyDraftPage` updates a Cedar policy draft's no-code blocks. |
+| `POST /api/v1/policy/drafts/{draft_id}/review` | exposed | expose | `/access/policies/$draftId` · `PolicyDraftPage` records four-eyes approve or reject review decisions. |
+| `POST /api/v1/policy/drafts/{draft_id}/submit` | exposed | expose | `/access/policies/$draftId` · `PolicyDraftPage` submits a validated draft for four-eyes review. |
+| `POST /api/v1/policy/drafts/{draft_id}/validate` | exposed | expose | `/access/policies/$draftId` · `PolicyDraftPage` validates Cedar draft syntax and schema rules. |
 | `GET /api/v1/policy/features` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `GET /api/v1/policy/role-templates` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `GET /api/v1/policy/roles` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
@@ -80,7 +80,7 @@ Partially exposed operations keep their current route and component; their refus
 | `PATCH /api/v1/policy/roles/{id}` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `PATCH /api/v1/policy/roles/{id}/status` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `POST /api/v1/policy/roles/{id}/status-preview` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/policy/simulate` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
+| `POST /api/v1/policy/simulate` | exposed | expose | `/access/policies/$draftId` · `PolicyDraftPage` runs Cedar draft sandbox simulations before submission. |
 | `POST /api/v1/policy/users/{id}/assignment-preview` | hidden | allow-list | Access management: Policy preview has no rendered caller. Deliver assignment impact review on the person access screen before MVP release. Release gate: mvp. |
 | `PUT /api/v1/policy/users/{id}/assignments` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `POST /api/v1/regions` | hidden | allow-list | Organization structure: Separate branch and region drafting is retired under the workplace model. Workplace changes own placement; retain these protocol URLs until compatibility retirement. Release gate: place-model compatibility retirement. |
@@ -103,9 +103,9 @@ Partially exposed operations keep their current route and component; their refus
 | `GET /api/v1/change-sets` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `GET /api/v1/change-sets/{id}` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `DELETE /api/v1/change-sets/{id}` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `GET /api/v1/employee-records/{section}` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/employee-records/{section}/import/apply` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
-| `POST /api/v1/employee-records/{section}/import/preview` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
+| `GET /api/v1/employee-records/{section}` | exposed | expose | `/people/records/import` · `RecordsImportPage` exports live section rows as CSV. |
+| `POST /api/v1/employee-records/{section}/import/apply` | exposed | expose | `/people/records/import` · `RecordsImportPage` applies previewed section rows with name-mismatch confirmation. |
+| `POST /api/v1/employee-records/{section}/import/preview` | exposed | expose | `/people/records/import` · `RecordsImportPage` previews parsed section rows before apply. |
 | `GET /api/v1/employees/corrections/bulk/{id}` | hidden | allow-list | Existing operation entry in `scripts/reach-baseline.json` (owner, reason and release gate). |
 | `POST /api/v1/employees/import` | hidden | internal | Removed legacy importer returns 410; employee import uses preview, dry-run and apply. |
 | `GET /api/v1/employees/import/{run_id}/reconcile` | partial | expose | `/people/import` · `ImportPage`; complete refusal recovery copy. |

@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+x-console-authz: {"permission": "pay:edit", "scope": "entity"}
+tags: [payroll]
+operationId: searchPayGroupMembers
+summary: Find employees eligible for a pay group on the selected date
+security: [{bearerAuth: []}]
+parameters:
+- {in: query, required: true, name: pay_group_id, schema: {type: string, format: uuid}}
+- {in: query, required: true, name: effective_from, schema: {type: string, format: date}}
+- {in: query, required: true, name: q, schema: {type: string, minLength: 1, maxLength: 100}}
+responses:
+  '200':
+    description: Up to 30 matching employees in the group’s legal entity on that date. Both their source group and destination must be manageable.
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            required: [employee_id, name, employee_number, current_pay_group_id]
+            properties:
+              employee_id: {type: string, format: uuid}
+              name: {type: string}
+              employee_number: {type: [string, 'null']}
+              current_pay_group_id: {type: [string, 'null'], format: uuid}
+  '400': {description: Invalid query fields.}
+  '401': {$ref: '#/components/responses/Unauthorized'}
+  '403': {$ref: '#/components/responses/Forbidden'}
+  '422': {description: Empty or overlong search.}

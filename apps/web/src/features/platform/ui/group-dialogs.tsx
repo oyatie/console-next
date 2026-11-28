@@ -13,6 +13,7 @@ import {
   assignOrgToGroup,
   createGroup,
   createGroupAccount,
+  inviteOrgToGroup,
   updateGroup,
   type Group,
   type GroupRole,
@@ -104,6 +105,48 @@ type AssignOrgProps = {
 export function AssignOrgDialog(props: AssignOrgProps) {
   if (!props.open) return null;
   return <AssignOrgDialogBody {...props} />;
+}
+
+export function InviteOrgDialog(props: AssignOrgProps) {
+  if (!props.open) return null;
+  return <InviteOrgDialogBody {...props} />;
+}
+
+function InviteOrgDialogBody({ open, group, orgs, onClose, onDone }: AssignOrgProps) {
+  const [orgId, setOrgId] = useState<string | null>(orgs[0]?.id ?? null);
+  const invite = useCommand({
+    run: (target: Org) => inviteOrgToGroup(group.id, target.id),
+    invalidates: ["/api/platform"],
+    onSuccess: (_res, target) => onDone(target),
+  });
+
+  const picked = orgs.find((o) => o.id === orgId) ?? orgs[0];
+  return (
+    <Dialog open={open} title={t("tenants.groups.inviteOrg")} onClose={onClose} dismissable={!invite.isPending}>
+      <Form
+        className="form"
+        onSubmit={() => {
+          if (picked) invite.mutate(picked);
+        }}
+        noValidate
+      >
+        <SelectField
+          label={t("tenants.groups.pickOrg")}
+          placeholder={t("tenants.groups.pickOrg")}
+          value={picked?.id ?? null}
+          onChange={setOrgId}
+          options={orgs.map((o) => ({ id: o.id, label: `${o.name} (${o.slug})` }))}
+        />
+        <PasskeyError error={invite.error} />
+        <div className="form__actions">
+          <Button onClick={onClose} disabled={invite.isPending}>{t("common.cancel")}</Button>
+          <Button type="submit" variant="primary" disabled={!picked || invite.isPending}>
+            {t("tenants.groups.inviteSubmit")}
+          </Button>
+        </div>
+      </Form>
+    </Dialog>
+  );
 }
 
 function AssignOrgDialogBody({ open, group, orgs, onClose, onDone }: AssignOrgProps) {

@@ -84,9 +84,7 @@ export const closeGroups = (n: Node): Group[] => [
   ...(direct(n) > 0 ? [{ id: n.id, count: direct(n) }] : []),
 ];
 
-/** The structure acts `?act=` names on the selection `sel` of the company structure page (routes/org.ts validates them). */
-export const STRUCTURE_ACTS = ["wp-create", "wp-primary", "wp-delete", "wp-close", "wp-kind", "wp-kinds", "dept-add", "dept-rename", "dept-head", "dept-delete", "dept-merge", "dept-dissolve"] as const;
-export type StructureAct = (typeof STRUCTURE_ACTS)[number];
+export { STRUCTURE_ACTS, type StructureAct } from "./structure-actions";
 
 /**
  * The structure without the units in `gone` (closed elsewhere but still listed).

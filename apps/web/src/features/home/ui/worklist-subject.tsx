@@ -25,22 +25,24 @@ export function CompactSubject({ item }: { item: AttentionInboxItem }) {
             ? ""
             : item.title;
 
-  const facts = correction
-    ? [t(`entityRecord.corrections.status.${correction.status}`), item.who]
-    : unlock
-      ? [
-          unlock.requester,
-          reasonLabel("period_unlock", unlock.reason_code, unlock.reason_entry ?? undefined),
-        ]
-      : insurance
+  const facts = item.kind === "privacy_request"
+    ? [item.who, t("account.privacy.title")]
+    : correction
+      ? [t(`entityRecord.corrections.status.${correction.status}`), item.who]
+      : unlock
         ? [
-            label(INSURER, insurance.insurer),
-            codeText(`statutory.${insurance.kind}`, t("home.inbox.unknown")),
-            fmtDate(insurance.effective_date),
+            unlock.requester,
+            reasonLabel("period_unlock", unlock.reason_code, unlock.reason_entry ?? undefined),
           ]
-        : lifecycle
-          ? [label(LIFECYCLE_EVENT, lifecycle.action_kind), fmtDate(lifecycle.effective_date)]
-          : [];
+        : insurance
+          ? [
+              label(INSURER, insurance.insurer),
+              codeText(`statutory.${insurance.kind}`, t("home.inbox.unknown")),
+              fmtDate(insurance.effective_date),
+            ]
+          : lifecycle
+            ? [label(LIFECYCLE_EVENT, lifecycle.action_kind), fmtDate(lifecycle.effective_date)]
+            : [];
 
   const drafterName = item.context?.drafter?.trim();
   const drafterIncluded = Boolean(drafterName && item.site?.includes(drafterName));

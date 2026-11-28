@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 // Static paths are ratcheted against the router; protected reads come from the shared contract.
-import { routeReads } from "../../apps/web/src/routes/route-reads";
+import { alternativeRouteReads, routeReads, servedRouteReads } from "../../apps/web/src/routes/route-reads";
 
 /** Shared destinations for navigation readiness and the refused-route walk. */
 export const redirectTargets: Readonly<Record<string, string>> = {
@@ -15,27 +15,49 @@ export const redirectTargets: Readonly<Record<string, string>> = {
 const paths = [
   "/",
   "/access",
+  "/access/check",
   "/access/grants",
   "/access/grants/bulk",
   "/access/people/$accountId",
+  "/access/policies",
+  "/access/policies/$draftId",
   "/access/ready",
   "/access/review",
   "/access/roles",
   "/access/roles/$roleId",
   "/access/roles/new",
   "/account",
+  "/account/location",
   "/account/privacy",
   "/account/privacy/intake/$id",
   "/approvals",
+  "/approvals/new",
   "/approvals/$approvalId",
   "/attendance",
   "/audit",
   "/audit/access-log",
+  "/audit/evidence",
+  "/consulting",
+  "/consulting/engagements/$engagementId",
+  "/calendar",
+  "/benefits",
+  "/audit/findings",
+  "/audit/lifecycles/$objectType/$objectId",
+  "/audit/location-consents",
+  "/audit/restricted",
   "/audit/support-access",
   "/inbox",
   "/leave",
   "/me/attendance",
+  "/me/evaluations",
+  "/compliance",
+  "/compliance/new",
+  "/compliance/evidence",
+  "/compliance/evidence/new",
+  "/evaluation",
+  "/evaluation/new",
   "/me/desk",
+  "/me/dispatch-offers",
   "/org",
   "/org/changes",
   "/org/changes/$id",
@@ -60,6 +82,7 @@ const paths = [
   "/people/exits/$id",
   "/people/grid",
   "/people/import",
+  "/people/records/import",
   "/people/job-titles",
   "/people/new",
   "/people/notices",
@@ -75,14 +98,17 @@ const paths = [
   "/payroll",
   "/payroll/employees/$employeeId",
   "/payroll/reference",
+  "/payroll/outlook",
   "/payroll/runs/$id",
   "/payroll/runs/new",
   "/payroll/setup",
+  "/payroll/setup/members",
   "/payslips",
   "/platform",
   "/requests",
   "/requests/$id",
   "/settings/company-domain",
+  "/settings/overtime",
   "/settings",
   "/setup/company-names",
   "/setup/go-live",
@@ -91,6 +117,9 @@ const paths = [
   "/team",
 ] as const;
 
-export const routeList = paths.map(path => ({
-  path, reads: path in routeReads ? routeReads[path as keyof typeof routeReads].reads.map(op => op.slice(4).replace(/\{[^}]+\}/g, "$id")) : [],
-}));
+export const routeList = paths.map(path => {
+  if (Object.hasOwn(servedRouteReads, path)) return { path, reads: servedRouteReads[path as keyof typeof servedRouteReads].reads.map(read => read.replace("{objectType}", "document").replace(/\{[^}]+\}/g, "$id")) };
+  const operations = Object.hasOwn(routeReads, path) ? routeReads[path as keyof typeof routeReads].reads
+    : Object.hasOwn(alternativeRouteReads, path) ? [alternativeRouteReads[path as keyof typeof alternativeRouteReads]] : [];
+  return { path, reads: operations.map(op => op.slice(4).replace(/\{[^}]+\}/g, "$id")) };
+});

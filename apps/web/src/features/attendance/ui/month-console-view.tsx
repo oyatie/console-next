@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useMemo, type ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
 import { modHint } from "../../../lib/mod-hint";
 import { Badge } from "../../../ui/badge/badge";
@@ -14,7 +15,7 @@ import { MonthGridPattern } from "../../../ui/patterns/month-grid";
 import type { GridFooterRow } from "../../../ui/person-day-grid/person-day-grid";
 import type { SidePaneSpec } from "../../../ui/pane-grid/pane-grid-side";
 import type { Range } from "../../../ui/sheet-grid/range";
-import type { GridRow } from "../api";
+import { treeQuery, type GridRow } from "../api";
 import { hours } from "../domain/day";
 import { duration } from "../domain/minutes";
 import type { PageState } from "../domain/month-state";
@@ -144,6 +145,7 @@ export function MonthConsoleView({
     </Button>
   );
 
+  useQuery(treeQuery());
   const phaseLine = useAttendancePhaseLine();
   return (
     <MonthGridPattern
@@ -154,7 +156,7 @@ export function MonthConsoleView({
         title: t("attendance.title"),
         titleId: "attendance-month-title",
         meta: phaseLine,
-        filters: !empty ? (
+        filters: grid.data && !empty ? (
           <>
             <div className={s.filterPair}>
               <PeriodStepper unit="month" variant="boxed" value={month} onChange={(m) => onGo({ month: m })} />
@@ -173,7 +175,7 @@ export function MonthConsoleView({
             />
           </>
         ) : undefined,
-        tools: !empty ? (
+        tools: grid.data && !empty ? (
           <div className={s.headTools}>
             {draftCount > 0 && !grid.error && (
               <>

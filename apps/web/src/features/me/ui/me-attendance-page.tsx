@@ -74,7 +74,7 @@ export function MeAttendancePage() {
               </Card>
               <MeAttendanceSections
                 schedule={schedule}
-                records={records.data?.items ?? []}
+                recordsQuery={records}
                 exceptions={exceptions.data?.items ?? []}
               />
             </div>
@@ -92,7 +92,7 @@ export function MeAttendancePage() {
       sections={
         <MeAttendanceSections
           schedule={schedule}
-          records={records.data?.items ?? []}
+          recordsQuery={records}
           exceptions={exceptions.data?.items ?? []}
         />
       }

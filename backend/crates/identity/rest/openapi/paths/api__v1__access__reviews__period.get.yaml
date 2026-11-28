@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+x-console-authz: {"permission": "access:view", "scope": "tenant"}
+tags: [access]
+operationId: getAccessReview
+summary: Read one quarterly periodic access review cycle and its frozen items
+security:
+- bearerAuth: []
+parameters:
+- name: period
+  in: path
+  required: true
+  schema:
+    type: string
+    pattern: '^[0-9]{4}-Q[1-4]$'
+responses:
+  '200':
+    description: Periodic access review detail.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/AccessReviewDetail'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '422':
+    $ref: '#/components/responses/ValidationError'
+  '503':
+    $ref: '#/components/responses/ServiceUnavailable'

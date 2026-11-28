@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required:
+- index
+- op
+- outcome
+- enforcement_after
+properties:
+  index:
+    type: integer
+    minimum: 0
+  op:
+    type: string
+    enum:
+    - grant
+  outcome:
+    type: string
+    enum:
+    - OK
+    - REFUSED
+  refusal:
+    type:
+    - object
+    - 'null'
+    required:
+    - code
+    - message
+    properties:
+      code:
+        type: string
+      message:
+        type: string
+  enforcement_after:
+    oneOf:
+    - $ref: '#/components/schemas/AccessEnforcement'
+    - type: 'null'
+  activates_at:
+    $ref: '#/components/schemas/Timestamp'

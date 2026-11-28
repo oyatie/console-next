@@ -47,6 +47,14 @@ fn requests() -> Vec<(Method, String)> {
         (Method::GET, "/api/v1/settings".to_owned()),
         (Method::GET, format!("/api/v1/settings/{KEY}/history")),
         (Method::POST, format!("/api/v1/settings/{KEY}")),
+        (
+            Method::GET,
+            "/api/v1/settings/overtime-attestations".to_owned(),
+        ),
+        (
+            Method::POST,
+            "/api/v1/settings/overtime-attestations".to_owned(),
+        ),
     ]
 }
 
@@ -78,7 +86,8 @@ fn route_paths_name_every_mounted_route() {
         &[
             "/api/v1/settings",
             "/api/v1/settings/{key}",
-            "/api/v1/settings/{key}/history"
+            "/api/v1/settings/{key}/history",
+            "/api/v1/settings/overtime-attestations",
         ]
     );
 }

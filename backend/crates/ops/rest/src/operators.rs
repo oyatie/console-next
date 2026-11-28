@@ -2,15 +2,20 @@
 use aws_lc_rs::constant_time::verify_slices_are_equal;
 use aws_lc_rs::digest::{SHA256, digest};
 use console_kernel_core::OrgId;
-use console_platform_authz::CedarEvaluation;
-use console_platform_authz::cedar_pbac::engine::{
-    CompiledBundle, compile_bundle_from_sources, evaluate_entities,
-};
+use console_ops_domain::bundle::OncallConfig;
+use console_platform_authz::cedar_pbac::engine::{CompiledBundle, compile_bundle_from_sources};
 use serde::{Deserialize, Serialize};
-use time::{OffsetDateTime, format_description::well_known::Rfc3339};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::operators_shift::{decide_with_grants, effective_grants_with_shift, timestamp};
 pub use crate::valid_actions::VALID_ACTIONS;
+
+#[derive(Debug, Clone)]
+pub struct AuthorizedMatch {
+    pub person: Uuid,
+    pub grants: Vec<Grant>,
+}
 
 #[derive(Debug)]
 pub struct Operator {
@@ -116,6 +121,20 @@ impl OperatorRegistry {
         action: &str,
         now: OffsetDateTime,
     ) -> Result<&Operator, Refusal> {
+        let matched = self.authorize_with_shift(verified_email, action, now, None)?;
+        self.operators
+            .iter()
+            .find(|op| op.person == matched.person)
+            .ok_or(Refusal::NotOperator)
+    }
+
+    pub fn authorize_with_shift(
+        &self,
+        verified_email: &str,
+        action: &str,
+        now: OffsetDateTime,
+        oncall: Option<&OncallConfig>,
+    ) -> Result<AuthorizedMatch, Refusal> {
         let hash = digest(&SHA256, verified_email.trim().to_lowercase().as_bytes());
         let operator = self
             .operators
@@ -128,88 +147,43 @@ impl OperatorRegistry {
                 }
             })
             .ok_or(Refusal::NotOperator)?;
+
+        let effective_grants =
+            effective_grants_with_shift(operator.person, &operator.grants, now, oncall);
+
         let mut allowed = false;
         let mut live = false;
-        let now = i64::try_from(now.unix_timestamp_nanos()).map_err(|_| Refusal::ActionDenied)?;
-        for grant in &operator.grants {
-            allowed |= decide(&self.bundle, operator, grant, action, now)?;
-            live |= decide(&self.bundle, operator, grant, &grant.action, now)?;
+        let now_ns =
+            i64::try_from(now.unix_timestamp_nanos()).map_err(|_| Refusal::ActionDenied)?;
+        for grant in &effective_grants {
+            allowed |= decide_with_grants(
+                &self.bundle,
+                operator.person,
+                &effective_grants,
+                grant,
+                action,
+                now_ns,
+            )?;
+            live |= decide_with_grants(
+                &self.bundle,
+                operator.person,
+                &effective_grants,
+                grant,
+                &grant.action,
+                now_ns,
+            )?;
         }
         if allowed {
-            Ok(operator)
+            Ok(AuthorizedMatch {
+                person: operator.person,
+                grants: effective_grants,
+            })
         } else if live {
             Err(Refusal::ActionDenied)
         } else {
             Err(Refusal::GrantNotLive)
         }
     }
-}
-
-fn timestamp(value: &str) -> Result<i64, String> {
-    if !value.ends_with('Z') {
-        return Err("expected a UTC timestamp ending in Z".to_owned());
-    }
-    OffsetDateTime::parse(value, &Rfc3339)
-        .map_err(|e| e.to_string())
-        .and_then(|t| i64::try_from(t.unix_timestamp_nanos()).map_err(|e| e.to_string()))
-}
-
-#[derive(Serialize)]
-struct Uid {
-    #[serde(rename = "type")]
-    kind: &'static str,
-    id: String,
-}
-
-#[derive(Serialize)]
-struct Reference {
-    #[serde(rename = "__entity")]
-    uid: Uid,
-}
-
-#[derive(Serialize)]
-struct CedarGrant {
-    action: Reference,
-    from: i64,
-    until: i64,
-}
-
-#[derive(Serialize)]
-struct Entity<T> {
-    uid: Uid,
-    attrs: T,
-    parents: [Uid; 0],
-}
-
-#[derive(Serialize)]
-struct Attributes<'a> {
-    grants: &'a [CedarGrant],
-}
-
-#[derive(Serialize)]
-struct Empty {}
-
-#[derive(Serialize)]
-struct Context<'a> {
-    now: i64,
-    grant: &'a CedarGrant,
-}
-
-fn uid(kind: &'static str, id: &str) -> Uid {
-    Uid {
-        kind,
-        id: id.to_owned(),
-    }
-}
-
-fn cedar_grant(grant: &Grant) -> Result<CedarGrant, Refusal> {
-    Ok(CedarGrant {
-        action: Reference {
-            uid: uid("Ops::Action", &grant.action),
-        },
-        from: timestamp(&grant.from).map_err(|_| Refusal::ActionDenied)?,
-        until: timestamp(&grant.until).map_err(|_| Refusal::ActionDenied)?,
-    })
 }
 
 fn decide(
@@ -219,40 +193,12 @@ fn decide(
     action: &str,
     now: i64,
 ) -> Result<bool, Refusal> {
-    let grants = operator
-        .grants
-        .iter()
-        .map(cedar_grant)
-        .collect::<Result<Vec<_>, _>>()?;
-    let entities = (
-        Entity {
-            uid: uid("Ops::Operator", &operator.person.to_string()),
-            attrs: Attributes { grants: &grants },
-            parents: [],
-        },
-        Entity {
-            uid: uid("Ops::Console", "ops"),
-            attrs: Empty {},
-            parents: [],
-        },
-    );
-    let context = Context {
-        now,
-        grant: &cedar_grant(selected)?,
-    };
-    let json_action = serde_json::to_string(action).map_err(|_| Refusal::ActionDenied)?;
-    match evaluate_entities(
+    decide_with_grants(
         bundle,
-        &format!("Ops::Operator::\"{}\"", operator.person),
-        &format!("Ops::Action::{json_action}"),
-        "Ops::Console::\"ops\"",
-        serde_json::to_value(entities).map_err(|_| Refusal::ActionDenied)?,
-        serde_json::to_value(context).map_err(|_| Refusal::ActionDenied)?,
-    ) {
-        CedarEvaluation::Allow { .. } => Ok(true),
-        CedarEvaluation::Deny { .. } => Ok(false),
-        CedarEvaluation::Error { .. } | CedarEvaluation::NotConfigured => {
-            Err(Refusal::ActionDenied)
-        }
-    }
+        operator.person,
+        &operator.grants,
+        selected,
+        action,
+        now,
+    )
 }

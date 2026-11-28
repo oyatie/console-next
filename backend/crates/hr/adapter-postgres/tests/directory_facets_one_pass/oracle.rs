@@ -30,6 +30,8 @@ pub async fn oracle(pool: &PgPool, org: Uuid, filters: EmployeeListFilters) -> V
             let mut by_review = filters.clone();
             by_review.identity_review_required = None;
             by_review.register_review_required = None;
+            by_review.team_review_required = None;
+            by_review.contract_ending_on_or_after = None;
             by_review.home_branch_review_required = None;
             by_review.lifecycle_apply_failed = None;
             by_review.contract_ending_before = None;
@@ -69,6 +71,8 @@ pub async fn oracle(pool: &PgPool, org: Uuid, filters: EmployeeListFilters) -> V
             let mut by_review = filters.clone();
             by_review.identity_review_required = None;
             by_review.register_review_required = None;
+            by_review.team_review_required = None;
+            by_review.contract_ending_on_or_after = None;
             by_review.home_branch_review_required = None;
             by_review.lifecycle_apply_failed = None;
             by_review.contract_ending_before = None;

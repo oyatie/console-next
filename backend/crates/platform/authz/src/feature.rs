@@ -168,6 +168,9 @@ pub enum Feature {
     /// Manage attendance substitutions. ADMIN + SUPER_ADMIN only; the
     /// Attendance REST boundary continues to enforce branch/resource scope independently.
     AttendanceSubstitutionManage,
+    /// Decide (approve/reject) overtime recognition items (`attendance::approve`).
+    /// Separated from attendance exception confirmation (`attendance::edit`) for SoD.
+    AttendanceOvertimeDecide,
     /// Read the CEO/top-clearance covert audit stream. This is deliberately
     /// denied by the legacy role matrix and enrolled only through Cedar/PBAC
     /// clearance facts.
@@ -321,7 +324,7 @@ pub enum Feature {
 }
 
 impl Feature {
-    pub const ALL: [Self; 114] = [
+    pub const ALL: [Self; 115] = [
         Self::Login,
         Self::WorkOrderCreate,
         Self::WorkOrderEditIntake,
@@ -392,6 +395,7 @@ impl Feature {
         Self::ExitSettlementManage,
         Self::AttendanceExceptionManage,
         Self::AttendanceSubstitutionManage,
+        Self::AttendanceOvertimeDecide,
         Self::AuditStreamRead,
         Self::AuditStreamAccessLogRead,
         Self::PeriodLockManage,

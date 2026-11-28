@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
-import { fmtNumber } from "@console/i18n/format";
+import { fmtMonth, fmtNumber } from "@console/i18n/format";
 import { EXPERIENCE_KEY } from "../../apps/web/src/lib/prefs";
 import { expectAxe, fits } from "../a11y";
 import { test } from "../locale-fixture";
@@ -83,12 +83,12 @@ async function setupSaeonPayrollRun(page: Page, theme: "light" | "dark" = "light
   return { fixture, runId, initialDetail, groups };
 }
 
-for (const width of [1440, 390]) {
+for (const width of [1440, 1280, 390]) {
   for (const theme of ["light", "dark"] as const) {
     test(`Console /payroll/runs/$id renders P6 RegisterTotals with 18-col register, totals, blockers, preview, and status bar at ${width}px ${theme}`, async ({
       page,
     }) => {
-      await page.setViewportSize({ width, height: width === 1440 ? 900 : 844 });
+      await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
       const { fixture, runId } = await setupSaeonPayrollRun(page, theme);
       const writes: string[] = [];
       page.on("request", request => {
@@ -98,7 +98,9 @@ for (const width of [1440, 390]) {
         await page.goto(`/payroll/runs/${runId}`);
         const root = page.locator('[data-pattern="register-totals"]');
         await expect(root).toBeVisible();
+        const expectedGroupLabel = `${saeonUniverse.entities[0]!.name.replace(/^\([^)]+\)|\([^)]+\)$/g, "").trim()} ${t("payroll.group")}`;
         await expect(root.getByRole("heading", { level: 1 })).toHaveText(t("payroll.title"));
+        await expect(root).toContainText(`${expectedGroupLabel} · ${fmtMonth("2026-10")}`);
         await expect(root).toContainText("2,514,380,000");
         await expect(root).toContainText("412,906,300");
         await expect(root).toContainText("2,101,473,700");
@@ -133,14 +135,48 @@ for (const width of [1440, 390]) {
         await expect(missingBankRow).not.toHaveAttribute("data-tone", /.+/);
         await expect(missingBankRow.locator('td[data-cell-tone="danger"]')).toHaveCount(1);
 
-        if (width === 1440) {
+        if (width >= 1280) {
           await table.locator("tbody tr[data-id]").first().locator("label.check").click();
+          const visibilityAtWidth = await page.evaluate(
+            ({ vw, netHeaderLabel, precheckTitle }) => {
+              const ths = [...document.querySelectorAll<HTMLElement>('table[role="grid"] thead tr:last-child th')];
+              const netTh = ths.find(th => th.textContent?.trim() === netHeaderLabel);
+              const firstNetTd = document.querySelector<HTMLElement>('table[role="grid"] tbody tr:first-child td[data-pin="end"]');
+              const footNetTd = document.querySelector<HTMLElement>('table[role="grid"] tfoot [data-pin="end"]');
+              const blocker = [...document.querySelectorAll<HTMLElement>("[data-pattern='register-totals'] bdi")].find(
+                el => el.textContent?.trim() === precheckTitle,
+              );
+              const inView = (el: HTMLElement | null | undefined) => {
+                if (!el) return false;
+                const r = el.getBoundingClientRect();
+                return r.width > 0 && r.left >= 0 && r.right <= vw + 1;
+              };
+              return {
+                netHeaderInView: inView(netTh),
+                firstNetCellInView: inView(firstNetTd),
+                footSubtotalNetInView: inView(footNetTd),
+                blockerInView: inView(blocker),
+              };
+            },
+            {
+              vw: width,
+              netHeaderLabel: t("payroll.run.col.netPay"),
+              precheckTitle: t("payroll.run.precheckTitle"),
+            },
+          );
+          expect(visibilityAtWidth).toEqual({
+            netHeaderInView: true,
+            firstNetCellInView: true,
+            footSubtotalNetInView: true,
+            blockerInView: true,
+          });
         }
 
-        const entitySelectButton = root.getByRole("button", { name: new RegExp(t("payroll.entity")) });
-        await expect(entitySelectButton).toBeVisible();
-        await expect(entitySelectButton).toHaveAttribute("aria-haspopup", "listbox");
-        await expect(entitySelectButton).toContainText(saeonUniverse.entities[0]!.name);
+        const groupSelectLabel = expectedGroupLabel;
+        const groupSelectButton = root.getByRole("button", { name: new RegExp(t("payroll.group")) });
+        await expect(groupSelectButton).toBeVisible();
+        await expect(groupSelectButton).toHaveAttribute("aria-haspopup", "listbox");
+        await expect(groupSelectButton).toContainText(groupSelectLabel);
         const selectBoxes = await root.locator("select").evaluateAll(els =>
           els.map(el => {
             const hiddenParent = el.closest('[aria-hidden="true"]');
@@ -154,10 +190,10 @@ for (const width of [1440, 390]) {
           expect(box.hidden && box.wrapperWidth <= 2).toBe(true);
         }
         if (width === 1440) {
-          await entitySelectButton.click();
-          const listbox = page.getByRole("listbox", { name: t("payroll.entity") });
+          await groupSelectButton.click();
+          const listbox = page.getByRole("listbox", { name: t("payroll.group") });
           await expect(listbox).toBeVisible();
-          await expect(listbox.getByRole("option", { name: saeonUniverse.entities[0]!.name })).toBeVisible();
+          await expect(listbox.getByRole("option", { name: groupSelectLabel })).toBeVisible();
           await page.keyboard.press("Escape");
           await expect(listbox).toHaveCount(0);
         }
@@ -550,6 +586,64 @@ test("Console /payroll/runs/$id avoids noMatch flicker and keeps preview visible
       return w.__flickerEvents;
     });
     expect(flickerEvents).toEqual([]);
+    expect(fixture.unexpected).toEqual([]);
+  } finally {
+    await page.close();
+    fixture.release();
+  }
+});
+
+test("Console /payroll/runs/$id keeps close-blocking attendance warning and pinned net pay visible at 1280px when run is STAGED", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const { fixture, runId, initialDetail } = await setupSaeonPayrollRun(page, "light");
+  await mockRoute(page, "get", "/api/v1/payroll/runs/{id}", {
+    status: 200,
+    json: {
+      ...initialDetail,
+      run: { ...initialDetail.run, status: "STAGED" },
+      missing_bank_account_count: 0,
+      exceptions_open: 0,
+      exceptions_total: 0,
+      calculation: initialDetail.calculation ? { ...initialDetail.calculation, payable: true, blocked_lines: 0 } : null,
+      lines: initialDetail.lines.map(line => ({
+        ...line,
+        bank_account_registered: true,
+        calculation_status: "READY_FOR_REVIEW" as const,
+        blockers: [],
+      })),
+    },
+  });
+  try {
+    await page.goto(`/payroll/runs/${runId}`);
+    const root = page.locator('[data-pattern="register-totals"]');
+    await expect(root).toBeVisible();
+    await expect(root).toContainText(t("payroll.run.attendanceNotClosedChip"));
+    await expect(root).toContainText(t("payroll.run.attendanceNotClosedNote"));
+    const check = await page.evaluate(
+      ({ chipLabel, netLabel }) => {
+        const chip = [...document.querySelectorAll<HTMLElement>("[data-pattern='register-totals'] .chip")].find(
+          el => el.textContent?.trim() === chipLabel,
+        );
+        const netTh = [...document.querySelectorAll<HTMLElement>('table[role="grid"] thead tr:last-child th')].find(
+          th => th.textContent?.trim() === netLabel,
+        );
+        const chipRect = chip?.getBoundingClientRect();
+        const netRect = netTh?.getBoundingClientRect();
+        return {
+          chipVisible: Boolean(chipRect && chipRect.width > 0 && chipRect.right <= 1280 && chipRect.bottom <= 800),
+          netVisible: Boolean(netRect && netRect.width > 0 && netRect.right <= 1280),
+        };
+      },
+      {
+        chipLabel: t("payroll.run.attendanceNotClosedChip"),
+        netLabel: t("payroll.run.col.netPay"),
+      },
+    );
+    expect(check).toEqual({ chipVisible: true, netVisible: true });
+    await fits(page, "payroll-run-console/1280-staged");
+    await expectAxe(page, "payroll-run-console/1280-staged");
     expect(fixture.unexpected).toEqual([]);
   } finally {
     await page.close();

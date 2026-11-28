@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
+import { fmtDate } from "@console/i18n/format";
 import { fits } from "../a11y";
+import { seededDateStyle } from "../experience";
 import { failure, id, screenAccess, structure } from "./fixtures";
 import { orgPanelReads } from "./org-work";
 import { mockRoute } from "./route";
@@ -10,7 +12,6 @@ import { box, receipt, revealUnit } from "../structure-flows";
 import { screens } from "../states/registry";
 
 const opened = "2021-03-02";
-const day = new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(`${opened}T00:00:00+09:00`));
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -42,7 +43,7 @@ async function setupTree(page: Page, answer: (body: { ops: { name: string }[] })
   return { fixture, parent, sent };
 }
 
-async function pickDay(page: Page) {
+async function pickDay(page: Page, day: string) {
   await page.getByRole("button", { name: "적용일 · 오늘" }).click();
   const pop = page.getByRole("dialog", { name: "적용일", exact: true });
   await pop.getByRole("textbox", { name: /^적용일/ }).fill(opened);
@@ -51,12 +52,13 @@ async function pickDay(page: Page) {
 }
 
 for (const width of [1440, 390]) for (const theme of ["light", "dark"] as const) {
-  test(`a department added during setup can be dated an earlier day at ${width}px in ${theme}`, async ({ page }) => {
+  test(`a department added during setup can be dated an earlier day at ${width}px in ${theme}`, async ({ page, storageState }) => {
+    const day = fmtDate(opened, { style: seededDateStyle(storageState) });
     await page.setViewportSize({ width, height: 900 });
     await page.emulateMedia({ colorScheme: theme });
     const { fixture, parent, sent } = await setupTree(page, () => applied);
     try {
-      await pickDay(page);
+      await pickDay(page, day);
       const field = page.getByRole("textbox", { name: `${parent.name} 아래 새 부서 이름` });
       await field.fill("개발팀");
       await page.screenshot({ path: test.info().outputPath(`dated-${width}-${theme}.png`) });
@@ -83,12 +85,13 @@ test("an untouched setup add sends no day, as before", async ({ page }) => {
 });
 
 for (const code of ["org_setup_date_future", "org_setup_date_before_parent", "org_setup_date_before_current"] as const) {
-  test(`the server's ${code} refusal reads beside the change`, async ({ page }) => {
+  test(`the server's ${code} refusal reads beside the change`, async ({ page, storageState }) => {
+    const day = fmtDate(opened, { style: seededDateStyle(storageState) });
     const body = failure(code);
     body.error.errors = [{ field: "effective_date", code }];
     const { fixture, parent } = await setupTree(page, () => ({ status: 422 as const, json: body }));
     try {
-      await pickDay(page);
+      await pickDay(page, day);
       const field = page.getByRole("textbox", { name: `${parent.name} 아래 새 부서 이름` });
       await field.fill("개발팀");
       await field.press("Enter");
@@ -99,7 +102,8 @@ for (const code of ["org_setup_date_future", "org_setup_date_before_parent", "or
   });
 }
 
-test("a move picked by keyboard during setup takes a day too", async ({ page }) => {
+test("a move picked by keyboard during setup takes a day too", async ({ page, storageState }) => {
+  const day = fmtDate(opened, { style: seededDateStyle(storageState) });
   const fixture = await mockScreen(page, screens[2], "populated");
   await orgPanelReads(page);
   const tree = structure(2);
@@ -118,7 +122,7 @@ test("a move picked by keyboard during setup takes a day too", async ({ page }) 
     await page.keyboard.press("m");
     const picker = page.getByRole("dialog", { name: "검증부서 2 이동" });
     await picker.getByRole("row", { name: /^검증부서 1/ }).click();
-    await pickDay(page);
+    await pickDay(page, day);
     await picker.getByRole("button", { name: "검증부서 1 아래로 이동" }).click();
     await expect.poll(() => sent).toEqual([{ ops: [expect.objectContaining({ op: "MOVE", org_unit_id: id(101) })], effective_date: opened }]);
     await expect(receipt(page)).toContainText(`적용일 ${day}`);

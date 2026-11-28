@@ -182,17 +182,15 @@ function TenantsConsolePage({
       head={{
         title: t("tenants.title"),
         titleId: "tenants-title",
-        actions: (
-          <div className={s.headActions}>
-            <Button size="sm" variant="secondary" onClick={() => setLookupOpen(true)}>
-              <Search size={13} aria-hidden />
-              {t("tenants.supportLookup.title")}
-            </Button>
-          </div>
-        ),
-        primary: empty ? undefined : unavailable ? <>{unavailableCreate}</> : (
+        actions: empty ? undefined : unavailable ? unavailableCreate : (
           <Button variant="primary" pending={!list.data} onClick={() => setOnboarding(true)}>
             {t("tenants.create")}
+          </Button>
+        ),
+        primary: (
+          <Button size="sm" variant="secondary" onClick={() => setLookupOpen(true)}>
+            <Search size={13} aria-hidden />
+            {t("tenants.supportLookup.title")}
           </Button>
         ),
       }}

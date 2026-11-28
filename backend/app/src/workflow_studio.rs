@@ -20,7 +20,7 @@ use console_workflow_domain::{
 };
 use console_workflow_runtime::{
     AuditContext, ExecGraph, FinalizeMode, FinalizePolicyOutcome, NodeKind, StartRunRequest,
-    WAITING_COMPLETION_DOMAIN, build_guard_request, drive_from, guard, start_run,
+    WAITING_COMPLETION_DOMAIN, build_guard_request, drive_from, guard, start_run_with_definition,
     workflow_coexistence_entry,
 };
 use console_workflow_runtime_adapter_postgres::{
@@ -34,6 +34,15 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::str::FromStr;
 use time::OffsetDateTime;
 use uuid::Uuid;
+
+#[path = "workflow_studio/approval_line_override.rs"]
+mod approval_line_override;
+#[path = "workflow_studio/submittable.rs"]
+mod submittable;
+use approval_line_override::{
+    ApprovalLineOverrideStep, apply_approval_line_overrides, resolve_start_definition,
+};
+use submittable::{SubmittableDefinitionListResponse, SubmittableDefinitionResponse};
 
 pub const WORKFLOW_STUDIO_CATALOG_PATH: &str = "/api/v1/workflow-studio/catalog";
 pub const WORKFLOW_STUDIO_DEFINITIONS_PATH: &str = "/api/v1/workflow-studio/definitions";
@@ -1049,6 +1058,8 @@ struct StartWorkflowRunRequest {
     input_payload: Value,
     #[serde(default = "empty_object")]
     context_payload: Value,
+    #[serde(default)]
+    approval_line_overrides: Vec<ApprovalLineOverrideStep>,
 }
 
 #[derive(Debug, Serialize)]
@@ -1572,82 +1583,6 @@ fn parse_run_statuses(raw: Option<&str>) -> Result<Vec<RunStatus>, WorkflowStudi
 /// (`status = 'PUBLISHED'`), never a staged/pending `DRAFT` — that pin is
 /// rejected (422), so an initiator cannot execute a revision that never passed
 /// the second-actor approval.
-async fn resolve_start_definition(
-    pool: &PgPool,
-    org: console_kernel_core::OrgId,
-    definition_id: Uuid,
-    requested_version: Option<i32>,
-) -> Result<(i32, Value), WorkflowStudioError> {
-    let row = with_org_conn::<
-        _,
-        Option<(
-            String,
-            Option<Value>,
-            Option<i32>,
-            Option<String>,
-            Option<i32>,
-        )>,
-        DbError,
-    >(pool, org, move |tx| {
-        Box::pin(async move {
-            let row = sqlx::query(
-                "SELECT d.status, v.definition, v.version, v.status AS version_status, \
-                        d.active_version \
-                     FROM workflow_definitions d \
-                     LEFT JOIN workflow_definition_versions v \
-                       ON v.definition_id = d.id AND v.org_id = d.org_id \
-                      AND v.version = COALESCE($2, d.active_version) \
-                     WHERE d.id = $1",
-            )
-            .bind(definition_id)
-            .bind(requested_version)
-            .fetch_optional(tx.as_mut())
-            .await?;
-            let Some(row) = row else {
-                return Ok(None);
-            };
-            Ok(Some((
-                row.try_get("status")?,
-                row.try_get("definition")?,
-                row.try_get("version")?,
-                row.try_get("version_status")?,
-                row.try_get("active_version")?,
-            )))
-        })
-    })
-    .await
-    .map_err(WorkflowStudioError::from)?;
-
-    let Some((status, definition, version, version_status, active_version)) = row else {
-        return Err(WorkflowStudioError::from(KernelError::not_found(
-            "workflow definition not found",
-        )));
-    };
-    if status != "ACTIVE" {
-        return Err(WorkflowStudioError::from(KernelError::conflict(
-            "workflow definition is not active",
-        )));
-    }
-    let (Some(definition), Some(version), Some(version_status)) =
-        (definition, version, version_status)
-    else {
-        return Err(WorkflowStudioError::from(KernelError::conflict(
-            "workflow definition has no published version to start",
-        )));
-    };
-    // Four-eyes gate: a PINNED version that is NOT the current active version
-    // must be an already-approved (PUBLISHED) historical version — never a
-    // staged/pending DRAFT. The active version itself is always trusted (only
-    // publish/approve/rollback set it), so this does not touch the default
-    // (unpinned) or rollback-produced-active path.
-    if Some(version) != active_version && version_status != "PUBLISHED" {
-        return Err(WorkflowStudioError::validation(
-            "workflow definition version is not an approved (published) version",
-        ));
-    }
-    Ok((version, definition))
-}
-
 /// Load a run summary + its current OPEN/CLAIMED waiting task (the run's `next_task`).
 async fn load_run_view(
     pool: &PgPool,
@@ -1736,16 +1671,31 @@ async fn start_workflow_run(
     // legitimate approval payload; over that is a 422.
     check_payload_size("input_payload", &request.input_payload)?;
     check_payload_size("context_payload", &request.context_payload)?;
+    if !request.approval_line_overrides.is_empty() {
+        check_payload_size(
+            "approval_line_overrides",
+            &json!(&request.approval_line_overrides),
+        )?;
+    }
 
     let org = principal.org_id;
     let store = PgWorkflowRuntimeStore::new(state.pool.clone());
-    let (version, definition) = resolve_start_definition(
+    let (version, mut definition, allow_override, required_line) = resolve_start_definition(
         &state.pool,
         org,
         request.definition_id,
         request.definition_version,
     )
     .await?;
+    let mut context_payload = request.context_payload.clone();
+    apply_approval_line_overrides(
+        &mut definition,
+        &mut context_payload,
+        allow_override,
+        required_line,
+        &request.approval_line_overrides,
+    )?;
+    check_payload_size("context_payload", &context_payload)?;
     let graph = ExecGraph::parse(&definition).map_err(WorkflowStudioError::from)?;
     let entry = graph
         .entry_node_key()
@@ -1807,7 +1757,7 @@ async fn start_workflow_run(
         occurred_at: OffsetDateTime::now_utc(),
     };
 
-    let started = start_run(
+    let started = start_run_with_definition(
         &store,
         StartRunRequest {
             run_id,
@@ -1821,10 +1771,11 @@ async fn start_workflow_run(
             correlation_id,
             trace_id: None,
             input_payload: request.input_payload.clone(),
-            context_payload: request.context_payload.clone(),
+            context_payload: context_payload.clone(),
             initiated_by: Some(principal.user_id),
             schedule_id: None,
         },
+        (!request.approval_line_overrides.is_empty()).then_some(definition),
         &audit,
     )
     .await;
@@ -1841,7 +1792,7 @@ async fn start_workflow_run(
                 &graph,
                 &entry,
                 guard_audits,
-                &request.context_payload,
+                &context_payload,
                 &audit,
             )
             .await?;
@@ -2818,27 +2769,6 @@ async fn list_definitions_by_object_kind(
     }))
 }
 
-#[derive(Debug, Serialize)]
-struct SubmittableDefinitionListResponse {
-    items: Vec<SubmittableDefinitionResponse>,
-}
-
-/// A workflow definition the caller may START from the draft template gallery.
-/// Carries only the metadata definitions actually hold — no invented
-/// icon/desc/tone (those are frontend presentation keyed off `workflow_key` /
-/// `object_type`). `active_version` is the version a `POST /workflow-runs` start
-/// binds to.
-#[derive(Debug, Serialize)]
-struct SubmittableDefinitionResponse {
-    id: Uuid,
-    workflow_key: String,
-    display_name: String,
-    object_type: String,
-    active_version: i32,
-    required_approval_line: bool,
-    required_payment_line: bool,
-}
-
 /// Raw ACTIVE-definition row + its active-version graph, before the start-authority
 /// filter is applied in Rust.
 struct SubmittableCandidate {
@@ -2850,20 +2780,7 @@ struct SubmittableCandidate {
     definition: Value,
     required_approval_line: bool,
     required_payment_line: bool,
-}
-
-impl From<SubmittableCandidate> for SubmittableDefinitionResponse {
-    fn from(c: SubmittableCandidate) -> Self {
-        Self {
-            id: c.id,
-            workflow_key: c.workflow_key,
-            display_name: c.display_name,
-            object_type: c.object_type,
-            active_version: c.active_version,
-            required_approval_line: c.required_approval_line,
-            required_payment_line: c.required_payment_line,
-        }
-    }
+    allow_approval_line_override: bool,
 }
 
 /// `GET /api/v1/workflow-studio/submittable-definitions` — the all-employee draft
@@ -2898,7 +2815,8 @@ async fn list_submittable_definitions(
                         d.active_version,
                         v.definition,
                         COALESCE(v.required_approval_line, false) AS required_approval_line,
-                        COALESCE(v.required_payment_line, false) AS required_payment_line
+                        COALESCE(v.required_payment_line, false) AS required_payment_line,
+                        COALESCE(v.allow_approval_line_override, true) AS allow_approval_line_override
                     FROM workflow_definitions d
                     JOIN workflow_definition_versions v
                         ON v.definition_id = d.id
@@ -2921,6 +2839,8 @@ async fn list_submittable_definitions(
                             definition: row.try_get("definition")?,
                             required_approval_line: row.try_get("required_approval_line")?,
                             required_payment_line: row.try_get("required_payment_line")?,
+                            allow_approval_line_override: row
+                                .try_get("allow_approval_line_override")?,
                         })
                     })
                     .collect::<Result<Vec<_>, WorkflowStudioError>>()
@@ -2935,7 +2855,7 @@ async fn list_submittable_definitions(
         .map(SubmittableDefinitionResponse::from)
         .collect();
     record_workflow_studio_request("submittable_definitions", "success");
-    Ok(Json(SubmittableDefinitionListResponse { items }))
+    Ok(Json(SubmittableDefinitionListResponse::new(items)))
 }
 
 /// Read-only mirror of `start_workflow_run`'s start authority (no shadow-audit

@@ -25,3 +25,5 @@ properties:
     type: boolean
   required_payment_line:
     type: boolean
+  allow_approval_line_override:
+    type: boolean

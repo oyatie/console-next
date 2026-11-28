@@ -203,16 +203,17 @@ test("OperatorConsolePanel uses secondary revoke trigger and TenantConsolePanel 
   expect(tenantHtml).not.toContain('id="tenant-code"');
   expect(tenantHtml).not.toContain('id="tenant-ops-recovery"');
   // The pane draws the headings, and each section Classic makes a region stays one region, named once.
-  const regions = [...tenantHtml.matchAll(/<section[^>]*aria-label="([^"]*)"/g)].map(m => m[1]);
+  const headings = new Map([...tenantHtml.matchAll(/<h3[^>]*id="([^"]*)"[^>]*>([^<]*)<\/h3>/g)].map(m => [m[1], m[2]]));
+  const regions = [...tenantHtml.matchAll(/<section[^>]*aria-labelledby="([^"]*)"/g)].map(m => headings.get(m[1]!));
   expect(regions.filter(name => name === t("tenants.section.code"))).toHaveLength(1);
   expect(regions.filter(name => name === t("opsRecovery.title"))).toHaveLength(1);
 });
 
-test("ops recovery inside the Console record pane is still the region named for it, as Classic's section is", () => {
+test("ops recovery inside the Console record pane stays a single region named by RecordPaneSection", () => {
   i18n.set("ko");
   state.error = undefined;
   const html = render(<OpsRecovery embedded org={org} data={state.recoveryData} onIssued={noop} />);
-  // A section with a name is a region; the record pane's own section above it has no name.
-  expect(html.startsWith("<section")).toBe(true);
-  expect(html).toContain(`aria-label="${t("opsRecovery.title")}"`);
+  // RecordPaneSection owns the <section aria-labelledby> region above embedded OpsRecovery so regions never nest.
+  expect(html.startsWith("<div")).toBe(true);
+  expect(html).not.toContain("<section");
 });

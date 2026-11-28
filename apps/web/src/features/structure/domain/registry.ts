@@ -52,6 +52,6 @@ export function registryCells(s: Structure, n: ChartNode, level: (n: ChartNode) 
   const entity = path.find((p) => p.kind === "entity")?.name ?? "";
   const site = path.find((p) => p.kind === "site")?.name ?? "";
   const depts = path.filter((p) => p.kind === "dept").map((p) => p.name).join(" > ");
-  const head = n.kind === "dept" ? (n.head?.name ?? "") : n.kind === "entity" ? (n.reps?.first ?? "") : "";
+  const head = (n.kind === "dept" || n.kind === "site") ? (n.head?.name ?? "") : n.kind === "entity" ? (n.reps?.first ?? "") : "";
   return [level(n), entity, site, depts, n.code ?? "", head, n.headcount, s.asOf, s.knownAt ?? ""];
 }

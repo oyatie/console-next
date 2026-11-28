@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required:
+- batch_id
+- codes
+- generated_at
+properties:
+  batch_id:
+    $ref: '#/components/schemas/Uuid'
+  codes:
+    type: array
+    minItems: 10
+    maxItems: 10
+    items:
+      type: string
+  generated_at:
+    $ref: '#/components/schemas/Timestamp'

@@ -153,8 +153,39 @@ pub(crate) fn me_authz_projection(principal: &Principal) -> MeAuthzResponse {
     }
 }
 
-/// Served module capabilities inherit their owning Cedar permission.
-pub(crate) fn served_authz_projection(principal: &Principal, documents: bool) -> MeAuthzResponse {
+#[derive(Default)]
+pub(crate) struct ServedModules {
+    pub(crate) documents: bool,
+    pub(crate) analytics_projection: bool,
+    pub(crate) integrity: (bool, bool),
+    pub(crate) ledger: bool,
+    pub(crate) evidence: (bool, bool, bool),
+    pub(crate) compliance: (bool, bool),
+    pub(crate) consulting: (bool, bool),
+    pub(crate) benefits: (bool, bool),
+    pub(crate) calendar: bool,
+    pub(crate) evaluation_tasks: bool,
+    pub(crate) evaluation_cycles: (bool, bool),
+}
+
+/// Project the enrollment and permission decisions supplied by each owning module.
+pub(crate) fn served_authz_projection(
+    principal: &Principal,
+    modules: ServedModules,
+) -> MeAuthzResponse {
+    let ServedModules {
+        documents,
+        analytics_projection,
+        integrity: (read_findings, triage_findings),
+        ledger,
+        compliance: (read_compliance, manage_compliance),
+        consulting: (read_consulting, manage_consulting),
+        evidence: (read_evidence, propose_evidence, accept_evidence),
+        benefits: (read_benefits, manage_benefits),
+        calendar,
+        evaluation_tasks,
+        evaluation_cycles: (read_cycles, manage_cycles),
+    } = modules;
     let mut response = me_authz_projection(principal);
     if documents
         && let Some(cap) = response
@@ -167,6 +198,111 @@ pub(crate) fn served_authz_projection(principal: &Principal, documents: bool) ->
             feature: "documents".to_owned(),
             ..cap
         });
+    }
+    for (feature, name, allowed) in [
+        (
+            if read_consulting {
+                Feature::ConsultingRead
+            } else {
+                Feature::ConsultingManage
+            },
+            "served_consulting_entry",
+            read_consulting || manage_consulting,
+        ),
+        (
+            Feature::ConsultingRead,
+            "served_consulting",
+            read_consulting,
+        ),
+        (
+            Feature::ConsultingManage,
+            "served_consulting_manage",
+            manage_consulting,
+        ),
+        (
+            Feature::KpiRead,
+            "analytics_projection",
+            analytics_projection,
+        ),
+        (Feature::Login, "served_calendar", calendar),
+        (
+            Feature::ComplianceDomainRead,
+            "served_compliance_evidence",
+            read_evidence,
+        ),
+        (
+            Feature::ComplianceEvidenceLink,
+            "served_compliance_evidence_link",
+            propose_evidence,
+        ),
+        (
+            Feature::ComplianceDomainManage,
+            "served_compliance_evidence_accept",
+            accept_evidence,
+        ),
+        (
+            Feature::ComplianceDomainRead,
+            "served_compliance_catalog",
+            read_compliance,
+        ),
+        (
+            Feature::ComplianceDomainManage,
+            "served_compliance_catalog_manage",
+            manage_compliance,
+        ),
+        (
+            Feature::BenefitCatalogRead,
+            "served_benefit_catalog",
+            read_benefits,
+        ),
+        (
+            Feature::BenefitCatalogManage,
+            "served_benefit_catalog_manage",
+            manage_benefits,
+        ),
+        (
+            Feature::EvaluationRead,
+            "served_evaluation_cycles",
+            read_cycles,
+        ),
+        (
+            Feature::EvaluationManage,
+            "served_evaluation_cycle_create",
+            manage_cycles,
+        ),
+        (
+            Feature::EvaluationSubmit,
+            "served_evaluation_tasks",
+            evaluation_tasks,
+        ),
+        (
+            Feature::AuditLogRead,
+            "served_location_consent_ledger",
+            ledger,
+        ),
+        (
+            Feature::IntegrityFindingsRead,
+            "served_integrity_findings",
+            read_findings,
+        ),
+        (
+            Feature::IntegrityFindingTriage,
+            "served_integrity_triage",
+            triage_findings,
+        ),
+    ] {
+        if allowed
+            && let Some(cap) = response
+                .capabilities
+                .iter()
+                .find(|cap| cap.feature == feature.as_str())
+                .cloned()
+        {
+            response.capabilities.push(MeAuthzCapability {
+                feature: name.to_owned(),
+                ..cap
+            });
+        }
     }
     response
 }
@@ -194,10 +330,16 @@ mod me_authz_org_wide_tests {
             BranchScope::All,
         );
         let contains = |p: &Principal, served| {
-            served_authz_projection(p, served)
-                .capabilities
-                .iter()
-                .any(|cap| cap.feature == "documents")
+            served_authz_projection(
+                p,
+                ServedModules {
+                    documents: served,
+                    ..Default::default()
+                },
+            )
+            .capabilities
+            .iter()
+            .any(|cap| cap.feature == "documents")
         };
         assert!(!contains(&admin, false));
         assert!(contains(&admin, true));

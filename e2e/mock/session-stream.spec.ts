@@ -73,7 +73,7 @@ for (const theme of ["light", "dark"] as const) test(`sign-in opens the stream b
       return original(input, init);
     };
   });
-  await page.locator("summary").click();
+  await page.locator("summary").first().click();
   await page.getByRole("textbox", { name: t("auth.login.code"), exact: true }).fill("ABCD-EFGH");
   await page.getByRole("button", { name: t("auth.login.submitCode"), exact: true }).click();
   await expect(todo(page)).toBeVisible();
@@ -108,7 +108,7 @@ test("a failed live chunk has one recovery screen and reload restores the same s
     sessionStorage.setItem(`console.chunk-reload:${entry.src}`, "1");
     (window as unknown as { __noReload?: boolean }).__noReload = true;
   });
-  await page.locator("summary").click();
+  await page.locator("summary").first().click();
   await page.getByRole("textbox", { name: t("auth.login.code"), exact: true }).fill("ABCD-EFGH");
   await page.getByRole("button", { name: t("auth.login.submitCode"), exact: true }).click();
   const heading = page.getByRole("heading", { name: t("common.crashed.title"), exact: true });

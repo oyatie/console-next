@@ -1,14 +1,33 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { OPS_COPY_KO } from "@console/i18n/ops-ko";
 import { COPY } from "../copy";
+import { getOpsLocale } from "./locale";
 
 const numFmt = new Intl.NumberFormat("en-US");
 const usdFmt = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const pctFmt = new Intl.NumberFormat("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const KST_OFFSET_MS = 9 * 3_600_000;
+
+function kstParts(d: Date): { y: string; m: string; day: string; h: string; min: string; s: string } {
+  const shifted = new Date(d.getTime() + KST_OFFSET_MS).toISOString();
+  return {
+    y: shifted.slice(0, 4),
+    m: shifted.slice(5, 7),
+    day: shifted.slice(8, 10),
+    h: shifted.slice(11, 13),
+    min: shifted.slice(14, 16),
+    s: shifted.slice(17, 19),
+  };
+}
 
 export function formatUtcTimestamp(iso: string | null | undefined): string {
   if (!iso) return `${COPY.observed.unknownPrefix}missing timestamp`;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
+  if (getOpsLocale() === "ko") {
+    const p = kstParts(d);
+    return `${p.y}-${p.m}-${p.day} ${p.h}:${p.min}:${p.s} KST`;
+  }
   return d.toISOString().replace(/\.\d{3}Z$/, "Z");
 }
 
@@ -16,11 +35,19 @@ export function formatUtcShort(iso: string | null | undefined): string {
   if (!iso) return `${COPY.observed.unknownPrefix}missing timestamp`;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
+  if (getOpsLocale() === "ko") {
+    const p = kstParts(d);
+    return `${p.m}-${p.day} ${p.h}:${p.min} KST`;
+  }
   const full = d.toISOString();
   return `${full.slice(5, 10)} ${full.slice(11, 16)}Z`;
 }
 
 export function formatUtcClock(ms: number): string {
+  if (getOpsLocale() === "ko") {
+    const p = kstParts(new Date(ms));
+    return `${p.h}:${p.min}:${p.s} KST`;
+  }
   return new Date(ms).toISOString().slice(11, 19) + "Z";
 }
 
@@ -109,6 +136,7 @@ const INCIDENT_TIMELINE_LABELS: Record<string, string> = {
 };
 
 const OBLIGATION_EVENT_LABELS: Record<string, string> = {
+    countersigned: "Countersigned",
   opened: "Opened",
   in_review: "In review",
   redated: "Redated",
@@ -164,37 +192,46 @@ function humanizeToken(raw: string): string {
 }
 
 export function formatLegalClockKind(kind: string): string {
-  return LEGAL_CLOCK_LABELS[kind] ?? humanizeToken(kind);
+  const map = getOpsLocale() === "ko" ? OPS_COPY_KO.formatLabels.legalClock : LEGAL_CLOCK_LABELS;
+  return map[kind] ?? humanizeToken(kind);
 }
 
 export function formatIncidentTimelineKind(kind: string): string {
-  return INCIDENT_TIMELINE_LABELS[kind] ?? humanizeToken(kind);
+  const map = getOpsLocale() === "ko" ? OPS_COPY_KO.formatLabels.incidentTimeline : INCIDENT_TIMELINE_LABELS;
+  return map[kind] ?? humanizeToken(kind);
 }
 
 export function formatObligationEvent(event: string): string {
-  return OBLIGATION_EVENT_LABELS[event] ?? humanizeToken(event);
+  const map = getOpsLocale() === "ko" ? OPS_COPY_KO.formatLabels.obligationEvent : OBLIGATION_EVENT_LABELS;
+  return map[event] ?? humanizeToken(event);
 }
 
 export function formatObligationKind(kind: string): string {
-  return OBLIGATION_KIND_LABELS[kind] ?? humanizeToken(kind);
+  const map = getOpsLocale() === "ko" ? OPS_COPY_KO.formatLabels.obligationKind : OBLIGATION_KIND_LABELS;
+  return map[kind] ?? humanizeToken(kind);
 }
 
 export function formatObligationState(state: string): string {
-  return OBLIGATION_STATE_LABELS[state] ?? humanizeToken(state);
+  const map = getOpsLocale() === "ko" ? OPS_COPY_KO.formatLabels.obligationState : OBLIGATION_STATE_LABELS;
+  return map[state] ?? humanizeToken(state);
 }
 
 export function formatObligationRole(role: string): string {
-  return OBLIGATION_ROLE_LABELS[role] ?? humanizeToken(role);
+  const map = getOpsLocale() === "ko" ? OPS_COPY_KO.formatLabels.obligationRole : OBLIGATION_ROLE_LABELS;
+  return map[role] ?? humanizeToken(role);
 }
 
 export function formatPersonalDataImpact(impact: string): string {
-  return PDATA_IMPACT_LABELS[impact] ?? humanizeToken(impact);
+  const map = getOpsLocale() === "ko" ? OPS_COPY_KO.formatLabels.pdataImpact : PDATA_IMPACT_LABELS;
+  return map[impact] ?? humanizeToken(impact);
 }
 
 export function formatPromoteVerdict(verdict: string): string {
-  return PROMOTE_VERDICT_LABELS[verdict] ?? humanizeToken(verdict);
+  const map = getOpsLocale() === "ko" ? OPS_COPY_KO.formatLabels.promoteVerdict : PROMOTE_VERDICT_LABELS;
+  return map[verdict] ?? humanizeToken(verdict);
 }
 
 export function formatFeedbackDisposition(disposition: string): string {
-  return FEEDBACK_DISPOSITION_LABELS[disposition] ?? humanizeToken(disposition);
+  const map = getOpsLocale() === "ko" ? OPS_COPY_KO.formatLabels.feedbackDisposition : FEEDBACK_DISPOSITION_LABELS;
+  return map[disposition] ?? humanizeToken(disposition);
 }

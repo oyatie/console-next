@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { DISPATCH_OFFERS_MODULE } from "../reference/onboarding/api";
 import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
 import type { MeAttendanceSearch } from "../features/me/ui/me-attendance-page";
 import type { MeDeskSearch, MeDeskView } from "../features/me/ui/me-desk-page";
-import { app, screen } from "./app";
+import { app, screen, str } from "./app";
+import { calendarAccess, evaluationTasksAccess } from "./route-reads";
 
 const DESK_VIEWS: readonly MeDeskView[] = ["overview", "attendance", "requests", "documents"];
 
@@ -17,6 +19,7 @@ const meAttendance = createRoute({
   component: lazyRouteComponent(screen(() => import("../features/me/ui/me-attendance-page")), "MeAttendancePage"),
 });
 
+const loadMeDesk = () => import("../features/me/ui/me-desk-page");
 const meDesk = createRoute({
   getParentRoute: () => app,
   path: "/me/desk",
@@ -24,7 +27,27 @@ const meDesk = createRoute({
   validateSearch: (s: Record<string, unknown>): MeDeskSearch => ({
     view: DESK_VIEWS.find(v => v === s.view),
   }),
-  component: lazyRouteComponent(screen(() => import("../features/me/ui/me-desk-page")), "MeDeskPage"),
+  component: lazyRouteComponent(screen(loadMeDesk), "MeDeskPage"),
 });
 
-export const meRoutes = [meAttendance, meDesk];
+const meDispatchOffers = createRoute({
+  getParentRoute: () => app,
+  path: "/me/dispatch-offers",
+  staticData: { access: "signed-in", module: DISPATCH_OFFERS_MODULE, floorplan: "P-03", pattern: "worklist" },
+  validateSearch: (s: Record<string, unknown>): { sel?: string } => ({ sel: str(s.sel) }),
+  component: lazyRouteComponent(screen(loadMeDesk), "MeDispatchOffers"),
+});
+
+const meEvaluations = createRoute({
+  getParentRoute: () => app,
+  path: "/me/evaluations",
+  staticData: { access: evaluationTasksAccess, floorplan: "P-01", pattern: "list-record" },
+  component: lazyRouteComponent(screen(() => import("../features/me/ui/evaluation-tasks")), "EvaluationTasks"),
+});
+
+const calendar = createRoute({
+  getParentRoute: () => app, path: "/calendar",
+  staticData: { access: calendarAccess, floorplan: "P-03", pattern: "month-grid" },
+  component: lazyRouteComponent(screen(() => import("../features/calendar/ui/calendar-page")), "CalendarPage"),
+});
+export const meRoutes = [meAttendance, meDesk, meDispatchOffers, meEvaluations, calendar];

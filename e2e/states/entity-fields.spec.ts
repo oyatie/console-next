@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { expectAxe, fits } from "../a11y";
+import { seededDateStyle } from "../experience";
 import { mockRoute } from "../mock/route";
 import { orgPanelReads } from "../mock/org-work";
 import { id } from "../mock/fixtures";
@@ -180,7 +181,7 @@ for (const surface of ["record", "workplace", "chart"] as const) for (const widt
 }
 
 for (const [issuedOn, taxOffice] of [[null, null], ["2026-01-02", null], [null, "검증세무서"], ["2026-01-02", "검증세무서"]] as const) {
-  test(`entity certificate: issue date ${issuedOn ?? "absent"}, tax office ${taxOffice ?? "absent"} @ui-state`, async ({ page }) => {
+  test(`entity certificate: issue date ${issuedOn ?? "absent"}, tax office ${taxOffice ?? "absent"} @ui-state`, async ({ page, storageState }) => {
     const fixture = await mockEntityRecord(page, "populated");
     fixture.entity.registrations[0]!.current = {
       version: 1, effective_from: "2026-01-01", before_first_record: false, trade_name: "주식회사 검증법인",
@@ -189,7 +190,7 @@ for (const [issuedOn, taxOffice] of [[null, null], ["2026-01-02", null], [null, 
     try {
       await page.goto(entityRecordPath);
       const row = page.getByRole("main").locator('[class*="_fact_"]').filter({ hasText: t("entityRecord.field.issued") });
-      const date = issuedOn ? fmtDate(issuedOn) : "";
+      const date = issuedOn ? fmtDate(issuedOn, { style: seededDateStyle(storageState) }) : "";
       const expected = date && taxOffice ? `${date} · ${taxOffice}` : date || taxOffice || t("entityOps.info.none");
       await expect(row.locator('[class*="_factValue_"]')).toHaveText(expected);
       expect(fixture.unexpected).toEqual([]);

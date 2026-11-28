@@ -601,6 +601,13 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/workplaces/{workplaceId}/head",
+        operations: &[Operation {
+            method: "put",
+            body: include_str!("../openapi/paths/api__v1__workplaces__workplaceId__head.put.yaml"),
+        }],
+    },
+    PathItem {
         path: "/api/v1/workplaces/{workplaceId}/insurance",
         operations: &[Operation {
             method: "put",
@@ -1075,6 +1082,10 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "SetWorkplaceCodeRequest",
         body: include_str!("../openapi/schemas/SetWorkplaceCodeRequest.yaml"),
+    },
+    NamedYaml {
+        name: "SetWorkplaceHeadRequest",
+        body: include_str!("../openapi/schemas/SetWorkplaceHeadRequest.yaml"),
     },
     NamedYaml {
         name: "SetWorkplaceKindRequest",

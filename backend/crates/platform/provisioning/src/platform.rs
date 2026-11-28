@@ -4,6 +4,7 @@ mod tenant_erase_types;
 pub use tenant_erase_outbox::*;
 pub use tenant_erase_types::*;
 mod company_domain;
+mod company_domain_state;
 mod ops_recovery;
 mod ops_recovery_rules;
 mod ops_recovery_store;
@@ -12,6 +13,8 @@ mod ops_recovery_types;
 pub use ops_recovery_rules::*;
 pub use ops_recovery_types::*;
 mod group_accounts;
+mod group_invitations;
+pub use group_invitations::{GROUP_INVITATION_TTL_DAYS, GroupJoinInvitationSummary};
 mod groups;
 mod listings;
 mod operators;
@@ -78,6 +81,7 @@ pub struct GroupSummary {
     pub updated_at: OffsetDateTime,
     pub member_count: i64,
     pub members: Vec<GroupMemberSummary>,
+    pub pending_invitations: Vec<GroupJoinInvitationSummary>,
 }
 
 /// Tenant-anchored account that holds one or more group-level grants.

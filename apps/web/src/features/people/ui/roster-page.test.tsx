@@ -38,7 +38,6 @@ vi.mock("@tanstack/react-query", async original => ({
   } : ({ data: undefined, isPending: false, isFetching: false, isFetchedAfterMount: true, error: new ApiError(403, "access_denied", ""), refetch: vi.fn() }),
 }));
 vi.mock("../../../reference/authz/ui/use-can", () => ({ useCan: () => () => false }));
-vi.mock("../../../lib/react/prefetch", () => ({ usePrefetch: () => vi.fn() }));
 vi.mock("../../../lib/reason-codes", () => ({ useReasonCodesReady: () => false }));
 vi.mock("./roster-table", () => ({ RosterTable: (props: { empty: React.ReactNode }) => { table(props); return <div>{state.empty ? props.empty : state.body}</div>; } }));
 vi.mock("./use-roster", async original => ({ ...await original<typeof import("./use-roster")>(), useRoster: (...args: unknown[]) => { rosterRead(...args); return ({

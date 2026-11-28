@@ -4,7 +4,8 @@ use axum::Json;
 use axum::extract::{Extension, Path, Query, State};
 use axum::http::{HeaderMap, StatusCode};
 use console_platform_access::{
-    GrantOut, RoleOut, effective, grants, log_review::record, notice, requests, roles,
+    GrantOut, RoleOut, effective, grants, invites, log_review::record, notice, ops_holders,
+    requests, roles,
 };
 use console_platform_authz::Principal;
 use serde_json::Value;
@@ -187,6 +188,53 @@ pub(crate) async fn my_effective(State(s): S, Extension(p): P) -> ApiResult<Json
 
 pub(crate) async fn ops_account(State(s): S, Extension(p): P) -> ApiResult<Json<Value>> {
     Ok(Json(effective::ops(&s.service, p).await?))
+}
+
+pub(crate) async fn designate_ops_holder(
+    State(s): S,
+    Extension(p): P,
+    Json(body): Json<ops_holders::DesignateHolder>,
+) -> ApiResult<Json<Value>> {
+    Ok(Json(ops_holders::designate(&s.service, p, body).await?))
+}
+
+pub(crate) async fn release_ops_holder(
+    State(s): S,
+    Extension(p): P,
+    Json(body): Json<ops_holders::ReleaseHolder>,
+) -> ApiResult<Json<Value>> {
+    Ok(Json(ops_holders::release(&s.service, p, body).await?))
+}
+
+pub(crate) async fn preview_invite(
+    State(s): S,
+    Extension(p): P,
+    Json(body): Json<invites::PreviewInviteIn>,
+) -> ApiResult<Json<Value>> {
+    Ok(Json(invites::preview(&s.service, p, body).await?))
+}
+
+pub(crate) async fn create_invite(
+    State(s): S,
+    Extension(p): P,
+    settled: Option<Extension<console_platform_request_context::ReadInviteReceipt>>,
+    headers: HeaderMap,
+    Json(body): Json<invites::CreateInviteIn>,
+) -> ApiResult<(StatusCode, Json<Value>)> {
+    let (created, out) = invites::create(
+        &s.service,
+        p,
+        idempotency_key(&headers),
+        body,
+        settled.is_some(),
+    )
+    .await?;
+    let status = if created {
+        StatusCode::CREATED
+    } else {
+        StatusCode::OK
+    };
+    Ok((status, Json(out)))
 }
 
 pub(crate) async fn ops_usage(

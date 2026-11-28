@@ -3,10 +3,19 @@
 use crate::{Actor, ChangeFacts, ChangeSetting, NewOverride, SettingsStore};
 use console_kernel_core::{KernelError, SettingVersionId, Timestamp};
 use console_settings_domain::{
-    Direction, LOOSENING_DELAY, SettingError, SettingKey, SettingValue, check_change, resolve_chain,
+    Direction, LOOSENING_DELAY, ScopeCeiling, SettingError, SettingKey, SettingValue,
+    check_scoped_change, resolve_chain,
 };
 use serde::Serialize;
 use uuid::Uuid;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ScopeImpact {
+    pub target_layer: Option<ScopeCeiling>,
+    pub affected_people_count: i64,
+    pub out_of_scope_people_count: i64,
+    pub disfavored_people_count: i64,
+}
 
 #[derive(Debug)]
 pub enum ChangeError {
@@ -68,6 +77,9 @@ pub struct InForce {
 pub struct Reach {
     pub scope_entity_id: Option<Uuid>,
     pub keeps_own_value: Vec<Uuid>,
+    pub affected_people_count: i64,
+    pub out_of_scope_people_count: i64,
+    pub disfavored_people_count: i64,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -75,6 +87,7 @@ pub struct Requirements {
     pub reason: bool,
     pub step_up: bool,
     pub second_person: bool,
+    pub worker_consent: bool,
 }
 
 pub async fn plan_setting<S, A>(
@@ -123,13 +136,25 @@ where
         Err(SettingError::FactUndeclared(_)) => None,
         Err(other) => return Err(other.into()),
     };
-    let accepted = check_change(
+    let parsed_preview = key.def().parse(&cmd.value);
+    let impact = store
+        .scope_impact(key, cmd.scope_entity_id, parsed_preview, effective_from)
+        .await?;
+    let target_layer = impact
+        .target_layer
+        .unwrap_or(if cmd.scope_entity_id.is_some() {
+            ScopeCeiling::Workplace
+        } else {
+            ScopeCeiling::Tenant
+        });
+    let accepted = check_scoped_change(
         key,
         &cmd.value,
         effective_from,
         facts.now,
         in_force,
         facts.onboarding,
+        target_layer,
     )?;
     let needs_step_up = accepted.direction == Direction::Loosen;
     let delayed = needs_step_up && !facts.onboarding;
@@ -175,6 +200,7 @@ where
             reason: true,
             step_up: needs_step_up,
             second_person: false,
+            worker_consent: impact.disfavored_people_count > 0,
         },
         earliest_effective_from: if delayed {
             facts.now + LOOSENING_DELAY
@@ -191,6 +217,9 @@ where
             keeps_own_value: store
                 .keeps_own_value(key, cmd.scope_entity_id, effective_from)
                 .await?,
+            affected_people_count: impact.affected_people_count,
+            out_of_scope_people_count: impact.out_of_scope_people_count,
+            disfavored_people_count: impact.disfavored_people_count,
         },
     };
     let row = NewOverride {

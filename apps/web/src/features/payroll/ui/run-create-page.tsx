@@ -6,6 +6,7 @@ import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
+import { membershipRemedy } from "./membership-remedy";
 import { QueryState } from "../../../lib/react/query-state";
 import { Button, Form } from "../../../ui/button/button";
 import { ChoiceField } from "../../../ui/choice/choice-field";
@@ -58,7 +59,7 @@ function RunPreview({ input }: { input: CreatePayrollRun }) {
     onSuccess: run => navigate({ to: "/payroll/runs/$id", params: { id: run.id } }),
   });
   const canSubmit = preview.isSuccess && preview.fetchStatus === "idle" && !preview.isPlaceholderData && !create.isPending;
-  return <QueryState q={preview} layout="form">{facts => <Form className="form" onSubmit={() => {
+  return <QueryState q={preview} layout="form" failedActions={membershipRemedy(preview.error)}>{facts => <Form className="form" onSubmit={() => {
     if (canSubmit) create.mutate({ ...input, expected_attribution_month: facts.attribution_month });
   }}>
     <KeyValue readOnly label={t("payroll.create.preview")} items={[

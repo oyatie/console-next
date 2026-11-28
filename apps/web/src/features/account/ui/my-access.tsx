@@ -4,6 +4,8 @@ import { QueryState } from "../../../lib/react/query-state";
 import { myAccessQuery } from "../../../reference/authz/api";
 import { grantLines } from "../../../reference/authz/present";
 import { orgStructureRef } from "../../../reference/entity/api";
+import { RestrictedAuditLink } from "../../../reference/audit/ui/restricted-audit-link";
+import { BenefitCatalogLink } from "../../../reference/benefits/ui/benefit-catalog-link";
 import { Card } from "../../../ui/card/card";
 
 type Node = { id: string; name: string; children?: readonly Node[] };
@@ -12,7 +14,7 @@ type Node = { id: string; name: string; children?: readonly Node[] };
 export function MyAccessGrants() {
   const me = useQuery(myAccessQuery);
   const tree = useQuery(orgStructureRef);
-  return <QueryState q={me}>{data => {
+  return <><QueryState q={me}>{data => {
   if (data.is_ops) return <span>{t("account.access.ops")}</span>;
   const lines = grantLines(data.entries, (tree.data?.entities ?? []) as readonly Node[]);
   // people-self-13: an account with no grant says what it can do today, never a capability it does not have.
@@ -28,7 +30,7 @@ export function MyAccessGrants() {
       ))}
     </ul>
   );
-  }}</QueryState>;
+  }}</QueryState><RestrictedAuditLink /><BenefitCatalogLink /></>;
 }
 
 /**

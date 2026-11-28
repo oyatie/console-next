@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { session } from "@console/api";
+import { cancelledRecoveryNotice, dismissCancelledRecoveryNotice, subscribeCancelledRecovery } from "@console/api/recovery-notice";
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
 import { codeText } from "../lib/labels";
@@ -9,6 +10,7 @@ import { myAccessQuery } from "../reference/authz/api";
 import { useSetupChecklist } from "../features/onboarding/ui/use-setup";
 import { canReadSetupChecklist, phaseBand, receiptDuration } from "../features/onboarding/domain/phase";
 import { settingsQuery } from "../reference/settings/api";
+import { Banner } from "../ui/banner/banner";
 import { Button } from "../ui/button/button";
 import { PagePhase } from "../ui/page/page-scope";
 import { PhaseLine } from "../ui/page-head/phase-line";
@@ -68,12 +70,21 @@ export function PhaseBand({ children, operatingSince }: { children: ReactNode; o
   const next = band === "setup" ? currentStep(data?.steps ?? []) : undefined;
   const label = t("shell.phase.setup");
   const text = next ? `${label} · ${codeText(`setup.step.${next}`, "")}` : label;
+  const autoCancelled = useSyncExternalStore(subscribeCancelledRecovery, cancelledRecoveryNotice, () => false);
   // Access can observe go-live before the matching checklist refresh supplies its receipt.
   const transitioning = access.data?.phase === "OPERATING" && data?.phase === "SETUP" && q.isFetching;
   const slot = transitioning ? <div className={s.band} aria-hidden="true" /> : <PhaseSlot phase={band === "started" && dismissed === receipt ? null : band} text={text} dismiss={dismiss} />;
   return <PagePhase value={{ slot, settled: decided }}>
     {!decided && <div className="page"><Skeleton bones={["crumb", "title", "line", "row", "row", "row"]} label={t("common.loading")} /></div>}
-    <div className={s.content} data-phase-pending={!decided || undefined} inert={!decided} aria-hidden={!decided || undefined}>{children}</div>
+    <div className={s.content} data-phase-pending={!decided || undefined} inert={!decided} aria-hidden={!decided || undefined}>
+      {autoCancelled && (
+        <Banner live="polite">
+          {t("auth.recovery.autoCancelled")}
+          <Button variant="ghost" size="sm" onClick={dismissCancelledRecoveryNotice}>{t("common.closePanel")}</Button>
+        </Banner>
+      )}
+      {children}
+    </div>
   </PagePhase>;
 }
 

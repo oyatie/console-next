@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required:
+- identifier
+additionalProperties: false
+properties:
+  identifier:
+    type: string

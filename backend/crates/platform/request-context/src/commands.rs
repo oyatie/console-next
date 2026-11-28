@@ -1,6 +1,7 @@
 //! One HTTP intent -> one durable outcome. Only its business transaction says APPLIED.
 use super::{DEFAULT_REQUEST_BODY_BYTES, RequestAuditContext, RequestBodyLimit, conflict};
 mod execute;
+mod request;
 mod response;
 use axum::{
     body::{Body, to_bytes},
@@ -16,8 +17,10 @@ use console_platform_db::{
     idempotency::validate_idempotency_key,
 };
 use http::{Method, StatusCode};
-use response::{refusal, with_operation};
-use serde_json::{Value, json};
+pub use request::fingerprint;
+use request::target;
+use response::{audited_refusal, refusal, with_operation};
+use serde_json::json;
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -30,6 +33,10 @@ struct PreviewQuery {
 /// Route-owned opt-in: this endpoint honors `dry_run=true` without business writes.
 #[derive(Clone, Copy)]
 pub struct SupportsDryRun;
+
+/// An already applied invitation may read its redacted receipt, with fresh step-up.
+#[derive(Clone, Copy)]
+pub struct ReadInviteReceipt;
 
 pub(crate) async fn run(
     pool: &PgPool,
@@ -192,6 +199,35 @@ pub(crate) async fn run(
         }
         Ok(Reservation::Existing(mut out)) => {
             if out.state == "APPLIED"
+                && matches!(
+                    out.command.as_str(),
+                    "POST /api/v1/access/invites" | "POST /api/v1/access/invites [respond-async]"
+                )
+            {
+                let mut request = request;
+                request.extensions_mut().insert(ReadInviteReceipt);
+                let response = command_context::scope(audit, async {
+                    let response = next.run(request).await;
+                    if response.status().is_client_error() {
+                        let (response, code) = response::refusal_code(response).await;
+                        if super::record_refusal(pool, p, &code, Some(out.id))
+                            .await
+                            .is_err()
+                        {
+                            return refusal(
+                                StatusCode::SERVICE_UNAVAILABLE,
+                                "service_unavailable",
+                                Some(out.id),
+                            );
+                        }
+                        return response;
+                    }
+                    response
+                })
+                .await;
+                return with_operation(response, out.id);
+            }
+            if out.state == "APPLIED"
                 && super::record_access::outcome::readable(pool, p, &mut out, outcome_reader).await
                 && let Some(mut result) = out.result
             {
@@ -268,46 +304,9 @@ pub(crate) async fn run(
     .await
 }
 
-pub fn fingerprint(bytes: &[u8]) -> Vec<u8> {
-    let Ok(mut body) = serde_json::from_slice::<Value>(bytes) else {
-        return bytes.to_vec();
-    };
-    if let Some(object) = body.as_object_mut() {
-        object.remove("step_up");
-    }
-    body.sort_all_objects();
-    serde_json::to_vec(&body).unwrap_or_else(|_| bytes.to_vec())
-}
-fn target(path: &str) -> Option<(String, String, Option<Uuid>)> {
-    let parts: Vec<_> = path.split('/').filter(|s| !s.is_empty()).collect();
-    let (kind, id) = match parts.as_slice() {
-        ["api", "v1", "employees", id, ..] => ("employee", *id),
-        ["api", "v1", "legal-entities", id, ..] => ("legal_entity", *id),
-        ["api", "v1", "workplaces", id, ..] => ("workplace", *id),
-        ["api", "v1", "org-units", id, ..] => ("org_unit", *id),
-        ["api", "v1", "business-registrations", id, ..] => ("business_registration", *id),
-        ["api", "v1", "org-changes", id, ..] => ("org_change_request", *id),
-        _ => return None,
-    };
-    Uuid::parse_str(id).ok()?;
-    Some((kind.into(), id.into(), None))
-}
 #[cfg(test)]
 mod preview_tests;
 #[cfg(test)]
 mod test_support;
 #[cfg(test)]
 mod tests;
-
-async fn audited_refusal(
-    pool: &PgPool,
-    p: &Principal,
-    status: StatusCode,
-    code: &str,
-    id: Option<Uuid>,
-) -> Response {
-    if super::record_refusal(pool, p, code, id).await.is_err() {
-        return refusal(StatusCode::SERVICE_UNAVAILABLE, "service_unavailable", id);
-    }
-    refusal(status, code, id)
-}

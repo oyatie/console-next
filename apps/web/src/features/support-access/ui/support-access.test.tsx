@@ -49,11 +49,11 @@ beforeEach(() => {
 
 test("support reads wait for a session token", () => {
   renderToStaticMarkup(<><ActiveSupportBanner /><SupportAccessIndicator /><SupportAccess /></>);
-  expect(state.query.mock.calls.map(([q]) => q.enabled)).toEqual([false, false, false]);
+  expect(state.query.mock.calls.map(([q]) => q.enabled)).toEqual([false, false, false, false, false]);
   state.auth.token = "session-token";
   state.query.mockClear();
   renderToStaticMarkup(<><ActiveSupportBanner /><SupportAccessIndicator /><SupportAccess /></>);
-  expect(state.query.mock.calls.map(([q]) => q.enabled)).toEqual([true, true, true]);
+  expect(state.query.mock.calls.map(([q]) => q.enabled)).toEqual([true, true, true, true, true]);
 });
 
 test.each([ActiveSupportBanner, SupportAccessIndicator])("support status reader %# waits for the session stream before reading", Component => {

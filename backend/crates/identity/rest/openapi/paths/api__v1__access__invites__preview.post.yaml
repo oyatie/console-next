@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags:
+- access
+operationId: previewAccessInvite
+summary: Preview an account invite together with optional initial role and scope grants
+description: Validates account invite fields and dry-runs each initial role/scope grant against the caller's authority and grantor ceiling without writing any row.
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/PreviewAccessInviteRequest'
+responses:
+  '200':
+    description: Dry-run preview outcome.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/PreviewAccessInviteResponse'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '422':
+    $ref: '#/components/responses/ValidationError'

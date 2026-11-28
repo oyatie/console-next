@@ -1,0 +1,42 @@
+{
+  "baseline": {
+    "apps/web/src/features/access/ui/access-check-page.tsx#AccessCheckPage": 21,
+    "apps/web/src/features/access/ui/access-review-cycle.tsx#AccessReviewCyclePanel": 39,
+    "apps/web/src/features/access/ui/policies-page.tsx#PoliciesPage": 26,
+    "apps/web/src/features/access/ui/policy-draft-page.tsx#PolicyDraftPage": 24
+  },
+  "newScreens": {
+    "apps/web/src/features/access/ui/access-check-page.tsx#AccessCheckPage": {
+      "FACT": 13,
+      "REFUSAL": 8,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/access/ui/access-review-cycle.tsx#AccessReviewCyclePanel": {
+      "FACT": 21,
+      "REFUSAL": 15,
+      "EMPTY": 0,
+      "LEGAL": 1,
+      "RECEIPT": 2,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/access/ui/policies-page.tsx#PoliciesPage": {
+      "FACT": 14,
+      "REFUSAL": 8,
+      "EMPTY": 4,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/access/ui/policy-draft-page.tsx#PolicyDraftPage": {
+      "FACT": 14,
+      "REFUSAL": 8,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 2,
+      "EXPLANATION": 0
+    }
+  }
+}

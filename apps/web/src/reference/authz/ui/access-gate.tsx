@@ -7,7 +7,9 @@ import { queryView, type ReadState } from "../../../lib/react/query-view";
 import type { ReadBack } from "../../../lib/react/denied";
 import { PageHead } from "../../../ui/page-head/page-head";
 import { ReadSkeleton, type ReadLayout } from "../../../ui/skeleton/skeleton";
-import { accessRefusal, type AccessRequirement } from "../domain/access";
+import { accessRefusal, type AccessRequirement, type ServedCapability } from "../domain/access";
+import { RestrictedAccessGate } from "../../audit/ui/restricted-access-gate";
+import { canUseServed } from "./use-documents-served";
 import { ApiError, authzApplies, authzQuery, myAccessQuery } from "../api";
 import { moduleReady, modulesQuery, type ModuleKey } from "../../onboarding/api";
 
@@ -21,6 +23,21 @@ function ModuleGate({ children, module }: { children: ReactNode; module: ModuleK
 
 /** Form routes wait for their own grant, independently of onboarding and legacy role names. */
 export function AccessGate({ children, layout = "form", ...need }: AccessRequirement & { children: ReactNode; layout?: ReadLayout }) {
+  if ("servedCapability" in need && need.servedCapability === "restricted_audit_stream") return <RestrictedAccessGate layout={layout}>{children}</RestrictedAccessGate>;
+  if ("servedCapability" in need) return <ServedAccessGate feature={need.servedCapability} layout={layout}>{children}</ServedAccessGate>;
+  return <EffectiveAccessGate {...need} layout={layout}>{children}</EffectiveAccessGate>;
+}
+
+function ServedAccessGate({ children, layout, feature }: { children: ReactNode; layout: ReadLayout; feature: ServedCapability }) {
+  const enabled = authzApplies();
+  const access = useQuery({ ...authzQuery, enabled });
+  const denied = !enabled || (access.isSuccess && !canUseServed(feature, access.data.capabilities));
+  const q = denied ? { ...access, error: new ApiError(403, "access_denied", "", [], undefined, false) }
+    : access.isError ? { ...access, data: undefined } : access;
+  return <QueryState q={q} layout={layout} need={{ servedCapability: feature }}>{() => children}</QueryState>;
+}
+
+function EffectiveAccessGate({ children, layout, ...need }: Exclude<AccessRequirement, { servedCapability: string }> & { children: ReactNode; layout: ReadLayout }) {
   const access = useQuery(myAccessQuery);
   const view = queryView(access);
   const code = access.data && view !== "denied" && view !== "not-found" ? accessRefusal(access.data, need) : null;

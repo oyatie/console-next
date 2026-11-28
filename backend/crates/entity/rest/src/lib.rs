@@ -69,6 +69,7 @@ pub const WORKPLACE_PATH: &str = "/api/v1/workplaces/{workplaceId}";
 pub const WORKPLACE_VOID_PATH: &str = "/api/v1/workplaces/{workplaceId}/void";
 pub const WORKPLACE_KIND_PATH: &str = "/api/v1/workplaces/{workplaceId}/kind";
 pub const WORKPLACE_CODE_PATH: &str = "/api/v1/workplaces/{workplaceId}/code";
+pub const WORKPLACE_HEAD_PATH: &str = "/api/v1/workplaces/{workplaceId}/head";
 pub const WORKPLACE_KINDS_PATH: &str = "/api/v1/workplace-kinds";
 pub const WORKPLACE_KINDS_ITEM_PATH: &str = "/api/v1/workplace-kinds/{code}";
 pub const ORG_STRUCTURE_DIFF_PATH: &str = "/api/v1/org-structure/diff";
@@ -241,6 +242,7 @@ pub fn router(state: EntityRestState) -> Router {
         .route(WORKPLACE_VOID_PATH, post(h::void_workplace))
         .route(WORKPLACE_KIND_PATH, put(k::set_kind))
         .route(WORKPLACE_CODE_PATH, put(structure::set_code))
+        .route(WORKPLACE_HEAD_PATH, put(structure::set_head))
         .route(
             WORKPLACE_KINDS_PATH,
             get(k::list_kinds).post(k::create_kind),

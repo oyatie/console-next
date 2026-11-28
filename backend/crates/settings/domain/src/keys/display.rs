@@ -12,6 +12,6 @@ macro_rules! display { ([$($acc:tt)*] $($rest:tt)*) => { roster! { [$($acc)*
     // The two day counts behind the inbox snooze presets; next Monday is a rule, not a setting.
     InboxSnoozeShortDays => "inbox.snooze.short_days" = D::int(Days, Some(1), Some(365), 1, Higher);
     InboxSnoozeLongDays => "inbox.snooze.long_days" = D::int(Days, Some(2), Some(365), 7, Higher);
-    // Baseline remains the fallback until the new default style is signed off.
-    DisplayExperience => "display.experience" = D::code(EXPERIENCES, "baseline", Neutral);
+    // Console is the default style when a tenant has not set an override; Classic ("baseline") remains selectable.
+    DisplayExperience => "display.experience" = D::code(EXPERIENCES, "console", Neutral);
 ] $($rest)* } }; }

@@ -26,6 +26,9 @@ async fn today_and_overdue_follow_registry_deadlines_and_partial_counts_are_mark
     let days: i64 = sqlx::query_scalar("SELECT min(value_num) FROM statutory_rules WHERE code IN ('FINAL_PAY_DUE_DAYS','SEVERANCE_PAY_DUE_DAYS') AND effective_to_exclusive IS NULL")
         .fetch_one(&pool).await.unwrap();
     let today = console_hr_domain::text::parse_yyyy_mm_dd(&http::today_kst()).unwrap();
+    // A holiday on the attendance calendar must not move a settlement's register date.
+    sqlx::query("INSERT INTO attendance_public_holidays (holiday_date,name,kind,basis,edition) VALUES ($1,'test holiday','NATIONAL','test','test') ON CONFLICT DO NOTHING")
+        .bind(today).execute(&pool).await.unwrap();
     for (n, date) in [
         (1, today - time::Duration::days(days + 1)),
         (2, today - time::Duration::days(days)),

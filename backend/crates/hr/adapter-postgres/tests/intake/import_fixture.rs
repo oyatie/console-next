@@ -215,6 +215,7 @@ impl Importer {
                 run,
                 EmployeeImportApplyRequest {
                     dry_run_digest: digest.into(),
+                    skip_unresolved: false,
                 },
             )
             .await

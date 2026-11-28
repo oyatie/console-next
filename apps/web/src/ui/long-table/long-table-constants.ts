@@ -8,6 +8,7 @@ export const LAYOUT = {
   regular: { estimatedRowHeight: 40, headingHeight: 40, loaderHeight: 40 },
   compact: { estimatedRowHeight: 32, headingHeight: 36, loaderHeight: 32 },
 };
+
 export const SELECT_WIDTH = 48;
 /** Placeholder rows while the first page loads (long-table.module.css sizes the table to fit them). */
 export const SKELETON_ROWS = 8;

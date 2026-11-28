@@ -96,11 +96,11 @@ Default labels read `shell.tabs.label`, `shell.tabs.closeOne`, `shell.tabs.new`,
 | `--space-1` | `gap`, `margin-inline-end`, `padding`, `padding-inline-end` |
 | `--space-1-5` | `gap` |
 | `--space-3` | `padding` |
-| `--space-6` | `max-inline-size`, `min-height` |
+| `--space-6` | `inline-size`, `max-inline-size`, `min-height` |
 | `--space-half` | `border-block-start` |
 | `--steel` | `color` |
 | `--surface` | `background`, `border-block-end` |
-| `--target` | `height`, `width` |
+| `--target` | `height`, `min-height`, `min-width`, `width` |
 | `--text-sm` | `font-size` |
 
 <!-- /ds:tokens -->

@@ -80,6 +80,10 @@ pub struct SetupFacts {
     /// The actor's own passkeys: with one, a lost device ends the account
     /// (and, for the only ops holder, the tenant's way in).
     pub own_passkeys: i64,
+    /// Overtime rule confirmation step (`overtime`), shown when the attestation store is wired.
+    pub overtime_rule_store_available: bool,
+    pub overtime_rule_attested: bool,
+    pub overtime_step_skipped: bool,
 }
 
 impl SetupFacts {

@@ -10,8 +10,8 @@ use crate::{PlatformError, PlatformRestState};
 /// A fresh passkey assertion (same shape as `PasskeyStepUpAssertion`).
 #[derive(Debug, Deserialize)]
 pub(crate) struct PlatformStepUpAssertion {
-    ceremony_id: Uuid,
-    credential: PasskeyAuthenticationCredential,
+    pub(crate) ceremony_id: Uuid,
+    pub(crate) credential: PasskeyAuthenticationCredential,
 }
 
 /// Body of `PUT /api/platform/groups/{id}/organizations/{org_id}` and of a

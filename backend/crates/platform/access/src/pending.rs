@@ -132,14 +132,14 @@ pub async fn activate_in_tx(
             "권한 적용 대기 시간이 지나지 않았습니다",
         ));
     }
-    // Lock the surviving ops account: handover/deactivation cannot race this recheck.
-    let ops: Option<Uuid> = sqlx::query_scalar(
-        "SELECT id FROM users WHERE org_id=$1 AND is_tenant_ops AND is_active FOR SHARE",
+    // Lock all surviving ops holders: handover/deactivation cannot race this recheck.
+    let ops: Vec<Uuid> = sqlx::query_scalar(
+        "SELECT id FROM users WHERE org_id=$1 AND is_tenant_ops AND is_active ORDER BY id FOR SHARE",
     )
     .bind(org.as_uuid())
-    .fetch_optional(tx.as_mut())
+    .fetch_all(tx.as_mut())
     .await?;
-    if ops.is_none() {
+    if ops.is_empty() {
         return Err(AccessError::access_denied());
     }
     let by: Uuid = row.try_get("granted_by")?;

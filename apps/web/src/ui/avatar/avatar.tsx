@@ -30,7 +30,8 @@ export function Avatar({
 }) {
   const url = safeMediaUrl(src);
   const dataTone = tone === "accent" ? "accent" : undefined;
+  const initial = name.trim().slice(0, 1);
   if (url) return <img className={s.avatar} data-size={size} data-tone={dataTone} src={url} alt={alt ?? ""} />;
-  if (fallbackAlt) return <span className={s.avatar} data-size={size} data-tone={dataTone} role="img" aria-label={fallbackAlt}>{name.trim().slice(0, 1)}</span>;
-  return <span className={s.avatar} data-size={size} data-tone={dataTone} aria-hidden>{name.trim().slice(0, 1)}</span>;
+  if (fallbackAlt) return <span className={s.avatar} data-size={size} data-tone={dataTone} data-initial={initial} role="img" aria-label={fallbackAlt} />;
+  return <span className={s.avatar} data-size={size} data-tone={dataTone} data-initial={initial} aria-hidden />;
 }

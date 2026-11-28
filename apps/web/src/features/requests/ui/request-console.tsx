@@ -7,6 +7,7 @@ import { buttonClass } from "../../../ui/button/button-class";
 import { FormPattern } from "../../../ui/patterns/form";
 import { FormSection } from "../../../ui/patterns/form-section";
 import { RecordPattern } from "../../../ui/patterns/record";
+import { RequestHistory } from "./request-history";
 import s from "./requests.module.css";
 
 const READY_READ: ReadState = { isPending: false, error: null, data: { ready: true }, refetch: () => {} };
@@ -25,7 +26,12 @@ export function RequestLookupConsole({
       <FormPattern
         q={READY_READ}
         head={{ title: t("requestOutcome.title") }}
-        sections={<FormSection>{sections}</FormSection>}
+        sections={
+          <>
+            <FormSection>{sections}</FormSection>
+            <FormSection><RequestHistory /></FormSection>
+          </>
+        }
         actions={actions}
         onSubmit={onSubmit}
       />

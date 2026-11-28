@@ -106,8 +106,8 @@ pub async fn get_promote(
     const ROUTE: &str = "/api/ops/v1/promote";
     state.authorize(&headers, "read.running", ROUTE)?;
     let sref = (state.support_ref)();
+    state.refresh_vm_slot((state.clock)()).await;
     let now = (state.clock)();
-    state.refresh_vm_slot(now).await;
     let vm_slot = state.vm_slot.read().await.clone();
     let noop_actions = NoopActionStore;
     let dummy_promo = DummyPromotionStore;
@@ -115,6 +115,8 @@ pub async fn get_promote(
     if state.promotions.is_none() || state.feedback.is_none() {
         return Ok(no_store_json(PromoteView {
             evaluated_at: now,
+            release_image: None,
+            signed_bake: None,
             candidate_digest: Observed::unknown(
                 "promotions".to_owned(),
                 "records unreadable".to_owned(),
@@ -240,18 +242,27 @@ pub async fn request_promote(
         .actions
         .as_deref()
         .ok_or_else(|| from_spool_error(SpoolError::WriteFailed, sref.clone(), ROUTE))?;
-    let dummy_promo = DummyPromotionStore;
-    let dummy_fb = DummyFeedbackStore;
+    let (Some(promotions), Some(feedback)) =
+        (state.promotions.as_deref(), state.feedback.as_deref())
+    else {
+        return Err(from_promote_error(
+            console_ops_application::promote::PromoteError::EvidenceUnavailable,
+            sref,
+            ROUTE,
+        ));
+    };
     let svc = PromoteService {
         releases: state.releases.as_deref(),
-        promotions: state.promotions.as_deref().unwrap_or(&dummy_promo),
-        feedback: state.feedback.as_deref().unwrap_or(&dummy_fb),
+        promotions,
+        feedback,
         actions: action_store,
     };
+    state.refresh_vm_slot((state.clock)()).await;
+    let vm = state.vm_slot.read().await.clone();
     let now = (state.clock)();
     let ctx = op_context(&op, now, sref.clone());
     let handoff = svc
-        .request_promote(&req.digest, &req.bake, &ctx)
+        .request_promote(&req.digest, &req.bake, &vm, &ctx)
         .map_err(|e| from_promote_error(e, sref, ROUTE))?;
     let home_snap = state.snapshots.read().await.snapshot.home.clone();
     state

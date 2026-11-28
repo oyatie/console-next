@@ -58,7 +58,15 @@ export async function mockAccessScreen(page: Page, screen: AccessScreen, state: 
   await mockRoute(page, "get", "/api/v1/users/me", { status: 200, json: { ...user, tenant: { ...user.tenant!, phase } } });
   await mockRoute(page, "get", "/api/v1/onboarding/checklist", { status: 200, json: { ...checklist, phase } });
   await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: screenAccess(screen.path, phase) });
-  await mockRoute(page, "get", "/api/v1/access/ops", { status: 200, json: { account_id: id(20), display_name: "운영 계정" } });
+  await mockRoute(page, "get", "/api/v1/access/ops", {
+    status: 200,
+    json: {
+      account_id: id(20),
+      display_name: "운영 계정",
+      max_holders: 2,
+      holders: [{ account_id: id(20), display_name: "Ops Account", has_passkey: true, has_recovery_contact: true, recovery_codes_remaining: 10, designated_at: AT }],
+    },
+  });
   await mockRoute(page, "get", "/api/v1/access/ops-usage", async () => (await beforeReply("/api/v1/access/ops-usage")) ?? {
     status: 200,
     json: state === "empty" ? [] : [{ at: AT, account_id: id(20), method: "POST", path: "/api/v1/payroll/runs/1/lock" }],
@@ -71,6 +79,7 @@ export async function mockAccessScreen(page: Page, screen: AccessScreen, state: 
     levels: ["view", "edit"] as ("view" | "edit")[], scope_kinds: [{ kind: "TENANT" as const, enforceable: true, descendants_only: true }], reason_domain: "role_change" as const,
   } });
   await mockRoute(page, "get", "/api/v1/access/requests", { status: 200, json: [] });
+  await mockRoute(page, "get", "/api/v1/access/reviews", { status: 200, json: [] });
   await mockRoute(page, "get", "/api/v1/reason-codes", { status: 200, json: { domain: "role_change", items: [{ code: "OTHER", system: true, requires_note: false, involuntary: false, notice_required: false, active: true, label_ko: "Other", label_en: "Other" }] } });
   await mockRoute(page, "get", "/api/v1/users", async request => {
     const failed = await beforeReply("/api/v1/users");

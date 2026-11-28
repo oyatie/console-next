@@ -111,7 +111,7 @@ export function PersonAccess({ accountId, grant: granting = false, onGrant }: {
       return <>      <>
       <div className={s.titleRow} data-access-subhead="">
         <Link to="/access/grants" className={buttonClass("ghost")}><ChevronLeft size={16} aria-hidden />{t("access.nav.grants")}</Link>
-        {account ? <PersonHead a={account} ops={account.id === ctx.ops} details={!account.employee_id} title={<h2 className={s.personTitle}>{name}</h2>} /> : <h2 className="page__title">{t("access.person.title")}</h2>}
+        {account ? <PersonHead a={account} ops={Boolean(account.is_tenant_ops) || Boolean(ctx.opsIds?.has(account.id))} details={!account.employee_id} title={<h2 className={s.personTitle}>{name}</h2>} /> : <h2 className="page__title">{t("access.person.title")}</h2>}
         {account && <PersonRef account={account} wrap />}
         <div className="grow" />
         {account && !e.is_ops && <Button variant="primary" onClick={() => onGrant(true)}><Plus size={16} aria-hidden />{t("access.grant.title")}</Button>}
@@ -151,7 +151,7 @@ export function PersonAccess({ accountId, grant: granting = false, onGrant }: {
           )}
         </div>
       {granting && account && !eff.data!.is_ops && ctx.cat.data && ctx.rolesLoaded && (
-        <GrantSheet account={account} me={ctx.me} ops={ctx.ops} cat={ctx.cat.data} roles={ctx.roles} setup={ctx.setup} onClose={() => onGrant(false)} onGranted={(m, _made, id) => (onGrant(false), setDone(m), setOperationId(id))} />
+        <GrantSheet account={account} me={ctx.me} ops={ctx.ops} opsIds={ctx.opsIds} cat={ctx.cat.data} roles={ctx.roles} setup={ctx.setup} onClose={() => onGrant(false)} onGranted={(m, _made, id) => (onGrant(false), setDone(m), setOperationId(id))} />
       )}
       <GrantChange key={changing ? `${changing.g.id}:${changing.mode}` : "none"} grant={changing?.g ?? null} mode={changing?.mode} onClose={() => setChanging(null)} onDone={(m) => (setChanging(null), setDone(m), setOperationId(undefined))} />
       </>

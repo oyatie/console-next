@@ -1,11 +1,13 @@
 import { useState, type ReactNode } from "react";
 import { t } from "@console/i18n";
 import { fmtNumber } from "@console/i18n/format";
+import { downloadCsv } from "../../../lib/csv-download";
 import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { Button } from "../../../ui/button/button";
 import { Card } from "../../../ui/card/card";
 import { Chip } from "../../../ui/chip";
+import { Checks } from "../../../ui/choice/checks";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { StatRow } from "../../../ui/key-value/key-value";
 import { apply, changedRows, dryRun, importCode, lostAnswer, OTHER, readJob, retryAfterOf } from "../api";
@@ -67,6 +69,7 @@ export function DryRunStep({ picks, onPicks, dry, preview, onDryRun, onApplied, 
   // blocking question (values first, as the page reads), so after each answer the next one is open.
   const [chosen, setChosen] = useState<string | null>(null);
   const [triage, setTriage] = useState<TriageBucket>("all");
+  const [skipAck, setSkipAck] = useState<string[]>([]);
   const [selectedRowKey, setSelectedRowKey] = useState<string | null>(() => firstActionableRowKey(dry));
   const asked = [...dry.review.items.filter(isValueItem), ...dry.review.items.filter((i) => !isValueItem(i))];
   const sel = (chosen && (asked.some((i) => i.id === chosen) || /^(remembered|auto):/.test(chosen)) ? chosen : null) ?? (asked.find((i) => i.blocking) ?? asked[0])?.id ?? null;
@@ -82,15 +85,17 @@ export function DryRunStep({ picks, onPicks, dry, preview, onDryRun, onApplied, 
     const match = row ? asked.find((i) => i.sheet === row.sheet && i.row === row.row) : undefined;
     if (match) setChosen(match.id);
   };
-  const rerun = useCommand({ run: (c: Picks) => dryRun(dry.run_id, c), onSuccess: (d: ImportDryRun) => onDryRun(d) });
+  const block = applyBlockers(dry, picks);
+  const skipUnresolved = block.canSkip && skipAck.includes("skip");
+  const rerun = useCommand({ run: (c: Picks) => dryRun(dry.run_id, c), onSuccess: (d: ImportDryRun) => (setSkipAck([]), onDryRun(d)) });
   /** An answer from the queue: kept on screen and sent with the next dry run straight away. */
-  const resolve = (next: Picks) => (onPicks(next), setChanged(0), rerun.mutate(next));
+  const resolve = (next: Picks) => (onPicks(next), setChanged(0), setSkipAck([]), rerun.mutate(next));
   const commit = useCommand({
     // Rows changed under the dry run (another writer): nothing was written, so it is computed again and the screen
     // says why; the new digest is what the next apply binds.
     run: async (): Promise<{ report: ImportReport } | { job: ApplyJob } | { changed: number }> => {
       try {
-        return await apply(dry.run_id, dry.dry_run_digest);
+        return await apply(dry.run_id, dry.dry_run_digest, skipUnresolved);
       } catch (e) {
         // An answer that never came (r3:hire-02): the job may be running. Read the run before offering the apply again.
         if (lostAnswer(e)) {
@@ -115,15 +120,17 @@ export function DryRunStep({ picks, onPicks, dry, preview, onDryRun, onApplied, 
     commit.mutate(undefined, {
       onError: (e) => void (importCode(e) === "import_apply_busy" && (setHold(true), setTimeout(() => setHold(false), retryAfterOf(e) ?? BUSY_WAIT_MS))),
     });
-  const block = applyBlockers(dry, picks);
   const missing = reasonsMissing(picks, OTHER);
   const held = deferredCount(dry);
+  const unsettledRows = dry.rows.filter((r) => !["insert", "update", "unchanged", "excluded"].includes(r.outcome));
   const reason =
     hold ? t("import.block.busy")
     : block.pending ? t("import.block.pending")
-    : block.rows > 0 ? t("import.block.review", { count: block.rows })
+    : block.rows > 0 && !skipUnresolved ? t("import.block.review", { count: block.rows })
     : null;
-  const applyLabel = t("import.apply", { insert: dry.insert_candidates, update: dry.update_candidates });
+  const applyLabel = skipUnresolved
+    ? t("import.apply.partial", { insert: dry.insert_candidates, update: dry.update_candidates, skipped: unsettledRows.length })
+    : t("import.apply", { insert: dry.insert_candidates, update: dry.update_candidates });
   const stats: [string, number][] = [
     [outcomeLabel("insert"), dry.insert_candidates],
     [outcomeLabel("update"), dry.update_candidates],
@@ -158,8 +165,29 @@ export function DryRunStep({ picks, onPicks, dry, preview, onDryRun, onApplied, 
           {dry.phone_unstored_rows > 0 && <Chip tone="neutral">{t("import.apply.phoneUnstored", { count: dry.phone_unstored_rows })}</Chip>}
         </div>
       )}
+      {block.canSkip && (
+        <Checks
+          label={t("import.apply.skipUnresolvedLabel")}
+          items={[{ id: "skip", label: t("import.apply.skipUnresolvedAck", { count: unsettledRows.length }) }]}
+          value={skipAck}
+          onChange={setSkipAck}
+        />
+      )}
     </>
   );
+  const downloadUnresolved = () =>
+    downloadCsv(
+      "employee-import-unresolved.csv",
+      ["sheet", "row", "source_key", "employee_number", "outcome", "reason"],
+      unsettledRows.map((r) => [
+        r.sheet,
+        r.row,
+        r.source_key,
+        r.employee_number ?? "",
+        r.outcome,
+        dry.review.items.find((i) => i.sheet === r.sheet && i.row === r.row)?.reason ?? r.exclusion_code ?? "",
+      ]),
+    );
   const noticeBlock = (
     <>
       {block.pending && <p className="muted" role="status">{t("import.rerun.pending")}</p>}
@@ -173,6 +201,9 @@ export function DryRunStep({ picks, onPicks, dry, preview, onDryRun, onApplied, 
         <DisabledReason control={(p) => <Button {...p}>{t("import.rerun")}</Button>} reason={t("import.block.reasons", { count: missing })} />
       ) : (
         <Button variant={block.pending ? "primary" : "secondary"} disabled={rerun.isPending} onClick={() => (setChanged(0), rerun.mutate(picks))}>{t("import.rerun")}</Button>
+      )}
+      {unsettledRows.length > 0 && (
+        <Button onClick={downloadUnresolved}>{t("import.downloadUnresolvedCsv", { count: unsettledRows.length })}</Button>
       )}
       {reason ? (
         <DisabledReason control={(p) => <Button {...p} variant={block.pending ? "secondary" : "primary"}>{applyLabel}</Button>} reason={reason} />

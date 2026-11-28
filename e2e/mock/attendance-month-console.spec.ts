@@ -213,8 +213,8 @@ for (const width of [1440, 390]) {
           expect(phoneMetrics.closeBorderStyle).toBe("solid");
           expect(phoneMetrics.day7FitsBeforeOpen).toBe(true);
 
-          const toggle = pattern.getByRole("button", { name: t("attendance.monthConsole.bottom.expand"), exact: true });
-          await expect(toggle).toHaveAttribute("aria-expanded", "false");
+          const collapseBtn = pattern.getByRole("button", { name: t("attendance.monthConsole.bottom.collapse"), exact: true });
+          await expect(collapseBtn).toHaveAttribute("aria-expanded", "true");
         }
 
         await withFullPage(page, () => shot(page, `attendance--${width}-${theme}`));
@@ -222,9 +222,7 @@ for (const width of [1440, 390]) {
         await expectAxe(page, `Console Attendance Month ${width} ${theme}`);
 
         if (width === 390) {
-          // Expand bottom panel on 390px and verify compact 2-line rows and recognition basis fit cleanly.
-          const toggle = pattern.getByRole("button", { name: t("attendance.monthConsole.bottom.expand"), exact: true });
-          await toggle.click();
+          // Verify expanded bottom panel compact 2-line rows and recognition basis, plus collapse/expand toggle.
           const issuesTable = pattern.getByRole("grid", { name: t("attendance.monthConsole.bottom.issuesTitle"), exact: true });
           await expect(issuesTable).toBeVisible();
           await expect(pattern).toContainText(t("attendanceRecords.recognition.basis"));
@@ -232,6 +230,12 @@ for (const width of [1440, 390]) {
             rows.map(r => Math.round(r.getBoundingClientRect().height)),
           );
           expect(rowHeights.every(h => h >= 44 && h <= 76)).toBe(true);
+          const collapseBtn = pattern.getByRole("button", { name: t("attendance.monthConsole.bottom.collapse"), exact: true });
+          await collapseBtn.click();
+          const expandBtn = pattern.getByRole("button", { name: t("attendance.monthConsole.bottom.expand"), exact: true });
+          await expect(expandBtn).toHaveAttribute("aria-expanded", "false");
+          await expandBtn.click();
+          await expect(collapseBtn).toHaveAttribute("aria-expanded", "true");
           await fits(page, `Console Attendance Month expanded ${width} ${theme}`);
           await expectAxe(page, `Console Attendance Month expanded ${width} ${theme}`);
 

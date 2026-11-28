@@ -9,7 +9,9 @@ import { Button } from "../../../ui/button/button";
 import { buttonClass } from "../../../ui/button/button-class";
 import { Chip } from "../../../ui/chip";
 import { EmptyState } from "../../../ui/empty-state";
+import { useIsDesktop } from "../../../lib/react/use-desktop";
 import { LongTable, type LongColumn } from "../../../ui/long-table/long-table";
+import { Table } from "../../../ui/table";
 import s from "./statutory-console.module.css";
 
 const MISSING_FIELD: Record<
@@ -44,6 +46,7 @@ export function RegisterTabMain({
   regAfter?: string;
   setRegAfter: (next: string | undefined) => void;
 }) {
+  const isDesktop = useIsDesktop();
   if (!site) {
     return (
       <div className={s.mainStack}>
@@ -64,7 +67,7 @@ export function RegisterTabMain({
           ...data.headers.map((header, i) => ({
             id: `col-${i}`,
             header,
-            card: (i === 1 ? "title" : i === 0 || i === 2 ? "fact" : "omit") as LongColumn<RegisterPage["items"][number]>["card"],
+            card: (i === 1 ? "title" : "fact") as LongColumn<RegisterPage["items"][number]>["card"],
             rowHeader: i === 1,
             minWidth: i === 1 ? 120 : 100,
             cell: (r: RegisterPage["items"][number]) =>
@@ -73,7 +76,7 @@ export function RegisterTabMain({
                   {r.cells[i]}
                 </Link>
               ) : (
-                r.cells[i] || ""
+                r.cells[i] || "—"
               ),
           })),
           {
@@ -98,18 +101,29 @@ export function RegisterTabMain({
         return (
           <div className={s.mainStack}>
             {data.items.length > 0 ? (
-              <LongTable
-                label={t("statutory.register")}
-                caption={`${t("statutory.asOf")} ${fmtDate(date)} · ${t("statutory.people", { count: data.total })}`}
-                rows={data.items}
-                rowId={(r) => r.employee_id}
-                total={data.total}
-                mobileLayout="compact"
-                empty={null}
-                hasMore={Boolean(data.next)}
-                onLoadMore={() => { if (data.next) setRegAfter(data.next); }}
-                columns={regCols}
-              />
+              isDesktop ? (
+                <LongTable
+                  label={t("statutory.register")}
+                  caption={`${t("statutory.asOf")} ${fmtDate(date)} · ${t("statutory.people", { count: data.total })}`}
+                  rows={data.items}
+                  rowId={(r) => r.employee_id}
+                  total={data.total}
+                  mobileLayout="compact"
+                  empty={null}
+                  hasMore={Boolean(data.next)}
+                  onLoadMore={() => { if (data.next) setRegAfter(data.next); }}
+                  columns={regCols}
+                />
+              ) : (
+                <Table
+                  label={t("statutory.register")}
+                  mobileLayout="rows"
+                  onSelect={() => undefined}
+                  rows={data.items}
+                  rowId={(r) => r.employee_id}
+                  columns={regCols.map(({ width: _width, ...col }) => col)}
+                />
+              )
             ) : (
               <EmptyState
                 title={t("statutory.noWorkers")}

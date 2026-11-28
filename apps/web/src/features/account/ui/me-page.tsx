@@ -10,6 +10,7 @@ import { QueryState } from "../../../lib/react/query-state";
 import { readGroup, type ReadState } from "../../../lib/react/query-view";
 import { claims, meQuery, operatorMeQuery, passkeysQuery, type Me } from "../api";
 import { OpsRecoveryNotice } from "./ops-recovery-notice";
+import { OpsSecurityCard } from "./ops-security-card";
 import { ConsentCard } from "./consent-card";
 import { MyAccessCard } from "./my-access";
 import { PasskeysCard } from "./passkeys-card";
@@ -43,7 +44,10 @@ function LegacyMePage({
           <ProfileCard locale={locale} experience={experience} singleKeys={singleKeys} me={me} />
           <PasskeysCard ops={vendor ? false : me.data?.is_tenant_ops} passkeys={keys} />
           <ConsentCard />
+          {!vendor && me.data?.employee_link_status === "LINKED" && me.data.tenant?.phase === "OPERATING" && <div><Link to="/me/desk">{t("shell.link.meDesk")}</Link></div>}
+          {!vendor && <div><Link to="/requests">{t("requestOutcome.myHistory.title")}</Link></div>}
           {!vendor && <div><Link to="/account/privacy">{t("account.privacy.title")}</Link></div>}
+          {!vendor && me.data?.is_tenant_ops && <OpsSecurityCard myId={me.data.id} />}
           {!vendor && <OpsRecoveryNotice />}
           {!vendor && <MyAccessCard />}
           {(vendor || me.data?.is_tenant_ops) && <SupportLookup />}

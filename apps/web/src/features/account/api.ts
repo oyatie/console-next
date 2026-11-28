@@ -1,5 +1,6 @@
 export { ApiError } from "@console/api";
 import { api, assertBoundPasskey, assertPasskey, consentDocuments, consentStatus, logout, meProfileApi, registerPasskey, session, unwrap } from "@console/api";
+import { generateRecoveryCodes, recoveryStatus, upsertRecoveryContact } from "@console/api/recovery";
 import { isMessageId, t } from "@console/i18n";
 import type { PrivacyRightsReceipt } from "@console/api/pending";
 import type { components } from "@console/api/schema";
@@ -87,10 +88,41 @@ export async function removePasskey(id: string) {
 }
 
 export const tenantRecoveryQuery = get("/api/v1/tenant/ops-recovery");
+export const tenantGroupInvitationsQuery = get("/api/v1/tenant/group-invitations");
+export const acceptTenantGroupInvitation = async (invitationId: string) =>
+  unwrap(api.POST("/api/v1/tenant/group-invitations/{invitation_id}/accept", {
+    params: { path: { invitation_id: invitationId } },
+    body: { step_up: await assertPasskey() },
+  }));
+export const declineTenantGroupInvitation = (invitationId: string) =>
+  unwrap(api.POST("/api/v1/tenant/group-invitations/{invitation_id}/decline", {
+    params: { path: { invitation_id: invitationId } },
+  }));
 export const cancelTenantRecovery = async (orgId: string, id: string, reason: string, key: string) => unwrap(api.POST("/api/v1/tenant/ops-recovery/{rid}/cancel", {
   params: { path: { rid: id }, header: { "Idempotency-Key": key } },
   body: { reason, step_up: await assertBoundPasskey("OPERATOR_RECOVERY", id, JSON.stringify([orgId, id, "cancel", "", "", "", "", reason])) },
 }));
+
+export const recoveryStatusQuery = read("/api/v1/auth/recovery/status", recoveryStatus);
+export const opsHoldersQuery = { ...get("/api/v1/access/ops"), refetchOnMount: "always" as const };
+export const candidateUsersQuery = { ...get("/api/v1/users", { params: { query: { limit: 200 } } }), refetchOnMount: "always" as const };
+export const activeGrantsQuery = { ...get("/api/v1/access/grants"), refetchOnMount: "always" as const };
+
+export const saveMyRecoveryContact = (value: string) =>
+  upsertRecoveryContact({ channel: "EMAIL", value, consentAccepted: true, stepUp: true });
+
+export const regenerateMyRecoveryCodes = () =>
+  generateRecoveryCodes({ stepUp: true });
+
+export const designateOpsHolder = async (accountId: string) =>
+  unwrap(api.POST("/api/v1/access/ops/holders", {
+    body: { account_id: accountId, step_up: await assertPasskey() },
+  }));
+
+export const releaseSelfOpsHolder = async (reason?: string) =>
+  unwrap(api.POST("/api/v1/access/ops/holders/release", {
+    body: { ...(reason?.trim() ? { reason: reason.trim() } : {}), step_up: await assertPasskey() },
+  }));
 
 /** The same self-profile command in each realm; a lost response is checked by its authoritative read. */
 export function updateName(display_name: string) {

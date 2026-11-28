@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useContext, useEffect, useId, useRef, type ReactNode } from "react";
 import { ArrowLeft, X } from "lucide-react";
 import { t } from "@console/i18n";
 import { popupOpen } from "../../lib/pure/popup";
@@ -26,13 +26,14 @@ type SidePanelProps = {
 
 /** A non-modal peek beside a list/canvas; below 1280 it overlays, below 640 it fills the screen. Escape within the panel dismisses it (WCAG 2.4.11). */
 export function SidePanel({ open, title, crumb, chips, openLink, size = "peek", loading, onClose, returnFocus, children }: SidePanelProps) {
+  const inHostPane = useContext(SidePanelReadContext);
   const id = useId();
   const box = useRef<HTMLElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
-  useMountFocus(open, () => heading.current, box, returnFocus);
+  useMountFocus(open && !inHostPane, () => heading.current, box, returnFocus);
   useEffect(() => {
     const panel = box.current;
-    if (!open || !panel) return;
+    if (!open || inHostPane || !panel) return;
     const escape = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || event.defaultPrevented || event.isComposing) return;
       if (event.target instanceof Element && (event.target.closest('[role="dialog"], [role="menu"], [role="listbox"]') || popupOpen(event.target))) return;
@@ -41,8 +42,21 @@ export function SidePanel({ open, title, crumb, chips, openLink, size = "peek", 
     };
     panel.addEventListener("keydown", escape);
     return () => panel.removeEventListener("keydown", escape);
-  }, [open, onClose]);
+  }, [open, inHostPane, onClose]);
   if (!open) return null;
+  if (inHostPane) {
+    return <>
+      {(crumb != null || chips != null || openLink != null) && (
+        <div className={s.head}>
+          {crumb != null && <div className={s.crumb}>{crumb}</div>}
+          {(chips != null || openLink != null) && <div className={s.tools}>{chips}{openLink}</div>}
+        </div>
+      )}
+      <div aria-busy={loading || undefined}>
+        {loading ? <Skeleton bones={["title", "row", "row"]} label={t("common.loading")} /> : children}
+      </div>
+    </>;
+  }
   return <aside ref={box} className={s.panel} data-side-panel data-size={size} aria-labelledby={id}>
     <header className={s.head}>
       <Button variant="ghost" className={s.back} onClick={onClose}><ArrowLeft size={16} aria-hidden />{t("common.back")}</Button>

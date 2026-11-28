@@ -46,10 +46,12 @@ export function OrgChangeInlineRowActions({
   id,
   focusAfter = "inbox-title",
   onSelectForReject,
+  onDecided,
 }: {
   id: string;
   focusAfter?: string;
   onSelectForReject: () => void;
+  onDecided?: () => void;
 }) {
   const detail = freshOnOpen(useQuery({ ...changeQuery(id), refetchOnMount: "always" }));
   const step = detail.data?.approvalSteps.find(st => st.decision === "PENDING");
@@ -57,7 +59,10 @@ export function OrgChangeInlineRowActions({
   const approve = useCommand({
     run: () => changeCommands(id).decide(step!.id, "APPROVED"),
     invalidates: ["/api/v1/me/action-inbox", ...ORG_READS],
-    onSuccess: () => focusSoon(focusAfter),
+    onSuccess: () => {
+      if (onDecided) onDecided();
+      else focusSoon(focusAfter);
+    },
     announce: () => t("org.change.decided.APPROVED", { role }),
   });
   const disabled = !detail.isSuccess || detail.isPending || detail.isFetching || approve.isPending || !step;
@@ -87,6 +92,11 @@ export function OrgChangeWorklistDecisionFooter({
   onDecided?: () => void;
 }) {
   const [opinion, setOpinion] = useState("");
+  const [prevId, setPrevId] = useState(id);
+  if (prevId !== id) {
+    setPrevId(id);
+    if (opinion) setOpinion("");
+  }
   const detail = freshOnOpen(useQuery({ ...changeQuery(id), refetchOnMount: "always" }));
   const step = detail.data?.approvalSteps.find(st => st.decision === "PENDING");
   const role = step ? label(APPROVAL_ROLE, step.roleKey) : "";
@@ -97,8 +107,8 @@ export function OrgChangeWorklistDecisionFooter({
     invalidates: ["/api/v1/me/action-inbox", ...ORG_READS],
     onSuccess: () => {
       setOpinion("");
-      onDecided?.();
-      focusSoon(focusAfter);
+      if (onDecided) onDecided();
+      else focusSoon(focusAfter);
     },
     announce: (_out, decision) =>
       t(decision === "APPROVED" ? "orgChange.decided.APPROVED" : "orgChange.decided.REJECTED", {
@@ -123,6 +133,7 @@ export function OrgChangeWorklistDecisionFooter({
     <div className={s.footerWrap}>
       <CommandError error={decide.error} />
       <DecisionPane
+        resetKey={id}
         opinion={opinion}
         onOpinionChange={setOpinion}
         pending={decide.isPending ? (decide.variables === "REJECTED" ? "reject" : "approve") : undefined}

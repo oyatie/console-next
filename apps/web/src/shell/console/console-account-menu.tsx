@@ -65,12 +65,11 @@ export function ConsoleAccountMenu({
         id={id}
         type="button"
         className={m.accountBtn}
-        aria-label={compact ? name : undefined}
         aria-expanded={open}
         onClick={() => setOpen(prev => !prev)}
       >
         <Avatar name={name} size="sm" tone="accent" />
-        {!compact ? <bdi className={m.accountName}>{name}</bdi> : null}
+        {compact ? <span className="sr-only">{name}</span> : <bdi className={m.accountName}>{name}</bdi>}
       </button>
       {open ? (
         <div ref={panelRef} className={m.accountPop} role="group" aria-label={t("shell.account")}>

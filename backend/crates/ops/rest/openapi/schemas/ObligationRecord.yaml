@@ -8,5 +8,6 @@ properties:
   at: {"$ref": "#/components/schemas/Timestamp"}
   operator: {"$ref": "#/components/schemas/ObligationOperator"}
   obligation_id: {"$ref": "#/components/schemas/Text"}
-  event: {"type": "string", "enum": ["opened", "in_review", "redated", "done", "waived"]}
+  event: {"type": "string", "enum": ["opened", "in_review", "redated", "done", "waived", "countersigned"]}
   fields: {"type": "object"}
+  attestation_version: {"type":"integer","enum":[1,2]}

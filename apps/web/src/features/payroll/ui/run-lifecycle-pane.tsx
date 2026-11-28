@@ -84,10 +84,10 @@ export function RunLifecyclePane({
                 label={t("payrollRun.tool.preflight")}
                 items={data.checks.map((c, idx) => ({
                   key: `${c.key}-${idx}`,
-                  label: c.label_ko ?? c.key,
+                  label: c.key === "workplace_attendance_close" ? t("payroll.preflight.workplaceClose") : (c.label_ko ?? c.key),
                   value: (
-                    <Chip tone={c.ok ? "ok" : c.warn ? "warn" : "danger"}>
-                      {c.ok ? t("enum.checklistState.DONE") : c.warn ? t("attendance.close.warningChip") : t("attendance.close.blockerChip")}
+                    <Chip tone={c.ok && !c.warn ? "ok" : c.warn ? "warn" : "danger"}>
+                      {c.ok && !c.warn ? t("enum.checklistState.DONE") : c.warn ? t("attendance.close.warningChip") : t("attendance.close.blockerChip")}
                     </Chip>
                   ),
                 }))}
@@ -189,6 +189,7 @@ export function RunLifecyclePane({
                       <div className="muted">{t("payroll.employee.won", { amount: fmtNumber(exc.amount_delta_won) })}</div>
                     )}
                     <div className={s.headActions}>
+                      {exc.status === "HELD" && <Chip tone="info">{t("payroll.run.heldPaid")}</Chip>}
                       {exc.carried_from_run_id && <Chip tone="info">{t("payrollRun.exceptions.carried")}</Chip>}
                       {exc.line_id && (
                         <Button size="sm" variant="ghost" className={s.nowrap} onClick={() => onSelectLine(exc.line_id!)}>

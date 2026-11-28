@@ -11,3 +11,13 @@ test("regression (people-self-47): one person with two accounts is one choice â€
 test("the ops account and inactive accounts are never offered", () => {
   expect(pickable([a("ops"), a("gone", { is_active: false }), a("hr")], "ops").map((x) => x.id)).toEqual(["hr"]);
 });
+
+test("every designated ops holder in a multi-holder set or flagged is_tenant_ops is excluded", () => {
+  const list = [
+    a("ops-1"),
+    a("ops-2"),
+    { ...a("ops-3"), is_tenant_ops: true },
+    a("staff"),
+  ];
+  expect(pickable(list, new Set(["ops-1", "ops-2"])).map((x) => x.id)).toEqual(["staff"]);
+});

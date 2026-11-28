@@ -53,7 +53,9 @@ pub async fn complete(
         let mut events = Vec::new();
         if value["state"] != "complete" {
             let targets: Vec<Value> = sqlx::query_scalar(
-                "SELECT jsonb_build_object('event_id',f->'event_id') FROM audit_events a \
+                "SELECT CASE WHEN EXISTS (SELECT 1 FROM audit_events source WHERE source.org_id=a.org_id \
+                    AND source.id=(f->>'event_id')::uuid AND NOT EXISTS (SELECT 1 FROM ordinary_audit_events e WHERE e.id=source.id)) \
+                    THEN 'null'::jsonb ELSE jsonb_build_object('event_id',f->'event_id') END FROM audit_events a \
                  CROSS JOIN LATERAL jsonb_array_elements(a.after_snap#>'{evidence,flagged}') c \
                  CROSS JOIN LATERAL jsonb_array_elements(c) f \
                  WHERE a.org_id=$1 AND a.id=$2 \
@@ -62,6 +64,9 @@ pub async fn complete(
                  WHERE a.org_id=$1 AND a.id=$2")
                 .bind(p.org_id.as_uuid()).bind(serde_json::from_value::<Uuid>(value["id"].clone()).map_err(AccessError::internal)?)
                 .fetch_all(tx.as_mut()).await?;
+            if targets.iter().any(Value::is_null) {
+                return Err(AccessError::conflict("review_scope_changed", "frozen evidence is outside the current review scope"));
+            }
             let findings: BTreeMap<String, &Value> = value["findings"].as_array().ok_or_else(|| AccessError::internal("invalid findings"))?
                 .iter().map(|f| (target_key(f), f)).collect();
             let mut open = Vec::new();

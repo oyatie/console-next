@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+x-console-authz: {"permission": "tenant:edit", "scope": "ops"}
 tags: [platform]
 operationId: requestCompanyDomainChange
 summary: Tenant ops asks the platform operator to change their own company domain
@@ -23,6 +25,8 @@ requestBody:
           slug:
             type: string
             pattern: ^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$
+          expected_pending_domain:
+            type: [string, 'null']
 responses:
   '200':
     description: Request recorded for platform operators
@@ -34,5 +38,7 @@ responses:
     $ref: '#/components/responses/Unauthorized'
   '403':
     $ref: '#/components/responses/Forbidden'
+  '409':
+    description: Pending request changed concurrently or slug already taken
   '422':
     description: Invalid requested company domain

@@ -6,6 +6,7 @@ import { COPY } from "../copy";
 import { fetchOpsMe, opsQueryKeys } from "../lib/api";
 import { classifyOpsError, hasOpsAction } from "../lib/auth";
 import type { LiveStatusSnapshot } from "../lib/live-sse";
+import { useOpsLocale } from "../lib/locale";
 import { OpsContext } from "../lib/ops-context";
 import { opsLiveController } from "../lib/runtime";
 import { OpsShell } from "../shell/ops-shell";
@@ -22,6 +23,7 @@ const DEFAULT_LIVE: LiveStatusSnapshot = {
 };
 
 export function OpsRootLayout() {
+  const locale = useOpsLocale();
   const [evaluatedAt, setEvaluatedAt] = useState<string | undefined>(undefined);
   const reportEvaluatedAt = useCallback((iso: string) => {
     setEvaluatedAt((prev) => (prev === iso ? prev : iso));
@@ -71,7 +73,7 @@ export function OpsRootLayout() {
         evaluatedAt={evaluatedAt ?? meQuery.data.evaluated_at}
         liveController={canHome ? opsLiveController : undefined}
       >
-        <Outlet />
+        <Outlet key={locale} />
       </OpsShell>
     </OpsContext.Provider>
   );

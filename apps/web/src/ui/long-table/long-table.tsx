@@ -159,14 +159,15 @@ export function LongTable<R>(p: {
   const density = p.density ?? "regular";
   // React Aria retains the last explicit height on a layout instance. Cards and editors must start unmeasured.
   const tableLayout = useMemo(() => new FocusableTableLayout(cardLayout || p.editable ? {} : { rowHeight: LAYOUT[density].estimatedRowHeight }), [cardLayout, p.editable, density]);
+  const rowEstimate = rowHeight || LAYOUT[density].estimatedRowHeight;
   const layout = useMemo(() => ({
     ...LAYOUT[density],
-    rowHeight: cardLayout || p.editable ? undefined : rowHeight || LAYOUT[density].estimatedRowHeight,
+    rowHeight: cardLayout || p.editable ? undefined : rowEstimate,
     headingHeight: cardLayout && !p.selection ? 0 : Math.max(LAYOUT[density].headingHeight, p.selection ? Math.ceil(headCheckHeight) + 1 : 0),
     estimatedRowHeight: cardLayout
-      ? (cardHeight ?? (mobileLayout === "compact" ? 56 : LAYOUT[density].estimatedRowHeight))
-      : p.editable ? LAYOUT[density].estimatedRowHeight * 2 : LAYOUT[density].estimatedRowHeight,
-  }), [cardLayout, cardHeight, density, headCheckHeight, mobileLayout, p.editable, p.selection, rowHeight]);
+      ? (cardHeight ?? (mobileLayout === "compact" ? 56 : rowEstimate))
+      : p.editable ? rowEstimate * 2 : rowEstimate,
+  }), [cardLayout, cardHeight, density, headCheckHeight, mobileLayout, p.editable, p.selection, rowEstimate]);
   const loaded = p.rows.map(p.rowId);
   const indices = new Map(p.rows.map((r, i) => [p.rowId(r), p.rowIndex?.(r) ?? i + 1]));
   const sel = p.selection;
@@ -198,7 +199,7 @@ export function LongTable<R>(p: {
         e.stopPropagation();
         p.onRowAction(id);
       }}>
-      {!cardLayout && !p.editable && <span ref={measureRow} className={css.rowMeasure} aria-hidden="true" />}
+      <span ref={measureRow} className={css.rowMeasure} aria-hidden="true" />
       {((!slotted && Boolean(finder)) || p.caption != null) && (
         <div className={css.bar}>
           {/* Held while the count loads: the hints and the search beside it must not slide over when it lands. */}

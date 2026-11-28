@@ -8,7 +8,7 @@ import { expectAccessible, expectAxe } from "./a11y";
 import { apiOf, bearerOf } from "./helpers/api";
 import { redirectTargets, routeList } from "./helpers/route-list";
 import { readQuery } from "./helpers/read-query";
-import { readRequirement } from "../apps/web/src/routes/route-reads";
+import { alternativeRouteReads, overtimeReadAccess, readRequirement, servedRouteReads } from "../apps/web/src/routes/route-reads";
 import { todayKst } from "../apps/web/src/lib/pure/today";
 import { go, routeReady, vendorPage } from "./flows";
 import { expectStable } from "./stability";
@@ -73,7 +73,9 @@ test.describe("route requirements with a real grantless account", () => {
       for (const read of reads) {
         const endpoint = read.replace(/\$[^/]+/g, record);
         const query = new URLSearchParams(readQuery(read, record));
-        const response = await apiOf(reader, token)(`${endpoint}${query.size ? `?${query}` : ""}`);
+        const response = read === "/api/v1/analytics/projection"
+          ? await apiOf(reader, token)(endpoint, "POST", { kind: "money", series: [100, 100, 100], horizon: 1 }, { "Idempotency-Key": randomUUID() })
+          : await apiOf(reader, token)(`${endpoint}${query.size ? `?${query}` : ""}`);
         expect(response.status(), read).toBe(403);
         expect((await response.json()).error.code).toBeTruthy();
       }
@@ -82,16 +84,21 @@ test.describe("route requirements with a real grantless account", () => {
       test(`${path}: one refusal, no page controls at ${width} ${theme}`, async () => {
         const page = themedPages[theme];
         await page.setViewportSize({ width, height: 900 });
-        await go(page, path.replace(/\$[^/]+/g, record), path in redirectTargets);
+        await go(page, path.replace("$objectType", "document").replace(/\$[^/]+/g, record), path in redirectTargets);
         await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
         const main = page.getByRole("main");
         const card = main.getByRole("region", { name: bootKo["common.denied.title.plain"], exact: true });
         await expect(card).toHaveCount(1);
         await expect(card.getByRole("button", { name: bootKo["common.denied.request"], exact: true })).toBeVisible();
         const permission = await card.locator(".state > .muted").innerText();
-        const need = readRequirement(path as Parameters<typeof readRequirement>[0]);
-        const required = "allOf" in need ? need.allOf : [need];
+        const need = Object.hasOwn(servedRouteReads, path) ? servedRouteReads[path as keyof typeof servedRouteReads].access
+          : Object.hasOwn(alternativeRouteReads, path) ? overtimeReadAccess : readRequirement(path as Parameters<typeof readRequirement>[0]);
+        const required = "destinations" in need ? need.destinations : "allOf" in need ? need.allOf : [need];
         for (const entry of required) {
+          if ("servedCapability" in entry) {
+            expect(permission).toContain(ko[`denied.capability.${entry.servedCapability}`]);
+            continue;
+          }
           if ("action" in entry) {
             expect(permission).toContain(ko[`denied.action.${entry.action}` as keyof typeof ko]);
             continue;

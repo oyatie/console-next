@@ -18,11 +18,13 @@ export function useAccessContext() {
     cat,
     roles: roles.data?.items ?? [],
     /** Wait for the arrival read before opening a sheet: cached empty roles would flash a notice. */
-    rolesLoaded: roles.isSuccess && roles.isFetchedAfterMount,
+    rolesLoaded: roles.isSuccess && (roles.isFetchedAfterMount || (roles.isFetching === false && roles.isStale === false)),
     accounts: account ? [account, ...(accounts.data?.items ?? []).filter(a => a.id !== account.id)] : accounts.data?.items ?? [],
     accountsQ: accounts,
     me: me.data?.account_id,
     ops: ops.data?.account_id,
+    opsHolders: ops.data?.holders,
+    opsIds: new Set(ops.data?.holders?.map((h) => h.account_id) ?? (ops.data?.account_id ? [ops.data.account_id] : [])),
     setup: me.data?.phase !== "OPERATING",
   };
 }

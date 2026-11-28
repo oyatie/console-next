@@ -9,15 +9,20 @@ export type ReadyGrant = { account_id: string; enforcement: string; manages_acce
 export type Check =
   | { code: "ops_full"; tone: "ok" }
   | { code: "no_grant" | "no_passkey" | "role_inactive"; tone: "bad"; account: ReadyAccount; alsoNoPasskey?: true }
-  | { code: "only_ops_manages" | "no_accounts"; tone: "info" };
+  | { code: "only_ops_manages" | "no_accounts" | "single_ops_holder"; tone: "info" };
 
 const LIVE = ["ENFORCED", "PREPARED", "SCHEDULED"];
 
 /**
  * The checks, worst first, one per person: no live grant (also saying when the passkey is missing too), else no passkey.
- * `ops` is the ops account's id; deactivated accounts sign in to nothing and are skipped.
+ * `ops` is the ops account's id (or holder set); deactivated accounts sign in to nothing and are skipped.
  */
-export function readiness(accounts: readonly ReadyAccount[], grants: readonly ReadyGrant[], ops: string | undefined): Check[] {
+export function readiness(
+  accounts: readonly ReadyAccount[],
+  grants: readonly ReadyGrant[],
+  ops: string | ReadonlySet<string> | undefined,
+  opsHolderCount?: number,
+): Check[] {
   const staff = pickable(accounts.map((a) => ({ ...a, is_active: a.active })), ops);
   const bad = staff.flatMap((a): Check[] => {
     const mine = grants.filter((g) => g.account_id === a.id);
@@ -28,6 +33,7 @@ export function readiness(accounts: readonly ReadyAccount[], grants: readonly Re
   });
   const managers = grants.some((g) => g.manages_access && LIVE.includes(g.enforcement) && staff.some((a) => a.id === g.account_id));
   const info: Check[] = !staff.length ? [{ code: "no_accounts", tone: "info" }] : managers ? [] : [{ code: "only_ops_manages", tone: "info" }];
+  if (opsHolderCount === 1) info.push({ code: "single_ops_holder", tone: "info" });
   return [...bad, { code: "ops_full", tone: "ok" }, ...info];
 }
 

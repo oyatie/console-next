@@ -5,3 +5,7 @@ properties:
   dry_run_digest:
     type: string
     pattern: ^[0-9a-f]{64}$
+  skip_unresolved:
+    type: boolean
+    default: false
+    description: When true, applies valid insert and update rows while leaving out unresolved row-level items.

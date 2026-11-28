@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { t } from "@console/i18n";
+import { OutcomeLink } from "../../../lib/react/outcome-link";
 import { Button, Check } from "../../../ui/button/button";
 import { buttonClass } from "../../../ui/button/button-class";
 import { Chip } from "../../../ui/chip";
@@ -65,7 +66,7 @@ function consoleReasonText(item: AttentionInboxItem, taskLabel: string): string 
 
 export function ConsoleWorklistTable({
   items, selected, onSelect, onOpen, checkedIds, onToggleCheck, onToggleIds, onToggleAll,
-  shownCols, action, inlineRowAction, focusAfter, extra, moreCount, moreLink, morePending, onMore,
+  shownCols, action, inlineRowAction, focusAfter, extra, moreCount, moreLabel, moreLink, morePending, onMore,
 }: {
   items: readonly AttentionInboxItem[];
   selected?: string;
@@ -81,6 +82,7 @@ export function ConsoleWorklistTable({
   focusAfter?: string;
   extra?: RowAction;
   moreCount?: number;
+  moreLabel?: string;
   moreLink?: ReactNode;
   morePending?: boolean;
   onMore?: () => void;
@@ -224,7 +226,12 @@ export function ConsoleWorklistTable({
             </div>
           );
         }
-        return <div className={s.taskCell}><strong>{taskLead(item)}</strong></div>;
+        return (
+          <div className={s.taskCell} role="presentation" onClick={e => { if (e.target instanceof Element && e.target.closest("a, button")) e.stopPropagation(); }}>
+            <strong>{taskLead(item)}</strong>
+            {item.context?.command_id ? <OutcomeLink id={item.context.command_id} /> : null}
+          </div>
+        );
       },
     },
     {
@@ -276,6 +283,18 @@ export function ConsoleWorklistTable({
     });
   }
 
+  const moreFooter = canMore || moreLink ? (
+    <WorklistMoreBar>
+      {canMore ? (
+        <Button variant="ghost" size="sm" disabled={morePending} onClick={onMore}>
+          <ChevronDown size={14} aria-hidden="true" />
+          {moreLabel ?? t("home.worklist.moreCount", { count: moreCount })}
+        </Button>
+      ) : null}
+      {moreLink}
+    </WorklistMoreBar>
+  ) : null;
+
   return (
     <div ref={tableSectionRef} className={s.tableSection}>
       <Table
@@ -288,18 +307,8 @@ export function ConsoleWorklistTable({
         onSelect={handleSelect}
         onOpen={handleOpen}
         columns={columns}
+        footerRow={moreFooter ? { key: "more", cells: [{ key: "more", span: columns.length, card: "value", content: moreFooter }] } : undefined}
       />
-      {canMore || moreLink ? (
-        <WorklistMoreBar>
-          {canMore ? (
-            <Button variant="ghost" size="sm" disabled={morePending} onClick={onMore}>
-              <ChevronDown size={14} aria-hidden="true" />
-              {t("home.worklist.moreCount", { count: moreCount })}
-            </Button>
-          ) : null}
-          {moreLink}
-        </WorklistMoreBar>
-      ) : null}
     </div>
   );
 }

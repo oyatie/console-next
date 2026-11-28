@@ -51,9 +51,9 @@ function ConsoleAccountSlot({
   return (
     <Suspense
       fallback={
-        <Link to="/account" className={s.accountBtn} aria-label={compact ? name : undefined}>
+        <Link to="/account" className={s.accountBtn}>
           <Avatar name={name} size="sm" tone="accent" />
-          {!compact ? <bdi className={s.accountName}>{name}</bdi> : null}
+          {compact ? <span className="sr-only">{name}</span> : <bdi className={s.accountName}>{name}</bdi>}
         </Link>
       }
     >

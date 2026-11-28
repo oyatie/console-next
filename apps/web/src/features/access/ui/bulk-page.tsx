@@ -64,7 +64,7 @@ export function BulkPage() {
   const pagedAccounts = accountPages.data?.pages.flatMap((page) => page.items) ?? [];
   const serverTotal = accountPages.data?.pages[0]?.total;
   const sourceAccounts = accountPages.isError ? pagedAccounts : accountPages.data ? pagedAccounts : ctx.accounts;
-  const offered = pickable(sourceAccounts, ctx.ops).filter((a) => a.id !== ctx.me);
+  const offered = pickable(sourceAccounts, ctx.opsIds).filter((a) => a.id !== ctx.me);
   const roots = (tree.data?.entities ?? []) as OrgNode[];
   // The chart's order (one order for every list and picker); a name the tree does not hold follows, by name.
   const units = inOrder([...new Set(offered.map((a) => a.employee_org_unit).filter((u): u is string => !!u))].sort(), flatten(roots).map((r) => r.node.name));

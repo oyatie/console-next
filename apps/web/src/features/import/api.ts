@@ -69,9 +69,17 @@ export const dryRun = (runId: string, decisions: ImportDecisions) =>
  * refusal is still immediate, then the job comes back (202) and the screen follows it over the event stream; an applied
  * and settled run answers its report (200). A repeat with the same digest gets the same job.
  */
-export const apply = async (runId: string, digest: string): Promise<{ job: ApplyJob } | { report: ImportReport }> => {
+export const apply = async (
+  runId: string,
+  digest: string,
+  skipUnresolved = false,
+): Promise<{ job: ApplyJob } | { report: ImportReport }> => {
   const out = await unwrap(
-    api.POST("/api/v1/employees/import/{run_id}/apply", { params: { path: { run_id: runId } }, body: { dry_run_digest: digest }, headers: { Prefer: "respond-async" } }),
+    api.POST("/api/v1/employees/import/{run_id}/apply", {
+      params: { path: { run_id: runId } },
+      body: { dry_run_digest: digest, skip_unresolved: skipUnresolved },
+      headers: { Prefer: "respond-async" },
+    }),
   );
   return "state" in out ? { job: out } : { report: out as ImportReport };
 };

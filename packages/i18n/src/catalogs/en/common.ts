@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 // Screen-only copy loads with the locale catalog, after sign-in.
 export const enCommon = {
+  "common.failed.code.membership_changed": "The pay group changed. Select the employee again to confirm the new assignment.",
+  "common.failed.code.pay_group_membership_frozen": "This change overlaps a frozen payroll period or a closed run. Select another effective date.",
   "common.failed.code.pay_group_roster_ambiguous": "This legal entity has more than one pay group, so who belongs to each group is not known yet.",
   "common.failed.code.nationality_unknown": "This code is not in the country catalog. Select a country from the list. The United Kingdom uses GB.",
   "common.failed.code.bulk_register_facts_refused": "Nothing was saved because some register entries cannot be recorded. Review the indicated employees and fields, then apply again.",

@@ -60,6 +60,10 @@ export const FACTS: readonly Fact[] = [
     ],
   },
   {
+    id: "workplace.head", label: "사업장장", record: "Entity.workplace",
+    surfaces: [{ name: "org chart · side panel", page: "chart", via: [{ role: "treeitem", name: "{workplace}", prefix: true }], region: { role: "complementary" } }],
+  },
+  {
     id: "employee.emergency_contact",
     label: "비상연락처",
     record: "HR.employee.emergency_contact",
@@ -82,8 +86,7 @@ export const FACTS: readonly Fact[] = [
 export const UNTRACKED: readonly string[] = [
   // 인사카드
   "성명", "성명 한자 · 영문", "성별", "생년월일", "주소", "휴대전화", "업무 이메일", "개인 이메일", "국적 · 신분증", "근로자 명부 비고", "사진",
-  "사번", "직급", "직위", "직책", "직무", "직군", "고용형태", "입사일", "그룹 입사일", "수습", "경력",
-  "자격·면허", "병역", "어학", "교육", "포상", "가족",
+  "사번", "직급", "직위", "직책", "직무", "직군", "고용형태", "입사일", "그룹 입사일", "수습", "경력", "자격·면허", "병역", "어학", "교육", "포상", "가족",
   // Record-level edits (a section or the whole record from its source), not one fact: 고용 기록, 등록증 보며 (법인)
   "고용 기록", "등록증 보며",
   // 사업장

@@ -15,6 +15,8 @@ export type CanvasPatternProps = PatternBaseProps &
   Pick<ComponentProps<typeof PaneGrid>, "related" | "full" | "onFull" | "onSelect" | "onOpen"> & {
     /** Optional shared toolbar strip beneath `PageHead` (as-of date, compare, search, fold, add). */
     toolbar?: ReactNode;
+    /** Render `toolbar` during the initial pending read when steady controls are already known. */
+    toolbarOnInitialLoad?: boolean;
     /** Required interactive canvas surface (e.g. `OrgCanvas` or empty/first-run surface). */
     canvas: ReactNode;
     /** Optional node or item inspector (`SidePaneSpec` in `PaneGrid`, or docked `<aside>`). */

@@ -65,7 +65,9 @@ test.each([
   ["change request kind", schemas.ChangeRequest!.properties!.kind!, 9],
   ["change request subject_type", schemas.ChangeRequest!.properties!.subject_type!, 5],
   ["access domain", schemas.AccessDomain!, 20],
-  ["action inbox source", schemas.ActionInboxItem!.properties!.kind!, 49],
+  ["action inbox source", schemas.ActionInboxItem!.properties!.kind!, 50],
+  ["payroll preflight check key", schemas.PayrollPreflightCheck!.properties!.key!, 4],
+  ["setting entry source layer", schemas.SettingEntry!.properties!.source!.properties!.layer!, 7],
 ] as const)("%s permits future response values and retains every documented value", (_, schema, count) => {
   expect(schema.type).toBe("string");
   expect(schema.enum).toBeUndefined();

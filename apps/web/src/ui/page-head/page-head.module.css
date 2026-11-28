@@ -24,7 +24,16 @@
   padding-bottom: 0;
 }
 :where([data-experience]:not([data-experience="baseline"])) .title {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-h);
   font-size: var(--text-lg);
+}
+:where([data-experience]:not([data-experience="baseline"])) .meta {
+  line-height: var(--lh-tight);
+}
+:where([data-experience]:not([data-experience="baseline"])) .meta > * {
+  min-block-size: 0;
 }
 :where([data-experience]:not([data-experience="baseline"])) .row > :global(.btn),
 :where([data-experience]:not([data-experience="baseline"])) .tools > :global(.btn),

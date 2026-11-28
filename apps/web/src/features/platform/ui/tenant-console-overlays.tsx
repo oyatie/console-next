@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
-import { SupportLookup } from "../../../lib/react/support-lookup";
+import { SupportLookupForm } from "../../../lib/react/support-lookup";
 import { Button } from "../../../ui/button/button";
 import { Dialog } from "../../../ui/dialog";
 import type { Issued, Org, Recorded } from "../api";
@@ -64,7 +64,7 @@ export function TenantConsoleOverlays({
       />
       <CodeDialog issued={issued} onClose={finishCode} />
       <Dialog open={lookupOpen} title={t("tenants.supportLookup.title")} onClose={onCloseLookup}>
-        <SupportLookup />
+        <SupportLookupForm />
         <div className="form__actions">
           <Button onClick={onCloseLookup}>{t("tenants.code.close")}</Button>
         </div>

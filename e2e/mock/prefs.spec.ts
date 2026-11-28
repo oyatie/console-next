@@ -208,7 +208,7 @@ for (const [experience, light, dark, primaryLight, primaryDark] of experiences) 
         expect(locale!.y + locale!.height).toBeLessThanOrEqual(banner!.y + banner!.height);
       }
       if (screen.key === "people") {
-        const find = await main.getByRole("searchbox", { name: t("people.find.placeholder"), exact: true }).boundingBox();
+        const find = await main.getByRole("searchbox", { name: t("roster.find"), exact: true }).boundingBox();
         expect(find!.x).toBeGreaterThanOrEqual(0);
         expect(find!.x + find!.width).toBeLessThanOrEqual(width);
       }

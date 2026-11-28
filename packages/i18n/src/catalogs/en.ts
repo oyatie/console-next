@@ -7,6 +7,7 @@ import { enPrivacyRefusals } from "./en/privacy";
 import { enLeave } from "./en/leave";
 import { enOrgChangeRefusals } from "./en/org_change";
 import { enPayroll } from "./en/payroll";
+import { enPayrollOutlook } from "./en/payroll-outlook";
 import { enPayrollRun } from "./en/payroll-run";
 import { enPayslip } from "./en/payslip";
 import { enUiShiftBar } from "./en/ui-shift-bar";
@@ -31,6 +32,8 @@ import { enAccounts } from "./en/accounts";
 import { enAccess } from "./en/access";
 import { enAccessReview } from "./en/access-review";
 import { enAccessLog } from "./en/access-log";
+import { enInternalCalendar } from "./en/internal-calendar";
+import { enBenefits } from "./en/benefits";
 import { enAudit } from "./en/audit";
 import { enAccessCodes } from "./en/access-codes";
 import { enDenied } from "./en/denied";
@@ -38,12 +41,16 @@ import { enAccessGrants } from "./en/access-grants";
 import { enAccount } from "./en/account";
 import { enPeriodLocks } from "./en/period-locks";
 import { enAttendance } from "./en/attendance";
+import { enAttendanceRefusals } from "./en/attendance.refuse";
 import { enAttendanceSchedule } from "./en/attendance-schedule";
 import { enAttendancePatterns } from "./en/attendance-patterns";
 import { enAttendanceHolidays } from "./en/attendance-holidays";
 import { enAttendanceCrews } from "./en/attendance-crews";
 import { enAttendanceOverview } from "./en/attendance-overview";
 import { enAttendanceRecords } from "./en/attendance-records";
+import { enCompliance } from "./en/compliance";
+import { enConsulting } from "./en/consulting";
+import { enEvaluation } from "./en/evaluation";
 import { enMe } from "./en/me";
 import { enTeam } from "./en/team";
 import { enImport } from "./en/import";
@@ -145,6 +152,7 @@ import { enPeopleJump } from "./en/people-jump";
 export const en = {
   ...enUiFlexibleColumns,
   ...enSettingsHub,
+  ...enOvertimeAttestation,
   ...enGovernanceRefusals,
   ...enAccountLinkRefusals,
   ...enPeriodUnlockRefusals,
@@ -163,6 +171,8 @@ export const en = {
   ...enAccess,
   ...enAccessReview,
   ...enAccessLog,
+  ...enInternalCalendar,
+  ...enBenefits,
   ...enAudit,
   ...enAccessCodes,
   ...enDenied,
@@ -170,6 +180,7 @@ export const en = {
   ...enAccount,
   ...enPeriodLocks,
   ...enAttendance,
+  ...enAttendanceRefusals,
   ...enAttendanceSchedule,
   ...enAttendancePatterns,
   ...enAttendanceHolidays,
@@ -270,7 +281,7 @@ export const en = {
   ...enEmpDoc,
   ...enPeopleJump,
   ...enOpsRecovery,
-  ...enNts, ...enPayroll, ...enPayrollRun, ...enPayslip,
+  ...enNts, ...enPayroll, ...enPayrollOutlook, ...enPayrollRun, ...enPayslip,
   ...enCommon,
   ...enSupport,
   ...enSupportAccess,
@@ -278,13 +289,15 @@ export const en = {
   ...enDirectoryViews,
   ...enUiWorklist,
   ...enUiLedger,
-  ...enMe,
-  ...enTeam,
-  ...enShellRoutes,
+  ...enCompliance, ...enConsulting, ...enEvaluation, ...enMe, ...enTeam, ...enShellRoutes, ...enAccessPolicies, ...enAccessCheck, ...enAuth,
 } as const;
 
 export type ScreenMessageId = keyof typeof en;
+import { enAccessCheck } from "./en/access-check";
+import { enAccessPolicies } from "./en/access-policies";
+import { enAuth } from "./en/auth";
 import { enDirectoryViews } from "./en/directory-views";
+import { enOvertimeAttestation } from "./en/settings-hub.attestation";
 import { enSettingsHub } from "./en/settings-hub";
 import { enShellRoutes } from "./en/shell-routes";
 import { enUiWorklist } from "./en/ui-worklist";

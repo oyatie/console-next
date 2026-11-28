@@ -11,8 +11,10 @@ import { mockRoute } from "../mock/route";
 import { draft, employeePayScreen, mockEmployeePay } from "../mock/employee-pay";
 import { commitLabel } from "../../apps/web/src/ui/composer/actions";
 import { expectAxe, fits } from "../a11y";
+import { seededDateStyle } from "../experience";
 test.beforeAll(() => loadCatalog("ko"));
-for (const state of Object.keys(employeePayScreen.states)) for (const [width, colorScheme] of [[1440, "light"], [1440, "dark"], [390, "light"], [390, "dark"]] as const) test(`employee pay ${state} ${width} ${colorScheme}`, async ({ page }) => {
+for (const state of Object.keys(employeePayScreen.states)) for (const [width, colorScheme] of [[1440, "light"], [1440, "dark"], [390, "light"], [390, "dark"]] as const) test(`employee pay ${state} ${width} ${colorScheme}`, async ({ page, storageState }) => {
+  const rateDate = fmtDate("2026-01-01", { style: seededDateStyle(storageState) });
   await page.setViewportSize({ width, height: 900 });
   await page.emulateMedia({ colorScheme });
   const fixture = await mockScreen(page, payrollScreens[0], "populated");
@@ -69,7 +71,7 @@ for (const state of Object.keys(employeePayScreen.states)) for (const [width, co
           await expect(minimum.getByText("12,345원", { exact: true })).toBeVisible();
           await expect(minimum.getByRole("link")).toHaveCount(0);
           await expect(minimum.getByText(/https:\/\/example.com\/payroll-source/)).toBeVisible();
-          await expect(minimum).toContainText("2026. 01. 01.");
+          await expect(minimum).toContainText(rateDate);
           await expect(deductions.getByText("3,422,222원", { exact: true })).toBeVisible();
         }
         const blockers = main.getByRole("list", { name: t("payroll.employee.blockers") });
@@ -80,7 +82,7 @@ for (const state of Object.keys(employeePayScreen.states)) for (const [width, co
           await expect(refusal).toBeVisible();
           await expect(refusal.getByRole("link")).toHaveCount(0);
           await expect(refusal.getByText(/https:\/\/example.com\/payroll-source/)).toBeVisible();
-          await expect(refusal).toContainText("2026. 01. 01.");
+          await expect(refusal).toContainText(rateDate);
           await expect(main).not.toContainText("backend sentence must not render");
           await expect(main).not.toContainText("월 소정근로시간이 근로계약에 없다");
         }

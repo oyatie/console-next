@@ -25,6 +25,14 @@ test.describe("catalog isolation in one worker", () => {
     } finally { await page.close(); fixture.release(); }
   });
 
+  test.describe("English browser locale", () => {
+    test.use({ locale: "en-US" });
+    test("honors the browser locale for this test @ui-state", async ({}, info) => {
+      expect(info.workerIndex).toBe(workerIndex);
+      expect(i18n.locale).toBe("en");
+    });
+  });
+
   // Use the unextended test so setup cannot hide a missing teardown from the English test.
   base("Korean screen inherits the restored catalog @ui-state", async ({ page }, info) => {
     expect(info.workerIndex).toBe(workerIndex);

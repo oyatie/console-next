@@ -72,7 +72,7 @@ describe("dry run answers", () => {
       review: { count: 0, blocking: 0, items: [], groups: [] },
     });
     expect(picksPending(d, initialPicks())).toBe(false);
-    expect(applyBlockers(d, initialPicks())).toEqual({ rows: 0, pending: false, any: false });
+    expect(applyBlockers(d, initialPicks())).toEqual({ rows: 0, pending: false, any: false, canSkip: false, sheetBlocking: false });
   });
 
   it("the served queue's blocking items block apply; the rest never do", () => {

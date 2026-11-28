@@ -13,6 +13,10 @@ use sqlx::PgPool;
 use time::{Duration, OffsetDateTime};
 use tower::ServiceExt;
 
+#[path = "compliance_catalog_api/fixtures.rs"]
+mod fixtures;
+use fixtures::{audit_count, seed_branch, seed_user};
+
 const TEST_ISSUER: &str = "console-platform-auth";
 const TEST_AUDIENCE: &str = "console-api";
 
@@ -29,6 +33,8 @@ async fn compliance_catalog_enforces_real_scope_and_audits(pool: PgPool) {
         .unwrap();
     let branch = seed_branch(&pool, "catalog primary").await;
     let other_branch = seed_branch(&pool, "catalog isolated").await;
+    sqlx::query("INSERT INTO tenant_module_enrollments(org_id,module_key,enabled,change_ref) VALUES ($1,'compliance',true,'catalog authorization fixture')")
+        .bind(OrgId::one().as_uuid()).execute(&pool).await.unwrap();
     let admin = UserId::new();
     let super_admin = UserId::new();
     seed_user(&pool, admin, "ADMIN", Some(branch)).await;
@@ -105,6 +111,7 @@ async fn compliance_catalog_enforces_real_scope_and_audits(pool: PgPool) {
             "jurisdiction": "KR",
             "citation": "Serious Accidents Punishment Act",
             "impact_area": "safety",
+            "effective_from": [2026,60],
             "impact_summary": "Assign accountable control owners.",
             "risk_level": "HIGH",
             "metadata": {"source": "integration-test"}
@@ -114,6 +121,7 @@ async fn compliance_catalog_enforces_real_scope_and_audits(pool: PgPool) {
     assert_eq!(regulation.status, StatusCode::OK, "{:?}", regulation.json);
     assert_eq!(regulation.json["created_by"], super_admin.to_string());
     assert_eq!(regulation.json["risk_level"], "HIGH");
+    assert_eq!(regulation.json["effective_from"], "2026-03-01");
     assert_eq!(regulation.json["status"], "DRAFT");
     assert_eq!(
         audit_count(&pool, "compliance.regulation_impact.create").await,
@@ -135,6 +143,34 @@ async fn compliance_catalog_enforces_real_scope_and_audits(pool: PgPool) {
         invalid_id.json
     );
 
+    let site = fixtures::seed_site(&pool, other_branch).await;
+    let mut site_obligation = obligation_body(other_branch);
+    site_obligation["scope"] =
+        json!({"kind":"SITE","scope_ref":site,"site_id":site,"branch_id":other_branch});
+    let matching = request(
+        service.clone(),
+        "POST",
+        "/api/v1/compliance/obligations",
+        Some(&super_token),
+        Some(site_obligation.clone()),
+    )
+    .await;
+    assert_eq!(matching.status, StatusCode::OK, "{}", matching.json);
+    site_obligation["scope"]["branch_id"] = json!(branch);
+    let mismatched = request(
+        service.clone(),
+        "POST",
+        "/api/v1/compliance/obligations",
+        Some(&admin_token),
+        Some(site_obligation),
+    )
+    .await;
+    assert_eq!(
+        mismatched.status,
+        StatusCode::UNPROCESSABLE_ENTITY,
+        "{}",
+        mismatched.json
+    );
     let branch_obligation = obligation_body(branch);
     let created = request(
         service.clone(),
@@ -150,7 +186,7 @@ async fn compliance_catalog_enforces_real_scope_and_audits(pool: PgPool) {
     assert_eq!(created.json["scope"]["kind"], "BRANCH");
     assert_eq!(created.json["severity"], "HIGH");
     assert_eq!(created.json["status"], "DRAFT");
-    assert_eq!(audit_count(&pool, "compliance.obligation.create").await, 1);
+    assert_eq!(audit_count(&pool, "compliance.obligation.create").await, 2);
 
     let outside_scope = request(
         service,
@@ -269,68 +305,4 @@ fn app_state(pool: PgPool, public_key: String) -> Result<AppState, console_app::
         ])?,
         DatabaseDependency::Postgres(pool),
     )
-}
-
-async fn seed_branch(pool: &PgPool, name: &str) -> BranchId {
-    let region: uuid::Uuid =
-        sqlx::query_scalar("INSERT INTO regions (name, org_id) VALUES ($1, $2) RETURNING id")
-            .bind(format!("{name} region"))
-            .bind(*OrgId::one().as_uuid())
-            .fetch_one(pool)
-            .await
-            .unwrap();
-    BranchId::from_uuid(
-        sqlx::query_scalar(
-            "INSERT INTO branches (region_id, name, org_id) VALUES ($1, $2, $3) RETURNING id",
-        )
-        .bind(region)
-        .bind(name)
-        .bind(*OrgId::one().as_uuid())
-        .fetch_one(pool)
-        .await
-        .unwrap(),
-    )
-}
-
-async fn seed_user(pool: &PgPool, user_id: UserId, role: &str, branch: Option<BranchId>) {
-    sqlx::query("INSERT INTO users (id, display_name, roles, org_id) VALUES ($1, $2, $3, $4)")
-        .bind(*user_id.as_uuid())
-        .bind(format!("catalog {role}"))
-        .bind(vec![role])
-        .bind(*OrgId::one().as_uuid())
-        .execute(pool)
-        .await
-        .unwrap();
-    if let Some(branch) = branch {
-        sqlx::query("INSERT INTO user_branches (user_id, branch_id, org_id) VALUES ($1, $2, $3)")
-            .bind(*user_id.as_uuid())
-            .bind(*branch.as_uuid())
-            .bind(*OrgId::one().as_uuid())
-            .execute(pool)
-            .await
-            .unwrap();
-    }
-    // The tokens stamp subject freshness 1 (the row's defaults); the live row
-    // must exist at mint, as a sign-in would read it.
-    let mut tx = pool.begin().await.unwrap();
-    sqlx::query("SELECT set_config('app.current_org', $1, true)")
-        .bind(OrgId::one().as_uuid().to_string())
-        .execute(tx.as_mut())
-        .await
-        .unwrap();
-    sqlx::query("INSERT INTO subject_authz_versions (org_id, user_id) VALUES ($1, $2)")
-        .bind(*OrgId::one().as_uuid())
-        .bind(*user_id.as_uuid())
-        .execute(tx.as_mut())
-        .await
-        .unwrap();
-    tx.commit().await.unwrap();
-}
-
-async fn audit_count(pool: &PgPool, action: &str) -> i64 {
-    sqlx::query_scalar("SELECT COUNT(*) FROM audit_events WHERE action = $1")
-        .bind(action)
-        .fetch_one(pool)
-        .await
-        .unwrap()
 }

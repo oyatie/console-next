@@ -21,8 +21,13 @@ pub mod resolve;
 pub mod snapshot;
 mod value;
 
-pub use change::{AcceptedChange, Direction, LOOSENING_DELAY, check_change, direction};
-pub use definition::{Governance, LooserWhen, SettingDef, SettingKind, SettingValue, Unit};
+pub use change::{
+    AcceptedChange, Direction, LOOSENING_DELAY, check_change, check_scoped_change, direction,
+};
+pub use definition::{
+    Governance, LooserWhen, ScopeCeiling, SettingDef, SettingKind, SettingValue, Unit,
+    WorkerFavorable,
+};
 pub use error::SettingError;
 pub use keys::{SettingKey, UnknownKey};
 pub use resolve::{OverrideRow, resolve, resolve_chain};

@@ -1,15 +1,17 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { fmtDate, fmtDateTime, fmtNumber } from "@console/i18n/format";
 import { SEARCH_DEBOUNCE_MS } from "../../../lib/freshness";
 import { readIdentity } from "../../../lib/query";
+import { APPROVAL_SUBMISSION_MODULE, moduleReady, modulesQuery } from "../../../reference/onboarding/api";
 import { useMarkActiveCachedQuery } from "../../../lib/react/cached-pages";
 import { QueryState } from "../../../lib/react/query-state";
 import { columnSelection } from "../../../lib/react/use-column-selection";
 import { Button } from "../../../ui/button/button";
+import { buttonClass } from "../../../ui/button/button-class";
 import { Card } from "../../../ui/card/card";
 import { ChainStepper } from "../../../ui/chain-stepper/chain-stepper";
 import { Chip } from "../../../ui/chip";
@@ -131,6 +133,11 @@ function useApprovalsSearch() {
   return { box, urlQuery, source, selection, filters, set, query, setQuery, inbox, first, items, tabs, sourceOptions };
 }
 
+function NewApprovalLink() {
+  const modules = useQuery(modulesQuery);
+  return moduleReady(modules.data, APPROVAL_SUBMISSION_MODULE) ? <Link to="/approvals/new" className={buttonClass("primary", { size: "sm" })}>{t("approvals.new.cta")}</Link> : null;
+}
+
 function BaselineApprovalsPage() {
   const { box, urlQuery, source, selection: { sel, full, expand, restore, select }, filters, set, query, setQuery, inbox, items, tabs, sourceOptions } = useApprovalsSearch();
   const opened = useQuery({ ...approvalDocumentQuery(sel ?? ""), enabled: Boolean(sel), refetchOnMount: "always" });
@@ -138,7 +145,7 @@ function BaselineApprovalsPage() {
   const filtered = Boolean(urlQuery || source);
   const reset = () => { setQuery(""); set({ q: undefined, source: undefined, ...CLOSED }); };
   return (
-    <Page floorplan="P-03" head={{ title: t("approvals.title"), tabs }} toolbar={<div ref={filters} className={s.filters} role="group" aria-label={t("approvals.filters.label")}>
+    <Page floorplan="P-03" head={{ title: t("approvals.title"), tabs, actions: <NewApprovalLink /> }} toolbar={<div ref={filters} className={s.filters} role="group" aria-label={t("approvals.filters.label")}>
       <SearchField label={t("approvals.filters.search")} value={query} onChange={setQuery} />
       <SelectField hideLabel label={t("approvals.filters.source")} placeholder={t("approvals.filters.allSources")} options={sourceOptions} value={source ?? ALL_SOURCES} onChange={id => set({ source: id === ALL_SOURCES ? undefined : id, ...CLOSED })} />
       {filtered && <Button variant="ghost" onClick={reset}>{t("approvals.filters.reset")}</Button>}
@@ -242,7 +249,7 @@ function ConsoleApprovalsPage() {
       q={inbox}
       viewportLock
       tabs={tabs}
-      head={{ title: t("approvals.title"), titleId: "approvals-title" }}
+      head={{ title: t("approvals.title"), titleId: "approvals-title", actions: <NewApprovalLink /> }}
       find={<div ref={findBox} data-list-find=""><WorklistSearchField label={t("approvals.filters.search")} value={query} onChange={setQuery} /></div>}
       filters={<div ref={filters} className={s.consoleFilters} role="group" aria-label={t("approvals.filters.label")}>
         <SelectField hideLabel label={t("approvals.filters.source")} placeholder={t("approvals.filters.allSources")} options={sourceOptions} value={source ?? ALL_SOURCES} onChange={id => { setBlockedKey(null); setDismissedKey(null); set({ source: id === ALL_SOURCES ? undefined : id, ...CLOSED }); }} />
@@ -301,6 +308,8 @@ function ConsoleApprovalsPage() {
   );
 }
 
+const LazyApprovalNewPage = lazy(() => import("./approval-new-page").then(m => ({ default: m.ApprovalNewPage })));
+export function ApprovalNew() { return <Suspense fallback={null}><LazyApprovalNewPage /></Suspense>; }
 export function ApprovalsPage() {
   return <ExperienceSwitch baseline={() => <BaselineApprovalsPage />}>{() => <ConsoleApprovalsPage />}</ExperienceSwitch>;
 }

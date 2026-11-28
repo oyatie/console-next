@@ -53,7 +53,7 @@ vi.mock("../../../reference/authz/ui/access-gate", () => ({
   ),
 }));
 vi.mock("../../../lib/react/query-state", () => ({ QueryState: ({ children }: { children: (d?: unknown) => ReactNode }) => children([]) }));
-vi.mock("../../../lib/react/support-lookup", () => ({ SupportLookup: () => null }));
+vi.mock("../../../lib/react/support-lookup", () => ({ SupportLookupForm: () => null }));
 vi.mock("./onboard-form", () => ({ OnboardDialog: () => null }));
 vi.mock("./code-dialog", () => ({ CodeDialog: () => null }));
 vi.mock("./tenant-console-panel", () => ({ TenantConsolePanel: ({ org }: { org: Org }) => <div data-console-panel={org.id} /> }));

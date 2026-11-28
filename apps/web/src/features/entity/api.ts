@@ -180,6 +180,9 @@ export const setKind = (key: string, workplaceId: string, kind_code: string | nu
 /** A workplace's code (unique among open workplaces; a code a closed one held comes back with the warning code_reused). */
 export const setWorkplaceCode = (key: string, workplaceId: string, code: string | null) =>
   unwrap(api.PUT("/api/v1/workplaces/{workplaceId}/code", { params: { header: once(key), path: { workplaceId } }, body: { code } }));
+/** Appoints or clears the head of an open workplace (direct in both phases, audited). */
+export const setWorkplaceHead = (key: string, workplaceId: string, head_employee_id: string | null) =>
+  unwrap(api.PUT("/api/v1/workplaces/{workplaceId}/head", { params: { header: once(key), path: { workplaceId } }, body: { head_employee_id } }));
 
 // --- lane: CRUD ---
 /** Whether a legal entity or workplace is deleted (never used) or closed, and why not the other (the server decides by use). */

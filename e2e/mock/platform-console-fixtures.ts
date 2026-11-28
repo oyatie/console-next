@@ -203,6 +203,34 @@ export async function setupPlatformMocks(
       if (g) { g.members = g.members.filter((m) => m.id !== o.id); g.member_count = g.members.length; }
       return { status: 200, json: o };
     });
+    await mockRoute(page, "post", "/api/platform/groups/{id}/invitations", (request) => {
+      const parts = new URL(request.url()).pathname.split("/");
+      const g = groups.find((item) => item.id === parts.at(-2)!);
+      const body = request.postDataJSON() as { org_id: string };
+      const o = orgs.find((item) => item.id === body.org_id);
+      if (!g || !o) return { status: 404, json: failure("not_found") };
+      const created = {
+        id: id(288),
+        group_id: g.id,
+        group_slug: g.slug,
+        group_name: g.name,
+        org_id: o.id,
+        org_slug: o.slug,
+        org_name: o.name,
+        status: "PENDING" as const,
+        requested_at: AT,
+        expires_at: "2026-12-05T09:00:00Z",
+      };
+      g.pending_invitations = [...(g.pending_invitations ?? []), created];
+      return { status: 201, json: created };
+    });
+    await mockRoute(page, "delete", "/api/platform/groups/{id}/invitations/{invitation_id}", (request) => {
+      const parts = new URL(request.url()).pathname.split("/");
+      const g = groups.find((item) => item.id === parts.at(-3)!);
+      const invId = parts.at(-1)!;
+      if (g) g.pending_invitations = (g.pending_invitations ?? []).filter((item) => item.id !== invId);
+      return { status: 204, body: "" };
+    });
     await mockRoute(page, "get", "/api/platform/groups/{id}/accounts", (request) => ({ status: 200, json: groupAccounts[new URL(request.url()).pathname.split("/").at(-2)!] ?? [] }));
     await mockRoute(page, "post", "/api/platform/groups/{id}/accounts", (request) => {
       const gid = new URL(request.url()).pathname.split("/").at(-2)!;

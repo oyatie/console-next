@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { isMessageId, t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
+import { chunk } from "../../../lib/chunk-guard";
 import { reasonLabel } from "../../../lib/reason-codes";
 import { ApiError, settingHistoryQuery } from "../../../reference/settings/api";
 import { Banner } from "../../../ui/banner/banner";
@@ -23,12 +25,21 @@ import s from "./settings-hub.module.css";
 
 const settingsCopy: SummaryCopy = (id, values) => (isMessageId(id) ? t(id, values) : t("settingsHub.unknown"));
 
+const PolicyBoundsSection = lazy(() =>
+  chunk(import("./overtime-attestation-panel")).then((m) => ({ default: m.PolicyBoundsSection })),
+);
+const OvertimeAttestationPanel = lazy(() =>
+  chunk(import("./overtime-attestation-panel")).then((m) => ({ default: m.OvertimeAttestationPanel })),
+);
+
 export function PolicyInspector({
   entry,
+  scopeEntityId = null,
   canChange,
   onEdit,
 }: {
   entry: SettingEntry;
+  scopeEntityId?: string | null;
   canChange: boolean;
   onEdit: () => void;
 }) {
@@ -91,6 +102,16 @@ export function PolicyInspector({
             {t("shellRoutes.pair", { primary: entry.legal_basis.authority, secondary: entry.legal_basis.title })}
           </ExternalLink>
         </RecordPaneSection>
+      )}
+
+      <Suspense fallback={null}>
+        <PolicyBoundsSection entry={entry} />
+      </Suspense>
+
+      {entry.key === "attendance.overtime_recognition" && (
+        <Suspense fallback={null}>
+          <OvertimeAttestationPanel scopeEntityId={scopeEntityId} />
+        </Suspense>
       )}
 
       {entry.chain.length > 0 && (

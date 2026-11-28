@@ -12,6 +12,15 @@ fn apply(item: Option<&Obligation>, event: &str, fields: Value) -> Obligation {
     Obligation::evolve(item, &event).unwrap()
 }
 
+fn countersign(item: Option<&Obligation>, outcome: &str, fields: Value) -> Obligation {
+    let event = serde_json::from_value(json!({"event":outcome,"fields":fields})).unwrap();
+    let pending = Obligation::apply_record(item, &event, "operator-a", 2).unwrap();
+    assert!(pending.is_open());
+    let confirm = Event::Countersigned { proposal_seq: 2 };
+    assert!(Obligation::apply_record(Some(&pending), &confirm, "operator-a", 3).is_err());
+    Obligation::apply_record(Some(&pending), &confirm, "operator-b", 3).unwrap()
+}
+
 fn open(kind: &str, title: &str, due: Option<&str>) -> Obligation {
     apply(
         None,
@@ -34,15 +43,22 @@ fn readiness_never_turns_green_for_empty_or_open_gates() {
     let blocked = launch_readiness(Ok(&[gate.clone(), review.clone()]));
     assert_eq!(blocked.text, "Blocked: 2 launch gates open");
     assert_eq!(blocked.worst, Health::Degraded);
-    let done = apply(
+    let done = countersign(
         Some(&gate),
         "done",
-        json!({"evidence_ref":"receipt","signer":"Synthetic owner","signed_on":"2026-10-27"}),
+        json!({
+            "evidence_ref": "docs/ops/launch-check.md",
+            "counsel_url": "https://counsel.cosskorea.invalid/opinions/lg-01",
+            "signed_on": "2026-10-27"
+        }),
     );
-    let waived = apply(
+    let waived = countersign(
         Some(&review),
         "waived",
-        json!({"reason":"Superseded","signer":"Synthetic owner"}),
+        json!({
+            "reason": "Superseded",
+            "counsel_url": "docs/ops/waiver-lg-02.md"
+        }),
     );
     assert_eq!(
         launch_readiness(Ok(&[done.clone(), review])).text,
@@ -158,4 +174,52 @@ fn worklist_tiebreak_due_orders_each_bucket_by_earliest_date() {
     ];
     let work = worklist(&items, datetime!(2026-11-20 00:00 UTC), 7);
     assert_eq!(work, [7, 6, 5, 4, 3, 2, 1, 0].map(|i| &items[i]));
+}
+
+#[test]
+fn launch_gate_requires_distinct_two_operator_signoff_and_structured_counsel_url() {
+    use console_ops_domain::obligation::Refusal;
+
+    let gate = open("launch-gate", "Launch check", None);
+    let missing_co = serde_json::from_value::<Event>(json!({
+        "event": "done",
+        "fields": {
+            "evidence_ref": "docs/ops/launch-check.md",
+            "signer": "op-a",
+            "signed_on": "2026-10-27"
+        }
+    }))
+    .unwrap();
+    assert_eq!(
+        Obligation::apply_record(Some(&gate), &missing_co, "op-a", 2),
+        Err(Refusal::Invalid)
+    );
+
+    let same_signer = serde_json::from_value::<Event>(json!({
+        "event": "done",
+        "fields": {
+            "evidence_ref": "docs/ops/launch-check.md",
+            "signer": "op-a",
+            "co_signer": "OP-A",
+            "signed_on": "2026-10-27"
+        }
+    }))
+    .unwrap();
+    assert_eq!(
+        Obligation::apply_record(Some(&gate), &same_signer, "op-a", 2),
+        Err(Refusal::Invalid)
+    );
+
+    let unstructured_url = serde_json::from_value::<Event>(json!({
+        "event": "done",
+        "fields": {
+            "evidence_ref": "plain-note-only",
+            "signed_on": "2026-10-27"
+        }
+    }))
+    .unwrap();
+    assert_eq!(
+        Obligation::apply_record(Some(&gate), &unstructured_url, "op-a", 2),
+        Err(Refusal::Invalid)
+    );
 }

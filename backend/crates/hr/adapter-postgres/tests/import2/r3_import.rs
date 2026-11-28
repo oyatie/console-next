@@ -207,6 +207,7 @@ async fn regression_the_entity_comes_from_the_workplace_never_the_sheet_name(poo
 fn body(digest: &str) -> EmployeeImportApplyRequest {
     EmployeeImportApplyRequest {
         dry_run_digest: digest.into(),
+        skip_unresolved: false,
     }
 }
 

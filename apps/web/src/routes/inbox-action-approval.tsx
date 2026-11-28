@@ -32,10 +32,12 @@ export function ApprovalRunInlineRowActions({
   id,
   focusAfter = "inbox-title",
   onSelectForReject,
+  onDecided,
 }: {
   id: string;
   focusAfter?: string;
   onSelectForReject: () => void;
+  onDecided?: () => void;
 }) {
   const detail = freshOnOpen(useQuery({ ...approvalDocumentQuery(id), refetchOnMount: "always" }));
   const doc = detail.data;
@@ -44,7 +46,10 @@ export function ApprovalRunInlineRowActions({
     run: (_input: undefined, key: string) =>
       decideApproval(id, { decision: "APPROVE", seen_fingerprint: doc!.fingerprint, opinion: "" }, key),
     invalidates: ["/api/v1/me/action-inbox", "/api/v1/approvals"],
-    onSuccess: () => focusSoon(focusAfter),
+    onSuccess: () => {
+      if (onDecided) onDecided();
+      else focusSoon(focusAfter);
+    },
     announce: res =>
       t(
         res.decision === "APPROVED"
@@ -158,6 +163,11 @@ export function ApprovalRunWorklistDecisionFooter({
   onDecided?: () => void;
 }) {
   const [opinion, setOpinion] = useState("");
+  const [prevId, setPrevId] = useState(id);
+  if (prevId !== id) {
+    setPrevId(id);
+    if (opinion) setOpinion("");
+  }
   const detail = freshOnOpen(useQuery({ ...approvalDocumentQuery(id), refetchOnMount: "always" }));
   const doc = detail.data;
 
@@ -166,8 +176,8 @@ export function ApprovalRunWorklistDecisionFooter({
     invalidates: ["/api/v1/me/action-inbox", "/api/v1/approvals"],
     onSuccess: () => {
       setOpinion("");
-      onDecided?.();
-      focusSoon(focusAfter);
+      if (onDecided) onDecided();
+      else focusSoon(focusAfter);
     },
     announce: res =>
       t(
@@ -206,6 +216,7 @@ export function ApprovalRunWorklistDecisionFooter({
     <div className={s.footerWrap}>
       <CommandError error={decide.error} />
       <DecisionPane
+        resetKey={id}
         opinion={opinion}
         onOpinionChange={setOpinion}
         pending={

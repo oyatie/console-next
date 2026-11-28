@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { personName } from "../../../reference/person/present";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -14,6 +15,7 @@ import { useCommand } from "../../../lib/react/command";
 import { get } from "../../../lib/query";
 import { EMPLOYEE_STATUS, label } from "../../../lib/labels";
 import { PasskeyError } from "../../../lib/react/passkey-error";
+import { useInviteWithRolesSlot } from "../../../reference/authz/ui/use-invite-roles-slot";
 import { createAccount, employeeQuery } from "../api";
 import { useFocusInvalid } from "./use-focus-invalid";
 import { useIssueCode, type Issued } from "./use-issue-code";
@@ -32,10 +34,8 @@ const own = (code: string) => {
 
 /**
  * Invites an account for a person: an employee picked from the server (preselected when opened from their record), or,
- * by an explicit switch, someone who is not an employee. There are no preset roles (governance-01): the account is
- * created with no access, and the code dialog continues into granting access. An employee who already has an account stops
- * the invite and opens that account instead. The account is created already linked (one keyed request), then the
- * admin's passkey step-up mints the first sign-in code; a failed code retries alone.
+ * by an explicit switch, someone who is not an employee. By default the account is created with no access, and the
+ * administrator can optionally expand initial role/scope grants to execute atomically in one transaction.
  */
 export function InviteSheet({ employeeId, onClose, onIssued, onOpenAccount }: {
   employeeId?: string;
@@ -71,8 +71,10 @@ export function InviteSheet({ employeeId, onClose, onIssued, onOpenAccount }: {
   const loginError = loginValue.trim() ? loginProblem(loginValue) : null;
   const domain = useQuery(get("/api/v1/users/me")).data?.sign_in_id?.split("@")[1];
 
+  const renderInviteWithRoles = useInviteWithRolesSlot();
   // The account, once created: a failed code issue then retries only the issue, never the creation.
   const [created, setCreated] = useState<{ id: string; name: string; signInId?: string | null } | null>(null);
+  const [grantingRoles, setGrantingRoles] = useState(false);
   const issue = useIssueCode(onIssued);
   const create = useCommand({
     run: (_: void, key: string) =>
@@ -86,6 +88,75 @@ export function InviteSheet({ employeeId, onClose, onIssued, onOpenAccount }: {
   });
   const block = inviteBlock({ created: created !== null, nonEmployee, who: who !== null, name: displayName, login: loginValue, existing: !!existing, checking: linked.isFetching });
   const blockedWhy = block ? t(block) : null;
+
+  const accountFields = (
+    <div ref={box} className="form">
+      <fieldset className="form__group" disabled={created !== null}>
+        {nonEmployee ? (
+          <Field label={t("accounts.invite.name")} required error={tried && displayName === "" ? t("accounts.invite.pickName") : undefined}>
+            {(p) => <TextInput {...p} value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" />}
+          </Field>
+        ) : (
+          <ServerPicker
+            label={t("accounts.invite.who")}
+            query={text}
+            onQueryChange={setQuery}
+            options={options.map((e) => ({ ...personOption(e, options), status: e.status ? label(EMPLOYEE_STATUS, e.status) : undefined }))}
+            value={who?.id ?? null}
+            onChange={(id) => setPicked(options.find((e) => e.id === id) ?? null)}
+            group={t("accounts.invite.who.group")}
+            loading={found.isFetching}
+            empty={t("accounts.invite.who.none")}
+            isRequired
+          />
+        )}
+        {!nonEmployee && who && <PersonLabel person={{ ...who, employee_id: who.id }} peers={options} />}
+        {!nonEmployee && tried && who == null && <span className="field__error" role="alert">{t("accounts.invite.pickWho")}</span>}
+        <Field
+          label={t("accounts.invite.signInId")}
+          required={false}
+          unit={domain ? `@${domain}` : undefined}
+          error={tried && loginError && loginError !== "empty" ? t(`accounts.signInId.problem.${loginError}`) : undefined}
+        >
+          {(p) => (
+            <TextInput {...p} value={loginValue} maxLength={LOGIN_MAX} autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} onChange={(e) => setLogin(e.target.value)} />
+          )}
+        </Field>
+        <div className="row">
+          <Button variant="ghost" onClick={() => (setNonEmployee(!nonEmployee), setTried(false))}>
+            {t(nonEmployee ? "accounts.invite.fromEmployees" : "accounts.invite.nonEmployee")}
+          </Button>
+          {created === null && renderInviteWithRoles && (
+            <Button variant="ghost" onClick={() => (setGrantingRoles(!grantingRoles), setTried(false))}>
+              {t(grantingRoles ? "accounts.invite.removeRoles" : "accounts.invite.addRoles")}
+            </Button>
+          )}
+        </div>
+        {who && linked.isFetching && <span className="muted" role="status">{t("accounts.invite.checking")}</span>}
+        {existing && (
+          <div className="alert" role="alert">
+            {t("accounts.invite.exists")}
+            <Button variant="ghost" onClick={() => onOpenAccount(existing.id)}>{t("accounts.invite.openExisting")}</Button>
+          </div>
+        )}
+      </fieldset>
+    </div>
+  );
+
+  if (grantingRoles && created === null && renderInviteWithRoles) {
+    return renderInviteWithRoles({
+      accountFields,
+      displayName,
+      employeeId: who?.id,
+      normalizedLogin: loginValue.trim() ? normalizeLogin(loginValue) : null,
+      accountBlockedWhy: blockedWhy,
+      onTriedAccount: () => setTried(true),
+      onFocusInvalid: focusInvalid,
+      onClose,
+      onIssued,
+    });
+  }
+
   const commit = () => {
     setTried(true);
     if (created) return issue.mutate(created);
@@ -127,52 +198,7 @@ export function InviteSheet({ employeeId, onClose, onIssued, onOpenAccount }: {
         </>
       }
     >
-      <div ref={box} className="form">
-        <fieldset className="form__group" disabled={created !== null}>
-          {nonEmployee ? (
-            <Field label={t("accounts.invite.name")} required  error={tried && displayName === "" ? t("accounts.invite.pickName") : undefined}>
-              {(p) => <TextInput {...p} value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" />}
-            </Field>
-          ) : (
-            <ServerPicker
-              label={t("accounts.invite.who")}
-              query={text}
-              onQueryChange={setQuery}
-              options={options.map((e) => ({ ...personOption(e, options), status: e.status ? label(EMPLOYEE_STATUS, e.status) : undefined }))}
-              value={who?.id ?? null}
-              onChange={(id) => setPicked(options.find((e) => e.id === id) ?? null)}
-              group={t("accounts.invite.who.group")}
-              loading={found.isFetching}
-              empty={t("accounts.invite.who.none")}
-              isRequired
-            />
-          )}
-          {!nonEmployee && who && <PersonLabel person={{ ...who, employee_id: who.id }} peers={options} />}
-          {!nonEmployee && tried && who == null && <span className="field__error" role="alert">{t("accounts.invite.pickWho")}</span>}
-          <Field
-            label={t("accounts.invite.signInId")}
-            required={false}
-            unit={domain ? `@${domain}` : undefined}
-            error={tried && loginError && loginError !== "empty" ? t(`accounts.signInId.problem.${loginError}`) : undefined}
-          >
-            {(p) => (
-              <TextInput {...p} value={loginValue} maxLength={LOGIN_MAX} autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} onChange={(e) => setLogin(e.target.value)} />
-            )}
-          </Field>
-          <div className="row">
-            <Button variant="ghost" onClick={() => (setNonEmployee(!nonEmployee), setTried(false))}>
-              {t(nonEmployee ? "accounts.invite.fromEmployees" : "accounts.invite.nonEmployee")}
-            </Button>
-          </div>
-          {who && linked.isFetching && <span className="muted" role="status">{t("accounts.invite.checking")}</span>}
-          {existing && (
-            <div className="alert" role="alert">
-              {t("accounts.invite.exists")}
-              <Button variant="ghost" onClick={() => onOpenAccount(existing.id)}>{t("accounts.invite.openExisting")}</Button>
-            </div>
-          )}
-        </fieldset>
-      </div>
+      {accountFields}
       {created && issue.error ? <Muted>{t("accounts.invite.created", { name: created.name })}</Muted> : null}
       <CommandError error={create.error} own={own} />
       <PasskeyError error={issue.error} />

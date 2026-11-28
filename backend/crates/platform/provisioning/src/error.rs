@@ -53,8 +53,17 @@ pub enum ProvisioningError {
     #[error("conflict: {0}")]
     Conflict(String),
 
+    #[error("forbidden: {0}")]
+    Forbidden(String),
+
+    #[error("invalid input: {0}")]
+    InvalidInput(String),
+
     #[error("only the tenant ops account may request a company-domain change")]
     DomainRequestForbidden,
+
+    #[error("pending company-domain request changed concurrently")]
+    DomainRequestConflict,
 
     /// Another tenant already uses the slug (UNIQUE `organizations.slug`).
     #[error("tenant slug is taken")]

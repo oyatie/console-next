@@ -20,6 +20,10 @@
       return null;
     }
   }
+  function rollbackActive() {
+    try { return Boolean(sessionStorage.getItem("console.experience.rollback")); }
+    catch { return false; } // The authenticated workspace read resolves the tenant setting.
+  }
   for (var name in prefs) {
     var value = null;
     try {
@@ -27,8 +31,11 @@
     } catch {
       // Storage can refuse the read (private mode, blocked site data): that is no choice either.
     }
-    if (name === "experience" && value === "control-room") value = "console";
-    if (prefs[name].values.indexOf(value) < 0) value = name === "theme" ? system() : null;
+    if (name === "experience") {
+      if (value === "control-room") value = "console";
+      if (rollbackActive()) value = "baseline";
+    }
+    if (prefs[name].values.indexOf(value) < 0) value = name === "theme" ? system() : name === "experience" ? "console" : null;
     if (value) document.documentElement.setAttribute("data-" + name, value);
   }
   // Published so there is one list of each. Today only tests read them; choosing an experience will check against them.

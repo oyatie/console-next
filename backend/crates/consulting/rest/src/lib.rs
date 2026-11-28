@@ -3,6 +3,7 @@
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
 
 mod openapi;
+mod options;
 pub use openapi::OPENAPI_FRAGMENT;
 
 use axum::extract::{Path, Query, State};
@@ -12,7 +13,7 @@ use axum::routing::get;
 use axum::{Json, Router};
 use console_kernel_core::{AuditAction, AuditEvent, BranchScope, KernelError, OrgId, UserId};
 use console_platform_auth::JwtVerifier;
-use console_platform_authz::{Action, Feature, Principal, authorize_org_wide};
+use console_platform_authz::{Feature, Principal, authorize_org_wide};
 use console_platform_db::{DbError, with_audits, with_org_conn};
 use console_platform_request_context::{RequestContextError, current_audit_context, current_org};
 use serde::{Deserialize, Serialize};
@@ -21,6 +22,7 @@ use sqlx::{PgPool, Postgres, Row};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+pub const CONSULTING_OPTIONS_PATH: &str = "/api/v1/consulting/options";
 pub const CONSULTING_ENGAGEMENTS_PATH: &str = "/api/v1/consulting/engagements";
 pub const CONSULTING_ENGAGEMENT_PATH: &str = "/api/v1/consulting/engagements/{engagement_id}";
 pub const CONSULTING_DIAGNOSTICS_PATH: &str =
@@ -35,6 +37,7 @@ pub const CONSULTING_OBSERVATIONS_PATH: &str =
     "/api/v1/consulting/engagements/{engagement_id}/observations";
 pub const CONSULTING_HISTORY_PATH: &str = "/api/v1/consulting/engagements/{engagement_id}/history";
 pub const CONSULTING_ROUTE_PATHS: &[&str] = &[
+    CONSULTING_OPTIONS_PATH,
     CONSULTING_ENGAGEMENTS_PATH,
     CONSULTING_ENGAGEMENT_PATH,
     CONSULTING_DIAGNOSTICS_PATH,
@@ -60,6 +63,7 @@ pub fn router(state: ConsultingRestState) -> Router {
     let verifier = state.jwt_verifier.clone();
     let pool = state.pool.clone();
     let router = Router::new()
+        .route(CONSULTING_OPTIONS_PATH, get(options::list_options))
         .route(
             CONSULTING_ENGAGEMENTS_PATH,
             get(list_engagements).post(create_engagement),
@@ -84,7 +88,9 @@ pub fn router(state: ConsultingRestState) -> Router {
         )
         .route(CONSULTING_HISTORY_PATH, get(list_history))
         .with_state(state);
-    console_platform_request_context::with_request_context(router, verifier, pool)
+    console_platform_request_context::with_request_context(router, verifier, pool).layer(
+        axum::Extension(console_platform_request_context::tenant_module::TenantModule::Consulting),
+    )
 }
 
 #[derive(Deserialize)]
@@ -137,54 +143,7 @@ struct Engagement {
 /// returning 0 in every deployed database. Until then this is live compatibility
 /// code, not dead code, and `legacy_component_array_replay_survives_rfc3339_switch`
 /// in `backend/app/tests/consulting_engagement_api.rs` proves it.
-mod engagement_timestamp {
-    use serde::de::Error as _;
-    use serde::{Deserialize, Deserializer, Serializer};
-    use time::format_description::well_known::Rfc3339;
-    use time::{Date, OffsetDateTime, Time, UtcOffset};
-
-    /// `time`'s two persisted shapes: RFC 3339 (current) and the component array
-    /// its non-human-readable `Serialize` impl emits (legacy, read-only).
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum Stored {
-        Rfc3339(String),
-        LegacyComponents(i32, u16, u8, u8, u8, u32, i8, i8, i8),
-    }
-
-    pub(super) fn serialize<S: Serializer>(
-        value: &OffsetDateTime,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error> {
-        time::serde::rfc3339::serialize(value, serializer)
-    }
-
-    pub(super) fn deserialize<'de, D: Deserializer<'de>>(
-        deserializer: D,
-    ) -> Result<OffsetDateTime, D::Error> {
-        match Stored::deserialize(deserializer)? {
-            Stored::Rfc3339(raw) => OffsetDateTime::parse(&raw, &Rfc3339).map_err(D::Error::custom),
-            Stored::LegacyComponents(
-                year,
-                ordinal,
-                hour,
-                minute,
-                second,
-                nanosecond,
-                offset_hours,
-                offset_minutes,
-                offset_seconds,
-            ) => {
-                let date = Date::from_ordinal_date(year, ordinal).map_err(D::Error::custom)?;
-                let time = Time::from_hms_nano(hour, minute, second, nanosecond)
-                    .map_err(D::Error::custom)?;
-                let offset = UtcOffset::from_hms(offset_hours, offset_minutes, offset_seconds)
-                    .map_err(D::Error::custom)?;
-                Ok(date.with_time(time).assume_offset(offset))
-            }
-        }
-    }
-}
+mod engagement_timestamp;
 
 #[derive(Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -532,6 +491,11 @@ async fn transition(
     let actor = principal(&state, &headers).await?;
     require(&actor, true)?;
     required(&body.reason, "reason")?;
+    if body.approval_id.is_some() && body.to_status != "APPROVED" {
+        return Err(RestError::kernel(KernelError::validation(
+            "approvalId applies only to approval",
+        )));
+    }
     let org = current_org().map_err(rest_error_from_request_context)?;
     let actor_id = *actor.user_id.as_uuid();
     let value = with_audits(&state.pool, org, |tx| Box::pin(async move {
@@ -614,7 +578,7 @@ async fn record_observation(
     let actor_id = *actor.user_id.as_uuid();
     let item = with_audits(&state.pool, org, |tx| Box::pin(async move {
         let engagement = ensure_writable_engagement(tx, id).await?;
-        if engagement.status != "IMPLEMENTED" {
+        if !matches!(engagement.status.as_str(), "IMPLEMENTED" | "MEASURED") {
             return Err(DbError::Sqlx(sqlx::Error::Protocol(
                 "implementation review must be completed before a benefit observation".into(),
             )));
@@ -868,13 +832,26 @@ fn required(value: &str, field: &str) -> Result<(), RestError> {
         Ok(())
     }
 }
+#[must_use]
+pub fn consulting_access(principal: &Principal) -> (bool, bool) {
+    (
+        require(principal, false).is_ok(),
+        require(principal, true).is_ok(),
+    )
+}
+
+fn require_customer_read(principal: &Principal) -> Result<(), RestError> {
+    console_platform_authz::authorize_capability(principal, Feature::WorkOrderReadAll.into())
+        .map_err(RestError::kernel)
+}
+
 fn require(principal: &Principal, write: bool) -> Result<(), RestError> {
     let feature = if write {
         Feature::ConsultingManage
     } else {
         Feature::ConsultingRead
     };
-    let action = Action::new(feature);
+    let action = feature.into();
     let allowed = match &principal.branch_scope {
         BranchScope::All => authorize_org_wide(principal, action),
         // Engagements do not carry a branch/site key. Allowing any one branch to

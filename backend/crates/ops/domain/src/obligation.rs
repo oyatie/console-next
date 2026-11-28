@@ -2,7 +2,10 @@
 use serde::{Deserialize, Serialize};
 use time::{Date, OffsetDateTime, UtcOffset};
 
-use crate::{Health, Verdict};
+pub use crate::obligation_guards::{is_structured_counsel_url, launch_readiness, worklist};
+use crate::obligation_guards::{present, validate_signer_fields};
+
+mod attestation;
 
 time::serde::format_description!(iso_date, Date, "[year]-[month]-[day]");
 
@@ -63,12 +66,23 @@ pub enum Event {
     Done {
         evidence_ref: Option<String>,
         signer: Option<String>,
+        #[serde(default)]
+        co_signer: Option<String>,
+        #[serde(default)]
+        counsel_url: Option<String>,
         #[serde(default, with = "iso_date::option")]
         signed_on: Option<Date>,
+    },
+    Countersigned {
+        proposal_seq: u64,
     },
     Waived {
         reason: Option<String>,
         signer: Option<String>,
+        #[serde(default)]
+        co_signer: Option<String>,
+        #[serde(default)]
+        counsel_url: Option<String>,
     },
 }
 
@@ -91,6 +105,13 @@ impl Refusal {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct GateProposal {
+    pub seq: u64,
+    pub outcome: State,
+    pub reason: Option<String>,
+}
+
 // State is reconstructed only through validated events, never deserialized from a snapshot.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Obligation {
@@ -100,19 +121,39 @@ pub struct Obligation {
     #[serde(with = "iso_date::option")]
     due: Option<Date>,
     state: State,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pending_signoff: Option<GateProposal>,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    requires_reattestation: bool,
     evidence_ref: Option<String>,
     signer: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    co_signer: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    counsel_url: Option<String>,
     #[serde(with = "iso_date::option")]
     signed_on: Option<Date>,
-}
-
-fn present(value: &Option<String>) -> bool {
-    value.as_ref().is_some_and(|value| !value.trim().is_empty())
 }
 
 impl Obligation {
     /// Replay under the spool's append lock; a refusal leaves the previous state intact.
     pub fn evolve(current: Option<&Self>, event: &Event) -> Result<Self, Refusal> {
+        if current.is_some_and(|item| item.kind == Kind::LaunchGate)
+            && matches!(
+                event,
+                Event::Done { .. } | Event::Waived { .. } | Event::Countersigned { .. }
+            )
+        {
+            return Err(Refusal::Invalid);
+        }
+        Self::apply(current, event, true)
+    }
+
+    fn apply(
+        current: Option<&Self>,
+        event: &Event,
+        validate_signoff: bool,
+    ) -> Result<Self, Refusal> {
         if current.is_some_and(|item| !item.is_open()) {
             return Err(Refusal::Final);
         }
@@ -133,8 +174,12 @@ impl Obligation {
                 title: title.clone(),
                 due: *due,
                 state: State::Open,
+                pending_signoff: None,
+                requires_reattestation: false,
                 evidence_ref: evidence_ref.clone(),
                 signer: None,
+                co_signer: None,
+                counsel_url: None,
                 signed_on: None,
             });
         }
@@ -148,16 +193,39 @@ impl Obligation {
             Event::Done {
                 evidence_ref,
                 signer,
+                co_signer,
+                counsel_url,
                 signed_on: Some(signed_on),
             } if present(evidence_ref) && present(signer) => {
+                if validate_signoff {
+                    validate_signer_fields(signer, co_signer, counsel_url)?;
+                }
                 item.state = State::Done;
                 item.evidence_ref = evidence_ref.clone();
                 item.signer = signer.clone();
+                item.co_signer = co_signer.as_ref().filter(|s| !s.trim().is_empty()).cloned();
+                item.counsel_url = counsel_url
+                    .as_ref()
+                    .filter(|s| !s.trim().is_empty())
+                    .cloned();
                 item.signed_on = Some(*signed_on);
             }
-            Event::Waived { reason, signer } if present(reason) && present(signer) => {
+            Event::Waived {
+                reason,
+                signer,
+                co_signer,
+                counsel_url,
+            } if present(reason) && present(signer) => {
+                if validate_signoff {
+                    validate_signer_fields(signer, co_signer, counsel_url)?;
+                }
                 item.state = State::Waived;
                 item.signer = signer.clone();
+                item.co_signer = co_signer.as_ref().filter(|s| !s.trim().is_empty()).cloned();
+                item.counsel_url = counsel_url
+                    .as_ref()
+                    .filter(|s| !s.trim().is_empty())
+                    .cloned();
             }
             Event::Opened { .. } | Event::InReview { .. } => return Err(Refusal::Invalid),
             _ => return Err(Refusal::Incomplete),
@@ -191,6 +259,14 @@ impl Obligation {
 
     pub fn signer(&self) -> Option<&str> {
         self.signer.as_deref()
+    }
+
+    pub fn co_signer(&self) -> Option<&str> {
+        self.co_signer.as_deref()
+    }
+
+    pub fn counsel_url(&self) -> Option<&str> {
+        self.counsel_url.as_deref()
     }
 
     pub fn signed_on(&self) -> Option<Date> {
@@ -238,51 +314,4 @@ impl Obligation {
             Some(days) => format!("D+{}", -days),
         }
     }
-}
-
-/// Call only after obligation.read is allowed, passing the verified source or its failure reason.
-pub fn launch_readiness(source: Result<&[Obligation], &str>) -> Verdict {
-    let items = match source {
-        Ok(items) => items,
-        Err(reason) => {
-            return Verdict {
-                text: format!("Unknown: {reason}"),
-                worst: Health::Unknown,
-            };
-        }
-    };
-    let gates: Vec<_> = items
-        .iter()
-        .filter(|item| item.kind == Kind::LaunchGate)
-        .collect();
-    let open = gates.iter().filter(|item| item.is_open()).count();
-    if gates.is_empty() {
-        Verdict {
-            text: "Unknown: no launch gates recorded".into(),
-            worst: Health::Unknown,
-        }
-    } else if open > 0 {
-        Verdict {
-            text: format!("Blocked: {} open", crate::count_text(open, "launch gate")),
-            worst: Health::Degraded,
-        }
-    } else {
-        Verdict {
-            text: format!(
-                "Ready: all {} done or waived (signed)",
-                crate::count_text(gates.len(), "launch gate")
-            ),
-            worst: Health::Healthy,
-        }
-    }
-}
-
-/// Input must be chain-verified and Cedar-authorized before computing any worklist or count.
-pub fn worklist(items: &[Obligation], now: OffsetDateTime, due_soon_days: u32) -> Vec<&Obligation> {
-    let mut keyed: Vec<_> = items
-        .iter()
-        .filter_map(|item| item.worklist_key(now, due_soon_days).map(|key| (key, item)))
-        .collect();
-    keyed.sort_by_key(|(key, _)| *key);
-    keyed.into_iter().map(|(_, item)| item).collect()
 }

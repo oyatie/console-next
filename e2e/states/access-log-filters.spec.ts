@@ -2,7 +2,9 @@
 import { installFaultClock } from "./fault-clock";
 import { expect, test } from "@playwright/test";
 import { expectAxe, fits } from "../a11y";
+import { seededDateStyle, seededExperience } from "../experience";
 import { loadCatalog, t } from "@console/i18n";
+import { fmtDate } from "@console/i18n/format";
 import { failure, id } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
 import { filtersFixture } from "./access-log-filters-fixture";
@@ -95,7 +97,7 @@ test("access-log date-only apply clears unavailable choices shown as All @ui-sta
   } finally { fixture.release(); }
 });
 
-test("access-log refusal offers recovery without retry and resolves actor names @ui-state", async ({ page }) => {
+test("access-log refusal offers recovery without retry and resolves actor names @ui-state", async ({ page, storageState }) => {
   const fixture = await filtersFixture(page);
   await page.route(url => url.pathname === "/api/v1/access/access-log" && url.searchParams.get("action") === "unavailable",
     route => route.fulfill({ status: 422, json: { error: { code: "filter_invalid", message: "choose an available option" } } }));
@@ -105,7 +107,11 @@ test("access-log refusal offers recovery without retry and resolves actor names 
     await expect(page.getByRole("button", { name: "다시 불러오기", exact: true })).toHaveCount(0);
     await expect(page.getByLabel("적용한 필터", { exact: true })).toContainText("김민수");
     await expect(page.getByLabel("적용한 필터", { exact: true })).not.toContainText(id(101));
-    await expect(page.getByLabel("점검 기간", { exact: true })).toHaveValue("2026-10");
+    if (seededExperience(storageState) === "baseline") {
+      await expect(page.getByLabel("점검 기간", { exact: true })).toHaveValue("2026-10");
+    } else {
+      await expect(page.getByRole("group", { name: t("attendance.period.label"), exact: true })).toContainText(/2026.*10/);
+    }
     expect(fixture.requests.map(params => Object.fromEntries(params))).toEqual([{ flagged: "false", limit: "1" }]);
     await page.getByRole("button", { name: "검색 초기화", exact: true }).click();
     await expect(page.getByRole("grid")).toBeVisible();
@@ -225,7 +231,7 @@ test("access-log explains an unavailable server filter @ui-state", async ({ page
 });
 
 for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
-  test(`access-log recovers filter choices after refusal at ${width}px in ${theme} @ui-state`, async ({ page }, testInfo) => {
+  test(`access-log recovers filter choices after refusal at ${width}px in ${theme} @ui-state`, async ({ page, storageState }, testInfo) => {
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const fixture = await filtersFixture(page);
@@ -239,7 +245,7 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
       await expect(summary).not.toContainText("unavailable");
       await expect(summary).toContainText("직원 명부 내보내기");
       await expect(summary).toContainText("직원");
-      await expect(summary).toContainText("2026. 10. 05.");
+      await expect(summary).toContainText(fmtDate("2026-10-05", { style: seededDateStyle(storageState) }));
       await expect(page.getByRole("button", { name: "필터 선택", exact: true })).toHaveCount(1);
       await page.getByRole("button", { name: "필터 선택", exact: true }).click();
       await page.getByRole("combobox", { name: "접속자", exact: true }).selectOption({ label: "김민수" });
@@ -289,12 +295,16 @@ for (const state of ["unsupported", "failed", "refused"] as const) {
   });
 }
 
-test("access-log month changes clear choices from the previous month @ui-state", async ({ page }) => {
+test("access-log month changes clear choices from the previous month @ui-state", async ({ page, storageState }) => {
   const fixture = await filtersFixture(page);
   try {
     await page.goto(`/audit/access-log?period=2026-10&view=all&actor=${id(101)}&action=employee.export&target_type=employee&from=2026-10-05&to=2026-10-20`);
     await expect(page.getByRole("grid")).toBeVisible();
-    await page.getByLabel("점검 기간", { exact: true }).fill("2026-11");
+    if (seededExperience(storageState) === "baseline") {
+      await page.getByLabel("점검 기간", { exact: true }).fill("2026-11");
+    } else {
+      await page.getByRole("button", { name: t("attendanceRecords.toolbar.nextMonth"), exact: true }).click();
+    }
     await expect.poll(() => Object.fromEntries(fixture.requests.at(-1)!)).toEqual({ period: "2026-11", flagged: "false", limit: "200" });
     expect(new URL(page.url()).searchParams.has("actor")).toBe(false);
     expect(fixture.unexpected).toEqual([]);

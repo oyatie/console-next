@@ -48,4 +48,7 @@ export const koAccessGrants: Record<keyof typeof enAccessGrants, string> = {
   "accessGrants.requests.when": "요청일",
   "accessGrants.requests.done": "처리됨",
   "accessGrants.requests.decline": "거절",
+  "accessGrants.ready.single_ops_holder": "확인: 운영 계정 보유자 1명 지정됨 (최대 2명)",
+  "accessGrants.ready.single_ops_holder.text": "현재 {name}님만 운영 계정 보유자로 지정되어 있습니다. 보조 보유자를 한 명 더 지정해 두면 기기 분실 시 공급사 대기 기간 없이 복구할 수 있습니다.",
+  "accessGrants.ready.single_ops_holder.fix": "보유자 관리",
 };

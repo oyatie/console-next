@@ -106,8 +106,7 @@ test("Tenants tab: filters, view URL sync, SupportLookup, Admin OTP reissue, Ops
 
   await main.getByRole("button", { name: t("tenants.supportLookup.title") }).click();
   const lookupDialog = page.getByRole("dialog");
-  await lookupDialog.locator("summary").click();
-  await lookupDialog.getByRole("textbox").fill("sup-401");
+  await lookupDialog.getByRole("textbox", { name: t("tenants.supportLookup.reference") }).fill("sup-401");
   await lookupDialog.getByRole("button", { name: t("tenants.supportLookup.action") }).click();
   await expect(lookupDialog.getByText("trace-sup-401")).toBeVisible();
   await lookupDialog.getByRole("button", { name: t("tenants.code.close") }).first().click();
@@ -257,6 +256,14 @@ test("Support tab: KPI filtering, request, maker-checker approve/409, start toke
   await expect(main.locator(`[data-id="${SUP_1}"]`)).toHaveCount(0);
   await main.getByRole("button", { name: t("tenants.view.all"), exact: true }).click();
   await expect(main.locator(`[data-id="${SUP_1}"]`)).toBeVisible();
+
+  await main.getByRole("button", { name: t("tenants.supportLookup.title") }).click();
+  const lookup = page.getByRole("dialog", { name: t("tenants.supportLookup.title") });
+  const reference = lookup.getByRole("textbox", { name: t("tenants.supportLookup.reference") });
+  await reference.fill("sup-401");
+  await reference.press("Enter");
+  await expect(lookup.getByText("trace-sup-401")).toBeVisible();
+  await lookup.getByRole("button", { name: t("tenants.code.close") }).first().click();
 
   await main.getByRole("button", { name: t("tenants.support.request") }).click();
   const reqDialog = page.getByRole("dialog");

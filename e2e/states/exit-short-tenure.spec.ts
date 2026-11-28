@@ -4,6 +4,7 @@ import { expect, test } from "@playwright/test";
 import type { components } from "@console/api";
 import { fmtDate } from "@console/i18n/format";
 import { expectAxe, fits } from "../a11y";
+import { seededDateStyle } from "../experience";
 import { AT, authz, id } from "../mock/fixtures";
 import { mockExitCase } from "../mock/people-exits";
 import { mockRoute } from "../mock/route";
@@ -54,7 +55,7 @@ for (const theme of ["light", "dark"]) for (const [reason, num, den, label] of [
   ["UNDER_SERVICE_YEARS", 2, 1, "근속 2년 미만"],
   ["UNDER_WEEKLY_HOURS", 29, 2, "주 29/2시간 미만"],
 ] as const) {
-  test(`server severance decision ${reason} ${theme} @ui-state`, async ({ page }) => {
+  test(`server severance decision ${reason} ${theme} @ui-state`, async ({ page, storageState }) => {
     await page.setViewportSize({ width: 390, height: 1000 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const fixture = await settlement(page, outcome(reason, num, den));
@@ -72,7 +73,7 @@ for (const theme of ["light", "dark"]) for (const [reason, num, den, label] of [
       await expect(figures.getByRole("group", { name: "평균임금 (1일)", exact: true })).toHaveCount(0);
       await expect(figures.getByRole("group", { name: "통상임금 (1일)", exact: true })).toHaveCount(0);
       await expect(figures).not.toContainText("0원");
-      await expect(figures).toContainText(fmtDate("2026-07-01"));
+      await expect(figures).toContainText(fmtDate("2026-07-01", { style: seededDateStyle(storageState) }));
       await expect(page.getByLabel("평균임금 산정 시작일")).toHaveCount(0);
       await expect(page.getByLabel("월 통상임금")).toHaveCount(0);
       await fits(page, `severance/${reason}/${theme}`);

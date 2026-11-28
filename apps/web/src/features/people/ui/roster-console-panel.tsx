@@ -22,6 +22,7 @@ import { rrnStatusQuery } from "../api/record";
 import { retirementDate } from "../domain/employment";
 import { offeredVerbs } from "../domain/roster";
 import { plannedWhat } from "../present";
+import { EndActions } from "./end-actions";
 import { ExitPeek } from "./exit-peek";
 import { buildPanelBasicItems, buildPanelSummaryItems } from "./roster-console-panel-data";
 import { RosterPanelTabBody } from "./roster-console-panel-tabs";
@@ -90,8 +91,8 @@ function ConsolePeek({
       moduleReady(modules.data, "payroll") &&
       accessRefusal(access.data, operationAccess["GET /api/v1/payroll/employees/{employeeId}/payslip-draft"]) === null,
   );
-  const attMonth = useQuery({ ...personMonthPeekQuery(e.id, month), enabled: canAttendance, retry: false });
-  const payDraft = useQuery({ ...payslipDraftPeekQuery(e.id, month, payDate), enabled: canPayroll, retry: false });
+  const attMonth = useQuery({ ...personMonthPeekQuery(e.id, month), enabled: canAttendance && tab === "attendance", retry: false });
+  const payDraft = useQuery({ ...payslipDraftPeekQuery(e.id, month, payDate), enabled: canPayroll && tab === "payroll", retry: false });
   const { linked } = useLinkedAccount(e, c.users);
 
   const placeParts = [c.place.entity, ...(e.workplace_id ? [c.place.workplace, ...c.place.path] : [t("empCard.unplaced")])].filter(Boolean);
@@ -194,11 +195,7 @@ function ConsolePeek({
                 {t("people.panel.act.cert")}
               </Button>
             </>
-          ) : (
-            <Button size="sm" variant="secondary" onClick={() => openCard()}>
-              {t("people.panel.open")}
-            </Button>
-          )
+          ) : null
         }
       />
 
@@ -231,6 +228,12 @@ function ConsolePeek({
             />
           )}
         </Tabs>
+        {c.manage ? <QueryState q={c.register}>{() => null}</QueryState> : null}
+        {c.manage ? (
+          <nav className="row" aria-label={t("crud.person.ends")}>
+            <EndActions id={e.id} />
+          </nav>
+        ) : null}
       </div>
     </div>
   );

@@ -291,3 +291,54 @@ test("Console import inline repair & step-up PII_RECORD, data-health drilldown, 
     baseline.release();
   }
 });
+
+test("Console /people/records/import previews, gates name mismatch acknowledgment, and applies section rows", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const fixture = await setupConsoleSaeonPeople(page, { experience: "console", canManage: true });
+  let appliedBody: unknown = null;
+  const empId = "00000000-0000-4000-8350-000000000101";
+  await mockRoute(page, "post", "/api/v1/employee-records/{section}/import/preview", {
+    status: 200,
+    json: {
+      section: "EDUCATION",
+      applied: false,
+      rows: [
+        { row: 1, employee_id: empId, stored_name: "Stored Person", name_mismatch: true, outcome: "CREATE", entry_id: null, code: null, message: null },
+        { row: 2, employee_id: null, stored_name: null, name_mismatch: false, outcome: "ERROR", entry_id: null, code: "employee_not_found", message: "No matching employee" },
+      ],
+      plan_digest: "digest-edu-wave4-test-0001",
+    },
+  });
+  await mockRoute(page, "post", "/api/v1/employee-records/{section}/import/apply", req => {
+    appliedBody = req.postDataJSON();
+    return {
+      status: 200,
+      json: {
+        section: "EDUCATION" as const,
+        applied: true,
+        rows: [
+          { row: 1, employee_id: empId, stored_name: "Stored Person", name_mismatch: true, outcome: "CREATE" as const, entry_id: empId, code: null, message: null },
+          { row: 2, employee_id: null, stored_name: null, name_mismatch: false, outcome: "ERROR" as const, entry_id: null, code: "employee_not_found", message: "No matching employee" },
+        ],
+        plan_digest: "digest-edu-wave4-test-0001",
+      },
+    };
+  });
+  try {
+    await page.goto("/people/records/import");
+    await expect(page.locator('[data-pattern="wizard"]')).toHaveCount(1);
+    await page.getByLabel(t("empRec.import.pasteLabel")).fill("employee_number,employee_name,school,degree,major,graduated_on\n10001,Sheet Name,SNU,BS,CS,2020-02-20\n99999,Missing,KAIST,MS,AI,2022-02-20");
+    await page.getByRole("button", { name: t("empRec.import.previewAction"), exact: true }).click();
+    const applyBtn = page.getByRole("button", { name: t("empRec.import.applyAction", { count: 1 }), exact: true });
+    await expect(applyBtn).toHaveAttribute("aria-disabled", "true");
+    await page.getByText(t("empRec.import.mismatchAck", { count: 1 }), { exact: true }).click();
+    await expect(applyBtn).not.toHaveAttribute("aria-disabled", "true");
+    await applyBtn.click();
+    await expect(page.getByText(t("empRec.import.appliedReceipt", { written: 1, errors: 1 })).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: t("empRec.import.downloadSkippedCsv", { count: 1 }), exact: true })).toBeVisible();
+    expect(appliedBody).toMatchObject({ plan_digest: "digest-edu-wave4-test-0001", acknowledge_name_mismatch: true });
+    expect(fixture.unexpected).toEqual([]);
+  } finally {
+    fixture.release();
+  }
+});

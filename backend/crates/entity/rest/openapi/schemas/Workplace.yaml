@@ -61,6 +61,11 @@ properties:
     - string
     - 'null'
     description: The workplace code (unique among open workplaces), when set.
+  head:
+    anyOf:
+    - $ref: '#/components/schemas/OrgUnitHeadRef'
+    - type: 'null'
+    description: Appointed workplace head when set.
   is_primary:
     type: boolean
   is_head_office:

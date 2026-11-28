@@ -78,10 +78,11 @@ export function RunRegisterTable({
     { header: t("payroll.run.col.incomeTax"), type: "money", card: "omit", cell: line => formatNumOrDash(deductionAmount(line, "INCOME_TAX")) },
     { header: t("payroll.run.col.localIncomeTax"), type: "money", card: "omit", cell: line => formatNumOrDash(deductionAmount(line, "LOCAL_INCOME_TAX")) },
     { header: t("payroll.run.col.deductionsTotal"), type: "money", emphasis: "strong", card: "omit", cell: line => formatNumOrDash(line.total_deductions_won) },
-    { header: t("payroll.run.col.netPay"), type: "money", emphasis: "strong", card: "action", cell: line => formatNumOrDash(line.net_won) },
+    { header: t("payroll.run.col.netPay"), type: "money", emphasis: "strong", pin: "end", card: "action", cell: line => formatNumOrDash(line.net_won) },
     {
       header: t("payroll.run.col.bank"),
       fit: true,
+      pin: "end",
       card: "status",
       cellTone: line => (hasBankBlocker(line) ? "danger" : line.blockers.length > 0 || line.calculation_status === "BLOCKED_LEGAL_GATE" ? "warn" : undefined),
       cell: line =>
@@ -127,8 +128,8 @@ export function RunRegisterTable({
           { key: "tax", type: "money", content: formatNumOrDash(subtotals.deductions.INCOME_TAX), card: "omit" },
           { key: "localTax", type: "money", content: formatNumOrDash(subtotals.deductions.LOCAL_INCOME_TAX), card: "omit" },
           { key: "dedTotal", type: "money", emphasis: "strong", content: formatNumOrDash(subtotals.totalDeductionsWon), card: "omit" },
-          { key: "net", type: "money", emphasis: "strong", content: formatNumOrDash(subtotals.netWon), card: "value" },
-          { key: "count", content: t("payroll.run.shownOfTotal", { shown: lines.length, total: linesTotal }), card: "meta" },
+          { key: "net", type: "money", emphasis: "strong", pin: "end", content: formatNumOrDash(subtotals.netWon), card: "value" },
+          { key: "count", pin: "end", content: t("payroll.run.shownOfTotal", { shown: lines.length, total: linesTotal }), card: "meta" },
         ],
       }}
     />

@@ -229,8 +229,8 @@ pub(crate) async fn history_in_tx(
     let rows = sqlx::query(
         "SELECT id, scope_entity_id, value, effective_from, direction, onboarding_exempt,
                 set_by, reason_code, reason_note, step_up_assertion_id, created_at,
-                (SELECT e.actor_kind FROM audit_events e WHERE e.org_id=o.org_id AND e.actor=o.set_by AND e.created_at=o.created_at AND e.outcome='ALLOWED' ORDER BY e.id DESC LIMIT 1) AS actor_kind,
-                (SELECT e.command_id FROM audit_events e WHERE e.org_id=o.org_id AND e.actor=o.set_by AND e.created_at=o.created_at AND e.outcome='ALLOWED' ORDER BY e.id DESC LIMIT 1) AS command_id
+                (SELECT e.actor_kind FROM ordinary_audit_events e WHERE e.org_id=o.org_id AND e.actor=o.set_by AND e.created_at=o.created_at AND e.outcome='ALLOWED' ORDER BY e.id DESC LIMIT 1) AS actor_kind,
+                (SELECT e.command_id FROM ordinary_audit_events e WHERE e.org_id=o.org_id AND e.actor=o.set_by AND e.created_at=o.created_at AND e.outcome='ALLOWED' ORDER BY e.id DESC LIMIT 1) AS command_id
            FROM tenant_setting_overrides o
           WHERE org_id = $1 AND key = $2
           ORDER BY effective_from DESC, created_at DESC",

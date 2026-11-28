@@ -55,7 +55,8 @@ pub(super) fn source_of(value: &str) -> Option<S> {
         "todo_requested" => S::TodoRequested,
         "grant_notice" | "account_security" => S::GrantNotice,
         "setup_entity" | "setup_workplace" | "setup_org" | "setup_approval" | "setup_people"
-        | "setup_passkey" | "setup_employees" | "setup_roles" | "setup_golive" => S::Setup,
+        | "setup_passkey" | "setup_employees" | "setup_roles" | "setup_overtime"
+        | "setup_golive" => S::Setup,
         _ => return None,
     })
 }

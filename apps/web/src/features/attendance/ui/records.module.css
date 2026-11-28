@@ -4,11 +4,11 @@
 .boardPage > .monthPage, .boardPage > .dayPage { flex: 1; }
 .toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-2); }
 .scopeSelect { min-inline-size: calc(var(--space-6) * 6); }
-.scopeCompact { min-width: 0; max-width: 100%; flex-shrink: 1; }
+.scopeCompact { min-inline-size: calc(var(--space-6) * 6); max-width: 100%; flex-shrink: 1; }
 .filterPair { display: inline-flex; align-items: center; gap: var(--space-2); min-width: 0; max-width: 100%; }
 @media (--phone) {
   .filterPair { display: flex; width: 100%; }
-  .scopeCompact { flex: 1 1 0%; }
+  .scopeCompact { flex: 1 1 0%; min-inline-size: 0; }
 }
 .headTools { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-width: 0; }
 .headActions { display: inline-flex; align-items: center; gap: var(--space-2); flex-shrink: 0; white-space: nowrap; }
@@ -25,9 +25,9 @@
 /* Day board: the board and the to-do rail. */
 .dayLayout { min-width: 0; min-height: 0; height: 100%; overflow: auto; scroll-padding-top: calc(var(--row-h) + var(--space-3)); overscroll-behavior: contain; display: grid; grid-template-columns: minmax(0, 1fr) var(--panel-w); grid-auto-rows: max-content; gap: var(--space-4); align-items: start; }
 .monthLayout[data-docked] .dayLayout { grid-template-columns: minmax(0, 1fr); scroll-padding-top: 0; }
-.monthLayout[data-docked] .boardHeadDock { display: none; }
-.monthLayout[data-docked] .boardRow { grid-template-columns: var(--space-5) minmax(0, 1fr); }
-.monthLayout[data-docked] .boardRow > :nth-child(n + 3) { grid-column: 2; }
+.monthLayout[data-docked] .boardHeadDock, [data-detail] .boardHeadDock { display: none; }
+.monthLayout[data-docked] .boardRow, [data-detail] .boardRow { grid-template-columns: var(--space-5) minmax(0, 1fr); }
+.monthLayout[data-docked] .boardRow > :nth-child(n + 3), [data-detail] .boardRow > :nth-child(n + 3) { grid-column: 2; }
 @media (max-width: 1360px) { .dayLayout { grid-template-columns: minmax(0, 1fr); } }
 .boardHead { composes: t-label t-medium from global; }
 .boardHead, .boardRow { display: grid; grid-template-columns: var(--space-6) minmax(calc(var(--space-6) * 4), 1fr) minmax(calc(var(--space-6) * 6), 2fr) minmax(0, 3fr) minmax(0, 2fr); gap: var(--space-3); align-items: center; }

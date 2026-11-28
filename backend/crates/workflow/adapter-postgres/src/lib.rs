@@ -251,6 +251,21 @@ struct NextNode {
     assignee_role_key: Option<String>,
 }
 
+async fn run_definition(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    run_id: Uuid,
+) -> Result<serde_json::Value, PgWorkflowRuntimeError> {
+    Ok(sqlx::query_scalar(
+        "SELECT COALESCE(r.effective_definition, v.definition) FROM workflow_runs r
+          JOIN workflow_definition_versions v ON v.org_id = r.org_id
+           AND v.definition_id = r.definition_id AND v.version = r.definition_version
+         WHERE r.id = $1",
+    )
+    .bind(run_id)
+    .fetch_one(tx.as_mut())
+    .await?)
+}
+
 fn next_node_after(definition: &serde_json::Value, from_key: &str) -> Option<NextNode> {
     let to = definition
         .get("edges")
@@ -1743,20 +1758,8 @@ impl PgWorkflowRuntimeStore {
                     ));
                 }
 
-                // approve: resolve the next node from the published graph.
-                let definition: serde_json::Value = sqlx::query_scalar(
-                    "SELECT v.definition \
-                     FROM workflow_runs r \
-                     JOIN workflow_definition_versions v \
-                       ON v.definition_id = r.definition_id \
-                      AND v.version = r.definition_version \
-                      AND v.org_id = r.org_id \
-                     WHERE r.id = $1",
-                )
-                .bind(run_id)
-                .fetch_one(tx.as_mut())
-                .await
-                .map_err(PgWorkflowRuntimeError::from)?;
+                // Advance the graph assigned at start; uncustomized and pre-upgrade runs use their published version.
+                let definition = run_definition(tx, run_id).await?;
 
                 let (run_final, next_task) = match next_node_after(&definition, &waiting_key) {
                     None => {
@@ -1915,9 +1918,9 @@ impl WorkflowRuntimePort for PgWorkflowRuntimeStore {
                              (id, org_id, definition_id, definition_version, status, \
                               trigger_type, object_type, object_id, idempotency_key, \
                               correlation_id, trace_id, input_payload, context_payload, \
-                              initiated_by, schedule_id) \
+                              initiated_by, schedule_id, effective_definition) \
                          VALUES ($1, $2, $3, $4, 'STARTING', $5, $6, $7, $8, $9, $10, \
-                                 $11, $12, $13, $14)",
+                                 $11, $12, $13, $14, $15)",
                     )
                     .bind(run.id)
                     .bind(*run.org_id.as_uuid())
@@ -1933,6 +1936,7 @@ impl WorkflowRuntimePort for PgWorkflowRuntimeStore {
                     .bind(run.context_payload)
                     .bind(run.initiated_by.map(|user| *user.as_uuid()))
                     .bind(run.schedule_id)
+                    .bind(run.effective_definition)
                     .execute(tx.as_mut())
                     .await
                     .map_err(PgWorkflowRuntimeError::from)?;
@@ -2183,19 +2187,7 @@ impl WorkflowRuntimePort for PgWorkflowRuntimeStore {
 
                         let run_id: Uuid = row.try_get("run_id")?;
                         let receipt_spec = {
-                            let definition: serde_json::Value = sqlx::query_scalar(
-                                "SELECT v.definition \
-                                 FROM workflow_runs r \
-                                 JOIN workflow_definition_versions v \
-                                   ON v.definition_id = r.definition_id \
-                                  AND v.version = r.definition_version \
-                                  AND v.org_id = r.org_id \
-                                 WHERE r.id = $1",
-                            )
-                            .bind(run_id)
-                            .fetch_one(tx.as_mut())
-                            .await
-                            .map_err(PgWorkflowRuntimeError::from)?;
+                            let definition = run_definition(tx, run_id).await?;
                             receipt_node_after_finalize(&definition)
                         };
                         let decision_payload = serde_json::json!({

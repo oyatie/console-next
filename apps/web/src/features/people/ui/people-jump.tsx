@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { UserRound } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { EMPLOYEE_STATUS, EMPLOYMENT_TYPE, label, labeled } from "../../../lib/labels";
@@ -9,7 +9,7 @@ import { useKeys } from "../../../lib/react/use-keys";
 import { KeyMap } from "../../../ui/palette/key-map";
 import { Palette, type PaletteSection } from "../../../ui/palette/palette";
 import { Kbd } from "../../../ui/record/record-section";
-import { employeeQuery, samePersonQuery } from "../api";
+import { byIdsQuery, samePersonQuery } from "../api";
 import { numberMatchQuery } from "../api/record";
 import { KEY_GROUPS } from "../domain/keys";
 import { tx } from "../present";
@@ -41,10 +41,13 @@ export function PeopleJump() {
   const asked = open === "jump" && found.isSuccess && !exact.length && /\d/.test(q);
   const matchRead = useQuery({ ...numberMatchQuery(q.trim()), enabled: asked, retry: false });
   const match = matchRead.data;
-  const aliasRead = useQuery({ ...employeeQuery(match?.employee_id ?? ""), enabled: match?.matched_by === "alias" });
-  const alias = aliasRead.data?.employee;
+  const aliasId = asked && match?.matched_by === "alias" ? match.employee_id : undefined;
+  const aliasQueries = aliasId ? [byIdsQuery([aliasId])] : [];
+  const [aliasRead] = useQueries({ queries: aliasQueries });
+  if (!open) return null;
+  const alias = aliasRead?.data?.items[0];
   // Everything this search asks has answered (an alias lookup included), so no section lands above another later.
-  const settled = found.isSuccess && !found.isFetching && (!asked || !matchRead.isFetching) && !(match?.matched_by === "alias" && aliasRead.isPending);
+  const settled = found.isSuccess && !found.isFetching && (!asked || !matchRead.isFetching) && !aliasRead?.isPending;
   const people = exact.length ? exact : rows.slice(0, 8);
   const shared = people.length > 1 && people.every((e) => e.name === people[0]!.name);
   const go = (id: string) => {

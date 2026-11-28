@@ -54,6 +54,23 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/settings/overtime-attestations",
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!(
+                    "../openapi/paths/api__v1__settings__overtime-attestations.get.yaml"
+                ),
+            },
+            Operation {
+                method: "post",
+                body: include_str!(
+                    "../openapi/paths/api__v1__settings__overtime-attestations.post.yaml"
+                ),
+            },
+        ],
+    },
+    PathItem {
         path: "/api/v1/settings/{key}",
         operations: &[Operation {
             method: "post",
@@ -70,6 +87,14 @@ const PATHS: &[PathItem] = &[
 ];
 
 const SCHEMAS: &[NamedYaml] = &[
+    NamedYaml {
+        name: "CreateOvertimeAttestationRequest",
+        body: include_str!("../openapi/schemas/CreateOvertimeAttestationRequest.yaml"),
+    },
+    NamedYaml {
+        name: "OvertimeRuleAttestation",
+        body: include_str!("../openapi/schemas/OvertimeRuleAttestation.yaml"),
+    },
     NamedYaml {
         name: "ReasonCatalogEntry",
         body: include_str!("../openapi/schemas/ReasonCatalogEntry.yaml"),

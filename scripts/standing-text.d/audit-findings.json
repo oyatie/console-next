@@ -1,0 +1,15 @@
+{
+  "baseline": {
+    "apps/web/src/features/audit/ui/findings.tsx#Findings": 27
+  },
+  "newScreens": {
+    "apps/web/src/features/audit/ui/findings.tsx#Findings": {
+      "FACT": 16,
+      "REFUSAL": 7,
+      "EMPTY": 1,
+      "LEGAL": 0,
+      "RECEIPT": 3,
+      "EXPLANATION": 0
+    }
+  }
+}

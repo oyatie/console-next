@@ -3,7 +3,9 @@ use console_kernel_core::{
     AuditAction, AuditCommandContext, AuditEvent, KernelError, OrgId, TenantPhase, TraceContext,
     UserId, WriteClass, tenant_phase::admit_write,
 };
-use console_payroll_domain::pay_groups::run_schedule::{derive_schedule, next_attribution_month};
+use console_payroll_domain::pay_groups::run_schedule::{
+    derive_cutoff_date, derive_schedule, next_attribution_month,
+};
 use console_platform_authz::{Feature, cedar_pbac::visible::load_facts};
 use console_platform_db::{audit_tx::with_audits, with_org_conn};
 use serde::{Deserialize, Serialize};
@@ -40,31 +42,12 @@ impl RunKind {
 pub struct RunRequest {
     #[serde(
         default,
-        deserialize_with = "expected_month",
+        deserialize_with = "roster_guard::expected_month",
         skip_serializing_if = "Option::is_none"
     )]
     pub expected_attribution_month: Option<String>,
     pub pay_group_id: Uuid,
     pub kind: RunKind,
-}
-
-fn expected_month<'de, D: serde::Deserializer<'de>>(
-    deserializer: D,
-) -> Result<Option<String>, D::Error> {
-    let month = String::deserialize(deserializer)?;
-    let date = format!("{month}-01");
-    if month.len() != 7
-        || Date::parse(
-            &date,
-            time::macros::format_description!("[year]-[month]-[day]"),
-        )
-        .is_err()
-    {
-        return Err(serde::de::Error::custom(
-            "expected a payroll month in YYYY-MM format",
-        ));
-    }
-    Ok(Some(month))
 }
 
 #[derive(Debug, Serialize)]
@@ -84,8 +67,13 @@ pub struct RunPreview {
     pub variable_period_start: Date,
     #[serde(with = "date")]
     pub variable_period_end: Date,
+    #[serde(with = "date::option", skip_serializing_if = "Option::is_none")]
+    pub attendance_cutoff_date: Option<Date>,
 }
 
+#[path = "run_preview_roster.rs"]
+mod roster_guard;
+pub(crate) use roster_guard::entity_roster_ambiguous_in_tx;
 #[path = "run_summary.rs"]
 mod run_summary;
 pub use run_summary::PayrollRunSummary;
@@ -141,8 +129,8 @@ impl PgPayrollStore {
                 context.change_mode = Some(mode);
                 audit = audit.with_command_context(context);
                 let inserted = sqlx::query(
-                    "INSERT INTO payroll_draft_runs(org_id,id,pay_group_id,kind,attribution_month,pay_date,period_start,period_end,variable_period_start,variable_period_end,source_label,created_by)
-                     VALUES ($1,$2,$3,$4,($5||'-01')::date,$6,$7,$8,$9,$10,$11,$12)",
+                    "INSERT INTO payroll_draft_runs(org_id,id,pay_group_id,kind,attribution_month,pay_date,period_start,period_end,variable_period_start,variable_period_end,attendance_cutoff_date,source_label,created_by)
+                     VALUES ($1,$2,$3,$4,($5||'-01')::date,$6,$7,$8,$9,$10,$11,$12,$13)",
                 )
                 .bind(org.as_uuid())
                 .bind(id)
@@ -154,6 +142,7 @@ impl PgPayrollStore {
                 .bind(preview.period_end)
                 .bind(preview.variable_period_start)
                 .bind(preview.variable_period_end)
+                .bind(preview.attendance_cutoff_date)
                 .bind(id.to_string())
                 .bind(actor.as_uuid())
                 .execute(tx.as_mut())
@@ -217,22 +206,6 @@ impl PgPayrollStore {
         .fetch_one(tx.as_mut())
         .await?
         .0;
-        // Counts groups the actor cannot see; the refusal says only that there are several.
-        let shared: bool = sqlx::query_scalar(
-            "SELECT EXISTS (SELECT 1 FROM pay_groups WHERE org_id=$1 AND legal_entity_id=$2 AND id<>$3)",
-        )
-        .bind(org.as_uuid())
-        .bind(group.legal_entity_id)
-        .bind(group.id)
-        .fetch_one(tx.as_mut())
-        .await?;
-        if shared {
-            return Err(KernelError::conflict(
-                "the legal entity has more than one pay group, so who belongs to this one is not known",
-            )
-            .with_code("pay_group_roster_ambiguous")
-            .into());
-        }
         let today: Date = sqlx::query_scalar("SELECT entity_today()")
             .fetch_one(tx.as_mut())
             .await?;
@@ -285,6 +258,26 @@ impl PgPayrollStore {
                 Ok(!weekends.contains(&iso_day) && !holidays.contains(&day))
             },
         )?;
+        if entity_roster_ambiguous_in_tx(
+            tx,
+            *org.as_uuid(),
+            group.legal_entity_id,
+            group.id,
+            schedule.base_start,
+            schedule.base_end,
+        )
+        .await?
+        {
+            return Err(KernelError::conflict(
+                "the legal entity has more than one pay group, so who belongs to this one is not known",
+            )
+            .with_code("pay_group_roster_ambiguous")
+            .into());
+        }
+        let attendance_cutoff_date = group
+            .attendance_cutoff_rule
+            .map(|rule| derive_cutoff_date(month, rule, schedule.pay_date))
+            .transpose()?;
         Ok(RunPreview {
             legal_entity_id: group.legal_entity_id,
             pay_group_id: group.id,
@@ -296,6 +289,7 @@ impl PgPayrollStore {
             period_end: schedule.base_end,
             variable_period_start: schedule.variable_start,
             variable_period_end: schedule.variable_end,
+            attendance_cutoff_date,
         })
     }
 }

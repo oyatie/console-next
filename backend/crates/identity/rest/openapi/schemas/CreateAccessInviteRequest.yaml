@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required:
+- display_name
+additionalProperties: false
+properties:
+  display_name:
+    type: string
+  employee_id:
+    oneOf:
+    - $ref: '#/components/schemas/Uuid'
+    - type: 'null'
+  phone:
+    type:
+    - string
+    - 'null'
+  sign_in_id:
+    type:
+    - string
+    - 'null'
+  grants:
+    type: array
+    maxItems: 20
+    items:
+      $ref: '#/components/schemas/AccessInviteGrantLineInput'
+  reason_code:
+    type:
+    - string
+    - 'null'
+  reason_note:
+    type:
+    - string
+    - 'null'
+    maxLength: 500
+  step_up:
+    $ref: '#/components/schemas/PasskeyStepUpAssertion'

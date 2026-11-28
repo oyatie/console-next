@@ -12,7 +12,7 @@ type Published = Record<"theme" | "experience", { key: string; values: string[] 
  * One page load of public/prefs.js over what the device has stored and the theme its system prefers (none given: a
  * browser with no matchMedia): the attributes it put on <html>, and what it published.
  */
-function boot(stored: Record<string, string> | "blocked" | "unreadable", source = SRC, system?: "light" | "dark" | "throws") {
+function boot(stored: Record<string, string> | "blocked" | "unreadable", source = SRC, system?: "light" | "dark" | "throws", rollback: boolean | "blocked" = false) {
   const attributes: Record<string, string> = {};
   const window: { consolePrefs?: Published } = {};
   const document = { documentElement: { setAttribute: (name: string, value: string) => void (attributes[name] = value) } };
@@ -20,7 +20,11 @@ function boot(stored: Record<string, string> | "blocked" | "unreadable", source 
     if (system === "throws") throw new Error("matchMedia is refused");
     return { matches: query === `(prefers-color-scheme: ${system})` };
   };
-  const context = Object.defineProperty({ window, document, ...(system && { matchMedia }) }, "localStorage", {
+  const sessionStorage = { getItem(key: string) {
+    if (rollback === "blocked") throw new Error("tab storage is blocked");
+    return rollback && key === "console.experience.rollback" ? "previous-signed-in-session" : null;
+  } };
+  const context = Object.defineProperty({ window, document, sessionStorage, ...(system && { matchMedia }) }, "localStorage", {
     get() {
       if (stored === "blocked") throw new Error("storage is blocked");
       return {
@@ -35,34 +39,41 @@ function boot(stored: Record<string, string> | "blocked" | "unreadable", source 
   return { attributes, published: window.consolePrefs! };
 }
 
-test("a stored theme is on <html> as soon as the script has run, whatever the system prefers", () => {
-  expect(boot({ "console.theme": "dark" }, SRC, "light").attributes).toEqual({ "data-theme": "dark" });
-  expect(boot({ "console.theme": "light" }, SRC, "dark").attributes).toEqual({ "data-theme": "light" });
+test("a known emergency fallback paints Classic before the entry reads the server, retaining the stored user preference", () => {
+  const personal = { "console.experience": "console" };
+  expect(boot(personal, SRC, "light", true).attributes["data-experience"]).toBe("baseline");
+  expect(boot(personal, SRC, "light", "blocked").attributes["data-experience"]).toBe("console");
+  expect(boot(personal, SRC, "light").attributes["data-experience"]).toBe("console");
 });
 
-test("a missing, unknown or malformed theme follows the system, and such an experience sets nothing", () => {
+test("a stored theme is on <html> as soon as the script has run, whatever the system prefers", () => {
+  expect(boot({ "console.theme": "dark" }, SRC, "light").attributes).toEqual({ "data-theme": "dark", "data-experience": "console" });
+  expect(boot({ "console.theme": "light" }, SRC, "dark").attributes).toEqual({ "data-theme": "light", "data-experience": "console" });
+});
+
+test("a missing, unknown or malformed theme follows the system, and such an experience falls back to console", () => {
   for (const system of ["dark", "light"] as const) {
-    expect(boot({}, SRC, system).attributes).toEqual({ "data-theme": system });
+    expect(boot({}, SRC, system).attributes).toEqual({ "data-theme": system, "data-experience": "console" });
     for (const value of ["", "DARK", "dark ", " dark", '"dark"', "light,dark", "auto", "system", "null", "0", "constructor", "__proto__", "toString", "length"]) {
-      expect(boot({ "console.theme": value, "console.experience": value }, SRC, system).attributes, value).toEqual({ "data-theme": system });
+      expect(boot({ "console.theme": value, "console.experience": value }, SRC, system).attributes, value).toEqual({ "data-theme": system, "data-experience": "console" });
     }
   }
 });
 
-test("storage that refuses the read leaves the theme to the system and lets the page go on", () => {
+test("storage that refuses the read leaves the theme to the system, stamps console experience, and lets the page go on", () => {
   for (const storage of ["blocked", "unreadable"] as const) {
     const page = boot(storage, SRC, "dark");
-    expect(page.attributes).toEqual({ "data-theme": "dark" });
+    expect(page.attributes).toEqual({ "data-theme": "dark", "data-experience": "console" });
     expect(page.published.theme.values).toEqual(["light", "dark"]);
   }
 });
 
-test("a browser that cannot say what the system prefers sets a stored theme and no other", () => {
+test("a browser that cannot say what the system prefers sets a stored theme and no other while keeping console experience", () => {
   for (const system of [undefined, "throws"] as const) {
-    expect(boot({}, SRC, system).attributes, system).toEqual({});
-    expect(boot({ "console.theme": "midnight" }, SRC, system).attributes, system).toEqual({});
+    expect(boot({}, SRC, system).attributes, system).toEqual({ "data-experience": "console" });
+    expect(boot({ "console.theme": "midnight" }, SRC, system).attributes, system).toEqual({ "data-experience": "console" });
     const page = boot({ "console.theme": "dark" }, SRC, system);
-    expect(page.attributes, system).toEqual({ "data-theme": "dark" });
+    expect(page.attributes, system).toEqual({ "data-theme": "dark", "data-experience": "console" });
     expect(page.published.theme.values).toEqual(["light", "dark"]);
   }
 });
@@ -79,9 +90,9 @@ test("legacy control-room stored on a device upgrades to console at first paint"
   expect(boot({ "console.experience": "control-room", "console.theme": "dark" }).attributes).toEqual({ "data-theme": "dark", "data-experience": "console" });
 });
 
-test("an unknown experience never applies", () => {
+test("an unknown experience never applies as itself and falls back to console", () => {
   for (const value of ["calm", "light", "dark", "Warm-clear", "console "]) {
-    expect(boot({ "console.experience": value, "console.theme": "dark" }).attributes, value).toEqual({ "data-theme": "dark" });
+    expect(boot({ "console.experience": value, "console.theme": "dark" }).attributes, value).toEqual({ "data-theme": "dark", "data-experience": "console" });
   }
 });
 

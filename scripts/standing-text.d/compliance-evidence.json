@@ -1,0 +1,10 @@
+{
+  "baseline": {
+    "apps/web/src/features/compliance/ui/evidence.tsx#EvidenceWorklist": 35,
+    "apps/web/src/features/compliance/ui/evidence-proposal.tsx#EvidenceProposal": 32
+  },
+  "newScreens": {
+    "apps/web/src/features/compliance/ui/evidence.tsx#EvidenceWorklist": { "FACT": 14, "REFUSAL": 19, "EMPTY": 1, "LEGAL": 0, "RECEIPT": 1, "EXPLANATION": 0 },
+    "apps/web/src/features/compliance/ui/evidence-proposal.tsx#EvidenceProposal": { "FACT": 9, "REFUSAL": 22, "EMPTY": 0, "LEGAL": 0, "RECEIPT": 1, "EXPLANATION": 0 }
+  }
+}

@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { lazy, Suspense, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate, useRouter, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useRouter, useSearch } from "@tanstack/react-router";
 import type { components } from "@console/api/schema";
 import { chunk } from "../../../lib/chunk-guard";
+import { codeText } from "../../../lib/code-text";
 import { isMessageId, t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { myAccessQuery } from "../../../reference/authz/api";
+import { BenefitCatalogLink } from "../../../reference/benefits/ui/benefit-catalog-link";
 import { settingsQuery } from "../../../reference/settings/api";
-import { settingsViews, type SettingsView } from "../../../shell/settings-views";
+import { canOpenOvertimeSettings, settingsViews, type SettingsView } from "../../../shell/settings-views";
 import { QueryState } from "../../../lib/react/query-state";
 import { useIsDesktop } from "../../../lib/react/use-desktop";
 import { Button } from "../../../ui/button/button-base";
@@ -35,6 +37,8 @@ const PolicyCategoryPanel = lazy(() => chunk(import("./policy-sections")).then(m
 const WorkplaceScopePanel = lazy(() => chunk(import("./policy-sections")).then(m => ({ default: m.WorkplaceScopePanel })));
 const ReasonCodesPanel = lazy(() => chunk(import("./policy-reasons-panel")).then(m => ({ default: m.ReasonCodesPanel })));
 const PolicySavedReceipt = lazy(() => chunk(import("./policy-reasons-panel")).then(m => ({ default: m.PolicySavedReceipt })));
+const RolloutPanel = lazy(() => chunk(import("./rollout-panel")).then(m => ({ default: m.RolloutPanel })));
+const SettingsSummaryStrip = lazy(() => chunk(import("./settings-summary-strip")).then(m => ({ default: m.SettingsSummaryStrip })));
 
 export function SettingsHub() {
   const access = useQuery(myAccessQuery);
@@ -42,10 +46,12 @@ export function SettingsHub() {
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as { section?: string };
   const section = parseSettingsSection(search.section);
-  const rows = settingsViews(Object.values(router.routesByPath), access.data);
+  const routes = Object.values(router.routesByPath);
+  const rows = settingsViews(routes, access.data);
   return (
     <SettingsHubView
       rows={rows}
+      showOvertime={canOpenOvertimeSettings(routes, access.data)}
       interactive
       section={section}
       onSelectSection={(next) => {
@@ -63,11 +69,13 @@ type EditState = { entry: SettingEntry; scopeEntityId: string | null; scopeLabel
 
 export function SettingsHubView({
   rows,
+  showOvertime = false,
   interactive = false,
   section = "overview",
   onSelectSection,
 }: {
   rows: readonly SettingsView[];
+  showOvertime?: boolean;
   interactive?: boolean;
   section?: SettingSectionId;
   onSelectSection?: (section: SettingSectionId) => void;
@@ -81,6 +89,7 @@ export function SettingsHubView({
 
   const cards = (
     <>
+      {showOvertime && <Link to="/settings/overtime" className={s.link}>{t("setup.step.overtime")}</Link>}
       {rows.map(row => <SettingsCard key={row.to} row={row} />)}
       <ApprovalSettingsCard onManage={interactive && onSelectSection ? () => onSelectSection("approvals") : undefined} />
       {interactive && onSelectSection && <ModuleOperationsCard onManage={() => onSelectSection("operations")} />}
@@ -130,6 +139,13 @@ export function SettingsHubView({
         </Suspense>
       );
     }
+    if (section === "rollout") {
+      return (
+        <Suspense fallback={null}>
+          <RolloutPanel />
+        </Suspense>
+      );
+    }
     return (
       <QueryState q={settings} inline own={() => t("settingsHub.unknown")}>
         {(data) => (
@@ -160,7 +176,14 @@ export function SettingsHubView({
   return (
     <SettingsPattern
       q={{ isPending: false, error: null, data: rows, refetch: () => {} }}
-      head={{ title: t("shell.link.settings") }}
+      head={{ title: t("shell.link.settings"), actions: interactive ? <BenefitCatalogLink /> : undefined }}
+      summary={
+        interactive && isCategorySection && settings.data ? (
+          <Suspense fallback={null}>
+            <SettingsSummaryStrip entries={settings.data.items} />
+          </Suspense>
+        ) : undefined
+      }
       views={
         interactive && onSelectSection ? (
           <nav className={s.viewsNav} aria-label={t("shell.link.settings")}>
@@ -199,7 +222,7 @@ export function SettingsHubView({
               id: latestInspectedEntry.key,
               label: formatEntryLabel(latestInspectedEntry, settingsCopy),
               title: formatEntryLabel(latestInspectedEntry, settingsCopy),
-              meta: activeInspect?.scopeLabel ?? t(`settingsHub.layer.${latestInspectedEntry.source.layer}`),
+              meta: activeInspect?.scopeLabel ?? codeText(`settingsHub.layer.${latestInspectedEntry.source.layer}`, t("settingsHub.unknown")),
               onClose: () => {
                 setInspecting(null);
                 setDismissedSection(section);
@@ -208,6 +231,7 @@ export function SettingsHubView({
                 <Suspense fallback={null}>
                   <PolicyInspector
                     entry={latestInspectedEntry}
+                    scopeEntityId={activeInspect?.scopeEntityId ?? null}
                     canChange={Boolean(settings.data?.can_change ?? true)}
                     onEdit={() =>
                       setEditing({
@@ -236,9 +260,14 @@ export function SettingsHubView({
         ) : undefined
       }
       baseline={() => (
-        <Page floorplan="P-05" head={{ title: t("shell.link.settings") }}>
+        <Page floorplan="P-05" head={{ title: t("shell.link.settings"), actions: interactive ? <BenefitCatalogLink /> : undefined }}>
+          {interactive && onSelectSection && (
+            <Button variant="ghost" onClick={() => selectSection(section === "rollout" ? "overview" : "rollout")}>
+              {t(section === "rollout" ? "settingsHub.section.overview" : "settingsHub.section.rollout")}
+            </Button>
+          )}
           <section className={s.grid} aria-label={t("shell.settings.basics")}>
-            {cards}
+            {section === "rollout" ? renderPanel() : cards}
           </section>
         </Page>
       )}

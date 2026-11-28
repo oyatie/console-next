@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: string
+enum:
+- EMAIL
+- PHONE

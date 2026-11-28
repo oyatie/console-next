@@ -26,10 +26,20 @@ impl PlatformProvisioner {
         .fetch_all(tx.as_mut())
         .await?;
 
-        let groups = rows
+        let mut groups = rows
             .into_iter()
             .map(group_from_row)
             .collect::<Result<Vec<_>, ProvisioningError>>()?;
+        for g in &mut groups {
+            let inv_rows = sqlx::query("SELECT * FROM platform_list_group_pending_invitations($1)")
+                .bind(g.id)
+                .fetch_all(tx.as_mut())
+                .await?;
+            g.pending_invitations = inv_rows
+                .into_iter()
+                .map(super::group_invitations::invitation_from_row)
+                .collect::<Result<Vec<_>, _>>()?;
+        }
 
         let event = AuditEvent::new(
             actor,

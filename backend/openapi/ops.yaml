@@ -257,9 +257,9 @@ paths:
       summary: "Draft Promote Cmd"
       x-cedar-action: "change.request.promote"
       security: [{"accessJwt": []}]
-      description: "Records signed promote Cmd hand-off in actions spool."
+      description: "Records a signed hand-off for the ready preview digest after checking fresh deployment freeze evidence."
       requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/PromoteRequest"}}}}
-      responses: {"201": {"description": "Cmd hand-off recorded.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CmdResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
+      responses: {"201": {"description": "Cmd hand-off recorded.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CmdResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}, "409": {"description": "The requested candidate is not ready for promotion.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}, "503": {"description": "Promotion evidence is unavailable.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}}
   /api/ops/v1/promote/signoff:
     post:
       # SPDX-License-Identifier: LicenseRef-Proprietary
@@ -958,7 +958,7 @@ components:
       required: ["event", "fields"]
       additionalProperties: false
       properties:
-        event: {"type": "string", "enum": ["in_review", "redated", "done", "waived"]}
+        event: {"type": "string", "enum": ["in_review", "redated", "done", "waived", "countersigned"]}
         fields: {"type": "object"}
     ObligationItem:
       # SPDX-License-Identifier: LicenseRef-Proprietary
@@ -973,8 +973,18 @@ components:
         state: {"$ref": "#/components/schemas/ObligationState"}
         evidence_ref: {"anyOf": [{"type": "string"}, {"type": "null"}]}
         signer: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+        co_signer: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+        counsel_url: {"anyOf": [{"type": "string"}, {"type": "null"}]}
         signed_on: {"anyOf": [{"type": "string", "format": "date", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"}, {"type": "null"}]}
         deadline: {"$ref": "#/components/schemas/Text"}
+        pending_signoff:
+          type: "object"
+          required: ["seq", "outcome", "reason"]
+          properties:
+            seq: {"type": "integer", "minimum": 1}
+            outcome: {"type":"string","enum":["done","waived"]}
+            reason: {"anyOf":[{"type":"string"},{"type":"null"}]}
+        requires_reattestation: {"type":"boolean"}
     ObligationKind:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "string"
@@ -998,8 +1008,9 @@ components:
         at: {"$ref": "#/components/schemas/Timestamp"}
         operator: {"$ref": "#/components/schemas/ObligationOperator"}
         obligation_id: {"$ref": "#/components/schemas/Text"}
-        event: {"type": "string", "enum": ["opened", "in_review", "redated", "done", "waived"]}
+        event: {"type": "string", "enum": ["opened", "in_review", "redated", "done", "waived", "countersigned"]}
         fields: {"type": "object"}
+        attestation_version: {"type":"integer","enum":[1,2]}
     ObligationReviewerRole:
       # SPDX-License-Identifier: LicenseRef-Proprietary
       type: "string"
@@ -1083,6 +1094,15 @@ components:
       properties:
         evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
         config: {"type": "object"}
+        active_shift:
+          type: "object"
+          required: ["active_person", "backup_person", "shift_from", "shift_until", "shift_grants"]
+          properties:
+            active_person: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+            backup_person: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+            shift_from: {"$ref": "#/components/schemas/Timestamp"}
+            shift_until: {"$ref": "#/components/schemas/Timestamp"}
+            shift_grants: {"type": "array", "items": {"$ref": "#/components/schemas/Text"}}
         display_status: {"$ref": "#/components/schemas/ObservedText"}
         last_page_test_at: {"$ref": "#/components/schemas/ObservedTimestamp"}
         last_page_test_ok: {"$ref": "#/components/schemas/ObservedBoolean"}
@@ -1115,6 +1135,8 @@ components:
       required: ["evaluated_at", "candidate_digest", "state", "signoffs", "feedback"]
       properties:
         evaluated_at: {"$ref": "#/components/schemas/Timestamp"}
+        signed_bake: {"type": ["string", "null"], "enum": ["normal", "long", null]}
+        release_image: {"type": ["string", "null"]}
         candidate_digest: {"$ref": "#/components/schemas/ObservedText"}
         state:
           allOf: [{"$ref": "#/components/schemas/Observation"}, {"properties": {"value": {"anyOf": [{"$ref": "#/components/schemas/Promotion"}, {"type": "null"}]}}}]

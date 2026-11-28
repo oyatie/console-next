@@ -100,7 +100,7 @@ pub(crate) async fn compose(
                 org_unit_id: site.copied(),
                 workplace_kind: w.kind_code.clone(),
                 code: w.code.clone(),
-                head: None,
+                head: w.head.clone(),
                 headcount: counts.workplaces.get(&w.id).map_or(0, |n| n.0),
                 direct_headcount: site.map_or(0, |s| tree.units[s].direct),
                 dispatched_headcount: counts.workplaces.get(&w.id).map_or(0, |n| n.1),

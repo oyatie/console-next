@@ -1,0 +1,61 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags:
+- entity
+operationId: setWorkplaceHead
+summary: Appoint or clear the head of a workplace
+description: Appoints any non-exited employee in the tenant as workplace head, or clears the appointment when null.
+security:
+- bearerAuth: []
+parameters:
+- name: Idempotency-Key
+  in: header
+  required: true
+  description: A UUID per user intent.
+  schema:
+    type: string
+    format: uuid
+- name: workplaceId
+  in: path
+  required: true
+  schema:
+    type: string
+    format: uuid
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/SetWorkplaceHeadRequest'
+responses:
+  '200':
+    description: Workplace head updated.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/SavedWorkplace'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    description: Not permitted.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '422':
+    description: 'Field issues: errors[{field, code}] (head_employee_id: head_unavailable).'
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '404':
+    description: Not found in this tenant.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'
+  '409':
+    description: Refused with a stable code (workplace_voided).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ErrorBody'

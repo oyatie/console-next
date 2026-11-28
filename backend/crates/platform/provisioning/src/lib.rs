@@ -8,6 +8,7 @@ mod dev_principal;
 mod error;
 mod first_enrollment;
 mod onboarding;
+pub mod ops_self_recovery;
 mod platform;
 mod roster;
 

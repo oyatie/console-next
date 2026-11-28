@@ -47,8 +47,8 @@ export function Reissue({
       <Button size={btnSize} aria-describedby="tenant-code-pre" disabled={reissue.isPending} onClick={() => reissue.mutate(undefined)}>{label}</Button>
     </>
   );
-  // The record pane draws the heading; the section keeps the region and its name, as the standalone one has.
-  if (embedded) return <section className={s.embedded} aria-label={t("tenants.section.code")}>{body}</section>;
+  // The record pane's RecordPaneSection draws the heading and owns the named region.
+  if (embedded) return <div className={s.embedded}>{body}</div>;
   return (
     <section className={s.section} aria-labelledby="tenant-code">
       <h3 id="tenant-code" className={s.heading}>{t("tenants.section.code")}</h3>

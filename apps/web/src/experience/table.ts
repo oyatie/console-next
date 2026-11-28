@@ -20,6 +20,8 @@ export const experiences: readonly [ExperienceEntry, ...ExperienceEntry[]] = [
 /** What the chooser offers: every listed or preview style, and the style in force even when it is unlisted. */
 export const offeredExperiences = (current: string) => experiences.filter(experience => experience.listing !== "unlisted" || experience.id === current);
 
+const DEFAULT_EXPERIENCE: ExperienceEntry = experiences[1]!;
+
 export function resolveExperience(id?: string): ExperienceEntry {
-  return experiences.find(experience => experience.id === id) ?? experiences[0];
+  return experiences.find(experience => experience.id === id) ?? DEFAULT_EXPERIENCE;
 }

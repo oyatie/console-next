@@ -102,7 +102,7 @@
 .familyItem { display: inline-flex; gap: var(--space-1); margin-right: var(--space-2); }
 .conflictHead { composes: t-sm t-warn from global; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); margin: 0; }
 .readOnly { composes: t-sm muted from global; display: flex; align-items: center; gap: var(--space-2); margin: 0; }
-.rail { grid-column: 1 / -1; display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) 0; }
+.rail { grid-column: 1 / -1; display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; padding: var(--space-3) 0; }
 .link { composes: t-sm t-primary from global; display: inline-flex; align-items: center; min-block-size: var(--target); }
 .inlineConflict { grid-column: 1 / -1; margin-top: var(--space-2); }
 /* The placement history in section 2: the term beside its value, the earlier placements under it. */

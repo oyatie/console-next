@@ -120,7 +120,7 @@ test("a person put back with everyone by Enter leaves focus on sending them else
   const elsewhere = button(t("orgUnit.dissolve.elsewhere", { name: "Kim Mina" }));
   await elsewhere.click();
   await row("Support").click();
-  await elsewhere.focus();
+  await element(elsewhere).toBeFocused();
   await page.keyboard.press("Shift+Tab");
   await element(button(t("orgUnit.dissolve.backToAll"))).toBeFocused();
   await page.keyboard.press("Enter");

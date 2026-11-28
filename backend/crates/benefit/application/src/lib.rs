@@ -17,6 +17,8 @@ use serde_json::Value;
 use time::Date;
 use uuid::Uuid;
 
+time::serde::format_description!(wire_date, Date, "[year]-[month]-[day]");
+
 pub const BENEFIT_CATALOG_LIFECYCLE_OBJECT_TYPE: &str = "benefit_catalog_item";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -104,7 +106,9 @@ pub struct BenefitCatalogItemView {
     pub legal_basis: Option<String>,
     pub related_domain: Option<String>,
     pub related_object_id: Option<Uuid>,
+    #[serde(default, with = "wire_date::option")]
     pub effective_on: Option<Date>,
+    #[serde(default, with = "wire_date::option")]
     pub retires_on: Option<Date>,
     pub display_order: i32,
     pub metadata: Value,
@@ -239,6 +243,8 @@ impl UpdateBenefitCatalogItemFields {
 pub struct UpdateBenefitCatalogItemCommand {
     pub actor: UserId,
     pub branch_scope: BranchScope,
+    #[serde(default, with = "time::serde::rfc3339::option")]
+    pub expected_updated_at: Option<Timestamp>,
     pub item_id: BenefitCatalogItemId,
     pub fields: UpdateBenefitCatalogItemFields,
     pub trace: TraceContext,
@@ -249,6 +255,8 @@ pub struct UpdateBenefitCatalogItemCommand {
 pub struct ReplaceBenefitTiersCommand {
     pub actor: UserId,
     pub branch_scope: BranchScope,
+    #[serde(default, with = "time::serde::rfc3339::option")]
+    pub expected_updated_at: Option<Timestamp>,
     pub item_id: BenefitCatalogItemId,
     pub tiers: Vec<BenefitTierDraft>,
     pub trace: TraceContext,
@@ -259,6 +267,8 @@ pub struct ReplaceBenefitTiersCommand {
 pub struct ReplaceBenefitConditionsCommand {
     pub actor: UserId,
     pub branch_scope: BranchScope,
+    #[serde(default, with = "time::serde::rfc3339::option")]
+    pub expected_updated_at: Option<Timestamp>,
     pub item_id: BenefitCatalogItemId,
     pub conditions: Vec<BenefitConditionDraft>,
     pub trace: TraceContext,

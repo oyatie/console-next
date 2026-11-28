@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Link, useRouter } from "@tanstack/react-router";
+import { PayrollOutlookLink } from "./payroll-outlook-link";
 import { t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { QueryState } from "../../../lib/react/query-state";
@@ -37,7 +38,7 @@ function BaselinePayrollHome({ setupAccess, createAccess }: { setupAccess: unkno
     ? <Link to="/payroll/setup">{t("payroll.setup.add")}</Link> : undefined;
   const create = access.data && createAccess && (createAccess === "signed-in" || accessRefusal(access.data, createAccess as never) === null)
     ? <Link to="/payroll/runs/new">{t("payroll.create.title")}</Link> : undefined;
-  return <Page floorplan="P-01" head={{ title: t("payroll.title"), sub: t("payroll.alpha"), primary: create ?? add, tools: <Link to="/payroll/reference" search={{ entity: undefined }}>{t("payroll.reference.title")}</Link> }}>
+  return <Page floorplan="P-01" head={{ title: t("payroll.title"), sub: t("payroll.alpha"), primary: create ?? add, tools: <><PayrollOutlookLink /><Link to="/payroll/reference" search={{ entity: undefined }}>{t("payroll.reference.title")}</Link></> }}>
     <QueryState q={groups} layout="list">{data => data.items.length ? <div className="form">
       {data.items.map(group => <Card key={group.id} title={group.name} meta={data.legal_entities.find(entity => entity.id === group.legal_entity_id)?.name}>
         <div className="form"><KeyValue readOnly items={[

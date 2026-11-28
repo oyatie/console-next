@@ -87,7 +87,7 @@ properties:
     properties:
       layer:
         type: string
-        enum: [code_default, platform, tenant, legal_entity, workplace]
+        x-extensible-enum: [code_default, platform, tenant, legal_entity, workplace, department, person]
       scope_entity_id:
         allOf: [{$ref: '#/components/schemas/Uuid'}]
         nullable: true

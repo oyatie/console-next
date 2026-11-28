@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: LicenseRef-Proprietary */
 .totalsGrid {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
   align-items: stretch;
   min-width: 0;
 }
@@ -12,8 +12,14 @@
 
 @media (min-width: 961px) {
   .totalsStats dd {
-    font-size: var(--text-xl);
+    font-size: var(--text-lg);
     white-space: nowrap;
+  }
+}
+
+@media (min-width: 1400px) {
+  .totalsStats dd {
+    font-size: var(--text-xl);
   }
 }
 

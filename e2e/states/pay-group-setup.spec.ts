@@ -22,7 +22,7 @@ async function setupForm(page: Page) {
   const main = page.getByRole("main");
   const add = main.getByRole("button", { name: t("payroll.setup.add"), exact: true });
   await expect(add.or(main.getByRole("button", save())).first()).toBeVisible();
-  if (!(await add.count())) return main;
+  if (!(await add.count())) return main.locator('[data-pattern="wizard"]');
   await add.click();
   const sheet = page.getByRole("dialog", { name: t("payroll.setup.add"), exact: true });
   await expect(sheet).toBeVisible();

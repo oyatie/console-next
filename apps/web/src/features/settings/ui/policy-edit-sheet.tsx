@@ -17,6 +17,7 @@ import { TextArea } from "../../../ui/field/text-area";
 import { TextInput } from "../../../ui/field/text-input";
 import { formatEntryLabel, formatEntryValue, parseSettingInput, type SettingEntry } from "../domain/catalog";
 import { type SummaryCopy } from "../domain/summaries";
+import { PolicyConsentCheck } from "./overtime-attestation-panel";
 import s from "./settings-hub.module.css";
 
 const DOMAIN = "settings_change";
@@ -53,8 +54,10 @@ export function PolicyEditSheet({
   const [reason, setReason] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [effectiveInput, setEffectiveInput] = useState("");
+  const [workerConsent, setWorkerConsent] = useState<string[]>([]);
   const [plan, setPlan] = useState<components["schemas"]["SettingChangePlan"] | null>(null);
   const needsNote = useNeedsNote(DOMAIN, reason);
+  const needsConsent = Boolean(plan?.requires.worker_consent);
 
   const parsed = parseSettingInput(entry, rawValue);
   const unchanged = parsed.ok && entry.value !== null && parsed.value === entry.value;
@@ -66,7 +69,9 @@ export function PolicyEditSheet({
         ? t("settingsHub.experience.problem.reason")
         : needsNote && !note.trim()
           ? t("settingsHub.experience.problem.note")
-          : null;
+          : needsConsent && !workerConsent.includes("consent")
+            ? t("settingsHub.policy.problem.consent")
+            : null;
 
   const buildRequest = (effectiveOverride?: string): components["schemas"]["SettingChangeRequest"] => ({
     value: parsed.ok ? parsed.value : rawValue,
@@ -253,7 +258,19 @@ export function PolicyEditSheet({
             {plan.reaches.keeps_own_value.length > 0 && (
               <div>{t("settingsHub.policy.keepsOwnValue", { count: plan.reaches.keeps_own_value.length })}</div>
             )}
+            {plan.reaches.affected_people_count !== undefined && (
+              <div>
+                {t("settingsHub.policy.impactSummary", {
+                  affected: plan.reaches.affected_people_count,
+                  outOfScope: plan.reaches.out_of_scope_people_count ?? 0,
+                  disfavored: plan.reaches.disfavored_people_count ?? 0,
+                })}
+              </div>
+            )}
           </Banner>
+          {plan.requires.worker_consent && (
+            <PolicyConsentCheck value={workerConsent} onChange={setWorkerConsent} />
+          )}
         </div>
       )}
     </Composer>

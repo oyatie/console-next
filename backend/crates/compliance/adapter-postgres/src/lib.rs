@@ -8,6 +8,7 @@
 pub mod rights;
 mod store;
 pub use store::PgComplianceStore;
+mod catalog_page;
 pub mod statutory;
 mod tx_helpers;
 
@@ -783,17 +784,6 @@ impl PgComplianceStore {
             "SELECT COUNT(*)::BIGINT FROM compliance_regulation_impacts r WHERE TRUE",
         );
         push_regulation_filters(&mut count_builder, &query);
-        let org = current_org().map_err(KernelError::from)?;
-        let total: i64 = with_org_conn::<_, _, PgComplianceError>(&self.pool, org, move |tx| {
-            Box::pin(async move {
-                Ok(count_builder
-                    .build_query_scalar()
-                    .fetch_one(tx.as_mut())
-                    .await?)
-            })
-        })
-        .await?;
-
         let mut builder = QueryBuilder::<Postgres>::new(
             r#"
             SELECT id, code, title, jurisdiction, regulator, citation,
@@ -810,11 +800,7 @@ impl PgComplianceStore {
         builder.push(" OFFSET ");
         builder.push_bind(query.page.offset);
 
-        let org = current_org().map_err(KernelError::from)?;
-        let rows = with_org_conn::<_, _, PgComplianceError>(&self.pool, org, move |tx| {
-            Box::pin(async move { Ok(builder.build().fetch_all(tx.as_mut()).await?) })
-        })
-        .await?;
+        let (total, rows) = catalog_page::rows(&self.pool, count_builder, builder).await?;
         let items = rows
             .iter()
             .map(regulation_impact_from_row)
@@ -839,6 +825,15 @@ impl PgComplianceStore {
 
         with_audits::<_, ComplianceObligation, PgComplianceError>(&self.pool, org, move |tx| {
             Box::pin(async move {
+                if let (Some(site), Some(branch)) = (command.scope.site_id, command.scope.branch_id) {
+                    // The two tenant foreign keys do not prove that this site belongs to this branch.
+                    let selected = sqlx::query_scalar::<_, uuid::Uuid>(
+                        "SELECT id FROM registry_sites WHERE org_id=$1 AND id=$2 AND branch_id=$3 FOR SHARE",
+                    ).bind(org_uuid).bind(site.as_uuid()).bind(branch.as_uuid()).fetch_optional(tx.as_mut()).await?;
+                    if selected.is_none() {
+                        return Err(KernelError::validation("site must belong to the selected branch").into());
+                    }
+                }
                 let code = next_compliance_code_tx(tx, org_uuid, "CP").await?;
                 let row = sqlx::query(
                     r#"
@@ -940,17 +935,6 @@ impl PgComplianceStore {
             "SELECT COUNT(*)::BIGINT FROM compliance_obligations o WHERE",
         );
         push_obligation_filters(&mut count_builder, &query);
-        let org = current_org().map_err(KernelError::from)?;
-        let total: i64 = with_org_conn::<_, _, PgComplianceError>(&self.pool, org, move |tx| {
-            Box::pin(async move {
-                Ok(count_builder
-                    .build_query_scalar()
-                    .fetch_one(tx.as_mut())
-                    .await?)
-            })
-        })
-        .await?;
-
         let mut builder = QueryBuilder::<Postgres>::new(
             r#"
             SELECT id, code, title, description, obligation_type,
@@ -967,11 +951,7 @@ impl PgComplianceStore {
         builder.push_bind(query.page.limit);
         builder.push(" OFFSET ");
         builder.push_bind(query.page.offset);
-        let org = current_org().map_err(KernelError::from)?;
-        let rows = with_org_conn::<_, _, PgComplianceError>(&self.pool, org, move |tx| {
-            Box::pin(async move { Ok(builder.build().fetch_all(tx.as_mut()).await?) })
-        })
-        .await?;
+        let (total, rows) = catalog_page::rows(&self.pool, count_builder, builder).await?;
         let items = rows
             .iter()
             .map(compliance_obligation_from_row)
@@ -1087,16 +1067,6 @@ impl PgComplianceStore {
             "SELECT COUNT(*)::BIGINT FROM compliance_frameworks f WHERE TRUE",
         );
         push_framework_filters(&mut count_builder, &query);
-        let org = current_org().map_err(KernelError::from)?;
-        let total: i64 = with_org_conn::<_, _, PgComplianceError>(&self.pool, org, move |tx| {
-            Box::pin(async move {
-                Ok(count_builder
-                    .build_query_scalar()
-                    .fetch_one(tx.as_mut())
-                    .await?)
-            })
-        })
-        .await?;
         let mut builder = QueryBuilder::<Postgres>::new(
             r#"
             SELECT id, code, name, version_label, framework_kind, status,
@@ -1111,11 +1081,7 @@ impl PgComplianceStore {
         builder.push_bind(query.page.limit);
         builder.push(" OFFSET ");
         builder.push_bind(query.page.offset);
-        let org = current_org().map_err(KernelError::from)?;
-        let rows = with_org_conn::<_, _, PgComplianceError>(&self.pool, org, move |tx| {
-            Box::pin(async move { Ok(builder.build().fetch_all(tx.as_mut()).await?) })
-        })
-        .await?;
+        let (total, rows) = catalog_page::rows(&self.pool, count_builder, builder).await?;
         let items = rows
             .iter()
             .map(compliance_framework_from_row)
@@ -1193,16 +1159,6 @@ impl PgComplianceStore {
         );
         count_builder.push_bind(query.framework_id);
         push_control_filters(&mut count_builder, &query);
-        let org = current_org().map_err(KernelError::from)?;
-        let total: i64 = with_org_conn::<_, _, PgComplianceError>(&self.pool, org, move |tx| {
-            Box::pin(async move {
-                Ok(count_builder
-                    .build_query_scalar()
-                    .fetch_one(tx.as_mut())
-                    .await?)
-            })
-        })
-        .await?;
         let mut builder = QueryBuilder::<Postgres>::new(
             r#"
             SELECT id, framework_id, control_key, title, objective,
@@ -1218,11 +1174,7 @@ impl PgComplianceStore {
         builder.push_bind(query.page.limit);
         builder.push(" OFFSET ");
         builder.push_bind(query.page.offset);
-        let org = current_org().map_err(KernelError::from)?;
-        let rows = with_org_conn::<_, _, PgComplianceError>(&self.pool, org, move |tx| {
-            Box::pin(async move { Ok(builder.build().fetch_all(tx.as_mut()).await?) })
-        })
-        .await?;
+        let (total, rows) = catalog_page::rows(&self.pool, count_builder, builder).await?;
         let items = rows
             .iter()
             .map(compliance_control_from_row)
@@ -1450,16 +1402,6 @@ impl PgComplianceStore {
             "SELECT COUNT(*)::BIGINT FROM compliance_evidence_bindings e WHERE TRUE",
         );
         push_evidence_filters(&mut count_builder, &query);
-        let org = current_org().map_err(KernelError::from)?;
-        let total: i64 = with_org_conn::<_, _, PgComplianceError>(&self.pool, org, move |tx| {
-            Box::pin(async move {
-                Ok(count_builder
-                    .build_query_scalar()
-                    .fetch_one(tx.as_mut())
-                    .await?)
-            })
-        })
-        .await?;
         let mut builder = QueryBuilder::<Postgres>::new(
             r#"
             SELECT id, control_id, obligation_id, evidence_target_type,
@@ -1476,11 +1418,7 @@ impl PgComplianceStore {
         builder.push_bind(query.page.limit);
         builder.push(" OFFSET ");
         builder.push_bind(query.page.offset);
-        let org = current_org().map_err(KernelError::from)?;
-        let rows = with_org_conn::<_, _, PgComplianceError>(&self.pool, org, move |tx| {
-            Box::pin(async move { Ok(builder.build().fetch_all(tx.as_mut()).await?) })
-        })
-        .await?;
+        let (total, rows) = catalog_page::rows(&self.pool, count_builder, builder).await?;
         let items = rows
             .iter()
             .map(evidence_binding_from_row)

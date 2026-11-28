@@ -8,3 +8,7 @@ properties:
     type: string
     format: date
     description: ISO date; omit or null to clear the retention deadline.
+  expectedUpdatedAt:
+    type: string
+    format: date-time
+    description: Optional revision from the lifecycle read. A changed or absent record returns 409 without changing the hold or retention.

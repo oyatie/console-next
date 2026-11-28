@@ -10,5 +10,15 @@ properties:
   state: {"$ref": "#/components/schemas/ObligationState"}
   evidence_ref: {"anyOf": [{"type": "string"}, {"type": "null"}]}
   signer: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+  co_signer: {"anyOf": [{"type": "string"}, {"type": "null"}]}
+  counsel_url: {"anyOf": [{"type": "string"}, {"type": "null"}]}
   signed_on: {"anyOf": [{"type": "string", "format": "date", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"}, {"type": "null"}]}
   deadline: {"$ref": "#/components/schemas/Text"}
+  pending_signoff:
+    type: "object"
+    required: ["seq", "outcome", "reason"]
+    properties:
+      seq: {"type": "integer", "minimum": 1}
+      outcome: {"type":"string","enum":["done","waived"]}
+      reason: {"anyOf":[{"type":"string"},{"type":"null"}]}
+  requires_reattestation: {"type":"boolean"}

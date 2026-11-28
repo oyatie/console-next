@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required:
+- eligible
+- is_tenant_ops
+- holder_count
+- max_holders
+- contact
+- codes
+properties:
+  eligible:
+    type: boolean
+  is_tenant_ops:
+    type: boolean
+  holder_count:
+    type: integer
+    minimum: 0
+  max_holders:
+    type: integer
+    minimum: 1
+    maximum: 2
+  contact:
+    oneOf:
+    - $ref: '#/components/schemas/RecoveryContactStatus'
+    - type: 'null'
+  codes:
+    $ref: '#/components/schemas/RecoveryCodesSummary'

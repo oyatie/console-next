@@ -1,0 +1,51 @@
+{
+  "baseline": {
+    "apps/web/src/features/company-domain/ui/company-domain-console.tsx#CompanyDomainConsole": 24,
+    "apps/web/src/features/payroll/ui/run-attendance-blocker.tsx#RunAttendanceBlocker": 2,
+    "apps/web/src/features/settings/ui/overtime-attestation-panel.tsx#OvertimeAttestationPanel": 18,
+    "apps/web/src/features/settings/ui/rollout-panel.tsx#RolloutPanel": 21,
+    "apps/web/src/features/settings/ui/settings-summary-strip.tsx#SettingsSummaryStrip": 1
+  },
+  "newScreens": {
+    "apps/web/src/features/company-domain/ui/company-domain-console.tsx#CompanyDomainConsole": {
+      "FACT": 11,
+      "REFUSAL": 10,
+      "EMPTY": 0,
+      "LEGAL": 1,
+      "RECEIPT": 2,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/payroll/ui/run-attendance-blocker.tsx#RunAttendanceBlocker": {
+      "FACT": 0,
+      "REFUSAL": 2,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/settings/ui/overtime-attestation-panel.tsx#OvertimeAttestationPanel": {
+      "FACT": 9,
+      "REFUSAL": 6,
+      "EMPTY": 1,
+      "LEGAL": 2,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/settings/ui/rollout-panel.tsx#RolloutPanel": {
+      "FACT": 13,
+      "REFUSAL": 8,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/settings/ui/settings-summary-strip.tsx#SettingsSummaryStrip": {
+      "FACT": 0,
+      "REFUSAL": 1,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 0,
+      "EXPLANATION": 0
+    }
+  }
+}

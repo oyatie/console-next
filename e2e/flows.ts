@@ -285,8 +285,8 @@ export async function stepUp(dialog: Locator, button: string, done: Locator) {
 const RUN = Date.now().toString(36);
 // --repeat-each runs a spec again on the same database, so each repetition gets its own suffix too.
 export const unique = (s: string) => {
-  const r = test.info().repeatEachIndex;
-  return `${s}${process.env.E2E_REUSE === "1" ? `-${RUN}` : ""}${r ? `-r${r}` : ""}`;
+  const { repeatEachIndex, retry } = test.info();
+  return `${s}${process.env.E2E_REUSE === "1" ? `-${RUN}` : ""}${repeatEachIndex ? `-r${repeatEachIndex}` : ""}${retry ? `-try${retry}` : ""}`;
 };
 
 type Clicks = ReturnType<typeof clickCounter>;

@@ -28,9 +28,22 @@ export async function mount(page: Page, bounded = false, variant = "table", read
   if (variant === "page") await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
 }
 
+export const gridActionBar = "#gallery-grid-table :is(footer, [data-sticky=true])";
+
+export async function rowHeight(page: Page) {
+  return page.getByRole("rowheader").first().evaluate(cell => cell.getBoundingClientRect().height);
+}
+
+export async function expectBoundedRows(page: Page) {
+  const height = await rowHeight(page);
+  const viewport = page.viewportSize()!.height;
+  const maximum = Math.max(25, Math.ceil(viewport / height) + 1) + 10;
+  expect(await page.getByRole("rowheader").count()).toBeLessThanOrEqual(maximum);
+}
+
 export async function expectWindowAt(page: Page, row: number) {
   await expect.poll(() => page.getByRole("rowheader").allTextContents()).toContain(String(row));
-  expect(await page.getByRole("rowheader").count()).toBeLessThanOrEqual(25 + 10);
+  await expectBoundedRows(page);
   // Check geometry, not just DOM presence: the rendered rows must cover the viewport.
   const coverage = await page.evaluate(() => {
     const wrapper = document.getElementById("scroller")!;

@@ -2,7 +2,7 @@ import { createMemoryHistory, createRootRoute, createRouter, RouterContextProvid
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, beforeEach, expect, test, vi } from "vitest";
 import type { Checklist, ChecklistStep } from "@console/api/pending";
-import { loadCatalog } from "@console/i18n";
+import { loadCatalog, t } from "@console/i18n";
 import { SetupHome } from "./setup-home";
 import { goLivePreviewQuery } from "../api";
 
@@ -28,6 +28,19 @@ const step = (key: ChecklistStep["key"], canAct: boolean, needs: string, extra: 
 const checklist = (steps: ChecklistStep[]): Checklist => ({
   phase: "SETUP", go_live_at: null, done: 0, total: steps.length, steps,
   summary: { people: 2000, placed: 1982, unplaced: 18, entity_unknown: 3, progress: 0 },
+});
+
+test("the nonblocking overtime step names the policy record and its effect", () => {
+  const overtime = step("overtime", true, "attendance::approve", { action: "confirm_overtime_rule", skippable: true });
+  const html = render(checklist([overtime]));
+  expect(html).toContain(t("setup.step.overtime"));
+  expect(html).toContain(t("setup.why.overtime"));
+  expect(html).toContain(t("setup.permission.attendance::approve"));
+  expect(html).toContain('href="/settings/overtime"');
+  expect(html).toContain(t("setup.skip.overtime"));
+  const denied = render(checklist([{ ...overtime, can_act: false }]));
+  expect(denied).not.toContain('href="/settings/overtime"');
+  expect(denied).not.toContain(t("setup.skip.overtime"));
 });
 
 test("an unknown step key stays readable without a guessed action", () => {

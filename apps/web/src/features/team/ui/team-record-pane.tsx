@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
@@ -24,9 +25,11 @@ import s from "./team.module.css";
 export function TeamRecordPane({
   member,
   leaveRequests,
+  moreLeaves,
 }: {
   member: TeamEmployee;
   leaveRequests: readonly TeamLeaveRequest[];
+  moreLeaves?: ReactNode;
 }) {
   const access = useQuery(teamAccessQuery);
   const canManage = Boolean(
@@ -67,9 +70,9 @@ export function TeamRecordPane({
         />
       </RecordPaneSection>
 
-      {memberLeaves.length > 0 ? (
+      {memberLeaves.length > 0 || moreLeaves ? (
         <RecordPaneSection title={t("team.pane.section.leave")}>
-          <ItemList
+          {memberLeaves.length > 0 && <ItemList
             label={t("team.pane.section.leave")}
             items={memberLeaves.map(req => ({
               key: req.id,
@@ -86,7 +89,8 @@ export function TeamRecordPane({
                 </Chip>
               ),
             }))}
-          />
+          />}
+          {moreLeaves}
         </RecordPaneSection>
       ) : null}
 

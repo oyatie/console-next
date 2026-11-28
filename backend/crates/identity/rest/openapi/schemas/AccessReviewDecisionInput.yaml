@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+required:
+- item_id
+- decision
+properties:
+  item_id:
+    $ref: '#/components/schemas/Uuid'
+  decision:
+    type: string
+    enum: [KEEP, REVOKE]
+  reason_code:
+    type: string
+    nullable: true
+  reason_note:
+    type: string
+    maxLength: 1000
+    nullable: true

@@ -4,6 +4,8 @@ use console_kernel_core::{KernelError, TraceContext, UserId};
 use console_platform_db::{with_audit, with_org_conn};
 use console_platform_request_context::current_org;
 
+pub const CONSOLE_LEGACY_KILL_SWITCH_FLAG_KEY: &str = "console_legacy_kill_switch";
+
 impl PgOrgStore {
     /// Read the caller's console workspace layout (Oyatie window engine, UI-M1b).
     ///
@@ -17,23 +19,25 @@ impl PgOrgStore {
         &self,
         user_id: UserId,
     ) -> Result<serde_json::Value, PgOrgError> {
+        Ok(self.workspace_with_rollback(user_id).await?.0)
+    }
+
+    /// Read the saved preference and its tenant's emergency override in the same snapshot.
+    pub async fn workspace_with_rollback(
+        &self,
+        user_id: UserId,
+    ) -> Result<(serde_json::Value, bool), PgOrgError> {
         let org = current_org().map_err(KernelError::from)?;
-        let org_uuid = *org.as_uuid();
-        let user_uuid = *user_id.as_uuid();
-        let layout =
-            with_org_conn::<_, Option<serde_json::Value>, PgOrgError>(&self.pool, org, move |tx| {
-                Box::pin(async move {
-                    Ok(sqlx::query_scalar(
-                        "SELECT layout FROM me_workspace_layouts WHERE org_id = $1 AND user_id = $2",
-                    )
-                    .bind(org_uuid)
-                    .bind(user_uuid)
-                    .fetch_optional(tx.as_mut())
-                    .await?)
-                })
-            })
-            .await?;
-        Ok(layout.unwrap_or_else(|| serde_json::json!({})))
+        with_org_conn(&self.pool, org, move |tx| Box::pin(async move {
+            Ok(sqlx::query_as(
+                "SELECT COALESCE((SELECT layout FROM me_workspace_layouts WHERE org_id=$1 AND user_id=$2), '{}'::jsonb),
+                        org_runtime_flag_enabled($3)",
+            )
+            .bind(org.as_uuid())
+            .bind(user_id.as_uuid())
+            .bind(CONSOLE_LEGACY_KILL_SWITCH_FLAG_KEY)
+            .fetch_one(tx.as_mut()).await?)
+        })).await
     }
 
     /// Upsert the caller's console workspace layout. The write is audited (a

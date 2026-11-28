@@ -48,9 +48,16 @@ export async function fillRegister(page: Page, p: Person, c: C = plain) {
 /** The sheet's commit for one person, or with `next` the one that keeps the sheet open for the next person. */
 export async function pressRegister(page: Page, next = false, c: C = plain) {
   await loadCatalog("ko");
+  const sheet = registerSheet(page);
+  if (await page.locator("html").getAttribute("data-experience") === "console") {
+    const createMore = sheet.getByRole("switch", { name: t("register.createMore"), exact: true });
+    if (await createMore.isChecked() !== next) await c.click(createMore);
+    await c.click(sheet.getByRole("button", { name: t("register.run.submit"), exact: true }));
+    return;
+  }
   const label = t("composer.commit.count", { action: t("composer.action.registration"), count: 1, unit: t("composer.unit.people"), verb: t("composer.verb.apply") });
   // The plain commit's name is part of the next-person commit's, so it is matched whole.
-  await c.click(registerSheet(page).getByRole("button", next ? { name: t("composer.commit.next", { label }) } : { name: label, exact: true }));
+  await c.click(sheet.getByRole("button", next ? { name: t("composer.commit.next", { label }) } : { name: label, exact: true }));
 }
 
 /** The receipt a registration leaves (in the sheet while it stays open, on the roster once it closes). */

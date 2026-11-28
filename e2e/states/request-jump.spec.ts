@@ -63,3 +63,37 @@ test("the command chord opens the jump dialog", async ({ page }) => {
     expect(fixture.unexpected).toEqual([]);
   } finally { await page.close(); fixture.release(); }
 });
+
+for (const experience of ["console", "baseline"] as const) {
+  test(`my command history can recover and open an older receipt in ${experience} ${experience === "baseline" ? "@baseline" : ""}`, async ({ page }) => {
+    const fixture = await mockScreen(page, screens[0], "empty");
+    const receipt = {
+      id: id(71), idempotency_key: id(72), command: "POST /api/v1/employees",
+      state: "APPLIED" as const, created_at: AT, deadline: null, settled_at: AT,
+      inputs_masked: {}, result: null, refusal_code: null, masked: false,
+      touched: [{ type: "employee", id: id(70), audit_id: id(69), branch_id: null }],
+    };
+    let failing = true;
+    await mockRoute(page, "get", "/api/v1/me/requests", req => {
+      if (failing) return { status: 503, json: failure("unavailable") };
+      const offset = Number(new URL(req.url()).searchParams.get("offset"));
+      const items = offset ? [receipt] : Array.from({ length: 50 }, (_, i) => ({ ...receipt, id: id(i + 101) }));
+      return { status: 200, json: { items, total: 51, offset, limit: 50 } };
+    });
+    await mockRoute(page, "get", "/api/v1/requests/{key}", { status: 200, json: receipt });
+    try {
+      await page.goto("/requests");
+      const history = page.getByRole("region", { name: t("requestOutcome.myHistory.title") });
+      await expect(history.getByRole("button", { name: t("common.retry") })).toBeVisible({ timeout: 3000 });
+      failing = false;
+      await history.getByRole("button", { name: t("common.retry") }).click();
+      await page.getByRole("textbox", { name: t("requestOutcome.lookup") }).fill(id(75));
+      await history.getByRole("button", { name: t("common.page.next") }).click();
+      await expect(history.getByText(receipt.id, { exact: true })).toBeVisible();
+      await expect(history.getByText(t("accessLog.target.employee"), { exact: false })).toBeVisible();
+      await history.getByRole("link", { name: t("requestOutcome.myHistory.open") }).click();
+      await expect(page).toHaveURL(new RegExp(`/requests/${receipt.id}$`));
+      expect(fixture.unexpected).toEqual([]);
+    } finally { fixture.release(); }
+  });
+}

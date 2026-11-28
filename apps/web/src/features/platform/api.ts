@@ -10,6 +10,7 @@ export type Org = components["schemas"]["PlatformOrg"];
 export type OrgStatus = Org["status"];
 export type Health = components["schemas"]["PlatformTenantHealth"];
 export type Group = components["schemas"]["PlatformGroup"];
+export type GroupJoinInvitation = components["schemas"]["PlatformGroupJoinInvitation"];
 export type GroupRole = components["schemas"]["PlatformGroupRole"];
 export type TenantRole = components["schemas"]["PlatformTenantRole"];
 export type OperatorSummary = components["schemas"]["PlatformOperatorSummary"];
@@ -138,6 +139,15 @@ export const assignOrgToGroup = async (id: string, orgId: string) =>
   unwrap(api.PUT("/api/platform/groups/{id}/organizations/{org_id}", {
     params: { path: { id, org_id: orgId } },
     body: { step_up: await assertPasskey() },
+  }));
+export const inviteOrgToGroup = async (id: string, orgId: string) =>
+  unwrap(api.POST("/api/platform/groups/{id}/invitations", {
+    params: { path: { id } },
+    body: { org_id: orgId, step_up: await assertPasskey() },
+  }));
+export const cancelGroupInvitation = (id: string, invitationId: string) =>
+  unwrap(api.DELETE("/api/platform/groups/{id}/invitations/{invitation_id}", {
+    params: { path: { id, invitation_id: invitationId } },
   }));
 export const removeOrgFromGroup = (id: string, orgId: string) =>
   unwrap(api.DELETE("/api/platform/groups/{id}/organizations/{org_id}", { params: { path: { id, org_id: orgId } } }));

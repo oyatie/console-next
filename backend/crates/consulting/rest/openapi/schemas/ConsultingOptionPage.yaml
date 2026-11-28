@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required: [items, next_offset]
+properties:
+  items:
+    type: array
+    items:
+      type: object
+      required: [id, label, recorded_at]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        label: { type: string }
+        recorded_at: { type: string, format: date-time, nullable: true }
+  next_offset: { type: integer, format: int64, nullable: true }

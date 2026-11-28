@@ -138,6 +138,22 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/platform/groups/{id}/invitations",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!("../openapi/paths/api__platform__groups__id__invitations.post.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/platform/groups/{id}/invitations/{invitation_id}",
+        operations: &[Operation {
+            method: "delete",
+            body: include_str!(
+                "../openapi/paths/api__platform__groups__id__invitations__invitation_id.delete.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/platform/groups/{id}/organizations/{org_id}",
         operations: &[
             Operation {
@@ -455,6 +471,20 @@ const PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/access/invites",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!("../openapi/paths/api__v1__access__invites.post.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/access/invites/preview",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!("../openapi/paths/api__v1__access__invites__preview.post.yaml"),
+        }],
+    },
+    PathItem {
         path: "/api/v1/access/me",
         operations: &[Operation {
             method: "get",
@@ -466,6 +496,20 @@ const PATHS: &[PathItem] = &[
         operations: &[Operation {
             method: "get",
             body: include_str!("../openapi/paths/api__v1__access__ops.get.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/access/ops/holders",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!("../openapi/paths/api__v1__access__ops__holders.post.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/access/ops/holders/release",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!("../openapi/paths/api__v1__access__ops__holders__release.post.yaml"),
         }],
     },
     PathItem {
@@ -501,6 +545,56 @@ const PATHS: &[PathItem] = &[
             method: "post",
             body: include_str!(
                 "../openapi/paths/api__v1__access__requests__requestId__close.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/access/reviews",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__access__reviews.get.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/access/reviews/{period}",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__access__reviews__period.get.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/access/reviews/{period}/complete",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__access__reviews__period__complete.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/access/reviews/{period}/decisions",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__access__reviews__period__decisions.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/access/reviews/{period}/export.csv",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../openapi/paths/api__v1__access__reviews__period__export.csv.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/access/reviews/{period}/start",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__access__reviews__period__start.post.yaml"
             ),
         }],
     },
@@ -693,6 +787,43 @@ const PATHS: &[PathItem] = &[
         operations: &[Operation {
             method: "post",
             body: include_str!("../openapi/paths/api__v1__auth__privacy-consent__status.post.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/auth/recovery/challenge",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!("../openapi/paths/api__v1__auth__recovery__challenge.post.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/auth/recovery/codes/generate",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__auth__recovery__codes__generate.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/auth/recovery/contact",
+        operations: &[Operation {
+            method: "put",
+            body: include_str!("../openapi/paths/api__v1__auth__recovery__contact.put.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/auth/recovery/redeem",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!("../openapi/paths/api__v1__auth__recovery__redeem.post.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/auth/recovery/status",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__auth__recovery__status.get.yaml"),
         }],
     },
     PathItem {
@@ -1221,7 +1352,38 @@ const PATHS: &[PathItem] = &[
                     "../openapi/paths/api__v1__tenant__company-domain__request.post.yaml"
                 ),
             },
+            Operation {
+                method: "delete",
+                body: include_str!(
+                    "../openapi/paths/api__v1__tenant__company-domain__request.delete.yaml"
+                ),
+            },
         ],
+    },
+    PathItem {
+        path: "/api/v1/tenant/group-invitations",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__tenant__group-invitations.get.yaml"),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/tenant/group-invitations/{invitation_id}/accept",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__tenant__group-invitations__invitation_id__accept.post.yaml"
+            ),
+        }],
+    },
+    PathItem {
+        path: "/api/v1/tenant/group-invitations/{invitation_id}/decline",
+        operations: &[Operation {
+            method: "post",
+            body: include_str!(
+                "../openapi/paths/api__v1__tenant__group-invitations__invitation_id__decline.post.yaml"
+            ),
+        }],
     },
     PathItem {
         path: "/api/v1/tenant/ops-recovery",
@@ -1364,6 +1526,10 @@ const PATHS: &[PathItem] = &[
 
 const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
+        name: "AcceptTenantGroupInvitationRequest",
+        body: include_str!("../openapi/schemas/AcceptTenantGroupInvitationRequest.yaml"),
+    },
+    NamedYaml {
         name: "AccessCatalog",
         body: include_str!("../openapi/schemas/AccessCatalog.yaml"),
     },
@@ -1462,6 +1628,22 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "AccessRequestReason",
         body: include_str!("../openapi/schemas/AccessRequestReason.yaml"),
+    },
+    NamedYaml {
+        name: "AccessReviewDecisionInput",
+        body: include_str!("../openapi/schemas/AccessReviewDecisionInput.yaml"),
+    },
+    NamedYaml {
+        name: "AccessReviewDetail",
+        body: include_str!("../openapi/schemas/AccessReviewDetail.yaml"),
+    },
+    NamedYaml {
+        name: "AccessReviewItem",
+        body: include_str!("../openapi/schemas/AccessReviewItem.yaml"),
+    },
+    NamedYaml {
+        name: "AccessReviewSummary",
+        body: include_str!("../openapi/schemas/AccessReviewSummary.yaml"),
     },
     NamedYaml {
         name: "AccessRole",
@@ -1612,6 +1794,10 @@ const SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../openapi/schemas/CreatePlatformGroupAccountResponse.yaml"),
     },
     NamedYaml {
+        name: "CreatePlatformGroupInvitationRequest",
+        body: include_str!("../openapi/schemas/CreatePlatformGroupInvitationRequest.yaml"),
+    },
+    NamedYaml {
         name: "CreatePlatformGroupRequest",
         body: include_str!("../openapi/schemas/CreatePlatformGroupRequest.yaml"),
     },
@@ -1728,6 +1914,86 @@ const SCHEMAS: &[NamedYaml] = &[
         body: include_str!("../openapi/schemas/OpsAccount.yaml"),
     },
     NamedYaml {
+        name: "OpsHolderSummary",
+        body: include_str!("../openapi/schemas/OpsHolderSummary.yaml"),
+    },
+    NamedYaml {
+        name: "DesignateOpsHolderRequest",
+        body: include_str!("../openapi/schemas/DesignateOpsHolderRequest.yaml"),
+    },
+    NamedYaml {
+        name: "ReleaseOpsHolderRequest",
+        body: include_str!("../openapi/schemas/ReleaseOpsHolderRequest.yaml"),
+    },
+    NamedYaml {
+        name: "AccessInviteGrantLineInput",
+        body: include_str!("../openapi/schemas/AccessInviteGrantLineInput.yaml"),
+    },
+    NamedYaml {
+        name: "PreviewAccessInviteRequest",
+        body: include_str!("../openapi/schemas/PreviewAccessInviteRequest.yaml"),
+    },
+    NamedYaml {
+        name: "PreviewAccessInviteItem",
+        body: include_str!("../openapi/schemas/PreviewAccessInviteItem.yaml"),
+    },
+    NamedYaml {
+        name: "PreviewAccessInviteResponse",
+        body: include_str!("../openapi/schemas/PreviewAccessInviteResponse.yaml"),
+    },
+    NamedYaml {
+        name: "CreateAccessInviteRequest",
+        body: include_str!("../openapi/schemas/CreateAccessInviteRequest.yaml"),
+    },
+    NamedYaml {
+        name: "CreateAccessInviteResponse",
+        body: include_str!("../openapi/schemas/CreateAccessInviteResponse.yaml"),
+    },
+    NamedYaml {
+        name: "RecoveryChannel",
+        body: include_str!("../openapi/schemas/RecoveryChannel.yaml"),
+    },
+    NamedYaml {
+        name: "RecoveryContactStatus",
+        body: include_str!("../openapi/schemas/RecoveryContactStatus.yaml"),
+    },
+    NamedYaml {
+        name: "RecoveryCodesSummary",
+        body: include_str!("../openapi/schemas/RecoveryCodesSummary.yaml"),
+    },
+    NamedYaml {
+        name: "RecoveryStatusResponse",
+        body: include_str!("../openapi/schemas/RecoveryStatusResponse.yaml"),
+    },
+    NamedYaml {
+        name: "UpsertRecoveryContactRequest",
+        body: include_str!("../openapi/schemas/UpsertRecoveryContactRequest.yaml"),
+    },
+    NamedYaml {
+        name: "GenerateRecoveryCodesRequest",
+        body: include_str!("../openapi/schemas/GenerateRecoveryCodesRequest.yaml"),
+    },
+    NamedYaml {
+        name: "GenerateRecoveryCodesResponse",
+        body: include_str!("../openapi/schemas/GenerateRecoveryCodesResponse.yaml"),
+    },
+    NamedYaml {
+        name: "RecoveryChallengeRequest",
+        body: include_str!("../openapi/schemas/RecoveryChallengeRequest.yaml"),
+    },
+    NamedYaml {
+        name: "RecoveryChallengeResponse",
+        body: include_str!("../openapi/schemas/RecoveryChallengeResponse.yaml"),
+    },
+    NamedYaml {
+        name: "RecoveryRedeemRequest",
+        body: include_str!("../openapi/schemas/RecoveryRedeemRequest.yaml"),
+    },
+    NamedYaml {
+        name: "RecoveryRedeemResponse",
+        body: include_str!("../openapi/schemas/RecoveryRedeemResponse.yaml"),
+    },
+    NamedYaml {
         name: "OpsRecoveryCancelRequest",
         body: include_str!("../openapi/schemas/OpsRecoveryCancelRequest.yaml"),
     },
@@ -1806,6 +2072,10 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "PlatformGroupAccount",
         body: include_str!("../openapi/schemas/PlatformGroupAccount.yaml"),
+    },
+    NamedYaml {
+        name: "PlatformGroupJoinInvitation",
+        body: include_str!("../openapi/schemas/PlatformGroupJoinInvitation.yaml"),
     },
     NamedYaml {
         name: "PlatformGroupMember",
@@ -2118,6 +2388,10 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "TenantEraseRequest",
         body: include_str!("../openapi/schemas/TenantEraseRequest.yaml"),
+    },
+    NamedYaml {
+        name: "TenantGroupInvitationListResponse",
+        body: include_str!("../openapi/schemas/TenantGroupInvitationListResponse.yaml"),
     },
     NamedYaml {
         name: "TokenPairResponse",

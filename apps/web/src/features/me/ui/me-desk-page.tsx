@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { useServedCapability } from "../../../reference/authz/ui/use-documents-served";
+import { DISPATCH_OFFERS_MODULE, moduleReady, modulesQuery } from "../../../reference/onboarding/api";
+import { lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
@@ -39,6 +42,8 @@ export type MeDeskSearch = { view?: MeDeskView };
 const route = getRouteApi("/app/me/desk");
 const VIEWS: readonly MeDeskView[] = ["overview", "attendance", "requests", "documents"];
 
+const LazyDispatchOffers = lazy(() => import("./me-dispatch-offers-page").then(m => ({ default: m.MeDispatchOffersPage })));
+export function MeDispatchOffers() { return <Suspense fallback={null}><LazyDispatchOffers /></Suspense>; }
 export function MeDeskPage() {
   const search = route.useSearch();
   const navigate = route.useNavigate();
@@ -47,7 +52,10 @@ export function MeDeskPage() {
   const month = today.slice(0, 7);
   const week = isoMondayOf(today);
 
+  const calendar = useServedCapability("served_calendar");
   const me = useQuery(meUserQuery);
+  const modules = useQuery(modulesQuery);
+  const evaluations = useServedCapability("served_evaluation_tasks");
   const isLinked = me.data?.employee_link_status === "LINKED";
   const profile = useQuery({ ...myProfileQuery, enabled: isLinked, retry: false });
   const leave = useQuery({ ...myLeaveOverviewQuery, enabled: isLinked, retry: false });
@@ -60,7 +68,6 @@ export function MeDeskPage() {
 
   const primary = readGroup([me]);
   const availableWeek52 = week52.data?.status === "available" ? week52.data.projection : undefined;
-  const openRequestsCount = changes.data?.items.length ?? 0;
 
   const summary = isLinked ? (
     <StatRow
@@ -86,7 +93,9 @@ export function MeDeskPage() {
         {
           key: "requests",
           label: t("me.desk.stat.requests"),
-          value: t("me.desk.stat.requestsValue", { count: openRequestsCount }),
+          value: changes.isSuccess ? t("me.desk.stat.requestsValue", { count: changes.data.total })
+            : t(changes.isError ? "me.desk.stat.requestsUnavailable" : "common.loading"),
+          tone: changes.isSuccess ? undefined : "muted",
         },
       ]}
     />
@@ -94,6 +103,7 @@ export function MeDeskPage() {
 
   const viewsNav = (
     <nav aria-label={t("me.desk.views")} className={s.railStack}>
+      {calendar && <Link to="/calendar">{t("internalCalendar.title")}</Link>}
       <div className={s.railNav}>
         {VIEWS.map(item => (
           <Button
@@ -110,6 +120,8 @@ export function MeDeskPage() {
       </div>
       <div className={s.railLinks}>
         <Link to="/me/attendance" className={buttonClass("secondary", { size: "sm", className: s.nowrap })}>{t("me.desk.links.attendance")}</Link>
+        {evaluations && <Link to="/me/evaluations" className={buttonClass("secondary", { size: "sm", className: s.nowrap })}>{t("me.evaluation.title")}</Link>}
+        {moduleReady(modules.data, DISPATCH_OFFERS_MODULE) && <Link to="/me/dispatch-offers" className={buttonClass("secondary", { size: "sm", className: s.nowrap })}>{t("me.dispatch.link")}</Link>}
         <Link to="/payslips" className={buttonClass("secondary", { size: "sm", className: s.nowrap })}>{t("shell.title.payslip")}</Link>
         <Link to="/account/privacy" className={buttonClass("secondary", { size: "sm", className: s.nowrap })}>{t("me.desk.links.privacy")}</Link>
       </div>
@@ -188,7 +200,7 @@ export function MeDeskPage() {
         <RecordSection
           id="me-desk-changes"
           title={t("me.desk.requests.title")}
-          tools={<Link to="/people/requests" search={{ lane: "me" }} className={buttonClass("secondary", { size: "sm", className: s.nowrap })}>{t("me.desk.links.requests")}</Link>}
+          tools={<Link to="/people/requests" search={{ lane: "filed" }} className={buttonClass("secondary", { size: "sm", className: s.nowrap })}>{t("me.desk.links.requests")}</Link>}
         >
           <QueryState q={changes} compact>
             {data => (
@@ -248,9 +260,8 @@ export function MeDeskPage() {
       {(view === "overview" || view === "attendance") && (
         <MeAttendanceSections
           schedule={schedule}
-          records={records.data?.items ?? []}
-          exceptions={exceptions.data?.items ?? []}
           recordsQuery={records}
+          exceptions={exceptions.data?.items ?? []}
           exceptionsQuery={exceptions}
           compactScheduleWeekStart={view === "overview" ? week : undefined}
           fullScheduleLink={view === "overview"}

@@ -64,6 +64,7 @@ export async function mockScreen(page: Page, screen: Screen, state: State | OrgC
   await mockRoute(page, "get", "/api/v1/regions", { status: 200, json: [] });
   await mockRoute(page, "get", "/api/v1/branches", { status: 200, json: [] });
   await mockRoute(page, "get", "/api/v1/workplace-kinds", { status: 200, json: { items: [] } });
+  await mockRoute(page, "get", "/api/v1/audit-streams/availability", { status: 200, json: { events: false, access_events: false } });
   await mockRoute(page, "get", "/api/v1/access/granters", { status: 200, json: { count: 1, names: ["김권한담당"] } });
   await mockRoute(page, "get", "/api/v1/access/me", request => ({ status: 200,
     json: screenAccess(new URL(request.headers().referer ?? request.url()).pathname),
@@ -83,6 +84,10 @@ export async function mockScreen(page: Page, screen: Screen, state: State | OrgC
       body: "Terms of service",
       privacy: { ...consentDoc, title: "Privacy notice", body: "Privacy notice full text", published_on: AT.slice(0, 10), policy_url: "/privacy", review_pending: false },
     },
+  });
+  await mockRoute(page, "get", "/api/v1/auth/recovery/status", {
+    status: 200,
+    json: { eligible: false, is_tenant_ops: false, holder_count: 1, max_holders: 2, contact: null, codes: { total: 10, remaining: 0, generated_at: null } },
   });
   await mockRoute(page, "get", "/api/v1/me/access-log", { status: 200, json: { items: [], next_cursor: null } });
   await mockRoute(page, "get", "/api/v1/me/profile", {

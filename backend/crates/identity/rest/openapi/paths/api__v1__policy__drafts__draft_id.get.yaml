@@ -1,3 +1,4 @@
+x-console-authz: {"permission": "access:edit", "scope": "tenant"}
 operationId: getPolicyDraft
 summary: Get a policy draft
 tags:

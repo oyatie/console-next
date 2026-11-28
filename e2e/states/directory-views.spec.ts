@@ -13,7 +13,7 @@ import { contractWindowSettings } from "../mock/directory";
 import { addDays } from "../../apps/web/src/features/people/domain/roster";
 import { todayKst } from "../../apps/web/src/lib/pure/today";
 import { clearShifts, expectStable, recordShifts } from "../stability";
-import { experienceState } from "../experience";
+import { experienceState, seededExperience } from "../experience";
 
 test.beforeAll(() => loadCatalog("ko"));
 /** Console's roster filters on its rail; the contract item is the board's word (d-people), with no window in it. */
@@ -253,7 +253,8 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     });
   });
 
-  test(`personal directory views survive reload and replace server filters ${width} ${theme} @ui-state`, async ({ page }) => {
+  test(`personal directory views survive reload and replace server filters ${width} ${theme} @ui-state`, async ({ page }, { project: { use: { storageState } } }) => {
+    const baseline = seededExperience(storageState) === "baseline";
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
     const fixture = await mockScreen(page, screens[1], "large");
@@ -319,10 +320,17 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     await expect(page).not.toHaveURL(/unit=|sel=|search=/);
     await expect(find).toHaveValue("");
     const grid = page.getByRole("grid", { name: t("people.table"), exact: true });
-    const foot = page.getByRole("note", { name: t("roster.foot.label") });
-    await expect(foot).toContainText(t("roster.foot.range", { shown: 100, total: fixture.count }));
-    await grid.evaluate(el => { el.scrollTop = el.scrollHeight; });
-    await expect(foot).toContainText(t("roster.foot.range", { shown: 200, total: fixture.count }));
+    if (baseline) {
+      const foot = page.getByRole("note", { name: t("roster.foot.label") });
+      await expect(foot).toContainText(t("roster.foot.range", { shown: 100, total: fixture.count }));
+      await grid.evaluate(el => { el.scrollTop = el.scrollHeight; });
+      await expect(foot).toContainText(t("roster.foot.range", { shown: 200, total: fixture.count }));
+    } else {
+      const indexBar = page.getByRole("region", { name: t("people.index.label"), exact: true });
+      await expect(indexBar).toContainText(t("people.index.range", { start: 1, end: 100, total: fixture.count }));
+      await grid.evaluate(el => { el.scrollTop = el.scrollHeight; });
+      await expect(indexBar).toContainText(t("people.index.range", { start: 1, end: 200, total: fixture.count }));
+    }
     const next = requests.findLast(query => query.has("cursor"))!;
     expect(next.get("sort")).toBe("-hire_date");
     expect(next.getAll("status")).toEqual(["ON_LEAVE"]);
@@ -331,12 +339,13 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
     expect(await grid.getByRole("row").count()).toBeLessThan(60);
     await fits(page, `restored view ${width} ${theme}`);
     // Check the restored controls here; large-roster row accessibility has its own directory state specs.
-    await expectAxe(page, `restored view ${width} ${theme}`, { include: '[role="group"], [role="columnheader"], [role="note"]' });
+    await expectAxe(page, `restored view ${width} ${theme}`, { include: baseline ? '[role="group"], [role="columnheader"], [role="note"]' : '[role="group"], [role="columnheader"]' });
     await grid.evaluate(el => { el.scrollTop = 0; });
     await grid.getByText("UI-0001", { exact: true }).click();
     const peek = page.getByRole("complementary", { name: t("people.panel"), exact: true });
     await expect(peek.getByRole("heading", { level: 2 })).toContainText("검증직원 1");
-    await expect(peek.getByRole("link", { name: new RegExp(t("people.panel.open")) })).toHaveAttribute("href", `/people/${id(100)}`);
+    if (baseline) await expect(peek.getByRole("link", { name: new RegExp(t("people.panel.open")) })).toHaveAttribute("href", `/people/${id(100)}`);
+    else await expect(peek.getByRole("button", { name: t("uiFlexibleColumns.openInTab"), exact: true })).toBeVisible();
     await fits(page, `directory peek ${width} ${theme}`);
     await expectAxe(page, `directory peek ${width} ${theme}`);
     await test.info().attach("peek", { body: await page.screenshot({ path: test.info().outputPath("peek.png"), fullPage: true }), contentType: "image/png" });

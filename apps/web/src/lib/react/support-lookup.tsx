@@ -8,6 +8,10 @@ import { failureText } from "../refusal";
 import { resolveSupportReference } from "../support-reference";
 
 export function SupportLookup() {
+  return <details><summary>{t("tenants.supportLookup.title")}</summary><SupportLookupForm /></details>;
+}
+
+export function SupportLookupForm() {
   const [reference, setReference] = useState("");
   const [result, setResult] = useState<Awaited<ReturnType<typeof resolveSupportReference>>>();
   const [error, setError] = useState<unknown>();
@@ -20,7 +24,7 @@ export function SupportLookup() {
     catch (failure) { setError(failure); }
     finally { setPending(false); }
   };
-  return <details><summary>{t("tenants.supportLookup.title")}</summary><Form className="form" onSubmit={() => void resolve()}>
+  return <Form className="form" onSubmit={() => void resolve()}>
     <Field label={t("tenants.supportLookup.reference")} required={null}>{(control) => <TextInput {...control} value={reference} onChange={(e) => setReference(e.target.value)} onKeyDown={(e) => {
       if (e.key === "Enter" && !(e.nativeEvent.isComposing || e.keyCode === 229) && !pending && reference.trim()) e.currentTarget.form?.requestSubmit();
     }} />}</Field>
@@ -31,5 +35,5 @@ export function SupportLookup() {
       <dt>{t("tenants.supportLookup.release")}</dt><dd>{result.release}</dd>
       <dt>{t("tenants.supportLookup.route")}</dt><dd>{result.route_template}</dd>
     </dl>}
-  </Form></details>;
+  </Form>;
 }

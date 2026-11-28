@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+required:
+- summary
+- items
+properties:
+  summary:
+    $ref: '#/components/schemas/AccessReviewSummary'
+  items:
+    type: array
+    items:
+      $ref: '#/components/schemas/AccessReviewItem'

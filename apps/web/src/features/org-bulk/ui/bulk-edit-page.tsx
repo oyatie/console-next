@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { lazy, Suspense, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
-import { chunk } from "../../../lib/chunk-guard";
 import { QueryState } from "../../../lib/react/query-state";
 import { AccessGate } from "../../../reference/authz/ui/access-gate";
 import { Button, Check } from "../../../ui/button/button";
@@ -13,18 +12,16 @@ import { ActionBar } from "../../../ui/action-bar/action-bar";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
 import { EmptyState } from "../../../ui/empty-state";
 import { ExperienceSwitch } from "../../../ui/patterns/pattern-shell";
-import { ReadSkeleton } from "../../../ui/skeleton/skeleton";
 import { Table } from "../../../ui/table";
 import { entitiesRef as entitiesQuery, kindsRef } from "../../../reference/entity/api";
 import { InsuranceSummary } from "../../../reference/entity/ui/insurance-summary";
 import { kindName } from "../../../reference/entity/present";
 import type { EditRow } from "../domain/bulk-edit";
+import { BulkEditConsole } from "./bulk-edit-console";
 import { BulkEditSheet } from "./bulk-edit-sheet";
 import { BulkHead } from "./bulk-head";
 import s from "./bulk.module.css";
 import { entityName } from "../../../reference/entity/domain/names";
-
-const BulkEditConsole = lazy(() => chunk(import("./bulk-edit-console")).then((m) => ({ default: m.BulkEditConsole })));
 
 /** Choose open workplaces; the existing sheet owns the preview and commit. */
 export function BulkEditPage() {
@@ -102,17 +99,15 @@ function BulkEditWorkspace() {
       )}
     >
       {() => (
-        <Suspense fallback={<ReadSkeleton layout="form" />}>
-          <BulkEditConsole
-            q={q}
-            hasWorkplaces={all.length > 0}
-            countTitle={all.length ? t("orgBulk.edit.count", { count: all.length }) : undefined}
-            content={all.length > 0 ? <div className={s.workplaces}>{renderTable(true)}</div> : emptyView}
-            actions={actionButtons}
-            onSubmit={() => { if (rows.length) setOpen(true); }}
-            overlays={sheetOverlay}
-          />
-        </Suspense>
+        <BulkEditConsole
+          q={q}
+          hasWorkplaces={all.length > 0}
+          countTitle={all.length ? t("orgBulk.edit.count", { count: all.length }) : undefined}
+          content={all.length > 0 ? <div className={s.workplaces}>{renderTable(false)}</div> : emptyView}
+          actions={actionButtons}
+          onSubmit={() => { if (rows.length) setOpen(true); }}
+          overlays={sheetOverlay}
+        />
       )}
     </ExperienceSwitch>
   );

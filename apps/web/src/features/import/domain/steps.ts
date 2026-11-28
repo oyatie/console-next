@@ -119,7 +119,10 @@ export const reasonsMissing = (c: Picks, other: string) =>
 /** What still blocks apply: the served needs-review items that block, and answers not yet in a dry run. */
 export function applyBlockers(d: ImportDryRun, c: Picks) {
   const pending = picksPending(d, c);
-  return { rows: d.review.blocking, pending, any: d.review.blocking > 0 || pending };
+  const sheetBlocking = d.review.items.some((i) => i.blocking && (i.row == null || i.reason === "employment_type_unmapped"));
+  const actionable = d.insert_candidates + d.update_candidates;
+  const canSkip = !pending && !sheetBlocking && actionable > 0 && d.review.blocking > 0;
+  return { rows: d.review.blocking, pending, sheetBlocking, canSkip, any: d.review.blocking > 0 || pending };
 }
 
 export const OUTCOMES: readonly ImportOutcome[] = ["insert", "update", "unchanged", "excluded", "refused", "unresolved_identity"];

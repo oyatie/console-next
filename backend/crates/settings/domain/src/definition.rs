@@ -75,6 +75,26 @@ pub enum Governance {
     ReadOnly,
 }
 
+/// The most specific scope layer where a tenant may write an override row.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ScopeCeiling {
+    Tenant,
+    LegalEntity,
+    Workplace,
+    Department,
+    Person,
+}
+
+/// Which direction of change is more favorable to an individual worker.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum WorkerFavorable {
+    Higher,
+    Lower,
+    Neutral,
+}
+
 /// One key's definition. `default: None` marks a tenant fact with no default
 /// (`fact: true` in D0.3): it must be declared before it can be resolved.
 ///
@@ -87,6 +107,8 @@ pub struct SettingDef {
     pub looser_when: LooserWhen,
     pub governance: Governance,
     pub legal_basis: Option<OfficialSource>,
+    pub scope_ceiling: ScopeCeiling,
+    pub worker_favorable: WorkerFavorable,
 }
 
 impl SettingDef {
@@ -163,6 +185,18 @@ impl SettingDef {
         self
     }
 
+    #[must_use]
+    pub const fn scope_ceiling(mut self, ceiling: ScopeCeiling) -> Self {
+        self.scope_ceiling = ceiling;
+        self
+    }
+
+    #[must_use]
+    pub const fn worker_favorable(mut self, favorable: WorkerFavorable) -> Self {
+        self.worker_favorable = favorable;
+        self
+    }
+
     const fn new(
         kind: SettingKind,
         default: Option<SettingValue>,
@@ -174,6 +208,8 @@ impl SettingDef {
             looser_when,
             governance: Governance::Tenant,
             legal_basis: None,
+            scope_ceiling: ScopeCeiling::Workplace,
+            worker_favorable: WorkerFavorable::Neutral,
         }
     }
 

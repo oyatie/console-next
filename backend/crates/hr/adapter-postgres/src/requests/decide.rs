@@ -105,7 +105,7 @@ impl HrService {
                 // permission is refused before the close rules, a holder after
                 // them, so self-decision keeps its own 422 code.
                 let decides = decision != ChangeRequestDecision::Withdraw;
-                let holds = hr || (named && kind.answered_by_assignee());
+                let holds = kind.reviewer(hr, named);
                 let cedar = || {
                     let facts = DecideFacts {
                         actor_is_requester: current.requested_by == me,

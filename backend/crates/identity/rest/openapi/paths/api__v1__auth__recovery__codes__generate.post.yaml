@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags:
+- auth
+operationId: generateRecoveryCodes
+summary: Generate 10 single-use recovery codes for an ops account holder
+description: Revokes any previous unconsumed batch and returns 10 fresh single-use recovery codes once; only keyed HMAC-SHA256 digests are stored. Requires a passkey step-up assertion once a passkey is enrolled.
+security:
+- bearerAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/GenerateRecoveryCodesRequest'
+responses:
+  '200':
+    description: Newly issued 10 single-use recovery codes (shown once).
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/GenerateRecoveryCodesResponse'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '428':
+    $ref: '#/components/responses/PreconditionRequired'

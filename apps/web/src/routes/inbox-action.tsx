@@ -37,6 +37,7 @@ export function consoleInlineRowAction(
   item: AttentionInboxItem,
   focusAfter: string,
   onSelectForReject: () => void,
+  onDecided?: () => void,
 ) {
   const link = item.links[0];
   if (!isInlineApprovalDecidable(item)) return null;
@@ -46,6 +47,7 @@ export function consoleInlineRowAction(
         id={link.id}
         focusAfter={focusAfter}
         onSelectForReject={onSelectForReject}
+        onDecided={onDecided}
       />
     );
   }
@@ -55,6 +57,7 @@ export function consoleInlineRowAction(
         id={link.id}
         focusAfter={focusAfter}
         onSelectForReject={onSelectForReject}
+        onDecided={onDecided}
       />
     );
   }

@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
+import { fmtMonth } from "@console/i18n/format";
 import { SEARCH_DEBOUNCE_MS } from "../../../lib/freshness";
 import { queryView, readGroup } from "../../../lib/react/query-view";
 import { payGroupsQuery, payrollRatesQuery, payrollRunQuery } from "../api";
@@ -27,7 +28,7 @@ export function useRunConsole(id: string) {
   const [checkedIds, setCheckedIds] = useState<Set<string>>(() => new Set());
   const [showPreview, setShowPreview] = useState(true);
   const [periodOverride, setPeriodOverride] = useState<string>();
-  const [entityOverride, setEntityOverride] = useState<string>();
+  const [groupOverride, setGroupOverride] = useState<string>();
   const [exportOpen, setExportOpen] = useState(false);
   const [lifecycleSheet, setLifecycleSheet] = useState<RunLifecycleSheetKind | null>(null);
   const [sideTab, setSideTab] = useState<RunSideTab | null>(null);
@@ -43,7 +44,7 @@ export function useRunConsole(id: string) {
     setSelectedId(undefined);
     setCheckedIds(new Set());
     setPeriodOverride(undefined);
-    setEntityOverride(undefined);
+    setGroupOverride(undefined);
     setLatchedHeadcount(null);
     setBankIssuesKnown(false);
   }
@@ -81,15 +82,42 @@ export function useRunConsole(id: string) {
   const detailData = detail.data;
   const run = detailData?.run;
   const entities = groups.data?.legal_entities ?? [];
+  const rawGroups = groups.data?.items ?? [];
+  const scopedGroups = run ? rawGroups.filter(item => item.legal_entity_id === run.legal_entity_id) : rawGroups;
+  const nameCounts = new Map<string, number>();
+  for (const item of scopedGroups) nameCounts.set(item.name, (nameCounts.get(item.name) ?? 0) + 1);
+  const payGroupOptions = scopedGroups.map(item => {
+    const entity = entities.find(e => e.id === item.legal_entity_id);
+    const duplicate = (nameCounts.get(item.name) ?? 0) > 1;
+    const label = duplicate && entity?.name ? `${entity.name} · ${item.name}` : item.name;
+    return {
+      value: `${item.legal_entity_id}:${item.id}`,
+      entityId: item.legal_entity_id,
+      groupId: item.id,
+      name: item.name,
+      label,
+    };
+  });
   const activePeriod = periodOverride ?? run?.attribution_month ?? "2026-10";
-  const activeEntityId = entityOverride ?? run?.legal_entity_id ?? "";
+  const defaultGroupKey = run ? `${run.legal_entity_id}:${run.pay_group_id}` : (payGroupOptions[0]?.value ?? "");
+  const activeGroupKey = groupOverride ?? defaultGroupKey;
+  const selectedGroup = payGroupOptions.find(option => option.value === activeGroupKey);
+  const activeEntityId = selectedGroup?.entityId ?? run?.legal_entity_id ?? "";
   const activeEntity = entities.find(entity => entity.id === activeEntityId);
   const entityLabel = activeEntity?.name ?? t("payroll.entityUnnamed");
   // A group id is unique only within its legal entity: never name another entity's group.
-  const group = run && groups.data?.items.find(g => g.id === run.pay_group_id && g.legal_entity_id === run.legal_entity_id);
-  // Unknown only once both reads answered: a run that lands before the groups names nothing yet. Beside the page
-  // title a bare "unavailable" would name nothing, so the fallback says it is the group that is missing.
-  const groupLabel = run && groups.data ? group?.name ?? `${t("payroll.group")} · ${t("payroll.rule.unknown")}` : undefined;
+  const groupLabel = run && groups.data
+    ? selectedGroup?.label ?? `${t("payroll.group")} · ${t("payroll.rule.unknown")}`
+    : undefined;
+  const qualifiedGroupLabel =
+    groupLabel && entityLabel && !groupLabel.startsWith(`${entityLabel} · `)
+      ? `${entityLabel} · ${groupLabel}`
+      : groupLabel;
+  const groupPeriodLabel = qualifiedGroupLabel
+    ? `${qualifiedGroupLabel} · ${fmtMonth(activePeriod)}`
+    : detailData
+      ? fmtMonth(activePeriod)
+      : undefined;
 
   const lines = detailData?.lines ?? [];
   const rates = useQuery({
@@ -122,10 +150,11 @@ export function useRunConsole(id: string) {
       ? Math.max(detailData.exceptions_open, attentionOnPage)
       : 0;
   const unreviewed = detailData?.calculation ? !detailData.calculation.payable : false;
+  const attendanceOpenWarning = Boolean(run && (run.status === "STAGED" || run.status === "BLOCKED_LEGAL_GATE"));
   const scopeMismatch = Boolean(
     run &&
       ((periodOverride && periodOverride !== run.attribution_month) ||
-        (entityOverride && entityOverride !== run.legal_entity_id)),
+        (groupOverride && groupOverride !== defaultGroupKey)),
   );
 
   const awaitingServerFilter = composing || findQuery.trim() !== debouncedQ || detail.isPlaceholderData;
@@ -175,11 +204,12 @@ export function useRunConsole(id: string) {
     q,
     detailData,
     run,
-    entities,
+    payGroupOptions,
     activePeriod,
-    activeEntityId,
+    activeGroupKey,
     entityLabel,
     groupLabel,
+    groupPeriodLabel,
     lines,
     ratesData: rates.data,
     filter,
@@ -199,11 +229,12 @@ export function useRunConsole(id: string) {
     checkedIds,
     setCheckedIds,
     setPeriodOverride,
-    setEntityOverride,
+    setGroupOverride,
     hasBankIssues,
     runHeadcount,
     attentionCount,
     unreviewed,
+    attendanceOpenWarning,
     scopeMismatch,
     visibleLines,
     activeLine,

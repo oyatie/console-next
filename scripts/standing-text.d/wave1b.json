@@ -1,0 +1,42 @@
+{
+  "baseline": {
+    "apps/web/src/auth/LoginRecovery.tsx#RecoveryLoginBody": 11,
+    "apps/web/src/auth/SetupPasskeyRecovery.tsx#SetupPasskeyRecovery": 19,
+    "apps/web/src/features/account/ui/ops-security-card.tsx#OpsSecurityCard": 34,
+    "apps/web/src/features/access/ui/account-invite-roles.tsx#InviteWithRolesSheet": 60
+  },
+  "newScreens": {
+    "apps/web/src/auth/LoginRecovery.tsx#RecoveryLoginBody": {
+      "FACT": 7,
+      "REFUSAL": 3,
+      "EMPTY": 0,
+      "LEGAL": 0,
+      "RECEIPT": 1,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/auth/SetupPasskeyRecovery.tsx#SetupPasskeyRecovery": {
+      "FACT": 11,
+      "REFUSAL": 3,
+      "EMPTY": 0,
+      "LEGAL": 2,
+      "RECEIPT": 3,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/account/ui/ops-security-card.tsx#OpsSecurityCard": {
+      "FACT": 17,
+      "REFUSAL": 11,
+      "EMPTY": 1,
+      "LEGAL": 2,
+      "RECEIPT": 3,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/access/ui/account-invite-roles.tsx#InviteWithRolesSheet": {
+      "FACT": 34,
+      "REFUSAL": 21,
+      "EMPTY": 3,
+      "LEGAL": 0,
+      "RECEIPT": 2,
+      "EXPLANATION": 0
+    }
+  }
+}

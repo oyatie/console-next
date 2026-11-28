@@ -15,6 +15,8 @@ import { QueryState } from "../../lib/react/query-state";
 import { ReadFailureContext } from "../../lib/react/read-failure-context";
 import { chunk } from "../../lib/chunk-guard";
 import { myAccessQuery } from "../../reference/authz/api";
+import { accessRefusal } from "../../reference/authz/domain/access";
+import { useServedDestinations } from "../../reference/authz/ui/use-documents-served";
 import { PLATFORM_NAV, rememberedRail, tenantNav } from "../nav";
 import { ReadSkeleton } from "../../ui/skeleton/skeleton";
 import { PhaseBand } from "../phase-band";
@@ -29,15 +31,19 @@ import { canReadSetupChecklist } from "../../features/onboarding/domain/phase";
 import { fixFor } from "../../features/onboarding/domain/rail";
 import { useExperienceSync } from "../../experience/store";
 import { useActiveExperienceId } from "../../experience/dom";
+import { InviteWithRolesSlot, type InviteWithRolesSlotProps } from "../../reference/authz/ui/use-invite-roles-slot";
 import type { NavHub } from "../nav";
 
 // ⌘K: the jump palette loads with its first use, never in the entry bundle.
 const JumpPalette = lazy(() => chunk(import("../../features/structure/ui/jump-palette")).then((m) => ({ default: m.JumpPalette })));
+const InviteWithRolesSheet = lazy(() => chunk(import("../../features/access/ui/account-invite-roles")).then((m) => ({ default: m.InviteWithRolesSheet })));
+const renderInviteWithRoles = (props: InviteWithRolesSlotProps) => <Suspense fallback={null}><InviteWithRolesSheet {...props} /></Suspense>;
 
 export interface ShellLayoutProps {
   children: ReactNode;
   platform: boolean;
   restoring: boolean;
+  pending?: boolean;
   tenantName?: string;
   tenantPhase?: string;
   userProfile?: {
@@ -87,10 +93,13 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
   // Allow fresh cache reuse on remount so an experience-pack swap on the same route does not duplicate /api/v1/users/me.
   const me = useQuery({ ...navigationRead(meQuery), refetchOnMount: true, queryFn: ({ client }) => fetchSharedRead(client, meQuery), enabled: !platform && active && !pending });
   const phase = me.isSuccess ? me.data?.tenant?.phase : undefined;
-  const checklist = useQuery({ ...checklistQuery, enabled: !platform && active && phase === "SETUP" && canReadSetupChecklist(access.data), retry: false });
+  const checklistEnabled = !platform && active && phase === "SETUP" && canReadSetupChecklist(access.data);
+  // Attach after the grants arrive. An already answered page refusal should wait for an explicit read.
+  const checklist = useQuery({ ...checklistQuery, subscribed: checklistEnabled, retry: false, retryOnMount: false,
+    refetchOnMount: query => !isAnswer(query.state.error) });
   const modules = useQuery({ ...modulesQuery, enabled: !platform && active });
   const { refetch: refetchMe, isEnabled: meEnabled } = me;
-  const { refetch: refetchChecklist, isEnabled: checklistEnabled } = checklist;
+  const { refetch: refetchChecklist } = checklist;
   const { isEnabled: modulesEnabled } = modules;
   const previousPath = useRef(pathname);
   useEffect(() => {
@@ -142,8 +151,16 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
   const railError = [access, support, me].find(q => q.isError);
   const displayed = answer ?? (railFault || railTargets?.key === railKey ? savedRail.answer : undefined);
   const supportOwnsFailure = supportFault && !access.isError && !me.isError && pageFailures === 0 && !hasSupportNotice;
+  const auditNeed = router.routesByPath["/audit"]?.options.staticData?.access;
+  const checkAuditFallback = !platform && active && !pending && !!displayed && !displayed.supportApproval &&
+    !!auditNeed && auditNeed !== "signed-in" && accessRefusal(displayed.access, auditNeed) !== null;
+  const payNeed = router.routesByPath["/payroll"]?.options.staticData?.access;
+  const checkPayroll = !platform && active && !pending && !!displayed &&
+    !!payNeed && payNeed !== "signed-in" && accessRefusal(displayed.access, payNeed) !== null;
+  const checkEvaluation = !platform && active && !pending && !!displayed && displayed.context.phase !== "SETUP";
+  const destinations = useServedDestinations(checkAuditFallback || checkEvaluation || checkPayroll);
   const menu: readonly NavHub[] = platform ? PLATFORM_NAV : displayed ? tenantNav(displayed.access, router.routesByPath,
-    displayed.supportApproval, displayed.context) : [];
+    displayed.supportApproval, { ...displayed.context, ...destinations }) : [];
   // ⌘K / Ctrl+K opens the jump palette anywhere in the tenant app (a modifier chord, so not a single-key shortcut).
   const [jump, setJump] = useState(false);
   useEffect(() => {
@@ -198,7 +215,7 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
               : undefined;
   return (<>
     <a className="skip" href="#main">{t("shell.skip")}</a>
-    <Layout platform={platform} restoring={restoring} tenantName={identity.data?.tenant?.name} tenantPhase={identity.data?.tenant?.phase ?? phase} userProfile={identity.data} phoneHeader={phoneHeader} menu={platform || displayed ? menu : undefined}
+    <Layout platform={platform} restoring={restoring} pending={pending} tenantName={identity.data?.tenant?.name} tenantPhase={identity.data?.tenant?.phase ?? phase} userProfile={identity.data} phoneHeader={phoneHeader} menu={platform || displayed ? menu : undefined}
       navigationState={platform || displayed ? "ready" : supportOwnsFailure || railError ? "failed" : "loading"} onSearch={() => setJump(true)}
       navigationNotice={!platform && !displayed ? (supportOwnsFailure
         ? <p role="status" className="muted">{t("shell.nav.failed")}</p>
@@ -214,7 +231,9 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
           {!platform && <DomainNotice />}{!platform && !((access.isError || me.isError || pageFailures > 0) && supportFault && !hasSupportNotice) && <ActiveSupportBanner />}
         </ReadFailureContext.Provider>
         <ReadFailureContext.Provider value={recovery}>
-          <RouteGuard>{platform || pathname === "/org/entities/new" || pathname === "/people/new" ? children : <PhaseBand key={principal} operatingSince={operatingSince}><Suspense fallback={<ReadSkeleton layout="list" />}>{children}</Suspense></PhaseBand>}</RouteGuard>
+          <InviteWithRolesSlot.Provider value={renderInviteWithRoles}>
+            <RouteGuard>{platform || pathname === "/org/entities/new" || pathname === "/people/new" ? children : <PhaseBand key={principal} operatingSince={operatingSince}><Suspense fallback={<ReadSkeleton layout="list" />}>{children}</Suspense></PhaseBand>}</RouteGuard>
+          </InviteWithRolesSlot.Provider>
         </ReadFailureContext.Provider>
         </SessionRecovery>
       </PageMain>

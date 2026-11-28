@@ -43,6 +43,7 @@ pub struct IssuanceLine {
 #[derive(Debug, Clone)]
 pub struct RunHead {
     pub id: Uuid,
+    pub pay_group_id: Option<Uuid>,
     pub attribution_month: Option<String>,
     pub period_start: Date,
     pub period_end: Date,
@@ -58,10 +59,10 @@ pub(super) async fn run_head(
     run_id: Uuid,
     for_update: bool,
 ) -> Result<Option<RunHead>, LifecycleError> {
-    let sql_locked = "SELECT id, to_char(attribution_month, 'YYYY-MM') AS attribution_month, \
+    let sql_locked = "SELECT id, pay_group_id, to_char(attribution_month, 'YYYY-MM') AS attribution_month, \
          period_start, period_end, pay_date, source_label, status, \
          submitted_by, legal_basis FROM payroll_draft_runs WHERE id = $1 FOR UPDATE";
-    let sql_plain = "SELECT id, to_char(attribution_month, 'YYYY-MM') AS attribution_month, \
+    let sql_plain = "SELECT id, pay_group_id, to_char(attribution_month, 'YYYY-MM') AS attribution_month, \
          period_start, period_end, pay_date, source_label, status, \
          submitted_by, legal_basis FROM payroll_draft_runs WHERE id = $1";
     let row = sqlx::query(if for_update { sql_locked } else { sql_plain })
@@ -71,6 +72,7 @@ pub(super) async fn run_head(
     row.map(|row| {
         Ok(RunHead {
             id: row.try_get("id")?,
+            pay_group_id: row.try_get("pay_group_id")?,
             attribution_month: row.try_get("attribution_month")?,
             period_start: row.try_get("period_start")?,
             period_end: row.try_get("period_end")?,

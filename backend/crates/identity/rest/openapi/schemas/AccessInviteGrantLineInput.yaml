@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required:
+- role_id
+- scope
+additionalProperties: false
+properties:
+  role_id:
+    $ref: '#/components/schemas/Uuid'
+  scope:
+    $ref: '#/components/schemas/AccessScope'
+  valid_from:
+    oneOf:
+    - $ref: '#/components/schemas/Timestamp'
+    - type: 'null'
+  valid_to:
+    oneOf:
+    - $ref: '#/components/schemas/Timestamp'
+    - type: 'null'
+  effective_in_setup:
+    type: boolean
+    default: false

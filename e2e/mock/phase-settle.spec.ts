@@ -2,6 +2,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { fits } from "../a11y";
+import { seededExperience } from "../experience";
 import { openAccount } from "../shell";
 import { authz, checklist, failure, id, inbox, screenAccess, user } from "./fixtures";
 import { mockRoute } from "./route";
@@ -254,7 +255,7 @@ for (const phase of ["SETUP", "OPERATING"] as const) test(`entity-record: ${phas
 });
 
 for (const read of ["/api/v1/access/me", "/api/v1/me/authz", "/api/v1/onboarding/checklist"]) {
-  test(`/account: a never-answering ${read} releases the page after two seconds @ui-state`, async ({ page }) => {
+  test(`/account: a never-answering ${read} releases the page after two seconds @ui-state`, async ({ page, storageState }) => {
     const fixture = await mockScreen(page, accountScreens[0], "populated");
     await accountReads(page, "save-unchanged");
     if (read === "/api/v1/onboarding/checklist") await mockRoute(page, "get", "/api/v1/access/me", { status: 200, json: screenAccess("/people") });
@@ -282,7 +283,7 @@ for (const read of ["/api/v1/access/me", "/api/v1/me/authz", "/api/v1/onboarding
       await expect(main.locator("[data-phase-band]")).toHaveCount(0);
       if (read === "/api/v1/onboarding/checklist") {
         await openAccount(page);
-        await advanceUntil(page, main.getByRole("heading", { level: 1, name: t("account.title"), exact: true }).waitFor({ state: "visible" }));
+        await advanceUntil(page, main.getByRole("heading", { level: 1, name: t(seededExperience(storageState) === "baseline" ? "account.title" : "shell.profile"), exact: true }).waitFor({ state: "visible" }));
         await expect(main.locator("[data-phase-pending]")).toHaveCount(0);
       }
       expect(fixture.unexpected).toEqual([]);

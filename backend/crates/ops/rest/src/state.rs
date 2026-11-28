@@ -151,13 +151,16 @@ impl OpsRestState {
             OpsApiError::from_jwt(err, support_ref.clone(), route)
         })?;
         let now = (self.clock)();
-        match self.registry.authorize(&identity.email, action, now) {
+        match self
+            .registry
+            .authorize_with_shift(&identity.email, action, now, self.oncall.as_ref())
+        {
             Ok(op) => {
                 record_authz(action, "allow");
                 Ok(AuthorizedOperator {
                     person: op.person,
                     display_email: identity.email,
-                    grants: op.grants.clone(),
+                    grants: op.grants,
                 })
             }
             Err(refusal) => {
@@ -178,22 +181,27 @@ impl OpsRestState {
             .verify_headers(headers)
             .map_err(|err| OpsApiError::from_jwt(err, support_ref.clone(), route))?;
         let now = (self.clock)();
-        match self.registry.authorize(&identity.email, "read.me", now) {
+        match self.registry.authorize_with_shift(
+            &identity.email,
+            "read.me",
+            now,
+            self.oncall.as_ref(),
+        ) {
             Ok(op) => Ok(AuthorizedOperator {
                 person: op.person,
                 display_email: identity.email,
-                grants: op.grants.clone(),
+                grants: op.grants,
             }),
             Err(Refusal::ActionDenied) => {
                 let op = self
                     .registry
-                    .authorize(&identity.email, "read.home", now)
+                    .authorize_with_shift(&identity.email, "read.home", now, self.oncall.as_ref())
                     .ok();
                 if let Some(op) = op {
                     return Ok(AuthorizedOperator {
                         person: op.person,
                         display_email: identity.email,
-                        grants: op.grants.clone(),
+                        grants: op.grants,
                     });
                 }
                 // Operator has at least one live grant (otherwise GrantNotLive).
@@ -215,13 +223,18 @@ impl OpsRestState {
     ) -> Result<AuthorizedOperator, OpsApiError> {
         let support_ref = (self.support_ref)();
         let now = (self.clock)();
-        match self.registry.authorize(&op.display_email, action, now) {
+        match self.registry.authorize_with_shift(
+            &op.display_email,
+            action,
+            now,
+            self.oncall.as_ref(),
+        ) {
             Ok(matched) => {
                 record_authz(action, "allow");
                 Ok(AuthorizedOperator {
                     person: matched.person,
                     display_email: op.display_email.clone(),
-                    grants: matched.grants.clone(),
+                    grants: matched.grants,
                 })
             }
             Err(refusal) => {
@@ -232,7 +245,9 @@ impl OpsRestState {
     }
 
     pub fn is_action_allowed(&self, email: &str, action: &str, now: OffsetDateTime) -> bool {
-        self.registry.authorize(email, action, now).is_ok()
+        self.registry
+            .authorize_with_shift(email, action, now, self.oncall.as_ref())
+            .is_ok()
     }
 
     pub async fn apply_evaluation(&self, evaluator: &Arc<Mutex<CockpitEvaluator>>) {

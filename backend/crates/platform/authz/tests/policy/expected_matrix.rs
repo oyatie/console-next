@@ -3,7 +3,7 @@
 
 use console_platform_authz::{Feature, PermissionLevel};
 
-pub(crate) fn expected_matrix() -> [(Feature, [PermissionLevel; 6]); 114] {
+pub(crate) fn expected_matrix() -> [(Feature, [PermissionLevel; 6]); 115] {
     use Feature::{
         AiAssist, ApprovalFinalize, ApprovalRouteManage, AssigneeManage, AuditLogRead,
         AuditStreamAccessLogRead, AuditStreamRead, BenefitCatalogManage, BenefitCatalogRead,
@@ -130,6 +130,7 @@ pub(crate) fn expected_matrix() -> [(Feature, [PermissionLevel; 6]); 114] {
         (ExitSettlementManage, [D, D, D, A, D, A]),
         (Feature::AttendanceExceptionManage, [D, D, D, A, D, A]),
         (Feature::AttendanceSubstitutionManage, [D, D, D, A, D, A]),
+        (Feature::AttendanceOvertimeDecide, [D, D, D, D, D, D]),
         // Covert audit stream actions are Cedar clearance-only: the legacy
         // role matrix intentionally denies every built-in role.
         (AuditStreamRead, [D, D, D, D, D, D]),

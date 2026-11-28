@@ -139,12 +139,13 @@ export function FixChange({ c, field, act, onClose, onDone, onCorrect }: { c: Ca
       {table.length > 0 && (
         <RecordRows
           label={t("empFix.change.periods")}
+          mobileLayout="cards"
           rows={table}
           rowId={(r) => r.state}
           columns={[
-            { header: t("empFix.change.span.head"), cell: (r) => <span className={s.num}>{t("empFix.change.span", { from: r.from ? fmtDate(r.from) : "…", to: r.to ? fmtDate(r.to) : "" })}</span> },
-            { header: fieldName, cell: (r) => (r.state === "new" ? <b>{r.value}</b> : r.value) },
-            { header: t("empFix.change.record"), cell: (r) => (r.state === "past" ? <Muted>{t("empFix.change.period.past")}</Muted> : <Tag kind={r.state === "new" ? "plan" : "rev"}>{t(`empFix.change.period.${r.state}`)}</Tag>) },
+            { header: t("empFix.change.span.head"), card: "fact", cell: (r) => <span className={s.num}>{t("empFix.change.span", { from: r.from ? fmtDate(r.from) : "…", to: r.to ? fmtDate(r.to) : "" })}</span> },
+            { header: fieldName, card: "title", cell: (r) => (r.state === "new" ? <b>{r.value}</b> : r.value) },
+            { header: t("empFix.change.record"), card: "status", cell: (r) => (r.state === "past" ? <Muted>{t("empFix.change.period.past")}</Muted> : <Tag kind={r.state === "new" ? "plan" : "rev"}>{t(`empFix.change.period.${r.state}`)}</Tag>) },
           ]}
         />
       )}

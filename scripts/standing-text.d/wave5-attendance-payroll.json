@@ -1,0 +1,15 @@
+{
+  "baseline": {
+    "apps/web/src/features/attendance/ui/attendance-page.tsx#LeavePage": 41
+  },
+  "newScreens": {
+    "apps/web/src/features/attendance/ui/attendance-page.tsx#LeavePage": {
+      "FACT": 24,
+      "REFUSAL": 12,
+      "EMPTY": 2,
+      "LEGAL": 2,
+      "RECEIPT": 1,
+      "EXPLANATION": 0
+    }
+  }
+}

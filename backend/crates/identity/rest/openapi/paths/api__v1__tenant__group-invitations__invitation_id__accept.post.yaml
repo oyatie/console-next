@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+x-console-authz: {"permission": "tenant:edit", "scope": "ops"}
+tags:
+- platform
+operationId: acceptTenantGroupInvitation
+summary: Accept a pending group join invitation for the caller's tenant organization
+description: Assigns the caller's organization to the inviting platform group after verifying a fresh passkey assertion from an active tenant ops holder.
+security:
+- bearerAuth: []
+parameters:
+- name: invitation_id
+  in: path
+  required: true
+  schema:
+    $ref: '#/components/schemas/Uuid'
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/AcceptTenantGroupInvitationRequest'
+responses:
+  '200':
+    description: Updated tenant organization summary after joining the group.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/PlatformOrg'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '404':
+    $ref: '#/components/responses/NotFound'
+  '409':
+    $ref: '#/components/responses/Conflict'
+  '503':
+    $ref: '#/components/responses/ServiceUnavailable'

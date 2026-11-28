@@ -1,10 +1,19 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useId, useState } from "react";
+import { lazy, Suspense, useId, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { KeyRound, LogOut } from "lucide-react";
-import { ApiError, acceptConsent, consentDocuments, logout, PASSKEY_ENROLLED, registerPasskey, session } from "@console/api";
+import {
+  ApiError,
+  acceptConsent,
+  consentDocuments,
+  logout,
+  PASSKEY_ENROLLED,
+  registerPasskey,
+  session,
+} from "@console/api";
 import { t } from "@console/i18n";
+import { chunk } from "../lib/chunk-guard";
 import { freshOnOpen, read } from "../lib/query";
 import { consentDestination } from "../lib/react/session";
 import { signInError } from "../lib/refusal";
@@ -17,6 +26,8 @@ import { SignInPattern } from "../ui/patterns/sign-in";
 import { Skeleton } from "../ui/skeleton/skeleton";
 import { pauseAutofill, rememberDomain } from "./sign-in-id";
 
+const SetupPasskeyRecovery = lazy(() => chunk(import("./SetupPasskeyRecovery")).then((m) => ({ default: m.SetupPasskeyRecovery })));
+
 export function SetupPasskey() {
   const nav = useNavigate();
   const privacyDescription = useId();
@@ -27,13 +38,13 @@ export function SetupPasskey() {
   const [busy, setBusy] = useState(false);
   const [signoffs, setSignoffs] = useState<string[]>([]);
   const documents = freshOnOpen(useQuery({ ...read("/api/v1/onboarding/terms", consentDocuments), retry: false, staleTime: 0, refetchOnMount: "always", refetchOnWindowFocus: false, refetchOnReconnect: false }));
+  const isAppSession = session.stage === "app";
   const failed = documents.isError;
   const unpublished = documents.error instanceof ApiError && documents.error.status === 409 && documents.error.code === "terms_not_published";
   const loading = documents.isPending || documents.isFetching;
   const ready = documents.data && !failed && !loading;
   const accepted = session.consentAccepted;
   const confirmed = accepted || (signoffs.includes("privacy") && signoffs.includes("terms"));
-  const isAppSession = session.stage === "app";
 
   const enroll = async () => {
     if (!ready || !confirmed || busy) return;
@@ -47,7 +58,6 @@ export function SetupPasskey() {
       }
       await nav({ href: consentDestination() });
     } catch (e) {
-      // Registration succeeded; a failed automatic sign-in continues on the login screen.
       if (e instanceof Error && e.message === PASSKEY_ENROLLED) {
         pauseAutofill();
         return void (await nav({ to: "/login", search: { enrolled: true } }));
@@ -74,6 +84,7 @@ export function SetupPasskey() {
       </Banner>}
     </>
   );
+
   const consentBody = (
     <>
       <div className="form">
@@ -88,7 +99,6 @@ export function SetupPasskey() {
           isDisabled={busy || !ready}
         />
         {documents.data && <>
-          {/* Notice before consent: the policy stays in view beside the boxes, never only inside a closed full text. */}
           <div className="muted auth__terms" id={policyLine}>{t("auth.setup.consent.policy")}: {documents.data.privacy.policy_url}</div>
           <details className="muted" id={privacyDescription}>
             <summary>{t("auth.setup.consent.privacy")} · {t("auth.setup.consent.disclosure")}{documents.data.privacy.review_pending && <> ({t("auth.setup.consent.reviewPending")})</>}</summary>
@@ -100,6 +110,11 @@ export function SetupPasskey() {
           </details>
         </>}
       </div>
+      {!isAppSession && (
+        <Suspense fallback={null}>
+          <SetupPasskeyRecovery busy={busy} setBusy={setBusy} onError={setError} />
+        </Suspense>
+      )}
       <Button variant="primary" disabled={busy || !ready || !confirmed} aria-describedby={!confirmed ? disabledDescription : undefined} onClick={enroll}>
         {!isAppSession && <KeyRound size={16} aria-hidden />} {t(isAppSession ? "auth.setup.consent.continue" : "auth.setup.register")}
       </Button>
@@ -112,7 +127,6 @@ export function SetupPasskey() {
     </Button>
   );
 
-  // Consent controls appear only once the fresh documents determine the centered form's final layout.
   return (
     <SignInPattern
       title={title}

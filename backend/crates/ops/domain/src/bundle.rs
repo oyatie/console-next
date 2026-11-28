@@ -6,8 +6,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 pub use crate::bundle_oncall::{
-    OncallConfig, OncallEscalation, OncallMode, OncallRotation, SyntheticPageTest, Weekday,
-    validate_oncall_json,
+    ActiveOncallShift, OncallConfig, OncallEscalation, OncallMode, OncallRotation,
+    SHIFT_BOUND_ACTIONS, SyntheticPageTest, Weekday, validate_oncall_json,
 };
 pub use crate::bundle_settings::{
     AccessSettings, ObligationsSettings, OpsSettings, ReadLimitsSettings, RecordsSettings,

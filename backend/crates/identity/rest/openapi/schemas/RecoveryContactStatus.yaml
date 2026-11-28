@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required:
+- channel
+- masked_value
+- confirmed_at
+- notice_version
+- review_pending
+properties:
+  channel:
+    $ref: '#/components/schemas/RecoveryChannel'
+  masked_value:
+    type: string
+  confirmed_at:
+    $ref: '#/components/schemas/Timestamp'
+  notice_version:
+    type: string
+  review_pending:
+    type: boolean

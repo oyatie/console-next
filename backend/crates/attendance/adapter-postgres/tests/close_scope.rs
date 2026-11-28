@@ -25,6 +25,17 @@ async fn organization_close_prevents_a_second_close_for_any_workplace(pool: PgPo
             branch_scope: None,
             attest: true,
         };
+        let entity: uuid::Uuid = sqlx::query_scalar("INSERT INTO legal_entities(org_id,id,needs_confirmation,created_change_mode)
+            VALUES ($1,gen_random_uuid(),true,'MIGRATION') RETURNING id").bind(caller.org_id).fetch_one(&pool).await.unwrap();
+        let group: uuid::Uuid = sqlx::query_scalar(r#"INSERT INTO pay_groups(org_id,id,legal_entity_id,name,pay_date_rule,base_period,variable_period,proration,channel,sensitive,pay_basis_allowed)
+             VALUES ($1,gen_random_uuid(),$2,'Monthly','{"day":"LAST_DAY","month_offset":0,"non_business_day":"PREVIOUS"}',
+             '{"start_day":"FIRST","month_offset":0}','{"start_day":"FIRST","month_offset":0}','CALENDAR_DAYS','ATTESTATION_ONLY',false,ARRAY['MONTHLY']) RETURNING id"#)
+            .bind(caller.org_id).bind(entity).fetch_one(&pool).await.unwrap();
+        sqlx::query("INSERT INTO period_locks(org_id,domain,pay_group_id,period_start,period_end,reason)
+             VALUES ($1,'payroll',$2,'2026-06-01','2026-06-30','Group freeze')")
+            .bind(caller.org_id).bind(group).execute(&pool).await.unwrap();
+        let scoped = CloseMonth { month: "2026-06".into(), ..command.clone() };
+        assert!(matches!(store.close_month(&caller, scoped).await, Err(AttendanceStoreError::Conflict)));
         let receipt = store.close_month(&caller, command.clone()).await.unwrap();
         let workplace = CloseMonth {
             branch_scope: Some(*branch.as_uuid()),

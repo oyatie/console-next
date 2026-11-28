@@ -37,10 +37,6 @@ jobs:
     name: Probe production availability
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 5
-    permissions:
-      actions: read # the previous run's result (page on a new outage only)
-    outputs:
-      page: ${{ steps.page.outputs.page }}
     steps:
       - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with:
@@ -50,14 +46,55 @@ jobs:
           URL: ${{ secrets.PROBE_URL }}
         run: |
           [[ "${URL}" == https://* ]] || { echo "PROBE_URL is not set" >&2; exit 1; }
-          get() { curl -fsS --max-time 30 --retry 3 --retry-delay 20 --retry-all-errors "$@"; }
-          page="$(get "${URL%/}/")"
-          entry="$(grep -o 'src="/assets/[A-Za-z0-9._-]*\.js"' <<<"${page}" | tail -n1 | cut -d'"' -f2)"
-          [[ -n "${entry}" ]] || { echo "/ names no /assets/*.js module entry" >&2; exit 1; }
-          get -o /dev/null "${URL%/}${entry}"
+          dir="$(mktemp -d)"
+          trap 'rm -rf "$dir"' EXIT
+          get() {
+            curl -fsS --max-time 20 --retry 2 --retry-max-time 50 --retry-delay 5 --retry-all-errors \
+              --output "$2" --write-out '%{http_code} %{content_type}' "$1"
+          }
+          page_type="$(get "${URL%/}/" "$dir/page")"
+          [[ "${page_type%%;*}" == "200 text/html" ]]
+          python3 - "$dir/page" > "$dir/entries" <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          import re, sys
+          class ModuleEntries(HTMLParser):
+              def handle_starttag(self, tag, attrs):
+                  attrs = dict(attrs)
+                  if tag == 'script' and (attrs.get('type') or '').lower() == 'module' and 'src' in attrs:
+                      path = attrs['src'] or ''
+                      if not re.fullmatch(r'/assets/[A-Za-z0-9._-]+\.js', path):
+                          raise ValueError('unexpected module entry path')
+                      print(path)
+          ModuleEntries().feed(Path(sys.argv[1]).read_text(encoding='utf-8'))
+          PY
+          [[ -s "$dir/entries" ]] || { echo 'No JavaScript module entry on /' >&2; exit 1; }
+          while IFS= read -r entry; do
+            asset_type="$(get "${URL%/}${entry}" "$dir/asset")"
+            case "${asset_type%%;*}" in
+              '200 text/javascript'|'200 application/javascript') ;;
+              *) echo 'Entry did not return a JavaScript asset' >&2; exit 1 ;;
+            esac
+            grep -q '[^[:space:]]' "$dir/asset"
+            node --check --input-type=module < "$dir/asset"
+          done < "$dir/entries"
+
+  notify:
+    name: Report availability failure
+    needs: probe
+    if: failure() && needs.probe.result == 'failure'
+    runs-on: ubuntu-24.04-arm
+    environment: probe
+    timeout-minutes: 10
+    permissions:
+      actions: read # Previous completed probe used for outage deduplication.
+    steps:
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+      # The official OCI CLI image, pinned by digest (multi-arch index of tag 20261007).
       - name: Page on a new outage, then hourly
         id: page
-        if: failure()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -65,21 +102,8 @@ jobs:
           prev="$(gh run list -R "${GITHUB_REPOSITORY}" --workflow probe.yml --json status,conclusion \
             --jq 'map(select(.status == "completed"))[0].conclusion // "success"')"
           if [[ "${prev}" != failure || "$(date -u +%M)" == 0[0-9] ]]; then echo "page=true" >>"${GITHUB_OUTPUT}"; fi
-
-  notify:
-    name: Report availability failure
-    needs: probe
-    if: failure() && needs.probe.outputs.page == 'true'
-    runs-on: ubuntu-24.04-arm
-    environment: probe
-    timeout-minutes: 10
-    permissions: {}
-    steps:
-      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
-        with:
-          egress-policy: audit
-      # The official OCI CLI image, pinned by digest (multi-arch index of tag 20261007).
       - name: Notify the owner (ONS, console-ci-notify)
+        if: steps.page.outputs.page == 'true'
         env:
           OCI_CONFIG: ${{ secrets.OCI_CONFIG }}
           OCI_API_KEY: ${{ secrets.OCI_API_KEY }}

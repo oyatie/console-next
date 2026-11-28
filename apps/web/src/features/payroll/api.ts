@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { get } from "../../lib/query";
+import { get, read } from "../../lib/query";
 import { api, unwrap, type components } from "@console/api";
 import type { operations } from "@console/api/schema";
-export { payGroupSchemas } from "@console/api";
+export { payGroupSchemas } from "@console/api/pay-group-schema";
 export type { PayGroup, PayrollRate, PayrollRates, PayrollRun } from "@console/api/pending";
 export type CreatePayGroup = components["schemas"]["CreatePayGroup"];
 export type CreatePayrollRun = components["schemas"]["CreatePayrollRun"];
@@ -87,3 +87,23 @@ export const issuePayrollPayslips = (id: string) =>
 
 export const payrollPayslipDeliveryQuery = (id: string, query?: { limit?: number; offset?: number }) =>
   ({ ...get("/api/v1/payroll/runs/{id}/payslip-delivery", { params: { path: { id }, query } }), retry: false });
+
+type Membership = operations["assignPayGroupMember"]["requestBody"]["content"]["application/json"];
+export const payGroupCandidates = (query: operations["searchPayGroupMembers"]["parameters"]["query"]) =>
+  get("/api/v1/payroll/pay-group-memberships", { params: { query } });
+export const assignMembership = (body: Membership, key: string) =>
+  unwrap(api.POST("/api/v1/payroll/pay-group-memberships", { body, headers: { "idempotency-key": key } }));
+
+export type PayrollScenario = { series: number[]; horizon: number };
+export type Projection = components["schemas"]["ProjectionResult"];
+
+const projectPayroll = (request: PayrollScenario) => unwrap(api.POST("/api/v1/analytics/projection", { body: { ...request, kind: "money" } }));
+
+/** An opaque per-submit key keeps entered payroll amounts out of query keys and separates overlapping scenarios. */
+export const payrollProjectionQuery = (submitted: { key: string; request: PayrollScenario } | null) => ({
+  ...read("/api/v1/analytics/projection", async () => {
+    if (!submitted) throw new Error("No payroll scenario submitted");
+    return projectPayroll(submitted.request);
+  }, submitted?.key),
+  enabled: submitted !== null, retry: false, gcTime: 0, staleTime: Infinity,
+});

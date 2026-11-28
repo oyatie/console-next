@@ -176,6 +176,38 @@ pub async fn expire_abandoned(pool: &PgPool, org: OrgId) -> Result<(), DbError> 
     })).await
 }
 
+pub async fn list_for_actor(
+    pool: &PgPool,
+    org: OrgId,
+    actor: UserId,
+    limit: i64,
+    offset: i64,
+) -> Result<(Vec<CommandOutcome>, i64), DbError> {
+    with_org_conn(pool, org, move |tx| {
+        Box::pin(async move {
+            let total: i64 = sqlx::query_scalar(
+                "SELECT COUNT(*) FROM command_outcomes WHERE org_id = $1 AND actor_id = $2",
+            )
+            .bind(org.as_uuid())
+            .bind(actor.as_uuid())
+            .fetch_one(tx.as_mut())
+            .await?;
+            let query = format!(
+                "SELECT {COLUMNS} FROM command_outcomes WHERE org_id = $1 AND actor_id = $2 ORDER BY created_at DESC, id DESC LIMIT $3 OFFSET $4"
+            );
+            let rows = sqlx::query_as(sqlx::AssertSqlSafe(query))
+                .bind(org.as_uuid())
+                .bind(actor.as_uuid())
+                .bind(limit)
+                .bind(offset)
+                .fetch_all(tx.as_mut())
+                .await?;
+            Ok((rows, total))
+        })
+    })
+    .await
+}
+
 pub fn valid_lookup_key(key: &str) -> Result<(), &'static str> {
     if crate::idempotency::validate_idempotency_key(Some(key)).is_err() {
         Err(INVALID_REQUEST_KEY_CODE)

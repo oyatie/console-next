@@ -172,18 +172,34 @@ pub async fn finding(
             let start_id: Uuid = serde_json::from_value(value["id"].clone())
                 .map_err(AccessError::internal)?;
             let exists: bool = if let Some(event_id) = body.event_id {
-                sqlx::query_scalar(
-                    "SELECT EXISTS (SELECT 1 FROM audit_events a \
+                let target_actor: Option<Option<Uuid>> = sqlx::query_scalar(
+                    "SELECT event.actor FROM audit_events a \
                      CROSS JOIN LATERAL jsonb_array_elements(a.after_snap#>'{evidence,flagged}') c \
                      CROSS JOIN LATERAL jsonb_array_elements(c) f \
-                     WHERE a.org_id=$1 AND a.id=$2 AND f->>'event_id'=$3)",
+                     JOIN ordinary_audit_events event ON event.org_id=a.org_id AND event.id=(f->>'event_id')::uuid \
+                     WHERE a.org_id=$1 AND a.id=$2 AND event.id=$3 LIMIT 1",
                 )
                 .bind(p.org_id.as_uuid())
                 .bind(start_id)
-                .bind(event_id.to_string())
-                .fetch_one(tx.as_mut())
-                .await?
+                .bind(event_id)
+                .fetch_optional(tx.as_mut())
+                .await?;
+                if let Some(Some(actor_uuid)) = target_actor
+                    && actor_uuid == *p.user_id.as_uuid()
+                {
+                    return Err(AccessError::forbidden(
+                        "self_review_forbidden",
+                        "cannot review own access-log event",
+                    ));
+                }
+                target_actor.is_some()
             } else if let Some(summary) = &body.summary {
+                if summary.actor == *p.user_id.as_uuid() {
+                    return Err(AccessError::forbidden(
+                        "self_review_forbidden",
+                        "cannot review own access-log summary",
+                    ));
+                }
                 let summary_json = json!({
                     "actor": summary.actor,
                     "day": summary.day,

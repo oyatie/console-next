@@ -145,9 +145,15 @@ export function openLive(qc: QueryClient, url = `${location.origin}/api/v1/event
       return;
     }
     const d = (data ?? {}) as { type?: unknown; id?: unknown; at?: unknown; wide?: unknown };
-    if (event === "reset") return later(() => queue(ALL), jitter(RESET_JITTER_MAX_MS));
+    if (event === "reset") return later(() => {
+      if (!holds) return queue(ALL);
+      // Rollback and access changes take effect even on a held dashboard.
+      const shellPolicy = (path: string) => path === "/api/v1/me/workspace" || path === "/api/v1/settings" || path === "/api/v1/me/authz";
+      void invalidateWhere(qc, shellPolicy, true);
+      queue(path => !shellPolicy(path));
+    }, jitter(RESET_JITTER_MAX_MS));
     if (event !== "change" || typeof d.type !== "string") return;
-    if (d.type === "support_session") {
+    if (d.type === "tenant_settings" || d.type === "support_session" || d.type === "console_rollout" || d.type === "workspace") {
       void invalidateWhere(qc, matchChange(d.type, str(d.id)), true);
       return;
     }

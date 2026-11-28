@@ -34,35 +34,7 @@ use serde_json::Value;
 use time::Date;
 use uuid::Uuid;
 
-mod iso_date_opt {
-    use serde::{Deserialize, Deserializer, Serializer};
-    use time::Date;
-    use time::format_description::well_known::Iso8601;
-
-    pub fn deserialize<'de, D: Deserializer<'de>>(
-        deserializer: D,
-    ) -> Result<Option<Date>, D::Error> {
-        let raw: Option<String> = Option::deserialize(deserializer)?;
-        raw.map(|value| Date::parse(&value, &Iso8601::DATE))
-            .transpose()
-            .map_err(serde::de::Error::custom)
-    }
-
-    #[allow(dead_code)]
-    pub fn serialize<S: Serializer>(
-        value: &Option<Date>,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error> {
-        match value {
-            Some(date) => serializer.serialize_some(
-                &date
-                    .format(&Iso8601::DATE)
-                    .map_err(serde::ser::Error::custom)?,
-            ),
-            None => serializer.serialize_none(),
-        }
-    }
-}
+mod iso_date_opt;
 
 pub const BENEFIT_CATALOG_ITEMS_PATH: &str = "/api/v1/benefit-catalog/items";
 pub const BENEFIT_CATALOG_ITEM_PATH_TEMPLATE: &str = "/api/v1/benefit-catalog/items/{benefit_id}";
@@ -113,7 +85,9 @@ pub fn router(state: BenefitRestState) -> Router {
             axum::routing::put(replace_conditions),
         )
         .with_state(state);
-    console_platform_request_context::with_request_context(router, verifier, pool)
+    console_platform_request_context::with_request_context(router, verifier, pool).layer(
+        axum::Extension(console_platform_request_context::tenant_module::TenantModule::Benefits),
+    )
 }
 
 #[derive(Debug, Deserialize)]
@@ -134,7 +108,7 @@ async fn list_items(
     Query(params): Query<ListParams>,
 ) -> Result<Json<console_benefit_application::BenefitCatalogItemPage>, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
-    require_feature(&principal, Feature::BenefitCatalogRead)?;
+    authorize_catalog_read(&principal)?;
     let category = params
         .category
         .as_deref()
@@ -164,7 +138,7 @@ async fn get_item(
     Path(benefit_id): Path<Uuid>,
 ) -> Result<Json<BenefitCatalogItemView>, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
-    require_feature(&principal, Feature::BenefitCatalogRead)?;
+    authorize_catalog_read(&principal)?;
     let item = state
         .store
         .get_item(GetBenefitCatalogItemQuery {
@@ -216,7 +190,7 @@ async fn create_item(
     Json(body): Json<CreateItemBody>,
 ) -> Result<(StatusCode, Json<BenefitCatalogItemView>), RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
-    require_feature(&principal, Feature::BenefitCatalogManage)?;
+    authorize_catalog_manage(&principal)?;
     let item = state
         .store
         .create_item(CreateBenefitCatalogItemCommand {
@@ -251,6 +225,8 @@ async fn create_item(
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct UpdateItemBody {
+    #[serde(default, with = "time::serde::rfc3339::option")]
+    expected_updated_at: Option<time::OffsetDateTime>,
     category: Option<BenefitCategory>,
     name: Option<String>,
     scope: Option<BenefitCatalogScopeDraft>,
@@ -270,9 +246,9 @@ struct UpdateItemBody {
     related_domain: Option<Option<String>>,
     #[serde(default, deserialize_with = "double_option")]
     related_object_id: Option<Option<Uuid>>,
-    #[serde(default, deserialize_with = "double_option_iso_date")]
+    #[serde(default, deserialize_with = "iso_date_opt::patch")]
     effective_on: Option<Option<Date>>,
-    #[serde(default, deserialize_with = "double_option_iso_date")]
+    #[serde(default, deserialize_with = "iso_date_opt::patch")]
     retires_on: Option<Option<Date>>,
     display_order: Option<i32>,
     metadata: Option<Value>,
@@ -309,18 +285,6 @@ where
     Option::<T>::deserialize(deserializer).map(Some)
 }
 
-fn double_option_iso_date<'de, D>(deserializer: D) -> Result<Option<Option<Date>>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    match Option::<String>::deserialize(deserializer)? {
-        Some(value) => Date::parse(&value, &time::format_description::well_known::Iso8601::DATE)
-            .map(|date| Some(Some(date)))
-            .map_err(serde::de::Error::custom),
-        None => Ok(Some(None)),
-    }
-}
-
 async fn update_item(
     State(state): State<BenefitRestState>,
     headers: HeaderMap,
@@ -328,10 +292,11 @@ async fn update_item(
     Json(body): Json<UpdateItemBody>,
 ) -> Result<Json<BenefitCatalogItemView>, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
-    require_feature(&principal, Feature::BenefitCatalogManage)?;
+    authorize_catalog_manage(&principal)?;
     let item = state
         .store
         .update_item(UpdateBenefitCatalogItemCommand {
+            expected_updated_at: body.expected_updated_at,
             actor: principal.user_id,
             branch_scope: principal.branch_scope,
             item_id: BenefitCatalogItemId::from_uuid(benefit_id),
@@ -347,6 +312,8 @@ async fn update_item(
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct ReplaceTiersBody {
+    #[serde(default, with = "time::serde::rfc3339::option")]
+    expected_updated_at: Option<time::OffsetDateTime>,
     tiers: Vec<BenefitTierDraft>,
 }
 async fn replace_tiers(
@@ -356,10 +323,11 @@ async fn replace_tiers(
     Json(body): Json<ReplaceTiersBody>,
 ) -> Result<Json<BenefitCatalogItemView>, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
-    require_feature(&principal, Feature::BenefitCatalogManage)?;
+    authorize_catalog_manage(&principal)?;
     let item = state
         .store
         .replace_tiers(ReplaceBenefitTiersCommand {
+            expected_updated_at: body.expected_updated_at,
             actor: principal.user_id,
             branch_scope: principal.branch_scope,
             item_id: BenefitCatalogItemId::from_uuid(benefit_id),
@@ -375,6 +343,8 @@ async fn replace_tiers(
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct ReplaceConditionsBody {
+    #[serde(default, with = "time::serde::rfc3339::option")]
+    expected_updated_at: Option<time::OffsetDateTime>,
     conditions: Vec<BenefitConditionDraft>,
 }
 async fn replace_conditions(
@@ -384,10 +354,11 @@ async fn replace_conditions(
     Json(body): Json<ReplaceConditionsBody>,
 ) -> Result<Json<BenefitCatalogItemView>, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
-    require_feature(&principal, Feature::BenefitCatalogManage)?;
+    authorize_catalog_manage(&principal)?;
     let item = state
         .store
         .replace_conditions(ReplaceBenefitConditionsCommand {
+            expected_updated_at: body.expected_updated_at,
             actor: principal.user_id,
             branch_scope: principal.branch_scope,
             item_id: BenefitCatalogItemId::from_uuid(benefit_id),
@@ -398,6 +369,23 @@ async fn replace_conditions(
         .await
         .map_err(RestError::from_store)?;
     Ok(Json(item))
+}
+
+/// The optional catalog and its editors use the same decisions as the mounted HTTP endpoints.
+#[must_use]
+pub fn catalog_access(principal: &Principal) -> (bool, bool) {
+    (
+        authorize_catalog_read(principal).is_ok(),
+        authorize_catalog_manage(principal).is_ok(),
+    )
+}
+
+fn authorize_catalog_read(principal: &Principal) -> Result<(), RestError> {
+    require_feature(principal, Feature::BenefitCatalogRead)
+}
+
+fn authorize_catalog_manage(principal: &Principal) -> Result<(), RestError> {
+    require_feature(principal, Feature::BenefitCatalogManage)
 }
 
 /// `branch_id` is nullable and unread here, so branch-scoped callers use capability authorization.

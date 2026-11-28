@@ -15,6 +15,7 @@ pub const CONFIGURED_ROUTE_SURFACES: &[ConfiguredRouteSurface] = &[
     surface("support-reference", crate::http::support_reference::PATHS),
     surface("public-status", crate::http::status::STATUS_ROUTE_PATHS),
     surface("requests", crate::requests::REQUEST_ROUTE_PATHS),
+    surface("lifecycle", crate::lifecycle::LIFECYCLE_ROUTE_PATHS),
     surface("audit", crate::AUDIT_ROUTE_PATHS),
     #[cfg(feature = "attendance")]
     surface(
@@ -50,17 +51,7 @@ pub const CONFIGURED_ROUTE_SURFACES: &[ConfiguredRouteSurface] = &[
     ),
     #[cfg(feature = "support")]
     surface("support", console_support_rest::SUPPORT_ROUTE_PATHS),
-    surface(
-        "action-inbox",
-        &[
-            crate::action_inbox::ME_ACTION_INBOX_PATH,
-            crate::action_inbox::tabs::ME_ACTION_INBOX_DONE_PATH,
-            crate::action_inbox::tabs::ME_ACTION_INBOX_REFERENCE_PATH,
-            crate::action_inbox::tabs::ME_ACTION_INBOX_REFERENCE_READ_PATH,
-            crate::action_inbox::tabs::ME_ACTION_INBOX_ITEM_ACTIVITY_PATH,
-            crate::action_inbox::tabs::ME_ACTION_INBOX_ITEM_SNOOZE_PATH,
-        ],
-    ),
+    surface("action-inbox", crate::action_inbox::ROUTE_PATHS),
     surface(
         "approvals",
         &[

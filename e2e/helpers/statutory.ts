@@ -39,7 +39,15 @@ export async function prepareFilingCompletion(page: Page, dialog: Locator) {
 }
 
 export async function resolveFilingNotApplicable(page: Page, row: Locator) {
-  await row.getByRole("button", { name: "처리 기록", exact: true }).click();
+  await loadCatalog("ko");
+  const paneRecord = page.getByRole("complementary", { name: t("statutory.detailTitle"), exact: true }).getByRole("button", { name: t("statutory.record"), exact: true });
+  const direct = row.getByRole("button", { name: t("statutory.record"), exact: true });
+  if (await direct.count()) await direct.click();
+  else if (await paneRecord.isVisible()) await paneRecord.click();
+  else {
+    await row.getByRole("button", { name: new RegExp(t("statutory.openCol")) }).click();
+    await paneRecord.click();
+  }
   const dialog=page.getByRole("dialog");
   await selectFilingFact(page,dialog,"처리 방법","미해당");
   await selectFilingFact(page,dialog,"미해당 사유","그 밖의 법정 미해당 사유");

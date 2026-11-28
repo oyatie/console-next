@@ -11,6 +11,15 @@ export const gridViewport = (grid: HTMLDivElement) => {
   return { scroller: scroller ?? window, top, bottom: bottom - (grid.querySelector<HTMLElement>(':scope > [role="status"]')?.offsetHeight ?? 0), rowsTop };
 };
 
+function rowsInViewport(view: ReturnType<typeof gridViewport>, height: number, minimum: number) {
+  return Math.max(minimum, Math.ceil((view.bottom - view.top) / height) + 1);
+}
+
+export function gridPageStep(grid: HTMLDivElement, minimum: number) {
+  const height = parseFloat(getComputedStyle(grid).getPropertyValue("--row-h"));
+  return Math.max(1, rowsInViewport(gridViewport(grid), height, minimum) - 1);
+}
+
 export function useGridWindow(
   gridRef: RefObject<HTMLDivElement | null>, count: number, minimum: number, overscan: number, activeRow: number | null,
   onViewport: (top: number, bottom: number) => void,
@@ -35,7 +44,7 @@ export function useGridWindow(
     onViewport(next.top, next.bottom);
     setRowHeight(height);
     setScrollTop(Math.max(0, Math.min(rowCount * height, next.top - next.rowsTop)));
-    setViewportRows(Math.max(minimumRows, Math.ceil((next.bottom - next.top) / height) + 1));
+    setViewportRows(rowsInViewport(next, height, minimumRows));
   });
   useLayoutEffect(() => {
     const update = () => onScroll(minimum, count);
@@ -54,5 +63,5 @@ export function useGridWindow(
     };
   }, [gridRef, minimum, count]);
 
-  return { first, last, rowHeight, viewportRows, setScrollTop };
+  return { first, last, rowHeight, setScrollTop };
 }

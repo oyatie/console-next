@@ -3,10 +3,11 @@ import { shell, shellSelectors } from "../shell";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";
 import { i18n, loadCatalog, t } from "@console/i18n";
+import { fmtNumber } from "@console/i18n/format";
 import { breakpoints } from "../../apps/web/src/ui/breakpoints";
 import { MAX_RETRY_AFTER_MS } from "../../apps/web/src/lib/react/query-defaults";
 import { expectAxe, fits } from "../a11y";
-import { experienceState } from "../experience";
+import { experienceState, seededExperience } from "../experience";
 import { test } from "../locale-fixture";
 import { screens } from "../states/registry";
 import { failure, inbox } from "./fixtures";
@@ -31,7 +32,7 @@ async function openPeople(page: Page, locale: "ko" | "en", width: number) {
 
 for (const locale of ["ko", "en"] as const) for (const width of [1440, 1024, 390]) {
   for (const state of ["loading", "zero", "one", "many", "inexact", "failed", "refused"] as const) {
-    test(`inbox accessible name includes its label: ${locale}, ${width}px, ${state}`, async ({ page }) => {
+    test(`inbox accessible name includes its label: ${locale}, ${width}px, ${state}`, async ({ page, storageState }) => {
       await loadCatalog(locale);
       i18n.set(locale);
       await page.setViewportSize({ width, height: 900 });
@@ -56,9 +57,10 @@ for (const locale of ["ko", "en"] as const) for (const width of [1440, 1024, 390
         const title = t("home.inbox.title");
         const counted = state === "one" || state === "many" || state === "inexact";
         if (counted) {
-          await expect.soft(trigger).toHaveAccessibleName(`${title} ${count}${state === "inexact" ? "+" : ""}`);
+          const shownCount = seededExperience(storageState) === "baseline" ? String(count) : fmtNumber(count);
+          await expect.soft(trigger).toHaveAccessibleName(`${title} ${shownCount}${state === "inexact" ? "+" : ""}`);
           await expect.soft(trigger).toHaveAccessibleDescription(t(state === "inexact" ? "shell.needsMe.countMoreDescription" : "shell.needsMe.countDescription", { count }));
-          await expect(trigger.locator("[data-count]")).toHaveText(`${count}${state === "inexact" ? "+" : ""}`);
+          await expect(trigger.locator("[data-count]")).toHaveText(`${shownCount}${state === "inexact" ? "+" : ""}`);
         } else {
           await expect(trigger).toHaveAccessibleName(state === "zero" ? title
             : new RegExp(`^${title}\\s.*(?:${state === "loading" ? "불러오는 중|loading" : "확인 불가|count unavailable"})`));

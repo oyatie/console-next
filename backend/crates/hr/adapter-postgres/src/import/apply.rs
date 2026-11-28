@@ -166,6 +166,7 @@ pub(crate) async fn check_and_build(
     org_uuid: Uuid,
     run_id: Uuid,
     digest: &str,
+    skip_unresolved: bool,
     vault: Option<&dyn RrnVault>,
 ) -> Result<Checked, HrError> {
     let run = import_run_for_update(tx, org_uuid, run_id).await?;
@@ -204,7 +205,7 @@ pub(crate) async fn check_and_build(
             json!([]),
         ));
     }
-    let unsettled: Vec<Value> = summary["rows"]
+    let row_unsettled: Vec<Value> = summary["rows"]
         .as_array()
         .into_iter()
         .flatten()
@@ -218,23 +219,29 @@ pub(crate) async fn check_and_build(
         .collect();
     // IMPORT-2: a sheet still waiting for its mapping keeps apply closed too,
     // and (W02) a blocking value nobody mapped on rows the plan would insert.
-    let unsettled: Vec<Value> = unsettled
+    let sheet_blockers: Vec<Value> = summary["review"]["items"]
+        .as_array()
         .into_iter()
-        .chain(
-            summary["review"]["items"]
-                .as_array()
-                .into_iter()
-                .flatten()
-                .filter(|item| {
-                    item["blocking"] == true
-                        && (item["row"].is_null() || item["reason"] == "employment_type_unmapped")
-                })
-                .map(|item| {
-                    json!({ "sheet": item["sheet"], "outcome": item["reason"], "value": item["value"] })
-                }),
-        )
+        .flatten()
+        .filter(|item| {
+            item["blocking"] == true
+                && (item["row"].is_null() || item["reason"] == "employment_type_unmapped")
+        })
+        .map(|item| {
+            json!({ "sheet": item["sheet"], "outcome": item["reason"], "value": item["value"] })
+        })
         .collect();
-    if !unsettled.is_empty() {
+    let actionable_rows = summary["rows"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|row| matches!(row["outcome"].as_str(), Some("insert" | "update")))
+        .count();
+    let must_refuse = !sheet_blockers.is_empty()
+        || (!skip_unresolved && !row_unsettled.is_empty())
+        || (skip_unresolved && actionable_rows == 0 && !row_unsettled.is_empty());
+    if must_refuse {
+        let unsettled: Vec<Value> = row_unsettled.into_iter().chain(sheet_blockers).collect();
         return Err(HrError {
             errors: None,
             status: http::StatusCode::UNPROCESSABLE_ENTITY,

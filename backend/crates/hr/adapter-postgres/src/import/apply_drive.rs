@@ -65,6 +65,7 @@ impl HrService {
     ) -> Result<Started, HrError> {
         let org = principal.org_id;
         let digest = body.dry_run_digest.trim().to_owned();
+        let skip_unresolved = body.skip_unresolved;
         let rrn_vault = self.rrn_vault.clone();
         with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
@@ -82,28 +83,33 @@ impl HrService {
                         return Ok((Started::Running(job.clone()), Vec::new()));
                     }
                 }
-                let started =
-                    match check_and_build(tx, org_uuid, run_id, &digest, rrn_vault.as_deref())
-                        .await?
-                    {
-                        Checked::Replay(report) => match job {
-                            Some(job) if job.state == "done" => {
-                                return Ok((
-                                    Started::Done(job.report.unwrap_or(report)),
-                                    Vec::new(),
-                                ));
-                            }
-                            // Applied before jobs or with settle unfinished: finish it.
-                            _ => ApplyJob {
-                                state: "settling".into(),
-                                ..ApplyJob::queued(run_id, &digest, principal.user_id)
-                            },
-                        },
-                        Checked::Apply(_) => ApplyJob {
-                            total: settle_keys(tx, org, run_id).await?.len(),
+                let started = match check_and_build(
+                    tx,
+                    org_uuid,
+                    run_id,
+                    &digest,
+                    skip_unresolved,
+                    rrn_vault.as_deref(),
+                )
+                .await?
+                {
+                    Checked::Replay(report) => match job {
+                        Some(job) if job.state == "done" => {
+                            return Ok((Started::Done(job.report.unwrap_or(report)), Vec::new()));
+                        }
+                        // Applied before jobs or with settle unfinished: finish it.
+                        _ => ApplyJob {
+                            state: "settling".into(),
+                            skip_unresolved,
                             ..ApplyJob::queued(run_id, &digest, principal.user_id)
                         },
-                    };
+                    },
+                    Checked::Apply(_) => ApplyJob {
+                        total: settle_keys(tx, org, run_id).await?.len(),
+                        skip_unresolved,
+                        ..ApplyJob::queued(run_id, &digest, principal.user_id)
+                    },
+                };
                 apply_progress::reset(tx, org_uuid, &started).await?;
                 write_job(tx, org_uuid, &started).await?;
                 let audit = progress_audit(org, &started)?;
@@ -196,6 +202,7 @@ impl HrService {
                     *org.as_uuid(),
                     run_id,
                     &job.dry_run_digest,
+                    job.skip_unresolved,
                     rrn_vault.as_deref(),
                 )
                 .await?

@@ -3,6 +3,7 @@ import { lazy, Suspense, type ReactNode } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { Banknote, CalendarDays, FileText, Home, Search, UserRound } from "lucide-react";
 import { t } from "@console/i18n";
+import { SupportAccessIndicator } from "../../features/support-access/ui/support-access-status";
 import { chunk } from "../../lib/chunk-guard";
 import { Avatar } from "../../ui/avatar/avatar";
 import { PhoneBottomNav, PhoneTopBar, type PhoneNavItem } from "../../ui/phone-bars/phone-bars";
@@ -41,6 +42,7 @@ export function ConsolePhoneTop({
       trailing={
         hideActions ? undefined : (
           <div className={s.phoneActions}>
+            {!platform ? <SupportAccessIndicator /> : null}
             {!platform ? (
               <button
                 type="button"
@@ -54,8 +56,9 @@ export function ConsolePhoneTop({
             ) : null}
             <Suspense
               fallback={
-                <Link to="/account" className={s.accountFallback} aria-label={displayName}>
+                <Link to="/account" id="console-phone-account" className={s.accountFallback}>
                   <Avatar name={displayName} size="sm" tone="accent" />
+                  <span className="sr-only">{displayName}</span>
                 </Link>
               }
             >

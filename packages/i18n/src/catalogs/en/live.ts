@@ -3,7 +3,6 @@ export const enLive = {
   "live.status.offline": "Offline · this screen is not updating",
   "live.status.stale": "Information may not be up to date",
   "live.status.staleAt": "Information may not be up to date · Last updated {time}",
-  "live.noticesLabel": "Service notices",
   "live.retry": "Try again",
   "live.outage.major.title": "Service outage in progress",
   "live.outage.partial.title": "Partial service outage in progress",

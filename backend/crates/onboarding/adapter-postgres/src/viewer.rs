@@ -67,6 +67,17 @@ pub(crate) fn apply_permissions(
                 .any(|scope| slice.allows(step.needs, &scope) == Ok(true))
         };
         step.skippable &= slice.allows(step.needs, &NodePath::tenant(subject.org)) == Ok(true);
+        // Settings editors can record the same confirmation. Only attendance approval can skip it.
+        if step.key == "overtime"
+            && !step.can_act
+            && subject
+                .grants
+                .iter()
+                .any(|g| slice.allows("settings::edit", &g.scope) == Ok(true))
+        {
+            step.can_act = true;
+            step.needs = "settings::edit";
+        }
     }
     Ok(())
 }
@@ -107,6 +118,7 @@ pub(crate) async fn require_step(
         "org" => (Domain::Org, Level::Edit),
         "employees" => (Domain::HrBasic, Level::Edit),
         "roles" => (Domain::Access, Level::Edit),
+        "overtime" => (Domain::Attendance, Level::Approve),
         _ => return Err(refused(ErrorKind::Validation, "step_not_skippable", None)),
     };
     let subject = load_access_subject(

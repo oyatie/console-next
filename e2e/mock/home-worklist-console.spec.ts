@@ -801,3 +801,79 @@ for (const locale of ["en", "ko"] as const) {
     }
   });
 }
+
+test("Console Home renders zero leaked message keys and returns focus to the same row position after side-pane or inline decisions", async ({
+  page,
+}) => {
+  await loadCatalog("ko");
+  i18n.set("ko");
+  await page.setViewportSize({ width: 1280, height: 860 });
+  const { fixture, orgDetail } = await setupConsoleSaeonWorklist(page, "light", "ko");
+  const baseInbox = saeonWorklistInbox();
+  const decidedIds = new Set<string>();
+  await mockRoute(page, "get", "/api/v1/me/action-inbox", request => {
+    const query = new URL(request.url()).searchParams;
+    if (query.get("filter") === "notices" || query.get("snoozed") === "only") {
+      return { status: 200, json: { ...baseInbox, items: [] } };
+    }
+    const items = baseInbox.items.filter(item => !decidedIds.has(item.id));
+    return { status: 200, json: { ...baseInbox, total: items.length, items } };
+  });
+  await mockRoute(page, "post", "/api/v1/approvals/{id}/decision", () => {
+    decidedIds.add("leave-app-1");
+    return {
+      status: 200,
+      json: { id: "00000000-0000-4000-8600-000000000006", decision: "REJECTED", status: "REJECTED" },
+    };
+  });
+  await mockRoute(page, "post", "/api/v1/org-changes/{id}/approval-steps/{stepId}/decision", () => {
+    decidedIds.add("OC-2026-0418");
+    return { status: 200, json: orgDetail };
+  });
+  try {
+    await page.goto("/?sel=OC-2026-0418");
+    const worklist = page.locator('[data-pattern="worklist"]');
+    const queueTable = worklist.getByRole("grid", { name: t("home.inbox.title"), exact: true });
+    await expect(queueTable.locator("tbody tr[data-id]")).toHaveCount(10);
+    await expect(page.locator("[data-decision-pane]")).toBeVisible();
+
+    const bodyText = await page.locator("body").innerText();
+    expect(bodyText).not.toMatch(/\b(home\.worklist\.|payroll\.create\.|accessCodes\.|person\.field\.)/);
+
+    const initialIds = await queueTable.locator("tbody tr[data-id]").evaluateAll(rows =>
+      rows.map(r => r.getAttribute("data-id") ?? ""),
+    );
+    const leaveIdx = initialIds.indexOf("leave-app-1");
+    expect(leaveIdx).toBeGreaterThan(0);
+    const expectedNextAfterLeave = initialIds[leaveIdx + 1]!;
+
+    await queueTable.locator('tbody tr[data-id="leave-app-1"]').click();
+    const decisionPane = page.locator("[data-decision-pane]");
+    await expect(decisionPane).toBeVisible();
+    await decisionPane.getByRole("button", { name: t("uiWorklist.reject"), exact: true }).click();
+    await expect(decisionPane.getByRole("alert")).toHaveText(t("uiWorklist.opinionRequired"));
+
+    await decisionPane.getByLabel(t("uiWorklist.opinionOptional")).fill("Schedule overlap review");
+    await decisionPane.getByRole("button", { name: t("uiWorklist.reject"), exact: true }).click();
+
+    await expect(page.locator('aside[data-pane="record"]')).toHaveCount(0);
+    await expect(queueTable.locator(`tbody tr[data-id="${expectedNextAfterLeave}"]`)).toBeFocused();
+
+    const postLeaveIds = await queueTable.locator("tbody tr[data-id]").evaluateAll(rows =>
+      rows.map(r => r.getAttribute("data-id") ?? ""),
+    );
+    const orgIdx = postLeaveIds.indexOf("OC-2026-0418");
+    expect(orgIdx).toBeGreaterThanOrEqual(0);
+    const expectedNextAfterOrg = postLeaveIds[orgIdx + 1]!;
+
+    await queueTable.locator('tbody tr[data-id="OC-2026-0418"]').click();
+    await expect(decisionPane).toBeVisible();
+    await decisionPane.getByRole("button", { name: t("uiWorklist.approve"), exact: true }).click();
+
+    await expect(page.locator('aside[data-pane="record"]')).toHaveCount(0);
+    await expect(queueTable.locator(`tbody tr[data-id="${expectedNextAfterOrg}"]`)).toBeFocused();
+    expect(fixture.unexpected).toEqual([]);
+  } finally {
+    fixture.release();
+  }
+});

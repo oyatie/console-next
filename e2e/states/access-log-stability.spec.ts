@@ -2,6 +2,8 @@
 import { installFaultClock } from "./fault-clock";
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
+import { fmtDate } from "@console/i18n/format";
+import { seededDateStyle } from "../experience";
 import { EXPERIENCE_KEY, THEME_KEY } from "../../apps/web/src/lib/prefs";
 import { mockRoute } from "../mock/route";
 import { expectAxe, fits } from "../a11y";
@@ -47,7 +49,7 @@ for (const state of ["available", "absent", "failed", "search_invalid"] as const
   });
 }
 
-test("access-log keeps clear search in place and presents the applied filters together @ui-state", async ({ page }) => {
+test("access-log keeps clear search in place and presents the applied filters together @ui-state", async ({ page, storageState }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const fixture = await filtersFixture(page);
   const read = Promise.withResolvers<void>();
@@ -71,8 +73,9 @@ test("access-log keeps clear search in place and presents the applied filters to
     await expect(summary).toHaveCount(0);
     await expect(review).toBeDisabled();
     read.resolve();
+    const style = seededDateStyle(storageState);
     await expect(summary.locator("dd")).toHaveText([fixture.actor.label, t("accessLog.action.employee.export"),
-      t("accessLog.target.employee"), "2026. 10. 05.", "2026. 10. 20."]);
+      t("accessLog.target.employee"), fmtDate("2026-10-05", { style }), fmtDate("2026-10-20", { style })]);
     await expect(review).toBeEnabled();
     expect(await clearSearch.boundingBox()).toEqual(before);
     expect(fixture.unexpected).toEqual([]);

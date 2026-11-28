@@ -145,27 +145,25 @@ describe("Worklist phone heading under latched keepPreviousData refusal", () => 
       const head = document.querySelector('[data-pattern="worklist"] > :has(h1)');
       return {
         recordCount: document.querySelectorAll('[data-pane="record"]').length,
+        headHeight: head ? head.getBoundingClientRect().height : 0,
         h1Height: h1 ? h1.getBoundingClientRect().height : 0,
         h1Display: h1 ? getComputedStyle(h1).display : null,
-        headDisplay: head ? getComputedStyle(head).display : null,
         hasSupportRef: document.body.textContent?.includes("op-keepprev-403") ?? false,
       };
     });
 
-    // Initial ok state: record pane is mounted and phone hides .head
+    // Initial ok state: record pane is mounted and phone collapses .head while keeping h1 accessible
     const initial = await measure();
     expect(initial.recordCount).toBe(1);
-    expect(initial.headDisplay).toBe("none");
-    expect(initial.h1Height).toBe(0);
+    expect(initial.headHeight).toBe(0);
 
-    // Non-refused keepPreviousData refetch: record remains mounted and .head stays hidden
+    // Non-refused keepPreviousData refetch: record remains mounted and .head stays collapsed
     await page.locator('[data-mode="slow-ok"]').click();
     await page.locator('[data-controls][data-mode-state="slow-ok:fetching"]').waitFor();
     await page.waitForFunction(() => document.documentElement.dataset.pendingMode === "slow-ok");
     const nonRefusedPending = await measure();
     expect(nonRefusedPending.recordCount).toBe(1);
-    expect(nonRefusedPending.headDisplay).toBe("none");
-    expect(nonRefusedPending.h1Height).toBe(0);
+    expect(nonRefusedPending.headHeight).toBe(0);
     await page.evaluate(() => (window as unknown as { resolveSlowOkWorklist?: () => void }).resolveSlowOkWorklist?.());
 
     // 403 refusal: PageReadGate renders <Denied> and h1 is visible
@@ -174,7 +172,7 @@ describe("Worklist phone heading under latched keepPreviousData refusal", () => 
     const refused = await measure();
     expect(refused.recordCount).toBe(0);
     expect(refused.hasSupportRef).toBe(true);
-    expect(refused.headDisplay).not.toBe("none");
+    expect(refused.headHeight).toBeGreaterThan(0);
     expect(refused.h1Height).toBeGreaterThan(0);
     expect(refused.h1Display).not.toBe("none");
 
@@ -185,7 +183,7 @@ describe("Worklist phone heading under latched keepPreviousData refusal", () => 
     const latched = await measure();
     expect(latched.recordCount).toBe(0);
     expect(latched.hasSupportRef).toBe(true);
-    expect(latched.headDisplay).not.toBe("none");
+    expect(latched.headHeight).toBeGreaterThan(0);
     expect(latched.h1Height).toBeGreaterThan(0);
     expect(latched.h1Display).not.toBe("none");
 
@@ -194,7 +192,6 @@ describe("Worklist phone heading under latched keepPreviousData refusal", () => 
     await page.locator('[data-pane="record"]').waitFor();
     const recovered = await measure();
     expect(recovered.recordCount).toBe(1);
-    expect(recovered.headDisplay).toBe("none");
-    expect(recovered.h1Height).toBe(0);
+    expect(recovered.headHeight).toBe(0);
   });
 });

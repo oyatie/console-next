@@ -14,7 +14,7 @@ async fn screen6_me_profile_read_patch_and_reveal_step_up(pool: PgPool) {
     let mut fx = seed_profile_fixture(&pool, &priv_pem, &pub_pem).await;
     let app = app_router(role_pool(&pool, "console_rt").await, priv_pem, pub_pem);
 
-    // 1. /api/v1/users/me includes 3 extras; /access/people/{id} omits them.
+    // The caller's employment details stay inside the self-service response.
     let (_, _, me) = call_json(
         app.clone(),
         "GET",
@@ -27,6 +27,7 @@ async fn screen6_me_profile_read_patch_and_reveal_step_up(pool: PgPool) {
     assert_eq!(me["employee_hire_date"], "2024-03-01");
     assert_eq!(me["employee_employment_status"], "ACTIVE");
     assert_eq!(me["employee_grade"], "Senior");
+    assert_eq!(me["employee_org_unit_id"], fx.unit_a.to_string());
     let (st, _, dir) = call_json(
         app.clone(),
         "GET",
@@ -38,6 +39,7 @@ async fn screen6_me_profile_read_patch_and_reveal_step_up(pool: PgPool) {
     .await;
     assert_eq!(st, StatusCode::OK, "{dir}");
     assert!(dir.get("employee_grade").is_none());
+    assert!(dir.get("employee_org_unit_id").is_none());
 
     // 2. /api/v1/me/profile masked read, unlinked 403, PATCH immediate fields, refuse masked & address.
     assert_eq!(

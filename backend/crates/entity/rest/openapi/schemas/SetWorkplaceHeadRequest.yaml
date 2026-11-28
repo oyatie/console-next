@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+additionalProperties: false
+required:
+- head_employee_id
+properties:
+  head_employee_id:
+    type:
+    - string
+    - 'null'
+    format: uuid
+    description: Employee appointed as workplace head; null clears the appointment.

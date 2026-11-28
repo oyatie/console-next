@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+type: object
+required:
+- total
+- remaining
+- generated_at
+properties:
+  total:
+    type: integer
+    minimum: 0
+  remaining:
+    type: integer
+    minimum: 0
+  generated_at:
+    oneOf:
+    - $ref: '#/components/schemas/Timestamp'
+    - type: 'null'

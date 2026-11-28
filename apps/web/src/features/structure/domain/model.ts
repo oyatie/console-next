@@ -103,7 +103,7 @@ export function buildStructure(s: OrgStructure, entities: readonly LegalEntity[]
       parentId: parent.id,
       depth: parent.depth + 1,
       children: [],
-      ...(kind === "dept" ? { head: src.head?.name ? { name: src.head.name, concurrent: src.head.concurrent } : null, code: src.code ?? undefined } : {}),
+      ...((kind === "dept" || kind === "site") ? { head: src.head?.name ? { name: src.head.name, concurrent: src.head.concurrent } : null, code: src.code ?? undefined } : {}),
       ...(kind === "site" && src.workplace_kind ? { siteKind: kindOf(src.workplace_kind) } : {}),
       ...(kind === "entity" && src.direct_headcount > 0 ? { unplaced: src.direct_headcount } : {}),
     };

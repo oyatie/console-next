@@ -6,6 +6,7 @@ import { Chip } from "../../../ui/chip";
 import { KeyValue } from "../../../ui/key-value/key-value";
 import { RegisterBlockerItem, RegisterBlockerRow, RegisterSheetStack } from "../../../ui/patterns/register-totals-parts";
 import { Sheet } from "../../../ui/sheet/sheet";
+import { RunAttendanceBlocker } from "./run-attendance-blocker";
 import { RunOpenExceptionsBlocker } from "./run-open-exceptions-blocker";
 import {
   buildRunCsvMatrix,
@@ -16,6 +17,8 @@ import {
 import { buildRunCsvHeader } from "../present";
 
 export function RunPrecheckBlockers({
+  attendanceOpenWarning,
+  runStatus,
   attentionCount,
   hasBankIssues,
   readyCount,
@@ -25,6 +28,8 @@ export function RunPrecheckBlockers({
   onToggleFilter,
   onInspectExceptions,
 }: {
+  attendanceOpenWarning?: boolean;
+  runStatus?: string;
   attentionCount: number;
   hasBankIssues: boolean;
   readyCount: number;
@@ -36,6 +41,7 @@ export function RunPrecheckBlockers({
 }) {
   return (
     <RegisterBlockerRow title={t("payroll.run.precheckTitle")}>
+      {attendanceOpenWarning && <RunAttendanceBlocker runStatus={runStatus} />}
       {attentionCount > 0 && (
         <RegisterBlockerItem
           badge={<Chip tone="danger">{hasBankIssues ? t("payroll.run.missingBankChip", { count: attentionCount }) : t("payroll.run.attentionChip", { count: attentionCount })}</Chip>}
@@ -67,12 +73,14 @@ export function RunPrecheckBlockers({
 export function RunActionSheets({
   detail,
   entityLabel,
+  groupLabel,
   visibleLines,
   exportOpen,
   onCloseExport,
 }: {
   detail?: PayrollRunDetail;
   entityLabel: string;
+  groupLabel?: string;
   visibleLines: readonly PayrollLineSummary[];
   exportOpen: boolean;
   onCloseExport: () => void;
@@ -109,6 +117,7 @@ export function RunActionSheets({
         <KeyValue
           readOnly
           items={[
+            { key: "group", label: t("payroll.group"), value: groupLabel ?? entityLabel },
             { key: "entity", label: t("payroll.entity"), value: entityLabel },
             { key: "month", label: t("payroll.create.month"), value: detail?.run.attribution_month ?? "—" },
             { key: "rows", label: t("payroll.run.statTarget"), value: t("payroll.run.personCount", { count: visibleLines.length }) },

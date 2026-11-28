@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 //! Typed configuration only; scheduling consumes these explicit choices.
 mod facts;
+pub mod membership;
 pub(crate) use facts::require_run_command_in_tx;
 pub use facts::{RlsPayGroupFacts, manageable_pay_groups_in_tx, run_pay_group_in_tx};
 pub mod run_preview;
 mod wire;
 use console_kernel_core::{AuditAction, AuditEvent, KernelError, OrgId, TraceContext, UserId};
-use console_payroll_domain::pay_groups::{PayDateRule, PaymentChannel, PeriodRule, ProrationBasis};
+use console_payroll_domain::pay_groups::{
+    AttendanceCutoffRule, PayDateRule, PaymentChannel, PeriodRule, ProrationBasis,
+};
 use console_platform_authz::Feature;
 use console_platform_authz::access::{AccessEngineError, NodeKind, NodeRef};
 use console_platform_authz::cedar_pbac::residual::SqlValue;
@@ -16,7 +19,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::types::Json;
 use time::OffsetDateTime;
 use uuid::Uuid;
-use wire::{ChannelWire, PayDateWire, PeriodWire, ProrationWire};
+use wire::{ChannelWire, PayDateWire, PeriodWire, ProrationWire, option_cutoff};
 
 use crate::{PgPayrollError, PgPayrollStore};
 
@@ -38,6 +41,14 @@ pub struct CreatePayGroup {
     pub base_period: PeriodRule,
     #[serde(with = "PeriodWire")]
     pub variable_period: PeriodRule,
+    #[serde(
+        default,
+        with = "option_cutoff",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub attendance_cutoff_rule: Option<AttendanceCutoffRule>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub member_employee_ids: Vec<Uuid>,
     #[serde(with = "ProrationWire")]
     pub proration: ProrationBasis,
     #[serde(with = "ChannelWire")]
@@ -57,6 +68,12 @@ pub struct PayGroup {
     pub base_period: PeriodRule,
     #[serde(with = "PeriodWire")]
     pub variable_period: PeriodRule,
+    #[serde(
+        default,
+        with = "option_cutoff",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub attendance_cutoff_rule: Option<AttendanceCutoffRule>,
     #[serde(with = "ProrationWire")]
     pub proration: ProrationBasis,
     #[serde(with = "ChannelWire")]
@@ -73,6 +90,7 @@ pub struct PayGroupEntity {
 
 #[derive(Debug, Serialize)]
 pub struct PayGroupPage {
+    pub manageable_group_ids: Vec<Uuid>,
     pub items: Vec<PayGroup>,
     pub legal_entities: Vec<PayGroupEntity>,
 }
@@ -119,15 +137,29 @@ impl PgPayrollStore {
             input.pay_date_rule.validate()?;
             input.base_period.validate("base_period")?;
             input.variable_period.validate("variable_period")?;
+            if let Some(cutoff) = input.attendance_cutoff_rule {
+                cutoff.validate()?;
+            }
             if input.pay_basis_allowed.is_empty() || input.pay_basis_allowed.iter().enumerate().any(|(i, basis)| input.pay_basis_allowed[..i].contains(basis)) {
                 return Err(KernelError::validation("select distinct allowed pay bases").with_field("pay_basis_allowed").into());
             }
-            Ok(sqlx::query_scalar::<_, Json<PayGroup>>(
-                "INSERT INTO pay_groups(org_id,id,legal_entity_id,name,pay_date_rule,base_period,variable_period,proration,channel,sensitive,pay_basis_allowed)
-                 VALUES ($1,$2,$3,$4->>'name',$4->'pay_date_rule',$4->'base_period',$4->'variable_period',$4->>'proration',$4->>'channel',($4->>'sensitive')::boolean,ARRAY(SELECT jsonb_array_elements_text($4->'pay_basis_allowed')))
+            console_platform_db::lock_period_lock_key(tx, console_platform_db::PeriodLockDomain::Payroll, *org.as_uuid()).await?;
+            let created = sqlx::query_scalar::<_, Json<PayGroup>>(
+                "INSERT INTO pay_groups(org_id,id,legal_entity_id,name,pay_date_rule,base_period,variable_period,attendance_cutoff_rule,proration,channel,sensitive,pay_basis_allowed)
+                 VALUES ($1,$2,$3,$4->>'name',$4->'pay_date_rule',$4->'base_period',$4->'variable_period',NULLIF($4->'attendance_cutoff_rule','null'::jsonb),$4->>'proration',$4->>'channel',($4->>'sensitive')::boolean,ARRAY(SELECT jsonb_array_elements_text($4->'pay_basis_allowed')))
                  RETURNING to_jsonb(pay_groups)",
             ).bind(org.as_uuid()).bind(id).bind(input.legal_entity_id).bind(Json(&input))
-                .fetch_one(tx.as_mut()).await?.0)
+                .fetch_one(tx.as_mut()).await?.0;
+            if !input.member_employee_ids.is_empty() {
+                let date = sqlx::query_scalar("SELECT entity_today()").fetch_one(tx.as_mut()).await?;
+                let managed = facts.visible_pay_groups(tx, Feature::PayrollRunManage, &RlsPayGroupFacts).await?;
+                for employee_id in input.member_employee_ids {
+                    membership::assign_in_tx(tx, org, actor, &managed, &membership::AssignMembership {
+                        pay_group_id: id, employee_id, effective_from: date, expected_pay_group_id: None
+                    }, false).await?;
+                }
+            }
+            Ok(created)
         })).await
     }
 
@@ -166,7 +198,7 @@ impl PgPayrollStore {
                     );
                 }
                 let ids = facts.visible_pay_groups(tx, Feature::PayrollRunRead, &loader).await?;
-                let items = sqlx::query_scalar::<_, Json<PayGroup>>(
+                let items: Vec<PayGroup> = sqlx::query_scalar::<_, Json<PayGroup>>(
                     "SELECT to_jsonb(g) FROM pay_groups g WHERE g.org_id=$1 AND g.id=ANY($2)
                      ORDER BY g.legal_entity_id,g.name,g.id",
                 ).bind(org.as_uuid()).bind(ids)
@@ -175,6 +207,12 @@ impl PgPayrollStore {
                     .into_iter()
                     .map(|row| row.0)
                     .collect();
+                let mut manageable_group_ids = Vec::new();
+                for group in &items {
+                    if facts.authorize_pay_group_creation(group.legal_entity_id, group.sensitive.unwrap_or(true)).map_err(cedar_error)? {
+                        manageable_group_ids.push(group.id);
+                    }
+                }
                 let sql = format!(
                     "SELECT jsonb_build_object('id',g.legal_entity_id,'name',r.name)
                      FROM (SELECT org_id,id AS legal_entity_id FROM legal_entities WHERE voided_at IS NULL) g
@@ -188,7 +226,7 @@ impl PgPayrollStore {
                     query = query.bind(values);
                 }
                 let legal_entities = query.fetch_all(tx.as_mut()).await?.into_iter().map(|row| row.0).collect();
-                Ok(PayGroupPage { items, legal_entities })
+                Ok(PayGroupPage { items, legal_entities, manageable_group_ids })
             })
         })
         .await

@@ -1,25 +1,17 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-//! The lockout invariant (GR-3): a tenant that has an ops account never
-//! commits without an ACTIVE one; a handover in one transaction passes; there
-//! is never a second one. (Deleting the ops user is held by its foreign keys
-//! first and by the same deferred trigger last; tenant removal skips it.)
+//! A tenant with an ops account keeps at least one and at most two active holders.
+//! The minimum is deferred so the sole holder can hand over in one transaction.
 
 mod support;
 
 use sqlx::PgPool;
 use support::world;
 
-async fn commit(
-    pool: &PgPool,
-    statements: &[&str],
-    ops: uuid::Uuid,
-    other: uuid::Uuid,
-) -> Result<(), sqlx::Error> {
+async fn commit(pool: &PgPool, statements: &[(&str, uuid::Uuid)]) -> Result<(), sqlx::Error> {
     let mut tx = pool.begin().await?;
-    for sql in statements {
-        sqlx::query(sqlx::AssertSqlSafe((*sql).to_owned()))
-            .bind(ops)
-            .bind(other)
+    for &(sql, user) in statements {
+        sqlx::query(sqlx::AssertSqlSafe(sql.to_owned()))
+            .bind(user)
             .execute(tx.as_mut())
             .await?;
     }
@@ -35,12 +27,12 @@ fn is_lockout(err: &sqlx::Error) -> bool {
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn the_last_ops_account_cannot_be_unset_deactivated_or_deleted(pool: PgPool) {
     let w = world(pool).await;
-    let (ops, hr) = (*w.ops.as_uuid(), *w.hr.as_uuid());
+    let ops = *w.ops.as_uuid();
     for sql in [
-        "UPDATE users SET is_tenant_ops = false WHERE id = $1 AND $2 IS NOT NULL",
-        "UPDATE users SET is_active = false WHERE id = $1 AND $2 IS NOT NULL",
+        "UPDATE users SET is_tenant_ops = false WHERE id = $1",
+        "UPDATE users SET is_active = false WHERE id = $1",
     ] {
-        let err = commit(&w.owner, &[sql], ops, hr).await.expect_err(sql);
+        let err = commit(&w.owner, &[(sql, ops)]).await.expect_err(sql);
         assert!(is_lockout(&err), "{sql}: {err}");
     }
     let still: bool =
@@ -53,37 +45,33 @@ async fn the_last_ops_account_cannot_be_unset_deactivated_or_deleted(pool: PgPoo
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
-async fn a_handover_in_one_transaction_passes_and_two_ops_never_coexist(pool: PgPool) {
+async fn two_active_holders_can_coexist_and_a_sole_holder_can_hand_over(pool: PgPool) {
+    const GRANT: &str = "UPDATE users SET is_tenant_ops = true WHERE id = $1";
+    const REVOKE: &str = "UPDATE users SET is_tenant_ops = false WHERE id = $1";
     let w = world(pool).await;
-    let (ops, hr) = (*w.ops.as_uuid(), *w.hr.as_uuid());
-    let two = commit(
-        &w.owner,
-        &["UPDATE users SET is_tenant_ops = true WHERE id = $2 AND $1 IS NOT NULL"],
-        ops,
-        hr,
-    )
-    .await;
-    assert!(
-        two.unwrap_err()
-            .to_string()
-            .contains("users_one_tenant_ops")
+    let (ops, hr, hr2) = (*w.ops.as_uuid(), *w.hr.as_uuid(), *w.hr2.as_uuid());
+    commit(&w.owner, &[(GRANT, hr)])
+        .await
+        .expect("second holder");
+    let err = commit(&w.owner, &[(GRANT, hr2)])
+        .await
+        .expect_err("third active holder exceeds the cap");
+    assert_eq!(
+        err.as_database_error().and_then(|e| e.constraint()),
+        Some("ops_holder_limit_reached")
     );
-    commit(
-        &w.owner,
-        &[
-            "UPDATE users SET is_tenant_ops = false WHERE id = $1 AND $2 IS NOT NULL",
-            "UPDATE users SET is_tenant_ops = true WHERE id = $2 AND $1 IS NOT NULL",
-        ],
-        ops,
-        hr,
+    commit(&w.owner, &[(REVOKE, hr)])
+        .await
+        .expect("restore sole holder");
+    commit(&w.owner, &[(REVOKE, ops), (GRANT, hr)])
+        .await
+        .expect("atomic handover");
+    let holders: Vec<uuid::Uuid> = sqlx::query_scalar(
+        "SELECT id FROM users WHERE org_id = $1 AND is_active AND is_tenant_ops",
     )
+    .bind(w.org)
+    .fetch_all(&w.owner)
     .await
-    .expect("handover");
-    let holder: uuid::Uuid =
-        sqlx::query_scalar("SELECT id FROM users WHERE org_id = $1 AND is_tenant_ops")
-            .bind(w.org)
-            .fetch_one(&w.owner)
-            .await
-            .unwrap();
-    assert_eq!(holder, hr);
+    .unwrap();
+    assert_eq!(holders, vec![hr]);
 }

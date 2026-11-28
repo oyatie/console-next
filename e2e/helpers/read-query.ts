@@ -6,6 +6,7 @@ import type { operations } from "@console/api/schema";
 export function readQuery(read: string, record: string): Record<string, string> {
   if (read.endsWith("/attendance/month")) return { month: todayKst().slice(0, 7) };
   if (read.endsWith("/attendance/days")) return { date: todayKst() };
+  if (read.endsWith("/location-consents/ledger")) return { branch_id: record } satisfies operations["listLocationConsentLedger"]["parameters"]["query"];
   if (read.endsWith("/payslip-draft")) return { period: todayKst().slice(0, 7) } satisfies operations["getEmployeePayslipDraft"]["parameters"]["query"];
   if (read.endsWith("/payroll/reference/rates")) return { legal_entity_id: record } satisfies operations["listPayrollReferenceRates"]["parameters"]["query"];
   if (read.endsWith("/payroll/runs/preview")) return { pay_group_id: record, kind: "REGULAR" } satisfies operations["previewPayrollRun"]["parameters"]["query"];

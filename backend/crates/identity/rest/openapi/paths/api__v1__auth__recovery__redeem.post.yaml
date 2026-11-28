@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags:
+- auth
+operationId: redeemRecoveryCode
+summary: Redeem one saved recovery code and recovery-contact verification code
+description: Atomically consumes one saved recovery code and one out-of-band contact verification code, revokes lost passkeys and sessions, cancels any open ops recovery request on an active tenant, and mints a passkey-enrollment session.
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/RecoveryRedeemRequest'
+responses:
+  '200':
+    description: Enrollment session token pair.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/RecoveryRedeemResponse'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '429':
+    $ref: '#/components/responses/TooManyRequests'

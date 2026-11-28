@@ -17,6 +17,7 @@
 mod company_domain;
 mod dto;
 mod error;
+mod group_invitations;
 mod groups;
 mod listing_authority;
 mod onboard;
@@ -75,14 +76,16 @@ use tenant_delete::delete_org;
 
 pub use routes::{
     PLATFORM_COMPANY_DOMAIN_PATH, PLATFORM_GROUP_ACCOUNT_ROLE_PATH_TEMPLATE,
-    PLATFORM_GROUP_ACCOUNTS_PATH_TEMPLATE, PLATFORM_GROUP_ORG_PATH_TEMPLATE,
+    PLATFORM_GROUP_ACCOUNTS_PATH_TEMPLATE, PLATFORM_GROUP_INVITATION_PATH_TEMPLATE,
+    PLATFORM_GROUP_INVITATIONS_PATH_TEMPLATE, PLATFORM_GROUP_ORG_PATH_TEMPLATE,
     PLATFORM_GROUP_PATH_TEMPLATE, PLATFORM_GROUPS_PATH, PLATFORM_OPS_PATH,
     PLATFORM_OPS_RECOVERY_APPROVE_PATH, PLATFORM_OPS_RECOVERY_CANCEL_PATH,
     PLATFORM_OPS_RECOVERY_ISSUE_PATH, PLATFORM_OPS_RECOVERY_PATH,
     PLATFORM_ORG_ADMIN_OTP_PATH_TEMPLATE, PLATFORM_ORG_PATH_TEMPLATE, PLATFORM_ORGS_PATH,
     PLATFORM_ROUTE_OPERATIONS, PLATFORM_ROUTE_PATHS, PLATFORM_TENANT_ERASE_APPROVE_PATH,
     PLATFORM_TENANT_ERASE_CANCEL_PATH, PLATFORM_TENANT_ERASE_PATH, PlatformRouteOperation,
-    TENANT_OPS_RECOVERY_CANCEL_PATH, TENANT_OPS_RECOVERY_PATH,
+    TENANT_GROUP_INVITATION_ACCEPT_PATH, TENANT_GROUP_INVITATION_DECLINE_PATH,
+    TENANT_GROUP_INVITATIONS_PATH, TENANT_OPS_RECOVERY_CANCEL_PATH, TENANT_OPS_RECOVERY_PATH,
 };
 
 /// Injected port that provisions a NEW tenant's governed-config object catalog
@@ -151,6 +154,14 @@ pub fn router(state: PlatformRestState) -> Router {
             PLATFORM_GROUP_ORG_PATH_TEMPLATE,
             put(assign_org_to_group).delete(remove_org_from_group),
         )
+        .route(
+            PLATFORM_GROUP_INVITATIONS_PATH_TEMPLATE,
+            axum::routing::post(group_invitations::create_invitation),
+        )
+        .route(
+            PLATFORM_GROUP_INVITATION_PATH_TEMPLATE,
+            axum::routing::delete(group_invitations::cancel_invitation),
+        )
         .route(PLATFORM_OPS_PATH, get(ops_dashboard));
     // View-as START + EXIT (read-only impersonation). Both are PLATFORM-tier
     // routes behind the platform extractor below; EXIT is platform-scoped so it
@@ -165,7 +176,21 @@ pub fn router(state: PlatformRestState) -> Router {
                 )
                 .route(
                     TENANT_DOMAIN_REQUEST_PATH,
-                    get(company_domain::own_request).post(company_domain::request_domain),
+                    get(company_domain::own_request)
+                        .post(company_domain::request_domain)
+                        .delete(company_domain::cancel_request),
+                )
+                .route(
+                    TENANT_GROUP_INVITATIONS_PATH,
+                    get(group_invitations::list_tenant_invitations),
+                )
+                .route(
+                    TENANT_GROUP_INVITATION_ACCEPT_PATH,
+                    axum::routing::post(group_invitations::accept_tenant_invitation),
+                )
+                .route(
+                    TENANT_GROUP_INVITATION_DECLINE_PATH,
+                    axum::routing::post(group_invitations::decline_tenant_invitation),
                 ),
         )
         .with_state(state.clone()),

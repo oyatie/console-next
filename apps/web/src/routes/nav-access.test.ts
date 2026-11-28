@@ -44,6 +44,27 @@ const WORD: Readonly<Record<string, string>> = {
   "/settings": "shell.link.settings",
 };
 
+test("a calculator-only reader can reach the outlook when the payroll module is ready", () => {
+  const nav = (payrollOutlook: boolean) => top(tenantNav(noGrants, routes, false, { ...live(), payrollOutlook }));
+  expect(nav(true)).toContain("/payroll/outlook");
+  expect(nav(false)).not.toContain("/payroll/outlook");
+  expect(nav(true)).not.toContain("/payroll");
+});
+
+test("a findings-only reader can enter the authorized review queue from Audit", () => {
+  const nav = top(tenantNav(noGrants, routes, false, { ...live(), findings: true }));
+  expect(nav).toContain("/audit/findings");
+  expect(nav).not.toContain("/audit");
+  expect(nav).not.toContain("/audit/evidence");
+});
+
+test("an evidence-only reader can enter Audit through the served vault", () => {
+  const nav = (evidenceVault: boolean) => top(tenantNav(noGrants, routes, false, { ...live(), evidenceVault }));
+  expect(nav(true)).toContain("/audit/evidence");
+  expect(nav(true)).not.toContain("/audit");
+  expect(nav(false)).not.toContain("/audit/evidence");
+});
+
 test.each([
   { viewer: "a full admin", held: admin, at: live(),
     bar: ["/", "/people/requests", "/approvals", "/org", "/team", "/people", "/attendance", "/payroll", "/statutory", "/access", "/audit", "/settings"] },
@@ -157,7 +178,8 @@ test("an account manager without a directory grant cannot reach people", () => {
 });
 
 test.each(["attendance", "exit"])("a %s writer does not get a directory read link the server refuses", domain => {
-  expect(links(access(domain, "edit"))).toEqual(links({ is_ops: false, entries: [] } as unknown as AccessEffective));
+  const signedIn = links({ is_ops: false, entries: [] } as unknown as AccessEffective);
+  expect(links(access(domain, "edit"))).toEqual(domain === "attendance" ? [...signedIn, "/settings"] : signedIn);
 });
 
 test.each(["org", "hr_basic", "access", "exceptions", "attendance", "exit", "audit"])("navigation agrees with every destination's requirement for %s", domain => {

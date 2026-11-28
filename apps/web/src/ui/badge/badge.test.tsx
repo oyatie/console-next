@@ -6,7 +6,7 @@ import { blocks } from "../../../../../scripts/check-standing-text.mjs";
 import { Badge } from "./badge";
 
 test("Badge formats counts and exposes neutral, attention, and inverse tones", () => {
-  expect(html(<Badge count={23} />)).toBe('<data value="23" class="' + (html(<Badge count={23} />).match(/class="([^"]+)"/)?.[1] ?? "") + '" data-tone="neutral">23</data>');
+  expect(html(<Badge count={23} />)).toBe('<data value="23" data-count="" class="' + (html(<Badge count={23} />).match(/class="([^"]+)"/)?.[1] ?? "") + '" data-tone="neutral">23</data>');
   expect(html(<Badge count={2054} tone="attention" />)).toContain('data-tone="attention"');
   expect(html(<Badge count={2054} tone="attention" />)).toContain("2,054");
   expect(html(<Badge count={4} tone="inverse" />)).toContain('data-tone="inverse"');

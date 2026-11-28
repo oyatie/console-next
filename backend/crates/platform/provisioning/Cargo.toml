@@ -14,7 +14,9 @@ console-settings-domain = { path = "../../settings/domain" }
 console-kernel-core = { workspace = true }
 console-platform-authz = { workspace = true }
 console-platform-auth = { path = "../auth" }
+console-platform-crypto = { path = "../crypto" }
 console-platform-db = { path = "../db" }
+console-platform-email = { path = "../email" }
 console-platform-storage = { path = "../storage" }
 secrecy = { workspace = true }
 serde = { workspace = true }

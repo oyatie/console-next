@@ -157,6 +157,15 @@ pub(crate) async fn finish_login(
     let mut user = load_user_auth_context_tx(&mut tx, outcome.user_id).await?;
     user.feature_grants = resolve_feature_grant_keys_for_user_in_tx(&mut tx, &user).await?;
     let tokens = issue_token_pair_in_tx(&mut tx, services, &user, false).await?;
+    let cancelled_recovery_request =
+        console_platform_provisioning::ops_self_recovery::cancel_open_ops_recovery_on_holder_login_tx(
+            &mut tx,
+            outcome.org_id,
+            outcome.user_id,
+            now,
+        )
+        .await
+        .map_err(RestError::from_provisioning)?;
     let login_audit = auth_audit_event(
         outcome.org_id,
         outcome.user_id,
@@ -164,6 +173,7 @@ pub(crate) async fn finish_login(
         serde_json::json!({
             "passkey_id": outcome.passkey_id,
             "refresh_family_id": tokens.family_id,
+            "cancelled_recovery_request": cancelled_recovery_request,
         }),
     )?;
     insert_audit_event(&mut tx, &login_audit).await?;
@@ -185,5 +195,6 @@ pub(crate) async fn finish_login(
         tokens,
         &headers,
         Some(profile),
+        cancelled_recovery_request,
     ))
 }

@@ -105,7 +105,10 @@ test("the person card bottom is reachable at 390px", async ({ page }) => {
   const main = page.locator("#main");
   const bottom = page.getByText(t("attendanceRecords.day.noHistory"), { exact: true });
   await expect(bottom).toBeVisible();
-  await main.evaluate(el => { el.scrollTop = el.scrollHeight; });
+  await main.evaluate(el => {
+    const scroller = el.scrollHeight > el.clientHeight ? el : document.scrollingElement!;
+    scroller.scrollTop = scroller.scrollHeight;
+  });
   await expect(bottom).toBeInViewport();
   await fits(page, "person-card/390/dark");
   await expectAxe(page, "person-card/390/dark");

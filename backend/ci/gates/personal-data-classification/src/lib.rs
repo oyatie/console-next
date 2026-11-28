@@ -54,7 +54,11 @@ pub struct UnsupportedWaiver {
 
 mod finite_foreach;
 mod markers;
+mod statement_names;
 pub use markers::parse_markers;
+use statement_names::{
+    alter_action_is_column_neutral, read_qualified_name, renames_constraint, sets_constraint_timing,
+};
 mod waivers;
 pub use waivers::UNSUPPORTED_WAIVERS;
 
@@ -661,6 +665,7 @@ fn apply_statement(statement: &[Tok], file: &Path, schema: &mut Schema) {
         // ---- forms that create no column ----
         // `COMMENT ON …` is read separately by `parse_markers`; the rest touch
         // access, execution or rows, never a column list.
+        ["set", "constraints", ..] if sets_constraint_timing(statement) => {}
         ["comment", "on", ..]
         | ["create", "index", ..]
         | ["create", "unique", "index", ..]
@@ -1047,23 +1052,6 @@ fn top_level_action_count(tokens: &[Tok]) -> Option<usize> {
     (depth == 0).then_some(commas + 1)
 }
 
-fn alter_action_is_column_neutral(action: &[Tok]) -> bool {
-    let mut words = action.iter().filter_map(Tok::word);
-    let Some(head) = words.next() else {
-        return false;
-    };
-    if COLUMN_NEUTRAL_ALTER_ACTIONS.contains(&head) {
-        return true;
-    }
-    // `ADD`/`DROP CONSTRAINT` is neutral, `ADD`/`DROP COLUMN` is not, and a
-    // bare `ADD colname TYPE` is the implicit column form: the same distinction
-    // `apply_alter_table` draws on parsed SQL, drawn here on opaque text.
-    matches!(head, "add" | "drop")
-        && words
-            .next()
-            .is_some_and(|next| CONSTRAINT_HEADS.contains(&next))
-}
-
 /// Consume `[IF NOT EXISTS]` / `[IF EXISTS]` and return the index of the name.
 fn skip_if_clause(statement: &[Tok], mut index: usize) -> usize {
     while let Some(word) = statement.get(index).and_then(Tok::word) {
@@ -1074,21 +1062,6 @@ fn skip_if_clause(statement: &[Tok], mut index: usize) -> usize {
         }
     }
     index
-}
-
-/// Read a possibly schema-qualified name and return `(name, next_index)`.
-fn read_qualified_name(statement: &[Tok], index: usize) -> Option<(String, usize)> {
-    let mut name = statement.get(index)?.word()?.to_owned();
-    let mut cursor = index + 1;
-    while statement.get(cursor).is_some_and(|t| t.is_punct('.')) {
-        if let Some(part) = statement.get(cursor + 1).and_then(Tok::word) {
-            name = part.to_owned();
-            cursor += 2;
-        } else {
-            break;
-        }
-    }
-    Some((name, cursor))
 }
 
 /// Parse one `CREATE TABLE`, or name the construct that defeated the parser.
@@ -1267,6 +1240,7 @@ fn apply_alter_table(statement: &[Tok], file: &Path, schema: &mut Schema) {
             // follow the identity Postgres actually tracks. No migration uses
             // the form today; the day one does, the gate says so instead of
             // quietly reporting the old column set.
+            Some("rename") if renames_constraint(action) => {}
             Some("rename") => {
                 schema.unsupported(
                     file,

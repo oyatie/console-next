@@ -191,7 +191,7 @@ pub async fn calculate_run_in_tx(
     let Some(run) = run_head(tx, run_id, true).await? else {
         return Err(LifecycleError::NotFound);
     };
-    if run.status != "ATTENDANCE_CLOSED" {
+    if run.status != "ATTENDANCE_CLOSED" && run.status != "CALCULATED" {
         return Err(invalid_state("calculate", &run.status));
     }
     // The transient state is real: any concurrent reader inside this
@@ -351,29 +351,31 @@ pub async fn calculate_run_in_tx(
         }
     }
 
-    // Carry-forward: HELD exceptions from the previous run of the same series
-    // are re-opened on this run (carried_from_run_id keeps the lineage).
+    // Modern runs have a unique source label per run. Their series is the pay group and kind.
+    // The target run is already locked, including during recalculation.
     let carried = sqlx::query(
-        "INSERT INTO payroll_run_exceptions \
-         (org_id, run_id, line_id, employee_id, employee_display_name, kind, severity, \
-          amount_delta_won, summary_ko, detail, linked_refs, carried_from_run_id) \
-         SELECT e.org_id, $1, NULL, e.employee_id, e.employee_display_name, e.kind, \
-                e.severity, e.amount_delta_won, e.summary_ko, e.detail, e.linked_refs, e.run_id \
-         FROM payroll_run_exceptions e \
-         WHERE e.status = 'HELD' \
-           AND e.run_id = (SELECT r.id FROM payroll_draft_runs r \
-                           WHERE r.source_label = $2 AND r.period_end < $3 \
-                           ORDER BY r.period_end DESC LIMIT 1) \
-           AND NOT EXISTS (SELECT 1 FROM payroll_run_exceptions x \
-                           WHERE x.run_id = $1 AND x.carried_from_run_id = e.run_id \
-                             AND x.kind = e.kind \
-                             AND x.employee_id IS NOT DISTINCT FROM e.employee_id)",
-    )
-    .bind(run_id)
-    .bind(&run.source_label)
-    .bind(run.period_start)
-    .execute(tx.as_mut())
-    .await?;
+        r"WITH previous AS (
+            SELECT p.id FROM payroll_draft_runs r JOIN payroll_draft_runs p
+              ON p.org_id = r.org_id AND p.period_end < r.period_start
+             AND p.pay_group_id IS NOT DISTINCT FROM r.pay_group_id
+             AND p.kind IS NOT DISTINCT FROM r.kind
+             AND (r.pay_group_id IS NOT NULL OR p.source_label = r.source_label)
+            WHERE r.id = $1 ORDER BY p.period_end DESC, p.created_at DESC, p.id DESC LIMIT 1
+        )
+        INSERT INTO payroll_run_exceptions
+            (org_id, run_id, employee_id, employee_display_name, kind, severity,
+             amount_delta_won, summary_ko, detail, linked_refs, carried_from_run_id)
+        SELECT e.org_id, $1, e.employee_id, e.employee_display_name, e.kind, e.severity,
+               e.amount_delta_won, e.summary_ko,
+               e.detail || jsonb_build_object('carried_from_exception_id', e.id), e.linked_refs, e.run_id
+        FROM payroll_run_exceptions e JOIN previous ON previous.id = e.run_id
+        WHERE e.status = 'HELD' AND NOT EXISTS (
+            SELECT 1 FROM payroll_run_exceptions x WHERE x.run_id = $1 AND x.carried_from_run_id = e.run_id
+              AND (x.detail->>'carried_from_exception_id' = e.id::text
+                   OR (NOT x.detail ? 'carried_from_exception_id' AND x.kind = e.kind
+                       AND x.employee_id IS NOT DISTINCT FROM e.employee_id))
+        )"
+    ).bind(run_id).execute(tx.as_mut()).await?;
     exceptions_created += i64::try_from(carried.rows_affected()).unwrap_or(0);
 
     sqlx::query(
@@ -597,141 +599,10 @@ pub async fn withdraw_run_in_tx(
 // Disbursement (operator-attested; no bank API exists)
 // ---------------------------------------------------------------------------
 
-fn disbursement_from_row(row: &sqlx::postgres::PgRow) -> Result<Disbursement, LifecycleError> {
-    Ok(Disbursement {
-        id: row.try_get("id")?,
-        run_id: row.try_get("run_id")?,
-        scheduled_at: row.try_get("scheduled_at")?,
-        status: row.try_get("status")?,
-        attested_by: row.try_get("attested_by")?,
-        attested_at: row.try_get("attested_at")?,
-        reason: row.try_get("reason")?,
-        created_at: row.try_get("created_at")?,
-        updated_at: row.try_get("updated_at")?,
-    })
-}
-
-pub async fn get_disbursement_in_tx(
-    tx: &mut Transaction<'_, Postgres>,
-    run_id: Uuid,
-) -> Result<Option<Disbursement>, LifecycleError> {
-    let row = sqlx::query(
-        "SELECT id, run_id, scheduled_at, status, attested_by, attested_at, reason, \
-                created_at, updated_at \
-         FROM payroll_disbursements WHERE run_id = $1",
-    )
-    .bind(run_id)
-    .fetch_optional(tx.as_mut())
-    .await?;
-    row.as_ref().map(disbursement_from_row).transpose()
-}
-
-pub async fn schedule_disbursement_in_tx(
-    tx: &mut Transaction<'_, Postgres>,
-    run_id: Uuid,
-    scheduled_at: OffsetDateTime,
-) -> Result<Disbursement, LifecycleError> {
-    let Some(run) = run_head(tx, run_id, true).await? else {
-        return Err(LifecycleError::NotFound);
-    };
-    if run.status != "APPROVED" {
-        return Err(invalid_state("schedule disbursement for", &run.status));
-    }
-    let row = sqlx::query(
-        "INSERT INTO payroll_disbursements (org_id, run_id, scheduled_at) \
-         SELECT r.org_id, r.id, $2 FROM payroll_draft_runs r WHERE r.id = $1 \
-         ON CONFLICT (run_id) DO NOTHING \
-         RETURNING id, run_id, scheduled_at, status, attested_by, attested_at, reason, \
-                   created_at, updated_at",
-    )
-    .bind(run_id)
-    .bind(scheduled_at)
-    .fetch_optional(tx.as_mut())
-    .await?;
-    let Some(row) = row else {
-        return Err(LifecycleError::InvalidState(
-            "a disbursement is already scheduled for this run".to_owned(),
-        ));
-    };
-    sqlx::query(
-        "UPDATE payroll_draft_runs SET status = 'DISBURSEMENT_SCHEDULED', updated_at = now() \
-         WHERE id = $1",
-    )
-    .bind(run_id)
-    .execute(tx.as_mut())
-    .await?;
-    disbursement_from_row(&row)
-}
-
-pub async fn attest_disbursement_in_tx(
-    tx: &mut Transaction<'_, Postgres>,
-    run_id: Uuid,
-    actor: Uuid,
-    new_status: &str,
-    reason: Option<&str>,
-) -> Result<Disbursement, LifecycleError> {
-    let Some(run) = run_head(tx, run_id, true).await? else {
-        return Err(LifecycleError::NotFound);
-    };
-    let row = sqlx::query(
-        "SELECT id, run_id, scheduled_at, status, attested_by, attested_at, reason, \
-                created_at, updated_at \
-         FROM payroll_disbursements WHERE run_id = $1 FOR UPDATE",
-    )
-    .bind(run_id)
-    .fetch_optional(tx.as_mut())
-    .await?;
-    let Some(row) = row else {
-        return Err(LifecycleError::InvalidState(
-            "no disbursement is scheduled for this run".to_owned(),
-        ));
-    };
-    let current = disbursement_from_row(&row)?;
-    let allowed = matches!(
-        (current.status.as_str(), new_status),
-        ("SCHEDULED", "SUBMITTED_TO_BANK")
-            | ("SUBMITTED_TO_BANK", "PAID")
-            | ("SUBMITTED_TO_BANK", "FAILED")
-            | ("FAILED", "SCHEDULED")
-    );
-    if !allowed {
-        return Err(LifecycleError::InvalidTransition(format!(
-            "cannot attest {new_status} from {}",
-            current.status
-        )));
-    }
-    if new_status == "FAILED" && reason.is_none_or(|r| r.trim().is_empty()) {
-        return Err(LifecycleError::Validation(
-            "a reason is required to attest a failed disbursement".to_owned(),
-        ));
-    }
-    let row = sqlx::query(
-        "UPDATE payroll_disbursements \
-         SET status = $2, attested_by = $3, attested_at = now(), \
-             reason = CASE WHEN $2 = 'FAILED' THEN $4 ELSE NULL END, updated_at = now() \
-         WHERE run_id = $1 \
-         RETURNING id, run_id, scheduled_at, status, attested_by, attested_at, reason, \
-                   created_at, updated_at",
-    )
-    .bind(run_id)
-    .bind(new_status)
-    .bind(actor)
-    .bind(reason)
-    .fetch_one(tx.as_mut())
-    .await?;
-    if new_status == "PAID" {
-        if run.status != "DISBURSEMENT_SCHEDULED" {
-            return Err(invalid_state("mark paid", &run.status));
-        }
-        sqlx::query(
-            "UPDATE payroll_draft_runs SET status = 'PAID', updated_at = now() WHERE id = $1",
-        )
-        .bind(run_id)
-        .execute(tx.as_mut())
-        .await?;
-    }
-    disbursement_from_row(&row)
-}
+mod disbursement;
+pub use disbursement::{
+    attest_disbursement_in_tx, get_disbursement_in_tx, schedule_disbursement_in_tx,
+};
 
 // ---------------------------------------------------------------------------
 // Payslip issuance (release-gated) + delivery readback

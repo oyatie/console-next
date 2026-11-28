@@ -6,7 +6,7 @@ use sqlx::Postgres;
 use sqlx::Transaction;
 
 pub(crate) const CONSOLE_ROLLOUT_FLAG_KEY: &str = "console_carbon_copy";
-pub(crate) const CONSOLE_LEGACY_KILL_SWITCH_FLAG_KEY: &str = "console_legacy_kill_switch";
+pub(crate) use console_identity_adapter_postgres::users::CONSOLE_LEGACY_KILL_SWITCH_FLAG_KEY;
 pub(crate) const CONSOLE_ROLLOUT_USER_FEATURE_KEY: &str = "console_rollout";
 
 pub(crate) async fn fetch_console_rollout_status_tx(

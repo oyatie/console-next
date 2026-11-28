@@ -11,6 +11,7 @@ import type { useRosterScreen } from "./use-roster-screen";
 
 vi.mock("@tanstack/react-router", async original => ({
   ...await original<typeof import("@tanstack/react-router")>(),
+  getRouteApi: () => ({ useRouteContext: () => ({ peopleAccess: { unplaced: { domain: "hr_basic", level: "edit" } } }) }),
   useNavigate: () => () => {},
   Link: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
 }));
@@ -34,7 +35,7 @@ function screen(listFailed: boolean) {
     unitItems: [], selectedUnit: undefined, sort: "name", q: "", exitView: "kept", setExitView: noop, sel: NO_SELECTION, setSel: noop, recorded: undefined,
     batch: null, setBatch: noop, rescinding: false, setRescinding: noop, setRecorded: noop, rescindReady: false,
     r: { total: listFailed ? undefined : 0, loading: false, list, rows: [], status: { totals: { all: 3 } }, review: { totals: {} }, facets: undefined, changed: false, query: {} },
-    view: { shown: [], set: noop }, prefetch: noop, setFilter: noop, find: noop, reset: noop, viewFilters: {}, applyView: noop, closePaste: noop, bulkDone: noop, openRecord: noop,
+    view: { shown: [], set: noop }, setFilter: noop, find: noop, reset: noop, viewFilters: {}, applyView: noop, closePaste: noop, bulkDone: noop, openRecord: noop,
     scroller: { current: null }, scrollRef: noop, onRowFocus: noop, filtered: false, customFilters: false, sameName: 0, onRowAction: noop,
   } as unknown as ReturnType<typeof useRosterScreen>;
 }

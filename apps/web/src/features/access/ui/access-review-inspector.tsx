@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useState, type ReactNode } from "react";
+import { lazy, Suspense, useState, type ReactNode } from "react";
 import { type UseQueryResult } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
+import { chunk } from "../../../lib/chunk-guard";
 import { useIsDesktop } from "../../../lib/react/use-desktop";
 import { buttonClass } from "../../../ui/button/button-class";
 import { Chip } from "../../../ui/chip";
@@ -19,6 +20,10 @@ import { lastDay } from "../domain/grants";
 import { enforcementText, periodText, storedScope } from "../present";
 import { AccessNavTabs } from "./access-head";
 import s from "./access.module.css";
+
+const AccessReviewCyclePanel = lazy(() =>
+  chunk(import("./access-review-cycle")).then((m) => ({ default: m.AccessReviewCyclePanel })),
+);
 
 const ISO_DAY = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" });
 function fmtIsoDay(v: string): string {
@@ -110,7 +115,8 @@ export function AccessReviewConsole({
 }) {
   const isDesktop = useIsDesktop();
   const [dismissedAuto, setDismissedAuto] = useState(false);
-  const effectiveSelected = selected ?? (isDesktop && !dismissedAuto ? (rows[0] ?? null) : null);
+  const [cyclePeriod, setCyclePeriod] = useState<string | null>(null);
+  const effectiveSelected = cyclePeriod ? null : (selected ?? (isDesktop && !dismissedAuto ? (rows[0] ?? null) : null));
 
   return (
     <ListRecord
@@ -124,11 +130,20 @@ export function AccessReviewConsole({
             {t(phase === "SETUP" ? "access.phase.setup" : "access.phase.operating")}
           </PhaseLine>
         ),
+        actions: phase === "OPERATING" ? (
+          <Suspense fallback={null}>
+            <AccessReviewCyclePanel mode="toolbar" activePeriod={cyclePeriod} onSelectPeriod={setCyclePeriod} />
+          </Suspense>
+        ) : undefined,
       }}
-      find={items.length > 0 ? <SearchField label={t("accessReview.find")} value={find} onChange={onFind} className={s.findField} /> : undefined}
-      stats={items.length > 0 ? <StatRow label={t("accessReview.title")} items={statItems} /> : undefined}
+      find={!cyclePeriod && items.length > 0 ? <SearchField label={t("accessReview.find")} value={find} onChange={onFind} className={s.findField} /> : undefined}
+      stats={!cyclePeriod && items.length > 0 ? <StatRow label={t("accessReview.title")} items={statItems} /> : undefined}
       list={
-        !items.length ? (
+        cyclePeriod ? (
+          <Suspense fallback={null}>
+            <AccessReviewCyclePanel mode="body" activePeriod={cyclePeriod} onSelectPeriod={setCyclePeriod} />
+          </Suspense>
+        ) : !items.length ? (
           <EmptyState title={t("accessReview.empty")} reason={t("accessReview.emptyReason")} />
         ) : (
           <LongTable

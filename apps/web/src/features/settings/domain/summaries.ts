@@ -41,7 +41,7 @@ export function approvalSummary(data: Read<"listSettings">, t: SummaryCopy, fmtD
   const groups = new Map<string, string[]>();
   for (const row of entries) {
     const facts = [
-      ...(["platform", "legal_entity", "workplace"].includes(row.source.layer) ? [t(`settingsHub.layer.${row.source.layer}`)] : []),
+      ...(["platform", "legal_entity", "workplace", "department", "person"].includes(row.source.layer) ? [t(`settingsHub.layer.${row.source.layer}`)] : []),
       ...(row.governance !== "tenant" ? [t(`settingsHub.governance.${row.governance}`)] : []),
     ].join(" · ");
     if (facts) groups.set(facts, [...(groups.get(facts) ?? []), settingLabel(row.key, t)]);
@@ -76,7 +76,7 @@ export function experienceSummary(data: Read<"listSettings">, t: SummaryCopy, fm
   const value = settingValue(entry, entry.value, t);
   const hints: string[] = [];
   const sourceFacts = [
-    ...(["platform", "legal_entity", "workplace"].includes(entry.source.layer) ? [t(`settingsHub.layer.${entry.source.layer}`)] : []),
+    ...(["platform", "legal_entity", "workplace", "department", "person"].includes(entry.source.layer) ? [t(`settingsHub.layer.${entry.source.layer}`)] : []),
     ...(entry.governance !== "tenant" ? [t(`settingsHub.governance.${entry.governance}`)] : []),
   ].join(" · ");
   if (sourceFacts) hints.push(sourceFacts);

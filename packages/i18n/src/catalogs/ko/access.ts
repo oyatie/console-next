@@ -313,4 +313,6 @@ export const koAccess: Record<keyof typeof enAccess, string> = {
   "access.role.history.compare": "변경 비교",
   "access.role.history.initial": "최초 작성",
   "access.role.history.empty": "기록된 버전 이력이 없습니다",
+  "access.nav.policies": "정책",
+  "access.nav.check": "권한 확인",
 };

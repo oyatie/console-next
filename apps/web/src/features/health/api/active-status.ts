@@ -214,7 +214,7 @@ function syncStream() {
       syncStream();
     }, Math.max(0, since + RECONNECTING_AFTER_MS - Date.now()));
   }
-  const stale = enabled && ((state === "connecting" && lateSince === since) || (state === "offline" && since > 0));
+  const stale = enabled && lastEventAt !== null && ((state === "connecting" && lateSince === since) || (state === "offline" && since > 0));
   const crossedToStale = stale && !current.stale;
   if (stale !== current.stale || lastEventAt !== current.lastEventAt) {
     emit({ ...current, stale, lastEventAt });

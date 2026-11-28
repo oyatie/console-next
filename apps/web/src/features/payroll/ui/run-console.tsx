@@ -28,7 +28,6 @@ const RunLifecyclePane = lazy(() => chunk(import("./run-lifecycle-pane")).then(m
 
 const formatWonOrDash = (value: number | null | undefined) =>
   typeof value === "number" && Number.isFinite(value) ? t("payroll.employee.won", { amount: fmtNumber(value) }) : "—";
-
 /** Console (`P6` `RegisterTotals`) view for `/payroll/runs/$id`, falling back to `baseline()` in Classic mode. */
 export function RunConsole({ id, baseline }: { id: string; baseline: () => ReactNode }) {
   return (
@@ -37,17 +36,17 @@ export function RunConsole({ id, baseline }: { id: string; baseline: () => React
     </ExperienceSwitch>
   );
 }
-
 function RunConsoleContent({ id, baseline }: { id: string; baseline: () => ReactNode }) {
   const {
     q,
     detailData,
     run,
-    entities,
+    payGroupOptions,
     activePeriod,
-    activeEntityId,
+    activeGroupKey,
     entityLabel,
     groupLabel,
+    groupPeriodLabel,
     lines,
     ratesData,
     filter,
@@ -67,11 +66,12 @@ function RunConsoleContent({ id, baseline }: { id: string; baseline: () => React
     checkedIds,
     setCheckedIds,
     setPeriodOverride,
-    setEntityOverride,
+    setGroupOverride,
     hasBankIssues,
     runHeadcount,
     attentionCount,
     unreviewed,
+    attendanceOpenWarning,
     scopeMismatch,
     visibleLines,
     activeLine,
@@ -91,7 +91,6 @@ function RunConsoleContent({ id, baseline }: { id: string; baseline: () => React
 
   const stageAction = run ? resolveRunStageAction(run.status) : null;
   const showStatutoryLink = Boolean(run && ["APPROVED", "DISBURSEMENT_SCHEDULED", "PAID", "ISSUED"].includes(run.status));
-
   return (
     <RegisterTotals
       q={q}
@@ -99,14 +98,14 @@ function RunConsoleContent({ id, baseline }: { id: string; baseline: () => React
       head={{
         title: t("payroll.title"),
         titleId: "payroll-run-title",
-        meta: groupLabel ? <bdi>{groupLabel}</bdi> : undefined,
+        meta: groupPeriodLabel ? <bdi>{groupPeriodLabel}</bdi> : undefined,
         filters: detailData ? (
           <RunConsoleFilters
             activePeriod={activePeriod}
             setPeriodOverride={setPeriodOverride}
-            entities={entities}
-            activeEntityId={activeEntityId}
-            setEntityOverride={setEntityOverride}
+            payGroupOptions={payGroupOptions}
+            activeGroupKey={activeGroupKey}
+            setGroupOverride={setGroupOverride}
             filter={filter}
             handleFilterChange={handleFilterChange}
             runHeadcount={runHeadcount}
@@ -122,6 +121,8 @@ function RunConsoleContent({ id, baseline }: { id: string; baseline: () => React
             sideTab={sideTab}
             onToggleSideTab={tab => setSideTab(prev => (prev === tab ? null : tab))}
             showStatutoryLink={showStatutoryLink}
+            canRecalculate={run?.status === "CALCULATED"}
+            onRecalculate={() => setLifecycleSheet("calculate")}
             onOpenExport={() => setExportOpen(true)}
             showPreview={showPreview}
             onTogglePreview={() => setShowPreview(prev => !prev)}
@@ -160,8 +161,10 @@ function RunConsoleContent({ id, baseline }: { id: string; baseline: () => React
         ) : null
       }
       blockers={
-        !scopeMismatch && detailData && (attentionCount > 0 || detailData.exceptions_open > 0 || unreviewed) ? (
+        !scopeMismatch && detailData && (attendanceOpenWarning || attentionCount > 0 || detailData.exceptions_open > 0 || unreviewed) ? (
           <RunPrecheckBlockers
+            attendanceOpenWarning={attendanceOpenWarning}
+            runStatus={run?.status}
             attentionCount={attentionCount}
             hasBankIssues={hasBankIssues}
             readyCount={readyCount}
@@ -178,7 +181,7 @@ function RunConsoleContent({ id, baseline }: { id: string; baseline: () => React
           <EmptyState
             title={t("payroll.run.emptyPeriod", { month: fmtMonth(activePeriod) })}
             reason={null}
-            actions={<Button onClick={() => { setPeriodOverride(undefined); setEntityOverride(undefined); }}>{t("payroll.run.backToMonth", { month: fmtMonth(run.attribution_month) })}</Button>}
+            actions={<Button onClick={() => { setPeriodOverride(undefined); setGroupOverride(undefined); }}>{t("payroll.run.backToMonth", { month: fmtMonth(run.attribution_month) })}</Button>}
           />
         ) : visibleLines.length === 0 ? (
           !isPlaceholderData && lines.length === 0 && filter === "all" && !findQuery.trim() && !debouncedQ ? (
@@ -272,6 +275,7 @@ function RunConsoleContent({ id, baseline }: { id: string; baseline: () => React
           <RunActionSheets
             detail={detailData}
             entityLabel={entityLabel}
+            groupLabel={groupLabel}
             visibleLines={visibleLines}
             exportOpen={exportOpen}
             onCloseExport={() => setExportOpen(false)}

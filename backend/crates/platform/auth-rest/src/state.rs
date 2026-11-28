@@ -7,8 +7,11 @@ use console_platform_auth::JwtVerifier;
 use console_platform_auth::PasskeyService;
 use console_platform_auth::RefreshTokenStore;
 use console_platform_auth::WebauthnSettings;
+use console_platform_email::{DisabledEmailSender, EmailSender};
 use console_platform_provisioning::BootstrapCredentialStore;
+use console_platform_provisioning::ops_self_recovery::RecoveryContactCipher;
 use sqlx::PgPool;
+use std::sync::Arc;
 use time::Duration;
 use url::Url;
 
@@ -33,6 +36,8 @@ pub(crate) struct AuthServices {
     pub(crate) jwt_verifier: JwtVerifier,
     pub(crate) refresh_tokens: RefreshTokenStore,
     pub(crate) bootstrap_credentials: BootstrapCredentialStore,
+    pub(crate) recovery_cipher: RecoveryContactCipher,
+    pub(crate) email_sender: Arc<dyn EmailSender>,
     /// The console's public origin (the WebAuthn RP origin, e.g.
     /// `https://console.example.com`). Used to build the cross-device
     /// passkey-enrollment handoff URL the frontend renders as a QR; the phone
@@ -53,6 +58,19 @@ impl AuthRestState {
     }
 
     pub fn new(pool: PgPool, config: AuthRestConfig) -> Result<Self, AuthRestConfigError> {
+        use console_platform_provisioning::ops_self_recovery::{KEYRING_ENV, MASTER_KEY_ENV};
+        let cipher = RecoveryContactCipher::from_env_values(
+            std::env::var(KEYRING_ENV).ok(),
+            std::env::var(MASTER_KEY_ENV).ok(),
+        )?;
+        Self::new_with_recovery_cipher(pool, config, cipher)
+    }
+
+    pub fn new_with_recovery_cipher(
+        pool: PgPool,
+        config: AuthRestConfig,
+        recovery_cipher: RecoveryContactCipher,
+    ) -> Result<Self, AuthRestConfigError> {
         let rp_origin = Url::parse(&config.rp_origin)?;
         // Keep a copy of the validated origin to build the cross-device enrollment
         // handoff URL; `WebauthnSettings` takes ownership of the other clone below.
@@ -89,6 +107,8 @@ impl AuthRestState {
                 jwt_verifier,
                 refresh_tokens: RefreshTokenStore,
                 bootstrap_credentials,
+                recovery_cipher,
+                email_sender: Arc::new(DisabledEmailSender),
                 rp_origin: handoff_origin,
                 refresh_token_ttl: config.refresh_token_ttl,
                 refresh_family_absolute_ttl: config.refresh_family_absolute_ttl,
@@ -104,6 +124,22 @@ impl AuthRestState {
     ) -> Self {
         if let Some(services) = self.services.as_mut() {
             services.bootstrap_credentials = bootstrap_credentials;
+        }
+        self
+    }
+
+    #[must_use]
+    pub fn with_recovery_cipher(mut self, recovery_cipher: RecoveryContactCipher) -> Self {
+        if let Some(services) = self.services.as_mut() {
+            services.recovery_cipher = recovery_cipher;
+        }
+        self
+    }
+
+    #[must_use]
+    pub fn with_email_sender(mut self, email_sender: Arc<dyn EmailSender>) -> Self {
+        if let Some(services) = self.services.as_mut() {
+            services.email_sender = email_sender;
         }
         self
     }

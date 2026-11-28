@@ -33,7 +33,12 @@ SELECT jsonb_agg(jsonb_build_object(
            'insurer', insurer, 'is_age', filing_rule->>'age_trigger_years' IS NOT NULL,
            'recording_held', recording_held, 'requires_workplace_change', requires_workplace_change,
            'trigger_event_kinds', trigger_event_kinds
-       )) AS periods, filing_rule, min(event_from) AS first_possible_on
+       )) AS periods, filing_rule, min(event_from) AS first_possible_on,
+       (SELECT min((COALESCE(p.go_live_at, now()) AT TIME ZONE z.time_zone)::date)
+        FROM (SELECT $1::uuid AS id) tenant LEFT JOIN tenant_phase p ON p.org_id=tenant.id
+        CROSS JOIN LATERAL (SELECT time_zone FROM lifecycle_country_packs WHERE is_default
+            UNION SELECT time_zone FROM workplaces WHERE org_id=tenant.id
+            UNION SELECT time_zone FROM legal_entities WHERE org_id=tenant.id) z) AS go_live_on
 FROM periods CROSS JOIN source_bounds
 WHERE filing_rule->>'age_trigger_years' IS NOT NULL
    OR (event_from <= last_on AND (event_until IS NULL OR first_on < event_until))

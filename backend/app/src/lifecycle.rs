@@ -19,7 +19,7 @@ use console_kernel_core::{AuditAction, AuditEvent, KernelError, TraceContext};
 use console_platform_auth::{JwtVerifier, PasskeyService};
 use console_platform_authz::{Action, Feature, Principal, authorize_org_wide};
 use console_platform_db::{lifecycle as lifecycle_db, with_audit, with_org_conn};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::json;
 use sqlx::PgPool;
 use time::{Date, OffsetDateTime};
@@ -35,10 +35,9 @@ pub const PERIOD_LOCK_UNLOCK_REJECT_PATH_TEMPLATE: &str =
     "/api/v1/period-locks/{lockId}/unlock/reject";
 pub const PERIOD_LOCK_UNLOCK_REVIEW_PATH_TEMPLATE: &str =
     "/api/v1/period-locks/{lockId}/unlock/reviews/{exceptionId}/acknowledge";
-pub const LIFECYCLE_PATH_TEMPLATE: &str = "/api/v1/lifecycles/{objectType}/{objectId}";
-pub const LIFECYCLE_TRANSITION_PATH_TEMPLATE: &str =
-    "/api/v1/lifecycles/{objectType}/{objectId}/transition";
-pub const LIFECYCLE_HOLD_PATH_TEMPLATE: &str = "/api/v1/lifecycles/{objectType}/{objectId}/hold";
+pub use record_routes::{
+    LIFECYCLE_HOLD_PATH_TEMPLATE, LIFECYCLE_PATH_TEMPLATE, LIFECYCLE_TRANSITION_PATH_TEMPLATE,
+};
 
 pub const LIFECYCLE_ROUTE_PATHS: &[&str] = &[
     PERIOD_LOCKS_PATH,
@@ -91,23 +90,21 @@ pub fn router(state: LifecycleState) -> Router {
             PERIOD_LOCK_UNLOCK_REVIEW_PATH_TEMPLATE,
             post(unlock_review::acknowledge),
         )
-        .route(LIFECYCLE_PATH_TEMPLATE, get(get_lifecycle))
-        .route(
-            LIFECYCLE_TRANSITION_PATH_TEMPLATE,
-            post(transition_lifecycle),
-        )
-        .route(LIFECYCLE_HOLD_PATH_TEMPLATE, post(set_lifecycle_hold))
-        .with_state(state);
+        .with_state(state.clone());
     console_platform_request_context::with_request_context(router, verifier, pool)
+        .merge(record_routes::router(state))
 }
 
 mod error;
 pub(crate) mod inbox;
 pub(crate) mod inbox_done;
 mod period_lock_view;
+mod record_view;
+use record_view::{LifecycleResponse, lifecycle_response};
 mod period_locks;
 pub(crate) mod period_relock;
 mod period_unlock;
+mod record_routes;
 mod sole_holder_unlock;
 mod unlock_decision;
 mod unlock_handlers;
@@ -125,59 +122,6 @@ fn parse_iso_date(raw: &str, field: &str) -> Result<Date, LifecycleError> {
 // ===========================================================================
 // Object lifecycles.
 // ===========================================================================
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct LifecycleTransitionResponse {
-    from_state: String,
-    to_state: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    actor: Option<Uuid>,
-    reason: String,
-    #[serde(with = "time::serde::rfc3339")]
-    occurred_at: OffsetDateTime,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct LifecycleResponse {
-    object_type: String,
-    object_id: Uuid,
-    current_state: String,
-    legal_hold: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    retention_until: Option<String>,
-    #[serde(with = "time::serde::rfc3339")]
-    created_at: OffsetDateTime,
-    #[serde(with = "time::serde::rfc3339")]
-    updated_at: OffsetDateTime,
-    transitions: Vec<LifecycleTransitionResponse>,
-}
-
-fn lifecycle_response(
-    record: lifecycle_db::LifecycleRecord,
-    transitions: Vec<lifecycle_db::LifecycleTransitionRecord>,
-) -> LifecycleResponse {
-    LifecycleResponse {
-        object_type: record.object_type,
-        object_id: record.object_id,
-        current_state: record.current_state,
-        legal_hold: record.legal_hold,
-        retention_until: record.retention_until.map(|d| d.to_string()),
-        created_at: record.created_at,
-        updated_at: record.updated_at,
-        transitions: transitions
-            .into_iter()
-            .map(|t| LifecycleTransitionResponse {
-                from_state: t.from_state,
-                to_state: t.to_state,
-                actor: t.actor,
-                reason: t.reason,
-                occurred_at: t.occurred_at,
-            })
-            .collect(),
-    }
-}
 
 fn validate_object_type(raw: &str) -> Result<(), LifecycleError> {
     let valid = (2..=64).contains(&raw.len())
@@ -202,6 +146,7 @@ async fn get_lifecycle(
     authorize_lifecycle_manage(&principal)?;
     validate_object_type(&object_type)?;
     let org = principal.org_id;
+    let actor = *principal.user_id.as_uuid();
 
     let response = with_org_conn::<_, _, LifecycleError>(&state.pool, org, move |tx| {
         Box::pin(async move {
@@ -213,7 +158,17 @@ async fn get_lifecycle(
                     ))
                 })?;
             let transitions = lifecycle_db::list_transitions(tx, record.id).await?;
-            Ok(lifecycle_response(record, transitions))
+            let available = lifecycle_db::available_transitions(
+                tx,
+                &record,
+                actor,
+                OffsetDateTime::now_utc().date(),
+            )
+            .await
+            .map_err(LifecycleError::from_kernel)?;
+            let mut response = lifecycle_response(record, transitions);
+            response.available_transitions = Some(available);
+            Ok(response)
         })
     })
     .await?;
@@ -313,6 +268,11 @@ async fn set_lifecycle_hold(
 
     let response = with_audit::<_, _, LifecycleError>(&state.pool, audit_event, move |tx| {
         Box::pin(async move {
+            if let Some(revision) = body.expected_updated_at {
+                lifecycle_db::require_current_revision(tx, &object_type, object_id, revision)
+                    .await
+                    .map_err(LifecycleError::from_kernel)?;
+            }
             let record = lifecycle_db::set_lifecycle_hold(
                 tx,
                 *org.as_uuid(),

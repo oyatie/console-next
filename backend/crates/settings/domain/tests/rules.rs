@@ -265,14 +265,17 @@ fn deadline_display_config_is_platform_owned_and_ignores_tenant_rows() {
 }
 
 #[test]
-fn display_experience_defaults_to_baseline_and_switches_neutrally_across_styles() {
+fn display_experience_defaults_to_console_and_switches_neutrally_across_styles() {
     let key: K = "display.experience".parse().unwrap();
     assert!(key.client_required());
     let resolved = resolve(key, &[], None, NOW).unwrap();
     assert_eq!(
         (resolved.value, resolved.version),
-        (V::Code("baseline"), SettingVersionId::CodeDefault)
+        (V::Code("console"), SettingVersionId::CodeDefault)
     );
+    let classic_tenant = [row(1, None, -1, V::Code("baseline"))];
+    let resolved_classic = resolve(key, &classic_tenant, None, NOW).unwrap();
+    assert_eq!(resolved_classic.value, V::Code("baseline"));
     for (from, to) in [
         ("baseline", "console"),
         ("console", "warm-clear"),
@@ -288,7 +291,7 @@ fn display_experience_defaults_to_baseline_and_switches_neutrally_across_styles(
             &json!("unknown-style"),
             NOW,
             NOW,
-            Some(V::Code("baseline")),
+            Some(V::Code("console")),
             true
         ),
         Err(SettingError::InvalidValue(key))

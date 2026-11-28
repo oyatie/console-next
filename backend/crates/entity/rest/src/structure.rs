@@ -9,7 +9,7 @@ use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::HeaderMap;
 use axum::response::{IntoResponse, Response};
-use console_entity_application::{ReorderStructure, SetWorkplaceCode, Target};
+use console_entity_application::{ReorderStructure, SetWorkplaceCode, SetWorkplaceHead, Target};
 use uuid::Uuid;
 
 use crate::EntityRestState;
@@ -26,6 +26,25 @@ pub(crate) async fn set_code(
 ) -> Result<Response> {
     let a = manager(&s, &h, Target::Workplace(id)).await?;
     Ok(Json(s.store.set_workplace_code(&a, id, b).await?).into_response())
+}
+
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct SetWorkplaceHeadBody {
+    pub head_employee_id: Option<Uuid>,
+}
+
+pub(crate) async fn set_head(
+    State(s): State<EntityRestState>,
+    h: HeaderMap,
+    Path(id): Path<Uuid>,
+    Json(b): Json<SetWorkplaceHeadBody>,
+) -> Result<Response> {
+    let a = manager(&s, &h, Target::Workplace(id)).await?;
+    let cmd = SetWorkplaceHead {
+        head_employee_id: b.head_employee_id,
+    };
+    Ok(Json(s.store.set_workplace_head(&a, id, cmd).await?).into_response())
 }
 
 pub(crate) async fn reorder(

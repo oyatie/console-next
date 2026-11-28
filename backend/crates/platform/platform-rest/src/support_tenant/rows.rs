@@ -73,7 +73,7 @@ pub(super) async fn history(
          COALESCE((SELECT jsonb_agg(jsonb_build_object( \
            'id',a.id,'method',a.after_snap->>'method','path',a.after_snap->>'path', \
            'at',a.occurred_at) ORDER BY a.occurred_at,a.id) \
-           FROM audit_events a WHERE a.org_id=s.org_id AND a.target_id=s.id::text \
+           FROM ordinary_audit_events a WHERE a.org_id=s.org_id AND a.target_id=s.id::text \
            AND a.action='support.access'),'[]'::jsonb) AS records \
          FROM support_sessions s WHERE s.org_id=$1 ORDER BY s.requested_at DESC,s.id",
     )

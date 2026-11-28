@@ -10,6 +10,7 @@ import { Banner } from "../../../ui/banner/banner";
 import { Button } from "../../../ui/button/button";
 import { buttonClass } from "../../../ui/button/button-class";
 import { DisabledReason } from "../../../ui/disabled-reason/disabled-reason";
+import { useNarrow } from "../../../ui/dock-sheet/use-narrow";
 import { EmptyState } from "../../../ui/empty-state";
 import { Kbd } from "../../../ui/kbd/kbd";
 import { Receipt } from "../../../ui/receipt/receipt";
@@ -61,6 +62,7 @@ export function MonthTab({ head }: { head?: ReactNode }) {
   const monthState = useMemo(() => pageState(rows.map((r) => r.month_state)), [rows]);
   const store = useDrafts(`${month}:${search.wp ?? ""}:${search.unit ?? ""}`, rows);
   const online = useOnline();
+  const narrow = useNarrow();
   // Keep hook indices 0..5 stable for unit-test mocks.
   const [range, setRange] = useState<Range | null>(null);
   const [dock, setDock] = useState<Dock>(null);
@@ -170,12 +172,15 @@ export function MonthTab({ head }: { head?: ReactNode }) {
   ) : null;
   const overlays = (
     <>
+      {narrow && dock?.kind === "save" && drafts.length > 0 && (
+        <SaveDock drafts={store.drafts} rows={rows} kindOf={kindOf} month={month} onClose={closeDock} onFocusCell={focusCell} onSaved={(r, keys) => (store.saved(keys), closeDock(), setReceipt(r))} />
+      )}
       {undo && receipt && <UndoBatchSheet batchId={receipt.batch_id} saved={receipt.saved} month={month} onClose={() => setUndo(false)} onDone={(m) => (setUndo(false), setReceipt(null), setNote(m))} />}
       {assign && <PersonScheduleSheet target={assign} onClose={() => setAssign(null)} onAssigned={(message) => (setAssign(null), setNote(message))} />}
     </>
   );
 
-  const record = dock?.kind === "save" && drafts.length > 0
+  const record = !narrow && dock?.kind === "save" && drafts.length > 0
     ? {
         id: "save",
         label: t("attendanceRecords.save.title", { count: drafts.length }),

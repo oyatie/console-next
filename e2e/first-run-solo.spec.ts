@@ -160,13 +160,15 @@ test("a solo administrator goes from an empty tenant to operating", { tag: ["@fi
   await test.step("J9 Resolve statutory filing", async () => {
     await go(admin, "/statutory");
     const filing=admin.getByRole("row").filter({hasText:"김직원"}).filter({hasText:"국민연금"});
-    await expect(filing).toContainText("가능일");
+    const openRow = filing.getByRole("button", { name: new RegExp(t("statutory.openCol")) });
+    const facts = (await openRow.count()) ? (await openRow.click(), admin.getByRole("complementary", { name: t("statutory.detailTitle"), exact: true })) : filing;
+    await expect(facts).toContainText("가능일");
     // The product deliberately shows the earliest start and legal deadline, without a duplicate target.
-    await expect(filing).toContainText("시작");
-    await expect(filing).toContainText("기한");
-    await expect(filing).not.toContainText("목표");
+    await expect(facts).toContainText("시작");
+    await expect(facts).toContainText("기한");
+    await expect(facts).not.toContainText("목표");
     await resolveFilingNotApplicable(admin,filing);
-    await admin.getByRole("button",{name:"처리 내역",exact:true}).click();
+    await admin.getByRole("button",{name:t("statutory.done"),exact:true}).or(admin.getByRole("button",{name:"처리 내역",exact:true})).first().click();
     await expect(filing).toContainText("미해당");
     await expect(filing.getByText("신고일",{exact:true})).toHaveCount(0);
   });
@@ -190,7 +192,7 @@ test("a solo administrator goes from an empty tenant to operating", { tag: ["@fi
     await c.click(rail.getByRole("link", { name: "이용약관 동의" }));
     await expect(admin.getByRole("heading", { name: "운영 시작", level: 1 })).toBeVisible();
     const firstHomePaint = admin.evaluate(() => new Promise<string[]>(resolve => {
-      const frame = () => location.pathname === "/" ? resolve(Array.from(document.querySelectorAll("#rail a"), a => a.textContent!.trim())) : requestAnimationFrame(frame);
+      const frame = () => location.pathname === "/" ? resolve(Array.from(document.querySelectorAll("#rail a, header nav a"), a => a.textContent!.trim())) : requestAnimationFrame(frame);
       requestAnimationFrame(frame);
     }));
     await startOperations(admin, true, c);

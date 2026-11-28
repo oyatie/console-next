@@ -2,6 +2,7 @@
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAxe } from "../a11y";
+import { seededExperience } from "../experience";
 import { accountSecurityPasskey } from "../mock/account-security";
 import { authz, token, user } from "../mock/fixtures";
 import { mockRoute } from "../mock/route";
@@ -9,13 +10,13 @@ import { expectSignedIn } from "../shell";
 
 test.beforeAll(() => loadCatalog("ko"));
 for (const mode of ["login", "autofill", "enroll", "reauth"] as const) for (const width of [1440, 390]) {
-  test(`${mode}: passkey pending stays in place at ${width}px`, async ({ page }, info) => {
+  test(`${mode}: passkey pending stays in place at ${width}px`, async ({ page, storageState }, info) => {
     await page.setViewportSize({ width, height: 900 });
     const fixture = await accountSecurityPasskey(page, mode);
     try {
       await page.goto(mode === "enroll" ? "/setup-passkey" : mode === "reauth" ? "/account" : "/login?enrolled=true");
       if (mode === "reauth") {
-        await expect(page.getByRole("heading", { name: t("account.title"), exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name: t(seededExperience(storageState) === "baseline" ? "account.title" : "shell.profile"), exact: true })).toBeVisible();
         await page.evaluate(previous => {
           const channel = new BroadcastChannel("console.session");
           channel.postMessage({ principal: null, previous });

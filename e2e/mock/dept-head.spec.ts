@@ -136,7 +136,7 @@ test("operating list and panel appoint directly, keep the code, and refresh the 
   await go(page, `/org?sel=${dept.id}`);
   const members = page.locator("#dept-members");
   const head = members.getByRole("listitem").filter({ hasText: "김부서장" });
-  await expect(head).toContainText("팀장 · 차장 · 2026. 03. 02.부터");
+  await expect(head).toContainText("팀장 · 차장 · 2026-03-02부터");
   await expect(head.getByText("부서장", { exact: true })).toBeVisible();
   const undated = members.getByRole("listitem").filter({ hasText: "박설정" });
   await expect(undated).not.toContainText("부터");

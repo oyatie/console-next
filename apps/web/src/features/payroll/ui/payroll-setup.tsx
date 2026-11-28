@@ -22,6 +22,7 @@ function BaselinePayrollSetup() {
   return <Page floorplan="P-05" head={{ title: t("payroll.setup.page"), tools: <Link to="/payroll">{t("payroll.title")}</Link> }}>
     <QueryState q={groups} layout="list">{data => data.legal_entities.length ? <>
       <Card title={t("payroll.setup.group")} meta={t("payroll.setup.groupCount", { count: data.items.length })}>
+        {Boolean(data.manageable_group_ids?.length) && <Link to="/payroll/setup/members">{t("payroll.members.title")}</Link>}
         <Button variant="primary" onClick={() => setOpen(true)}>{t("payroll.setup.add")}</Button>
       </Card>
       {open && <PayGroupSheet entities={data.legal_entities} onClose={() => setOpen(false)} onSaved={() => setOpen(false)} />}

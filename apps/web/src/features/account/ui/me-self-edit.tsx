@@ -176,7 +176,7 @@ export function SelfEditableBody({
                 {openAddress ? (
                   <Link
                     to="/people/requests"
-                    search={{ lane: "me", status: "OPEN", sel: openAddress.id }}
+                    search={{ lane: "filed", status: "OPEN", sel: openAddress.id }}
                     className={buttonClass("secondary", { size: "sm", className: s.actionBtn })}
                   >
                     {t("account.selfEdit.viewProgress")}
@@ -212,7 +212,7 @@ export function SelfEditableBody({
                 {openBank ? (
                   <Link
                     to="/people/requests"
-                    search={{ lane: "me", status: "OPEN", sel: openBank.id }}
+                    search={{ lane: "filed", status: "OPEN", sel: openBank.id }}
                     className={buttonClass("secondary", { size: "sm", className: s.actionBtn })}
                   >
                     {t("account.selfEdit.viewProgress")}

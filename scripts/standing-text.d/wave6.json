@@ -1,0 +1,33 @@
+{
+  "baseline": {
+    "apps/web/src/features/account/ui/location-consent-page.tsx#LocationConsentPage": 12,
+    "apps/web/src/features/approvals/ui/approval-new-page.tsx#ApprovalNewPage": 22,
+    "apps/web/src/features/me/ui/me-dispatch-offers-page.tsx#MeDispatchOffersPage": 12
+  },
+  "newScreens": {
+    "apps/web/src/features/account/ui/location-consent-page.tsx#LocationConsentPage": {
+      "FACT": 5,
+      "REFUSAL": 3,
+      "EMPTY": 0,
+      "LEGAL": 3,
+      "RECEIPT": 1,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/approvals/ui/approval-new-page.tsx#ApprovalNewPage": {
+      "FACT": 10,
+      "REFUSAL": 8,
+      "EMPTY": 2,
+      "LEGAL": 0,
+      "RECEIPT": 2,
+      "EXPLANATION": 0
+    },
+    "apps/web/src/features/me/ui/me-dispatch-offers-page.tsx#MeDispatchOffersPage": {
+      "FACT": 6,
+      "REFUSAL": 3,
+      "EMPTY": 2,
+      "LEGAL": 0,
+      "RECEIPT": 1,
+      "EXPLANATION": 0
+    }
+  }
+}

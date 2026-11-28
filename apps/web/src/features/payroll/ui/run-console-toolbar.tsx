@@ -19,9 +19,9 @@ type PayrollSideTab = "preflight" | "exceptions" | "delivery";
 export function RunConsoleFilters({
   activePeriod,
   setPeriodOverride,
-  entities,
-  activeEntityId,
-  setEntityOverride,
+  payGroupOptions,
+  activeGroupKey,
+  setGroupOverride,
   filter,
   handleFilterChange,
   runHeadcount,
@@ -33,9 +33,9 @@ export function RunConsoleFilters({
 }: {
   activePeriod: string;
   setPeriodOverride: (value: string | undefined) => void;
-  entities: readonly { id: string; name?: string | null }[];
-  activeEntityId: string;
-  setEntityOverride: (value: string | undefined) => void;
+  payGroupOptions: readonly { value: string; label: string }[];
+  activeGroupKey: string;
+  setGroupOverride: (value: string | undefined) => void;
   filter: RegisterFilterMode;
   handleFilterChange: (next: RegisterFilterMode) => void;
   runHeadcount: number;
@@ -48,12 +48,12 @@ export function RunConsoleFilters({
   return (
     <>
       <PeriodStepper unit="month" variant="boxed" showCurrent={false} value={activePeriod} onChange={setPeriodOverride} />
-      {entities.length > 0 && (
+      {payGroupOptions.length > 0 && (
         <RegisterToolbarSelect
-          label={t("payroll.entity")}
-          value={activeEntityId}
-          onChange={setEntityOverride}
-          options={entities.map(entity => ({ value: entity.id, label: entity.name ?? t("payroll.entityUnnamed") }))}
+          label={t("payroll.group")}
+          value={activeGroupKey}
+          onChange={setGroupOverride}
+          options={payGroupOptions}
         />
       )}
       <WorklistSegmentBar
@@ -91,6 +91,8 @@ export function RunConsoleTools({
   sideTab,
   onToggleSideTab,
   showStatutoryLink,
+  canRecalculate,
+  onRecalculate,
   onOpenExport,
   showPreview,
   onTogglePreview,
@@ -98,12 +100,19 @@ export function RunConsoleTools({
   sideTab: PayrollSideTab | null;
   onToggleSideTab: (tab: PayrollSideTab) => void;
   showStatutoryLink: boolean;
+  canRecalculate?: boolean;
+  onRecalculate?: () => void;
   onOpenExport: () => void;
   showPreview: boolean;
   onTogglePreview: () => void;
 }) {
   return (
     <>
+      {canRecalculate && onRecalculate && (
+        <Button size="sm" variant="secondary" onClick={onRecalculate}>
+          <RegisterNowrap>{t("payroll.run.recalculate")}</RegisterNowrap>
+        </Button>
+      )}
       <Button size="sm" aria-pressed={sideTab === "preflight"} onClick={() => onToggleSideTab("preflight")}>
         <CheckSquare size={13} aria-hidden="true" />
         <RegisterNowrap>{t("payrollRun.tool.preflight")}</RegisterNowrap>

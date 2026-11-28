@@ -78,7 +78,7 @@ test("deriveTeamScopes derives concurrent scopes strictly from enforced hr_basic
         },
       ],
     },
-    { employee_org_unit: "Team 1" } as never,
+    { employee_org_unit: "Team 1", employee_org_unit_id: "d1" } as never,
   );
   expect(scopes.hasTenantWide).toBe(false);
   expect(scopes.hasConcurrent).toBe(true);
@@ -86,13 +86,14 @@ test("deriveTeamScopes derives concurrent scopes strictly from enforced hr_basic
     { id: "d1", kind: "DEPARTMENT", name: "Team 1" },
     { id: "w2", kind: "WORKPLACE", name: "Plant 2" },
   ]);
-  expect(scopes.directUnitName).toBe("Team 1");
+  expect(scopes.directUnitId).toBe("d1");
 });
 
 test("buildTeamQueryParams maps concurrent node kinds to exact employee filters", () => {
   expect(
     buildTeamQueryParams({
       view: "concurrent",
+      today: "2026-11-10",
       selectedScope: { id: "d1", kind: "DEPARTMENT", name: "Team 1" },
       statusFilter: "ACTIVE",
       search: "Kim",
@@ -102,21 +103,22 @@ test("buildTeamQueryParams maps concurrent node kinds to exact employee filters"
   expect(
     buildTeamQueryParams({
       view: "concurrent",
+      today: "2026-11-10",
       selectedScope: { id: "w2", kind: "WORKPLACE", name: "Plant 2" },
       statusFilter: "MISSING",
     }),
-  ).toMatchObject({ workplace_id: "w2", register_review_required: true });
+  ).toMatchObject({ workplace_id: "w2", team_review_required: true });
 });
 
 test("filterTeamEmployees filters direct unit, soon events, and missing review rows", () => {
   const rows = [
-    baseEmp({ id: "e1", org_unit: "Prod Team 1", next_event: { id: "ev1", event_type: "CONTRACT_RENEWAL", effective_date: "2026-11-20" } }),
-    baseEmp({ id: "e2", org_unit: "Prod Team 2", register_review_required: true }),
+    baseEmp({ id: "e1", org_unit_id: "d1", org_unit: "Sales", contract_end_date: "2026-11-20", next_event: { id: "ev1", event_type: "CONTRACT_RENEWAL", effective_date: "2026-11-20" } }),
+    baseEmp({ id: "e2", org_unit_id: "d2", org_unit: "Sales", identity_review_required: true, next_event: { id: "ev2", event_type: "TRANSFER", effective_date: "2026-11-11" } }),
   ];
-  expect(filterTeamEmployees(rows, { view: "direct", directUnitName: "Prod Team 1", statusFilter: "all", today: "2026-11-10" }).map(r => r.id)).toEqual(["e1"]);
-  expect(filterTeamEmployees(rows, { view: "direct", directUnitName: null, statusFilter: "all", today: "2026-11-10" })).toEqual([]);
-  expect(filterTeamEmployees(rows, { view: "all", directUnitName: null, statusFilter: "SOON", today: "2026-11-10" }).map(r => r.id)).toEqual(["e1"]);
-  expect(filterTeamEmployees(rows, { view: "all", directUnitName: null, statusFilter: "MISSING", today: "2026-11-10" }).map(r => r.id)).toEqual(["e2"]);
+  expect(filterTeamEmployees(rows, { view: "direct", directUnitId: "d1", statusFilter: "all", today: "2026-11-10" }).map(r => r.id)).toEqual(["e1"]);
+  expect(filterTeamEmployees(rows, { view: "direct", directUnitId: null, statusFilter: "all", today: "2026-11-10" })).toEqual([]);
+  expect(filterTeamEmployees(rows, { view: "all", directUnitId: null, statusFilter: "SOON", today: "2026-11-10" }).map(r => r.id)).toEqual(["e1"]);
+  expect(filterTeamEmployees(rows, { view: "all", directUnitId: null, statusFilter: "MISSING", today: "2026-11-10" }).map(r => r.id)).toEqual(["e2"]);
   expect(daysUntilDate("2026-11-20", "2026-11-10")).toBe(10);
 });
 

@@ -112,11 +112,21 @@ function buildCardMeta({
     status, facts, next, items, verbs, acts,
     head: {
       crumbs: (
-        <bdi className={s.crumb}>
-          <Link to="/people" search={{}}>{t("empCard.crumb")}</Link>
-          <bdi aria-hidden="true">{PATH_SEP}</bdi>
-          {e.workplace_id ? [c.place.workplace, ...c.place.path].filter(Boolean).join(" › ") || "—" : t("empCard.unplaced")}
-        </bdi>
+        <div className={s.top}>
+          <bdi className={s.crumb}>
+            <Link to="/people" search={{}}>{t("empCard.crumb")}</Link>
+            <bdi aria-hidden="true">{PATH_SEP}</bdi>
+            {e.workplace_id ? [c.place.workplace, ...c.place.path].filter(Boolean).join(" › ") || "—" : t("empCard.unplaced")}
+          </bdi>
+          {pos && (
+            <div className="row">
+              <bdi className={s.pos}><strong className={s.posAt}>{t("empCard.pos.at", { index: pos.index, total: pos.total })}</strong></bdi>
+              <Button size="sm" variant="ghost" aria-label={t("empCard.prev")} disabled={!pos.prev_id} onClick={() => pos.prev_id && go(pos.prev_id)}><ChevronLeft size={14} aria-hidden="true" /></Button>
+              <Button size="sm" variant="ghost" aria-label={t("empCard.next")} disabled={!pos.next_id} onClick={() => pos.next_id && go(pos.next_id)}><ChevronRight size={14} aria-hidden="true" /></Button>
+              {singleKeys ? <bdi className={s.pos}><Kbd k="J" /><Kbd k="K" /> {t("empCard.walk")}</bdi> : null}
+            </div>
+          )}
+        </div>
       ),
       title: e.name,
       titleId: "person",
@@ -134,15 +144,6 @@ function buildCardMeta({
           {certsCount !== undefined ? <Chip tone="outline">{t("people.panel.certsCount", { count: certsCount })}</Chip> : null}
         </>
       ),
-      // The walk keys show beside the position only: with no unit, J and K have no one to go to.
-      tools: pos ? (
-        <div className="row">
-          <bdi className={s.pos}><strong className={s.posAt}>{t("empCard.pos.at", { index: pos.index, total: pos.total })}</strong></bdi>
-          <Button size="sm" variant="ghost" aria-label={t("empCard.prev")} disabled={!pos.prev_id} onClick={() => pos.prev_id && go(pos.prev_id)}><ChevronLeft size={14} aria-hidden="true" /></Button>
-          <Button size="sm" variant="ghost" aria-label={t("empCard.next")} disabled={!pos.next_id} onClick={() => pos.next_id && go(pos.next_id)}><ChevronRight size={14} aria-hidden="true" /></Button>
-          {singleKeys ? <bdi className={s.pos}><Kbd k="J" /><Kbd k="K" /> {t("empCard.walk")}</bdi> : null}
-        </div>
-      ) : undefined,
       actions: c.editable ? (
         <div className="row" role="group" aria-label={t("empCard.verbs")}>
           {acts.length > 0 ? <MenuButton primary label={t("empCard.verb.act")} icon={<MoveRight size={14} aria-hidden="true" />} items={acts} onAction={a => open(a)} /> : null}

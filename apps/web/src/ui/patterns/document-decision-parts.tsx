@@ -17,12 +17,12 @@ export function DocRailBody({ children }: { children: ReactNode }) {
   return <div className={s.railBody}>{children}</div>;
 }
 
-/** Flat document canvas header (`kicker`, `h2` title, and tabular metadata line). */
-export function DocHeader({ kicker, title, meta }: { kicker?: ReactNode; title: ReactNode; meta?: ReactNode }) {
+/** Flat document canvas header (`kicker`, optional `h2` title, and tabular metadata line). */
+export function DocHeader({ kicker, title, meta }: { kicker?: ReactNode; title?: ReactNode; meta?: ReactNode }) {
   return (
     <div className={s.docHeader}>
       {kicker != null ? <div className={s.docKicker}>{kicker}</div> : null}
-      <h2 className={s.docTitle}>{title}</h2>
+      {title != null ? <h2 className={s.docTitle}>{title}</h2> : null}
       {meta != null ? <div className={s.docMeta}>{meta}</div> : null}
     </div>
   );

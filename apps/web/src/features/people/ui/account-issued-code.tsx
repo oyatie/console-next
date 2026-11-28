@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { lazy, Suspense } from "react";
 import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
@@ -6,6 +7,7 @@ import { chunk } from "../../../lib/chunk-guard";
 import { buildInviteUrl } from "../../../lib/pure/invite-link";
 import { Dialog } from "../../../ui/dialog";
 import { Button } from "../../../ui/button/button";
+import { buttonClass } from "../../../ui/button/button-class";
 import { KeyValue } from "../../../ui/key-value/key-value";
 import { announce } from "../../../lib/react/announce";
 import type { Issued } from "./use-issue-code";
@@ -14,22 +16,32 @@ import { Muted } from "../../../ui/muted/muted";
 const QrCode = lazy(() => chunk(import("../../../ui/qr-code/qr-code")));
 
 /**
- * A one-time code, shown once: Esc and outside clicks do nothing, only "code delivered" closes it. An invited account
- * holds no access (governance-01), so the invite's code also offers to continue into granting access for that account.
+ * A one-time code, shown once: Esc and outside clicks do nothing, only the explicit acknowledgement closes it.
+ * Peer ops-holder resets deliver the code to the target's registered recovery contact and never render the secret on screen.
  */
 export function IssuedCode({ issued, onDone }: { issued: Issued | null; onDone: () => void }) {
-  const inviteUrl = issued && typeof window !== "undefined" ? buildInviteUrl(window.location.origin, issued.otp) : null;
-  const copy = () => issued && void navigator.clipboard.writeText(issued.otp).then(() => announce(t("common.codeCopied")), () => announce(t("common.copyFailed")));
+  const peerDelivered = Boolean(issued?.delivered_to_recovery_contact);
+  const replayed = Boolean(issued && !issued.otp && !peerDelivered);
+  const inviteUrl = issued && !peerDelivered && issued.otp && typeof window !== "undefined" ? buildInviteUrl(window.location.origin, issued.otp) : null;
+  const copy = () => issued && !peerDelivered && void navigator.clipboard.writeText(issued.otp).then(() => announce(t("common.codeCopied")), () => announce(t("common.copyFailed")));
   const copyLink = () => inviteUrl && void navigator.clipboard.writeText(inviteUrl).then(() => announce(t("common.inviteLinkCopied")), () => announce(t("common.copyFailed")));
+  const intro = issued
+    ? peerDelivered
+      ? t("accounts.reset.peerDelivered", { name: issued.name, masked: issued.masked_contact ?? "—" })
+      : replayed ? t("accounts.issued.replayed", { name: issued.name }) : [
+          t(issued.reset ? "accounts.resetIssued" : "accounts.issued", { name: issued.name }),
+          issued.grantedCount ? t("accounts.issued.granted", { count: issued.grantedCount }) : "",
+        ].filter(Boolean).join(" ")
+    : "";
   return (
     <Dialog open={issued !== null} title={t(issued?.reset ? "accounts.resetCode.title" : "accounts.firstCode.title")} onClose={onDone} dismissable={false}>
       {issued && (
         <>
-          <Muted>{t(issued.reset ? "accounts.resetIssued" : "accounts.issued", { name: issued.name })}</Muted>
+          <Muted>{intro}</Muted>
           {/* The sign-in ID goes with the code: the person signs in with both (decisions #33). */}
           {issued.signInId && <KeyValue items={[{ key: "signInId", label: t("accounts.issued.signInId"), value: <span className="code">{issued.signInId}</span> }]} />}
-          <div className="secret" aria-label={t("common.oneTimeCode")}>{issued.otp}</div>
-          <span className="muted num">{t("common.expiresAt", { at: fmtDateTime(issued.expires_at) })}</span>
+          {!peerDelivered && !replayed && <div className="secret" aria-label={t("common.oneTimeCode")}>{issued.otp}</div>}
+          {!replayed && <span className="muted num">{t("common.expiresAt", { at: fmtDateTime(issued.expires_at) })}</span>}
           {inviteUrl && (
             <div className="qr-group" role="group" aria-label={t("common.inviteLink")}>
               <code className="code">{inviteUrl}</code>
@@ -39,14 +51,20 @@ export function IssuedCode({ issued, onDone }: { issued: Issued | null; onDone: 
             </div>
           )}
           <div className="form__actions">
-            <Button onClick={copy}>{t("common.copyCode")}</Button>
+            {!peerDelivered && !replayed && <Button onClick={copy}>{t("common.copyCode")}</Button>}
             {inviteUrl && <Button onClick={copyLink}>{t("common.copyInviteLink")}</Button>}
-            {!issued.reset && (
-              <Link to="/access/people/$accountId" params={{ accountId: issued.userId }} search={{ grant: true }} className="btn" onClick={onDone}>
-                {t("accounts.issued.grant")}
-              </Link>
+            {!peerDelivered && !replayed && !issued.reset && (
+              issued.grantedCount ? (
+                <Link to="/access/people/$accountId" params={{ accountId: issued.userId }} className={buttonClass("secondary")} onClick={onDone}>
+                  {t("accounts.access.view")}
+                </Link>
+              ) : (
+                <Link to="/access/people/$accountId" params={{ accountId: issued.userId }} search={{ grant: true }} className="btn" onClick={onDone}>
+                  {t("accounts.issued.grant")}
+                </Link>
+              )
             )}
-            <Button variant="primary" onClick={onDone}>{t("common.codeDelivered")}</Button>
+            <Button variant="primary" onClick={onDone}>{t(peerDelivered || replayed ? "uiSheet.close" : "common.codeDelivered")}</Button>
           </div>
         </>
       )}

@@ -103,7 +103,7 @@ events AS (
      extract(hour FROM a.occurred_at AT TIME ZONE r.time_zone)<r.end_hour OR
      extract(isodow FROM a.occurred_at AT TIME ZONE r.time_zone)=ANY(r.weekend_isodays) OR
      (a.occurred_at AT TIME ZONE r.time_zone)::date=ANY(r.holidays)) AS off_hours
- FROM audit_events a CROSS JOIN rules r
+ FROM ordinary_audit_events a CROSS JOIN rules r
  WHERE a.org_id=$1 AND a.created_at >= $2 AND a.created_at < $3
    AND a.after_snap ? 'self_read' AND ($7::timestamptz IS NULL OR a.created_at < $7)
 "#;
@@ -266,7 +266,7 @@ pub(super) async fn page_at(
             .collect());
     }
     let mut rows: Vec<FlaggedEvent> = sqlx::query_as(
-        "SELECT id AS event_id,created_at,ARRAY[]::text[] AS flags FROM audit_events \
+        "SELECT id AS event_id,created_at,ARRAY[]::text[] AS flags FROM ordinary_audit_events \
          WHERE org_id=$1 AND created_at >= $2 AND created_at < $3 AND after_snap ? 'self_read' \
          AND ($4::timestamptz IS NULL OR (created_at,id)>($4,$5)) \
          AND ($7::timestamptz IS NULL OR created_at < $7) \

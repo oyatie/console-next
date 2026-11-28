@@ -27,6 +27,8 @@ pub struct UserSummary {
     pub employee_org_unit: Option<String>,
     pub employee_position: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub employee_org_unit_id: Option<uuid::Uuid>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub employee_hire_date: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub employee_employment_status: Option<String>,
@@ -103,6 +105,7 @@ impl From<UserSummary> for DirectoryPerson {
             employee_company,
             employee_org_unit,
             employee_position,
+            employee_org_unit_id: _,
             employee_hire_date: _,
             employee_employment_status: _,
             employee_grade: _,

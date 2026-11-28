@@ -25,6 +25,7 @@ vi.mock("@tanstack/react-query", async (original) => ({
   ...await original<typeof import("@tanstack/react-query")>(),
   useQuery: (options: Record<string, unknown>) => { view.options = options; return view.query; },
 }));
+vi.mock("./request-history", () => ({ RequestHistory: () => null }));
 vi.mock("@tanstack/react-router", async (original) => ({
   ...await original<typeof import("@tanstack/react-router")>(),
   getRouteApi: () => ({ useParams: () => ({ id: view.id }) }),

@@ -43,6 +43,8 @@ export function ObligationDetailPane({
   const [reason, setReason] = useState("");
   const [evidenceRef, setEvidenceRef] = useState("");
   const [signer, setSigner] = useState("");
+  const [coSigner, setCoSigner] = useState("");
+  const [counselUrl, setCounselUrl] = useState("");
   const [signedOn, setSignedOn] = useState(() => new Date().toISOString().slice(0, 10));
 
   const query = useQuery({
@@ -77,6 +79,9 @@ export function ObligationDetailPane({
     );
   }
 
+  const isGate = item.kind === "launch-gate";
+  const pending = item.pending_signoff;
+  const reviewingProposal = pending && item.signer !== me?.operator.person;
   const isFinal = item.state === "done" || item.state === "waived";
   const writeDisabled = !canWrite || isFinal || chainBroken;
   const disabledMsg = !canWrite
@@ -96,10 +101,24 @@ export function ObligationDetailPane({
     } else if (actionType === "done") {
       mut.mutate({
         event: "done",
-        fields: { evidence_ref: evidenceRef.trim(), signer: signer.trim(), signed_on: signedOn.trim() },
+        fields: {
+          evidence_ref: evidenceRef.trim(),
+          ...(!isGate ? { signer: signer.trim() } : {}),
+          ...(!isGate && coSigner.trim() ? { co_signer: coSigner.trim() } : {}),
+          ...(counselUrl.trim() ? { counsel_url: counselUrl.trim() } : {}),
+          signed_on: signedOn.trim(),
+        },
       });
     } else {
-      mut.mutate({ event: "waived", fields: { reason: reason.trim(), signer: signer.trim() } });
+      mut.mutate({
+        event: "waived",
+        fields: {
+          reason: reason.trim(),
+          ...(!isGate ? { signer: signer.trim() } : {}),
+          ...(!isGate && coSigner.trim() ? { co_signer: coSigner.trim() } : {}),
+          ...(counselUrl.trim() ? { counsel_url: counselUrl.trim() } : {}),
+        },
+      });
     }
   };
 
@@ -126,6 +145,8 @@ export function ObligationDetailPane({
             { id: "deadline", label: COPY.obligations.cols.deadline, value: item.deadline },
             { id: "evidence", label: COPY.obligations.fields.evidenceRef, value: item.evidence_ref ?? COPY.observed.notInstrumented },
             { id: "signer", label: COPY.obligations.fields.signer, value: item.signer ?? COPY.now.unassigned },
+            ...(item.co_signer ? [{ id: "coSigner", label: COPY.obligations.fields.coSigner, value: item.co_signer }] : []),
+            ...(item.counsel_url ? [{ id: "counselUrl", label: COPY.obligations.fields.counselUrl, value: <code>{item.counsel_url}</code> }] : []),
             { id: "signedOn", label: COPY.obligations.detail.signedOn, value: item.signed_on ?? COPY.observed.notInstrumented },
           ]}
         />
@@ -134,7 +155,15 @@ export function ObligationDetailPane({
       <section className={s.detailSection}>
         <h3 className={s.detailLabel}>{COPY.obligations.detail.actions}</h3>
         {disabledMsg ? <DisabledReason reason={disabledMsg} /> : null}
-        <form className={s.formPanel} onSubmit={submitTransition}>
+        {item.requires_reattestation && <p>{COPY.obligations.detail.reattest}</p>}
+        {pending && <p>{COPY.obligations.detail.proposedDecision} {formatObligationState(pending.outcome)} {pending.reason}</p>}
+        {mut.error ? <InlineError error={mut.error} /> : null}
+        {reviewingProposal ? (
+          <button type="button" className="btn btn--sm btn--primary" disabled={writeDisabled || mut.isPending}
+            onClick={() => mut.mutate({ event: "countersigned", fields: { proposal_seq: pending.seq } })}>
+            {COPY.obligations.detail.countersign}
+          </button>
+        ) : <form className={s.formPanel} onSubmit={submitTransition}>
           <SelectField
             label={COPY.obligations.detail.actions}
             value={actionType}
@@ -166,13 +195,14 @@ export function ObligationDetailPane({
           ) : null}
           {actionType === "done" ? (
             <>
+              {isGate ? <p className={s.emptyNote}>{COPY.obligations.detail.launchGateHint}</p> : null}
               <label className={s.fieldLabel}>
                 <span>{COPY.obligations.fields.evidenceRef}</span>
                 <input type="text" className="field-input--form" value={evidenceRef} onChange={(e) => setEvidenceRef(e.target.value)} />
               </label>
               <label className={s.fieldLabel}>
-                <span>{COPY.obligations.fields.signer}</span>
-                <input type="text" className="field-input--form" value={signer} onChange={(e) => setSigner(e.target.value)} />
+                <span>{COPY.obligations.fields.counselUrl}</span>
+                <input type="text" className="field-input--form" value={counselUrl} onChange={(e) => setCounselUrl(e.target.value)} />
               </label>
               <label className={s.fieldLabel}>
                 <span>{COPY.obligations.fields.signedOn}</span>
@@ -182,24 +212,36 @@ export function ObligationDetailPane({
           ) : null}
           {actionType === "waived" ? (
             <>
+              {isGate ? <p className={s.emptyNote}>{COPY.obligations.detail.launchGateHint}</p> : null}
               <label className={s.fieldLabel}>
                 <span>{COPY.obligations.fields.reason}</span>
                 <input type="text" className="field-input--form" value={reason} onChange={(e) => setReason(e.target.value)} />
               </label>
               <label className={s.fieldLabel}>
-                <span>{COPY.obligations.fields.signer}</span>
-                <input type="text" className="field-input--form" value={signer} onChange={(e) => setSigner(e.target.value)} />
+                <span>{COPY.obligations.fields.counselUrl}</span>
+                <input type="text" className="field-input--form" value={counselUrl} onChange={(e) => setCounselUrl(e.target.value)} />
               </label>
             </>
           ) : null}
-          {mut.error ? <InlineError error={mut.error} /> : null}
+          {!isGate && (actionType === "done" || actionType === "waived") && (
+            <>
+                <label className={s.fieldLabel}>
+                  <span>{COPY.obligations.fields.signer}</span>
+                  <input type="text" className="field-input--form" value={signer} onChange={(e) => setSigner(e.target.value)} />
+                </label>
+                <label className={s.fieldLabel}>
+                  <span>{COPY.obligations.fields.coSigner}</span>
+                  <input type="text" className="field-input--form" value={coSigner} onChange={(e) => setCoSigner(e.target.value)} />
+                </label>
+            </>
+          )}
           <div>
             <button
               type="submit"
               className="btn btn--sm btn--primary"
               disabled={writeDisabled || mut.isPending || (actionType === "in_review" && item.state !== "open")}
             >
-              {actionType === "in_review"
+              {isGate && (actionType === "done" || actionType === "waived") ? COPY.obligations.detail.propose : actionType === "in_review"
                 ? COPY.obligations.detail.startReview
                 : actionType === "redated"
                   ? COPY.obligations.detail.redate
@@ -208,7 +250,7 @@ export function ObligationDetailPane({
                     : COPY.obligations.detail.waive}
             </button>
           </div>
-        </form>
+        </form>}
       </section>
 
       <section className={s.detailSection}>

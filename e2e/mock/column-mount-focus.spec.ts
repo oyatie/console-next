@@ -22,7 +22,7 @@ for (const path of ["/", "/inbox"]) test(`the selected column on ${path} takes f
   await page.addInitScript(() => {
     const focus = HTMLElement.prototype.focus;
     HTMLElement.prototype.focus = function(options) {
-      if (this.closest("[data-phase-pending] [data-flexible-columns] aside")) this.dataset.focusedWhileHeld = "";
+      if (this.closest("[data-phase-pending] :is([data-flexible-columns], [data-pane-grid]) aside")) this.dataset.focusedWhileHeld = "";
       focus.call(this, options);
     };
   });
@@ -32,7 +32,7 @@ for (const path of ["/", "/inbox"]) test(`the selected column on ${path} takes f
   try {
     const id = inbox(fixture.count).items[0]!.id;
     await page.goto(`${path}?${path === "/inbox" ? "tab=turn&" : ""}sel=${encodeURIComponent(id)}`);
-    await advanceUntil(page, page.locator("[data-phase-pending] [data-flexible-columns] aside").waitFor({ state: "attached" }));
+    await advanceUntil(page, page.locator("[data-phase-pending] :is([data-flexible-columns], [data-pane-grid]) aside").waitFor({ state: "attached" }));
     await page.clock.runFor(32);
     await expect(page.locator("[data-focused-while-held]")).toHaveCount(0);
     held.resolve();

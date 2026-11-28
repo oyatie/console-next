@@ -24,12 +24,13 @@ for (const width of [1440, 390]) {
         } });
       }
       await mockRoute(page, "get", "/api/v1/change-requests", { status: 200, json: { items: [], total: 0, offset: 0, limit: 50 } });
+      await mockRoute(page, "get", "/api/v1/me/requests", { status: 200, json: { items: [], total: 0, offset: 0, limit: 50 } });
       await mockRoute(page, "get", "/api/v1/requests/{key}", { status: 404, json: failure("request_not_found") });
       try {
         await page.goto(path);
         const main = shellMain(page);
         if (path === "/requests") {
-          await expect(main.getByText(t("requestOutcome.empty"), { exact: true })).toBeVisible();
+          await expect(main.getByText(t("requestOutcome.myHistory.empty"), { exact: true })).toBeVisible();
           await expect(main.getByRole("textbox")).toHaveValue("");
         } else if (path.startsWith("/requests/")) {
           await expect(main.getByRole("heading", { name: t("common.read.notFound.title"), exact: true })).toBeVisible();

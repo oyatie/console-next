@@ -30,8 +30,9 @@ type CardTab = (typeof CARD_TABS)[number];
 
 // BW-15: the unlock request under review lives in the URL (Home's unlock queue opens it); `unlock` opens one lock's
 // unlock (a closed attendance month links to the lock behind its close).
-const periodLocks = createRoute({ getParentRoute: () => app, path: "/people/period-locks", staticData: { access: readRequirement("/people/period-locks"), floorplan: "P-05" }, validateSearch: (s: Record<string, unknown>): { review?: string; unlock?: string } => ({ review: str(s.review), unlock: str(s.unlock) }), component: lazyRouteComponent(screen(() => import("../features/periods/ui/period-lock-page")), "PeriodLockPage") });
+const periodLocks = createRoute({ getParentRoute: () => app, path: "/people/period-locks", staticData: { access: readRequirement("/people/period-locks"), floorplan: "P-05", pattern: "settings" }, validateSearch: (s: Record<string, unknown>): { review?: string; unlock?: string } => ({ review: str(s.review), unlock: str(s.unlock) }), component: lazyRouteComponent(screen(() => import("../features/periods/ui/period-lock-page")), "PeriodLockPage") });
 const peopleImport = createRoute({ getParentRoute: () => app, path: "/people/import", staticData: { access: readRequirement("/people/import"), floorplan: "P-04", pattern: "wizard" }, errorComponent: lazyRouteComponent(() => chunk(import("../lib/react/route-error")), "RouteError"), validateSearch: (s: Record<string, unknown>): { mode?: "paste"; run?: string } => ({ mode: s.mode === "paste" ? "paste" : undefined, run: str(s.run) }), component: lazyRouteComponent(screen(() => import("../features/import/ui/import-page")), "ImportPage") });
+const peopleRecordsImport = createRoute({ getParentRoute: () => app, path: "/people/records/import", staticData: { access: readRequirement("/people/records/import"), floorplan: "P-04", pattern: "wizard" }, component: lazyRouteComponent(screen(() => import("../features/people/ui/records-import-page")), "RecordsImportPage") });
 const dataHealth = createRoute({ getParentRoute: () => app, path: "/people/data-health", staticData: { access: readRequirement("/people/data-health"), floorplan: "P-01", pattern: "list-record" }, component: lazyRouteComponent(screen(() => import("../features/people/ui/data-health-page")), "DataHealthPage") });
 // The registration sheet opens over the roster (spec E3): a child of /people, drawn in its outlet.
 const registerEmployee = createRoute({
@@ -54,7 +55,7 @@ const employee = createRoute({
   // `tab` is the record's tab (personnel card when absent): action history, documents, change history, access.
   validateSearch: (s: Record<string, unknown>): { act?: string; back?: string; tab?: CardTab } => ({ act: str(s.act), back: str(s.back), tab: CARD_TABS.find((x) => x === s.tab) }),
 }).lazy(() => chunk(import("./employee-record")).then(m => m.employee));
-const REQUEST_LANES = ["all", "me", "role"] as const;
+const REQUEST_LANES = ["all", "me", "role", "filed"] as const;
 const REQUEST_STATUSES = ["OPEN", "APPLIED", "DECLINED", "WITHDRAWN", "ALL"] as const;
 const changeRequests = createRoute({
   getParentRoute: () => app,
@@ -117,4 +118,4 @@ const people = createRoute({
   component: lazyRouteComponent(screen(() => import("../features/people/ui/people-route")), "PeopleRoute"),
 });
 
-export const peopleRoutes = [people.addChildren([registerEmployee]), peopleImport, unplaced, dataHealth, bulk, run, renew, notices, noticeNew, notice, certificates, certificate, grid, periodLocks, exitCases, exitCase, changeRequests, jobTitles, rosterFields, employee];
+export const peopleRoutes = [people.addChildren([registerEmployee]), peopleImport, peopleRecordsImport, unplaced, dataHealth, bulk, run, renew, notices, noticeNew, notice, certificates, certificate, grid, periodLocks, exitCases, exitCase, changeRequests, jobTitles, rosterFields, employee];

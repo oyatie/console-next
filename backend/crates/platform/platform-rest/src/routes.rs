@@ -30,6 +30,14 @@ pub const PLATFORM_GROUP_ACCOUNT_ROLE_PATH_TEMPLATE: &str =
     "/api/platform/groups/{id}/accounts/{user_id}/roles/{group_role}";
 pub const PLATFORM_GROUP_ORG_PATH_TEMPLATE: &str =
     "/api/platform/groups/{id}/organizations/{org_id}";
+pub const PLATFORM_GROUP_INVITATIONS_PATH_TEMPLATE: &str = "/api/platform/groups/{id}/invitations";
+pub const PLATFORM_GROUP_INVITATION_PATH_TEMPLATE: &str =
+    "/api/platform/groups/{id}/invitations/{invitation_id}";
+pub const TENANT_GROUP_INVITATIONS_PATH: &str = "/api/v1/tenant/group-invitations";
+pub const TENANT_GROUP_INVITATION_ACCEPT_PATH: &str =
+    "/api/v1/tenant/group-invitations/{invitation_id}/accept";
+pub const TENANT_GROUP_INVITATION_DECLINE_PATH: &str =
+    "/api/v1/tenant/group-invitations/{invitation_id}/decline";
 pub const PLATFORM_OPS_PATH: &str = "/api/platform/ops";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -49,6 +57,9 @@ pub const PLATFORM_ROUTE_PATHS: &[&str] = &[
     TENANT_OPS_RECOVERY_PATH,
     TENANT_OPS_RECOVERY_CANCEL_PATH,
     TENANT_DOMAIN_REQUEST_PATH,
+    TENANT_GROUP_INVITATIONS_PATH,
+    TENANT_GROUP_INVITATION_ACCEPT_PATH,
+    TENANT_GROUP_INVITATION_DECLINE_PATH,
     PLATFORM_COMPANY_DOMAIN_PATH,
     PLATFORM_ORGS_PATH,
     PLATFORM_ORG_PATH_TEMPLATE,
@@ -58,6 +69,8 @@ pub const PLATFORM_ROUTE_PATHS: &[&str] = &[
     PLATFORM_GROUP_ACCOUNTS_PATH_TEMPLATE,
     PLATFORM_GROUP_ACCOUNT_ROLE_PATH_TEMPLATE,
     PLATFORM_GROUP_ORG_PATH_TEMPLATE,
+    PLATFORM_GROUP_INVITATIONS_PATH_TEMPLATE,
+    PLATFORM_GROUP_INVITATION_PATH_TEMPLATE,
     PLATFORM_OPS_PATH,
     PLATFORM_SUPPORT_START_PATH,
     PLATFORM_SUPPORT_END_PATH,
@@ -132,6 +145,10 @@ pub const PLATFORM_ROUTE_OPERATIONS: &[PlatformRouteOperation] = &[
         path: TENANT_DOMAIN_REQUEST_PATH,
     },
     PlatformRouteOperation {
+        method: "DELETE",
+        path: TENANT_DOMAIN_REQUEST_PATH,
+    },
+    PlatformRouteOperation {
         method: "GET",
         path: PLATFORM_COMPANY_DOMAIN_PATH,
     },
@@ -186,6 +203,26 @@ pub const PLATFORM_ROUTE_OPERATIONS: &[PlatformRouteOperation] = &[
     PlatformRouteOperation {
         method: "DELETE",
         path: PLATFORM_GROUP_ORG_PATH_TEMPLATE,
+    },
+    PlatformRouteOperation {
+        method: "POST",
+        path: PLATFORM_GROUP_INVITATIONS_PATH_TEMPLATE,
+    },
+    PlatformRouteOperation {
+        method: "DELETE",
+        path: PLATFORM_GROUP_INVITATION_PATH_TEMPLATE,
+    },
+    PlatformRouteOperation {
+        method: "GET",
+        path: TENANT_GROUP_INVITATIONS_PATH,
+    },
+    PlatformRouteOperation {
+        method: "POST",
+        path: TENANT_GROUP_INVITATION_ACCEPT_PATH,
+    },
+    PlatformRouteOperation {
+        method: "POST",
+        path: TENANT_GROUP_INVITATION_DECLINE_PATH,
     },
     PlatformRouteOperation {
         method: "GET",

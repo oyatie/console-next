@@ -132,7 +132,7 @@ pub(crate) async fn close_one(
     let sql = if registration {
         "UPDATE business_registrations SET closed_on = $2 WHERE id = $1"
     } else {
-        "UPDATE workplaces SET closed_on = $2 WHERE id = $1"
+        "UPDATE workplaces SET closed_on = $2, head_employee_id = NULL, head_since = NULL WHERE id = $1"
     };
     sqlx::query(sql)
         .bind(id)
@@ -168,11 +168,13 @@ pub(crate) async fn apply_workplace_status(
         (OperatingStatus::Closed, Some(on), None) => {
             ensure_vacant(tx, false, id, on).await?;
             ensure_holds_nothing(tx, entity, id).await?;
-            sqlx::query("UPDATE workplaces SET closed_on = $2 WHERE id = $1")
-                .bind(id)
-                .bind(on)
-                .execute(tx.as_mut())
-                .await?;
+            sqlx::query(
+                "UPDATE workplaces SET closed_on = $2, head_employee_id = NULL, head_since = NULL WHERE id = $1",
+            )
+            .bind(id)
+            .bind(on)
+            .execute(tx.as_mut())
+            .await?;
             dissolve_sites(tx, actor, "workplace_id", id, today, port).await
         }
         (OperatingStatus::Closed, Some(on), Some(_)) => {

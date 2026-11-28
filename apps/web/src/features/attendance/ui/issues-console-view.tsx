@@ -92,7 +92,21 @@ export function IssuesConsoleView({ baseline }: { baseline: () => React.ReactNod
             onRowAction={id => setSelectedId(id)}
             empty={t("attendance.issues.empty")}
             columns={[
-              { id: "person", header: t("attendance.col.person"), card: "title", rowHeader: true, cell: row => row.employee_name },
+              {
+                id: "person",
+                header: t("attendance.col.person"),
+                card: "title",
+                rowHeader: true,
+                cell: row => (
+                  <Link
+                    to="/attendance"
+                    search={{ tab: "day", date: row.work_date, month: search.month ?? row.work_date.slice(0, 7), wp: row.branch_id ?? search.wp, person: undefined }}
+                    className="link"
+                  >
+                    {row.employee_name}
+                  </Link>
+                ),
+              },
               { id: "date", header: t("attendance.col.date"), card: "fact", cell: row => dateText(row.work_date) },
               { id: "kind", header: t("attendance.col.kind"), card: "fact", cell: row => t(`attendance.exception.${row.kind}`) },
               {

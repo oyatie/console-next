@@ -175,6 +175,13 @@ export function buildOc1Fixtures() {
         max_delivery_lag_s: 120,
       },
     } as unknown as Record<string, never>,
+    active_shift: {
+      active_person: "11111111-1111-4111-8111-111111111111",
+      backup_person: null,
+      shift_from: "2026-11-16T00:00:00Z",
+      shift_until: "2026-11-23T00:00:00Z",
+      shift_grants: ["alert.ack", "alert.silence", "incident.write"],
+    },
     display_status: ok("Single operator on call", "oncall"),
     last_page_test_at: ok("2026-11-20T02:00:00Z", "textfile"),
     last_page_test_ok: ok(true, "textfile"),
@@ -274,6 +281,8 @@ export function buildOc1Fixtures() {
   const promote: S["PromoteView"] = {
     evaluated_at: TS,
     candidate_digest: ok(digestA, "bundle"),
+    signed_bake: "normal",
+    release_image: `registry.example/tenant/console-app@${digestA}`,
     state: { state: "Verified", value: "Blocked", unit: null, source: "promote", observed_at: TS, age_s: 5, reason: null },
     signoffs: [],
     feedback: [

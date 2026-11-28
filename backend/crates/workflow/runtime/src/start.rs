@@ -13,7 +13,17 @@ pub async fn start_run<P: WorkflowRuntimePort + ?Sized>(
     request: StartRunRequest,
     audit: &AuditContext,
 ) -> Result<Uuid, KernelError> {
-    start_run_owned(port, request, audit)
+    start_run_with_definition(port, request, None, audit).await
+}
+
+/// Pin a server-validated approval graph in the same insert as the run.
+pub async fn start_run_with_definition<P: WorkflowRuntimePort + ?Sized>(
+    port: &P,
+    request: StartRunRequest,
+    effective_definition: Option<serde_json::Value>,
+    audit: &AuditContext,
+) -> Result<Uuid, KernelError> {
+    start_run_owned(port, request, effective_definition, audit)
         .await
         .map_err(|failure| failure.error)
 }
@@ -34,6 +44,7 @@ impl From<KernelError> for StartFailure {
 pub(crate) async fn start_run_owned<P: WorkflowRuntimePort + ?Sized>(
     port: &P,
     request: StartRunRequest,
+    effective_definition: Option<serde_json::Value>,
     audit: &AuditContext,
 ) -> Result<Uuid, StartFailure> {
     // A run is born STARTING and immediately advances to RUNNING; validate the
@@ -56,6 +67,7 @@ pub(crate) async fn start_run_owned<P: WorkflowRuntimePort + ?Sized>(
         org_id: org,
         definition_id: request.definition_id,
         definition_version: request.definition_version,
+        effective_definition,
         trigger_type: request.trigger_type,
         object_type: request.object_type,
         object_id: request.object_id,

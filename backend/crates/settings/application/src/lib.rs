@@ -11,14 +11,14 @@
 
 pub mod plan;
 pub mod reason_codes;
-pub use plan::{ChangeError, SettingChangePlan, plan_setting};
+pub use plan::{ChangeError, ScopeImpact, SettingChangePlan, plan_setting};
 
 use console_kernel_core::{
     AuditAction, AuditEvent, AuditRequestContext, KernelError, OrgId, SettingVersionId, Timestamp,
     TraceContext, UserId,
 };
 use console_settings_domain::code_lists::ValidReason;
-use console_settings_domain::{Direction, OverrideRow, SettingKey, SettingValue};
+use console_settings_domain::{Direction, OverrideRow, ScopeCeiling, SettingKey, SettingValue};
 use serde::Serialize;
 use std::future::Future;
 use uuid::Uuid;
@@ -91,6 +91,28 @@ pub trait SettingsStore {
         entity: Option<Uuid>,
         as_of: Timestamp,
     ) -> impl Future<Output = Result<Vec<Uuid>, KernelError>> + Send;
+
+    /// Target scope layer and employee impact counts for a proposed change.
+    fn scope_impact(
+        &mut self,
+        _key: SettingKey,
+        entity: Option<Uuid>,
+        _proposed: Option<SettingValue>,
+        _as_of: Timestamp,
+    ) -> impl Future<Output = Result<ScopeImpact, KernelError>> + Send {
+        async move {
+            Ok(ScopeImpact {
+                target_layer: if entity.is_some() {
+                    Some(ScopeCeiling::Workplace)
+                } else {
+                    Some(ScopeCeiling::Tenant)
+                },
+                affected_people_count: 0,
+                out_of_scope_people_count: 0,
+                disfavored_people_count: 0,
+            })
+        }
+    }
 
     fn insert(
         &mut self,

@@ -84,6 +84,7 @@ async fn company_sections_record_correct_and_import(pool: PgPool) {
     let rows = vec![ImportRow {
         row: 2,
         employee_number: "C-1".into(),
+        employee_name: None,
         entry_id: None,
         expected_version: None,
         void_reason: None,
@@ -92,6 +93,7 @@ async fn company_sections_record_correct_and_import(pool: PgPool) {
     let sheet = |digest| ImportSheetRequest {
         rows: rows.clone(),
         plan_digest: digest,
+        acknowledge_name_mismatch: false,
     };
     let preview =
         f.hr.preview_record_import(p(), Section::Language, sheet(None))

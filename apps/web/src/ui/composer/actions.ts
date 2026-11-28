@@ -3,6 +3,11 @@ import { t } from "@console/i18n";
 
 /** Action nouns and verbs are catalog data; screens describe intent, never build frame copy. */
 const ACTION_KINDS = {
+  objectTransition: ["audit.lifecycle.state", "units"],
+  objectRetention: ["audit.lifecycle.hold", "units"],
+  consultingEngagement: [null, "units"],
+  findingReview: ["audit.findings.outcome", "units"],
+  evidenceHold: ["audit.vault.hold", "units"],
   supportAccess: ["supportAccess.title", "units"],
   support: ["composer.action.support", "units"],
   directoryView: ["directoryViews.noun", "units"],
@@ -56,8 +61,10 @@ const ACTION_KINDS = {
   attendanceException: ["attendance.issues.noun", "units"],
   attendanceSubstitution: ["attendance.sub.noun", "units"],
   payrollRun: ["payrollRun.noun", "units"],
+  accessReview: ["accessReview.title", "units"],
   accessLogReview: ["accessLog.review.noun", "units"],
   privacyIntake: ["privacy.intake.noun", "units"],
+  accountInvite: ["accounts.invite", "people"],
 } as const;
 
 /** Withdraw pending approval; cancel before effect; correct an applied fact; revoke an applied act. */

@@ -528,6 +528,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/platform/groups/{id}/invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Issue a 7-day group join invitation to a tenant organization
+         * @description Creates a pending 7-day group join invitation audited to the target organization. Requires GroupManage authority and a fresh passkey step-up assertion.
+         */
+        post: operations["createPlatformGroupInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/platform/groups/{id}/invitations/{invitation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Cancel a pending group join invitation
+         * @description Cancels a pending group join invitation and records an audit event on the target organization.
+         */
+        delete: operations["cancelPlatformGroupInvitation"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/platform/groups/{id}/organizations/{org_id}": {
         parameters: {
             query?: never;
@@ -1238,6 +1278,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/access/invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Atomically invite an account, apply initial role grants, and mint a first sign-in code
+         * @description Creates the account, applies all initial role/scope grants, and issues the first sign-in one-time code in one atomic database transaction under a single passkey step-up assertion. Any refusal rolls back every write.
+         */
+        post: operations["createAccessInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/invites/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview an account invite together with optional initial role and scope grants
+         * @description Validates account invite fields and dry-runs each initial role/scope grant against the caller's authority and grantor ceiling without writing any row.
+         */
+        post: operations["previewAccessInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/access/me": {
         parameters: {
             query?: never;
@@ -1292,6 +1372,46 @@ export interface paths {
         get: operations["listOpsUsage"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/ops/holders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Designate a second ops account holder (at most 2 per tenant)
+         * @description Only an active ops account holder may designate another active account (with an enrolled passkey and zero active role grants) as a second ops account holder. Requires a fresh passkey step-up assertion.
+         */
+        post: operations["designateOpsAccountHolder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/ops/holders/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Release the caller's own ops account holder status
+         * @description Self-only release of ops account holder status when a second active ops account holder remains. Revokes any unconsumed recovery codes of the releasing holder. Requires a fresh passkey step-up assertion.
+         */
+        post: operations["releaseSelfOpsAccountHolder"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1356,6 +1476,111 @@ export interface paths {
          * @description DONE or DECLINED by a holder of access management edit (or ops); WITHDRAWN by the requester. 403 `access_denied` otherwise, 404 `access_request_not_found`, 409 `access_request_closed` once closed. Writes an `access.request.close` audit row.
          */
         post: operations["closeAccessRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List quarterly periodic access review cycles
+         * @description Lists active, completed, and upcoming quarterly access review cycles for the tenant.
+         */
+        get: operations["listAccessReviews"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/reviews/{period}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read one quarterly periodic access review cycle and its frozen items */
+        get: operations["getAccessReview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/reviews/{period}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign off a quarterly access review and apply revocations with passkey step-up */
+        post: operations["completeAccessReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/reviews/{period}/decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record a KEEP or REVOKE decision for one frozen grant in an access review */
+        post: operations["recordAccessReviewDecision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/reviews/{period}/export.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export frozen grants and review decisions for a quarterly cycle as CSV */
+        get: operations["exportAccessReviewCsv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/reviews/{period}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start and freeze a quarterly periodic access review cycle */
+        post: operations["startAccessReview"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2212,6 +2437,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/audit-streams/availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Check which restricted audit reads the current session may perform
+         * @description Applies the existing read decisions without reading events or recording a stream access.
+         */
+        get: operations["getAuditStreamAvailability"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/audit-streams/ceo-covert/access-events": {
         parameters: {
             query?: never;
@@ -2945,6 +3190,106 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/recovery/challenge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send a verification code to an ops holder recovery contact
+         * @description Pre-authentication anti-enumeration endpoint that dispatches a short-lived verification code when the identifier resolves to an active ops holder with a registered recovery contact and remaining recovery codes.
+         */
+        post: operations["startRecoveryChallenge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/recovery/codes/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate 10 single-use recovery codes for an ops account holder
+         * @description Revokes any previous unconsumed batch and returns 10 fresh single-use recovery codes once; only keyed HMAC-SHA256 digests are stored. Requires a passkey step-up assertion once a passkey is enrolled.
+         */
+        post: operations["generateRecoveryCodes"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/recovery/contact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Register or update the ops holder recovery contact
+         * @description Seals the recovery contact using AWS-ESDK-v2 key-committing envelope encryption. Requires a passkey step-up assertion once a passkey is enrolled.
+         */
+        put: operations["upsertRecoveryContact"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/recovery/redeem": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Redeem one saved recovery code and recovery-contact verification code
+         * @description Atomically consumes one saved recovery code and one out-of-band contact verification code, revokes lost passkeys and sessions, cancels any open ops recovery request on an active tenant, and mints a passkey-enrollment session.
+         */
+        post: operations["redeemRecoveryCode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/recovery/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read ops holder recovery contact and recovery code status
+         * @description Available to both full sessions and initial passkey-enrollment sessions. Non-ops accounts receive eligible=false.
+         */
+        get: operations["getRecoveryStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/token/refresh": {
         parameters: {
             query?: never;
@@ -3281,7 +3626,7 @@ export interface paths {
         };
         /**
          * List change requests
-         * @description BW-17. HR (org-wide employee_directory_manage) sees the organization's requests; any other caller sees only the requests it filed ("waiting") or is named on. `assignee=me` lists the requests named to the caller (an explanation request to answer); `assignee=role` is HR-only. A correction carries the values it asks for, so an HR page with PROFILE_CORRECTION rows leaves one employee.list_read access log row naming the employees they are about, never the values.
+         * @description BW-17. HR sees requests about subjects in its directory management scope. A caller also sees requests it filed or is named on. `assignee=me` lists the requests named to the caller (an explanation request to answer); `assignee=role` is HR-only. A correction carries the values it asks for, so an HR page with PROFILE_CORRECTION rows leaves one employee.list_read access log row naming the employees they are about, never the values.
          */
         get: operations["listChangeRequests"];
         put?: never;
@@ -3470,13 +3815,19 @@ export interface paths {
         };
         /**
          * List tenant-scoped collaboration calendar events
-         * @description Returns server-filtered collaboration calendar events for the caller's tenant. Personal events are visible only to the creator, while org/team/department scopes carry explicit server policy metadata for future PBAC/ABAC expansion.
+         * @description Lists active internal events visible to this tenant member over the given range. Personal events belong to the creator,
+         *     department events to authorized branches and team events to team members. Creators can inspect their own events.
+         *     Follow next_cursor with the original range to read subsequent pages in stable order at the first page's snapshot time.
          */
         get: operations["listCollaborationCalendarEvents"];
         put?: never;
         /**
          * Create an audited collaboration calendar event
-         * @description Creates a tenant-scoped calendar event with explicit audience scope and optional source object link. The server records an audit event and an append-only lifecycle event under forced RLS.
+         * @description Creates an internal event, an append-only lifecycle record and a platform audit record in one tenant transaction.
+         *     Members create PERSONAL events for themselves. DEPARTMENT publication requires NoticeManage for the referenced
+         *     active branch. TENANT, ORG and TEAM publication require organization-wide NoticeManage. A branch-scoped administrator
+         *     previously allowed to publish a tenant event now receives 403. Personal events and authorized branch publishing remain available.
+         *     This operation sends no invitations or email and does not start a delivery worker.
          */
         post: operations["createCollaborationCalendarEvent"];
         delete?: never;
@@ -3909,6 +4260,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["transitionConsultingEngagement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/consulting/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listConsultingOptions"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -9772,6 +10139,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the caller's own command outcomes in reverse chronological order */
+        get: operations["listMyCommandOutcomes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/todos": {
         parameters: {
             query?: never;
@@ -10409,7 +10793,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Skip a setup step ("proceed without departments" / "add employees later") */
+        /** Skip an optional setup step with tenant-wide authority for that step */
         post: operations["skipSetupStep"];
         delete?: never;
         options?: never;
@@ -11379,6 +11763,24 @@ export interface paths {
         get: operations["getEmployeePayslipDraft"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payroll/pay-group-memberships": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Find employees eligible for a pay group on the selected date */
+        get: operations["searchPayGroupMembers"];
+        put?: never;
+        /** Add or move an employee from the effective date until the next scheduled membership boundary */
+        post: operations["assignPayGroupMember"];
         delete?: never;
         options?: never;
         head?: never;
@@ -13390,6 +13792,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/settings/overtime-attestations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List overtime recognition work-rule confirmations
+         * @description Requires settings view or attendance view at the requested scope.
+         */
+        get: operations["listOvertimeRuleAttestations"];
+        put?: never;
+        /**
+         * Record an overtime recognition work-rule confirmation
+         * @description Requires settings edit or attendance approve at the requested scope.
+         */
+        post: operations["recordOvertimeRuleAttestation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/settings/{key}": {
         parameters: {
             query?: never;
@@ -14008,6 +14434,61 @@ export interface paths {
         put?: never;
         /** Tenant ops asks the platform operator to change their own company domain */
         post: operations["requestCompanyDomainChange"];
+        /** Withdraw the tenant ops account's pending company-domain request */
+        delete: operations["cancelCompanyDomainRequest"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tenant/group-invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List pending group join invitations for the caller's tenant organization */
+        get: operations["listTenantGroupInvitations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tenant/group-invitations/{invitation_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept a pending group join invitation for the caller's tenant organization
+         * @description Assigns the caller's organization to the inviting platform group after verifying a fresh passkey assertion from an active tenant ops holder.
+         */
+        post: operations["acceptTenantGroupInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tenant/group-invitations/{invitation_id}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decline a pending group join invitation for the caller's tenant organization */
+        post: operations["declineTenantGroupInvitation"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15141,6 +15622,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workplaces/{workplaceId}/head": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Appoint or clear the head of a workplace
+         * @description Appoints any non-exited employee in the tenant as workplace head, or clears the appointment when null.
+         */
+        put: operations["setWorkplaceHead"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workplaces/{workplaceId}/insurance": {
         parameters: {
             query?: never;
@@ -15582,6 +16083,10 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AcceptTenantGroupInvitationRequest: {
+            /** @description Fresh passkey step-up assertion from the accepting tenant ops holder. */
+            step_up: components["schemas"]["PasskeyStepUpAssertion"];
+        };
         AccessCatalog: {
             domains: components["schemas"]["AccessCatalogDomain"][];
             levels: components["schemas"]["AccessLevel"][];
@@ -15770,6 +16275,14 @@ export interface components {
             count: number;
             names: string[];
         };
+        AccessInviteGrantLineInput: {
+            role_id: components["schemas"]["Uuid"];
+            scope: components["schemas"]["AccessScope"];
+            valid_from?: components["schemas"]["Timestamp"] | null;
+            valid_to?: components["schemas"]["Timestamp"] | null;
+            /** @default false */
+            effective_in_setup: boolean;
+        };
         /**
          * @description View `view` · create/edit `edit` · approve `approve` · export `export`. edit/approve/export imply view.
          * @enum {string}
@@ -15904,6 +16417,57 @@ export interface components {
          * @enum {string}
          */
         AccessRequestReason: "NEW_DUTY" | "COVER" | "NEEDED_NOW" | "OTHER";
+        AccessReviewDecisionInput: {
+            item_id: components["schemas"]["Uuid"];
+            /** @enum {string} */
+            decision: "KEEP" | "REVOKE";
+            reason_code?: string | null;
+            reason_note?: string | null;
+        };
+        AccessReviewDetail: {
+            summary: components["schemas"]["AccessReviewSummary"];
+            items: components["schemas"]["AccessReviewItem"][];
+        };
+        AccessReviewItem: {
+            id: components["schemas"]["Uuid"];
+            grant_id: components["schemas"]["Uuid"];
+            account_id: components["schemas"]["Uuid"];
+            account_name: string;
+            employee_number?: string | null;
+            unit_name?: string | null;
+            role_id: components["schemas"]["Uuid"];
+            role_name_ko: string;
+            scope_kind: string;
+            scope_label: string;
+            scope_node_id?: components["schemas"]["Uuid"];
+            scope_include_descendants?: boolean;
+            valid_from: components["schemas"]["Timestamp"];
+            valid_to?: components["schemas"]["Timestamp"];
+            last_used_at?: components["schemas"]["Timestamp"];
+            signals: string[];
+            /** @enum {string|null} */
+            decision?: "KEEP" | "REVOKE" | null;
+            reason_code?: string | null;
+            reason_note?: string | null;
+            decided_by?: components["schemas"]["Uuid"];
+            decided_by_name?: string | null;
+            decided_at?: components["schemas"]["Timestamp"];
+            applied_at?: components["schemas"]["Timestamp"];
+        };
+        AccessReviewSummary: {
+            id?: components["schemas"]["Uuid"];
+            period: string;
+            /** @enum {string} */
+            state: "UNSTARTED" | "UPCOMING" | "OPEN" | "COMPLETE";
+            due_at: components["schemas"]["Timestamp"];
+            frozen_count: number;
+            decided_count: number;
+            keep_count: number;
+            revoke_count: number;
+            reviewer_count: number;
+            started_at?: components["schemas"]["Timestamp"];
+            completed_at?: components["schemas"]["Timestamp"];
+        };
         AccessRole: {
             id: components["schemas"]["Uuid"];
             name_ko: string;
@@ -16133,9 +16697,9 @@ export interface components {
             /** @description Command refusal code when can_decide is false; absent when allowed. */
             cannot_reason?: string;
         };
-        /** @description One server-ordered canonical source-object reference for an action-inbox item. Clients resolve only explicitly registered kind/id pairs; current browser-linkable kinds are approval_run, work_order, and support_ticket. Unknown kinds remain valid for forward compatibility and MUST stay inert until a client registry adds support. Clients MUST NOT accept a server URL or infer a destination from the enclosing item kind, item id, label, or a code prefix. */
+        /** @description One server-ordered canonical source-object reference for an action-inbox item. Clients resolve only explicitly registered kind/id pairs; current registered kinds include approval_run, work_order, support_ticket, and dispatch_offer. Unknown kinds remain valid for forward compatibility and MUST stay inert until a client registry adds support. Clients MUST NOT accept a server URL or infer a destination from the enclosing item kind, item id, label, or a code prefix. */
         ActionInboxLink: {
-            /** @description Canonical source-object kind. Current browser-linkable values are approval_run, work_order, and support_ticket; other strings are forward-compatible but inert. */
+            /** @description Canonical source-object kind. Registered values include approval_run, work_order, support_ticket, and dispatch_offer; other strings are forward-compatible but inert. */
             kind: string;
             /** @description Canonical source-object identifier. Clients trim surrounding whitespace and reject a blank result before route construction. */
             id: string;
@@ -16257,6 +16821,8 @@ export interface components {
             user_id: components["schemas"]["Uuid"];
             otp: string;
             expires_at: components["schemas"]["Timestamp"];
+            delivered_to_recovery_contact?: boolean;
+            masked_contact?: string | null;
         };
         AdminIssueOtpRequest: {
             user_id: components["schemas"]["Uuid"];
@@ -16516,6 +17082,12 @@ export interface components {
             offset: number;
             /** Format: int64 */
             total: number;
+        };
+        ApprovalLineOverrideStep: {
+            /** @description Existing approval node key to swap; omit when appending an optional approval step. */
+            node_key?: string;
+            assignee_role_key: string;
+            title?: string;
         };
         /** @description Tenant/org/branch/object identity for ontology-aware workflow, analytics, audit, and future group/organization hierarchy views. */
         ApprovalOntologyContext: {
@@ -17054,6 +17626,8 @@ export interface components {
             inserted: number;
             skipped: number;
             error_rows: number;
+            /** @description Rows left out during partial apply because of unresolved or invalid values. */
+            skipped_rows?: components["schemas"]["AttendanceImportRowError"][];
         };
         AttendanceImportColumn: {
             source_header: string;
@@ -17768,6 +18342,8 @@ export interface components {
             conditions?: components["schemas"]["BenefitCatalogCondition"][];
         };
         BenefitCatalogItem: {
+            /** Format: date-time */
+            updated_at: string;
             id: components["schemas"]["Uuid"];
             benefit_code: string;
             /** @enum {string} */
@@ -17808,9 +18384,19 @@ export interface components {
             retention_until?: string | null;
         };
         BenefitCatalogReplaceConditionsRequest: {
+            /**
+             * Format: date-time
+             * @description Current item revision returned by the last catalog read.
+             */
+            expectedUpdatedAt?: string;
             conditions: components["schemas"]["BenefitCatalogCondition"][];
         };
         BenefitCatalogReplaceTiersRequest: {
+            /**
+             * Format: date-time
+             * @description Current item revision returned by the last catalog read.
+             */
+            expectedUpdatedAt?: string;
             tiers: components["schemas"]["BenefitCatalogTier"][];
         };
         BenefitCatalogScope: {
@@ -17836,6 +18422,11 @@ export interface components {
         };
         /** @description Mutable catalog fields only; tenant, actor, identifiers, and lifecycle state are server-owned. */
         BenefitCatalogUpdateRequest: {
+            /**
+             * Format: date-time
+             * @description Current item revision returned by the last catalog read.
+             */
+            expectedUpdatedAt?: string;
             /** @enum {string} */
             category?: "legal" | "extra";
             name?: string;
@@ -18197,6 +18788,7 @@ export interface components {
             voided?: boolean;
         };
         CalendarEventListResponse: {
+            next_cursor: string | null;
             items: components["schemas"]["CalendarEventResponse"][];
         };
         CalendarEventResponse: {
@@ -18347,6 +18939,8 @@ export interface components {
             assignee_user_id?: components["schemas"]["Uuid"] | null;
             /** @enum {string} */
             status: "OPEN" | "APPLIED" | "DECLINED" | "WITHDRAWN";
+            /** @description The viewer meets this open request's assignee and subject-scope rules for apply or decline. The decision command rechecks the current row and policy. */
+            can_review?: boolean;
             /** @description OTHER requests are reviewed after the fact. */
             review_required: boolean;
             decided_by?: components["schemas"]["Uuid"] | null;
@@ -18535,6 +19129,21 @@ export interface components {
         };
         CompanyDomainRequestState: {
             pending_domain: string | null;
+            /** Format: uuid */
+            requested_by?: string | null;
+            requested_by_name?: string | null;
+            /** Format: date-time */
+            requested_at?: string | null;
+            current_domain?: string | null;
+            /** Format: int64 */
+            account_count?: number;
+            domain_aliases?: {
+                slug: string;
+                /** Format: date-time */
+                retired_at: string | null;
+                /** Format: date-time */
+                alias_until: string | null;
+            }[];
         };
         CompleteInspectionRoundRequest: {
             outcome: components["schemas"]["InspectionRoundOutcome"];
@@ -18581,9 +19190,12 @@ export interface components {
             /** @enum {string|null} */
             cadence?: "CONTINUOUS" | "DAILY" | "WEEKLY" | "MONTHLY" | "QUARTERLY" | "ANNUAL" | "EVENT_DRIVEN" | null;
             status: components["schemas"]["ControlStatus"];
+            /** @description Released SDKs declare this legacy property as an object. Historically the server returns the stored JSON array here. Use evidence_requirement_items for the typed array. */
             evidence_requirements: {
                 [key: string]: unknown;
             };
+            /** @description Ordered evidence requirements, including any stored JSON values. */
+            evidence_requirement_items?: unknown[];
             /** Format: uuid */
             owner_user_id?: string | null;
             created_by: components["schemas"]["Uuid"];
@@ -18879,6 +19491,16 @@ export interface components {
             observedAt: string;
             note: string;
         };
+        ConsultingOptionPage: {
+            items: {
+                id: components["schemas"]["Uuid"];
+                label: string;
+                /** Format: date-time */
+                recorded_at: string | null;
+            }[];
+            /** Format: int64 */
+            next_offset: number | null;
+        };
         ConsultingTransitionRequest: {
             /** @enum {string} */
             toStatus: "PROPOSED" | "APPROVED" | "IMPLEMENTED" | "MEASURED" | "SUSTAINED" | "CORRECTIVE";
@@ -19053,6 +19675,23 @@ export interface components {
         CoverageLevel: "PRIMARY" | "PARTIAL" | "SUPPORTING" | "COMPENSATING";
         /** @enum {string} */
         CoverageStatus: "ACTIVE" | "RETIRED";
+        CreateAccessInviteRequest: {
+            display_name: string;
+            employee_id?: components["schemas"]["Uuid"] | null;
+            phone?: string | null;
+            sign_in_id?: string | null;
+            grants?: components["schemas"]["AccessInviteGrantLineInput"][];
+            reason_code?: string | null;
+            reason_note?: string | null;
+            step_up?: components["schemas"]["PasskeyStepUpAssertion"];
+        };
+        CreateAccessInviteResponse: {
+            user: components["schemas"]["UserSummary"];
+            grants: components["schemas"]["AccessGrant"][];
+            otp: string | null;
+            otp_expires_at: components["schemas"]["Timestamp"];
+            operation_id: components["schemas"]["Uuid"];
+        };
         CreateAccessRequest: {
             screen: string;
             reason_code: components["schemas"]["AccessRequestReason"];
@@ -19111,9 +19750,12 @@ export interface components {
             control_type: components["schemas"]["ControlType"];
             /** @enum {string|null} */
             cadence?: "CONTINUOUS" | "DAILY" | "WEEKLY" | "MONTHLY" | "QUARTERLY" | "ANNUAL" | "EVENT_DRIVEN" | null;
+            /** @description Released SDKs declare this legacy property as an object. Historically the server accepts JSON arrays here and rejects objects. Use evidence_requirement_items for new writes. */
             evidence_requirements?: {
                 [key: string]: unknown;
             };
+            /** @description Ordered evidence requirements. Omit both fields for an empty array. When both fields are sent their arrays must match. */
+            evidence_requirement_items?: unknown[];
             /** Format: uuid */
             owner_user_id?: string | null;
         };
@@ -19561,6 +20203,14 @@ export interface components {
             vendor_contact?: string;
             reason: string;
         };
+        CreateOvertimeAttestationRequest: {
+            scope_entity_id?: components["schemas"]["Uuid"] | null;
+            /** Format: date */
+            confirmed_on: string;
+            rule_reference: string;
+            worker_notice_method: string;
+            statutory_basis?: string | null;
+        };
         CreateOwnershipTransferRequest: {
             /** @description New legal-owner label after all signoffs approve. */
             to_owner: string;
@@ -19576,6 +20226,11 @@ export interface components {
         CreatePeriodLockRequest: {
             /** @enum {string} */
             domain: "payroll" | "accounting";
+            /**
+             * Format: uuid
+             * @description Optional pay-group scope for payroll freeze windows; omit to freeze the whole tenant domain.
+             */
+            payGroupId?: string;
             /** Format: date */
             periodStart: string;
             /** Format: date */
@@ -19605,6 +20260,11 @@ export interface components {
             /** @description One-time setup OTP returned exactly once; deliver out-of-band and never log it. */
             otp: string;
             otp_expires_at: components["schemas"]["Timestamp"];
+        };
+        CreatePlatformGroupInvitationRequest: {
+            org_id: components["schemas"]["Uuid"];
+            /** @description Fresh passkey step-up assertion from the inviting platform operator. */
+            step_up: components["schemas"]["PasskeyStepUpAssertion"];
         };
         CreatePlatformGroupRequest: {
             slug: string;
@@ -19909,6 +20569,11 @@ export interface components {
             contact_email: string | null;
         };
         CurrentUser: components["schemas"]["UserSummary"] & {
+            /**
+             * Format: uuid
+             * @description Direct org unit of the linked employee when available.
+             */
+            employee_org_unit_id?: string | null;
             tenant?: components["schemas"]["UserTenant"];
         };
         CustodyEventView: {
@@ -20125,6 +20790,10 @@ export interface components {
         };
         /** @enum {string} */
         DepreciationMethod: "STRAIGHT_LINE" | "DECLINING_BALANCE";
+        DesignateOpsHolderRequest: {
+            account_id: components["schemas"]["Uuid"];
+            step_up?: components["schemas"]["PasskeyStepUpAssertion"];
+        };
         DeviceLoginApproveRequest: {
             approve_token: string;
             ceremony_id: components["schemas"]["Uuid"];
@@ -20441,6 +21110,8 @@ export interface components {
             duplicate: boolean;
         };
         EmployeeAttendanceRecordPage: {
+            /** @description Whether the current employee may clock out from the console under the effective policy. Returned by the self endpoint. */
+            console_clock_out?: boolean;
             items: components["schemas"]["EmployeeAttendanceRecord"][];
             /** Format: int64 */
             total: number;
@@ -20813,6 +21484,11 @@ export interface components {
         };
         EmployeeImportApplyRequest: {
             dry_run_digest: string;
+            /**
+             * @description When true, applies valid insert and update rows while leaving out unresolved row-level items.
+             * @default false
+             */
+            skip_unresolved: boolean;
         };
         EmployeeImportColumn: {
             source_header: string;
@@ -21161,6 +21837,14 @@ export interface components {
                 careers: number;
                 exit_reason: number;
             };
+            skipped_rows?: {
+                sheet: string;
+                row: number;
+                source_key: string;
+                employee_number?: string | null;
+                outcome: string;
+                reason_code?: string | null;
+            }[];
         };
         EmployeeImportReviewItem: {
             /** @description Original header of the imported company cell. */
@@ -23127,6 +23811,14 @@ export interface components {
             gates: {
                 [key: string]: unknown;
             }[];
+        };
+        GenerateRecoveryCodesRequest: {
+            step_up?: components["schemas"]["PasskeyStepUpAssertion"];
+        };
+        GenerateRecoveryCodesResponse: {
+            batch_id: components["schemas"]["Uuid"];
+            codes: string[];
+            generated_at: components["schemas"]["Timestamp"];
         };
         GoLiveFactsSnapshotV1: {
             phase_is_setup: boolean;
@@ -25457,12 +26149,23 @@ export interface components {
             items: components["schemas"]["MyAccessLogEvent"][];
             next_cursor: string | null;
         };
+        MyCommandOutcomePage: {
+            items: components["schemas"]["CommandOutcome"][];
+            /** Format: int64 */
+            total: number;
+            /** Format: int64 */
+            limit: number;
+            /** Format: int64 */
+            offset: number;
+        };
         /** @description One pending P1 offer for the signed-in mechanic: a BROADCASTING dispatch that fanned out to the caller, still inside its accept window, with no response from the caller yet. */
         MyDispatchOffer: {
             dispatch_id: components["schemas"]["Uuid"];
             work_order_id: components["schemas"]["Uuid"];
             branch_id: components["schemas"]["Uuid"];
             request_no: string;
+            site_name: string;
+            symptom: string;
             accept_window_started_at: components["schemas"]["Timestamp"];
             accept_window_ends_at: components["schemas"]["Timestamp"];
         };
@@ -25786,6 +26489,8 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             transitions: components["schemas"]["ObjectLifecycleTransition"][];
+            /** @description Present on a read. Rule-defined next states currently available to the caller after maker/checker, hold and retention checks. */
+            availableTransitions?: string[];
         };
         ObjectLifecycleTransition: {
             fromState: string;
@@ -25922,6 +26627,8 @@ export interface components {
         OpsAccount: {
             account_id: components["schemas"]["Uuid"];
             display_name: string;
+            max_holders: number;
+            holders: components["schemas"]["OpsHolderSummary"][];
         };
         OpsEquipmentStatus: {
             /** Format: int32 */
@@ -25944,6 +26651,15 @@ export interface components {
             in_progress: number;
             /** Format: int32 */
             completed: number;
+        };
+        OpsHolderSummary: {
+            account_id: components["schemas"]["Uuid"];
+            display_name: string;
+            sign_in_id?: string | null;
+            has_passkey: boolean;
+            has_recovery_contact: boolean;
+            recovery_codes_remaining: number;
+            designated_at: components["schemas"]["Timestamp"];
         };
         OpsMechanicLoad: {
             /** Format: uuid */
@@ -26605,6 +27321,18 @@ export interface components {
             /** @enum {string} */
             status?: "REQUESTED" | "ASSIGNED" | "IN_PROGRESS" | "RESULT_SUBMITTED" | "COMPLETED" | "CANCELLED";
         };
+        OvertimeRuleAttestation: {
+            id: components["schemas"]["Uuid"];
+            scope_entity_id: components["schemas"]["Uuid"] | null;
+            /** Format: date */
+            confirmed_on: string;
+            rule_reference: string;
+            worker_notice_method: string;
+            statutory_basis: string;
+            recorded_by: components["schemas"]["Uuid"];
+            recorded_by_name: string | null;
+            created_at: components["schemas"]["Timestamp"];
+        };
         OwnAttendanceException: {
             id: components["schemas"]["Uuid"];
             code: string;
@@ -26810,8 +27538,11 @@ export interface components {
         PayGroupDefinition: components["schemas"]["PayGroupRules"] & {
             sensitive: boolean;
             pay_basis_allowed: components["schemas"]["PayGroupPayBases"];
+            member_employee_ids?: string[];
         };
         PayGroupPage: {
+            /** @description Listed groups whose membership the current caller may manage. */
+            manageable_group_ids?: string[];
             items: components["schemas"]["PayGroup"][];
             legal_entities: {
                 /** Format: uuid */
@@ -26838,6 +27569,11 @@ export interface components {
             };
             base_period: components["schemas"]["PayGroupPeriodRule"];
             variable_period: components["schemas"]["PayGroupPeriodRule"];
+            attendance_cutoff_rule?: {
+                day: number | "LAST_DAY";
+                /** @enum {integer} */
+                month_offset: 0 | 1;
+            };
             /** @enum {string} */
             proration: "CALENDAR_DAYS" | "SCHEDULED_WORKDAYS";
             /** @enum {string} */
@@ -27127,8 +27863,7 @@ export interface components {
             provenance_ko: string;
         };
         PayrollPreflightCheck: {
-            /** @enum {string} */
-            key: "attendance_material" | "period_lock" | "pending_leave";
+            key: string;
             label_ko: string;
             ok: boolean;
             /** @description Soft signal only; can_close is the AND of the hard checks (attendance_material, period_lock). */
@@ -27233,6 +27968,8 @@ export interface components {
             variable_period_start: string;
             /** Format: date */
             variable_period_end: string;
+            /** Format: date */
+            attendance_cutoff_date?: string | null;
         };
         PayrollRunSummary: {
             id: components["schemas"]["Uuid"];
@@ -27250,6 +27987,8 @@ export interface components {
             variable_period_start: string | null;
             /** Format: date */
             variable_period_end: string | null;
+            /** Format: date */
+            attendance_cutoff_date?: string | null;
             source_label: string;
             /** @enum {string} */
             status: "STAGED" | "BLOCKED_LEGAL_GATE" | "READY_FOR_REVIEW" | "ATTENDANCE_CLOSED" | "CALCULATING" | "CALCULATED" | "SUBMITTED" | "REJECTED" | "APPROVED" | "DISBURSEMENT_SCHEDULED" | "PAID" | "ISSUED" | "VOID";
@@ -27429,6 +28168,13 @@ export interface components {
             id: string;
             /** @enum {string} */
             domain: "payroll" | "accounting";
+            /**
+             * Format: uuid
+             * @description Optional pay-group scope for payroll freeze windows; absent for tenant-wide locks.
+             */
+            payGroupId?: string;
+            /** @description Display name of the scoped pay group when payGroupId is set. */
+            payGroupName?: string;
             /** Format: date */
             periodStart: string;
             /** Format: date */
@@ -27666,6 +28412,8 @@ export interface components {
                 entry_id: string | null;
                 code: string | null;
                 message: string | null;
+                name_mismatch?: boolean;
+                stored_name?: string | null;
             }[];
         };
         PersonRecordImportRequest: {
@@ -27673,6 +28421,8 @@ export interface components {
                 /** @description The sheet row number, echoed in the report. */
                 row: number;
                 employee_number: string;
+                /** @description Optional name column from the sheet, checked against the employee's stored name. */
+                employee_name?: string | null;
                 /** Format: uuid */
                 entry_id?: string | null;
                 /** Format: int64 */
@@ -27683,6 +28433,11 @@ export interface components {
             }[];
             /** @description Apply only; the preview's plan_digest. */
             plan_digest?: string | null;
+            /**
+             * @description Apply only; confirms applying rows whose sheet name differed from the stored employee name.
+             * @default false
+             */
+            acknowledge_name_mismatch: boolean;
         };
         /** @description Language skills. language is an ISO 639 code (stored lower case). */
         PersonRecordLanguage: {
@@ -27777,6 +28532,7 @@ export interface components {
             /** Format: int64 */
             member_count: number;
             members: components["schemas"]["PlatformGroupMember"][];
+            pending_invitations?: components["schemas"]["PlatformGroupJoinInvitation"][];
             created_at: components["schemas"]["Timestamp"];
             updated_at: components["schemas"]["Timestamp"];
         };
@@ -27797,6 +28553,19 @@ export interface components {
             org_name: string;
             group_roles: components["schemas"]["PlatformGroupRole"][];
             created_at: components["schemas"]["Timestamp"];
+        };
+        PlatformGroupJoinInvitation: {
+            id: components["schemas"]["Uuid"];
+            group_id: components["schemas"]["Uuid"];
+            group_slug: string;
+            group_name: string;
+            org_id: components["schemas"]["Uuid"];
+            org_slug: string;
+            org_name: string;
+            /** @enum {string} */
+            status: "PENDING" | "ACCEPTED" | "DECLINED" | "CANCELLED";
+            requested_at: components["schemas"]["Timestamp"];
+            expires_at: components["schemas"]["Timestamp"];
         };
         PlatformGroupMember: {
             id: components["schemas"]["Uuid"];
@@ -28230,6 +28999,35 @@ export interface components {
             ][];
             /** Format: int64 */
             expires_in_secs: number;
+        };
+        PreviewAccessInviteItem: {
+            index: number;
+            /** @enum {string} */
+            op: "grant";
+            /** @enum {string} */
+            outcome: "OK" | "REFUSED";
+            refusal?: {
+                code: string;
+                message: string;
+            } | null;
+            enforcement_after: components["schemas"]["AccessEnforcement"] | null;
+            activates_at?: components["schemas"]["Timestamp"];
+        };
+        PreviewAccessInviteRequest: {
+            display_name: string;
+            employee_id?: components["schemas"]["Uuid"] | null;
+            phone?: string | null;
+            sign_in_id?: string | null;
+            grants?: components["schemas"]["AccessInviteGrantLineInput"][];
+            reason_code?: string | null;
+            reason_note?: string | null;
+        };
+        PreviewAccessInviteResponse: {
+            /** @enum {string} */
+            phase: "SETUP" | "OPERATING";
+            step_up_required: boolean;
+            refused: number;
+            items: components["schemas"]["PreviewAccessInviteItem"][];
         };
         PreviewScheduleRequest: {
             cron_expr: string;
@@ -28807,6 +29605,49 @@ export interface components {
             accepted_by: string;
             /** @description Required when kind is CUSTOMER_DECLINED; it becomes the customer-visible comment on the reopen. */
             note?: string | null;
+        };
+        RecoveryChallengeRequest: {
+            identifier: string;
+        };
+        RecoveryChallengeResponse: {
+            sent: boolean;
+            expires_at: components["schemas"]["Timestamp"];
+        };
+        /** @enum {string} */
+        RecoveryChannel: "EMAIL" | "PHONE";
+        RecoveryCodesSummary: {
+            total: number;
+            remaining: number;
+            generated_at: components["schemas"]["Timestamp"] | null;
+        };
+        RecoveryContactStatus: {
+            channel: components["schemas"]["RecoveryChannel"];
+            masked_value: string;
+            confirmed_at: components["schemas"]["Timestamp"];
+            notice_version: string;
+            review_pending: boolean;
+        };
+        RecoveryRedeemRequest: {
+            recovery_code: string;
+            contact_code: string;
+        };
+        RecoveryRedeemResponse: {
+            access_token: string;
+            refresh_token?: string | null;
+            /** @enum {string} */
+            token_type: "Bearer";
+            refresh_expires_at: components["schemas"]["Timestamp"];
+            requires_passkey_setup: boolean;
+            privacy_consent_accepted: boolean;
+            cancelled_recovery_request: boolean;
+        };
+        RecoveryStatusResponse: {
+            eligible: boolean;
+            is_tenant_ops: boolean;
+            holder_count: number;
+            max_holders: number;
+            contact: components["schemas"]["RecoveryContactStatus"] | null;
+            codes: components["schemas"]["RecoveryCodesSummary"];
         };
         /** @enum {string} */
         RecruitAmountPeriod: "MONTHLY" | "DAILY";
@@ -29401,6 +30242,11 @@ export interface components {
         RejectWorkOrderRequest: {
             memo: string;
         };
+        ReleaseOpsHolderRequest: {
+            target_account_id?: components["schemas"]["Uuid"] | null;
+            reason?: string | null;
+            step_up?: components["schemas"]["PasskeyStepUpAssertion"];
+        };
         ReleaseProductionPlan: {
             expected_version: number;
             /** @description Approved production_plan_release:v{expected_version} decision bound to this persisted plan. It is consumed exactly once by the current approver. */
@@ -29887,6 +30733,11 @@ export interface components {
              * @description ISO date; omit or null to clear the retention deadline.
              */
             retentionUntil?: string;
+            /**
+             * Format: date-time
+             * @description Optional revision from the lifecycle read. A changed or absent record returns 409 without changing the hold or retention.
+             */
+            expectedUpdatedAt?: string;
         };
         SetMessengerThreadMuteRequest: {
             muted: boolean;
@@ -29898,6 +30749,13 @@ export interface components {
         SetWorkplaceCodeRequest: {
             /** @description The code; null (or blank) clears it. */
             code: string | null;
+        };
+        SetWorkplaceHeadRequest: {
+            /**
+             * Format: uuid
+             * @description Employee appointed as workplace head; null clears the appointment.
+             */
+            head_employee_id: string | null;
         };
         SetWorkplaceKindRequest: {
             /** @description The kind code; null clears it. */
@@ -29927,6 +30785,7 @@ export interface components {
                 step_up: boolean;
                 /** @enum {boolean} */
                 second_person: false;
+                worker_consent?: boolean;
             };
             earliest_effective_from: components["schemas"]["Timestamp"];
             /** @description Value and deciding scope at the request's current time, independent of scheduled changes. */
@@ -29939,6 +30798,12 @@ export interface components {
                 scope_entity_id: components["schemas"]["Uuid"] | null;
                 /** @description Descendant scopes with their own override in force at effective_from. */
                 keeps_own_value: components["schemas"]["Uuid"][];
+                /** Format: int64 */
+                affected_people_count?: number;
+                /** Format: int64 */
+                out_of_scope_people_count?: number;
+                /** Format: int64 */
+                disfavored_people_count?: number;
             };
         };
         SettingChangeRequest: {
@@ -29991,8 +30856,7 @@ export interface components {
                 effective_from: components["schemas"]["Timestamp"];
             }[];
             source: {
-                /** @enum {string} */
-                layer: "code_default" | "platform" | "tenant" | "legal_entity" | "workplace";
+                layer: string;
                 scope_entity_id: components["schemas"]["Uuid"] | null;
             };
             /** @description Most specific scope first, followed by tenant and code default; only in-force values. */
@@ -30387,6 +31251,7 @@ export interface components {
             context_payload?: {
                 [key: string]: unknown;
             };
+            approval_line_overrides?: components["schemas"]["ApprovalLineOverrideStep"][];
         };
         StartWorkflowRunResponse: {
             run: components["schemas"]["WorkflowRunSummary"];
@@ -30480,6 +31345,8 @@ export interface components {
         };
         SubmittableDefinitionListResponse: {
             items: components["schemas"]["SubmittableDefinitionResponse"][];
+            /** @description Assignable group-inbox roles for optional approval decisions. */
+            reviewer_role_keys?: string[];
         };
         /** @description An ACTIVE workflow definition the caller may start from the draft template gallery. Carries only the metadata definitions actually hold; active_version is the version a start binds to. */
         SubmittableDefinitionResponse: {
@@ -30491,6 +31358,7 @@ export interface components {
             active_version: number;
             required_approval_line: boolean;
             required_payment_line: boolean;
+            allow_approval_line_override?: boolean;
         };
         SubstituteAssignment: {
             /** Format: uuid */
@@ -30829,6 +31697,9 @@ export interface components {
             /** Format: date-time */
             erased_at: string | null;
         };
+        TenantGroupInvitationListResponse: {
+            items: components["schemas"]["PlatformGroupJoinInvitation"][];
+        };
         TenantReasonCode: {
             domain: string;
             code: string;
@@ -31013,6 +31884,8 @@ export interface components {
             refresh_expires_at: components["schemas"]["Timestamp"];
             /** @description True when the refreshed session belongs to an OTP-signed-in user who still has no passkey. Web clients must keep routing this session to initial passkey enrollment after a reload; passkey-authenticated sessions return false. */
             requires_passkey_setup: boolean;
+            /** @description True when signing in as an active ops account holder automatically cancelled an open ops recovery request on an active tenant. */
+            cancelled_recovery_request?: boolean;
         };
         TransitionLifecycleRequest: {
             toState: string;
@@ -31374,6 +32247,13 @@ export interface components {
             /** @description Required when scope is category; must be absent otherwise. */
             category?: string;
             link?: components["schemas"]["NotificationLink"];
+        };
+        UpsertRecoveryContactRequest: {
+            /** @enum {string} */
+            channel: "EMAIL";
+            value: string;
+            consent_accepted: boolean;
+            step_up?: components["schemas"]["PasskeyStepUpAssertion"];
         };
         UserPage: {
             items: components["schemas"]["UserSummary"][];
@@ -32129,6 +33009,8 @@ export interface components {
             kind_code?: string | null;
             /** @description The workplace code (unique among open workplaces), when set. */
             code?: string | null;
+            /** @description Appointed workplace head when set. */
+            head?: components["schemas"]["OrgUnitHeadRef"] | null;
             is_primary: boolean;
             is_head_office: boolean;
             needs_confirmation: boolean;
@@ -32380,6 +33262,8 @@ export interface components {
             change_mode: components["schemas"]["EntityChangeMode"];
         };
         WorkspaceResponse: {
+            /** @description On reads, whether the tenant currently requires Classic regardless of personal preferences. */
+            legacy_kill_switch_enabled?: boolean;
             /** @description Opaque, frontend-owned console layout object. Stored and returned verbatim; empty default is `{}`. */
             layout: {
                 [key: string]: unknown;
@@ -33438,6 +34322,62 @@ export interface operations {
             404: components["responses"]["NotFound"];
             422: components["responses"]["ValidationError"];
             503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    createPlatformGroupInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePlatformGroupInvitationRequest"];
+            };
+        };
+        responses: {
+            /** @description Pending 7-day group join invitation created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformGroupJoinInvitation"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    cancelPlatformGroupInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["Uuid"];
+                invitation_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Pending group join invitation cancelled. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     assignPlatformOrgToGroup: {
@@ -35209,6 +36149,76 @@ export interface operations {
             409: components["responses"]["Conflict"];
         };
     };
+    createAccessInvite: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAccessInviteRequest"];
+            };
+        };
+        responses: {
+            /** @description Idempotent replay of a previously committed invite (otp is null on replay). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateAccessInviteResponse"];
+                };
+            };
+            /** @description Newly created account, applied grants, and one-time sign-in code. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateAccessInviteResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            428: components["responses"]["PreconditionRequired"];
+        };
+    };
+    previewAccessInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreviewAccessInviteRequest"];
+            };
+        };
+        responses: {
+            /** @description Dry-run preview outcome. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreviewAccessInviteResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+        };
+    };
     getMyEffectiveAccess: {
         parameters: {
             query?: never;
@@ -35276,6 +36286,64 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+        };
+    };
+    designateOpsAccountHolder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DesignateOpsHolderRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated ops account holders summary. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpsAccount"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            428: components["responses"]["PreconditionRequired"];
+        };
+    };
+    releaseSelfOpsAccountHolder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReleaseOpsHolderRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated ops account holders summary. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpsAccount"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            428: components["responses"]["PreconditionRequired"];
         };
     };
     getAccessPerson: {
@@ -35412,6 +36480,191 @@ export interface operations {
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
+        };
+    };
+    listAccessReviews: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Periodic access review cycles. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessReviewSummary"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    getAccessReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                period: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Periodic access review detail. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessReviewDetail"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    completeAccessReview: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                period: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    step_up?: components["schemas"]["PasskeyLoginFinishRequest"];
+                };
+            };
+        };
+        responses: {
+            /** @description Completed quarterly access review detail. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessReviewDetail"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            /** @description passkey_step_up_required — passkey step-up assertion required to sign off. */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    recordAccessReviewDecision: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                period: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccessReviewDecisionInput"];
+            };
+        };
+        responses: {
+            /** @description Updated quarterly access review detail. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessReviewDetail"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    exportAccessReviewCsv: {
+        parameters: {
+            query?: {
+                export_purpose?: string;
+            };
+            header?: never;
+            path: {
+                period: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description CSV export of the quarterly access review cycle. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    startAccessReview: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                period: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Started or existing quarterly access review detail. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessReviewDetail"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["ValidationError"];
+            503: components["responses"]["ServiceUnavailable"];
         };
     };
     listAccessRoles: {
@@ -37157,6 +38410,30 @@ export interface operations {
             422: components["responses"]["ValidationError"];
         };
     };
+    getAuditStreamAvailability: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current read permissions for this principal and tenant. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        events: boolean;
+                        access_events: boolean;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
     listCeoCovertAuditAccessEvents: {
         parameters: {
             query?: {
@@ -37524,6 +38801,134 @@ export interface operations {
             };
         };
     };
+    startRecoveryChallenge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecoveryChallengeRequest"];
+            };
+        };
+        responses: {
+            /** @description Uniform dispatch acknowledgement. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryChallengeResponse"];
+                };
+            };
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    generateRecoveryCodes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerateRecoveryCodesRequest"];
+            };
+        };
+        responses: {
+            /** @description Newly issued 10 single-use recovery codes (shown once). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GenerateRecoveryCodesResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            428: components["responses"]["PreconditionRequired"];
+        };
+    };
+    upsertRecoveryContact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertRecoveryContactRequest"];
+            };
+        };
+        responses: {
+            /** @description Masked recovery contact status. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryContactStatus"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationError"];
+            428: components["responses"]["PreconditionRequired"];
+        };
+    };
+    redeemRecoveryCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecoveryRedeemRequest"];
+            };
+        };
+        responses: {
+            /** @description Enrollment session token pair. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryRedeemResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getRecoveryStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Recovery contact and single-use recovery code status. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryStatusResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
     listBenefitCatalogItems: {
         parameters: {
             query?: {
@@ -37632,6 +39037,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
         };
     };
@@ -37662,6 +39068,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
         };
     };
@@ -37692,6 +39099,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
         };
     };
@@ -38398,6 +39806,8 @@ export interface operations {
     listChangeRequests: {
         parameters: {
             query?: {
+                /** @description Select one visible request by ID. A missing or inaccessible request returns an empty page. */
+                id?: string;
                 /** @description me = named to the caller; role = open to any HR person. */
                 assignee?: "me" | "role";
                 /** @description me = only the requests the caller filed ("waiting"). */
@@ -38856,6 +40266,8 @@ export interface operations {
             query?: {
                 from?: components["schemas"]["Timestamp"];
                 to?: components["schemas"]["Timestamp"];
+                /** @description Opaque continuation returned by the preceding page for this range. */
+                cursor?: string;
                 limit?: number;
             };
             header?: never;
@@ -38991,7 +40403,10 @@ export interface operations {
     linkComplianceControlObligation: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Reuse this key for a retry of the same catalog command. */
+                "Idempotency-Key"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -39012,6 +40427,15 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            /** @description A previous command with this key was already applied or is processing. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
             422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalServerError"];
             503: components["responses"]["ServiceUnavailable"];
@@ -39052,7 +40476,10 @@ export interface operations {
     createComplianceEvidenceBinding: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Reuse this key for a retry of the same evidence command. */
+                "Idempotency-Key"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -39073,6 +40500,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalServerError"];
             503: components["responses"]["ServiceUnavailable"];
@@ -39081,7 +40509,10 @@ export interface operations {
     acceptComplianceEvidenceBinding: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Reuse this key for a retry of the same evidence command. */
+                "Idempotency-Key"?: string;
+            };
             path: {
                 id: components["schemas"]["Uuid"];
             };
@@ -39141,7 +40572,10 @@ export interface operations {
     createComplianceFrameworkControl: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Reuse this key for a retry of the same catalog command. */
+                "Idempotency-Key"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -39162,6 +40596,15 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            /** @description A previous command with this key was already applied or is processing. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
             422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalServerError"];
             503: components["responses"]["ServiceUnavailable"];
@@ -39201,7 +40644,10 @@ export interface operations {
     createComplianceFramework: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Reuse this key for a retry of the same catalog command. */
+                "Idempotency-Key"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -39222,6 +40668,15 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            /** @description A previous command with this key was already applied or is processing. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
             422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalServerError"];
             503: components["responses"]["ServiceUnavailable"];
@@ -39230,7 +40685,10 @@ export interface operations {
     linkComplianceObligationRegulation: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Reuse this key for a retry of the same catalog command. */
+                "Idempotency-Key"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -39251,6 +40709,15 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            /** @description A previous command with this key was already applied or is processing. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
             422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalServerError"];
             503: components["responses"]["ServiceUnavailable"];
@@ -39293,7 +40760,10 @@ export interface operations {
     createComplianceObligation: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Reuse this key for a retry of the same catalog command. */
+                "Idempotency-Key"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -39314,6 +40784,15 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            /** @description A previous command with this key was already applied or is processing. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
             422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalServerError"];
             503: components["responses"]["ServiceUnavailable"];
@@ -39353,7 +40832,10 @@ export interface operations {
     createComplianceRegulation: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Reuse this key for a retry of the same catalog command. */
+                "Idempotency-Key"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -39374,6 +40856,15 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            /** @description A previous command with this key was already applied or is processing. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
             422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalServerError"];
             503: components["responses"]["ServiceUnavailable"];
@@ -39846,6 +41337,46 @@ export interface operations {
                 };
             };
             409: components["responses"]["Conflict"];
+        };
+    };
+    listConsultingOptions: {
+        parameters: {
+            query: {
+                kind: "CUSTOMER" | "DOCUMENT" | "ONTOLOGY_INSTANCE" | "KPI_DEFINITION" | "EVIDENCE" | "APPROVAL";
+                q?: string;
+                /** @description Required for approval choices. */
+                engagementId?: components["schemas"]["Uuid"];
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Eligible tenant-scoped choices in stable order */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultingOptionPage"];
+                };
+            };
+            /** @description Consulting or registry access refused */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid offset or missing engagement */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     createCustomer: {
@@ -40351,6 +41882,10 @@ export interface operations {
                 company?: string;
                 /** @description Case-insensitive name or employee-number typeahead query. */
                 search?: string;
+                /** @description Select employees with a register gap, an identity review, or a missing employment type. */
+                team_review_required?: boolean;
+                /** @description Inclusive lower bound for the current contract end date. */
+                contract_ending_on_or_after?: string;
                 /** @description Only records with missing statutory register facts. */
                 register_review_required?: boolean;
                 /** @description Filter to employees whose active authoritative home branch is missing/inactive (true) or usable (false). */
@@ -40606,6 +42141,10 @@ export interface operations {
                 company?: string;
                 /** @description Case-insensitive name or employee-number typeahead query. */
                 search?: string;
+                /** @description Select employees with a register gap, an identity review, or a missing employment type. */
+                team_review_required?: boolean;
+                /** @description Inclusive lower bound for the current contract end date. */
+                contract_ending_on_or_after?: string;
                 /** @description Only records with missing statutory register facts. */
                 register_review_required?: boolean;
                 /** @description Filter to employees whose active authoritative home branch is missing/inactive (true) or usable (false). */
@@ -40659,6 +42198,10 @@ export interface operations {
                 company?: string;
                 /** @description Case-insensitive name or employee-number typeahead query. */
                 search?: string;
+                /** @description Select employees with a register gap, an identity review, or a missing employment type. */
+                team_review_required?: boolean;
+                /** @description Inclusive lower bound for the current contract end date. */
+                contract_ending_on_or_after?: string;
                 /** @description Only records with missing statutory register facts. */
                 register_review_required?: boolean;
                 /** @description Filter to employees whose active authoritative home branch is missing/inactive (true) or usable (false). */
@@ -44993,6 +46536,7 @@ export interface operations {
     listEvaluationCycles: {
         parameters: {
             query?: {
+                /** @description Omit to list active cycles. Select ARCHIVED for archived cycles. Rows are ordered by creation time and then cycle ID, newest first. */
                 stage?: components["schemas"]["EvaluationCycleStage"];
                 /** @description Normalized to the inclusive range 1 through 100; defaults to 50. */
                 limit?: number;
@@ -45023,7 +46567,10 @@ export interface operations {
     createEvaluationCycle: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Reuse this key for the same create intent. */
+                "Idempotency-Key"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -45044,6 +46591,15 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            /** @description A previous command with this key was already applied or is processing. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
             422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalServerError"];
             503: components["responses"]["ServiceUnavailable"];
@@ -50803,6 +52359,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
             /** @description JWT verification is not configured. */
             503: {
@@ -53025,6 +54582,30 @@ export interface operations {
             };
         };
     };
+    listMyCommandOutcomes: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated personal command outcomes for the authenticated caller */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyCommandOutcomePage"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
     listMyTodos: {
         parameters: {
             query?: {
@@ -54319,7 +55900,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                step: "org" | "employees" | "roles";
+                step: "org" | "employees" | "roles" | "overtime";
             };
             cookie?: never;
         };
@@ -56658,6 +58239,112 @@ export interface operations {
             422: components["responses"]["ValidationError"];
         };
     };
+    searchPayGroupMembers: {
+        parameters: {
+            query: {
+                pay_group_id: string;
+                effective_from: string;
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Up to 30 matching employees in the group’s legal entity on that date. Both their source group and destination must be manageable. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        employee_id: string;
+                        name: string;
+                        employee_number: string | null;
+                        /** Format: uuid */
+                        current_pay_group_id: string | null;
+                    }[];
+                };
+            };
+            /** @description Invalid query fields. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Empty or overlong search. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    assignPayGroupMember: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    pay_group_id: string;
+                    /** Format: uuid */
+                    employee_id: string;
+                    /** Format: date */
+                    effective_from: string;
+                    /** Format: uuid */
+                    expected_pay_group_id: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Membership committed or already in this group on that date. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * Format: uuid
+                         * @description Destination pay group.
+                         */
+                        id: string;
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Membership changed since selection or the change overlaps a closed run or active payroll freeze. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Invalid employee or date for this group. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     listPayGroups: {
         parameters: {
             query?: never;
@@ -56926,12 +58613,14 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description pay_group_roster_ambiguous when the group's legal entity has more than one pay group, so its members are not known. */
+            /** @description pay_group_roster_ambiguous when the group's legal entity has more than one pay group, and its members are not known. Assign outstanding employees from pay group setup, then retry. */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
             };
             /** @description run_kind_unsupported for non-REGULAR kinds; validation for missing group or invalid kind. */
             422: {
@@ -57326,6 +59015,7 @@ export interface operations {
             query?: {
                 active?: boolean;
                 domain?: "payroll" | "accounting";
+                payGroupId?: string;
                 limit?: number;
             };
             header?: never;
@@ -60745,6 +62435,67 @@ export interface operations {
             503: components["responses"]["ServiceUnavailable"];
         };
     };
+    listOvertimeRuleAttestations: {
+        parameters: {
+            query?: {
+                scope_entity_id?: components["schemas"]["Uuid"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Recorded overtime rule confirmations */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Whether the caller may record a work-rule confirmation for the requested scope. */
+                        can_record: boolean;
+                        items: components["schemas"]["OvertimeRuleAttestation"][];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    recordOvertimeRuleAttestation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateOvertimeAttestationRequest"];
+            };
+        };
+        responses: {
+            /** @description Overtime rule confirmation recorded */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OvertimeRuleAttestation"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Validation refusal */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     changeSetting: {
         parameters: {
             query?: {
@@ -62226,6 +63977,7 @@ export interface operations {
             content: {
                 "application/json": {
                     slug: string;
+                    expected_pending_domain?: string | null;
                 };
             };
         };
@@ -62241,6 +63993,13 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            /** @description Pending request changed concurrently or slug already taken */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Invalid requested company domain */
             422: {
                 headers: {
@@ -62248,6 +64007,104 @@ export interface operations {
                 };
                 content?: never;
             };
+        };
+    };
+    cancelCompanyDomainRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Pending request cancelled */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyDomainRequestState"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    listTenantGroupInvitations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Pending non-expired group join invitations for the caller's organization. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantGroupInvitationListResponse"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    acceptTenantGroupInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invitation_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptTenantGroupInvitationRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated tenant organization summary after joining the group. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformOrg"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    declineTenantGroupInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invitation_id: components["schemas"]["Uuid"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Pending group join invitation declined. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     readTenantOpsRecovery: {
@@ -64819,6 +66676,72 @@ export interface operations {
             };
             /** @description Not found in this tenant. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    setWorkplaceHead: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A UUID per user intent. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                workplaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetWorkplaceHeadRequest"];
+            };
+        };
+        responses: {
+            /** @description Workplace head updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedWorkplace"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            /** @description Not permitted. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not found in this tenant. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Refused with a stable code (workplace_voided). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Field issues: errors[{field, code}] (head_employee_id: head_unavailable). */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

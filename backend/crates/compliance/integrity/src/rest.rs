@@ -81,7 +81,7 @@ async fn list_findings(
     Query(query): Query<FindingsQuery>,
 ) -> Result<impl IntoResponse, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
-    authorize_integrity_read(&principal)?;
+    authorize_integrity_read(&principal).map_err(RestError::from_kernel)?;
 
     let findings = state
         .store
@@ -106,7 +106,7 @@ async fn triage_finding(
     Json(body): Json<TriageRequest>,
 ) -> Result<impl IntoResponse, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
-    authorize_integrity_triage(&principal)?;
+    authorize_integrity_triage(&principal).map_err(RestError::from_kernel)?;
 
     let new_status = parse_triage_target(&body.status)?;
     validate_triage_memo(new_status, &body.memo).map_err(RestError::from_kernel)?;
@@ -148,14 +148,12 @@ fn parse_triage_target(raw: &str) -> Result<TriageTarget, RestError> {
 /// capability decisions. NOT `authorize_org_wide`: both features are
 /// `[D,D,D,D,A,A]` (EXECUTIVE + SUPER_ADMIN), and a branch-scoped EXECUTIVE holds
 /// them today — org-wide routing would newly deny that principal.
-fn authorize_integrity_read(principal: &Principal) -> Result<(), RestError> {
+pub fn authorize_integrity_read(principal: &Principal) -> Result<(), KernelError> {
     authorize_capability(principal, Action::new(Feature::IntegrityFindingsRead))
-        .map_err(RestError::from_kernel)
 }
 
-fn authorize_integrity_triage(principal: &Principal) -> Result<(), RestError> {
+pub fn authorize_integrity_triage(principal: &Principal) -> Result<(), KernelError> {
     authorize_capability(principal, Action::new(Feature::IntegrityFindingTriage))
-        .map_err(RestError::from_kernel)
 }
 
 // ---------------------------------------------------------------------------

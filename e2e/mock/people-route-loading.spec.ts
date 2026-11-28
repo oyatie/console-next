@@ -7,7 +7,8 @@ import { mockRoute } from "./route";
 import { routeReady } from "../flows";
 import { lifecycleSheetScreens } from "../states/lifecycle-sheets";
 import { mockScreen } from "./screen";
-import { authz } from "./fixtures";
+import { authz, facets } from "./fixtures";
+import { screens } from "../states/registry";
 import { moveDetail } from "./lifecycle-sheets";
 
 test.beforeAll(() => loadCatalog("ko"));
@@ -116,6 +117,51 @@ test("the employee and placement reads overlap the record chunk and are shared o
     expect(fixture.unexpected).toEqual([]);
   } finally {
     held.resolve();
+    await page.close();
+    fixture.release();
+  }
+});
+
+test("an earlier employee number resolves in the directory before its personnel card is opened", async ({ page }) => {
+  const fixture = await mockScreen(page, screens[1], "large");
+  const current = { ...moveDetail.employee, status: "EXITED" as const };
+  const former = "ALIAS-108";
+  const detailReads: string[] = [];
+  const requestedIds: string[] = [];
+  await mockRoute(page, "get", "/api/v1/employees/{id}", request => {
+    detailReads.push(new URL(request.url()).pathname);
+    return { status: 200, json: { ...moveDetail, employee: current } };
+  });
+  await mockRoute(page, "get", "/api/v1/employees/facets", { status: 200, json: facets(1) });
+  await mockRoute(page, "get", "/api/v1/employees/by-number/{number}", { status: 200, json: { employee_id: current.id, employee_number: current.employee_number, matched_by: "alias" } });
+  await mockRoute(page, "get", "/api/v1/employees", request => {
+    const params = new URL(request.url()).searchParams;
+    const ids = params.getAll("ids");
+    if (ids.length) requestedIds.push(...ids);
+    const items = params.has("search") ? [] : [current];
+    return { status: 200, json: { items, total: items.length, offset: 0, limit: 100, next_cursor: null } };
+  });
+  try {
+    await page.goto("/people");
+    await expect(page.getByRole("grid", { name: t("people.table"), exact: true })).toBeVisible();
+    await page.keyboard.press("ControlOrMeta+k");
+    const palette = page.getByRole("dialog", { name: t("peopleJump.label"), exact: true });
+    const search = palette.getByRole("searchbox");
+    await search.fill(former);
+    await expect(palette.getByRole("option").filter({ hasText: former }).first()).toContainText(current.name);
+    expect(detailReads).toEqual([]);
+    expect(requestedIds).toEqual([current.id]);
+    await page.keyboard.press("Escape");
+    await expect(palette).toBeHidden();
+    await page.keyboard.press("ControlOrMeta+k");
+    await search.fill(former);
+    const match = palette.getByRole("option").filter({ hasText: former }).first();
+    await expect(match).toContainText(current.name);
+    expect(detailReads).toEqual([]);
+    await match.click();
+    await expect(page).toHaveURL(new RegExp(`/people/${current.id}$`));
+    await expect.poll(() => detailReads).toEqual([`/api/v1/employees/${current.id}`]);
+  } finally {
     await page.close();
     fixture.release();
   }

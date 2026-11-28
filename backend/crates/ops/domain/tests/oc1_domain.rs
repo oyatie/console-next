@@ -138,6 +138,25 @@ fn oncall_validation_matches_config_bundle_rules() -> TestResult {
     assert!(validate_oncall_json(&pb.to_string(), Some(&[uuid1, uuid2])).is_ok());
     assert!(validate_oncall_json(&pb.to_string(), Some(&[uuid1])).is_err());
 
+    let mut ny = base_oncall();
+    ny["timezone"] = json!("America/New_York");
+    ny["rotation"]["handoff_weekday"] = json!("Sun");
+    ny["rotation"]["handoff_hour_local"] = json!(2);
+    let cfg = validate_oncall_json(&ny.to_string(), None)?;
+    let after_jump = time::macros::datetime!(2026-03-08 7:00 UTC);
+    let before = cfg
+        .active_shift(after_jump - time::Duration::seconds(1))
+        .ok_or("missing shift")?;
+    let after = cfg.active_shift(after_jump).ok_or("missing shift")?;
+    assert_eq!(before.shift_until, after_jump);
+    assert_eq!(after.shift_from, after_jump);
+    assert_eq!(
+        after.shift_until,
+        time::macros::datetime!(2026-03-15 6:00 UTC)
+    );
+    ny["timezone"] = json!("Invalid/zone");
+    assert!(validate_oncall_json(&ny.to_string(), None).is_err());
+
     let with_at = base_oncall()
         .to_string()
         .replace("Asia/Seoul", "ops@example");

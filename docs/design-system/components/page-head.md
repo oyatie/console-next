@@ -131,10 +131,12 @@ At `--phone` (`<= 767px`), `.secondary` buttons in `PageHeadActions` collapse in
 | --- | --- |
 | `--border` | `border-bottom` |
 | `--control-border` | `border` |
+| `--control-h` | `min-height` |
 | `--faint` | `color` |
 | `--fw-medium` | `font-weight` |
 | `--fw-strong` | `font-weight` |
 | `--ink` | `color` |
+| `--lh-tight` | `line-height` |
 | `--ok-solid` | `background` |
 | `--primary` | `background` |
 | `--radius` | `border-radius` |

@@ -4,7 +4,7 @@ import { t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
 import { Button } from "../../ui/button/button";
 import { announce } from "./announce";
-import css from "../../ui/receipt/receipt.module.css";
+import css from "../../ui/receipt/receipt-meta.module.css";
 
 /** A request id has no embedded timestamp. Only display the server's recorded time. */
 export function SupportReference({ reference, at, compact = true }: { reference?: string | null; at?: string; compact?: boolean }) {

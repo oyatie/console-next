@@ -17,6 +17,7 @@ pub(crate) fn group_from_row(
         updated_at: row.try_get("updated_at")?,
         member_count: row.try_get("member_count")?,
         members,
+        pending_invitations: Vec::new(),
     })
 }
 

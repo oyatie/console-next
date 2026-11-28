@@ -21,6 +21,17 @@ export function AccessNavTabs({ failed = false }: { failed?: boolean }) {
   const phase = !me.error ? me.data?.phase : undefined;
   const isFailed = failed || !!(me.error || roles.error || grants.error);
   const opsAccount = !ops.error ? ops.data?.account_id : undefined;
+  const canEditPolicy = Boolean(
+    me.data &&
+      (me.data.is_ops ||
+        me.data.entries?.some(
+          (e) =>
+            e.domain === "access" &&
+            e.level === "edit" &&
+            e.scope.kind === "TENANT" &&
+            e.enforcement === "ENFORCED",
+        )),
+  );
   return (
     <TabNav label={t("access.nav")} overflow="scroll">
       {/* Held empty until the count lands, so the tabs never move under a pointer. */}
@@ -28,6 +39,8 @@ export function AccessNavTabs({ failed = false }: { failed?: boolean }) {
       <Link to="/access/grants" className={tabClass} aria-current={!(ops.isPending && ops.failureCount === 0) && path.startsWith("/access/people/") && path !== `/access/people/${ops.data?.account_id}` ? "page" : undefined}>{t("access.nav.grants")}<TabCount>{isFailed ? undefined : grants.data?.items.length}</TabCount></Link>
       <Link to={phase === "OPERATING" ? "/access/review" : "/access/ready"} className={tabClass}>{t(phase === "OPERATING" ? "access.nav.review" : "access.nav.ready")}</Link>
       {opsAccount && <Link to="/access/people/$accountId" params={{ accountId: opsAccount }} className={tabClass}>{t("access.nav.ops")}</Link>}
+      {canEditPolicy && <Link to="/access/policies" className={tabClass}>{t("access.nav.policies")}</Link>}
+      {canEditPolicy && <Link to="/access/check" className={tabClass}>{t("access.nav.check")}</Link>}
     </TabNav>
   );
 }

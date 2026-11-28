@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags:
+- auth
+operationId: startRecoveryChallenge
+summary: Send a verification code to an ops holder recovery contact
+description: Pre-authentication anti-enumeration endpoint that dispatches a short-lived verification code when the identifier resolves to an active ops holder with a registered recovery contact and remaining recovery codes.
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/RecoveryChallengeRequest'
+responses:
+  '200':
+    description: Uniform dispatch acknowledgement.
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/RecoveryChallengeResponse'
+  '429':
+    $ref: '#/components/responses/TooManyRequests'

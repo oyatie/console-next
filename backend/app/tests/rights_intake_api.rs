@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#[path = "../../test-support/person_fixtures.rs"]
+mod person_fixtures;
 mod rights_intake_support;
 mod settings_support;
 use console_app::build_router;
@@ -15,6 +17,7 @@ use uuid::Uuid;
 async fn assert_intake(pool: PgPool) {
     let org = OrgId::new();
     let subject = seed_org_and_super_admin(&pool, *org.as_uuid(), "rights-intake").await;
+    let (employee, _) = person_fixtures::bind_user_to_distinct_person(&pool, subject).await;
     let (handler, grant) = rights_intake_support::hr_handler(&pool, org, subject).await;
     sqlx::query("UPDATE statutory_rules SET value_num=17 WHERE code='PIPA_ACCESS_RESPONSE_DAYS'")
         .execute(&pool)
@@ -26,8 +29,6 @@ async fn assert_intake(pool: PgPool) {
         .await
         .unwrap();
     let mut tx = rights::begin(&rt, org).await.unwrap();
-    let employee: Uuid = sqlx::query_scalar("INSERT INTO employees(org_id,company,name,source_filename,source_sheet,source_row,source_key) VALUES($1,'Privacy','Subject','privacy.xlsx','People',1,'subject') RETURNING id")
-        .bind(org.as_uuid()).fetch_one(&pool).await.unwrap();
     let input =
         serde_json::from_value(json!({"controller":"TENANT","kinds":["ACCESS"],"detail":""}))
             .unwrap();
@@ -141,6 +142,7 @@ async fn assert_intake(pool: PgPool) {
     tx.commit().await.unwrap();
     let entity = seed_legal_entity(&pool, *org.as_uuid(), subject).await;
     let scoped_handler = seed_user(&pool, *org.as_uuid(), "MEMBER").await;
+    person_fixtures::bind_user_to_distinct_person(&pool, scoped_handler).await;
     sqlx::query("INSERT INTO access_grants(org_id,id,account_id,role_id,scope_kind,legal_entity_id,valid_from,effective_in_setup,change_mode,reason_code,granted_by) SELECT org_id,gen_random_uuid(),$2,role_id,'LEGAL_ENTITY',$3,valid_from,true,'SETUP','TEST',granted_by FROM access_grants WHERE id=$1")
         .bind(grant).bind(scoped_handler.as_uuid()).bind(entity).execute(&pool).await.unwrap();
     let scoped_token = token(&pool, &keys, *org.as_uuid(), scoped_handler, "MEMBER").await;

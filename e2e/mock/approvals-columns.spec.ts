@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { expectAxe, fits } from "../a11y";
+import { seededDateStyle, seededExperience } from "../experience";
 import { failure } from "./fixtures";
 import { mockScreen } from "./screen";
 import { screens } from "../states/registry";
@@ -38,7 +39,7 @@ async function mock(page: Page, document: (id: string) => { status: number; json
   return Object.assign(screen, { reads });
 }
 
-for (const theme of ["light", "dark"]) test(`the document opens beside the list, follows J/K and survives a reload (${theme})`, async ({ page }, info) => {
+for (const theme of ["light", "dark"]) test(`the document opens beside the list, follows J/K and survives a reload (${theme})`, async ({ page, storageState }, info) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.addInitScript(value => localStorage.setItem("console.theme", value), theme);
   const screen = await mock(page);
@@ -53,7 +54,11 @@ for (const theme of ["light", "dark"]) test(`the document opens beside the list,
   expect((await chain.boundingBox())!.y).toBeLessThan((await body.boundingBox())!.y);
   await expect(row(1)).toBeVisible();
   // A row says when its document takes effect, beside the title; a document with no date says nothing.
-  await expect(row(1)).toContainText(`조직 개편안 1 · ${t("approvals.row.effective", { date: fmtDate("2026-11-20") })}`);
+  if (seededExperience(storageState) === "baseline") {
+    await expect(row(1)).toContainText(`조직 개편안 1 · ${t("approvals.row.effective", { date: fmtDate("2026-11-20", { style: seededDateStyle(storageState) }) })}`);
+  } else {
+    await expect(row(1)).toContainText(fmtDate("2026-11-20", { style: seededDateStyle(storageState) }));
+  }
   await expect(row(2).getByText(t("approvals.row.effective", { date: "" }).trim())).toHaveCount(0);
   await expectAxe(page, `approval document column ${theme}`);
   await page.screenshot({ path: info.outputPath(`approvals-column-1440-${theme}.png`), fullPage: true });

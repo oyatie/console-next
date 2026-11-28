@@ -481,49 +481,49 @@
     },
     {
       "operation": "POST /api/v1/compliance/control-obligation-coverage",
-      "rust_file": "backend/crates/compliance/rest/src/lib.rs",
+      "rust_file": "backend/crates/compliance/rest/src/catalog.rs",
       "handler": "link_control_obligation",
       "body_type": "LinkControlObligationRequest",
       "reason": "rust_struct_not_strict"
     },
     {
       "operation": "POST /api/v1/compliance/evidence-bindings",
-      "rust_file": "backend/crates/compliance/rest/src/lib.rs",
+      "rust_file": "backend/crates/compliance/rest/src/catalog.rs",
       "handler": "create_evidence_binding",
       "body_type": "CreateEvidenceBindingRequest",
       "reason": "rust_struct_not_strict"
     },
     {
       "operation": "POST /api/v1/compliance/framework-controls",
-      "rust_file": "backend/crates/compliance/rest/src/lib.rs",
+      "rust_file": "backend/crates/compliance/rest/src/catalog.rs",
       "handler": "create_framework_control",
       "body_type": "CreateControlRequest",
       "reason": "rust_struct_not_strict"
     },
     {
       "operation": "POST /api/v1/compliance/frameworks",
-      "rust_file": "backend/crates/compliance/rest/src/lib.rs",
+      "rust_file": "backend/crates/compliance/rest/src/catalog.rs",
       "handler": "create_framework",
       "body_type": "CreateFrameworkRequest",
       "reason": "rust_struct_not_strict"
     },
     {
       "operation": "POST /api/v1/compliance/obligation-regulation-links",
-      "rust_file": "backend/crates/compliance/rest/src/lib.rs",
+      "rust_file": "backend/crates/compliance/rest/src/catalog.rs",
       "handler": "link_obligation_regulation",
       "body_type": "LinkObligationRegulationRequest",
       "reason": "rust_struct_not_strict"
     },
     {
       "operation": "POST /api/v1/compliance/obligations",
-      "rust_file": "backend/crates/compliance/rest/src/lib.rs",
+      "rust_file": "backend/crates/compliance/rest/src/catalog.rs",
       "handler": "create_obligation",
       "body_type": "CreateObligationRequest",
       "reason": "rust_struct_not_strict"
     },
     {
       "operation": "POST /api/v1/compliance/regulations",
-      "rust_file": "backend/crates/compliance/rest/src/lib.rs",
+      "rust_file": "backend/crates/compliance/rest/src/catalog.rs",
       "handler": "create_regulation",
       "body_type": "CreateRegulationRequest",
       "reason": "rust_struct_not_strict"
@@ -584,7 +584,7 @@
       "body_type": "EmployeeImportApplyRequest",
       "body_struct_file": "backend/crates/hr/adapter-postgres/src/import/types.rs",
       "body_struct": "EmployeeImportApplyRequest",
-      "schema_sha256": "71196da268d3f92de282318edef8ca2da1b26592c7ec74530aa15ee5c83e6a70",
+      "schema_sha256": "de0be9e81065aee20d1796baab1d210750d1457877eefa79768faa05512b8b42",
       "status": "resolved"
     },
     {
@@ -1045,17 +1045,17 @@
     },
     {
       "operation": "POST /api/v1/lifecycles/{objectType}/{objectId}/hold",
-      "rust_file": "backend/app/src/lifecycle.rs",
+      "rust_file": "backend/app/src/lifecycle/record_routes.rs",
       "handler": "set_lifecycle_hold",
       "body_type": "SetLifecycleHoldRequest",
       "body_struct_file": "backend/app/src/lifecycle_bodies.rs",
       "body_struct": "SetLifecycleHoldRequest",
-      "schema_sha256": "0745dd31aa03e0f278f024dab3ae2fd83c9e96f18f6ef75dbbc5aa373d383788",
+      "schema_sha256": "85273251befcae56295022eba0144222c1fb3e99ab8d0dd88201b62a7b7986b7",
       "status": "resolved"
     },
     {
       "operation": "POST /api/v1/lifecycles/{objectType}/{objectId}/transition",
-      "rust_file": "backend/app/src/lifecycle.rs",
+      "rust_file": "backend/app/src/lifecycle/record_routes.rs",
       "handler": "transition_lifecycle",
       "body_type": "TransitionLifecycleRequest",
       "body_struct_file": "backend/app/src/lifecycle_bodies.rs",

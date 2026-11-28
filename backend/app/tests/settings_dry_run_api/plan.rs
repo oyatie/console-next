@@ -90,7 +90,7 @@ async fn preview_explains_default_inherited_and_own_values_and_reach_at_effectiv
     let (org, service, token) = fixture(&pool).await;
     let preview_path = format!("{PATH}?dry_run=true");
     let change = |value, scope| json!({"value": value, "scope_entity_id": scope, "reason_code": "POLICY_REVIEW"});
-    let (_, plan) = send(
+    let (status, plan) = send(
         &service,
         "POST",
         &preview_path,
@@ -98,13 +98,20 @@ async fn preview_explains_default_inherited_and_own_values_and_reach_at_effectiv
         Some(change(20, None::<Uuid>)),
     )
     .await;
+    assert_eq!(status, StatusCode::OK, "{plan}");
     assert_eq!(
         plan["in_force"],
         json!({"value": 30, "version": "code_default", "scope_entity_id": null})
     );
     assert_eq!(
         plan["reaches"],
-        json!({"scope_entity_id": null, "keeps_own_value": []})
+        json!({
+            "scope_entity_id": null,
+            "keeps_own_value": [],
+            "affected_people_count": 0,
+            "out_of_scope_people_count": 0,
+            "disfavored_people_count": 0
+        })
     );
     let granter = seed_user(&pool, org, "SUPER_ADMIN").await;
     let a = seed_legal_entity(&pool, org, granter).await;
@@ -152,7 +159,13 @@ async fn preview_explains_default_inherited_and_own_values_and_reach_at_effectiv
         );
         assert_eq!(
             plan["reaches"],
-            json!({"scope_entity_id": scope, "keeps_own_value": if scope.is_none() { vec![a] } else { vec![] }})
+            json!({
+                "scope_entity_id": scope,
+                "keeps_own_value": if scope.is_none() { vec![a] } else { vec![] },
+                "affected_people_count": 0,
+                "out_of_scope_people_count": 0,
+                "disfavored_people_count": 0
+            })
         );
         assert_eq!(counts(&pool, org).await, before);
     }

@@ -1,0 +1,21 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
+export const enAuth = {
+  "auth.recovery.sendChallenge": "Send verification code",
+  "auth.recovery.challengeSent": "If an ops account holder recovery contact is registered for this ID, a verification code has been sent.",
+  "auth.recovery.code": "Saved recovery code",
+  "auth.recovery.contactCode": "Verification code sent to recovery contact",
+  "auth.recovery.submit": "Sign in with recovery code",
+  "auth.setup.recovery.title": "Ops account recovery credentials",
+  "auth.setup.recovery.replacePhone": "Register an email address to receive recovery codes for this account.",
+  "auth.setup.recovery.channel.EMAIL": "Email",
+  "auth.setup.recovery.consent": "[Required] Confirm collection and use of recovery contact for account recovery",
+  "auth.setup.recovery.consentBody": "Used only to send verification and recovery codes for ops account holder authentication; retained while holder status remains active.",
+  "auth.setup.recovery.reviewPending": "Pending review",
+  "auth.setup.recovery.saveAndIssue": "Save contact and issue 10 recovery codes",
+  "auth.setup.recovery.codesTitle": "Save your 10 single-use recovery codes",
+  "auth.setup.recovery.codesOnce": "Each code works once and is never shown again after closing this window.",
+  "auth.setup.recovery.copyAll": "Copy all codes",
+  "auth.setup.recovery.copiedAll": "Copied all recovery codes",
+  "auth.setup.recovery.savedAck": "I saved these codes safely",
+  "auth.setup.recovery.ready": "Recovery contact ({masked}) · {remaining, number} of {total, number} recovery codes available",
+} as const;

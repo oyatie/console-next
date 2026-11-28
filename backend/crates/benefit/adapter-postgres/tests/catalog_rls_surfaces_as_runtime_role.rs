@@ -188,6 +188,7 @@ async fn benefit_catalog_writes_are_rls_scoped_audited_and_retire_children_as_ru
     let updated = scope_org(org_a, async {
         store
             .update_item(UpdateBenefitCatalogItemCommand {
+                expected_updated_at: None,
                 actor: actor_a,
                 branch_scope: BranchScope::All,
                 item_id,
@@ -207,6 +208,7 @@ async fn benefit_catalog_writes_are_rls_scoped_audited_and_retire_children_as_ru
     let replaced_tiers = scope_org(org_a, async {
         store
             .replace_tiers(ReplaceBenefitTiersCommand {
+                expected_updated_at: None,
                 actor: actor_a,
                 branch_scope: BranchScope::All,
                 item_id,
@@ -223,6 +225,7 @@ async fn benefit_catalog_writes_are_rls_scoped_audited_and_retire_children_as_ru
     let replaced_conditions = scope_org(org_a, async {
         store
             .replace_conditions(ReplaceBenefitConditionsCommand {
+                expected_updated_at: None,
                 actor: actor_a,
                 branch_scope: BranchScope::All,
                 item_id,

@@ -7,6 +7,7 @@
 mod catalog;
 mod error;
 mod handlers;
+mod review_handlers;
 
 use axum::Router;
 use axum::routing::{get, post};
@@ -32,10 +33,20 @@ pub const ACCESS_GRANT_NOTICE_PATH: &str = "/api/v1/access/grants/{grantId}/noti
 pub const ACCESS_ACCOUNT_EFFECTIVE_PATH: &str = "/api/v1/access/accounts/{accountId}/effective";
 pub const ACCESS_ME_PATH: &str = "/api/v1/access/me";
 pub const ACCESS_OPS_PATH: &str = "/api/v1/access/ops";
+pub const ACCESS_OPS_HOLDERS_PATH: &str = "/api/v1/access/ops/holders";
+pub const ACCESS_OPS_HOLDERS_RELEASE_PATH: &str = "/api/v1/access/ops/holders/release";
 pub const ACCESS_OPS_USAGE_PATH: &str = "/api/v1/access/ops-usage";
+pub const ACCESS_INVITES_PREVIEW_PATH: &str = "/api/v1/access/invites/preview";
+pub const ACCESS_INVITES_PATH: &str = "/api/v1/access/invites";
 pub const ACCESS_REQUESTS_PATH: &str = "/api/v1/access/requests";
 pub const ACCESS_REQUEST_CLOSE_PATH: &str = "/api/v1/access/requests/{requestId}/close";
 pub const ACCESS_GRANTERS_PATH: &str = "/api/v1/access/granters";
+pub const ACCESS_REVIEWS_PATH: &str = "/api/v1/access/reviews";
+pub const ACCESS_REVIEW_PATH: &str = "/api/v1/access/reviews/{period}";
+pub const ACCESS_REVIEW_START_PATH: &str = "/api/v1/access/reviews/{period}/start";
+pub const ACCESS_REVIEW_DECISIONS_PATH: &str = "/api/v1/access/reviews/{period}/decisions";
+pub const ACCESS_REVIEW_COMPLETE_PATH: &str = "/api/v1/access/reviews/{period}/complete";
+pub const ACCESS_REVIEW_EXPORT_CSV_PATH: &str = "/api/v1/access/reviews/{period}/export.csv";
 
 /// Every route this face serves (the app's surface registry).
 pub const ACCESS_ROUTE_PATHS: &[&str] = &[
@@ -56,10 +67,20 @@ pub const ACCESS_ROUTE_PATHS: &[&str] = &[
     ACCESS_ACCOUNT_EFFECTIVE_PATH,
     ACCESS_ME_PATH,
     ACCESS_OPS_PATH,
+    ACCESS_OPS_HOLDERS_PATH,
+    ACCESS_OPS_HOLDERS_RELEASE_PATH,
     ACCESS_OPS_USAGE_PATH,
+    ACCESS_INVITES_PREVIEW_PATH,
+    ACCESS_INVITES_PATH,
     ACCESS_REQUESTS_PATH,
     ACCESS_REQUEST_CLOSE_PATH,
     ACCESS_GRANTERS_PATH,
+    ACCESS_REVIEWS_PATH,
+    ACCESS_REVIEW_PATH,
+    ACCESS_REVIEW_START_PATH,
+    ACCESS_REVIEW_DECISIONS_PATH,
+    ACCESS_REVIEW_COMPLETE_PATH,
+    ACCESS_REVIEW_EXPORT_CSV_PATH,
 ];
 
 #[derive(Clone)]
@@ -115,13 +136,38 @@ pub fn router(state: AccessRestState) -> Router {
         .route(ACCESS_ACCOUNT_EFFECTIVE_PATH, get(h::account_effective))
         .route(ACCESS_ME_PATH, get(h::my_effective))
         .route(ACCESS_OPS_PATH, get(h::ops_account))
+        .route(ACCESS_OPS_HOLDERS_PATH, post(h::designate_ops_holder))
+        .route(ACCESS_OPS_HOLDERS_RELEASE_PATH, post(h::release_ops_holder))
         .route(ACCESS_OPS_USAGE_PATH, get(h::ops_usage))
+        .route(ACCESS_INVITES_PREVIEW_PATH, post(h::preview_invite))
+        .route(ACCESS_INVITES_PATH, post(h::create_invite))
         .route(
             ACCESS_REQUESTS_PATH,
             get(h::list_requests).post(h::create_request),
         )
         .route(ACCESS_REQUEST_CLOSE_PATH, post(h::close_request))
         .route(ACCESS_GRANTERS_PATH, get(h::granters))
+        .route(
+            ACCESS_REVIEWS_PATH,
+            get(review_handlers::list_access_reviews),
+        )
+        .route(ACCESS_REVIEW_PATH, get(review_handlers::get_access_review))
+        .route(
+            ACCESS_REVIEW_START_PATH,
+            post(review_handlers::start_access_review),
+        )
+        .route(
+            ACCESS_REVIEW_DECISIONS_PATH,
+            post(review_handlers::record_access_review_decision),
+        )
+        .route(
+            ACCESS_REVIEW_COMPLETE_PATH,
+            post(review_handlers::complete_access_review),
+        )
+        .route(
+            ACCESS_REVIEW_EXPORT_CSV_PATH,
+            get(review_handlers::export_access_review_csv),
+        )
         .with_state(state);
     console_platform_request_context::with_request_context(router, verifier, pool)
 }

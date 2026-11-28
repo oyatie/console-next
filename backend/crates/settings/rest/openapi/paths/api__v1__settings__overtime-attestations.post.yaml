@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+x-console-authz: {"permissions": ["settings:edit", "attendance:approve"], "scope": "any"}
+tags: [settings]
+operationId: recordOvertimeRuleAttestation
+summary: Record an overtime recognition work-rule confirmation
+description: Requires settings edit or attendance approve at the requested scope.
+security:
+  - bearerAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '#/components/schemas/CreateOvertimeAttestationRequest'
+responses:
+  '201':
+    description: Overtime rule confirmation recorded
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/OvertimeRuleAttestation'
+  '401':
+    $ref: '#/components/responses/Unauthorized'
+  '403':
+    $ref: '#/components/responses/Forbidden'
+  '422':
+    description: Validation refusal
