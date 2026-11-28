@@ -85,6 +85,8 @@ pub struct MyDispatchOffer {
     pub work_order_id: WorkOrderId,
     pub branch_id: BranchId,
     pub request_no: String,
+    pub site_name: String,
+    pub symptom: String,
     #[serde(with = "time::serde::rfc3339")]
     pub accept_window_started_at: Timestamp,
     #[serde(with = "time::serde::rfc3339")]

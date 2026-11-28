@@ -69,6 +69,13 @@ test("one subject node per item, and only registered records get an action", () 
     expect(markup).not.toContain(`aria-label="${title} 작업"`);
 });
 
+test("dispatch notices open the canonical offer even alongside a legacy work-order reference", () => {
+  const markup = html([item("dispatch:wrong", { kind: "dispatch", links: [
+    { kind: "work_order", id: "work-order" }, { kind: "dispatch_offer", id: "offer-id" },
+  ] })]);
+  expect(markup).toContain('href="/me/dispatch-offers?sel=offer-id"');
+});
+
 test("each deadline group ranks source dates before server insertion order", () => {
   const markup = html([
     item("undated first"),

@@ -16631,9 +16631,9 @@ export interface components {
             /** @description Command refusal code when can_decide is false; absent when allowed. */
             cannot_reason?: string;
         };
-        /** @description One server-ordered canonical source-object reference for an action-inbox item. Clients resolve only explicitly registered kind/id pairs; current browser-linkable kinds are approval_run, work_order, and support_ticket. Unknown kinds remain valid for forward compatibility and MUST stay inert until a client registry adds support. Clients MUST NOT accept a server URL or infer a destination from the enclosing item kind, item id, label, or a code prefix. */
+        /** @description One server-ordered canonical source-object reference for an action-inbox item. Clients resolve only explicitly registered kind/id pairs; current registered kinds include approval_run, work_order, support_ticket, and dispatch_offer. Unknown kinds remain valid for forward compatibility and MUST stay inert until a client registry adds support. Clients MUST NOT accept a server URL or infer a destination from the enclosing item kind, item id, label, or a code prefix. */
         ActionInboxLink: {
-            /** @description Canonical source-object kind. Current browser-linkable values are approval_run, work_order, and support_ticket; other strings are forward-compatible but inert. */
+            /** @description Canonical source-object kind. Registered values include approval_run, work_order, support_ticket, and dispatch_offer; other strings are forward-compatible but inert. */
             kind: string;
             /** @description Canonical source-object identifier. Clients trim surrounding whitespace and reject a blank result before route construction. */
             id: string;
@@ -26060,6 +26060,8 @@ export interface components {
             work_order_id: components["schemas"]["Uuid"];
             branch_id: components["schemas"]["Uuid"];
             request_no: string;
+            site_name: string;
+            symptom: string;
             accept_window_started_at: components["schemas"]["Timestamp"];
             accept_window_ends_at: components["schemas"]["Timestamp"];
         };
