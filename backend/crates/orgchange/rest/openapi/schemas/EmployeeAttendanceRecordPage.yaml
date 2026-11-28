@@ -5,6 +5,9 @@ required:
 - limit
 - offset
 properties:
+  console_clock_out:
+    type: boolean
+    description: Whether the current employee may clock out from the console under the effective policy. Returned by the self endpoint.
   items:
     type: array
     items:

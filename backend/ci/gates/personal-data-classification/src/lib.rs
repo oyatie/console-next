@@ -54,7 +54,9 @@ pub struct UnsupportedWaiver {
 
 mod finite_foreach;
 mod markers;
+mod statement_names;
 pub use markers::parse_markers;
+use statement_names::{read_qualified_name, sets_constraint_timing};
 mod waivers;
 pub use waivers::UNSUPPORTED_WAIVERS;
 
@@ -661,6 +663,7 @@ fn apply_statement(statement: &[Tok], file: &Path, schema: &mut Schema) {
         // ---- forms that create no column ----
         // `COMMENT ON …` is read separately by `parse_markers`; the rest touch
         // access, execution or rows, never a column list.
+        ["set", "constraints", ..] if sets_constraint_timing(statement) => {}
         ["comment", "on", ..]
         | ["create", "index", ..]
         | ["create", "unique", "index", ..]
@@ -1074,21 +1077,6 @@ fn skip_if_clause(statement: &[Tok], mut index: usize) -> usize {
         }
     }
     index
-}
-
-/// Read a possibly schema-qualified name and return `(name, next_index)`.
-fn read_qualified_name(statement: &[Tok], index: usize) -> Option<(String, usize)> {
-    let mut name = statement.get(index)?.word()?.to_owned();
-    let mut cursor = index + 1;
-    while statement.get(cursor).is_some_and(|t| t.is_punct('.')) {
-        if let Some(part) = statement.get(cursor + 1).and_then(Tok::word) {
-            name = part.to_owned();
-            cursor += 2;
-        } else {
-            break;
-        }
-    }
-    Some((name, cursor))
 }
 
 /// Parse one `CREATE TABLE`, or name the construct that defeated the parser.
