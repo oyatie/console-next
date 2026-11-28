@@ -17,19 +17,19 @@ import { payrollProjectionQuery, type PayrollScenario, type Projection } from ".
 const money = (value: number) => fmtKrw(Number.isFinite(value) ? String(Math.round(value)) : null);
 
 function Result({ result, steps }: { result: Projection; steps: number }) {
-  return <section aria-label={t("payroll.outlook.result")} aria-live="polite">
-    <h2>{t("payroll.outlook.resultAt", { count: steps })}</h2>
+  return <section aria-label={t("payrollOutlook.result")} aria-live="polite">
+    <h2>{t("payrollOutlook.resultAt", { count: steps })}</h2>
     <StatRow phoneCols={2} items={[
-      { key: "point", label: t("payroll.outlook.point"), value: money(result.point_estimate) },
-      { key: "low", label: t("payroll.outlook.low"), value: money(result.ci95_low) },
-      { key: "high", label: t("payroll.outlook.high"), value: money(result.ci95_high) },
-      { key: "tail", label: t("payroll.outlook.tail"), value: money(result.cvar95) },
+      { key: "point", label: t("payrollOutlook.point"), value: money(result.point_estimate) },
+      { key: "low", label: t("payrollOutlook.low"), value: money(result.ci95_low) },
+      { key: "high", label: t("payrollOutlook.high"), value: money(result.ci95_high) },
+      { key: "tail", label: t("payrollOutlook.tail"), value: money(result.cvar95) },
     ]} />
-    <details><summary>{t("payroll.outlook.assumptions")}</summary><KeyValue items={[
-      { key: "simulations", label: t("payroll.outlook.simulations"), value: fmtNumber(result.assumptions.simulations) },
-      { key: "drift", label: t("payroll.outlook.drift"), value: fmtNumber(result.assumptions.drift) },
-      { key: "volatility", label: t("payroll.outlook.volatility"), value: fmtNumber(result.assumptions.ewma_volatility) },
-      { key: "nu", label: t("payroll.outlook.nu"), value: fmtNumber(result.assumptions.student_t_nu) },
+    <details><summary>{t("payrollOutlook.assumptions")}</summary><KeyValue items={[
+      { key: "simulations", label: t("payrollOutlook.simulations"), value: fmtNumber(result.assumptions.simulations) },
+      { key: "drift", label: t("payrollOutlook.drift"), value: fmtNumber(result.assumptions.drift) },
+      { key: "volatility", label: t("payrollOutlook.volatility"), value: fmtNumber(result.assumptions.ewma_volatility) },
+      { key: "nu", label: t("payrollOutlook.nu"), value: fmtNumber(result.assumptions.student_t_nu) },
     ]} /></details>
   </section>;
 }
@@ -50,16 +50,16 @@ export function PayrollOutlook() {
     setTried(true);
     if (validSeries && validSteps) setSubmitted({ key: crypto.randomUUID(), request: { series, horizon: steps } });
   }}>
-    <Field required label={t("payroll.outlook.history")} hint={t("payroll.outlook.historyHint")} error={tried && !validSeries ? t("payroll.outlook.historyInvalid") : undefined}>
+    <Field required label={t("payrollOutlook.history")} hint={t("payrollOutlook.historyHint")} error={tried && !validSeries ? t("payrollOutlook.historyInvalid") : undefined}>
       {props => <TextArea {...props} rows={5} value={history} onChange={e => { setSubmitted(null); setHistory(e.target.value); }} />}
     </Field>
-    <Field required label={t("payroll.outlook.horizon")} hint={t("payroll.outlook.stepsHint")} error={tried && !validSteps ? t("payroll.outlook.stepsInvalid") : undefined}>
+    <Field required label={t("payrollOutlook.horizon")} hint={t("payrollOutlook.stepsHint")} error={tried && !validSteps ? t("payrollOutlook.stepsInvalid") : undefined}>
       {props => <TextInput {...props} type="number" min={1} max={3650} step={1} value={horizon} onChange={e => { setSubmitted(null); setHorizon(e.target.value); }} />}
     </Field>
-    <Button type="submit" disabled={!!submitted && projection.isFetching}>{t("payroll.outlook.calculate")}</Button>
+    <Button type="submit" disabled={!!submitted && projection.isFetching}>{t("payrollOutlook.calculate")}</Button>
   </Form>;
   const result = submitted && projection.isSuccess ? <Result result={projection.data} steps={submitted.request.horizon} /> : undefined;
-  return <RegisterTotals q={auth} head={{ title: t("payroll.outlook.title") }} totals={result} register={submitted
+  return <RegisterTotals q={auth} head={{ title: t("payrollOutlook.title") }} totals={result} register={submitted
     ? <PageReadGate q={projection}>{controls}{!result && <QueryState q={projection} layout="record">{() => null}</QueryState>}</PageReadGate>
-    : <>{controls}<EmptyState title={t("payroll.outlook.empty")} reason={t("payroll.outlook.emptyHint")} /></>} />;
+    : <>{controls}<EmptyState title={t("payrollOutlook.empty")} reason={t("payrollOutlook.emptyHint")} /></>} />;
 }

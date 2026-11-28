@@ -92,7 +92,7 @@ test.describe("route requirements with a real grantless account", () => {
           for (const entry of required) {
             if ("servedCapability" in entry) {
               const expected = {
-                analytics_projection: ko["payroll.outlook.permission"],
+                analytics_projection: ko["payrollOutlook.permission"],
                 lifecycle_manage: ko["audit.lifecycle.permission"],
                 restricted_audit_stream: ko["audit.restricted.permission"],
                 documents: ko["audit.vault.permission"],
