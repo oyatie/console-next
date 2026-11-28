@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
 import { Button } from "../../../ui/button/button";
@@ -7,9 +7,11 @@ import { selectionCount, type Selection } from "../../../ui/long-table/selection
 import { CommandError } from "../../../lib/react/command-error";
 import { useNavigate } from "@tanstack/react-router";
 import { bulkSelection } from "./use-bulk-selection";
-import { BulkExitSheet } from "./bulk-exit-sheet";
+import { chunk } from "../../../lib/chunk-guard";
 import { BULK_MAX, useMatching } from "./use-roster";
 import s from "./roster.module.css";
+
+const BulkExitSheet = lazy(() => chunk(import("./bulk-exit-sheet")).then(m => ({ default: m.BulkExitSheet })));
 
 type Employee = components["schemas"]["Employee"];
 /** What the selection bar opens: a bulk workspace, or the bulk exit sheet (CRUD). */
@@ -85,7 +87,7 @@ export function RosterBulk({ sel, rows, total, query, onClear }: {
         </Button>
       )}
       {resolving && matching.isError && <CommandError error={matching.error} />}
-      {exitFor && <BulkExitSheet picked={exitFor} onClose={closeExit} />}
+      {exitFor && <Suspense fallback={null}><BulkExitSheet picked={exitFor} onClose={closeExit} /></Suspense>}
     </>
   );
 }

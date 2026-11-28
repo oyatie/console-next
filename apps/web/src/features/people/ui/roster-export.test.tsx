@@ -3,12 +3,12 @@ import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { loadCatalog } from "@console/i18n";
-import { RosterExport } from "./roster-export";
+import { RosterExportDialog } from "./roster-export-dialog";
 
 const state = vi.hoisted(() => ({ cursor: 0, layout: null as string | null, submit: undefined as undefined | (() => void), navigate: vi.fn(), mutate: vi.fn() }));
 vi.mock("react", async original => ({ ...await original<typeof import("react")>(), useState: (initial: unknown) => {
   const n = state.cursor++;
-  return [n === 0 ? true : n === 1 ? state.layout : initial, vi.fn()];
+  return [n === 0 ? state.layout : initial, vi.fn()];
 } }));
 vi.mock("@tanstack/react-router", () => ({ useNavigate: () => state.navigate }));
 vi.mock("../../../lib/react/command", () => ({ useCommand: () => ({ mutate: state.mutate, reset: vi.fn(), isPending: false }) }));
@@ -16,7 +16,7 @@ vi.mock("../../../ui/dialog", () => ({ Dialog: ({ children }: { children: ReactN
 vi.mock("../../../ui/button/button", async original => ({ ...await original<typeof import("../../../ui/button/button")>(), Form: ({ children, onSubmit }: { children: ReactNode; onSubmit: () => void }) => { state.submit = onSubmit; return <div>{children}</div>; } }));
 beforeAll(() => loadCatalog("ko"));
 beforeEach(() => { state.cursor = 0; state.layout = null; state.navigate.mockClear(); state.mutate.mockClear(); });
-const render = () => renderToStaticMarkup(<RosterExport query={{}} total={2} />);
+const render = () => renderToStaticMarkup(<RosterExportDialog query={{}} total={2} close={() => {}} />);
 
 test("one export entry offers directory and statutory register formats", () => {
   const html = render();

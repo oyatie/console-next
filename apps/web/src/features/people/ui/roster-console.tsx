@@ -30,19 +30,17 @@ import { ReadSkeleton } from "../../../ui/skeleton/skeleton";
 import { SortControl } from "../../../ui/sort-control/sort-control";
 import { fetchAllConsoleRows } from "../api/peek";
 import { type RosterOrder } from "../domain/roster-order";
-import { BulkRescind } from "./bulk-rescind";
-import { BulkSheet } from "./bulk-sheet";
 import { ExitTabs, VoidedList } from "./exit-tabs";
 import { PeopleJump } from "./people-jump";
-import { RosterBulk } from "./roster-bulk";
 import { ConsoleColumnsBody } from "./roster-console-columns";
 import { buildConsoleStatusSegments, buildStatItems, CHOSUNG, filterConsoleRows, toOrderField, type EmpType } from "./roster-console-data";
 import { RosterConsoleRail } from "./roster-console-rail";
 import { RosterEmpty } from "./roster-empty";
 import { RosterFirstRun } from "./roster-first-run";
 import { RosterSavedViews } from "./roster-saved-views";
+import { BulkRescind, BulkSheet, RosterUnitPanel } from "./roster-actions";
+import { RosterBulk } from "./roster-bulk";
 import { RosterTable } from "./roster-table";
-import { RosterUnitPanel } from "./roster-unit-panel";
 import { BULK_MAX } from "./use-roster";
 import type { useRosterScreen } from "./use-roster-screen";
 import s from "./roster.module.css";
@@ -177,7 +175,7 @@ export function RosterConsole({
           {notice || scoped ? <div className={s.notes}><bdi className="muted t-xs" role={notice ? "note" : undefined}>{notice}{notice && scoped ? " " : null}{scoped ? t("roster.scope.branches") : null}</bdi></div> : null}
           {sameName > 1 ? <RecordBannerBand tone="warn"><bdi role="note">{t("roster.sameName", { count: sameName, name: r.rows[0]!.name })}</bdi></RecordBannerBand> : null}
           {recorded ? <div className={s.notes}><Receipt state="recorded" message={recorded} actions={batch && manage && rescindReady ? <Button variant="ghost" onClick={() => setRescinding(true)}>{t("bulk.rescind.open", { count: batch.count })}</Button> : undefined} /></div> : null}
-          {rescinding && batch ? <BulkRescind batchId={batch.id} count={batch.count} onClose={() => setRescinding(false)} onDone={n => { setRescinding(false); setBatch(null); setRecorded(t("bulk.rescind.done", { count: n })); }} /> : null}
+          {rescinding && batch ? <Suspense fallback={null}><BulkRescind batchId={batch.id} count={batch.count} onClose={() => setRescinding(false)} onDone={n => { setRescinding(false); setBatch(null); setRecorded(t("bulk.rescind.done", { count: n })); }} /></Suspense> : null}
         </>
       }
       list={
@@ -225,7 +223,7 @@ export function RosterConsole({
       onOpen={openRecord}
       onFind={() => findInputRef.current?.querySelector("input")?.focus()}
       record={!voided && !firstRun && open ? { id: open, label: t("people.panel"), title: openPerson?.name ?? t("people.panel.cardTitle"), openInTab: openPerson ? { href: `/people/${open}`, label: openPerson.name } : undefined, closeLabel: t("roster.panel.close"), onClose: () => select(undefined), returnFocus: () => rowById(scroller.current, open), children: <Suspense fallback={<ReadSkeleton layout="record" />}><RosterConsolePanel id={open} today={today} unitTriggerRef={unitTrigger} onOpenUnit={selectRelated} /></Suspense> } : null}
-      related={!voided && !firstRun && open && openUnit ? { id: openUnit, label: t("roster.panel.unit"), title: selectedUnit?.name ?? t("roster.panel.unit"), meta: selectedUnit ? unitPath(unitItems, selectedUnit) : undefined, actions: <Link className={buttonClass("secondary", { size: "sm" })} to="/org" search={{ sel: openUnit, focus: openUnit }}>{t("roster.panel.openOrg")}</Link>, onClose: () => selectRelated(undefined), returnFocus: () => unitTrigger.current, children: <RosterUnitPanel unitId={openUnit} units={unitsQ.data?.items ?? unitItems} /> } : null}
+      related={!voided && !firstRun && open && openUnit ? { id: openUnit, label: t("roster.panel.unit"), title: selectedUnit?.name ?? t("roster.panel.unit"), meta: selectedUnit ? unitPath(unitItems, selectedUnit) : undefined, actions: <Link className={buttonClass("secondary", { size: "sm" })} to="/org" search={{ sel: openUnit, focus: openUnit }}>{t("roster.panel.openOrg")}</Link>, onClose: () => selectRelated(undefined), returnFocus: () => unitTrigger.current, children: <Suspense fallback={<ReadSkeleton layout="record" />}><RosterUnitPanel unitId={openUnit} units={unitsQ.data?.items ?? unitItems} /></Suspense> } : null}
       foot={
         !voided && !firstRun && displayedRows.length > 0 ? (
           <ListSummaryFooter
@@ -245,7 +243,7 @@ export function RosterConsole({
       overlays={
         <>
           <PeopleJump />
-          {manage && search.bulk === "paste" ? <BulkSheet source={{ paste: "" }} onClose={closePaste} onDone={bulkDone} /> : null}
+          {manage && search.bulk === "paste" ? <Suspense fallback={null}><BulkSheet source={{ paste: "" }} onClose={closePaste} onDone={bulkDone} /></Suspense> : null}
           <Dialog open={colsOpen} title={t("roster.columns.title")} size="sm" onClose={() => setColsOpen(false)}>
             <ConsoleColumnsBody shown={view.shown} onChange={view.set} onClose={() => setColsOpen(false)} />
           </Dialog>
