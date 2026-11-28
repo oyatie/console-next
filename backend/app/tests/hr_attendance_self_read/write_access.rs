@@ -41,6 +41,24 @@ async fn linked_employee_write_requires_live_attendance_authority(pool: PgPool) 
                 .status,
             StatusCode::OK
         );
+        assert_eq!(
+            get(app.clone(), ME_PATH, &token).await.json["console_clock_out"],
+            false
+        );
+        let before = snapshot(&pool).await;
+        let denied = post(
+            app.clone(),
+            ME_PATH,
+            &token,
+            json!({"kind":"CLOCK_OUT","idempotency_key":"disabled"}),
+        )
+        .await;
+        assert_eq!(denied.status, StatusCode::FORBIDDEN);
+        assert_eq!(
+            denied.json["error"]["code"],
+            "attendance.refuse.console_clock_out_disabled"
+        );
+        assert_eq!(snapshot(&pool).await, before);
         sqlx::query("UPDATE access_grants SET status='REVOKED',revoked_at=now(),revoked_by=granted_by WHERE role_id=$1")
             .bind(grant_role)
             .execute(&pool)
@@ -51,6 +69,66 @@ async fn linked_employee_write_requires_live_attendance_authority(pool: PgPool) 
         refused(&post(app, ME_PATH, &token, body).await);
         assert_eq!(snapshot(&pool).await, before);
     }
+}
+
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn desk_clock_out_uses_the_linked_persons_effective_policy(pool: PgPool) {
+    let keys = keys();
+    let admin = UserId::new();
+    seed_user(&pool, admin, "SUPER_ADMIN").await;
+    let set_policy = |person: Option<Uuid>, enabled: bool| {
+        sqlx::query("INSERT INTO tenant_setting_overrides(org_id,scope_entity_id,key,value,effective_from,set_by,reason_code) VALUES ($1,$2,'attendance.console_clock_out',$3,now(),$4,'TEST')").bind(*OrgId::one().as_uuid()).bind(person).bind(json!(enabled)).bind(*admin.as_uuid()).execute(&pool)
+    };
+    set_policy(None, true).await.unwrap();
+    let actor = UserId::new();
+    let employee = seed_linked_employee(&pool, actor, "MEMBER", "Desk").await;
+    grants::grant(&pool, OrgId::one(), actor, None).await;
+    let app =
+        build_router(app_state(runtime_role_pool(&pool).await, keys.public_pem.clone()).unwrap());
+    let token = bearer(&pool, &keys, actor, "MEMBER").await;
+    let out = json!({"kind":"CLOCK_OUT","idempotency_key":"desk-clock-out"});
+    let punch_in = |key: &str| json!({"kind":"CLOCK_IN","idempotency_key":key});
+    assert_eq!(
+        post(app.clone(), ME_PATH, &token, punch_in("first-in"))
+            .await
+            .status,
+        StatusCode::OK
+    );
+    let other = account_link::seed_employee(&pool, "Other").await;
+    set_policy(Some(other), false).await.unwrap();
+    assert_eq!(
+        get(app.clone(), ME_PATH, &token).await.json["console_clock_out"],
+        true
+    );
+    let written = post(app.clone(), ME_PATH, &token, out.clone()).await;
+    assert_eq!(written.status, StatusCode::OK, "{}", written.json);
+    set_policy(Some(employee), false).await.unwrap();
+    assert_eq!(
+        get(app.clone(), ME_PATH, &token).await.json["console_clock_out"],
+        false
+    );
+    let replay = post(app.clone(), ME_PATH, &token, out).await;
+    assert_eq!(written.json["id"], replay.json["id"]);
+    assert_eq!(
+        post(app.clone(), ME_PATH, &token, punch_in("second-in"))
+            .await
+            .status,
+        StatusCode::OK
+    );
+    let before = snapshot(&pool).await;
+    let denied = post(
+        app,
+        ME_PATH,
+        &token,
+        json!({"kind":"CLOCK_OUT","idempotency_key":"after-policy-change"}),
+    )
+    .await;
+    assert_eq!(denied.status, StatusCode::FORBIDDEN);
+    assert_eq!(
+        denied.json["error"]["code"],
+        "attendance.refuse.console_clock_out_disabled"
+    );
+    assert_eq!(snapshot(&pool).await, before);
 }
 
 async fn import_refusal(pool: PgPool, stage: &str) {

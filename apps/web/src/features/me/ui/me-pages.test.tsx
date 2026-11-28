@@ -14,6 +14,7 @@ const state = vi.hoisted(() => ({
   schedule403: false,
   records403: false,
   canClock: true,
+  consoleClockOut: true,
   employeeLinkStatus: "LINKED" as "LINKED" | "UNLINKED",
   meFails: false,
   experience: "console" as "console" | "baseline",
@@ -106,6 +107,7 @@ vi.mock("@tanstack/react-query", async original => {
           isPending: false,
           error: null,
           data: {
+            console_clock_out: state.consoleClockOut,
             items: [
               {
                 id: "rec-1",
@@ -198,6 +200,7 @@ beforeEach(() => {
   state.schedule403 = false;
   state.records403 = false;
   state.canClock = true;
+  state.consoleClockOut = true;
   state.employeeLinkStatus = "LINKED";
   state.meFails = false;
   state.experience = "console";
@@ -216,6 +219,22 @@ test("me attendance renders week52 hours, schedule, and gated clock action in co
   expect(html).toContain(t("me.attendance.title"));
   expect(html).toContain(t("me.attendance.records.clockOut"));
   expect(html).toContain("09:00–18:00");
+});
+
+test.each(["console", "baseline"] as const)("the %s attendance screen follows the employee clock-out policy", (experience) => {
+  state.experience = experience;
+  state.consoleClockOut = false;
+  const unavailable = render(<MeAttendancePage />);
+  expect(unavailable).not.toContain(`>${t("me.attendance.records.clockOut")}<`);
+  state.consoleClockOut = true;
+  expect(render(<MeAttendancePage />)).toContain(`>${t("me.attendance.records.clockOut")}<`);
+});
+
+test("the desk withholds the clock action when the previous attendance record is unreadable", () => {
+  state.search = { view: "attendance" };
+  state.records403 = true;
+  const html = render(<MeDeskPage />);
+  expect(html).not.toContain(`>${t("me.attendance.records.clockIn")}<`);
 });
 
 test("me attendance renders honest not-provided label when week52 is not available", () => {

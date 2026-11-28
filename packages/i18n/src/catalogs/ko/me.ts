@@ -22,6 +22,7 @@ export const koMe: Record<keyof typeof enMe, string> = {
   "me.attendance.records.title": "출퇴근 기록",
   "me.attendance.records.empty": "기록된 출퇴근 내역이 없습니다.",
   "me.attendance.records.clockIn": "출근 기록",
+  "attendance.refuse.console_clock_out_disabled": "적용된 근태 정책에서는 콘솔에서 퇴근을 기록할 수 없습니다.",
   "me.attendance.records.clockOut": "퇴근 기록",
   "me.attendance.records.recorded": "{kind}을 기록했습니다.",
   "me.attendance.records.col.date": "근무일",

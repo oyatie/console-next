@@ -16,10 +16,25 @@ pub(crate) struct RecoveryStatusResponse {
     pub(crate) codes: RecoveryCodesSummary,
 }
 
+/// Only deliverable channels may be registered; status responses also describe legacy records.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub(crate) enum RecoveryRegistrationChannel {
+    Email,
+}
+
+impl From<RecoveryRegistrationChannel> for RecoveryChannel {
+    fn from(value: RecoveryRegistrationChannel) -> Self {
+        match value {
+            RecoveryRegistrationChannel::Email => Self::Email,
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct UpsertRecoveryContactRequest {
-    pub(crate) channel: RecoveryChannel,
+    pub(crate) channel: RecoveryRegistrationChannel,
     pub(crate) value: String,
     pub(crate) consent_accepted: bool,
     #[serde(default)]

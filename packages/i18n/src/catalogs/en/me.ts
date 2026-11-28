@@ -20,6 +20,7 @@ export const enMe = {
   "me.attendance.records.title": "Clock records",
   "me.attendance.records.empty": "No clock records recorded yet.",
   "me.attendance.records.clockIn": "Clock in",
+  "attendance.refuse.console_clock_out_disabled": "Your attendance policy does not allow clocking out from the console.",
   "me.attendance.records.clockOut": "Clock out",
   "me.attendance.records.recorded": "Recorded {kind}.",
   "me.attendance.records.col.date": "Work date",
