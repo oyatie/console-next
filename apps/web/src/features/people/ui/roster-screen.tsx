@@ -11,18 +11,15 @@ import { Receipt } from "../../../ui/receipt/receipt";
 import { rowById } from "../../../ui/long-table/row-keys";
 import { unitPath } from "../../../reference/org/present";
 import { employeeQuery } from "../api";
-import { BulkRescind } from "./bulk-rescind";
-import { BulkSheet } from "./bulk-sheet";
-import { RosterBulk } from "./roster-bulk";
+import { BulkRescind, BulkSheet, RosterBulk, RosterUnitPanel } from "./roster-actions";
 import { RosterTable } from "./roster-table";
 import { RosterFilters } from "./roster-filters";
-import { RosterPanel } from "./roster-panel";
-import { RosterUnitPanel } from "./roster-unit-panel";
 import { BULK_MAX } from "./use-roster";
 import { PeopleJump } from "./people-jump";
 import { RosterFirstRun } from "./roster-first-run";
 import { ReadSkeleton } from "../../../ui/skeleton/skeleton";
 
+const RosterPanel = lazy(() => chunk(import("./roster-panel")).then(m => ({ default: m.RosterPanel })));
 const RegisterExport = lazy(() => chunk(import("./register-export")).then(m => ({ default: m.RegisterExport })));
 import { QueryState } from "../../../lib/react/query-state";
 import { RosterEmpty } from "./roster-empty";
@@ -114,7 +111,7 @@ export function RosterScreen({ manage, scoped = false, switcher, notice, screen,
           actions={batch && manage && rescindReady && <Button variant="ghost" onClick={() => setRescinding(true)}>{t("bulk.rescind.open", { count: batch.count })}</Button>}
         />
       )}
-      {rescinding && batch && <BulkRescind batchId={batch.id} count={batch.count} onClose={() => setRescinding(false)} onDone={(n) => (setRescinding(false), setBatch(null), setRecorded(t("bulk.rescind.done", { count: n })))} />}
+      {rescinding && batch && <Suspense fallback={null}><BulkRescind batchId={batch.id} count={batch.count} onClose={() => setRescinding(false)} onDone={(n) => (setRescinding(false), setBatch(null), setRecorded(t("bulk.rescind.done", { count: n })))} /></Suspense>}
       </div>
       </>}
       list={voided ? <VoidedList /> : firstRun ? <RosterFirstRun /> : (
@@ -151,7 +148,7 @@ export function RosterScreen({ manage, scoped = false, switcher, notice, screen,
                 onSelectionChange: setSel,
                 selectAllLimit: { max: BULK_MAX, reason: t("roster.selectAll.tooMany", { total }), remedy: t("roster.selectAll.remedy", { max: BULK_MAX }) },
                 countUnit: "person" as const,
-                selectionActions: <RosterBulk sel={sel} rows={r.rows} total={total} query={r.query} onClear={setSel} onDone={bulkDone} />,
+                selectionActions: <Suspense fallback={null}><RosterBulk sel={sel} rows={r.rows} total={total} query={r.query} onClear={setSel} onDone={bulkDone} /></Suspense>,
               })}
             />
           </>
@@ -161,8 +158,8 @@ export function RosterScreen({ manage, scoped = false, switcher, notice, screen,
         onSelect={select}
         onOpen={openRecord}
         onFind={() => findSlot?.querySelector("input")?.focus()}
-        record={!voided && !firstRun && open && { id: open, label: t("people.panel"), closeLabel: t("roster.panel.close"), onClose: () => select(undefined), returnFocus: () => rowById(scroller.current, open), children: <RosterPanel id={open} today={today} unitTriggerRef={unitTrigger} onOpenUnit={selectRelated} /> }}
-        related={!voided && !firstRun && open && openUnit && { id: openUnit, label: t("roster.panel.unit"), title: selectedUnit?.name ?? t("roster.panel.unit"), crumb: selectedUnit ? unitPath(unitItems, selectedUnit) : undefined, expand: <Link className={buttonClass("secondary", { size: "sm" })} to="/org" search={{ sel: openUnit, focus: openUnit }}>{t("roster.panel.openOrg")}</Link>, onClose: () => selectRelated(undefined), returnFocus: () => unitTrigger.current, children: <RosterUnitPanel unitId={openUnit} units={unitItems} /> }}
+        record={!voided && !firstRun && open && { id: open, label: t("people.panel"), closeLabel: t("roster.panel.close"), onClose: () => select(undefined), returnFocus: () => rowById(scroller.current, open), children: <Suspense fallback={<ReadSkeleton layout="record" />}><RosterPanel id={open} today={today} unitTriggerRef={unitTrigger} onOpenUnit={selectRelated} /></Suspense> }}
+        related={!voided && !firstRun && open && openUnit && { id: openUnit, label: t("roster.panel.unit"), title: selectedUnit?.name ?? t("roster.panel.unit"), crumb: selectedUnit ? unitPath(unitItems, selectedUnit) : undefined, expand: <Link className={buttonClass("secondary", { size: "sm" })} to="/org" search={{ sel: openUnit, focus: openUnit }}>{t("roster.panel.openOrg")}</Link>, onClose: () => selectRelated(undefined), returnFocus: () => unitTrigger.current, children: <Suspense fallback={<ReadSkeleton layout="record" />}><RosterUnitPanel unitId={openUnit} units={unitItems} /></Suspense> }}
       foot={<>
         <RosterFoot
           shown={rowCount}
@@ -174,7 +171,7 @@ export function RosterScreen({ manage, scoped = false, switcher, notice, screen,
         />
         <PeopleJump />
       </>}
-      overlays={manage && search.bulk === "paste" && <BulkSheet source={{ paste: "" }} onClose={closePaste} onDone={bulkDone} />}
+      overlays={manage && search.bulk === "paste" && <Suspense fallback={null}><BulkSheet source={{ paste: "" }} onClose={closePaste} onDone={bulkDone} /></Suspense>}
     />
   );
 }
