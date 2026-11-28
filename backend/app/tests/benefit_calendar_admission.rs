@@ -103,7 +103,9 @@ async fn enrolled_modules_remain_independent_and_check_current_policy_before_rep
             .send("POST", CALENDAR, Some(event), Some(calendar_key))
             .await,
     );
-    let (status, profile) = caller.call("GET", "/api/v1/me", None).await;
+    let (status, profile) = caller
+        .call("GET", console_identity_rest::USERS_ME_PATH, None)
+        .await;
     assert_eq!(status, StatusCode::OK, "{profile}");
     let (status, polls) = caller
         .call("GET", "/api/v1/collaboration/polls", None)
