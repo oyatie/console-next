@@ -21,11 +21,14 @@ fn advertised(projection: &Value, feature: &str) -> bool {
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn cycle_navigation_agrees_with_independent_list_and_create_commands(pool: PgPool) {
     let (org, manager) = http::tenant(&pool, &["SUPER_ADMIN"]).await;
+    sqlx::query("INSERT INTO tenant_module_enrollments(org_id,module_key,enabled,change_ref) VALUES ($1,'evaluation',true,'test-enrollment')")
+        .bind(org).execute(&pool).await.unwrap();
     let branch: Uuid = sqlx::query_scalar("WITH r AS (INSERT INTO regions(org_id,name) VALUES($1,'North') RETURNING id) INSERT INTO branches(org_id,region_id,name) SELECT $1,id,'Harbor' FROM r RETURNING id")
         .bind(org).fetch_one(&pool).await.unwrap();
+    let branch_admin = http::add_user(&pool, org, &["ADMIN"]).await;
     let reader = http::add_user(&pool, org, &["EXECUTIVE"]).await;
     let member = http::add_user(&pool, org, &["MEMBER"]).await;
-    for user in [manager, reader, member] {
+    for user in [manager, reader, member, branch_admin] {
         sqlx::query("INSERT INTO user_branches(user_id,branch_id,org_id) VALUES($1,$2,$3)")
             .bind(user.as_uuid())
             .bind(branch)
@@ -38,6 +41,7 @@ async fn cycle_navigation_agrees_with_independent_list_and_create_commands(pool:
     for (user, role, read, create) in [
         (reader, "EXECUTIVE", true, false),
         (member, "MEMBER", false, false),
+        (branch_admin, "ADMIN", false, false),
         (manager, "SUPER_ADMIN", true, true),
     ] {
         let ctx = http::ctx(&pool, org, user, &[role], None).await;
@@ -89,6 +93,8 @@ async fn cycle_navigation_agrees_with_independent_list_and_create_commands(pool:
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn tied_creation_dates_have_stable_pages_and_archived_cycles_remain_reachable(pool: PgPool) {
     let (org, editor) = http::tenant(&pool, &["SUPER_ADMIN"]).await;
+    sqlx::query("INSERT INTO tenant_module_enrollments(org_id,module_key,enabled,change_ref) VALUES ($1,'evaluation',true,'test-enrollment')")
+        .bind(org).execute(&pool).await.unwrap();
     let (other, other_editor) = http::tenant(&pool, &["SUPER_ADMIN"]).await;
     for (tenant, user, n, stage) in [
         (org, editor, 2, "DRAFT"),

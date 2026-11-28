@@ -61,16 +61,20 @@ pub(crate) async fn get_me_authz(
     State(state): State<IdentityRestState>,
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, RestError> {
-    // The resolved Principal already carries the live branch scope + runtime
-    // custom-role grants (armed under this request's org), so the projection is
-    // pure — no DB read beyond principal resolution.
     let principal = principal_from_headers(&state, &headers).await?;
+    let tasks = (state.evaluation_tasks)(&principal);
+    let (read_cycles, create_cycles) = (state.evaluation_cycles)(&principal);
+    let evaluation = (tasks || read_cycles || create_cycles)
+        && console_platform_request_context::tenant_module::TenantModule::Evaluation
+            .enabled(state.pool(), principal.org_id)
+            .await
+            .map_err(RestError::from_kernel)?;
     Ok(Json(served_authz_projection(
         &principal,
         state.documents_served,
         (state.integrity_access)(&principal),
         (state.ledger_access)(&principal),
-        (state.evaluation_tasks)(&principal),
-        (state.evaluation_cycles)(&principal),
+        evaluation && tasks,
+        (evaluation && read_cycles, evaluation && create_cycles),
     )))
 }
