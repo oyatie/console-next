@@ -10,6 +10,7 @@ use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct IdentityRestState {
+    pub(crate) integrity_served: bool,
     pub(crate) documents_served: bool,
     pub(crate) store: PgOrgStore,
     pub(crate) tenant_facts: Arc<dyn TenantFactsRead>,
@@ -26,6 +27,7 @@ impl IdentityRestState {
     ) -> Self {
         Self {
             documents_served: false,
+            integrity_served: false,
             store,
             tenant_facts: Arc::new(tenant_facts),
             jwt_verifier,
@@ -42,6 +44,12 @@ impl IdentityRestState {
     #[must_use]
     pub fn with_documents_served(mut self, served: bool) -> Self {
         self.documents_served = served;
+        self
+    }
+
+    #[must_use]
+    pub fn with_integrity_served(mut self, served: bool) -> Self {
+        self.integrity_served = served;
         self
     }
 

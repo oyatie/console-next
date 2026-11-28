@@ -44,6 +44,13 @@ const WORD: Readonly<Record<string, string>> = {
   "/settings": "shell.link.settings",
 };
 
+test("a findings-only reader can enter the authorized review queue from Audit", () => {
+  const nav = top(tenantNav(noGrants, routes, false, { ...live(), findings: true }));
+  expect(nav).toContain("/audit/findings");
+  expect(nav).not.toContain("/audit");
+  expect(nav).not.toContain("/audit/evidence");
+});
+
 test("an evidence-only reader can enter Audit through the served vault", () => {
   const nav = (evidenceVault: boolean) => top(tenantNav(noGrants, routes, false, { ...live(), evidenceVault }));
   expect(nav(true)).toContain("/audit/evidence");

@@ -68,5 +68,6 @@ pub(crate) async fn get_me_authz(
     Ok(Json(served_authz_projection(
         &principal,
         state.documents_served,
+        state.integrity_served,
     )))
 }

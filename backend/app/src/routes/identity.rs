@@ -22,6 +22,7 @@ pub(super) fn mount(router: Router, deps: &TenantDeps<'_>) -> Router {
                 PgOnboardingStore::new(pool.clone()),
             )
             .with_passkey_step_up(state.policy_step_up.clone())
+            .with_integrity_served(cfg!(feature = "integrity"))
             .with_documents_served(cfg!(feature = "docs")),
         ))
         .merge(console_platform_authz_rest::router(

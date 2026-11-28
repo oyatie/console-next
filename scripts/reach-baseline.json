@@ -440,11 +440,6 @@
    "reason": "K5 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
-  "GET /api/v1/integrity/findings": {
-   "lane": "K4",
-   "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
   "GET /api/v1/leave/requests": {
    "lane": "leave",
    "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
@@ -688,11 +683,6 @@
   "POST /api/v1/group-admin/tenant-context/exit": {
    "lane": "T1",
    "reason": "T1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/integrity/findings/{id}/triage": {
-   "lane": "K4",
-   "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
   "POST /api/v1/leave/requests/{id}/decide": {

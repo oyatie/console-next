@@ -42,4 +42,11 @@ const evidence = createRoute({
   component: lazyRouteComponent(screen(() => import("../features/audit/ui/evidence-vault")), "EvidenceVault"),
 });
 
-export const auditRoutes = [audit, accessLog, supportAccess, evidence];
+const findings = createRoute({
+  getParentRoute: () => app,
+  path: "/audit/findings",
+  staticData: { access: servedRouteReads["/audit/findings"].access, floorplan: "P-03", pattern: "worklist" },
+  component: lazyRouteComponent(screen(() => import("../features/audit/ui/findings")), "Findings"),
+});
+
+export const auditRoutes = [audit, accessLog, supportAccess, evidence, findings];

@@ -88,7 +88,7 @@ test.describe("route requirements with a real grantless account", () => {
           const required = "allOf" in need ? need.allOf : [need];
           for (const entry of required) {
             if ("servedCapability" in entry) {
-              expect(permission).toContain(ko["audit.vault.permission"]);
+              expect(permission).toContain(ko[entry.servedCapability === "documents" ? "audit.vault.permission" : "audit.findings.permission"]);
               continue;
             }
             if ("action" in entry) {

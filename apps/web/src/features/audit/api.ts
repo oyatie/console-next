@@ -40,3 +40,12 @@ export const evidenceVerificationQuery = (id: string) => ({
 });
 export const changeEvidenceHold = (id: string, body: EvidenceHoldRequest, key: string) =>
   unwrap(api.POST("/api/v1/evidence/objects/{id}/hold", { params: { path: { id } }, body, headers: { "idempotency-key": key } }));
+
+export type Finding = components["schemas"]["GovernanceFinding"];
+export type Triage = components["schemas"]["TriageFindingRequest"];
+export const findingsPath = "/api/v1/integrity/findings";
+export const findingsQuery = get(findingsPath);
+export const triageFinding = (id: string, body: Triage, key: string) =>
+  unwrap(api.POST("/api/v1/integrity/findings/{id}/triage", {
+    params: { path: { id } }, headers: { "Idempotency-Key": key }, body,
+  }));
