@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { useState, type ReactNode } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
 import type { ReadState } from "../../../lib/react/query-view";
 import { saveFile } from "../../../lib/download";
+import { useCommand } from "../../../lib/react/command";
 import { CommandError } from "../../../lib/react/command-error";
 import { useIsDesktop } from "../../../lib/react/use-desktop";
 import { AuditTabs } from "../../../reference/audit/ui/audit-tabs";
@@ -50,7 +51,7 @@ function ConsentRegister({ branch, ready, names, filter, hasOptions, catalog }: 
   const desktop = useIsDesktop();
   const query = { limit, offset, branch_id: branch === "all" ? undefined : branch };
   const ledger = useQuery({ ...consentLedgerQuery(query), enabled: ready });
-  const download = useMutation({ mutationFn: () => consentLedgerCsv(query), onSuccess: blob => saveFile(blob, "location-consent-ledger.csv") });
+  const download = useCommand({ run: () => consentLedgerCsv(query), forget: true, onSuccess: blob => saveFile(blob, "location-consent-ledger.csv") });
   const rows = ready ? ledger.data?.items ?? [] : [];
   const row = selected === undefined && desktop ? rows[0] : rows.find(event => event.id === selected);
   const page = ledger.data;
@@ -71,7 +72,7 @@ function ConsentRegister({ branch, ready, names, filter, hasOptions, catalog }: 
         ]} /> : <EmptyState title={t("audit.consents.empty")} reason={t("audit.consents.emptyReason")} />}
     foot={ready && page && <div className={s.foot}>
       {rows.length > 0 && <>{t("audit.consents.page", { start: offset + 1, end: offset + rows.length, total: page.total })}
-        <Button disabled={download.isPending} onClick={() => download.mutate()}>{t("audit.consents.csv")}</Button></>}
+        <Button disabled={download.isPending} onClick={() => download.mutate(undefined)}>{t("audit.consents.csv")}</Button></>}
       {download.error && <CommandError error={download.error} read />}
       {(page.total > limit || offset > 0) && <>
         <Button disabled={offset === 0} onClick={() => turn(Math.max(0, offset - limit))}>{t("audit.log.pagination.prev")}</Button>
