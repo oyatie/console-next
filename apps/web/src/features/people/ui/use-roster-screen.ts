@@ -4,16 +4,14 @@ import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import type { EmployeeViewFilters } from "@console/api/pending";
 import { rosterWindowQuery } from "../api/roster";
-import { FOCUS_SETTLE_MS, editable, rowById } from "../../../ui/long-table/row-keys";
+import { editable, rowById } from "../../../ui/long-table/row-keys";
 import { whenRowsDrawn } from "../../../ui/long-table/rows-drawn";
 import { NO_SELECTION, type Selection } from "../../../ui/long-table/selection";
 import { focusSoon } from "../../../lib/react/announce";
 import { columnSelection } from "../../../lib/react/use-column-selection";
-import { usePrefetch } from "../../../lib/react/prefetch";
 import { todayKst } from "../../../lib/pure/today";
 import { useReasonCodesReady } from "../../../lib/reason-codes";
 import { unitsQuery } from "../../../reference/org/api";
-import { employeeQuery } from "../api";
 import { activeView, exactNumber, joinReview, parseIds, parseReview, parseStatus, type Review, type StatusView } from "../domain/roster";
 import { parseOrder, type RosterOrder } from "../domain/roster-order";
 import { useRoster } from "./use-roster";
@@ -65,7 +63,6 @@ export function useRosterScreen() {
   const rescindReady = useReasonCodesReady(batch ? "lifecycle_cancel" : null);
   const r = useRoster({ status, review, unit, ...(ids.length > 0 ? { ids } : {}), q, sort }, soonDays, !contractWindow.isPending);
   const view = useRosterColumns();
-  const prefetch = usePrefetch();
   // The memory always describes the current filters (a new filter starts at the top).
   useEffect(() => remember(key, q, { q }), [key, q]);
 
@@ -155,14 +152,7 @@ export function useRosterScreen() {
     scroller.current = el;
   };
 
-  const settle = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const onRowFocus = (id: string) => {
-    clearTimeout(settle.current);
-    settle.current = setTimeout(() => {
-      prefetch(employeeQuery(id));
-      remember(key, q, { row: id });
-    }, FOCUS_SETTLE_MS);
-  };
+  const onRowFocus = (id: string) => remember(key, q, { row: id });
 
   const filtered = Boolean(q || unit || ids.length || status !== "current" || review.length);
   const customFilters = Boolean(q || unit || ids.length || !activeView(status, review));
@@ -173,7 +163,7 @@ export function useRosterScreen() {
     open, openUnit, select, selectRelated, full, expand, restore, unitTrigger, unitItems, selectedUnit,
     sort, q, exitView, setExitView, findSlot, setFindSlot, sel, setSel,
     recorded, batch, setBatch, rescinding, setRescinding, setRecorded, rescindReady,
-    r, view, prefetch, setFilter, find, reset, viewFilters, applyView, closePaste, bulkDone, openRecord,
+    r, view, setFilter, find, reset, viewFilters, applyView, closePaste, bulkDone, openRecord,
     scroller, rowCount, scrollRef, onRowFocus, filtered, customFilters, sameName,
     onRowAction: (id: string) => (id === open ? openRecord(id) : (remember(key, q, { row: id }), select(id))),
   };

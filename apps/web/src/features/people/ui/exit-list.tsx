@@ -13,11 +13,10 @@ import { LongTable, type LongColumn } from "../../../ui/long-table/long-table";
 import { ListRecord } from "../../../ui/patterns/list-record";
 import { ExperienceSwitch } from "../../../ui/patterns/pattern-shell";
 import { WorklistSearchField, WorklistSegmentBar, WorklistSubject } from "../../../ui/patterns/worklist-parts";
-import { usePrefetch } from "../../../lib/react/prefetch";
 import { QueryState } from "../../../lib/react/query-state";
 import { EXIT_CASE_STATUS, LIFECYCLE_STATE, actor, label, labeled } from "../../../lib/labels";
 import { useCan } from "../../../reference/authz/ui/use-can";
-import { caseQuery, exitCaseCountsQuery, exitCasesPagesQuery, OPEN_EXIT_STATUSES, type ExitFilter } from "../api";
+import { exitCaseCountsQuery, exitCasesPagesQuery, OPEN_EXIT_STATUSES, type ExitFilter } from "../api";
 import { forwardStep, usableActions } from "../domain/exits";
 import { RelDay } from "./exit-facts";
 import { PageHead } from "../../../ui/page-head/page-head";
@@ -61,7 +60,6 @@ export function ExitCaseListContent({ status, onStatus: pick, tabs }: { status?:
   const [findSlot, setFindSlot] = useState<HTMLElement | null>(null);
   const can = useCan();
   const navigate = useNavigate();
-  const prefetch = usePrefetch();
   const trimmed = q.trim();
   const counts = useQuery(exitCaseCountsQuery(trimmed));
   const list = useInfiniteQuery({ ...exitCasesPagesQuery(status, PAGE, trimmed), placeholderData: keepPreviousData, refetchInterval: false });
@@ -80,7 +78,7 @@ export function ExitCaseListContent({ status, onStatus: pick, tabs }: { status?:
       cell: (c) => {
         const inner = (
           <span className={s.cellStack}>
-            <Link to="/people/exits/$id" params={{ id: c.id }} search={{}} onFocus={() => prefetch(caseQuery(c.id))}>
+            <Link to="/people/exits/$id" params={{ id: c.id }} search={{}}>
               {c.employee_name}
             </Link>
             {c.employee_number && <span className="code muted">{c.employee_number}</span>}
@@ -172,7 +170,6 @@ export function ExitCaseListContent({ status, onStatus: pick, tabs }: { status?:
               onLoadMore={() => void list.fetchNextPage()}
               find={{ label: t("exit.list.find"), defaultValue: q, onFind: (value) => setQ(value.trim()) }}
               findSlot={findSlot}
-              onRowHover={(id) => prefetch(caseQuery(id))}
               onRowAction={(id) => void navigate({ to: "/people/exits/$id", params: { id }, search: {} })}
               empty={emptyNode}
             />
@@ -217,7 +214,6 @@ export function ExitCaseListContent({ status, onStatus: pick, tabs }: { status?:
                 onLoadMore={() => void list.fetchNextPage()}
                 density="compact"
                 mobileLayout="compact"
-                onRowHover={(id) => prefetch(caseQuery(id))}
                 onRowAction={(id) => void navigate({ to: "/people/exits/$id", params: { id }, search: {} })}
                 empty={emptyNode}
               />

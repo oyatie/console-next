@@ -10,7 +10,7 @@ import { screens } from "../states/registry";
 
 test.beforeAll(() => loadCatalog("ko"));
 
-for (const input of ["wheel", "keyboard"]) test(`exit list prefetches only settled rows during ${input} scrolling`, async ({ page }, info) => {
+for (const input of ["wheel", "keyboard"]) test(`exit list reads a case only after selection following ${input} scrolling`, async ({ page }, info) => {
   const state = await mockScreen(page, screens[1], "populated");
   const rows: components["schemas"]["EmployeeExitCase"][] = Array.from({ length: 300 }, (_, i) => ({
     id: id(8000 + i), employee_id: id(9000 + i), employee_name: `Exit person ${i}`, employee_number: `EXIT-${i}`, company: "Screen test company",
@@ -42,11 +42,10 @@ for (const input of ["wheel", "keyboard"]) test(`exit list prefetches only settl
     const grid = page.getByRole("grid", { name: t("exit.list.title"), exact: true });
     const first = grid.getByRole("link", { name: rows[0]!.employee_name, exact: true });
     await first.hover();
-    await expect.poll(() => reads.length).toBe(1);
     if (input === "keyboard") await first.focus();
     await page.clock.install();
     await page.clock.pauseAt(new Date(Date.now() + 1000));
-    const start = reads.length;
+    await page.clock.runFor(300);
     for (let step = 0; step < 12; step++) {
       if (input === "wheel") {
         const previous = await grid.evaluate(el => el.scrollTop);
@@ -55,16 +54,13 @@ for (const input of ["wheel", "keyboard"]) test(`exit list prefetches only settl
       } else await page.keyboard.press("ArrowDown");
       await page.clock.runFor(32);
     }
-    expect(reads.slice(start)).toEqual([]);
+    expect(reads).toEqual([]);
     await page.clock.runFor(300);
     await page.clock.resume();
-    // A newly focused link must still prefetch immediately, independently of the pointer dwell.
     const last = grid.getByRole("link").last();
-    const focusedId = await last.evaluate(el => el.closest<HTMLElement>('[data-row-id]')!.dataset.rowId!);
     await last.focus();
-    await expect.poll(() => reads.includes(focusedId)).toBe(true);
-    await info.attach("detail-reads", { body: JSON.stringify({ input, reads: reads.slice(start) }), contentType: "application/json" });
-    expect(reads.length - start).toBeLessThanOrEqual(2);
+    await page.waitForTimeout(300);
+    expect(reads).toEqual([]);
     await page.setViewportSize({ width: 390, height: 844 });
     await page.locator("html").evaluate(el => el.dataset.theme = "dark");
     await expect(grid).toHaveAttribute("data-layout", "cards");
@@ -72,5 +68,10 @@ for (const input of ["wheel", "keyboard"]) test(`exit list prefetches only settl
     await expect(page.getByRole("main").locator("h1")).toHaveCount(1);
     await page.screenshot({ path: info.outputPath("exit-phone-dark.png"), fullPage: true });
     expect(state.unexpected).toEqual([]);
+    await grid.evaluate(el => el.scrollTo(0, 0));
+    const chosen = grid.getByRole("link", { name: /^Exit person / }).first();
+    const chosenId = await chosen.evaluate(el => el.closest<HTMLElement>("[data-row-id]")!.dataset.rowId!);
+    await grid.locator(`[data-row-id="${chosenId}"]`).getByRole("link").click();
+    await expect.poll(() => reads).toEqual([chosenId]);
   } finally { await page.close(); state.release(); }
 });
