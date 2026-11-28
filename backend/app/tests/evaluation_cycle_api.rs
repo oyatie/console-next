@@ -1153,6 +1153,8 @@ impl Fixture {
             .unwrap();
         let org = OrgId::one();
         seed_org(pool, ORG_B, "evaluation-isolation").await;
+        sqlx::query("INSERT INTO tenant_module_enrollments (org_id,module_key,enabled,change_ref) VALUES ($1,'evaluation',true,'test-enrollment'), ($2,'evaluation',true,'test-enrollment')")
+            .bind(org.as_uuid()).bind(ORG_B).execute(pool).await.unwrap();
         let branch = seed_branch(pool, org, "평가-본점").await;
         let foreign_branch = seed_branch(pool, OrgId::from_uuid(ORG_B), "격리-지점").await;
 

@@ -61,6 +61,7 @@ export const enSettingsHub = {
   "settingsHub.key.approval.doc_class.registered_branch_change.requires_governing_body_decision": "Registered branch change board resolution",
   "settingsHub.key.approval.doc_class.registered_manager_appointment.requires_governing_body_decision": "Registered manager appointment board resolution",
   "settingsHub.key.corporate.small_company_383_proviso": "Small company Commercial Act Art. 383 proviso",
+  "settingsHub.key.module.evaluation.enabled": "Evaluations module",
   "settingsHub.key.module.payroll.enabled": "Payroll module",
   "settingsHub.key.attendance.week52.warn_hours": "Weekly 52-hour warning threshold",
   "settingsHub.key.attendance.excess.notice_minutes": "Excessive work notice threshold",

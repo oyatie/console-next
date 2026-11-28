@@ -138,7 +138,9 @@ pub fn router(state: EvaluationRestState) -> Router {
             get(employee_reviews),
         )
         .with_state(state);
-    console_platform_request_context::with_request_context(routes, verifier, pool)
+    console_platform_request_context::with_request_context(routes, verifier, pool).layer(
+        axum::Extension(console_platform_request_context::tenant_module::TenantModule::Evaluation),
+    )
 }
 
 // ---------------------------------------------------------------------------
