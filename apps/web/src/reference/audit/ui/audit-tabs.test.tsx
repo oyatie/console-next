@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 // oxlint-disable react/forbid-elements -- The router mock preserves route links for this navigation contract.
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { beforeAll, expect, test, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -16,7 +17,7 @@ vi.mock("../../authz/ui/use-documents-served", () => ({ useAuditDestinations: ac
 beforeAll(() => loadCatalog("ko"));
 
 test("audit navigation exposes audit log, access log review, and support-access views", () => {
-  const html = renderToStaticMarkup(<AuditTabs />);
+  const html = renderToStaticMarkup(<QueryClientProvider client={new QueryClient()}><AuditTabs /></QueryClientProvider>);
   expect(html).toContain('href="/audit/evidence"');
   expect(html).toContain('href="/audit/findings"');
   expect(html).toContain('href="/audit"');
@@ -29,5 +30,5 @@ test("audit navigation exposes audit log, access log review, and support-access 
 
 test("the evidence tab stays hidden without a served org-wide read", () => {
   access.mockReturnValueOnce({ evidenceVault: false, findings: false });
-  expect(renderToStaticMarkup(<AuditTabs />)).not.toContain('href="/audit/evidence"');
+  expect(renderToStaticMarkup(<QueryClientProvider client={new QueryClient()}><AuditTabs /></QueryClientProvider>)).not.toContain('href="/audit/evidence"');
 });
