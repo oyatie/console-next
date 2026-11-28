@@ -81,6 +81,7 @@ pub const PAYROLL_RUN_PAYSLIP_DELIVERY_PATH_TEMPLATE: &str =
     "/api/v1/payroll/runs/{id}/payslip-delivery";
 
 pub use pay_groups::PAYROLL_PAY_GROUPS_PATH;
+pub const PAYROLL_PAY_GROUP_MEMBERSHIPS_PATH: &str = "/api/v1/payroll/pay-group-memberships";
 pub use payslip_draft::{
     PAYROLL_EMPLOYEE_CONTRACT_WAGES_PATH_TEMPLATE, PAYROLL_EMPLOYEE_PAYSLIP_DRAFT_PATH_TEMPLATE,
 };
@@ -88,6 +89,7 @@ pub use payslip_draft::{
 pub const PAYROLL_ROUTE_PATHS: &[&str] = &[
     PAYROLL_REFERENCE_RATES_PATH,
     PAYROLL_PAY_GROUPS_PATH,
+    PAYROLL_PAY_GROUP_MEMBERSHIPS_PATH,
     PAYROLL_RUNS_PATH,
     PAYROLL_RUN_PREVIEW_PATH,
     PAYROLL_RUN_PATH_TEMPLATE,

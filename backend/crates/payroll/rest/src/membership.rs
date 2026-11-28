@@ -11,10 +11,11 @@ use console_payroll_adapter_postgres::pay_groups::membership::{
 };
 use serde_json::{Value, json};
 
-pub(super) const PATH: &str = "/api/v1/payroll/pay-group-memberships";
-
 pub(super) fn router() -> Router<PayrollRestState> {
-    Router::new().route(PATH, get(search).post(assign))
+    Router::new().route(
+        crate::PAYROLL_PAY_GROUP_MEMBERSHIPS_PATH,
+        get(search).post(assign),
+    )
 }
 
 async fn search(

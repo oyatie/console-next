@@ -56,7 +56,7 @@ fn read_outcome<'a>(
         let (target_type, pay_group_id) = match outcome.command.as_str() {
             command
                 if command == format!("POST {PAYROLL_PAY_GROUPS_PATH}")
-                    || command == format!("POST {}", membership::PATH) =>
+                    || command == format!("POST {}", crate::PAYROLL_PAY_GROUP_MEMBERSHIPS_PATH) =>
             {
                 ("pay_group", Some(id))
             }
