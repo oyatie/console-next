@@ -94,5 +94,45 @@ async fn privacy_features_upgrade_preserves_existing_catalog_rows(pool: PgPool) 
     assert_eq!(after, before);
 }
 
+#[sqlx::test(migrations = false)]
+async fn overtime_catalog_upgrade_preserves_grants_and_allows_an_explicit_grant(pool: PgPool) {
+    MIGRATOR.run_to(20261128063200000, &pool).await.unwrap();
+    let org: uuid::Uuid = sqlx::query_scalar(
+        "INSERT INTO organizations(id,slug,name) VALUES(gen_random_uuid(),'catalog-upgrade','Catalog') RETURNING id",
+    ).fetch_one(&pool).await.unwrap();
+    let role: uuid::Uuid = sqlx::query_scalar(
+        "INSERT INTO policy_roles(org_id,role_key,display_name) VALUES($1,'attendance_reviewer','Attendance') RETURNING id",
+    ).bind(org).fetch_one(&pool).await.unwrap();
+    let grant = "INSERT INTO policy_role_permissions(org_id,role_id,feature_key,permission_level) VALUES($1,$2,$3,'allow')";
+    let original = Feature::AttendanceExceptionManage.as_str();
+    sqlx::query(grant)
+        .bind(org)
+        .bind(role)
+        .bind(original)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    MIGRATOR.run(&pool).await.unwrap();
+
+    let permissions: Vec<String> = sqlx::query_scalar(
+        "SELECT feature_key FROM policy_role_permissions WHERE org_id=$1 AND role_id=$2",
+    )
+    .bind(org)
+    .bind(role)
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(permissions, [original]);
+    let inserted = sqlx::query(grant)
+        .bind(org)
+        .bind(role)
+        .bind(Feature::AttendanceOvertimeDecide.as_str())
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert_eq!(inserted.rows_affected(), 1);
+}
+
 /// One migrator for every `#[sqlx::test]` in this file (expanded once, not per test).
 static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
