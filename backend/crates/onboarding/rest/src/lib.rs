@@ -44,13 +44,7 @@ pub const ONBOARDING_ROUTE_PATHS: &[&str] = &[
     STEP_SKIP_PATH,
 ];
 
-/// Personal task routes linked into the running API binary. Each route still enforces its own permissions.
-#[derive(Clone, Copy, Default)]
-pub struct PersonalTaskRoutes {
-    pub location: bool,
-    pub dispatch: bool,
-    pub workspace: bool,
-}
+pub use modules::PersonalTaskRoutes;
 
 #[derive(Clone)]
 pub struct OnboardingRestState {

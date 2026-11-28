@@ -41,3 +41,16 @@ The inventory enumerates all 77 deferred entries. The first implementation slice
 - The first hosted release-gate run on PR 932 refused four migration classifications. The declarations now identify the affected access, workflow, recovery and realtime behavior. The full migration-safety test suite passed locally with these changes.
 
 - The Operator Cockpit now derives the image reference and bake class from the digest-matched release statement. The tested hand-off passed the production host script’s argument parser with a synthetic registry and digest. Its Chromium journey required a staging sign-off, then displayed the qualified receipt. Host signing, secret provisioning and execution still need independent deployment evidence.
+
+
+## Verified follow-up work on 2026-11-28
+
+| Surface | Verified result | Review |
+|---|---|---|
+| Dev directory performance | The previous Firefox mark could fire while the roster was hidden. The visibility-aware hosted check measured 2,072 ms against a 2,000 ms limit. The saved-draft journey also raced its receipt navigation. A delayed Firefox replay failed before the receipt change and passed afterward. | [PR 931](https://github.com/oyatie/console-next/pull/931) |
+| Desk clock-out | The write handler now resolves the employee’s current attendance policy. The self endpoint reports that same decision to both experiences. A failed attendance read previously offered a clock-in action. PostgreSQL and HTTP tests cover default refusal, inheritance, a person override and command replay. | [PR 932](https://github.com/oyatie/console-next/pull/932) |
+| Team and dispatch | The direct team uses the linked organizational unit ID. Counts and contract end dates use the scoped query before pagination. Dispatch links open the addressed offer. | [PR 936](https://github.com/oyatie/console-next/pull/936) |
+| Pay group membership | A later hire prevented a two-group payroll preview. A dated assignment now makes the hire payable. A separate test reproduced retroactive reassignment of an employee already present on a closed, historical sole-group roster. The repaired command refuses the reassignment. | [PR 938](https://github.com/oyatie/console-next/pull/938) |
+| Personnel request links | A link to a request outside the first 20 rows silently lost the selected record. Both experiences now query that ID under the existing server access rules. PostgreSQL and browser tests cover unavailable records and recovery after a failed read. | [PR 939](https://github.com/oyatie/console-next/pull/939) |
+
+Five deferred entries have implementations in review. Their PRs cover the evidence register, findings, lifecycle detail, location-consent history, and payroll outlook. The CSV retains all 77 entries and separates the original design disposition from subsequent implementation evidence. [Deferred inventory](deferred.csv)

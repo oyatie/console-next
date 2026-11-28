@@ -21003,6 +21003,8 @@ export interface components {
             duplicate: boolean;
         };
         EmployeeAttendanceRecordPage: {
+            /** @description Whether the current employee may clock out from the console under the effective policy. Returned by the self endpoint. */
+            console_clock_out?: boolean;
             items: components["schemas"]["EmployeeAttendanceRecord"][];
             /** Format: int64 */
             total: number;
