@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { koSettingLabels } from "./settings-key-labels";
+import { koSettingLabels } from "../settings-key-labels/ko";
 import type { enSettingsHub } from "../en/settings-hub";
 
 export const koSettingsHub: Record<keyof typeof enSettingsHub, string> = {

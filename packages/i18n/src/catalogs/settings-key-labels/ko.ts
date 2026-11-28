@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import type { enSettingLabels } from "../en/settings-key-labels";
+import type { enSettingLabels } from "./en";
 export const koSettingLabels: Record<keyof typeof enSettingLabels, string> = {
   "settingsHub.key.approval.policy.org_structure": "조직 개편",
   "settingsHub.key.approval.policy.people_correction": "인사 정보 정정",

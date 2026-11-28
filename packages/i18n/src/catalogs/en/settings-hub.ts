@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { enSettingLabels } from "./settings-key-labels";
+import { enSettingLabels } from "../settings-key-labels/en";
 export const enSettingsHub = {
   ...enSettingLabels,
   "settingsHub.unknown": "Unavailable",
