@@ -3,5 +3,9 @@ allOf:
 - $ref: '#/components/schemas/UserSummary'
 - type: object
   properties:
+    employee_org_unit_id:
+      type: [string, "null"]
+      format: uuid
+      description: Direct org unit of the linked employee when available.
     tenant:
       $ref: '#/components/schemas/UserTenant'

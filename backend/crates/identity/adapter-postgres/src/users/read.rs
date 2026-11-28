@@ -72,11 +72,12 @@ impl PgOrgStore {
             Box::pin(async move {
                 let mut summary = fetch_user_tx(tx, user_id).await?;
                 if let Some(employee_id) = summary.employee_id {
-                    let (hire_date, employment_status, grade) =
+                    let (hire_date, employment_status, grade, unit_id) =
                         fetch_employee_summary_extras_tx(tx, *org.as_uuid(), employee_id).await?;
                     summary.employee_hire_date = hire_date;
                     summary.employee_employment_status = employment_status;
                     summary.employee_grade = grade;
+                    summary.employee_org_unit_id = unit_id;
                 }
                 Ok(summary)
             })
@@ -237,11 +238,19 @@ async fn fetch_employee_summary_extras_tx(
     tx: &mut Transaction<'_, Postgres>,
     org_id: uuid::Uuid,
     employee_id: uuid::Uuid,
-) -> Result<(Option<String>, Option<String>, Option<String>), PgOrgError> {
+) -> Result<
+    (
+        Option<String>,
+        Option<String>,
+        Option<String>,
+        Option<uuid::Uuid>,
+    ),
+    PgOrgError,
+> {
     let row = sqlx::query(
         "SELECT COALESCE(to_char(e.hire_on, 'YYYY-MM-DD'), NULLIF(btrim(e.hire_date), '')) AS hire_date, \
                 entity_employment_status_on(entity_today(), e.hire_on, e.exit_on, e.employment_status) AS employment_status, \
-                jt.label AS grade \
+                jt.label AS grade, COALESCE(e.org_unit_id, CASE WHEN pg_input_is_valid(e.org_unit, 'uuid') THEN e.org_unit::uuid END) AS org_unit_id \
          FROM employees e \
          LEFT JOIN job_titles jt \
            ON jt.org_id = e.org_id AND jt.id = e.grade_id AND jt.kind = 'GRADE' \
@@ -252,11 +261,12 @@ async fn fetch_employee_summary_extras_tx(
     .fetch_optional(tx.as_mut())
     .await?;
     let Some(row) = row else {
-        return Ok((None, None, None));
+        return Ok((None, None, None, None));
     };
     Ok((
         row.try_get("hire_date")?,
         row.try_get("employment_status")?,
         row.try_get("grade")?,
+        row.try_get("org_unit_id")?,
     ))
 }
