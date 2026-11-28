@@ -13,6 +13,8 @@ pub struct IdentityRestState {
     pub(crate) integrity_access: fn(&console_platform_authz::Principal) -> (bool, bool),
     pub(crate) calendar_access: fn(&console_platform_authz::Principal) -> bool,
     pub(crate) benefit_access: fn(&console_platform_authz::Principal) -> (bool, bool),
+    pub(crate) evaluation_tasks: fn(&console_platform_authz::Principal) -> bool,
+    pub(crate) evaluation_cycles: fn(&console_platform_authz::Principal) -> (bool, bool),
     pub(crate) ledger_access: fn(&console_platform_authz::Principal) -> bool,
     pub(crate) documents_served: bool,
     pub(crate) store: PgOrgStore,
@@ -31,6 +33,8 @@ impl IdentityRestState {
         Self {
             calendar_access: |_| false,
             benefit_access: |_| (false, false),
+            evaluation_tasks: |_| false,
+            evaluation_cycles: |_| (false, false),
             ledger_access: |_| false,
             documents_served: false,
             integrity_access: |_| (false, false),
@@ -72,11 +76,29 @@ impl IdentityRestState {
     }
 
     #[must_use]
+    pub fn with_evaluation_tasks(
+        mut self,
+        access: fn(&console_platform_authz::Principal) -> bool,
+    ) -> Self {
+        self.evaluation_tasks = access;
+        self
+    }
+
+    #[must_use]
     pub fn with_benefit_access(
         mut self,
         access: fn(&console_platform_authz::Principal) -> (bool, bool),
     ) -> Self {
         self.benefit_access = access;
+        self
+    }
+
+    #[must_use]
+    pub fn with_evaluation_cycles(
+        mut self,
+        access: fn(&console_platform_authz::Principal) -> (bool, bool),
+    ) -> Self {
+        self.evaluation_cycles = access;
         self
     }
 

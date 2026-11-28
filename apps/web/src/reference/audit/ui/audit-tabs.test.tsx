@@ -11,7 +11,7 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 const access = vi.hoisted(() => vi.fn(() => ({ evidenceVault: true, findings: true })));
-vi.mock("../../authz/ui/use-documents-served", () => ({ useAuditDestinations: access }));
+vi.mock("../../authz/ui/use-documents-served", () => ({ useServedDestinations: access }));
 
 beforeAll(() => loadCatalog("ko"));
 

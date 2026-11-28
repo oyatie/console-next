@@ -33,6 +33,10 @@ pub(super) fn mount(router: Router, deps: &TenantDeps<'_>) -> Router {
     let identity = identity.with_calendar_access(crate::collaboration::calendar_access);
     #[cfg(feature = "benefit")]
     let identity = identity.with_benefit_access(console_benefit_rest::catalog_access);
+    #[cfg(feature = "evaluation")]
+    let identity = identity
+        .with_evaluation_tasks(console_evaluation_rest::my_tasks_available)
+        .with_evaluation_cycles(console_evaluation_rest::cycle_access);
     #[cfg(feature = "compliance")]
     let identity = identity.with_ledger_access(console_compliance_rest::consent_ledger_available);
     router

@@ -2,6 +2,16 @@
 import type { enMe } from "../en/me";
 
 export const koMe: Record<keyof typeof enMe, string> = {
+  "me.evaluation.title": "내 평가 과제",
+  "me.evaluation.empty": "배정된 평가 과제가 없습니다",
+  "me.evaluation.cycle": "평가 주기",
+  "me.evaluation.kind": "평가 유형",
+  "me.evaluation.self": "자기 평가",
+  "me.evaluation.manager": "관리자 평가",
+  "me.evaluation.pending": "미작성",
+  "me.evaluation.draft": "작성 중",
+  "me.evaluation.submitted": "제출됨",
+  "me.evaluation.due": "마감일",
   "me.attendance.title": "내 근태",
   "me.attendance.stripLabel": "내 근태 요약",
   "me.attendance.week52.current": "이번 주 근로",

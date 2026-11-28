@@ -142,3 +142,19 @@ test("a stream gap on a held dashboard refetches current appearance and preserve
     release();
   }
 });
+
+test.each(["reset", "change"] as const)("a held view refreshes module access on a tenant policy %s", async event => {
+  const release = holdLive(true);
+  const grants = vi.fn(async () => ({ capabilities: [] }));
+  const stop = new QueryObserver(qc, { ...get("/api/v1/me/authz"), queryFn: grants }).subscribe(() => {});
+  try {
+    await vi.advanceTimersByTimeAsync(0);
+    grants.mockClear();
+    frame(event, event === "reset" ? { reason: "gap" } : { type: "tenant_settings" });
+    await vi.advanceTimersByTimeAsync(11_000);
+    expect(grants).toHaveBeenCalledOnce();
+  } finally {
+    stop();
+    release();
+  }
+});

@@ -46285,6 +46285,7 @@ export interface operations {
     listEvaluationCycles: {
         parameters: {
             query?: {
+                /** @description Omit to list active cycles. Select ARCHIVED for archived cycles. Rows are ordered by creation time and then cycle ID, newest first. */
                 stage?: components["schemas"]["EvaluationCycleStage"];
                 /** @description Normalized to the inclusive range 1 through 100; defaults to 50. */
                 limit?: number;
@@ -46315,7 +46316,10 @@ export interface operations {
     createEvaluationCycle: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Reuse this key for the same create intent. */
+                "Idempotency-Key"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -46336,6 +46340,15 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            /** @description A previous command with this key was already applied or is processing. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
             422: components["responses"]["ValidationError"];
             500: components["responses"]["InternalServerError"];
             503: components["responses"]["ServiceUnavailable"];

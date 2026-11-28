@@ -1,7 +1,7 @@
 //! Authenticated evaluation-console routes (CAP-EVALUATION-CONSOLE).
 //!
-//! Evaluation is an ORG-LEVEL HR module (no branch column): feature checks
-//! authorize against a representative branch exactly like the sales catalog.
+//! Cycle and ledger operations require organization-wide authority. Personal review
+//! operations are confined to the subject or assigned manager by the adapter.
 //! Beyond the feature matrix the boundary enforces deny-by-omission — a
 //! caller who is neither an `EvaluationRead` holder nor the subject's
 //! assigned manager receives 404, never 403, for a concrete subject — and
@@ -9,8 +9,14 @@
 //! preflights, SoD, and the `with_audits` carve-outs live in the adapter.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
+mod cycles;
 mod openapi;
+mod tasks;
+mod validation;
+pub use cycles::cycle_access;
 pub use openapi::OPENAPI_FRAGMENT;
+pub use tasks::my_tasks_available;
+use validation::{bounded_optional, bounded_required, validated_weight};
 
 use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, StatusCode};
@@ -25,7 +31,7 @@ use console_evaluation_application::{
 use console_evaluation_domain::{CycleStage, CycleTransition, Grade, ReviewKind};
 use console_kernel_core::{KernelError, UserId};
 use console_platform_auth::JwtVerifier;
-use console_platform_authz::{Action, Feature, Principal, authorize_capability};
+use console_platform_authz::{Feature, Principal, authorize_capability, authorize_org_wide};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -108,7 +114,10 @@ pub fn router(state: EvaluationRestState) -> Router {
     let verifier = state.jwt_verifier.clone();
     let pool = state.store.pool().clone();
     let routes = Router::new()
-        .route(EVALUATION_CYCLES_PATH, get(list_cycles).post(create_cycle))
+        .route(
+            EVALUATION_CYCLES_PATH,
+            get(cycles::list_cycles).post(cycles::create_cycle),
+        )
         .route(EVALUATION_CYCLE_PATH_TEMPLATE, get(get_cycle))
         .route(EVALUATION_CYCLE_PREFLIGHT_PATH_TEMPLATE, get(preflight))
         .route(EVALUATION_CYCLE_OPEN_PATH_TEMPLATE, post(open_cycle))
@@ -130,35 +139,20 @@ pub fn router(state: EvaluationRestState) -> Router {
             post(submit_review),
         )
         .route(EVALUATION_SUBJECT_CALIBRATE_PATH_TEMPLATE, post(calibrate))
-        .route(EVALUATION_MY_TASKS_PATH, get(my_tasks))
+        .route(EVALUATION_MY_TASKS_PATH, get(tasks::my_tasks))
         .route(
             EVALUATION_EMPLOYEE_REVIEWS_PATH_TEMPLATE,
             get(employee_reviews),
         )
         .with_state(state);
-    console_platform_request_context::with_request_context(routes, verifier, pool)
+    console_platform_request_context::with_request_context(routes, verifier, pool).layer(
+        axum::Extension(console_platform_request_context::tenant_module::TenantModule::Evaluation),
+    )
 }
 
 // ---------------------------------------------------------------------------
 // Request / query DTOs
 // ---------------------------------------------------------------------------
-
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct CreateCycleRequest {
-    name: String,
-    kind: console_evaluation_domain::CycleKind,
-    period_label: String,
-    #[serde(with = "console_evaluation_application::date_fmt")]
-    due_date: time::Date,
-}
-
-#[derive(Debug, Deserialize)]
-struct CycleListFilter {
-    stage: Option<CycleStage>,
-    limit: Option<i64>,
-    offset: Option<i64>,
-}
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -224,58 +218,6 @@ struct ErrorPayload {
 // ---------------------------------------------------------------------------
 // Cycle handlers
 // ---------------------------------------------------------------------------
-
-async fn create_cycle(
-    State(state): State<EvaluationRestState>,
-    headers: HeaderMap,
-    Json(body): Json<CreateCycleRequest>,
-) -> Result<(StatusCode, Json<CycleDetail>), RestError> {
-    let principal = principal_from_headers(&state, &headers).await?;
-    require_feature(&principal, Feature::EvaluationManage)?;
-    let name = bounded_required(&body.name, 1, NAME_MAX_CHARS, "name")?;
-    let period_label = bounded_required(
-        &body.period_label,
-        1,
-        PERIOD_LABEL_MAX_CHARS,
-        "period_label",
-    )?;
-    let detail = state
-        .store
-        .create_cycle(
-            principal.user_id,
-            CreateCycleInput {
-                name,
-                kind: body.kind,
-                period_label,
-                due_date: body.due_date,
-            },
-        )
-        .await
-        .map_err(RestError::from_store)?;
-    Ok((StatusCode::CREATED, Json(detail)))
-}
-
-async fn list_cycles(
-    State(state): State<EvaluationRestState>,
-    headers: HeaderMap,
-    Query(filter): Query<CycleListFilter>,
-) -> Result<Json<CyclePage>, RestError> {
-    let principal = principal_from_headers(&state, &headers).await?;
-    require_feature(&principal, Feature::EvaluationRead)?;
-    let page = state
-        .store
-        .list_cycles(CycleQuery {
-            stage: filter.stage,
-            limit: filter
-                .limit
-                .unwrap_or(DEFAULT_CYCLE_LIMIT)
-                .clamp(1, MAX_CYCLE_LIMIT),
-            offset: filter.offset.unwrap_or(0).max(0),
-        })
-        .await
-        .map_err(RestError::from_store)?;
-    Ok(Json(page))
-}
 
 async fn get_cycle(
     State(state): State<EvaluationRestState>,
@@ -473,7 +415,7 @@ async fn save_review(
 ) -> Result<Json<ReviewView>, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
     let kind = ReviewKind::from_path(&kind).map_err(RestError::from_kernel)?;
-    require_review_access(&state, &principal, subject_id).await?;
+    require_feature(&principal, Feature::EvaluationSubmit)?;
     if body.evidence_links.len() > EVIDENCE_MAX {
         return Err(validation(format!(
             "evidence_links must contain at most {EVIDENCE_MAX} entries"
@@ -516,7 +458,7 @@ async fn submit_review(
 ) -> Result<Json<ReviewView>, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
     let kind = ReviewKind::from_path(&kind).map_err(RestError::from_kernel)?;
-    require_review_access(&state, &principal, subject_id).await?;
+    require_feature(&principal, Feature::EvaluationSubmit)?;
     let view = state
         .store
         .submit_review(principal.user_id, subject_id, kind)
@@ -554,20 +496,6 @@ async fn calibrate(
 // Task list and person ledger
 // ---------------------------------------------------------------------------
 
-async fn my_tasks(
-    State(state): State<EvaluationRestState>,
-    headers: HeaderMap,
-) -> Result<Json<TaskPage>, RestError> {
-    let principal = principal_from_headers(&state, &headers).await?;
-    require_feature(&principal, Feature::EvaluationSubmit)?;
-    let page = state
-        .store
-        .my_tasks(principal.user_id)
-        .await
-        .map_err(RestError::from_store)?;
-    Ok(Json(page))
-}
-
 async fn employee_reviews(
     State(state): State<EvaluationRestState>,
     headers: HeaderMap,
@@ -587,27 +515,17 @@ async fn employee_reviews(
 // Authorization helpers
 // ---------------------------------------------------------------------------
 
-/// Authorize an org-level evaluation feature. `evaluation_cycles`,
-/// `evaluation_subjects`, `evaluation_goals`, `evaluation_reviews` and
-/// `evaluation_evidence_links` (migration 0190) all lack a `branch_id` column, so
-/// there is no resource branch to check — a capability decision.
 fn require_feature(principal: &Principal, feature: Feature) -> Result<(), RestError> {
-    authorize_capability(principal, Action::new(feature)).map_err(RestError::from_kernel)
+    if feature == Feature::EvaluationSubmit {
+        authorize_capability(principal, feature.into())
+    } else {
+        authorize_org_wide(principal, feature.into())
+    }
+    .map_err(RestError::from_kernel)
 }
 
 fn holds_feature(principal: &Principal, feature: Feature) -> bool {
     require_feature(principal, feature).is_ok()
-}
-
-/// Review commands require the server-issued submit capability. The adapter
-/// then resolves the actor's canonical employee identity and enforces the
-/// kind-specific relationship in the same transaction as the write.
-async fn require_review_access(
-    _state: &EvaluationRestState,
-    principal: &Principal,
-    _subject_id: Uuid,
-) -> Result<(), RestError> {
-    require_feature(principal, Feature::EvaluationSubmit)
 }
 
 async fn subject_gate(
@@ -675,39 +593,6 @@ async fn principal_from_headers(
 // ---------------------------------------------------------------------------
 // Validation helpers (422 before any DB CHECK)
 // ---------------------------------------------------------------------------
-
-fn bounded_required(value: &str, min: usize, max: usize, field: &str) -> Result<String, RestError> {
-    let trimmed = value.trim();
-    let chars = trimmed.chars().count();
-    if chars < min || chars > max {
-        return Err(validation(format!(
-            "{field} must be between {min} and {max} characters"
-        )));
-    }
-    Ok(trimmed.to_owned())
-}
-
-/// Bound an optional text field; a present-but-blank value normalizes to None.
-fn bounded_optional(value: &str, max: usize, field: &str) -> Result<Option<String>, RestError> {
-    let trimmed = value.trim();
-    if trimmed.is_empty() {
-        return Ok(None);
-    }
-    if trimmed.chars().count() > max {
-        return Err(validation(format!(
-            "{field} must be at most {max} characters"
-        )));
-    }
-    Ok(Some(trimmed.to_owned()))
-}
-
-fn validated_weight(weight_pct: i16) -> Result<i16, RestError> {
-    if (0..=100).contains(&weight_pct) {
-        Ok(weight_pct)
-    } else {
-        Err(validation("weight_pct must be between 0 and 100"))
-    }
-}
 
 fn validation(message: impl Into<String>) -> RestError {
     RestError::from_kernel(KernelError::validation(message))
