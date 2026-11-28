@@ -8,6 +8,7 @@ import { codeText } from "../../../lib/code-text";
 import { isMessageId, t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { myAccessQuery } from "../../../reference/authz/api";
+import { BenefitCatalogLink } from "../../../reference/benefits/ui/benefit-catalog-link";
 import { settingsQuery } from "../../../reference/settings/api";
 import { canOpenOvertimeSettings, settingsViews, type SettingsView } from "../../../shell/settings-views";
 import { QueryState } from "../../../lib/react/query-state";
@@ -175,7 +176,7 @@ export function SettingsHubView({
   return (
     <SettingsPattern
       q={{ isPending: false, error: null, data: rows, refetch: () => {} }}
-      head={{ title: t("shell.link.settings") }}
+      head={{ title: t("shell.link.settings"), actions: interactive ? <BenefitCatalogLink /> : undefined }}
       summary={
         interactive && isCategorySection && settings.data ? (
           <Suspense fallback={null}>
@@ -259,7 +260,7 @@ export function SettingsHubView({
         ) : undefined
       }
       baseline={() => (
-        <Page floorplan="P-05" head={{ title: t("shell.link.settings") }}>
+        <Page floorplan="P-05" head={{ title: t("shell.link.settings"), actions: interactive ? <BenefitCatalogLink /> : undefined }}>
           {interactive && onSelectSection && (
             <Button variant="ghost" onClick={() => selectSection(section === "rollout" ? "overview" : "rollout")}>
               {t(section === "rollout" ? "settingsHub.section.overview" : "settingsHub.section.rollout")}

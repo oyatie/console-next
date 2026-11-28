@@ -5,6 +5,7 @@ import { myAccessQuery } from "../../../reference/authz/api";
 import { grantLines } from "../../../reference/authz/present";
 import { orgStructureRef } from "../../../reference/entity/api";
 import { RestrictedAuditLink } from "../../../reference/audit/ui/restricted-audit-link";
+import { BenefitCatalogLink } from "../../../reference/benefits/ui/benefit-catalog-link";
 import { Card } from "../../../ui/card/card";
 
 type Node = { id: string; name: string; children?: readonly Node[] };
@@ -29,7 +30,7 @@ export function MyAccessGrants() {
       ))}
     </ul>
   );
-  }}</QueryState><RestrictedAuditLink /></>;
+  }}</QueryState><RestrictedAuditLink /><BenefitCatalogLink /></>;
 }
 
 /**

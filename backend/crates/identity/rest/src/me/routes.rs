@@ -77,5 +77,7 @@ pub(crate) async fn get_me_authz(
         (state.ledger_access)(&principal),
         evaluation && tasks,
         (evaluation && read_cycles, evaluation && create_cycles),
+        (state.benefit_access)(&principal),
+        (state.calendar_access)(&principal),
     )))
 }

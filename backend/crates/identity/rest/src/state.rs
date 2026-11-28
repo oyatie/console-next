@@ -13,6 +13,8 @@ pub struct IdentityRestState {
     pub(crate) integrity_access: fn(&console_platform_authz::Principal) -> (bool, bool),
     pub(crate) evaluation_tasks: fn(&console_platform_authz::Principal) -> bool,
     pub(crate) evaluation_cycles: fn(&console_platform_authz::Principal) -> (bool, bool),
+    pub(crate) calendar_access: fn(&console_platform_authz::Principal) -> bool,
+    pub(crate) benefit_access: fn(&console_platform_authz::Principal) -> (bool, bool),
     pub(crate) ledger_access: fn(&console_platform_authz::Principal) -> bool,
     pub(crate) documents_served: bool,
     pub(crate) projection_available: fn(&console_platform_authz::Principal) -> bool,
@@ -32,6 +34,8 @@ impl IdentityRestState {
         Self {
             evaluation_tasks: |_| false,
             evaluation_cycles: |_| (false, false),
+            calendar_access: |_| false,
+            benefit_access: |_| (false, false),
             ledger_access: |_| false,
             documents_served: false,
             projection_available: |_| false,
@@ -82,12 +86,28 @@ impl IdentityRestState {
         self
     }
 
+    pub fn with_calendar_access(
+        mut self,
+        access: fn(&console_platform_authz::Principal) -> bool,
+    ) -> Self {
+        self.calendar_access = access;
+        self
+    }
+
     #[must_use]
     pub fn with_evaluation_cycles(
         mut self,
         access: fn(&console_platform_authz::Principal) -> (bool, bool),
     ) -> Self {
         self.evaluation_cycles = access;
+        self
+    }
+
+    pub fn with_benefit_access(
+        mut self,
+        access: fn(&console_platform_authz::Principal) -> (bool, bool),
+    ) -> Self {
+        self.benefit_access = access;
         self
     }
 

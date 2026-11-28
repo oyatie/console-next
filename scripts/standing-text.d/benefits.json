@@ -1,0 +1,15 @@
+{
+  "baseline": {
+    "apps/web/src/features/benefits/ui/benefits-page.tsx#BenefitsPage": 32
+  },
+  "newScreens": {
+    "apps/web/src/features/benefits/ui/benefits-page.tsx#BenefitsPage": {
+      "FACT": 17,
+      "REFUSAL": 9,
+      "EMPTY": 3,
+      "LEGAL": 0,
+      "RECEIPT": 3,
+      "EXPLANATION": 0
+    }
+  }
+}

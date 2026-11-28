@@ -18,6 +18,7 @@ import { Chip } from "../../../ui/chip";
 import { EmptyState } from "../../../ui/empty-state";
 import { KeyValue, StatRow } from "../../../ui/key-value/key-value";
 import { LongTable } from "../../../ui/long-table/long-table";
+import { useServedCapability } from "../../../reference/authz/ui/use-documents-served";
 import { PageHead } from "../../../ui/page-head/page-head";
 import { SettingsPattern } from "../../../ui/patterns/settings";
 import { RecordSection } from "../../../ui/record/record-section";
@@ -52,6 +53,7 @@ export function MeDeskPage() {
   const month = today.slice(0, 7);
   const week = isoMondayOf(today);
 
+  const calendar = useServedCapability("served_calendar");
   const me = useQuery(meUserQuery);
   const modules = useQuery(modulesQuery);
   const evaluations = useServedCapability("served_evaluation_tasks");
@@ -102,6 +104,7 @@ export function MeDeskPage() {
 
   const viewsNav = (
     <nav aria-label={t("me.desk.views")} className={s.railStack}>
+      {calendar && <Link to="/calendar">{t("internalCalendar.title")}</Link>}
       <div className={s.railNav}>
         {VIEWS.map(item => (
           <Button

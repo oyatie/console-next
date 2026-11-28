@@ -73,6 +73,8 @@ const STATIC_ROUTES: Readonly<Record<string, () => string>> = {
   "/access/review": () => t("accessReview.title"),
   "/audit/restricted": () => t("audit.restricted.title"),
   "/audit/location-consents": () => t("audit.consents.title"),
+  "/calendar": () => t("internalCalendar.title"),
+  "/benefits": () => t("benefits.title"),
   "/audit/findings": () => t("audit.findings.title"),
   "/audit/evidence": () => t("audit.vault.title"),
   "/audit": () => t("shellRoutes.auditLog"),

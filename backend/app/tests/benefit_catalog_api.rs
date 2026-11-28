@@ -20,6 +20,10 @@ use sqlx::postgres::PgPoolOptions;
 use time::{Duration, OffsetDateTime};
 use tower::ServiceExt;
 
+#[path = "benefit_catalog_api/support.rs"]
+mod support;
+use support::{app_state, console_rt_pool, issue_token, seed_tenant_user};
+
 const TEST_ISSUER: &str = "console-platform-auth";
 const TEST_AUDIENCE: &str = "console-api";
 
@@ -61,6 +65,15 @@ async fn benefit_catalog_routes_enforce_pbac_and_audit_catalog_and_lifecycle_wri
         console_rt_pool(&owner_pool).await,
         public_key_pem,
     ));
+    for (token, visible) in [(&member_token, false), (&admin_token, true)] {
+        let response = request(service.clone(), "GET", "/api/v1/me/authz", token, None).await;
+        assert_eq!(response.status(), StatusCode::OK);
+        let response = body_json(response).await;
+        let caps = response["capabilities"].as_array().unwrap();
+        for scope in ["served_benefit_catalog", "served_benefit_catalog_manage"] {
+            assert_eq!(caps.iter().any(|cap| cap["feature"] == scope), visible);
+        }
+    }
     let create_body = benefit_body();
 
     let denied = request(
@@ -88,6 +101,8 @@ async fn benefit_catalog_routes_enforce_pbac_and_audit_catalog_and_lifecycle_wri
     .await;
     assert_eq!(created.status(), StatusCode::CREATED);
     let created: Value = body_json(created).await;
+    assert_eq!(created["effective_on"], "2026-04-11");
+    assert_eq!(created["retires_on"], "2027-04-10");
     let item_id = created["id"].as_str().expect("created item id").to_owned();
     assert_eq!(created["lifecycle"]["current_state"], "draft");
 
@@ -100,26 +115,75 @@ async fn benefit_catalog_routes_enforce_pbac_and_audit_catalog_and_lifecycle_wri
     )
     .await;
     assert_eq!(updated.status(), StatusCode::OK);
+    let edited = body_json(updated).await;
 
     let tiers = request(
         service.clone(),
         "PUT",
         &format!("/api/v1/benefit-catalog/items/{item_id}/tiers"),
         &admin_token,
-        Some(json!({"tiers": [tier("관리자")]})),
+        Some(json!({"expectedUpdatedAt": edited["updated_at"], "tiers": [tier("관리자")]})),
     )
     .await;
     assert_eq!(tiers.status(), StatusCode::OK);
+    let tiers = body_json(tiers).await;
+    assert_ne!(
+        tiers["updated_at"], edited["updated_at"],
+        "replacing tiers must advance the item revision used by other editors"
+    );
 
     let conditions = request(
         service.clone(),
         "PUT",
         &format!("/api/v1/benefit-catalog/items/{item_id}/conditions"),
         &admin_token,
-        Some(json!({"conditions": [condition("정규직")]})),
+        Some(
+            json!({"expectedUpdatedAt": tiers["updated_at"], "conditions": [condition("정규직")]}),
+        ),
     )
     .await;
     assert_eq!(conditions.status(), StatusCode::OK);
+    let current = body_json(conditions).await;
+    assert_ne!(current["updated_at"], tiers["updated_at"]);
+    for (method, suffix, mut change) in [
+        ("PATCH", "", json!({"name": "Stale edit"})),
+        ("PUT", "/tiers", json!({"tiers": []})),
+        ("PUT", "/conditions", json!({"conditions": []})),
+    ] {
+        change["expectedUpdatedAt"] = edited["updated_at"].clone();
+        let stale = request(
+            service.clone(),
+            method,
+            &format!("/api/v1/benefit-catalog/items/{item_id}{suffix}"),
+            &admin_token,
+            Some(change),
+        )
+        .await;
+        assert_eq!(stale.status(), StatusCode::CONFLICT);
+    }
+    for change in [
+        json!({"retiresOn": "2026-04-10"}),
+        json!({"effectiveOn": "2027-04-11"}),
+    ] {
+        let refused = request(
+            service.clone(),
+            "PATCH",
+            &format!("/api/v1/benefit-catalog/items/{item_id}"),
+            &admin_token,
+            Some(change),
+        )
+        .await;
+        assert_eq!(refused.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+    let reread = request(
+        service.clone(),
+        "GET",
+        &format!("/api/v1/benefit-catalog/items/{item_id}"),
+        &admin_token,
+        None,
+    )
+    .await;
+    assert_eq!(body_json(reread).await, current);
 
     let transitioned = request(
         service.clone(),
@@ -211,6 +275,8 @@ fn benefit_body() -> Value {
         "name": "국민연금",
         "coverageLabel": "전 직원",
         "coveredCount": 12,
+        "effectiveOn": "2026-04-11",
+        "retiresOn": "2027-04-10",
         "costLabel": "월 120,000원",
         "estimatedAnnualCostWon": 1440000,
         "employerRateBps": 450,
@@ -242,104 +308,4 @@ fn condition(label: &str) -> Value {
         "cedar_policy_ref": null,
         "display_order": 0
     })
-}
-
-async fn console_rt_pool(owner_pool: &PgPool) -> PgPool {
-    let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for sqlx::test");
-    let db_name: String = sqlx::query_scalar("SELECT current_database()")
-        .fetch_one(owner_pool)
-        .await
-        .unwrap();
-    let base = url
-        .rsplit_once('/')
-        .map(|(prefix, _)| prefix.to_owned())
-        .unwrap_or(url);
-    PgPoolOptions::new()
-        .max_connections(4)
-        .after_connect(|connection, _meta| {
-            Box::pin(async move {
-                sqlx::query("SET ROLE console_rt")
-                    .execute(connection)
-                    .await?;
-                Ok(())
-            })
-        })
-        .connect(&format!("{base}/{db_name}"))
-        .await
-        .unwrap()
-}
-
-async fn seed_tenant_user(pool: &PgPool, org: OrgId, user: UserId, role: &str, name: &str) {
-    sqlx::query(
-        "INSERT INTO organizations (id, slug, name) VALUES ($1, 'sae', 'SAE') \
-         ON CONFLICT (id) DO NOTHING",
-    )
-    .bind(*org.as_uuid())
-    .execute(pool)
-    .await
-    .unwrap();
-    sqlx::query(
-        "INSERT INTO users (id, display_name, roles, is_active, org_id) \
-         VALUES ($1, $2, $3, true, $4)",
-    )
-    .bind(*user.as_uuid())
-    .bind(name)
-    .bind(vec![role.to_owned()])
-    .bind(*org.as_uuid())
-    .execute(pool)
-    .await
-    .unwrap();
-}
-
-fn app_state(pool: PgPool, public_key_pem: String) -> AppState {
-    let config = AppConfig::from_pairs([
-        ("CONSOLE_APP_ROLE", AppRole::Api.to_string()),
-        ("CONSOLE_HTTP_ADDR", "127.0.0.1:0".to_owned()),
-        ("CONSOLE_JWT_ISSUER", TEST_ISSUER.to_owned()),
-        ("CONSOLE_JWT_AUDIENCE", TEST_AUDIENCE.to_owned()),
-        ("CONSOLE_JWT_PUBLIC_KEY_PEM", public_key_pem),
-    ])
-    .unwrap();
-    AppState::new(config, DatabaseDependency::Postgres(pool)).unwrap()
-}
-
-async fn issue_token(
-    pool: &sqlx::PgPool,
-    private_pem: &[u8],
-    public_pem: &[u8],
-    user_id: UserId,
-    org: OrgId,
-    roles: Vec<String>,
-) -> String {
-    console_platform_test_support::issue_session_token(
-        pool,
-        &JwtIssuer::from_es256_pem(
-            JwtSettings {
-                issuer: TEST_ISSUER.to_owned(),
-                audience: TEST_AUDIENCE.to_owned(),
-                access_token_ttl: Duration::minutes(15),
-            },
-            private_pem,
-            public_pem,
-        )
-        .unwrap(),
-        AccessTokenInput {
-            subject: user_id,
-            org_id: org,
-            roles,
-            branches: Vec::<BranchId>::new(),
-            platform: false,
-            support: None,
-            read_only: false,
-            display_name: None,
-            feature_grants: Vec::new(),
-            authz_subject_version: 0,
-            authz_policy_version: 0,
-            session_generation: 0,
-            issued_at: OffsetDateTime::now_utc(),
-        },
-        None,
-        Vec::new(),
-    )
-    .await
 }

@@ -37,6 +37,8 @@ const paths = [
   "/audit",
   "/audit/access-log",
   "/audit/evidence",
+  "/calendar",
+  "/benefits",
   "/audit/findings",
   "/audit/lifecycles/$objectType/$objectId",
   "/audit/location-consents",

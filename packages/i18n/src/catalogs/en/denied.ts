@@ -1,5 +1,17 @@
 // English for `denied.` ids (source: ../ko/denied.ts).
 export const enDenied = {
+  "denied.capability.analytics_projection": "Requires access to analytics projections.",
+  "denied.capability.lifecycle_manage": "Requires organization-wide lifecycle management access.",
+  "denied.capability.restricted_audit_stream": "Requires clearance for the restricted audit stream.",
+  "denied.capability.served_evaluation_cycles": "Evaluation cycles",
+  "denied.capability.served_evaluation_cycle_create": "Create evaluation cycle",
+  "denied.capability.served_evaluation_tasks": "Evaluation submission access",
+  "denied.capability.served_calendar": "Requires internal calendar access.",
+  "denied.capability.documents": "Requires organization-wide evidence access.",
+  "denied.capability.served_integrity_findings": "Requires access to integrity findings.",
+  "denied.capability.served_integrity_triage": "Requires access to integrity findings.",
+  "denied.capability.served_location_consent_ledger": "Requires audit access for the selected branch.",
+  "denied.capability.served_benefit_catalog": "Requires benefit catalog access.",
   "denied.action.bulk_appointment": "“HR records · Create & edit · All” or “Appointments · Create & edit · All”",
   "denied.action.certificate_settings_manage": "Manage certificate numbering and seals",
   "denied.scopeKind.LEGAL_ENTITY": "Entity scope",

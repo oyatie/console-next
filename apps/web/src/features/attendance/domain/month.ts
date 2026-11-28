@@ -13,16 +13,4 @@ export function monthDates(month: string): string[] {
   return out;
 }
 
-/**
- * The month as Sunday-first weeks (A2 calendar): each week holds 7 dates, including the neighbouring months' days that
- * fill the first and last week, so the grid keeps its shape.
- */
-export function monthWeeks(month: string): string[][] {
-  let d = addDays(`${month}-01`, -weekday(`${month}-01`));
-  const weeks: string[][] = [];
-  do {
-    weeks.push(Array.from({ length: 7 }, (_, i) => addDays(d, i)));
-    d = addDays(d, 7);
-  } while (monthOf(d) === month);
-  return weeks;
-}
+export { monthWeeks } from "../../../ui/date/month-weeks";

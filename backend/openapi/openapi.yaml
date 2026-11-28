@@ -6100,6 +6100,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/ValidationError' }
   /api/v1/benefit-catalog/items/{benefit_id}/conditions:
     put:
@@ -6114,6 +6115,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/ValidationError' }
   /api/v1/benefit-catalog/items/{benefit_id}/tiers:
     put:
@@ -6128,6 +6130,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/ValidationError' }
   /api/v1/branches:
     get:
@@ -7477,8 +7480,10 @@ paths:
         - collaboration
       operationId: listCollaborationCalendarEvents
       summary: List tenant-scoped collaboration calendar events
-      description: Returns server-filtered collaboration calendar events for the caller's tenant. Personal events are visible
-        only to the creator, while org/team/department scopes carry explicit server policy metadata for future PBAC/ABAC expansion.
+      description: |
+        Lists active internal events visible to this tenant member over the given range. Personal events belong to the creator,
+        department events to authorized branches and team events to team members. Creators can inspect their own events.
+        Follow next_cursor with the original range to read subsequent pages in stable order at the first page's snapshot time.
       security:
       - bearerAuth: []
       parameters:
@@ -7492,6 +7497,10 @@ paths:
         required: false
         schema:
           $ref: '#/components/schemas/Timestamp'
+      - name: cursor
+        in: query
+        description: Opaque continuation returned by the preceding page for this range.
+        schema: { type: string }
       - name: limit
         in: query
         required: false
@@ -7519,8 +7528,12 @@ paths:
         - collaboration
       operationId: createCollaborationCalendarEvent
       summary: Create an audited collaboration calendar event
-      description: Creates a tenant-scoped calendar event with explicit audience scope and optional source object link. The
-        server records an audit event and an append-only lifecycle event under forced RLS.
+      description: |
+        Creates an internal event, an append-only lifecycle record and a platform audit record in one tenant transaction.
+        Members create PERSONAL events for themselves. DEPARTMENT publication requires NoticeManage for the referenced
+        active branch. TENANT, ORG and TEAM publication require organization-wide NoticeManage. A branch-scoped administrator
+        previously allowed to publish a tenant event now receives 403. Personal events and authorized branch publishing remain available.
+        This operation sends no invitations or email and does not start a delivery worker.
       security:
       - bearerAuth: []
       requestBody:
@@ -40112,8 +40125,9 @@ components:
         conditions: { type: array, items: { $ref: '#/components/schemas/BenefitCatalogCondition' } }
     BenefitCatalogItem:
       type: object
-      required: [id, benefit_code, category, name, scope, coverage_label, cost_label, tiers, conditions, lifecycle]
+      required: [id, benefit_code, category, name, scope, coverage_label, cost_label, tiers, conditions, lifecycle, updated_at]
       properties:
+        updated_at: { type: string, format: date-time }
         id: { $ref: '#/components/schemas/Uuid' }
         benefit_code: { type: string }
         category: { type: string, enum: [legal, extra] }
@@ -40156,12 +40170,14 @@ components:
       additionalProperties: false
       required: [conditions]
       properties:
+        expectedUpdatedAt: { type: string, format: date-time, description: Current item revision returned by the last catalog read. }
         conditions: { type: array, items: { $ref: '#/components/schemas/BenefitCatalogCondition' } }
     BenefitCatalogReplaceTiersRequest:
       type: object
       additionalProperties: false
       required: [tiers]
       properties:
+        expectedUpdatedAt: { type: string, format: date-time, description: Current item revision returned by the last catalog read. }
         tiers: { type: array, items: { $ref: '#/components/schemas/BenefitCatalogTier' } }
     BenefitCatalogScope:
       type: object
@@ -40191,6 +40207,7 @@ components:
       description: Mutable catalog fields only; tenant, actor, identifiers, and lifecycle state are server-owned.
       additionalProperties: false
       properties:
+        expectedUpdatedAt: { type: string, format: date-time, description: Current item revision returned by the last catalog read. }
         category: { type: string, enum: [legal, extra] }
         name: { type: string, minLength: 1 }
         scope: { $ref: '#/components/schemas/BenefitCatalogScope' }
@@ -40955,7 +40972,9 @@ components:
       type: object
       required:
       - items
+      - next_cursor
       properties:
+        next_cursor: { type: [string, 'null'] }
         items:
           type: array
           items:

@@ -32,6 +32,8 @@ import { enAccounts } from "./en/accounts";
 import { enAccess } from "./en/access";
 import { enAccessReview } from "./en/access-review";
 import { enAccessLog } from "./en/access-log";
+import { enInternalCalendar } from "./en/internal-calendar";
+import { enBenefits } from "./en/benefits";
 import { enAudit } from "./en/audit";
 import { enAccessCodes } from "./en/access-codes";
 import { enDenied } from "./en/denied";
@@ -167,6 +169,8 @@ export const en = {
   ...enAccess,
   ...enAccessReview,
   ...enAccessLog,
+  ...enInternalCalendar,
+  ...enBenefits,
   ...enAudit,
   ...enAccessCodes,
   ...enDenied,

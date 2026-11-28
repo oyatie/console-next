@@ -45,4 +45,9 @@ const meEvaluations = createRoute({
   component: lazyRouteComponent(screen(() => import("../features/me/ui/evaluation-tasks")), "EvaluationTasks"),
 });
 
-export const meRoutes = [meAttendance, meDesk, meDispatchOffers, meEvaluations];
+const calendar = createRoute({
+  getParentRoute: () => app, path: "/calendar",
+  staticData: { access: servedRouteReads["/calendar"].access, floorplan: "P-03", pattern: "month-grid" },
+  component: lazyRouteComponent(screen(() => import("../features/calendar/ui/calendar-page")), "CalendarPage"),
+});
+export const meRoutes = [meAttendance, meDesk, meDispatchOffers, meEvaluations, calendar];

@@ -95,6 +95,8 @@ test("the screens drawn through built patterns declare them, and no other route 
     "/me/evaluations": "list-record",
     "/audit/restricted": "list-record",
     "/audit/location-consents": "list-record",
+    "/calendar": "month-grid",
+    "/benefits": "settings",
     "/audit/findings": "worklist",
     "/payroll": "list-record",
     "/payroll/outlook": "register-totals",

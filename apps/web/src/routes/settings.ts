@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { createRoute, lazyRouteComponent, type AnyRoute } from "@tanstack/react-router";
 import { app, screen } from "./app";
-import { overtimeReadAccess } from "./route-reads";
+import { overtimeReadAccess, servedRouteReads } from "./route-reads";
 import { settingsRequirement } from "../shell/settings-views";
 
 export const settingsRoute = createRoute({
@@ -24,4 +24,11 @@ export const overtimeSettingsRoute = createRoute({
   path: "/settings/overtime",
   staticData: { access: overtimeReadAccess, floorplan: "P-05", pattern: "settings" },
   component: lazyRouteComponent(screen(() => import("../features/settings/ui/overtime-work-rule")), "OvertimeWorkRule"),
+});
+
+export const benefitsRoute = createRoute({
+  getParentRoute: () => app,
+  path: "/benefits",
+  staticData: { access: servedRouteReads["/benefits"].access, floorplan: "P-05", pattern: "settings" },
+  component: lazyRouteComponent(screen(() => import("../features/benefits/ui/benefits-page")), "BenefitsPage"),
 });

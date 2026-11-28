@@ -3815,13 +3815,19 @@ export interface paths {
         };
         /**
          * List tenant-scoped collaboration calendar events
-         * @description Returns server-filtered collaboration calendar events for the caller's tenant. Personal events are visible only to the creator, while org/team/department scopes carry explicit server policy metadata for future PBAC/ABAC expansion.
+         * @description Lists active internal events visible to this tenant member over the given range. Personal events belong to the creator,
+         *     department events to authorized branches and team events to team members. Creators can inspect their own events.
+         *     Follow next_cursor with the original range to read subsequent pages in stable order at the first page's snapshot time.
          */
         get: operations["listCollaborationCalendarEvents"];
         put?: never;
         /**
          * Create an audited collaboration calendar event
-         * @description Creates a tenant-scoped calendar event with explicit audience scope and optional source object link. The server records an audit event and an append-only lifecycle event under forced RLS.
+         * @description Creates an internal event, an append-only lifecycle record and a platform audit record in one tenant transaction.
+         *     Members create PERSONAL events for themselves. DEPARTMENT publication requires NoticeManage for the referenced
+         *     active branch. TENANT, ORG and TEAM publication require organization-wide NoticeManage. A branch-scoped administrator
+         *     previously allowed to publish a tenant event now receives 403. Personal events and authorized branch publishing remain available.
+         *     This operation sends no invitations or email and does not start a delivery worker.
          */
         post: operations["createCollaborationCalendarEvent"];
         delete?: never;
@@ -18320,6 +18326,8 @@ export interface components {
             conditions?: components["schemas"]["BenefitCatalogCondition"][];
         };
         BenefitCatalogItem: {
+            /** Format: date-time */
+            updated_at: string;
             id: components["schemas"]["Uuid"];
             benefit_code: string;
             /** @enum {string} */
@@ -18360,9 +18368,19 @@ export interface components {
             retention_until?: string | null;
         };
         BenefitCatalogReplaceConditionsRequest: {
+            /**
+             * Format: date-time
+             * @description Current item revision returned by the last catalog read.
+             */
+            expectedUpdatedAt?: string;
             conditions: components["schemas"]["BenefitCatalogCondition"][];
         };
         BenefitCatalogReplaceTiersRequest: {
+            /**
+             * Format: date-time
+             * @description Current item revision returned by the last catalog read.
+             */
+            expectedUpdatedAt?: string;
             tiers: components["schemas"]["BenefitCatalogTier"][];
         };
         BenefitCatalogScope: {
@@ -18388,6 +18406,11 @@ export interface components {
         };
         /** @description Mutable catalog fields only; tenant, actor, identifiers, and lifecycle state are server-owned. */
         BenefitCatalogUpdateRequest: {
+            /**
+             * Format: date-time
+             * @description Current item revision returned by the last catalog read.
+             */
+            expectedUpdatedAt?: string;
             /** @enum {string} */
             category?: "legal" | "extra";
             name?: string;
@@ -18749,6 +18772,7 @@ export interface components {
             voided?: boolean;
         };
         CalendarEventListResponse: {
+            next_cursor: string | null;
             items: components["schemas"]["CalendarEventResponse"][];
         };
         CalendarEventResponse: {
@@ -38981,6 +39005,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
         };
     };
@@ -39011,6 +39036,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
         };
     };
@@ -39041,6 +39067,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
         };
     };
@@ -40207,6 +40234,8 @@ export interface operations {
             query?: {
                 from?: components["schemas"]["Timestamp"];
                 to?: components["schemas"]["Timestamp"];
+                /** @description Opaque continuation returned by the preceding page for this range. */
+                cursor?: string;
                 limit?: number;
             };
             header?: never;

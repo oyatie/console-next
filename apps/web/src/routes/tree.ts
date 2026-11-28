@@ -12,7 +12,7 @@ import { requestRoutes } from "./requests";
 import { attendanceRoutes } from "./attendance";
 import { companyDomainRoute } from "./company-domain";
 import { statutoryRoute } from "./statutory";
-import { overtimeSettingsRoute, settingsRoute } from "./settings";
+import { benefitsRoute, overtimeSettingsRoute, settingsRoute } from "./settings";
 import { payrollRoutes } from "./payroll";
 import { inboxRoute } from "./inbox";
 import { approvalsRoute, approvalNewRoute, approvalViewerRoute } from "./approvals";
@@ -22,4 +22,4 @@ import { evaluationRoutes } from "./evaluation";
 import { meRoutes } from "./me";
 import { teamRoutes } from "./team";
 
-export const routeTree = root.addChildren([...frame.signIn, app.addChildren([...frame.screens, ...payrollRoutes, ...orgRoutes, ...entityRoutes, ...onboardingRoutes, companyDomainRoute, ...peopleRoutes, ...identifierRoutes, ...accessRoutes, ...auditRoutes, ...orgBulkRoutes, ...requestRoutes, ...attendanceRoutes, statutoryRoute, settingsRoute, overtimeSettingsRoute, inboxRoute, approvalsRoute, approvalNewRoute, approvalViewerRoute, leaveRoute, payslipsRoute, ...meRoutes, ...teamRoutes, ...evaluationRoutes])]);
+export const routeTree = root.addChildren([...frame.signIn, app.addChildren([...frame.screens, ...payrollRoutes, ...orgRoutes, ...entityRoutes, ...onboardingRoutes, companyDomainRoute, ...peopleRoutes, ...identifierRoutes, ...accessRoutes, ...auditRoutes, ...orgBulkRoutes, ...requestRoutes, ...attendanceRoutes, statutoryRoute, settingsRoute, benefitsRoute, overtimeSettingsRoute, inboxRoute, approvalsRoute, approvalNewRoute, approvalViewerRoute, leaveRoute, payslipsRoute, ...meRoutes, ...teamRoutes, ...evaluationRoutes])]);

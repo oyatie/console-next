@@ -162,6 +162,8 @@ pub(crate) fn served_authz_projection(
     ledger: bool,
     evaluation_tasks: bool,
     (read_cycles, manage_cycles): (bool, bool),
+    (read_benefits, manage_benefits): (bool, bool),
+    calendar: bool,
 ) -> MeAuthzResponse {
     let mut response = me_authz_projection(principal);
     if documents
@@ -177,6 +179,17 @@ pub(crate) fn served_authz_projection(
         });
     }
     for (feature, name, allowed) in [
+        (Feature::Login, "served_calendar", calendar),
+        (
+            Feature::BenefitCatalogRead,
+            "served_benefit_catalog",
+            read_benefits,
+        ),
+        (
+            Feature::BenefitCatalogManage,
+            "served_benefit_catalog_manage",
+            manage_benefits,
+        ),
         (
             Feature::KpiRead,
             "analytics_projection",
@@ -260,6 +273,8 @@ mod me_authz_org_wide_tests {
                 false,
                 false,
                 (false, false),
+                (false, false),
+                false,
             )
             .capabilities
             .iter()
