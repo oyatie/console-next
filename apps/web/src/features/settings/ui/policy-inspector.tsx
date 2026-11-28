@@ -110,7 +110,7 @@ export function PolicyInspector({
 
       {entry.key === "attendance.overtime_recognition" && (
         <Suspense fallback={null}>
-          <OvertimeAttestationPanel scopeEntityId={scopeEntityId} canChange={canChange} />
+          <OvertimeAttestationPanel scopeEntityId={scopeEntityId} />
         </Suspense>
       )}
 

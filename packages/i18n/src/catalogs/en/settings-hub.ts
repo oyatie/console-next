@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+
 export const enSettingsHub = {
   "settingsHub.unknown": "Unavailable",
   "settingsHub.approval": "Approvals",
@@ -273,7 +274,7 @@ export const enSettingsHub = {
   "settingsHub.error.step_up_required": "Fresh passkey verification is required to loosen this policy.",
   "settingsHub.error.reason_domain_closed": "Custom reason codes cannot be added to this domain.",
   "settingsHub.layer.department": "Set by the department", "settingsHub.layer.person": "Set for the individual",
-  "settingsHub.key.attendance.overtime_recognition": "Overtime recognition basis", "settingsHub.key.attendance.console_clock_out": "Desk clock-out in console",
+  "settingsHub.key.attendance.overtime_recognition": "Overtime work-rule basis (record only)", "settingsHub.key.attendance.console_clock_out": "Desk clock-out in console",
   "settingsHub.key.hr.fixed_term_limit_months": "Fixed-term employment limit", "settingsHub.code.approval": "Approval basis",
   "settingsHub.code.recorded": "Recorded basis", "settingsHub.section.rollout": "Screen rollout",
   "settingsHub.summary.total": "Viewing", "settingsHub.summary.tenantSet": "Set across tenant",
@@ -288,10 +289,6 @@ export const enSettingsHub = {
   "settingsHub.error.setting_scope_not_allowed": "This policy cannot be overridden at the selected scope.",
   "settingsHub.error.setting_tenant_root_disallowed": "Overtime recognition at the tenant root must use the approval basis.",
   "settingsHub.error.setting_person_disfavorable": "An individual override cannot be less favorable to the worker than the inherited rule.",
-  "settingsHub.attestation.title": "Work-rule confirmations", "settingsHub.attestation.confirmedOn": "Confirmed date",
-  "settingsHub.attestation.empty": "No work-rule confirmation recorded yet. Dates before confirmation evaluate on the recorded basis.",
-  "settingsHub.attestation.ruleReference": "Work-rules clause", "settingsHub.attestation.noticeMethod": "Worker notice method",
-  "settingsHub.attestation.recordAction": "Record confirmation", "settingsHub.attestation.saved": "Recorded overtime recognition confirmation.",
   "settingsHub.rollout.title": "Screen style rollout and emergency switch", "settingsHub.rollout.orgFlag": "Enable Console screen across tenant",
   "settingsHub.rollout.personalOptIn": "Use Console screen on my account", "settingsHub.rollout.killSwitchTitle": "Emergency fallback to Classic",
   "settingsHub.rollout.killSwitchActive": "Emergency fallback active", "settingsHub.rollout.killSwitchInactive": "Normal operation",

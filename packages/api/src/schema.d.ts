@@ -10751,7 +10751,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Skip a setup step ("proceed without departments" / "add employees later") */
+        /** Skip an optional setup step with tenant-wide authority for that step */
         post: operations["skipSetupStep"];
         delete?: never;
         options?: never;
@@ -13739,10 +13739,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List overtime recognition work-rule confirmations */
+        /**
+         * List overtime recognition work-rule confirmations
+         * @description Requires settings view or attendance view at the requested scope.
+         */
         get: operations["listOvertimeRuleAttestations"];
         put?: never;
-        /** Record an overtime recognition work-rule confirmation */
+        /**
+         * Record an overtime recognition work-rule confirmation
+         * @description Requires settings edit or attendance approve at the requested scope.
+         */
         post: operations["recordOvertimeRuleAttestation"];
         delete?: never;
         options?: never;
@@ -55627,7 +55633,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                step: "org" | "employees" | "roles";
+                step: "org" | "employees" | "roles" | "overtime";
             };
             cookie?: never;
         };
@@ -62072,6 +62078,8 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
+                        /** @description Whether the caller may record a work-rule confirmation for the requested scope. */
+                        can_record: boolean;
                         items: components["schemas"]["OvertimeRuleAttestation"][];
                     };
                 };

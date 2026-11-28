@@ -17,7 +17,7 @@ export function grouped(c: Checklist) {
 /** Done, or done with something to look at. */
 export const finished = (s: ChecklistStep) => s.state === "done" || s.state === "attention";
 
-export type Fix = { to: "/org" | "/org/entities" | "/org/entities/new" | "/setup/go-live" | "/org/changes" | "/people" | "/people/new" | "/people/unplaced" | "/access/roles/new" | "/access/grants"; search?: { view: "accounts" } | { review: "department" } };
+export type Fix = { to: "/settings/overtime" | "/org" | "/org/entities" | "/org/entities/new" | "/setup/go-live" | "/org/changes" | "/people" | "/people/new" | "/people/unplaced" | "/access/roles/new" | "/access/grants"; search?: { view: "accounts" } | { review: "department" } };
 const ENTITIES: Fix = { to: "/org/entities" };
 /**
  * Where each server remedy (and step action) is fixed. A code not listed here, or one the server marks as
@@ -28,6 +28,7 @@ const LINKS: Record<string, Fix> = {
   upload_or_enter_certificate: { to: "/org/entities/new" },
   register_legal_entity: { to: "/org/entities/new" },
   create_legal_entity: { to: "/org/entities/new" },
+  confirm_overtime_rule: { to: "/settings/overtime" },
   confirm_legal_entity: ENTITIES,
   legal_entity_record_required: ENTITIES,
   confirm_registration: ENTITIES,

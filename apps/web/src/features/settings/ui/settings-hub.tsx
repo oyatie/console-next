@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { lazy, Suspense, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate, useRouter, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useRouter, useSearch } from "@tanstack/react-router";
 import type { components } from "@console/api/schema";
 import { chunk } from "../../../lib/chunk-guard";
 import { codeText } from "../../../lib/code-text";
@@ -9,7 +9,7 @@ import { isMessageId, t } from "@console/i18n";
 import { fmtDate } from "@console/i18n/format";
 import { myAccessQuery } from "../../../reference/authz/api";
 import { settingsQuery } from "../../../reference/settings/api";
-import { settingsViews, type SettingsView } from "../../../shell/settings-views";
+import { canOpenOvertimeSettings, settingsViews, type SettingsView } from "../../../shell/settings-views";
 import { QueryState } from "../../../lib/react/query-state";
 import { useIsDesktop } from "../../../lib/react/use-desktop";
 import { Button } from "../../../ui/button/button-base";
@@ -45,10 +45,12 @@ export function SettingsHub() {
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as { section?: string };
   const section = parseSettingsSection(search.section);
-  const rows = settingsViews(Object.values(router.routesByPath), access.data);
+  const routes = Object.values(router.routesByPath);
+  const rows = settingsViews(routes, access.data);
   return (
     <SettingsHubView
       rows={rows}
+      showOvertime={canOpenOvertimeSettings(routes, access.data)}
       interactive
       section={section}
       onSelectSection={(next) => {
@@ -66,11 +68,13 @@ type EditState = { entry: SettingEntry; scopeEntityId: string | null; scopeLabel
 
 export function SettingsHubView({
   rows,
+  showOvertime = false,
   interactive = false,
   section = "overview",
   onSelectSection,
 }: {
   rows: readonly SettingsView[];
+  showOvertime?: boolean;
   interactive?: boolean;
   section?: SettingSectionId;
   onSelectSection?: (section: SettingSectionId) => void;
@@ -84,6 +88,7 @@ export function SettingsHubView({
 
   const cards = (
     <>
+      {showOvertime && <Link to="/settings/overtime" className={s.link}>{t("setup.step.overtime")}</Link>}
       {rows.map(row => <SettingsCard key={row.to} row={row} />)}
       <ApprovalSettingsCard onManage={interactive && onSelectSection ? () => onSelectSection("approvals") : undefined} />
       {interactive && onSelectSection && <ModuleOperationsCard onManage={() => onSelectSection("operations")} />}

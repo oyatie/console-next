@@ -7,6 +7,7 @@ import { gitFixtureEnvironment } from "../../../../scripts/lib/git-fixture-envir
 import { qualityRef } from "../../../../scripts/quality/base.mjs";
 import { createRouter, type AnyRoute, type StaticDataRouteOption } from "@tanstack/react-router";
 import { expect, test } from "vitest";
+import { alternativeRouteReads } from "./route-reads";
 import { routeTree } from "./tree";
 import allow from "./route-access-allow.json";
 import { routeList } from "../../../../e2e/helpers/route-list";
@@ -20,7 +21,7 @@ function assertAccess(route: { fullPath: string; options: { staticData?: StaticD
   expect(access, route.fullPath).toBeDefined();
   if (access === "signed-in" && !signedIn(route.fullPath)) expect(exceptions, route.fullPath).toHaveProperty(route.fullPath);
   if (access && access !== "signed-in") {
-    if ("destinations" in access) {
+    if ("destinations" in access && !Object.hasOwn(alternativeRouteReads, route.fullPath)) {
       expect(access.destinations.length, route.fullPath).toBeGreaterThan(0);
       for (const need of access.destinations) expect(appRoutes.some(child => child.options.staticData?.access === need && routeList.some(item => item.path === child.fullPath && item.reads.length)), route.fullPath).toBe(true);
     } else expect(routeList.find(item => item.path === route.fullPath)?.reads.length, route.fullPath).toBeGreaterThan(0);

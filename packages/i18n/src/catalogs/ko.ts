@@ -142,6 +142,7 @@ import { koEmpFix } from "./ko/emp-fix";
 import { koEmpRec } from "./ko/emp-rec";
 import { koEmpDoc } from "./ko/emp-doc";
 import { koPeopleJump } from "./ko/people-jump";
+import { koOvertimeAttestation } from "./ko/settings-hub.attestation";
 import { koSettingsHub } from "./ko/settings-hub";
 import { koUiWorklist } from "./ko/ui-worklist";
 import { koUiLedger } from "./ko/ui-ledger";
@@ -149,6 +150,7 @@ import { koUiLedger } from "./ko/ui-ledger";
 export const ko: Record<ScreenMessageId, string> = {
   ...koUiFlexibleColumns,
   ...koSettingsHub,
+  ...koOvertimeAttestation,
   ...koGovernanceRefusals,
   ...koAccountLinkRefusals,
   ...koPeriodUnlockRefusals,

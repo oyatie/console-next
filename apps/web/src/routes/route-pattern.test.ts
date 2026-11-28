@@ -104,6 +104,7 @@ test("the screens drawn through built patterns declare them, and no other route 
     "/me/dispatch-offers": "worklist",
     "/settings": "settings",
     "/settings/company-domain": "settings",
+    "/settings/overtime": "settings",
     "/team": "list-record",
     "/org": "canvas",
     "/org/changes/$id": "document-decision",

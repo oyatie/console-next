@@ -4,7 +4,7 @@ import { expect, test } from "vitest";
 import { routeTree } from "./tree";
 import { accessRefusal } from "../reference/authz/domain/access";
 import { screenAccess } from "../../../../e2e/mock/fixtures";
-import { SETTINGS_VIEWS, settingsRequirement, settingsViews } from "../shell/settings-views";
+import { canOpenOvertimeSettings, SETTINGS_VIEWS, settingsRequirement, settingsViews } from "../shell/settings-views";
 
 const router = createRouter({ routeTree });
 const routes = Object.values(router.routesByPath);
@@ -57,4 +57,15 @@ test("prepared, revoked and explicitly refused view rows cannot open the hub", (
     expect(paths(refused)).toEqual([]);
     expect(accessRefusal(refused, settingsRequirement(routes))).toBe("access_denied");
   }
+});
+
+test("scoped attendance opens the mounted confirmation link and Settings hub", () => {
+  const access = screenAccess("/people/job-titles");
+  for (const row of access.entries) { row.domain = "attendance"; row.scope.kind = "LEGAL_ENTITY"; }
+  expect(paths(access)).toEqual([]);
+  expect(canOpenOvertimeSettings(routes, access)).toBe(true);
+  expect(accessRefusal(access, settingsRequirement(routes))).toBeNull();
+  const without = routes.filter(route => route.fullPath !== "/settings/overtime");
+  expect(canOpenOvertimeSettings(without, access)).toBe(false);
+  expect(accessRefusal(access, settingsRequirement(without))).toBe("access_denied");
 });

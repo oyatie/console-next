@@ -27,7 +27,9 @@ beforeAll(async () => {
         import {SETTINGS_VIEWS} from '/apps/web/src/shell/settings-views.ts';
         import '/apps/web/src/app.css';
         await loadCatalog('ko');
-        const root=createRootRoute({component:()=>React.createElement(SettingsHubView,{rows:SETTINGS_VIEWS})});
+        const section = new URLSearchParams(location.search).get("section");
+        if (section) document.documentElement.dataset.experience = "console";
+        const root=createRootRoute({component:()=>React.createElement(SettingsHubView,{rows:SETTINGS_VIEWS,section:section ?? "overview",interactive:!!section})});
         const router=createRouter({routeTree:root.addChildren(SETTINGS_VIEWS.map(row=>createRoute({getParentRoute:()=>root,path:row.to})))});
         await router.load();
         createRoot(document.getElementById('root')).render(React.createElement(QueryClientProvider,{client:new QueryClient({defaultOptions:{queries:{retry:false,staleTime:60000}}})},React.createElement(RouterProvider,{router})));
@@ -36,7 +38,7 @@ beforeAll(async () => {
   await server.listen();
   browser = await chromium.launch();
   page = await browser.newPage();
-  await page.route("**/settings-test", route => route.fulfill({ contentType: "text/html", body: '<html lang="ko"><title>Settings</title><div id="root"></div><script type="module" src="/settings-test.js"></script></html>' }));
+  await page.route(/\/settings-test(?:\?.*)?$/, route => route.fulfill({ contentType: "text/html", body: '<html lang="ko"><title>Settings</title><div id="root"></div><script type="module" src="/settings-test.js"></script></html>' }));
 }, 60_000);
 afterAll(async () => { await page?.close(); await browser?.close(); await server?.close(); });
 
@@ -246,4 +248,33 @@ test("tenant default screen style composer validates, sends expected_version and
     await page.unroute("**/api/v1/reason-codes**");
     await page.unroute("**/api/v1/settings");
   }
+});
+
+test("the overtime record distinguishes an unavailable confirmation from an empty or recorded one", async () => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const settings = { can_change: false, items: [{
+    key: "attendance.overtime_recognition", kind: { type: "code", allowed: ["approval", "recorded"] },
+    default: "approval", value: "approval", governance: "tenant", source: { layer: "tenant" },
+    scheduled: [], chain: [], legal_basis: null,
+  }] };
+  let status = 503;
+  let items: { id: string; confirmed_on: string; rule_reference: string }[] = [];
+  await page.route("**/api/v1/**", route => {
+    const path = new URL(route.request().url()).pathname;
+    if (path.endsWith("/overtime-attestations")) return route.fulfill({ status, json: status === 200 ? { items } : { error: { code: "unavailable" } } });
+    return route.fulfill({ json: path.endsWith("/settings") ? settings : { items: [] } });
+  });
+  await page.goto(server.resolvedUrls!.local[0] + "settings-test?section=operations");
+  const confirmation = page.getByRole("region", { name: t("settingsHub.attestation.title") });
+  await expect(confirmation).toContainText(t("settingsHub.attestation.effect"));
+  await expect(confirmation.getByRole("button", { name: t("common.retry") })).toBeVisible();
+  await expect(confirmation).not.toContainText(t("settingsHub.attestation.empty"));
+  status = 200;
+  await confirmation.getByRole("button", { name: t("common.retry") }).click();
+  await expect(confirmation).toContainText(t("settingsHub.attestation.empty"));
+  items = [{ id: "rule", confirmed_on: "2026-10-05", rule_reference: "Synthetic clause" }];
+  await page.reload();
+  await expect(confirmation).toContainText("Synthetic clause");
+  await expect(confirmation).toContainText(t("settingsHub.attestation.effect"));
+  await expect(confirmation).not.toContainText(t("settingsHub.attestation.empty"));
 });
