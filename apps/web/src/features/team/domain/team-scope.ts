@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import type { components } from "@console/api/schema";
-import { daysBetween, isDate } from "../../../ui/date/days";
+import { addDays, daysBetween, isDate } from "../../../ui/date/days";
 
 type S = components["schemas"];
 export type TeamEmployee = S["Employee"];
@@ -16,7 +16,7 @@ type TeamScopeSummary = {
   hasTenantWide: boolean;
   hasConcurrent: boolean;
   concurrentScopes: readonly TeamScopeNode[];
-  directUnitName: string | null;
+  directUnitId: string | null;
 };
 
 /** Derives team lenses strictly from enforced Cedar `hr_basic` grants (zero hard-coded manager roles). */
@@ -44,7 +44,7 @@ export function deriveTeamScopes(
     hasTenantWide,
     hasConcurrent: concurrentScopes.length > 1,
     concurrentScopes,
-    directUnitName: me?.employee_org_unit?.trim() || null,
+    directUnitId: me?.employee_org_unit_id || null,
   };
 }
 
@@ -59,23 +59,23 @@ export function filterTeamEmployees(
   rows: readonly TeamEmployee[],
   {
     view,
-    directUnitName,
+    directUnitId,
     statusFilter,
     today,
   }: {
     view: "all" | "direct" | "concurrent";
-    directUnitName: string | null;
+    directUnitId: string | null;
     statusFilter: "all" | "ACTIVE" | "ON_LEAVE" | "SOON" | "MISSING";
     today: string;
   },
 ): TeamEmployee[] {
   return rows.filter(row => {
-    if (view === "direct" && (!directUnitName || row.org_unit !== directUnitName)) {
+    if (view === "direct" && (!directUnitId || (row.org_unit_id ?? row.org_unit) !== directUnitId)) {
       return false;
     }
     if (statusFilter === "SOON") {
-      const days = daysUntilDate(row.next_event?.effective_date, today);
-      if (days === null || days > 30) return false;
+      const days = daysUntilDate(row.contract_end_date, today);
+      if (days === null || days < 0 || days > 30) return false;
     }
     if (statusFilter === "MISSING") {
       if (!row.register_review_required && !row.identity_review_required && row.employment_type) {
@@ -90,18 +90,24 @@ export function filterTeamEmployees(
 export function buildTeamQueryParams({
   view,
   selectedScope,
+  directUnitId,
+  today,
   statusFilter,
   search,
   sort,
 }: {
   view: "all" | "direct" | "concurrent";
   selectedScope?: TeamScopeNode;
+  directUnitId?: string | null;
+  today: string;
   statusFilter: "all" | "ACTIVE" | "ON_LEAVE" | "SOON" | "MISSING";
   search?: string;
   sort?: string;
 }) {
   const scopeParams =
-    view === "concurrent" && selectedScope
+    view === "direct" && directUnitId
+      ? { org_unit_id: directUnitId }
+      : view === "concurrent" && selectedScope
       ? selectedScope.kind === "LEGAL_ENTITY"
         ? { legal_entity_id: selectedScope.id }
         : selectedScope.kind === "WORKPLACE"
@@ -111,50 +117,18 @@ export function buildTeamQueryParams({
   return {
     ...scopeParams,
     status: statusFilter === "ACTIVE" || statusFilter === "ON_LEAVE" ? statusFilter : undefined,
-    register_review_required: statusFilter === "MISSING" ? true : undefined,
+    team_review_required: statusFilter === "MISSING" || undefined,
+    ...(statusFilter === "SOON" ? contractWindow(today) : {}),
     search: search?.trim() || undefined,
     sort: sort || "name",
     limit: 100,
   };
 }
 
-/** Computes team StatRow and StatusBar counts, reflecting client-side filters when active. */
-export function computeTeamStats({
-  rows,
-  visibleLeaves,
-  facets,
-  pagesTotal,
-  isClientFiltered,
-  today,
-}: {
-  rows: readonly TeamEmployee[];
-  visibleLeaves: readonly TeamLeaveRequest[];
-  facets: S["EmployeeFacets"] | undefined;
-  pagesTotal: number | undefined;
-  isClientFiltered: boolean;
-  today: string;
-}) {
-  const totalCount = isClientFiltered ? rows.length : (facets?.total ?? pagesTotal ?? rows.length);
-  const activeCount = isClientFiltered
-    ? rows.filter(r => r.status === "ACTIVE").length
-    : (facets?.status.find(s => s.value === "ACTIVE")?.count ?? rows.filter(r => r.status === "ACTIVE").length);
-  const onLeaveCount = isClientFiltered
-    ? rows.filter(r => r.status === "ON_LEAVE").length
-    : (facets?.status.find(s => s.value === "ON_LEAVE")?.count ?? rows.filter(r => r.status === "ON_LEAVE").length);
-  const contractEndingCount = isClientFiltered
-    ? rows.filter(r => {
-        const days = daysUntilDate(r.next_event?.effective_date, today);
-        return days !== null && days <= 30;
-      }).length
-    : (facets?.review.contract_ending_before ?? 0);
-  return {
-    totalCount,
-    activeCount,
-    onLeaveCount,
-    contractEndingCount,
-    attentionCount: visibleLeaves.length + contractEndingCount,
-  };
-}
+export const contractWindow = (today: string) => ({
+  contract_ending_on_or_after: today,
+  contract_ending_before: addDays(today, 31),
+});
 
 /** Filters pending leave requests to visible rows when a client-side or concurrent scope filter is active. */
 export function filterVisibleTeamLeaves(

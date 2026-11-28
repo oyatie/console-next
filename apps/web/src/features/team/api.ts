@@ -11,7 +11,9 @@ export const teamEmployeesPages = (params: {
   workplace_id?: string;
   legal_entity_id?: string;
   status?: "ACTIVE" | "ON_LEAVE";
-  register_review_required?: boolean;
+  team_review_required?: boolean;
+  contract_ending_before?: string;
+  contract_ending_on_or_after?: string;
   search?: string;
   sort?: string;
   limit?: number;
@@ -21,7 +23,12 @@ export const teamFacetsQuery = (params: {
   org_unit_id?: string;
   workplace_id?: string;
   legal_entity_id?: string;
-}) => get("/api/v1/employees/facets", { params: { query: params } });
+  team_review_required?: boolean;
+  contract_ending_before?: string;
+  contract_ending_on_or_after?: string;
+  search?: string;
+  status?: "ACTIVE" | "ON_LEAVE";
+}) => get("/api/v1/employees/facets", { params: { query: { ...params, status: params.status ? [params.status] : undefined } } });
 
 export const teamLeaveQueueQuery = get("/api/v2/leave/requests", {
   params: { query: { status: "pending", limit: 20 } },

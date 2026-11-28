@@ -29,7 +29,7 @@ import {
 } from "../api";
 import {
   buildTeamQueryParams,
-  computeTeamStats,
+  contractWindow,
   deriveTeamScopes,
   filterTeamEmployees,
   filterVisibleTeamLeaves,
@@ -75,22 +75,29 @@ export function TeamPage() {
       buildTeamQueryParams({
         view: activeView,
         selectedScope,
+        directUnitId: scopes.directUnitId,
+        today,
         statusFilter,
         search: search.q,
         sort: search.sort,
       }),
-    [activeView, selectedScope, statusFilter, search.q, search.sort],
+    [activeView, selectedScope, scopes.directUnitId, today, statusFilter, search.q, search.sort],
   );
 
-  const employees = useInfiniteQuery(teamEmployeesPages(queryParams));
-  const facets = useQuery({
-    ...teamFacetsQuery({
-      org_unit_id: queryParams.org_unit_id,
-      workplace_id: queryParams.workplace_id,
-      legal_entity_id: queryParams.legal_entity_id,
-    }),
-    retry: false,
-  });
+  const hasScope = activeView !== "direct" || Boolean(scopes.directUnitId);
+  const employees = useInfiniteQuery({ ...teamEmployeesPages(queryParams), enabled: hasScope });
+  const facetParams = {
+    org_unit_id: queryParams.org_unit_id,
+    workplace_id: queryParams.workplace_id,
+    legal_entity_id: queryParams.legal_entity_id,
+    search: queryParams.search,
+    status: queryParams.status,
+    team_review_required: queryParams.team_review_required,
+    contract_ending_before: queryParams.contract_ending_before,
+    contract_ending_on_or_after: queryParams.contract_ending_on_or_after,
+  };
+  const facets = useQuery({ ...teamFacetsQuery(facetParams), enabled: hasScope, retry: false });
+  const ending = useQuery({ ...teamFacetsQuery({ ...facetParams, ...contractWindow(today) }), enabled: hasScope, retry: false });
 
   const canReadLeave = Boolean(
     access.data && accessRefusal(access.data, operationAccess["GET /api/v1/employees"]) === null,
@@ -106,11 +113,11 @@ export function TeamPage() {
     () =>
       filterTeamEmployees(rawRows, {
         view: activeView,
-        directUnitName: scopes.directUnitName,
+        directUnitId: scopes.directUnitId,
         statusFilter,
         today,
       }),
-    [rawRows, activeView, scopes.directUnitName, statusFilter, today],
+    [rawRows, activeView, scopes.directUnitId, statusFilter, today],
   );
 
   const selectedMember = rows.find(row => row.id === search.sel);
@@ -122,18 +129,17 @@ export function TeamPage() {
     () => filterVisibleTeamLeaves(pendingLeaves, visibleIds, isClientFiltered || activeView === "concurrent"),
     [pendingLeaves, visibleIds, isClientFiltered, activeView],
   );
-  const { totalCount, activeCount, onLeaveCount, contractEndingCount, attentionCount } = computeTeamStats({
-    rows,
-    visibleLeaves,
-    facets: facets.data,
-    pagesTotal: employees.data?.pages[0]?.total,
-    isClientFiltered,
-    today,
-  });
+  const totalCount = hasScope ? employees.data?.pages[0]?.total ?? facets.data?.total : 0;
+  const statusCount = (value: "ACTIVE" | "ON_LEAVE") => {
+    if (!hasScope || (queryParams.status && queryParams.status !== value)) return 0;
+    return facets.data ? facets.data.status.find(item => item.value === value)?.count ?? 0 : undefined;
+  };
+  const contractEndingCount = hasScope ? ending.data?.total : 0;
+  const attentionCount = contractEndingCount === undefined ? undefined : visibleLeaves.length + contractEndingCount;
 
   const columns = buildTeamColumns(today, pendingLeaves);
 
-  const primaryRead = readGroup([employees]);
+  const primaryRead = hasScope ? readGroup([employees]) : readGroup([me]);
   const viewItems = [
     { id: "all" as const, label: t("team.view.all") },
     { id: "direct" as const, label: t("team.view.direct") },
@@ -208,7 +214,7 @@ export function TeamPage() {
         label={t("team.table.label")}
         rows={rows}
         rowId={r => r.id}
-        total={totalCount}
+        total={totalCount ?? rows.length}
         hasMore={Boolean(employees.hasNextPage)}
         loadingMore={employees.isFetchingNextPage}
         onLoadMore={() => void (employees.hasNextPage && !employees.isFetchingNextPage && employees.fetchNextPage())}
@@ -250,12 +256,12 @@ export function TeamPage() {
   );
 
   const noteText =
-    visibleLeaves.length > 0 && contractEndingCount > 0
-      ? t("team.notes.attention", { leaveCount: visibleLeaves.length, contractCount: contractEndingCount })
+    visibleLeaves.length > 0 && (contractEndingCount ?? 0) > 0
+      ? t("team.notes.attention", { leaveCount: visibleLeaves.length, contractCount: contractEndingCount ?? 0 })
       : visibleLeaves.length > 0
         ? t("team.notes.leaveOnly", { leaveCount: visibleLeaves.length })
-        : contractEndingCount > 0
-          ? t("team.notes.contractOnly", { contractCount: contractEndingCount })
+        : (contractEndingCount ?? 0) > 0
+          ? t("team.notes.contractOnly", { contractCount: contractEndingCount ?? 0 })
           : null;
 
   return (
@@ -267,14 +273,14 @@ export function TeamPage() {
         <StatRow
           label={t("team.stats.label")}
           items={[
-            { key: "total", label: t("team.stats.total"), value: totalCount },
-            { key: "active", label: t("team.stats.active"), value: activeCount, onPress: () => go({ status: "ACTIVE" }), active: statusFilter === "ACTIVE" },
-            { key: "leave", label: t("team.stats.onLeave"), value: onLeaveCount, onPress: () => go({ status: "ON_LEAVE" }), active: statusFilter === "ON_LEAVE" },
+            { key: "total", label: t("team.stats.total"), value: totalCount ?? "—" },
+            { key: "active", label: t("team.stats.active"), value: statusCount("ACTIVE") ?? "—", onPress: () => go({ status: "ACTIVE" }), active: statusFilter === "ACTIVE" },
+            { key: "leave", label: t("team.stats.onLeave"), value: statusCount("ON_LEAVE") ?? "—", onPress: () => go({ status: "ON_LEAVE" }), active: statusFilter === "ON_LEAVE" },
             {
               key: "attention",
               label: t("team.stats.attention"),
-              value: attentionCount,
-              tone: attentionCount > 0 ? "warn" : undefined,
+              value: attentionCount ?? "—",
+              tone: (attentionCount ?? 0) > 0 ? "warn" : undefined,
               onPress: () => go({ status: "SOON" }),
               active: statusFilter === "SOON",
             },
@@ -297,7 +303,7 @@ export function TeamPage() {
           : null
       }
       statusSegments={
-        employees.data
+        totalCount !== undefined
           ? [
               { id: "count", content: t("team.status.scopeCount", { count: totalCount }) },
               ...(selectedMember

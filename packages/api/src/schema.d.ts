@@ -20467,6 +20467,11 @@ export interface components {
             contact_email: string | null;
         };
         CurrentUser: components["schemas"]["UserSummary"] & {
+            /**
+             * Format: uuid
+             * @description Direct org unit of the linked employee when available.
+             */
+            employee_org_unit_id?: string | null;
             tenant?: components["schemas"]["UserTenant"];
         };
         CustodyEventView: {
@@ -41612,6 +41617,10 @@ export interface operations {
                 company?: string;
                 /** @description Case-insensitive name or employee-number typeahead query. */
                 search?: string;
+                /** @description Select employees with a register gap, an identity review, or a missing employment type. */
+                team_review_required?: boolean;
+                /** @description Inclusive lower bound for the current contract end date. */
+                contract_ending_on_or_after?: string;
                 /** @description Only records with missing statutory register facts. */
                 register_review_required?: boolean;
                 /** @description Filter to employees whose active authoritative home branch is missing/inactive (true) or usable (false). */
@@ -41867,6 +41876,10 @@ export interface operations {
                 company?: string;
                 /** @description Case-insensitive name or employee-number typeahead query. */
                 search?: string;
+                /** @description Select employees with a register gap, an identity review, or a missing employment type. */
+                team_review_required?: boolean;
+                /** @description Inclusive lower bound for the current contract end date. */
+                contract_ending_on_or_after?: string;
                 /** @description Only records with missing statutory register facts. */
                 register_review_required?: boolean;
                 /** @description Filter to employees whose active authoritative home branch is missing/inactive (true) or usable (false). */
@@ -41920,6 +41933,10 @@ export interface operations {
                 company?: string;
                 /** @description Case-insensitive name or employee-number typeahead query. */
                 search?: string;
+                /** @description Select employees with a register gap, an identity review, or a missing employment type. */
+                team_review_required?: boolean;
+                /** @description Inclusive lower bound for the current contract end date. */
+                contract_ending_on_or_after?: string;
                 /** @description Only records with missing statutory register facts. */
                 register_review_required?: boolean;
                 /** @description Filter to employees whose active authoritative home branch is missing/inactive (true) or usable (false). */

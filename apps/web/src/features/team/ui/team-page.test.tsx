@@ -56,7 +56,7 @@ vi.mock("@tanstack/react-query", async original => {
         data: {
           pages: [
             {
-              total: 2,
+              total: state.search.view === "direct" ? 300 : 2,
               items: [
                 {
                   id: "e1",
@@ -133,7 +133,7 @@ vi.mock("@tanstack/react-query", async original => {
           isPending: false,
           error: null,
           refetch: vi.fn(),
-          data: { id: "u1", employee_org_unit: "Prod Team 1", tenant: { name: "Saeon Group", phase: "OPERATING" } },
+          data: { id: "u1", employee_org_unit: "Prod Team 1", employee_org_unit_id: "d1", tenant: { name: "Saeon Group", phase: "OPERATING" } },
         };
       }
       if (path.includes("/api/v1/employees/facets")) {
@@ -145,7 +145,7 @@ vi.mock("@tanstack/react-query", async original => {
             total: 2,
             status: [
               { value: "ACTIVE", count: 1 },
-              { value: "ON_LEAVE", count: 1 },
+              { value: "ON_LEAVE", count: state.search.view === "direct" ? 0 : 1 },
             ],
             review: { contract_ending_before: 0 },
           },
@@ -222,13 +222,13 @@ test("team record pane gates all management actions behind Cedar hr_basic edit a
   expect(manageHtml).toContain(t("team.pane.action.changeRequest"));
 });
 
-test("team page updates StatRow and table total counts when client-side direct view filters rows", () => {
+test("team page updates StatRow and table total counts when direct view has more matching rows than the current page", () => {
   state.search = { view: "direct" };
   const html = renderTeam();
   expect(html).toContain("Minjae Kim");
   expect(html).not.toContain("Seoyeon Park");
-  expect(html).toContain('data-total="1"');
-  expect(html).toMatch(new RegExp(`${t("team.stats.total")}</dt><dd[^>]*>1</dd>`));
+  expect(html).toContain('data-total="300"');
+  expect(html).toMatch(new RegExp(`${t("team.stats.total")}</dt><dd[^>]*>300</dd>`));
   expect(html).toMatch(new RegExp(`${t("team.stats.onLeave")}</button></dt><dd[^>]*>0</dd>`));
 });
 
