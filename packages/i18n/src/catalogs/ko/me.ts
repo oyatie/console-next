@@ -3,7 +3,6 @@ import type { enMe } from "../en/me";
 
 export const koMe: Record<keyof typeof enMe, string> = {
   "me.evaluation.title": "내 평가 과제",
-  "me.evaluation.permission": "평가 제출 권한",
   "me.evaluation.empty": "배정된 평가 과제가 없습니다",
   "me.evaluation.cycle": "평가 주기",
   "me.evaluation.kind": "평가 유형",
