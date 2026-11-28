@@ -21,8 +21,9 @@ export function useRosterLayout(selected: typeof baselineRosterLayout, screenPro
   useEffect(() => {
     if (selected.isLoaded()) return;
     let current = true;
+    if (!performance.getEntriesByName("dir:layout-request").length) performance.mark("dir:layout-request");
     void selected.preload().then(
-      () => { if (current) setResult({ layout: selected }); },
+      () => { if (!performance.getEntriesByName("dir:layout-ready").length) performance.mark("dir:layout-ready"); if (current) setResult({ layout: selected }); },
       error => { if (current) setResult({ layout: selected, error }); },
     );
     return () => { current = false; };

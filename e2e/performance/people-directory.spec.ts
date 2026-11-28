@@ -50,7 +50,7 @@ test("served directory paints its first rows within 2 seconds of the navigation 
       const times = (r: PerformanceResourceTiming) => [Math.round(r.startTime - zero), Math.round(r.requestStart - zero), Math.round(r.responseStart - zero), Math.round(r.responseEnd - zero)];
       const path = (r: PerformanceResourceTiming) => new URL(r.name, location.href).pathname;
       const assets = resources.filter(r => path(r).startsWith("/assets/"));
-      const diagnosis = { responseStart: zero, markers: (window as unknown as { directoryMarkers: unknown }).directoryMarkers, navigation: [navigation.domInteractive, navigation.domContentLoadedEventEnd, navigation.loadEventEnd], assets: assets.length,
+      const diagnosis = { responseStart: zero, markers: (window as unknown as { directoryMarkers: unknown }).directoryMarkers, stages: performance.getEntriesByType("mark").filter(e => e.name.startsWith("dir:")).map(e => [e.name, Math.round(e.startTime-zero)]), navigation: [navigation.domInteractive, navigation.domContentLoadedEventEnd, navigation.loadEventEnd], assets: assets.length,
         api: resources.filter(r => path(r).startsWith("/api/")).map(r => [path(r), ...times(r)]),
         slowAssets: [...assets].sort((a,b) => b.duration - a.duration).slice(0, 15).map(r => [path(r), ...times(r)]),
         lastAssets: [...assets].sort((a,b) => b.responseEnd - a.responseEnd).slice(0, 15).map(r => [path(r), ...times(r)]) };

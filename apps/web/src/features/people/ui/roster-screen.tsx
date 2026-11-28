@@ -60,6 +60,7 @@ function TableScrollRestoration({ id, grid }: { id: string; grid: RefObject<HTML
 
 /** The people list: status and attention chips, a virtualized server-paged table, and the selected person beside it. */
 export function RosterScreen({ manage, scoped = false, switcher, notice, screen, actions }: RosterScreenProps) {
+  if (!performance.getEntriesByName("dir:roster-render").length) performance.mark("dir:roster-render");
   const {
     contractWindow, soonDays, search, navigate, today, status, review, unit,
     open, openUnit, select, selectRelated, full, expand, restore, unitTrigger, unitItems, selectedUnit,
