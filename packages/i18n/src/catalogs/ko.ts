@@ -44,6 +44,7 @@ import { koAccessGrants } from "./ko/access-grants";
 import { koAccount } from "./ko/account";
 import { koPeriodLocks } from "./ko/period-locks";
 import { koAttendance } from "./ko/attendance";
+import { koAttendanceRefusals } from "./ko/attendance.refuse";
 import { koAttendanceSchedule } from "./ko/attendance-schedule";
 import { koAttendancePatterns } from "./ko/attendance-patterns";
 import { koAttendanceHolidays } from "./ko/attendance-holidays";
@@ -173,6 +174,7 @@ export const ko: Record<ScreenMessageId, string> = {
   ...koAccount,
   ...koPeriodLocks,
   ...koAttendance,
+  ...koAttendanceRefusals,
   ...koAttendanceSchedule,
   ...koAttendancePatterns,
   ...koAttendanceHolidays,
