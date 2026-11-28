@@ -49,8 +49,11 @@ async fn erasure_can_remove_memberships_ordinary_deletion_preserves(pool: PgPool
     let (org, _, _, group) = group_with_member(&pool).await;
     let run = group_run(&pool, org, group, "REGULAR", JUNE).await;
     materialise_for(&pool, &run, JUNE).await;
-    let lock: Uuid = sqlx::query_scalar("INSERT INTO period_locks (org_id,domain,pay_group_id,period_start,period_end,reason) VALUES ($1,'payroll',$2,$3,$4,'Payroll freeze') RETURNING id")
-        .bind(org).bind(group).bind(JUNE.0).bind(JUNE.1).fetch_one(&pool).await.unwrap();
+    // Both scopes must erase; an organization attendance close is backed by the tenant-wide lock.
+    sqlx::query("INSERT INTO period_locks (org_id,domain,pay_group_id,period_start,period_end,reason) VALUES ($1,'payroll',$2,$3,$4,'Group freeze')")
+        .bind(org).bind(group).bind(JUNE.0).bind(JUNE.1).execute(&pool).await.unwrap();
+    let lock: Uuid = sqlx::query_scalar("INSERT INTO period_locks (org_id,domain,period_start,period_end,reason) VALUES ($1,'payroll',$2,$3,'Organization freeze') RETURNING id")
+        .bind(org).bind(JUNE.0).bind(JUNE.1).fetch_one(&pool).await.unwrap();
     let actor = user(&pool, org).await;
     let closed: Uuid = sqlx::query_scalar("INSERT INTO attendance_month_closes(org_id, month, checks, attested_by, period_lock_id) VALUES ($1,$2,'{}',$3,$4) RETURNING id")
         .bind(org).bind(JUNE.0).bind(actor).bind(lock).fetch_one(&pool).await.unwrap();
