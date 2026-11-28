@@ -92,20 +92,23 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
   });
 }
 
-test("the directory waits for authorization and rechecks its roster grant on return", async ({ page }) => {
+for (const first of ["effective", "capability"] as const) for (const refused of [false, true]) {
+test(`the directory waits for both grants with ${first} first and ${refused ? "a refusal" : "a grant and recheck on return"}`, async ({ page }) => {
   const state = await fixture(page);
   const effective = Promise.withResolvers<void>(), capability = Promise.withResolvers<void>();
-  const counts = { effective: 0, capability: 0, employees: 0, inactiveTabs: 0 };
+  const counts = { effective: 0, capability: 0, employees: 0, facets: 0, inactiveTabs: 0 };
   for (const [path, gate, key] of [["/api/v1/access/me", effective, "effective"], ["/api/v1/me/authz", capability, "capability"]] as const) {
     await page.route(url => url.pathname === path, async route => {
       counts[key]++;
       await gate.promise;
-      await route.fallback();
+      if (refused && key !== first) await route.fulfill({ status: 403, json: failure("access_denied") });
+      else await route.fallback();
     });
   }
   page.on("request", request => {
     const path = new URL(request.url()).pathname;
     if (path === "/api/v1/employees") counts.employees++;
+    if (path === "/api/v1/employees/facets") counts.facets++;
     if (/^\/assets\/(Accounts|unplaced-roster)-[\w-]+\.js$/.test(path)) counts.inactiveTabs++;
   });
   const grid = page.getByRole("grid", { name: "직원", exact: true });
@@ -113,12 +116,22 @@ test("the directory waits for authorization and rechecks its roster grant on ret
     await page.goto("/people");
     await expect.poll(() => counts.effective).toBeGreaterThan(0);
     await expect(grid).toHaveCount(0);
-    expect([counts.employees, counts.inactiveTabs]).toEqual([0, 0]);
+    expect([counts.employees, counts.facets, counts.inactiveTabs]).toEqual([0, 0, 0]);
     await expect.poll(() => counts.capability).toBe(1);
-    effective.resolve();
+    const firstPath = first === "effective" ? "/api/v1/access/me" : "/api/v1/me/authz";
+    const answered = page.waitForResponse(response => new URL(response.url()).pathname === firstPath);
+    (first === "effective" ? effective : capability).resolve();
+    await answered;
     await expect(grid).toHaveCount(0);
-    expect([counts.employees, counts.inactiveTabs]).toEqual([0, 0]);
-    capability.resolve();
+    expect([counts.employees, counts.facets, counts.inactiveTabs]).toEqual([0, 0, 0]);
+    (first === "effective" ? capability : effective).resolve();
+    if (refused) {
+      await expect(page.getByText(t("common.denied.title.plain"), { exact: true }).first()).toBeVisible();
+      await expect(grid).toHaveCount(0);
+      expect([counts.employees, counts.facets, counts.inactiveTabs]).toEqual([0, 0, 0]);
+      expect(state.unexpected).toEqual([]);
+      return;
+    }
     await expect(grid).toBeVisible();
     expect(counts.employees).toBe(1);
     expect(counts.inactiveTabs).toBe(0);
@@ -135,6 +148,7 @@ test("the directory waits for authorization and rechecks its roster grant on ret
     expect(state.unexpected).toEqual([]);
   } finally { effective.resolve(); capability.resolve(); await page.close(); state.release(); }
 });
+}
 
 test("unplaced is a roster filter with the queue's rows on LongTable", async ({ page }) => {
   const state = await fixture(page);
