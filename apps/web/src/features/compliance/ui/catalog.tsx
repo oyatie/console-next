@@ -13,10 +13,10 @@ import { KeyValue } from "../../../ui/key-value/key-value";
 import { LongTable } from "../../../ui/long-table/long-table";
 import { Pager } from "../../../ui/pager";
 import { ListRecord } from "../../../ui/patterns/list-record";
-import { controlsQuery, frameworksQuery, obligationsQuery, PAGE_SIZE, regulationsQuery, type View } from "../api";
+import { controlsQuery, frameworksQuery, obligationsQuery, PAGE_SIZE, regulationsQuery, views, type View } from "../api";
 import { BranchField } from "./scope";
 import { useCatalogScope } from "./use-catalog-scope";
-import { complianceCode } from "./words";
+import { complianceCode } from "../present";
 
 export function ComplianceCatalog() {
   const scope = useCatalogScope("read");
@@ -45,10 +45,10 @@ export function ComplianceCatalog() {
     <Link to="/compliance/new" className={buttonClass("primary")}>{t("compliance.create")}</Link> }}
     filters={<>
       {scope.orgWide && <Field label={t("compliance.register")} required={null}>{p => <SelectInput {...p} value={current} onChange={e => {
-        const next = (["frameworks", "obligations", "regulations", "controls"] as const).find(k => k === e.target.value);
+        const next = views.find(k => k === e.target.value);
         if (next) { reset(); setView(next); }
       }}>
-        {(["frameworks", "regulations", "obligations"] as const).map(k => <option key={k} value={k}>{t(`compliance.view.${k}`)}</option>)}
+        {views.filter(view => view !== "controls").map(k => <option key={k} value={k}>{t(`compliance.view.${k}`)}</option>)}
         {framework && <option value="controls">{t("compliance.controlsFor", { name: framework.name })}</option>}
       </SelectInput>}</Field>}
       {current === "obligations" && <BranchField scope={scope} all={scope.orgWide} value={activeBranch ?? ""} onChange={v => { reset(); setBranch(v); }} />}

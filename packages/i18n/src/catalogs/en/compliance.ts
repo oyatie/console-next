@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 export const enCompliance = {
-  "compliance.title": "Compliance catalog",
-  "compliance.create": "Add a compliance record",
   "compliance.action": "Action",
   "compliance.action.framework": "Create framework",
   "compliance.action.regulation": "Create regulation record",

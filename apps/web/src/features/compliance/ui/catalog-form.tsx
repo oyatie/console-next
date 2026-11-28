@@ -14,11 +14,11 @@ import { SelectInput } from "../../../ui/field/select-input";
 import { FormPattern } from "../../../ui/patterns/form";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { actions, catalogPaths, saveCatalog, type CatalogAction } from "../api";
-import { catalogCommand, initial, type Draft } from "./catalog-draft";
+import { catalogCommand, initial, type Draft } from "../domain/catalog-draft";
 import { ReferenceField, type ReferenceKind } from "./reference-field";
 import { BranchField } from "./scope";
 import { useCatalogScope } from "./use-catalog-scope";
-import { complianceCode, controlTypes, coverage, frameworkKinds, obligationTypes, relationships, risk } from "./words";
+import { complianceCode, controlTypes, coverage, frameworkKinds, obligationTypes, relationships, risk } from "../present";
 
 export function ComplianceCatalogForm() {
   const authz = useQuery(authzQuery);

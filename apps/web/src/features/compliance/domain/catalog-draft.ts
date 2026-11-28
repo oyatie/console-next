@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import type { CatalogAction, CatalogCommand } from "../api";
-import { controlTypes, coverage, frameworkKinds, obligationTypes, relationships, risk } from "./words";
+import { controlTypes, coverage, frameworkKinds, obligationTypes, relationships, risk } from "../present";
 
 export const initial = {
   name: "", version: "", jurisdiction: "", citation: "", area: "", detail: "", controlKey: "",
@@ -10,7 +10,7 @@ export const initial = {
   relationship: relationships[0] as typeof relationships[number], coverage: coverage[0] as typeof coverage[number],
 };
 export type Draft = typeof initial;
-export const isId = (s: string) => /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(s);
+const isId = (s: string) => /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(s);
 
 export function catalogCommand(action: CatalogAction, d: Draft, org: boolean, branch: string): CatalogCommand | undefined {
   const title = d.name.trim();

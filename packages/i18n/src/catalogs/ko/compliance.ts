@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 export const koCompliance = {
-  "compliance.title": "준법 카탈로그",
-  "compliance.create": "준법 기록 등록",
   "compliance.action": "작업",
   "compliance.action.framework": "프레임워크 등록",
   "compliance.action.regulation": "규정 등록",

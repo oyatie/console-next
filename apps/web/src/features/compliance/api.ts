@@ -3,7 +3,7 @@ import { api, ApiError, unwrap } from "@console/api";
 import type { components } from "@console/api/schema";
 import { get } from "../../lib/query";
 
-export type Schema = components["schemas"];
+type Schema = components["schemas"];
 export const PAGE_SIZE = 25;
 export const views = ["frameworks", "regulations", "obligations", "controls"] as const;
 export type View = typeof views[number];
