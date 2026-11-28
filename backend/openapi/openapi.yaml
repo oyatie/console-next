@@ -5152,6 +5152,7 @@ paths:
         '422': { $ref: '#/components/responses/ValidationError' }
   /api/v1/audit-streams/availability:
     get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
       tags:
       - audit
       operationId: getAuditStreamAvailability
