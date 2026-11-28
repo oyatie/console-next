@@ -112,9 +112,9 @@ impl TenantModule {
             .contains(&self))
     }
 
-    pub(crate) async fn admit(self, pool: &PgPool, org: OrgId) -> Result<(), Response> {
+    pub(crate) async fn refusal(self, pool: &PgPool, org: OrgId) -> Option<Response> {
         let (status, code, message) = match self.enabled(pool, org).await {
-            Ok(true) => return Ok(()),
+            Ok(true) => return None,
             Ok(false) => (
                 StatusCode::FORBIDDEN,
                 "module_disabled",
@@ -126,10 +126,12 @@ impl TenantModule {
                 "module policy unavailable",
             ),
         };
-        Err((
-            status,
-            Json(serde_json::json!({"error": {"code": code, "message": message}})),
+        Some(
+            (
+                status,
+                Json(serde_json::json!({"error": {"code": code, "message": message}})),
+            )
+                .into_response(),
         )
-            .into_response())
     }
 }

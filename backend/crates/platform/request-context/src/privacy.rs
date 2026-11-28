@@ -218,7 +218,7 @@ pub(super) async fn run_tenant(
         .extensions()
         .get::<crate::tenant_module::TenantModule>()
         .copied()
-        && let Err(response) = module.admit(pool, org).await
+        && let Some(response) = module.refusal(pool, org).await
     {
         return response;
     }
