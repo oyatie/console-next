@@ -33,7 +33,7 @@ const listened = new WeakSet<HTMLElement>();
 const remember = (key: string, q: string, patch: Partial<NonNullable<typeof memory>>) => void (memory = { ...(memory?.key === key ? memory : { key, q, top: 0, row: null }), ...patch });
 
 /** URL, reads, commands and restoration shared by the roster screen. */
-export function useRosterScreen(layoutReady = true) {
+export function useRosterScreen() {
   const contractWindow = useQuery(rosterWindowQuery);
   const soonDays = contractWindow.isError ? undefined : contractWindow.data;
   const search = route.useSearch();
@@ -63,7 +63,7 @@ export function useRosterScreen(layoutReady = true) {
   const [rescinding, setRescinding] = useState(false);
   // The rescission sheet's reasons, read before its button shows, so nothing lands under the pointer when it opens.
   const rescindReady = useReasonCodesReady(batch ? "lifecycle_cancel" : null);
-  const r = useRoster({ status, review, unit, ...(ids.length > 0 ? { ids } : {}), q, sort }, soonDays, !contractWindow.isPending, layoutReady);
+  const r = useRoster({ status, review, unit, ...(ids.length > 0 ? { ids } : {}), q, sort }, soonDays, !contractWindow.isPending);
   const view = useRosterColumns();
   const prefetch = usePrefetch();
   // The memory always describes the current filters (a new filter starts at the top).

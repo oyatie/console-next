@@ -24,7 +24,7 @@ const employees = (query: object) => get("/api/v1/employees", { params: { query 
  * reads (domain/roster facetQueries), which do follow focus and polling; the list filter's total is the probe, so a
  * change by someone else shows as a banner instead of reshuffling the rows under the cursor.
  */
-export function useRoster(f: OrderedRoster, soonDays: number | undefined, windowSettled = soonDays !== undefined, layoutReady = true) {
+export function useRoster(f: OrderedRoster, soonDays: number | undefined, windowSettled = soonDays !== undefined) {
   const today = todayKst();
   // Only the upcoming-contract filter needs the tenant window to select its rows.
   const rowsEnabled = windowSettled || !f.review.includes("contractSoon");
@@ -63,8 +63,8 @@ export function useRoster(f: OrderedRoster, soonDays: number | undefined, window
   // redraw the filter chips under the pointer when the new ones land.
   const probeRead = get("/api/v1/employees/facets", { params: { query: facets.list } });
   const reviewRead = get("/api/v1/employees/facets", { params: { query: facets.review } });
-  const probe = useFreshOnArrival(useQuery({ ...probeRead, enabled: windowSettled && layoutReady }), probeRead);
-  const review = useFreshOnArrival(useQuery({ ...reviewRead, enabled: windowSettled && layoutReady }), reviewRead);
+  const probe = useFreshOnArrival(useQuery({ ...probeRead, enabled: windowSettled }), probeRead);
+  const review = useFreshOnArrival(useQuery({ ...reviewRead, enabled: windowSettled }), reviewRead);
   /** A count read after the rows says this filter moved (someone else added or changed people); an older one never does. */
   const changed = !f.ids?.length && windowSettled && total !== undefined && probe.data !== undefined && probe.data.total !== total && !list.isFetching && probe.dataUpdatedAt > list.dataUpdatedAt;
   // An empty list that the counts say has people (an import from another tab) re-reads at once: no row is under the pointer.

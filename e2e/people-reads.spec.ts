@@ -25,8 +25,15 @@ test("roster facets, employment type, purposeful download and exit search", { ta
   await expectAccessible(admin, "roster with the employment column");
 
   // The download asks why first, says it is logged, and carries no resident number or pay.
-  await admin.getByRole("button", { name: ko["roster.export"] }).click();
+  const exportButton = admin.getByRole("button", { name: ko["roster.export"] });
   const dialog = admin.getByRole("dialog", { name: ko["roster.export.title"] });
+  await exportButton.focus();
+  await exportButton.press("Enter");
+  await expect(dialog).toBeVisible();
+  await admin.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(exportButton).toBeFocused();
+  await exportButton.click();
   await dialog.getByText(ko["roster.export.directory"], { exact: true }).click();
   await expect(dialog).toContainText("접속기록에 남습니다");
   await dialog.getByRole("button", { name: "2명 내려받기" }).click();

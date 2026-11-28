@@ -39,6 +39,7 @@
       "src/features/me/ui/me-desk-page.tsx",
       "src/features/entity/ui/entity-wizard.tsx",
       "src/features/people/ui/register-export.tsx",
+      "src/features/people/ui/roster-export-dialog.tsx",
       "src/features/people/ui/roster-console-panel.tsx",
       "src/features/settings/ui/policy-edit-sheet.tsx",
       "src/features/settings/ui/policy-inspector.tsx",
