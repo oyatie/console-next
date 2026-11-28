@@ -1,0 +1,15 @@
+{
+  "baseline": {
+    "apps/web/src/features/payroll/ui/pay-group-members-page.tsx#PayGroupMembersPage": 37
+  },
+  "newScreens": {
+    "apps/web/src/features/payroll/ui/pay-group-members-page.tsx#PayGroupMembersPage": {
+      "FACT": 14,
+      "REFUSAL": 11,
+      "EMPTY": 2,
+      "LEGAL": 0,
+      "RECEIPT": 10,
+      "EXPLANATION": 0
+    }
+  }
+}

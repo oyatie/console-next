@@ -12738,6 +12738,23 @@ const PAYROLL_FRAGMENT_PATHS: &[PathItem] = &[
         }],
     },
     PathItem {
+        path: "/api/v1/payroll/pay-group-memberships",
+        operations: &[
+            Operation {
+                method: "get",
+                body: include_str!(
+                    "../../payroll/rest/openapi/paths/api__v1__payroll__pay-group-memberships.get.yaml"
+                ),
+            },
+            Operation {
+                method: "post",
+                body: include_str!(
+                    "../../payroll/rest/openapi/paths/api__v1__payroll__pay-group-memberships.post.yaml"
+                ),
+            },
+        ],
+    },
+    PathItem {
         path: "/api/v1/payroll/pay-groups",
         operations: &[
             Operation {

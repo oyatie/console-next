@@ -111,3 +111,9 @@ async fn a_legal_entity_with_two_pay_groups_refuses_preview_and_create_with_a_co
         )
     );
 }
+
+#[path = "membership_api.rs"]
+mod membership_api;
+
+#[path = "membership_authority.rs"]
+mod membership_authority;

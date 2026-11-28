@@ -26080,6 +26080,73 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationError'
+  /api/v1/payroll/pay-group-memberships:
+    get:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "pay:edit", "scope": "entity"}
+      tags: [payroll]
+      operationId: searchPayGroupMembers
+      summary: Find employees eligible for a pay group on the selected date
+      security: [{bearerAuth: []}]
+      parameters:
+      - {in: query, required: true, name: pay_group_id, schema: {type: string, format: uuid}}
+      - {in: query, required: true, name: effective_from, schema: {type: string, format: date}}
+      - {in: query, required: true, name: q, schema: {type: string, minLength: 1, maxLength: 100}}
+      responses:
+        '200':
+          description: Up to 30 matching employees in the group’s legal entity on that date. Both their source group and destination must be manageable.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [employee_id, name, employee_number, current_pay_group_id]
+                  properties:
+                    employee_id: {type: string, format: uuid}
+                    name: {type: string}
+                    employee_number: {type: [string, 'null']}
+                    current_pay_group_id: {type: [string, 'null'], format: uuid}
+        '400': {description: Invalid query fields.}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '422': {description: Empty or overlong search.}
+    post:
+      # SPDX-License-Identifier: LicenseRef-Proprietary
+      x-console-authz: {"permission": "pay:edit", "scope": "entity"}
+      tags: [payroll]
+      operationId: assignPayGroupMember
+      summary: Add or move an employee from the effective date until the next scheduled membership boundary
+      security: [{bearerAuth: []}]
+      parameters:
+      - {name: Idempotency-Key, in: header, required: false, schema: {type: string, minLength: 16, maxLength: 200}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [pay_group_id, employee_id, effective_from, expected_pay_group_id]
+              properties:
+                pay_group_id: {type: string, format: uuid}
+                employee_id: {type: string, format: uuid}
+                effective_from: {type: string, format: date}
+                expected_pay_group_id: {type: [string, 'null'], format: uuid}
+      responses:
+        '200':
+          description: Membership committed or already in this group on that date.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id]
+                properties:
+                  id: {type: string, format: uuid, description: Destination pay group.}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {description: Membership changed since selection or the change overlaps a closed run or active payroll freeze.}
+        '422': {description: Invalid employee or date for this group.}
   /api/v1/payroll/pay-groups:
     get:
       # SPDX-License-Identifier: LicenseRef-Proprietary
@@ -26291,7 +26358,7 @@ paths:
               schema: {$ref: '#/components/schemas/PayrollRunPreview'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {description: Cedar refuses pay-group edit or sensitive edit clearance. Unknown and foreign groups also refuse.}
-        '409': {description: "pay_group_roster_ambiguous when the group's legal entity has more than one pay group, so its members are not known."}
+        '409': {description: "pay_group_roster_ambiguous when the group's legal entity has more than one pay group, and its members are not known. Assign outstanding employees from pay group setup, then retry."}
         '422': {description: run_kind_unsupported for non-REGULAR kinds; validation for missing group or invalid kind.}
         '503': {description: holiday_calendar_missing when an adjustment requires an unloaded calendar year; or unavailable Cedar facts.}
   /api/v1/payroll/runs/{id}:
@@ -58359,6 +58426,10 @@ components:
       type: object
       required: [items, legal_entities]
       properties:
+        manageable_group_ids:
+          type: array
+          description: Listed groups whose membership the current caller may manage.
+          items: {type: string, format: uuid}
         items:
           type: array
           items: {$ref: '#/components/schemas/PayGroup'}

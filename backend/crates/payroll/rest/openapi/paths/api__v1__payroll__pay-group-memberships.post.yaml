@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+x-console-authz: {"permission": "pay:edit", "scope": "entity"}
+tags: [payroll]
+operationId: assignPayGroupMember
+summary: Add or move an employee from the effective date until the next scheduled membership boundary
+security: [{bearerAuth: []}]
+parameters:
+- {name: Idempotency-Key, in: header, required: false, schema: {type: string, minLength: 16, maxLength: 200}}
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        additionalProperties: false
+        required: [pay_group_id, employee_id, effective_from, expected_pay_group_id]
+        properties:
+          pay_group_id: {type: string, format: uuid}
+          employee_id: {type: string, format: uuid}
+          effective_from: {type: string, format: date}
+          expected_pay_group_id: {type: [string, 'null'], format: uuid}
+responses:
+  '200':
+    description: Membership committed or already in this group on that date.
+    content:
+      application/json:
+        schema:
+          type: object
+          required: [id]
+          properties:
+            id: {type: string, format: uuid, description: Destination pay group.}
+  '401': {$ref: '#/components/responses/Unauthorized'}
+  '403': {$ref: '#/components/responses/Forbidden'}
+  '409': {description: Membership changed since selection or the change overlaps a closed run or active payroll freeze.}
+  '422': {description: Invalid employee or date for this group.}
