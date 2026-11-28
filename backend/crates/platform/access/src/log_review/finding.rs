@@ -173,14 +173,15 @@ pub async fn finding(
                 .map_err(AccessError::internal)?;
             let exists: bool = if let Some(event_id) = body.event_id {
                 let target_actor: Option<Option<Uuid>> = sqlx::query_scalar(
-                    "SELECT (f->>'actor_id')::uuid FROM audit_events a \
+                    "SELECT event.actor FROM audit_events a \
                      CROSS JOIN LATERAL jsonb_array_elements(a.after_snap#>'{evidence,flagged}') c \
                      CROSS JOIN LATERAL jsonb_array_elements(c) f \
-                     WHERE a.org_id=$1 AND a.id=$2 AND f->>'event_id'=$3 LIMIT 1",
+                     JOIN ordinary_audit_events event ON event.org_id=a.org_id AND event.id=(f->>'event_id')::uuid \
+                     WHERE a.org_id=$1 AND a.id=$2 AND event.id=$3 LIMIT 1",
                 )
                 .bind(p.org_id.as_uuid())
                 .bind(start_id)
-                .bind(event_id.to_string())
+                .bind(event_id)
                 .fetch_optional(tx.as_mut())
                 .await?;
                 if let Some(Some(actor_uuid)) = target_actor

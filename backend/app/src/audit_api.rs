@@ -270,7 +270,10 @@ async fn fetch_audit_records(
         r#"
         SELECT
             id, actor, action, target_type, target_id, branch_id,
-            before_snap, after_snap,
+            before_snap,
+            CASE WHEN action = 'access_log_review.start'
+                 THEN after_snap - 'evidence' - 'evidence_header' - 'chunk_ends'
+                 ELSE after_snap END AS after_snap,
             ip, user_agent, auth_method, device,
             classification_badges, anomaly, reason,
             source, change_mode, reason_code, decision_snapshot, command_id,
@@ -278,7 +281,7 @@ async fn fetch_audit_records(
             outcome, actor_display, actor_employer, row_hash_version,
             trace_id::text AS trace_id,
             span_id::text AS span_id, occurred_at
-        FROM audit_events
+        FROM ordinary_audit_register
         WHERE
         "#,
     );

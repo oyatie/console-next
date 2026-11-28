@@ -19,7 +19,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 pub use super::finding::{FindingInput, FollowUpInput, SummaryTarget, finding};
-use super::list::{FlaggedEvent, Prepared, page_in_tx, prepare_in_tx};
+use super::list::{FlaggedEvent, prepare_in_tx, validate_limit};
 pub use super::{
     complete::{CompleteInput, complete},
     projection::get,
@@ -31,7 +31,7 @@ use crate::{
 
 type StartRow = (Uuid, Option<Uuid>, OffsetDateTime, Value);
 const OPERATION: &str = "access_log_review.start";
-// The list contract caps a page at 200; any page intersects at most two chunks.
+// Store at most one list-page of evidence per chunk.
 const CHUNK_EVENTS: usize = super::MAX_PAGE_SIZE as usize;
 
 pub(super) async fn require(
@@ -204,18 +204,29 @@ pub async fn frozen_page(
         let mut row = load(tx, &p, &period).await?.ok_or_else(|| AccessError::not_found("review_not_started", "review has not started"))?;
         let ends: Vec<FlaggedEvent> = serde_json::from_value(row.3["chunk_ends"].take()).map_err(AccessError::internal)?;
         let start = cursor.map_or(0, |c| ends.partition_point(|r| (r.created_at,r.event_id)<=c));
-        let chunks: Value = sqlx::query_scalar("SELECT jsonb_build_array((after_snap#>'{evidence,flagged}')->$3::int,(after_snap#>'{evidence,flagged}')->($3::int+1)) FROM audit_events WHERE org_id=$1 AND id=$2")
-            .bind(p.org_id.as_uuid()).bind(row.0).bind(i32::try_from(start).map_err(AccessError::internal)?)
-            .fetch_one(tx.as_mut()).await?;
-        let flags: Vec<Value> = chunks.as_array().ok_or_else(|| AccessError::internal("invalid frozen chunks"))?
-            .iter().filter_map(Value::as_array).flatten().cloned().collect();
-        let mut header = row.3["evidence_header"].take();
-        header["flagged"] = json!(flags);
-        let prepared: Prepared = serde_json::from_value(header).map_err(AccessError::internal)?;
-        let rows = page_in_tx(tx.as_mut(), &prepared, cursor, limit, true).await?;
-        let ids: Vec<_> = rows.iter().map(|r| r.event_id).collect();
-        let subjects: Vec<Uuid> = sqlx::query_scalar("SELECT DISTINCT actor FROM audit_events WHERE org_id=$1 AND id=ANY($2) AND actor IS NOT NULL ORDER BY actor")
-            .bind(p.org_id.as_uuid()).bind(ids).fetch_all(tx.as_mut()).await?;
+        validate_limit(limit)?;
+        let mut rows = Vec::new();
+        let mut subjects = std::collections::BTreeSet::new();
+        // Read the bounded terminal chunk even for an empty register. Empty and
+        // populated months use the same indexed receipt and visibility path.
+        for chunk in start..ends.len().max(start + 1) {
+            let visible: Vec<(sqlx::types::Json<FlaggedEvent>, Option<Uuid>)> = sqlx::query_as(
+                "SELECT entry.flag, event.actor FROM audit_events receipt \
+                 CROSS JOIN LATERAL jsonb_array_elements((receipt.after_snap#>'{evidence,flagged}')->$3::int) \
+                     WITH ORDINALITY AS entry(flag,position) \
+                 JOIN ordinary_audit_events event ON event.org_id=$1 AND event.id=(entry.flag->>'event_id')::uuid \
+                 WHERE receipt.org_id=$1 AND receipt.id=$2 ORDER BY entry.position"
+            ).bind(p.org_id.as_uuid()).bind(row.0).bind(i32::try_from(chunk).map_err(AccessError::internal)?)
+              .fetch_all(tx.as_mut()).await?;
+            for (sqlx::types::Json(event), actor) in visible {
+                if cursor.is_some_and(|after| (event.created_at, event.event_id) <= after) { continue; }
+                rows.push(event);
+                subjects.extend(actor);
+                if rows.len() == limit as usize { break; }
+            }
+            if rows.len() == limit as usize { break; }
+        }
+        let subjects: Vec<_> = subjects.into_iter().collect();
         let audit = access_event(&p, AccessRecord {action:"access_log.review_read",target_type:"access_log",target_id:period.clone(),
             subject_ids:&subjects,reader_subject:Some(*p.user_id.as_uuid()),details:json!({"period":period,"flagged":true,"rows":rows.len()})})?;
         Ok((rows, vec![audit]))

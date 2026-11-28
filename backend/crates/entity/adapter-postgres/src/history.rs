@@ -108,7 +108,7 @@ fn sql(record: Record) -> String {
         Record::Workplace => "workplace",
     };
     format!(
-        "SELECT h.*,a.actor_kind,a.command_id FROM ({combined}) h LEFT JOIN LATERAL (SELECT actor_kind,command_id FROM audit_events WHERE target_type='{target}' AND target_id=$1::text AND actor=h.actor_id AND created_at=h.created_at AND outcome='ALLOWED' ORDER BY id DESC LIMIT 1) a ON true ORDER BY h.created_at,h.version"
+        "SELECT h.*,a.actor_kind,a.command_id FROM ({combined}) h LEFT JOIN LATERAL (SELECT actor_kind,command_id FROM ordinary_audit_events WHERE target_type='{target}' AND target_id=$1::text AND actor=h.actor_id AND created_at=h.created_at AND outcome='ALLOWED' ORDER BY id DESC LIMIT 1) a ON true ORDER BY h.created_at,h.version"
     )
 }
 

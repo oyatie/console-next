@@ -35,7 +35,7 @@ macro_rules! eligible {
         "WITH classified AS (SELECT r.id, r.code, r.target_label, r.effective_date, r.created_at, \
          ((r.effective_date + 1)::timestamp AT TIME ZONE 'Asia/Seoul') - interval '1 microsecond' AS inbox_due, \
          (SELECT u.display_name FROM person_accounts_current u WHERE u.org_id = r.org_id AND u.id = r.drafted_by) AS drafted_by_name, \
-         (SELECT e.command_id FROM audit_events e WHERE e.org_id = r.org_id \
+         (SELECT e.command_id FROM ordinary_audit_events e WHERE e.org_id = r.org_id \
           AND e.target_type = 'org_change_request' AND e.target_id = r.id::text \
           AND e.outcome = 'ALLOWED' AND e.command_id IS NOT NULL \
           ORDER BY e.created_at DESC, e.id DESC LIMIT 1) AS command_id, \
