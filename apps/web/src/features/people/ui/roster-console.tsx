@@ -28,7 +28,6 @@ import { WorklistSearchField } from "../../../ui/patterns/worklist-parts";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { ReadSkeleton } from "../../../ui/skeleton/skeleton";
 import { SortControl } from "../../../ui/sort-control/sort-control";
-import { employeeQuery } from "../api";
 import { fetchAllConsoleRows } from "../api/peek";
 import { type RosterOrder } from "../domain/roster-order";
 import { BulkRescind } from "./bulk-rescind";
@@ -73,7 +72,7 @@ export function RosterConsole({
   const {
     contractWindow, soonDays, search, navigate, today, status, review, unit, ids, open, openUnit, select, selectRelated,
     full, expand, restore, unitTrigger, unitItems, selectedUnit, sort, q, exitView, setExitView, sel, setSel,
-    recorded, batch, setBatch, rescinding, setRescinding, setRecorded, rescindReady, r, view, prefetch, setFilter,
+    recorded, batch, setBatch, rescinding, setRescinding, setRecorded, rescindReady, r, view, setFilter,
     find, reset, viewFilters, applyView, closePaste, bulkDone, openRecord, scroller, scrollRef, onRowFocus, filtered, customFilters, sameName, onRowAction,
   } = screen;
 
@@ -206,7 +205,6 @@ export function RosterConsole({
               loading={r.loading || (needsFullRoster && fullRoster.isPending)}
               empty={(r.list.error && !r.list.data) || (needsFullRoster && fullRoster.isPending) ? null : (filtered || hasClientFilter) ? <RosterEmpty q={q} narrowed={Boolean(unit || status !== "current" || review.length || hasClientFilter)} exited={status === "EXITED"} manage={manage} onReset={customFilters || hasClientFilter ? resetAll : undefined} onExited={() => setFilter({ status: "EXITED", review: [], unit: null })} /> : <EmptyState title={t("people.empty.title")} reason={t("people.empty.reason")} actions={manage ? <Link className={buttonClass("primary")} to="/people/new" search={{}}>{t("people.register")}</Link> : undefined} />}
               onRowAction={onRowAction}
-              onRowHover={id => prefetch(employeeQuery(id))}
               onRowFocus={onRowFocus}
               rowKeys={{ onOpen: openRecord }}
               scrollRef={scrollRef}
