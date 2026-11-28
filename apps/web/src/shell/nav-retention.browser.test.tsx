@@ -4,7 +4,7 @@ import { expect as element } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { browserEngine } from "../lib/browser-test";
 import { navFixture } from "./nav.browser-fixture";
-import { checklist, user } from "../../../../e2e/mock/fixtures";
+import { authz, checklist, user } from "../../../../e2e/mock/fixtures";
 
 for (const engine of [browserEngine()]) test.each([503, 403])(`one shell retry respects the checklist's %i answer in ${engine.name()}`, async status => {
   await loadCatalog("ko");
@@ -13,6 +13,15 @@ for (const engine of [browserEngine()]) test.each([503, 403])(`one shell retry r
   await page.emulateMedia({ colorScheme: "dark" });
   let failing = true;
   let reads = 0;
+  const access = Promise.withResolvers<void>();
+  // The page answers first. The rail learns the same operator's grants after the refusal.
+  if (status === 403) {
+    await page.route("**/api/v1/access/me", async route => { await access.promise; await route.fallback(); });
+    await page.route("**/api/v1/me/authz", async route => {
+      await access.promise;
+      await route.fulfill({ json: authz });
+    });
+  }
   await page.route("**/api/v1/users/me", route => route.fulfill({ json: { ...user, tenant: { ...user.tenant, phase: "SETUP", go_live_at: null } } }));
   await page.route("**/api/v1/onboarding/checklist", route => {
     reads++;
@@ -26,15 +35,20 @@ for (const engine of [browserEngine()]) test.each([503, 403])(`one shell retry r
     const failure = page.getByRole("main").getByRole("alert");
     await element(failure).toHaveCount(1);
     const before = reads;
+    access.resolve();
     expect(before).toBeGreaterThan(0);
     failing = false;
     await failure.getByRole("button", { name: t("common.retry"), exact: true }).click();
     await element(page.getByRole("navigation", { name: t("shell.nav") }).getByRole("alert")).toHaveCount(0);
     await element(failure).toHaveCount(0);
     await expect.poll(() => reads).toBe(before + (status === 503 ? 1 : 0));
+    if (status === 403) {
+      await page.evaluate(() => window.__refetchChecklist());
+      expect(reads).toBe(before + 1);
+    }
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
     expect(errors).toEqual([]);
-  } finally { await browser.close(); await server.close(); }
+  } finally { access.resolve(); await browser.close(); await server.close(); }
 }, 60_000);
 
 for (const engine of [browserEngine()]) test(`a cold modules fault reuses only this principal's remembered readiness in ${engine.name()}`, async () => {
