@@ -54,13 +54,12 @@ test("solo: RRN and birth-date reveals use passkeys and remask on the card and i
         await expect(birth).toContainText("••••-••-••");
         for (const field of ["#f-address", "#s1"]) await expect(admin.locator(field).getByText(/아직 서버/)).toHaveCount(0);
       }
-      const rrnRow = suffix ? admin.getByRole("region", { name: "주민등록번호", exact: true })
-        : admin.getByRole("region", { name: "인적사항", exact: true }).getByText("주민등록번호", { exact: true }).locator("..");
-      await admin.getByRole("button", { name: "주민등록번호 보기 · 사유를 선택합니다", exact: true }).click();
-      await admin.getByRole("dialog").getByText("본인 확인", { exact: true }).click();
+      const rrnRow = admin.locator("dl").filter({ has: admin.locator("dt", { hasText: /^주민등록번호$/ }) });
       await admin.evaluate(() => document.fonts.ready);
       await admin.evaluate(() => new Promise<void>(done => requestAnimationFrame(() => requestAnimationFrame(() => done()))));
       const maskedHeight = (await rrnRow.boundingBox())!.height;
+      await admin.getByRole("button", { name: "주민등록번호 보기 · 사유를 선택합니다", exact: true }).click();
+      await admin.getByRole("dialog").getByText("본인 확인", { exact: true }).click();
       await admin.evaluate(clearShifts);
       const layout = await admin.evaluateHandle(() => {
         const shifts: number[] = [];
@@ -96,13 +95,13 @@ test("solo: RRN and birth-date reveals use passkeys and remask on the card and i
       await expect(admin.getByText(status.masked, { exact: true })).toBeVisible();
       await admin.clock.setSystemTime(Date.now());
       expect((await rrnRow.boundingBox())!.height).toBe(maskedHeight);
+      await expectAccessible(admin, `privacy ${suffix || "card"} ${width}`);
       for (const theme of ["light", "dark"]) {
         await admin.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
         const body = await admin.locator("body").innerText();
         expect(body).not.toMatch(/\d{6}-\d|●|아직 서버/);
         await test.info().attach(`rows-948-940-${suffix ? "identifiers" : "card"}-${width}-${theme}`, { body: await admin.screenshot({ fullPage: true }), contentType: "image/png" });
       }
-      await expectAccessible(admin, `privacy ${suffix || "card"} ${width}`);
     }
   }
 });

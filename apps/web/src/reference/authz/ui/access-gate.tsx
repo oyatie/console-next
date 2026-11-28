@@ -8,7 +8,7 @@ import type { ReadBack } from "../../../lib/react/denied";
 import { PageHead } from "../../../ui/page-head/page-head";
 import { ReadSkeleton, type ReadLayout } from "../../../ui/skeleton/skeleton";
 import { accessRefusal, type AccessRequirement } from "../domain/access";
-import { ApiError, myAccessQuery } from "../api";
+import { ApiError, authzApplies, authzQuery, myAccessQuery } from "../api";
 import { moduleReady, modulesQuery, type ModuleKey } from "../../onboarding/api";
 
 function ModuleGate({ children, module }: { children: ReactNode; module: ModuleKey }) {
@@ -29,6 +29,12 @@ export function AccessGate({ children, layout = "form", ...need }: AccessRequire
   return <QueryState q={q} layout={layout} need={need}>{() => children}</QueryState>;
 }
 
+/** Warm the signed-in user's capability decision alongside the screen's effective access check. */
+function PreloadUserCapabilities() {
+  useQuery({ ...authzQuery, enabled: authzApplies() });
+  return null;
+}
+
 /** The leaf route decides before its page (or a nested sheet's parent page) mounts. */
 export function RouteGuard({ children }: { children: ReactNode }) {
   const route = useMatches({ select: matches => matches.at(-1)?.staticData });
@@ -41,6 +47,7 @@ export function RouteGuard({ children }: { children: ReactNode }) {
   if (!need) throw new Error("Route must declare staticData.access");
   const page = route.module ? <ModuleGate module={route.module}>{children}</ModuleGate> : children;
   return <Suspense fallback={<ReadSkeleton layout="list" />}>
+    {route?.preloadUserCapabilities && <PreloadUserCapabilities />}
     {need === "signed-in" ? page : <AccessGate {...need} layout="list">{page}</AccessGate>}
   </Suspense>;
 }

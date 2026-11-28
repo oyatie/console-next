@@ -155,12 +155,12 @@ let ended: string | null = null;
 // INF-03: the server advances a session's activity only from `X-Last-Interaction` (the last real user input),
 // so polls never keep an idle session alive. `skew` (server minus client clock, from responses' `Date`) keeps a
 // slow PC clock from reading as idle.
-let lastInteraction: number | null = null;
+let lastInteraction: { localTime: number; serverTime: number } | null = null;
 let skew = 0;
-/** Record a real user input (pointer, key, touch). */
-export const touch = (at = Date.now()) => void (lastInteraction = at);
+/** Record both clocks at input, so a later response cannot move an earlier interaction. */
+export const touch = (at = Date.now()) => void (lastInteraction = { localTime: at, serverTime: at + skew });
 /** This context's last recorded input, on the client clock. */
-export const lastTouch = () => lastInteraction;
+export const lastTouch = () => lastInteraction?.localTime ?? null;
 /** Learn the server clock from a response's `Date` header (second precision; the server clamps to its own now). */
 export function noteServerDate(res: Response) {
   const at = Date.parse(res.headers.get("date") ?? "");
@@ -173,7 +173,7 @@ export const lastReported = () => reportedAt;
 export function interactionHeaders(): Record<string, string> {
   if (lastInteraction === null) return {};
   reportedAt = Date.now();
-  return { "x-last-interaction": new Date(lastInteraction + skew).toISOString() };
+  return { "x-last-interaction": new Date(lastInteraction.serverTime).toISOString() };
 }
 
 /** How long before the access token expires it is renewed: past a hidden tab's throttled timers (up to a minute). */

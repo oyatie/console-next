@@ -112,7 +112,7 @@ for (const [width, height] of [[1280, 720], [1440, 900], [1920, 1080]]) {
       const grid = page.getByRole("grid", { name: "조직 구조 목록" });
       for (const [name, label] of [[entity, "사업장 추가"], ["사업장1", "부서 추가"], ["부서1", "하위 부서 추가"]] as const) {
         const row = grid.locator("[data-row-id]").filter({ has: page.getByRole("rowheader").getByText(name, { exact: true }) });
-        await row.getByRole("rowheader").scrollIntoViewIfNeeded();
+        await row.scrollIntoViewIfNeeded();
         await expect(row.getByRole("rowheader").getByText(name, { exact: true })).toBeInViewport({ ratio: 1 });
         await expect(row.getByRole(name === entity ? "link" : "button", { name: label, exact: true })).toBeInViewport({ ratio: 1 });
       }

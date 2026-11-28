@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic, dead_code)]
+#[path = "statutory/age_scale.rs"]
+mod age_scale;
 mod support;
 #[path = "support/trail_queries.rs"]
 mod trail_queries;
@@ -125,8 +127,7 @@ async fn in_window_hydration_never_exceeds_the_keyset_page(pool: PgPool) {
     let mut q = sqlx::query_scalar::<_, Value>(sqlx::AssertSqlSafe(explain)).bind(w.tenant.org);
     // The in-window fixture is after every cutoff; null bounds preserve exactly that candidate set.
     if sql.contains("earliest_event_on") {
-        let bounds:Value=sqlx::query_scalar("SELECT jsonb_agg(jsonb_build_object('code',code,'effective_from',effective_from,'earliest_event_on',NULL)) FROM lifecycle_filing_rules WHERE filing_rule IS NOT NULL")
-            .fetch_one(&mut *conn).await.unwrap();
+        let bounds = age_scale::filing_periods(&pool, w.tenant.org).await;
         q = q.bind(bounds);
     }
     let ids: Vec<_> = page.items.iter().map(|item| item.inbox_id()).collect();

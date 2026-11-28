@@ -140,19 +140,16 @@ test("Home keeps healthy work through a source failure, retries it, and asks a r
 
 });
 
-test("an account with no work grant gets an honest home, and 기간 잠금 refuses it once", { tag: "@hr" }, async ({ browser }, info) => {
+test("an account with no work grant gets an honest home, and the period-locks route refuses it", { tag: "@hr" }, async ({ browser }, info) => {
   const { admin } = await tenantInSetup(browser, "truthn", "권한없음상사");
   await startOperations(admin);
   const exec = await firstSignIn(browser, await inviteMember(admin, "박사원"));
 
-  // regression (governance-21, people-self-04): 기간 잠금 by URL without the grant is asked once (the parent re-asked on
-  // every mount, ~316 GET in 3 min), then one typed refusal and no 「새 기간 잠금」.
+  // The route enforces its grant before the page asks for protected records.
   const lockReads = counter(exec, /^\/api\/v1\/period-locks(\?|$)/);
   await go(exec, "/people/period-locks");
-  await exec.waitForTimeout(5_000);
-  expect(lockReads(), "a refused list is asked once").toBe(1);
-  await expect(exec.getByRole("heading", { name: "기간 잠금을 볼 권한이 없습니다" })).toBeVisible();
-  await expect(exec.getByText("기간 잠금 관리 권한이 필요합니다", { exact: false })).toBeVisible();
+  await expect(exec.getByRole("region", { name: t("common.denied.title.plain"), exact: true })).toBeVisible();
+  expect(lockReads(), "the route refuses access before reading period locks").toBe(0);
   await expect(exec.getByRole("button", { name: "새 기간 잠금" })).toHaveCount(0);
   await expectAccessible(exec, "period locks refused");
 

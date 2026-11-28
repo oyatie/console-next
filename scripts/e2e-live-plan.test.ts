@@ -42,3 +42,13 @@ test("capacity mismatches and an oversized fixture fail before browsers start", 
   const timings = Object.fromEntries(listedTests(report).map(test => [test.key, { s: 5000 }]));
   expect(() => livePlan(report, timings)).toThrow("E2E_SPEC_OVER_BUDGET");
 });
+
+
+test("growing suites expand the matrix while preserving its forty-minute limit", () => {
+  const report = inventory(24);
+  const timings = Object.fromEntries(listedTests(report).map(test => [test.key, { s: 140 }]));
+  const shards = livePlan(report, timings);
+  expect(shards.length).toBeGreaterThan(8);
+  expect(shards.every(shard => shard.est <= 2400)).toBe(true);
+  expect(shards.flatMap(shard => shard.files).sort()).toEqual(report.suites.map(suite => suite.file).sort());
+});

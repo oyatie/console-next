@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { t } from "@console/i18n";
 import { failureText } from "../../../lib/refusal";
 import { ServerPicker } from "../../../ui/server-picker/server-picker";
@@ -17,11 +17,15 @@ export function AccountPick({ accounts: all, ops, loading, onPick }: { accounts:
     const timer = setTimeout(() => setDebounced(trimmed), 150);
     return () => clearTimeout(timer);
   }, [q]);
-  const debouncedQ = q.trim() ? debounced : "";
-  const search = useQuery({ ...accountSearchQuery(debouncedQ, 50, 0), placeholderData: keepPreviousData });
-  const raw = search.data?.items ?? (debouncedQ ? [] : all);
+  const trimmed = q.trim();
+  const debouncedQ = trimmed ? debounced : "";
+  const settling = debouncedQ !== trimmed;
+  const search = useQuery(accountSearchQuery(debouncedQ, 50, 0));
+  // A result for earlier text can move under a pointer while selecting the grantee.
+  const results = settling ? undefined : search.data;
+  const raw = results?.items ?? (trimmed ? [] : all);
   const accounts = pickable(raw, ops);
-  const total = search.data ? (search.data.items.length < search.data.total ? search.data.total : accounts.length) : undefined;
+  const total = results ? (results.items.length < results.total ? results.total : accounts.length) : undefined;
   return (
     <ServerPicker
       label={t("access.grants.pick")}
@@ -35,9 +39,9 @@ export function AccountPick({ accounts: all, ops, loading, onPick }: { accounts:
         else setQ("");
       }}
       group={t("access.grants.pick.group")}
-      loading={loading || search.isFetching}
+      loading={loading || settling || search.isFetching}
       total={total}
-      readError={search.error ? failureText(search.error) : undefined}
+      readError={!settling && search.error ? failureText(search.error) : undefined}
       empty={t("access.grants.pick.none")}
     />
   );

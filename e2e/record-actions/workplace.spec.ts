@@ -51,13 +51,9 @@ for (const live of [false, true]) {
     await rep.getByRole("button", { name: "변경 저장" }).click();
     await expect(rep).toBeHidden({ timeout: 15_000 });
     await expect(fromChart.getByRole("definition").filter({ hasText: /^이대표$/ })).toBeVisible();
-    await fromChart.getByRole("button", { name: "사업장 대표자 더보기" }).click();
-    if (live) await expect(admin.getByRole("menuitem", { name: "삭제" })).toHaveCount(0);
-    await admin.getByRole("menuitem", { name: "비움" }).click();
-    const clear = admin.getByRole("dialog", { name: "사업장 대표자 비움" });
-    await expect(clear.getByRole("textbox", { name: /^사업장 대표자/ })).toHaveValue("");
-    await clear.getByLabel("적용일").fill(kstDate());
-    await option(admin, "변경 사유", "연락처 변경").click();
+    // The representative is an optional fact, cleared with the same dated edit.
+    const clear = await edit(admin, fromChart, "사업장 대표자", "", "연락처 변경");
+    if (live) await expect(fromChart.getByRole("button", { name: "삭제", exact: true })).toHaveCount(0);
     await clear.getByRole("button", { name: "변경 저장" }).click();
     await expect(clear).toBeHidden({ timeout: 15_000 });
     await expect(fromChart.getByRole("definition").filter({ hasText: /^이대표$/ })).toHaveCount(0);

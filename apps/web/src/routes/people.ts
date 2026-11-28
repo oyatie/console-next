@@ -53,7 +53,7 @@ const employee = createRoute({
   // `back` is the sheet a detour started from (a refusal's "cancel that reservation"): its receipt offers the way back.
   // `tab` is the record's tab (personnel card when absent): action history, documents, change history, access.
   validateSearch: (s: Record<string, unknown>): { act?: string; back?: string; tab?: CardTab } => ({ act: str(s.act), back: str(s.back), tab: CARD_TABS.find((x) => x === s.tab) }),
-}).lazy(() => screen(() => import("../features/people/ui/card-print"))().then(m => m.employee));
+}).lazy(() => chunk(import("./employee-record")).then(m => m.employee));
 const REQUEST_LANES = ["all", "me", "role"] as const;
 const REQUEST_STATUSES = ["OPEN", "APPLIED", "DECLINED", "WITHDRAWN", "ALL"] as const;
 const changeRequests = createRoute({
@@ -86,7 +86,7 @@ const exitCase = createRoute({
 });
 const people = createRoute({
   getParentRoute: () => app,
-  path: "/people", staticData: { access: readRequirement("/people"), floorplan: "P-01", pattern: "list-record" },
+  path: "/people", staticData: { preloadUserCapabilities: true, access: readRequirement("/people"), floorplan: "P-01", pattern: "list-record" },
   beforeLoad: () => ({ peopleAccess: {
     roster: readRequirement("/people"), appointments: readRequirement("/people/bulk"),
     notices: readRequirement("/people/notices"), exits: readRequirement("/people/exits"), unplaced: readRequirement("/people/unplaced"),

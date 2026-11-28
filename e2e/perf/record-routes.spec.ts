@@ -2,6 +2,7 @@
 import { expect, test } from "@playwright/test";
 import { fits } from "../a11y";
 import { go, registerEmployee, routeReady } from "../flows";
+import { rawAnchors } from "../helpers/link-style";
 import { apiOf, bearerOf } from "../helpers/api";
 import { openTenant } from "../helpers/tenant";
 import { SETUP_DEPARTMENT, setupCompany, startOperations } from "../setup-flows";
@@ -48,6 +49,7 @@ test("synthetic tenant resolves every record route to saved content", { tag: "@p
         await admin.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
         await expect(admin.getByRole("heading", { level: 1 })).toHaveCount(1);
         await expect(admin.getByRole("main")).toContainText(content);
+        if (width === 1440) expect(await rawAnchors(admin, route)).toEqual([]);
         await fits(admin, route);
         await admin.screenshot({ path: test.info().outputPath(`${route.split("/")[1]}-${route.split("/")[2]}-${width}-${theme}.png`), fullPage: true });
       }

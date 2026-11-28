@@ -1,3 +1,4 @@
+import { ko } from "../packages/i18n/src/catalogs/ko";
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { go, option } from "./flows";
@@ -35,7 +36,7 @@ test("empty screens offer one working entry and forms retain format hints and re
   await admin.getByRole("button", { name: "다음", exact: true }).click();
   const number = wizardBrn(admin);
   await expect(number).toHaveAccessibleDescription("숫자 10자리");
-  await expect(main.getByText("진위 미확인", { exact: true })).toBeVisible();
+  await expect(main.getByText(ko["nts.unavailable.NOT_CONFIGURED"], { exact: true })).toBeVisible();
   await number.fill("123");
   await expect(number).toHaveAttribute("aria-invalid", "true");
   await expect(admin.getByRole("button", { name: "여기까지 저장" })).toHaveAttribute("aria-disabled", "true");

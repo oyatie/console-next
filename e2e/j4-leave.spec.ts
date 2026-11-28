@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { clickCounter } from "./clicks";
-import { go, koDate, registerEmployee } from "./flows";
+import { go, koDate, kstDate, registerEmployee } from "./flows";
 import { hrAct, hrItem, hrMenu, openHistory } from "./record";
 import { staffedTenant } from "./setup-flows";
 import { reasonBox, sheet, todayPreset, fillDate } from "./sheet";
@@ -19,6 +19,7 @@ test("J4 leave of absence with a leave type, then return", { tag: "@hr" }, async
   await expect(leave.getByRole("radio", { checked: true })).toHaveCount(0);
   await c.click(leave.getByText("육아휴직", { exact: true }));
   await c.click(todayPreset(leave));
+  const leaveStart = kstDate();
   await leave.getByRole("button", { name: "휴직 1명 적용", exact: true }).click(); // a check, not part of the journey
   await expect(leave).toContainText("육아휴직·출산전후휴가는 복직 예정일을 정해야 합니다");
   await fillDate(leave, "2027-09-30", "복직 예정일");
@@ -58,7 +59,7 @@ test("J4 leave of absence with a leave type, then return", { tag: "@hr" }, async
   await expect(panel.getByRole("navigation", { name: "인사 조치" }).getByRole("link")).toHaveText(["복직 처리"]); // only what the server offers
   await c.click(panel.getByRole("link", { name: "복직 처리" }));
   const ret = sheet(admin, "육아빠 복직 처리");
-  await expect(ret).toContainText(/휴직 \d{4}-\d{2}-\d{2} ~ 2027-09-30 · 육아휴직 · 휴직 전 부서 /);
+  await expect(ret).toContainText(`휴직 ${koDate(leaveStart)} ~ ${koDate("2027-09-30")} · 육아휴직 · 휴직 전 부서 인사부`);
   // The planned return is offered as a date of its own.
   await expect(ret.getByRole("button", { name: /^예정대로/ })).toBeVisible();
   await c.click(todayPreset(ret));

@@ -25,7 +25,7 @@ import { Skeleton } from "../../../ui/skeleton/skeleton";
 import { inboxView, isAttentionFilter, type AttentionInboxResponse, type InboxFilter } from "../domain/inbox-filter";
 import { InboxTabs } from "./inbox-tabs";
 import { InboxRead } from "./inbox-read";
-import { InboxReadContext, useInboxRead } from "./use-inbox-read";
+import { isInboxRow, InboxReadContext, useInboxRead } from "./use-inbox-read";
 import css from "./inbox-queue.module.css";
 
 // Keep the Home preview short enough for the first viewport; full paging belongs to /inbox.
@@ -116,7 +116,7 @@ function Queue({ preview = false, filter = "turn", setup, setupPhase = false, se
       <QueryState q={loading ? { ...inbox, isPending: true, data: undefined } : inbox} layout="list">{(data) => {
           const pages = data.pages as AttentionInboxResponse[];
           const checklist = pages[0]?.setup;
-          let rows = (preview ? pages.slice(0, 1) : pages).flatMap((page) => page.items).filter((item) => !checklist || !item.kind.startsWith("setup_"));
+          let rows = (preview ? pages.slice(0, 1) : pages).flatMap((page) => page.items).filter((item) => isInboxRow(item.kind, Boolean(checklist)));
           if (!preview && (setupPhase || checklist)) rows = rows.filter(item => item.kind === "privacy_request");
           const head = pages[0];
           const unavailable = [...new Map(pages.flatMap((page) => page.unavailable).map((part) => [part.source, part])).values()];

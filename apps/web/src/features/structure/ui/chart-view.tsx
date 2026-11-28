@@ -127,6 +127,8 @@ export function ChartView({ s, cmd, focusId, onFocus, sel, onSelect, pick, dimme
   const hoverBox = hover && !drag.dragging ? c.shown.get(hover) : undefined;
   // One active toolbar keeps a hovered box's actions from covering the selection's targets.
   const toolsBoxes = covered || drag.dragging || c.renaming ? [] : [menu, only, hover].flatMap((id) => {
+    // Finding another box pans the chart. Keep the previous selection's actions off the result.
+    if (c.q.trim() && id !== hitId && id !== menu) return [];
     // Root actions live in RootActions; hidden selections leave the toolbar to hover.
     const b = id && id !== s.root.id ? c.shown.get(id) : undefined;
     return b ? [b] : [];

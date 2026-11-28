@@ -53,6 +53,7 @@ export const koAudit: Record<keyof typeof enAudit, string> = {
   "audit.log.action.settings.change": "정책 설정 변경",
   "audit.log.action.payroll.run.approve": "급여 정산 결재 승인",
   "audit.log.action.employee.rrn_reveal": "주민등록번호 열람",
+  "audit.log.action.access.role.create": "역할 생성",
   "audit.log.action.access.grant.create": "접근 권한 부여",
   "audit.log.action.access.grant.assign": "접근 권한 부여",
   "audit.log.action.employee.export": "직원 명부 내보내기",

@@ -14,11 +14,11 @@ test.beforeAll(() => loadCatalog("ko"));
 test("J3 contract renewal from Home's queue, then the next one", { tag: "@hr" }, async ({ browser }) => {
   const { admin } = await staffedTenant(browser, "j3co", "갱신주식회사");
   const c = clickCounter();
-  await registerEmployee(admin, { name: "을계약", number: "J3-0002", contractEnd: kstDate(30) });
+  await registerEmployee(admin, { name: "을계약", number: "J3-0002", contractEnd: kstDate(2) });
   const nextEmployee = new URL(admin.url()).pathname.replace("/people/", "/api/v1/employees/");
   const nextContracts = `**${nextEmployee}/contracts`;
-  await registerEmployee(admin, { name: "갑계약", number: "J3-0001", contractEnd: kstDate(20) });
-  await expect(admin.getByRole("region", { name: "재직·배치" }).getByText("D-20")).toBeVisible();
+  await registerEmployee(admin, { name: "갑계약", number: "J3-0001", contractEnd: kstDate(1) });
+  await expect(admin.getByRole("region", { name: "재직·배치" }).getByText("D-1")).toBeVisible();
 
   await go(admin, "/");
   const queue = admin.getByRole("region", { name: t("home.inbox.title"), exact: true }).getByRole("row").filter({ hasText: "갑계약" }).filter({ has: admin.getByRole("link", { name: "계약 조건 확인", exact: true }) });

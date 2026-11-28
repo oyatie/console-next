@@ -54,6 +54,19 @@ pub(crate) async fn entities_at(
     personal: bool,
     point: ReadPoint,
 ) -> Result<Vec<LegalEntityView>, PgEntityError> {
+    let mut entities = entity_records_at(tx, only, granted, personal, point).await?;
+    crate::asof::membership::record_counts(tx, point, &mut entities).await?;
+    Ok(entities)
+}
+
+/// Certificate and workplace records for callers that do not consume workforce counts.
+pub(crate) async fn entity_records_at(
+    tx: &mut Tx<'_>,
+    only: Option<Uuid>,
+    granted: Option<&[Uuid]>,
+    personal: bool,
+    point: ReadPoint,
+) -> Result<Vec<LegalEntityView>, PgEntityError> {
     let heads = sqlx::query(
         "SELECT id, biz_kind, crn, founding, needs_confirmation, identity_locked_at IS NOT NULL AS locked, closed_on, close_reason_code, \
                 primary_workplace_id, head_office_workplace_id, head_office_has_no_workplace \
@@ -137,7 +150,6 @@ pub(crate) async fn entities_at(
         }
         e.identity_problems = console_entity_application::name_evidence::identity_problems(e);
     }
-    crate::asof::membership::record_counts(tx, point, &mut entities).await?;
     Ok(entities)
 }
 

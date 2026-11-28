@@ -34,7 +34,7 @@ test("settings readers keep the registry while members retain only client runtim
       "auth.idle_timeout_minutes", "approval.policy.org_structure", "approval.policy.people_correction",
       "approval.policy.identity_merge", "approval.policy.registration_void", "approval.policy.exit",
       "approval.policy.import_rollback", "hr.contract_soon_days", "display.deadline_due_soon_days",
-      "onboarding.receipt_days", "period_lock.unlock_max_days",
+      "onboarding.receipt_days", "period_lock.unlock_max_days", "display.experience",
     ].toSorted());
     for (const key of ["authz.sole_holder.mode", "audit.access_log.retention", "db.pool.api_connections"]) {
       expect(all).toContain(key);

@@ -14,5 +14,11 @@
       {"workflow": "platform.yml", "job": "Native image smoke test · amd64", "step": "Test native image"},
       {"workflow": "platform.yml", "job": "Native image smoke test · arm64", "step": "Test native image"}
     ]
-  }
+  },
+  "liveBrowserJobs": [
+    {"job": "Build browser test application", "steps": ["E2E policy and workflow controls", "Build the full E2E backend once", "Build the served web client once", "Refuse an empty live suite", "Check cross-browser inventory", "Plan Firefox mocked states"]},
+    {"job": "Chromium journeys · {shard}", "plan": "chromium", "shards": ["clock", "coldstart", "live-renew", "navigation", "focus-stress", "nts"], "steps": ["Chromium live shard and dormant browser surfaces"]},
+    {"job": "Firefox journeys · {shard}", "plan": "firefox", "shards": ["coldstart", "live-renew", "navigation", "focus-stress", "nts"], "steps": ["Firefox live shard and dormant browser surfaces"]},
+    {"job": "Firefox UI states · shard {shard}", "plan": "states", "steps": ["Firefox mocked states shard"]}
+  ]
 }

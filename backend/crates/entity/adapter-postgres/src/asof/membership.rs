@@ -43,13 +43,13 @@ pub(crate) async fn load(
          first_types AS (SELECT DISTINCT ON (employee_id) * FROM events WHERE to_employment_type IS NOT NULL ORDER BY employee_id,effective_date,created_at,id), \
          revisions AS (SELECT DISTINCT ON (b.employee_id) b.employee_id,x.attributes,x.valid_from,x.created_at, (x.valid_from AT TIME ZONE 'Asia/Seoul')::date AS business_date FROM employment_source_bindings b \
              JOIN employment_revisions x ON x.employment_id=b.employment_id \
-             WHERE x.valid_from < (($1::date+1)::timestamp AT TIME ZONE 'Asia/Seoul') AND x.created_at <= COALESCE($2::timestamptz,now()) \
+             WHERE x.valid_from < (($1::date+1)::timestamp AT TIME ZONE 'Asia/Seoul') AND x.created_at <= COALESCE($2::timestamptz,'infinity') \
              ORDER BY b.employee_id,x.valid_from DESC,x.version DESC), \
          first_assignments AS (SELECT DISTINCT ON (employee_id) employee_id,workplace_id FROM employment_assignments \
-             WHERE created_at <= COALESCE($2::timestamptz,now()) AND (superseded_at IS NULL OR superseded_at > $2) \
+             WHERE created_at <= COALESCE($2::timestamptz,'infinity') AND (superseded_at IS NULL OR superseded_at > $2) \
              ORDER BY employee_id,valid_from,created_at), \
          assignments AS (SELECT DISTINCT ON (employee_id) employee_id,legal_entity_id,workplace_id,valid_from,created_at FROM employment_assignments \
-             WHERE valid_from <= $1 AND created_at <= COALESCE($2::timestamptz,now()) \
+             WHERE valid_from <= $1 AND created_at <= COALESCE($2::timestamptz,'infinity') \
              AND (superseded_at IS NULL OR superseded_at > $2) \
              AND (valid_to IS NULL OR valid_to > $1 OR valid_to_recorded_at > $2) ORDER BY employee_id,valid_from DESC,created_at DESC) \
          SELECT e.id, \
@@ -75,7 +75,7 @@ pub(crate) async fn load(
          LEFT JOIN first_types first_type ON first_type.employee_id=e.id \
          LEFT JOIN first_assignments initial ON initial.employee_id=e.id \
          LEFT JOIN assignments a ON a.employee_id=e.id \
-         WHERE e.created_at <= COALESCE($2::timestamptz,now()) \
+         WHERE e.created_at <= COALESCE($2::timestamptz,'infinity') \
            AND entity_employed_on($1, \
              CASE WHEN COALESCE(l.to_status,r.attributes->>'employment_status',first_event.from_status,e.employment_status) = 'PRE_HIRE' \
                THEN entity_try_iso_date(e.hire_date) \

@@ -67,9 +67,10 @@ function useColumns(
   shown: readonly ColumnId[],
   consoleMode: boolean,
   rowIndex: (e: Employee) => number,
+  rows: readonly Employee[],
 ): LongColumn<Employee>[] {
-  const units = useQuery(unitsQuery).data?.items ?? [];
-  const entities = useQuery(entitiesRef).data?.items ?? [];
+  const units = useQuery({ ...unitsQuery, enabled: rows.some(e => e.workplace_id && e.org_unit_id) }).data?.items ?? [];
+  const entities = useQuery({ ...entitiesRef, enabled: rows.some(e => e.legal_entity_id) }).data?.items ?? [];
   const entity = (e: Employee) => entities.find((x) => x.id === e.legal_entity_id);
   const place = (e: Employee) => {
     if (!e.workplace_id) return consoleMode ? "—" : t("roster.unplaced");
@@ -215,7 +216,7 @@ export function RosterTable({
   const indexById = new Map(p.rows.map((row, idx) => [row.id, idx + 1]));
   const resolveIndex = rowIndex ?? ((e: Employee) => indexById.get(e.id) ?? 1);
   const activeKey = SORTS.find(key => sort === key || sort === `-${key}`)!;
-  const columns = useColumns(today, soonDays, exited, shown, consoleMode, resolveIndex).map(column => ({ ...column, allowsSorting: Boolean(onSort) && Object.values(SORT_COLUMNS).includes(column.id) }));
+  const columns = useColumns(today, soonDays, exited, shown, consoleMode, resolveIndex, p.rows).map(column => ({ ...column, allowsSorting: Boolean(onSort) && Object.values(SORT_COLUMNS).includes(column.id) }));
   return <LongTable {...p} rowIndex={rowIndex} density={density} columns={columns} rowId={(e) => e.id}
     sortDescriptor={onSort ? { column: SORT_COLUMNS[activeKey], direction: sort.startsWith("-") ? "descending" : "ascending" } : undefined}
     onSortChange={onSort && (descriptor => {

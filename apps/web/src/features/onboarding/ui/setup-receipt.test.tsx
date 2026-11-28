@@ -34,6 +34,7 @@ const state = vi.hoisted(() => ({
   snapshotVersion: 1,
   updatedAt: Date.parse("2026-11-04T12:00:00Z"),
   phaseError: null as ApiError | null,
+  phasePending: false,
   record: "answered" as "answered" | "loading" | "failing",
   recordEnabled: undefined as boolean | undefined,
 }));
@@ -42,9 +43,11 @@ vi.mock("../ui/use-setup", () => ({
   useSetupChecklist: () => ({
     phaseQ: {
       isError: state.phaseError !== null,
+      isPending: state.phasePending,
+      failureCount: state.phaseError ? 1 : 0,
       error: state.phaseError,
       dataUpdatedAt: state.updatedAt,
-      data: {
+      data: state.phasePending ? undefined : {
         phase: state.phase,
         go_live_at: state.goLiveAt,
         done: 8,
@@ -110,6 +113,7 @@ afterEach(() => {
   state.snapshotVersion = 1;
   state.updatedAt = Date.parse("2026-11-04T12:00:00Z");
   state.phaseError = null;
+  state.phasePending = false;
   state.record = "answered";
   state.recordEnabled = undefined;
 });
@@ -123,6 +127,16 @@ const render = () => renderToStaticMarkup(
 function Receipt() { return <SetupReceipt r={useReceipt(RECEIPT_NEED, HISTORY_NEED)} />; }
 function Arriving() { return <i data-arriving={useReceipt(RECEIPT_NEED, HISTORY_NEED).arriving} />; }
 const arrives = () => renderToStaticMarkup(<Arriving />).includes('data-arriving="true"');
+
+test("Home waits for the first operating checklist before exposing controls below the receipt", () => {
+  state.phasePending = true;
+  expect(arrives()).toBe(true);
+  state.phaseError = new ApiError(503, "unavailable", "unavailable");
+  expect(arrives()).toBe(false);
+  state.phaseError = null;
+  state.phase = "SETUP";
+  expect(arrives()).toBe(false);
+});
 
 test("Home waits on the receipt record it will show, and a first failure releases it", () => {
   vi.useFakeTimers();

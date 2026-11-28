@@ -16,6 +16,8 @@ use sqlx::{Postgres, Transaction};
 use time::{Date, OffsetDateTime};
 use uuid::Uuid;
 
+time::serde::format_description!(iso_date, Date, "[year]-[month]-[day]");
+
 /// A sign-in ID change as the REST face validated its shape.
 #[derive(Debug, Clone)]
 pub struct SignInIdChange {
@@ -32,6 +34,7 @@ pub struct SignInIdRecord {
     pub login: String,
     /// The sign-in ID, `@` and the company domain, as a person types it.
     pub sign_in_id: String,
+    #[serde(with = "iso_date")]
     pub effective_date: Date,
     pub reason_code: String,
     pub note: Option<String>,

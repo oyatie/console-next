@@ -99,6 +99,9 @@
 .pill { border: 1px solid var(--control-border); border-radius: calc(999 * 1px); min-height: 32px; }
 .pill[aria-pressed="true"] { background: var(--primary-soft); color: var(--primary); border-color: var(--primary); }
 .treeCell { display: inline-flex; align-items: center; gap: var(--space-1); min-width: 0; }
+.treeCell > svg { flex-shrink: 0; }
+.siteFlags { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0 var(--space-1); min-width: 0; }
+.siteFlags > span { height: calc(var(--row-h-compact) / 2); line-height: 1; }
 .chev { display: inline-grid; place-items: center; width: 24px; min-height: 24px; padding: 0; }
 .strong { font-weight: var(--fw-strong); }
 .orderCell { display: inline-flex; gap: calc(2 * 1px); }
@@ -129,7 +132,8 @@
 @media (--phone) {
   .head { flex-wrap: wrap; }
   .toolbarFind { width: 100%; min-width: 0; max-width: 100%; }
-  .crumbs { min-width: 0; max-width: 100%; }
+  .crumbs { min-width: 0; max-width: 100%; overflow-x: auto; }
+  .crumb { flex-shrink: 0; }
   :where([data-experience]:not([data-experience="baseline"])) .toolbarFind { flex: 1 1 calc(var(--panel-w) / 2); width: auto; }
   :where([data-experience]:not([data-experience="baseline"])) .chev:empty { display: none; }
   :where([data-experience]:not([data-experience="baseline"])) [data-mobile-layout="compact"] .treeCell { padding-inline-start: 0 !important; }

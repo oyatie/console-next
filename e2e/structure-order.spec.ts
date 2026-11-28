@@ -1,3 +1,4 @@
+import { ko } from "../packages/i18n/src/catalogs/ko";
 import { expect, test, type Page } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { go, option } from "./flows";
@@ -90,7 +91,9 @@ test("order on the chart and the list's conditions", { tag: "@org" }, async ({ b
   await expect(table.getByRole("row", { name: /가1팀/ })).toBeVisible();
   await expect(table.getByRole("row", { name: /판교지점/ })).toHaveCount(0);
   await expectAccessible(admin, "structure list (head vacant only)");
-  const [file] = await Promise.all([admin.waitForEvent("download"), admin.getByRole("button", { name: "조직 시트 내려받기" }).click()]);
+  await admin.getByRole("button", { name: ko["structure.export.open"], exact: true }).click();
+  const preview = admin.getByRole("dialog", { name: ko["structureChart.list.download"] });
+  const [file] = await Promise.all([admin.waitForEvent("download"), preview.getByRole("button", { name: ko["structureChart.list.download"] }).click()]);
   expect(file.suggestedFilename()).toMatch(/^조직 시트 \d{4}-\d{2}-\d{2}\.csv$/);
   const csv = await (await file.createReadStream()).toArray().then((c) => Buffer.concat(c).toString("utf8"));
   expect(csv.split("\r\n")[0]).toBe("﻿단계,법인,사업장,부서,코드,장,인원,기준일,알려진 시점");

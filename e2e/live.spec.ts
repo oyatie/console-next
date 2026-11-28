@@ -4,10 +4,10 @@ import { authenticatorOf, virtualAuthenticator } from "./auth";
 import { go, kstDate, newContext, passkeyLogin, registerEmployee } from "./flows";
 import { openTenant } from "./helpers/tenant";
 import { expectAccessible } from "./a11y";
-import { homeRail, staffedTenant, tenantInSetup } from "./setup-flows";
+import { homeRail, registerEntity, registerWorkplace, staffedTenant } from "./setup-flows";
 import { expectStable } from "./stability";
-import { addDepartments } from "./structure-flows";
 import { sheet as actSheet } from "./sheet";
+import { addDepartments } from "./structure-flows";
 import { hrAct } from "./record";
 
 // Decision #27 (FE-RT-7 subset): what one session changes reaches another session's open screen through the shell's
@@ -118,23 +118,42 @@ test("a change in one session reaches another without reload or polling, survive
 test("Home applies another session's setup change through its inbox without reload or a refresh press", { tag: "@live" }, async ({ browser }) => {
   test.setTimeout(180_000);
   // The one queue updates over SSE, including its grouped setup work.
-  const { admin, exec } = await tenantInSetup(browser, "livehome", "홈실시간");
-  await go(exec, "/");
-  const rail = await homeRail(exec);
+  const admin = await openTenant(browser, "livehome", "홈실시간");
+  const { page: observer } = await sameUserElsewhere(browser, admin);
+  await go(observer, "/");
+  const rail = await homeRail(observer);
   await expect(rail).toBeVisible();
-  await expectStable(exec, "Home before the change elsewhere");
-  const before = await rail.innerText();
+  await expectStable(observer, "Home before the change elsewhere");
+  const progress = rail.getByRole("progressbar");
   let loads = 0;
-  exec.on("load", () => { loads++; });
-  const updated = exec.waitForResponse((response) => new URL(response.url()).pathname === "/api/v1/me/action-inbox" && response.ok());
+  observer.on("load", () => { loads++; });
+  async function advance(step: string, change: () => Promise<void>) {
+    const before = Number(await progress.getAttribute("aria-valuenow"));
+    await Promise.all([
+      observer.waitForResponse(response => new URL(response.url()).pathname === "/api/v1/me/action-inbox" && response.ok()),
+      change(),
+    ]);
+    await expect.poll(async () => Number(await progress.getAttribute("aria-valuenow")), { timeout: 15_000 }).toBeGreaterThan(before);
+    await expectStable(observer, `Home after ${step}`);
+  }
 
-  await go(admin, "/org");
-  await addDepartments(admin, "본점", ["총무부"]);
-  await updated;
-  await expect.poll(() => rail.innerText(), { timeout: 15_000 }).not.toBe(before);
+  await advance("entity registration", async () => {
+    await (await homeRail(admin)).getByRole("link", { name: "법인 등록" }).first().click();
+    await registerEntity(admin, "홈실시간");
+  });
+  await advance("workplace registration", async () => {
+    await go(admin, "/");
+    const workplace = (await homeRail(admin)).getByRole("link", { name: "사업장 등록" }).first();
+    await expect(workplace).toHaveAttribute("href", /\/workplaces\/new$/);
+    await workplace.click();
+    await registerWorkplace(admin, "홈실시간", "본점");
+  });
+  await advance("the first department", async () => {
+    await go(admin, "/org");
+    await addDepartments(admin, "본점", ["총무부"]);
+  });
   expect(loads, "setup work updates without a document reload").toBe(0);
-  await expectStable(exec, "Home after the live setup change");
-  await expectAccessible(exec, "Home with live setup work");
+  await expectAccessible(observer, "Home with live setup work");
 });
 
 test("a sheet holds a change made elsewhere to the record under it, and closing it shows the change", { tag: "@live" }, async ({ browser }) => {

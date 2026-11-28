@@ -11,3 +11,8 @@
 .readSlot[data-status="ACTIVE"] { min-block-size: calc(6lh + var(--control-h-sm) * 3 + var(--space-6)); }
 .readSlot > * { flex-shrink: 0; }
 .embedded { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); }
+
+/* On desktop the inspector narrows the scrollport; keep directory columns and row heights in place. */
+@media not all and (--below-wide) {
+  .directory[data-open="true"] .directoryTable { min-inline-size: calc(100cqi + var(--panel-w) + var(--space-4)); }
+}

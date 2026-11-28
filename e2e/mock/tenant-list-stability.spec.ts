@@ -40,6 +40,37 @@ async function mockPlatform(page: Page) {
   return fixture;
 }
 
+test("closing the tenant inspector removes the overflow cue before the expanded directory paints @baseline", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  const fixture = await mockPlatform(page);
+  const org: Org = { id: id(5000), name: "Synthetic customer", slug: "customer", group_id: null, group_slug: null, group_name: null, status: "ACTIVE", created_at: AT, updated_at: AT };
+  await mockRoute(page, "get", "/api/platform/orgs", { status: 200, json: [org] });
+  await mockRoute(page, "get", "/api/platform/ops", { status: 200, json: { tenants: [], notices: [] } });
+  try {
+    await page.goto("/platform");
+    const directory = page.locator("#tenants-list");
+    const row = directory.getByRole("row").filter({ hasText: org.name });
+    await row.click();
+    await expect(directory.locator("[data-scroll-cue]")).toBeVisible();
+    const firstExpandedFrame = await directory.evaluateHandle(el => {
+      const narrow = el.clientWidth;
+      const result = { cueVisible: null as boolean | null };
+      const observer = new ResizeObserver(() => {
+        if (el.clientWidth <= narrow) return;
+        observer.disconnect();
+        result.cueVisible = Boolean(el.querySelector("[data-scroll-cue]"));
+      });
+      observer.observe(el);
+      return result;
+    });
+    const panel = page.getByRole("complementary", { name: org.name });
+    await panel.getByRole("button", { name: t("common.closePanel") }).click();
+    await expect.poll(() => firstExpandedFrame.evaluate(result => result.cueVisible)).toBe(false);
+    await row.press("Enter");
+    await expect(panel).toBeVisible();
+    expect(fixture.unexpected).toEqual([]);
+  } finally { fixture.release(); await page.close(); }
+});
 
 for (const count of [0, 48]) for (const width of [1440, 390]) for (const theme of ["light", "dark"]) for (const classic of [false, true]) {
   test(`tenant list settles into useful controls with ${count} customers at ${width}px ${theme}${classic ? " and status views @baseline" : ""}`, async ({ page }) => {

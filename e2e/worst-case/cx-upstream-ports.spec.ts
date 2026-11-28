@@ -22,7 +22,8 @@ test("cookie logout revokes the session and unauthorized responses expose the JS
     return { status: result.status, type: result.headers.get("content-type"), body: await result.json() };
   });
   expect(refusal.status).toBe(401);
-  expect(refusal.type).toContain("application/json");
+  expect(refusal.type?.split(";")[0]).toBe("application/problem+json");
+  expect(refusal.body.status).toBe(401);
   expect(refusal.body.error.code).toBe("unauthorized");
   await expectAccessible(admin, "logged out cookie session");
 });

@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
+import { ko } from "../packages/i18n/src/catalogs/ko";
 import { expectAccessible } from "./a11y";
 import { go, registerEmployee } from "./flows";
 import { addDepts, openUnit, panel, quickWorkplace, sheet } from "./helpers/structure";
@@ -83,17 +84,20 @@ test("사업장 kind, code and order; 부서 head, code and order; a new 사업�
   await quickWorkplace(admin, /종류상사/, "판교지점", { road: "경기도 성남시 분당구 판교역로 166", zip: "13529" });
   const first = await openUnit(admin, "본점");
   await expect(first).toContainText("종류상사에서 2곳 중 1번째");
+  await first.getByRole("button", { name: ko["orgStructure.order.field"], exact: true }).click();
   await first.getByRole("button", { name: "본점 아래로" }).click();
   await expect(first).toContainText("종류상사에서 2곳 중 2번째");
-  await expect(first.getByRole("button", { name: "본점 아래로" })).toBeDisabled();
+  await expect(first.getByRole("button", { name: "본점 아래로" })).toHaveCount(0);
 
   // 6. 부서: its sub-부서 in the tenant's order; its head (a member, dated today) and code set together in setup.
   const hr = await openUnit(admin, "인사부");
   await expect(hr.getByRole("listitem").first()).toContainText("교육팀"); // by name until an order is given
+  await hr.getByRole("button", { name: ko["orgStructure.order.field"], exact: true }).click();
   await hr.getByRole("button", { name: "채용팀 위로" }).click();
   await expect(hr.getByRole("listitem").first()).toContainText("채용팀");
-  await expect(hr.getByRole("definition").filter({ hasText: "공석" }).first()).toBeVisible();
-  await hr.getByRole("button", { name: "부서장 수정" }).click();
+  await expect(hr.getByRole("definition").filter({ hasText: "부서장 없음" }).first()).toBeVisible();
+  await expect(hr.getByRole("button", { name: "부서장 지정" })).toBeVisible();
+  await hr.getByRole("button", { name: ko["orgUnit.details.title"], exact: true }).click();
   await hr.getByRole("combobox", { name: /부서장/ }).fill("한부서");
   await admin.getByRole("option", { name: /한부서/ }).click();
   await hr.getByRole("textbox", { name: /^부서 코드/ }).fill("HR");
@@ -106,7 +110,7 @@ test("사업장 kind, code and order; 부서 head, code and order; a new 사업�
   //    않습니다」), recorded as a governed change while the tenant does not route org changes.
   await startOperations(admin);
   const after = await openUnit(admin, "인사부");
-  await after.getByRole("button", { name: "부서 코드 수정" }).click();
+  await after.getByRole("button", { name: ko["orgUnit.details.title"], exact: true }).click();
   await after.getByRole("textbox", { name: /^부서 코드/ }).fill("HR-1");
   await after.getByRole("button", { name: "부서 정보 1개 변경", exact: true }).click();
   await expect(panel(admin, "인사부").getByRole("definition").filter({ hasText: /^HR-1$/ })).toBeVisible();

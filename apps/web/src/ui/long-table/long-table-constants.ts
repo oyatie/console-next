@@ -3,7 +3,7 @@ export const SELECT = "__select";
 // React Aria shares one collection key space between rows and columns.
 export const rowKey = (id: string) => `row:${id}`;
 export const rowId = (key: string | number) => String(key).slice("row:".length);
-// TableLayout needs pixel estimates; CSS measures each row so cards can wrap and desktop densities stay fixed.
+// The first layout uses these pixel estimates until the mounted CSS supplies its actual sizes.
 export const LAYOUT = {
   regular: { estimatedRowHeight: 40, headingHeight: 40, loaderHeight: 40 },
   compact: { estimatedRowHeight: 32, headingHeight: 36, loaderHeight: 32 },

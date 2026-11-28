@@ -10,6 +10,8 @@
 .actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-2); }
 .actions > span:has(> [aria-disabled="true"]):not([class*="disclosure"]) { display: contents; }
 .actions > span:has(> [aria-disabled="true"]):not([class*="disclosure"]) > :last-child { flex-basis: 100%; justify-content: flex-end; text-align: end; }
+/* Keep sticky action buttons on the bottom row as their explanations appear and clear. */
+.bar[data-sticky] .actions > span:has(> [aria-disabled="true"]):not([class*="disclosure"]) > :last-child { order: -1; }
 @media (max-width: 767px) {
   .bar[data-sticky] { padding-inline: var(--space-4); }
   .bar[data-sticky] > .actions { flex-basis: 100%; }

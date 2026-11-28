@@ -42,7 +42,7 @@ pub(super) async fn changes(
     let rows = sqlx::query(
         "SELECT r.id, r.code, (h.v->>'effective_date')::date AS effective_date, h.v->'proposal' AS proposal \
          FROM org_change_requests r JOIN LATERAL (SELECT v FROM jsonb_array_elements(r.projection_history) \
-             WITH ORDINALITY AS history(v,n) WHERE (v->>'recorded_at')::timestamptz <= COALESCE($3::timestamptz,now()) \
+             WITH ORDINALITY AS history(v,n) WHERE (v->>'recorded_at')::timestamptz <= COALESCE($3::timestamptz,'infinity') \
              ORDER BY n DESC LIMIT 1) h ON true \
          WHERE (h.v->>'effective_date')::date > $1 AND (h.v->>'effective_date')::date <= $2 \
            AND h.v->>'status' IN ('APPLIED','ARCHIVED','SETTLING','APPROVED','IN_APPROVAL') ORDER BY effective_date,r.code",
@@ -58,7 +58,7 @@ pub(super) async fn changes(
         .collect();
     let canonical: HashMap<Uuid, Uuid> = sqlx::query_as::<_, (Uuid, Uuid)>(
         "SELECT command_id,org_unit_id FROM org_unit_revisions WHERE command_id = ANY($1) \
-         AND created_at <= COALESCE($2::timestamptz,now())",
+         AND created_at <= COALESCE($2::timestamptz,'infinity')",
     )
     .bind(commands)
     .bind(q.known_at)

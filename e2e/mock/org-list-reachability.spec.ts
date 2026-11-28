@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test } from "@playwright/test";
-import { loadCatalog, t } from "@console/i18n";
+import { expect } from "@playwright/test";
+import { t } from "@console/i18n";
+import { test } from "../locale-fixture";
 import { expectAxe, fits } from "../a11y";
 import { screens } from "../states/registry";
 import { authz, screenAccess, structure } from "./fixtures";
 import { orgPanelReads } from "./org-work";
 import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
-
-test.beforeAll(() => loadCatalog("ko"));
 
 for (const width of [1280, 1440, 390]) for (const theme of ["light", "dark"]) {
   test(`list names and actions remain reachable at ${width}px in ${theme}`, async ({ page }, info) => {
@@ -45,3 +44,31 @@ for (const width of [1280, 1440, 390]) for (const theme of ["light", "dark"]) {
     expect(fixture.unexpected).toEqual([]);
   });
 }
+
+for (const locale of ["ko", "en"] as const) test.describe(`workplace flags in ${locale}`, () => {
+  test.use({ locale });
+  test("the desktop organization list shows the workplace name and both workplace flags in its row header", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.addInitScript(value => localStorage.setItem("console.locale", value), locale);
+    const fixture = await mockScreen(page, screens[2], "populated");
+    await orgPanelReads(page);
+    const tree = structure(1);
+    tree.phase = "SETUP";
+    const site = tree.entities[0]!.children[0]!;
+    site.name = "평택공장";
+    await mockRoute(page, "get", "/api/v1/org-structure", { status: 200, json: tree });
+    try {
+      await page.goto("/org?view=list");
+      const grid = page.getByRole("grid", { name: t("structure.list.label"), exact: true });
+      await expect(grid).toHaveAttribute("data-layout", "rows");
+      const row = grid.locator(`[data-row-id="${site.id}"]`);
+      const name = row.getByRole("rowheader");
+      for (const label of [site.name, t("structure.node.headOffice"), t("structure.node.primary")]) {
+        await expect(name.getByText(label, { exact: true })).toBeInViewport({ ratio: 1 });
+      }
+      await expect(name.locator("svg.lucide-map-pin")).toBeVisible();
+      await expect(row.getByRole("gridcell").getByText(site.name, { exact: true })).toBeInViewport({ ratio: 1 });
+      expect(fixture.unexpected).toEqual([]);
+    } finally { await page.close(); fixture.release(); }
+  });
+});

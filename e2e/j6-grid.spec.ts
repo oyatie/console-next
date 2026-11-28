@@ -5,8 +5,8 @@ import { go, registerEmployee } from "./flows";
 import { staffedTenant } from "./setup-flows";
 import { apiOf, bearerOf, codeOf } from "./helpers/api";
 
-// Longer than the server takes for 직무 (200 bytes): the grid lets it through, the server's check refuses that cell.
-const LONG_JOB = "직".repeat(70);
+// Longer than the server takes for 직무 (200 characters): the grid lets it through, the server's check refuses that cell.
+const LONG_JOB = "직".repeat(201);
 
 // J6 일괄 수정 (spec E6-grid → preview → done, MR-27): pick people, paste a spreadsheet block, fix the cell in error,
 // check what the server will write, apply it once, and see it on the card.
@@ -90,12 +90,13 @@ test("J6 bulk edit: a pasted block shows old → new, an error blocks only itsel
     }
     await r.fulfill({ response });
   });
+  const navigating = go(admin, "/people");
   try {
-    await go(admin, "/people");
     await expect.poll(() => requested).toBe(true);
     await find.fill("G-0001");
   } finally {
     release();
+    await navigating;
   }
   // A delayed Back read must not restore row focus over someone already typing a new search.
   await expect(admin.getByRole("row", { name: /G-0001/ })).toBeVisible();

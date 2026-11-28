@@ -149,6 +149,21 @@ test("speaks an announcement made after navigation, and preserves cancel-sheet n
   expect(render()).toBe('<div role="status" class="sr-only">조직 변경을 저장했습니다</div>');
 });
 
+test("a destination heading that loads after a command preserves its receipt", async () => {
+  const { router, render, frame } = harness("/access");
+  await router.load();
+  render();
+  await router.navigate({ to: "/org" });
+  announce("Registered Nuri");
+  announce("Nuri · Console", "route");
+  frame();
+  expect(render()).toContain("Registered Nuri");
+  await router.navigate({ to: "/access" });
+  announce("Access · Console", "route");
+  frame();
+  expect(render()).toContain("Access · Console");
+});
+
 test("does not clear a fresh announcement on a search-param-only change on the same pathname", async () => {
   const { router, render, frame } = harness("/org?sel=a");
   await router.load();

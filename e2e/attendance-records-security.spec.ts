@@ -4,6 +4,7 @@ import { expectAccessible } from "./a11y";
 import { cellOf, openMonth } from "./helpers/attendance-records";
 import { forbiddenText, securityWorld, underPrincipal } from "./helpers/attendance-security";
 import { chooseRadio, go } from "./flows";
+import { clearShifts } from "./stability";
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -13,6 +14,8 @@ for (const kind of ["different-tenant", "lower-grant"] as const) {
     const w = await securityWorld(browser, `attsecw-${kind === "different-tenant" ? "foreign" : "lower"}`, kind);
     const { admin, date, other, month, restrictedToken } = w;
     const before = await w.history();
+    // The fixture just finished staffing the org chart. Measure the attendance commands from here.
+    await admin.evaluate(clearShifts);
     const isForeign = kind === "different-tenant";
     let grid = admin.getByRole("grid", { name: "월간 근무표" });
     await cellOf(admin, "윤하준", other).click();
@@ -68,6 +71,9 @@ for (const kind of ["different-tenant", "lower-grant"] as const) {
       await expect(form.getByRole("textbox", { name: /^사유/ })).toHaveValue("권한 거절 확인");
       await expectAccessible(admin, `${kind} ${mode} refusal`);
       await form.getByRole("button", { name: "닫기", exact: true }).last().click();
+      await expect(form.getByRole("status")).toContainText("한 번 더 누르면 닫습니다");
+      await form.getByRole("button", { name: "닫기", exact: true }).last().click();
+      await expect(form).toBeHidden();
       await day.getByRole("button", { name: "닫기", exact: true }).last().click();
     }
     await admin.context().close();

@@ -1,7 +1,7 @@
 // Query descriptors whose keys derive from the API path: `[path, params]`. A command invalidates by
 // path prefix, so a read is refreshed by every write under its path, and two screens asking the
 // same path with the same params share one cache entry.
-import { hashKey, type Query, type QueryClient } from "@tanstack/react-query";
+import { hashKey, isCancelledError, type Query, type QueryClient } from "@tanstack/react-query";
 import { api, unwrap } from "@console/api";
 import type { AllPaths as paths } from "@console/api/pending";
 
@@ -21,6 +21,21 @@ export const get = <P extends Gettable>(path: P, init?: { params: Params<P> }) =
 
 /** A read the API client wraps (not a plain GET), keyed by its path all the same. */
 export const read = <T>(path: string, queryFn: () => Promise<T>, params?: unknown) => ({ queryKey: [path, params ?? null] as const, queryFn });
+
+export async function fetchSharedRead<T>(client: QueryClient, descriptor: { queryKey: readonly unknown[]; queryFn: () => Promise<T> }) {
+  for (;;) {
+    try {
+      return await client.fetchQuery({ ...descriptor, staleTime: 0, retry: false });
+    } catch (error) {
+      if (!isCancelledError(error) || !error.silent) throw error;
+      // A live invalidation replaced the shared request. Join its replacement or use its settled answer.
+      const latest = client.getQueryState<T>(descriptor.queryKey);
+      if (latest && latest.fetchStatus !== "idle") continue;
+      if (latest?.status === "success") return latest.data;
+      throw latest?.error ?? new Error("Shared read cancelled", { cause: error });
+    }
+  }
+}
 
 /** Page reads stay live; a rail snapshot refreshes on navigation and successful command invalidation. */
 export const navigationRead = <T extends { queryKey: readonly unknown[] }>(descriptor: T) => ({

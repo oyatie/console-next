@@ -16,8 +16,8 @@
 .th { display: flex; align-items: center; height: 100%; min-width: 0; padding: 0 var(--space-3); overflow: hidden; border-bottom: 1px solid var(--border); text-align: left; font-size: var(--text-xs); line-height: 1.25; letter-spacing: var(--tracking-label); color: var(--steel); font-weight: var(--fw-medium); outline: none; box-sizing: border-box; }
 .th svg { flex-shrink: 0; }
 .thLabel { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; min-width: 0; overflow: hidden; }
-/* Keep rendered rows tappable during the virtualizer's scroll debounce. */
-.row { border-bottom: 1px solid var(--border-soft); background: var(--surface); outline: none; cursor: default; pointer-events: auto; }
+/* Cells are positioned independently. Use the virtualizer's row height for the focus ring and scroll target. */
+.row { height: 100%; border-bottom: 1px solid var(--border-soft); background: var(--surface); outline: none; cursor: default; pointer-events: auto; }
 .row[data-href], .row[data-action] { cursor: pointer; }
 .row[data-hovered] { background: var(--muted); }
 .row[data-selected] { background: var(--primary-soft); }
@@ -28,8 +28,9 @@
 :where([data-experience]:not([data-experience="baseline"])) .row[data-active-row] .td :is(a, :global(.t-medium)) { font-weight: var(--fw-semibold); }
 .row[data-focus-visible], .th[data-focus-visible] { outline: 2px solid var(--primary); outline-offset: -2px; }
 .td { display: flex; align-items: center; height: 100%; padding: 0 var(--space-3); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-sizing: border-box; outline: none; }
-.table[data-layout="rows"] .td { height: var(--row-h); }
-[data-density="compact"] .table[data-layout="rows"] .td { height: var(--row-h-compact); }
+.rowMeasure { position: absolute; width: 0; visibility: hidden; pointer-events: none; }
+.rowMeasure, .table[data-layout="rows"] .td { height: var(--row-h); }
+[data-density="compact"] .rowMeasure, [data-density="compact"] .table[data-layout="rows"] .td { height: var(--row-h-compact); }
 /* Label plus control reserve two rows; validation can grow the measured height. */
 .table[data-editable] .td { height: auto; min-height: calc(var(--row-h) * 2); white-space: normal; align-items: start; }
 [data-density="compact"] .table[data-editable] .td { height: auto; min-height: calc(var(--row-h-compact) * 2); }

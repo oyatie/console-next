@@ -6,26 +6,31 @@ import { go, koDate, kstDate, registerEmployee, routeReady } from "./flows";
 import { SETUP_DEPARTMENT, startOperations, tenantInSetup } from "./setup-flows";
 import { signOff } from "./sheet";
 import { shot } from "./shots";
-import { box, revealUnit } from "./structure-flows";
+import { ko } from "../packages/i18n/src/catalogs/ko";
+import { box } from "./structure-flows";
 
 async function counts(page: Page, path: string, date: string, expected: number) {
   await go(page, path);
-  await revealUnit(page, "본점");
+  await expect(box(page, "본점")).toBeVisible();
   await expect(box(page, "본점")).toContainText(`${expected}명`);
-  await page.getByRole("button", { name: "내보내기", exact: true }).click();
-  const exporting = page.getByRole("dialog", { name: "조직도 내보내기" });
+  await page.getByRole("button", { name: ko["structure.export.open"], exact: true }).click();
+  const exporting = page.getByRole("dialog", { name: ko["structure.export.title"] });
   const preview = await exporting.getByRole("img").getAttribute("src");
   expect(preview).toMatch(/^data:image\/svg\+xml;charset=utf-8,/);
   const svg = decodeURIComponent(preview!.slice(preview!.indexOf(",") + 1));
   expect(svg).toMatch(new RegExp(`본점</text><text[^>]*>${expected}명</text>`));
   expect(svg).toContain(`${date} 기준`);
-  await exporting.getByRole("button", { name: "취소", exact: true }).click();
+  await exporting.getByRole("button", { name: ko["structure.cancel"], exact: true }).click();
   await page.getByRole("button", { name: "목록", exact: true }).click();
-  await expect(page.getByRole("grid", { name: "조직 구조 목록" }).getByRole("row", { name: /본점/ })).toBeVisible();
+  await expect(page.getByRole("grid", { name: ko["structure.list.label"] }).getByRole("row", { name: /본점/ })).toBeVisible();
+  await page.getByRole("button", { name: ko["structure.export.open"], exact: true }).click();
+  const listExport = page.getByRole("dialog", { name: ko["structureChart.list.download"], exact: true });
   const [file] = await Promise.all([
     page.waitForEvent("download"),
-    page.getByRole("button", { name: "조직 시트 내려받기" }).click(),
+    listExport.getByRole("button", { name: ko["structureChart.list.download"], exact: true }).click(),
   ]);
+  await listExport.getByRole("button", { name: ko["structure.cancel"], exact: true }).click();
+  await expect(listExport).toBeHidden();
   const csv = await (await file.createReadStream()).toArray().then((parts) => Buffer.concat(parts).toString("utf8"));
   const workplace = csv.split("\r\n").map((line) => line.split(",")).find((row) => row[0]?.startsWith("사업장") && row[2] === "본점");
   expect(workplace?.slice(6, 8)).toEqual([String(expected), date]);

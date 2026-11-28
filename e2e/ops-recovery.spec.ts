@@ -126,7 +126,8 @@ test("regression: a tenant's late ops-recovery read keeps available panel button
     await row.click();
     const panel = vendor.getByRole("complementary", { name, exact: true });
     const controls = panel.getByRole("button");
-    await expect(controls.first()).toBeVisible();
+    // The independent erase read replaces its loading control. Measure the controls while only recovery is pending.
+    await expect(panel.getByText(ko["tenants.erase.tenant_active"], { exact: true })).toBeVisible();
     await vendor.evaluate(() => document.fonts.ready);
     const positions = () => controls.evaluateAll(buttons => buttons.map(button => ({
       name: button.getAttribute("aria-label") ?? button.textContent, rect: button.getBoundingClientRect().toJSON(),

@@ -13,6 +13,7 @@ test("a first-run tenant operator reaches the served settings pages from one hub
     ["/settings/company-domain", "shell.settings.domain", "account.domain.title"],
     ["/people/numbering", "identifiers.numbering.title", "identifiers.numbering.title"],
     ["/people/job-titles", "shell.settings.titles", "titles.title"],
+    ["/people/roster-fields", "rosterFields.title", "rosterFields.title"],
     ["/people/period-locks", "periodLocks.title", "periodLocks.title"],
   ] as const;
   for (const width of [1440, 390]) {
@@ -21,10 +22,11 @@ test("a first-run tenant operator reaches the served settings pages from one hub
     await go(page, "/settings");
     const main = page.getByRole("main");
     await expect(main.getByRole("heading", { name: t("shell.link.settings"), exact: true })).toBeVisible();
-    await expect(main.getByRole("link")).toHaveCount(4);
+    await expect(main.getByRole("link")).toHaveCount(rows.length);
     const { sign_in_id } = await (await identity).json();
     await expect(main.getByRole("region", { name: t("shell.settings.domain"), exact: true })).toContainText(sign_in_id.split("@")[1]);
     await expect(main.getByRole("region", { name: t("identifiers.numbering.title"), exact: true })).toContainText(t("settingsHub.numbering.empty"));
+    await expect(main.getByRole("region", { name: t("rosterFields.title"), exact: true })).toContainText(t("settingsHub.rosterFields.empty"));
     const approval = main.getByRole("region", { name: t("settingsHub.approval"), exact: true });
     await expect(approval).toContainText(t("settingsHub.approval.direct"));
     await expect(approval.getByRole("link")).toHaveCount(0);

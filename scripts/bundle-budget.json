@@ -65,6 +65,7 @@
       "src/features/org/ui/structure-sheets.tsx",
       "src/features/payroll/ui/payroll-home.tsx",
       "src/features/payroll/ui/reference-page.tsx",
+      "src/features/people/Accounts.tsx",
       "src/features/people/ui/appointments-content.tsx",
       "src/features/people/ui/certificates-page.tsx",
       "src/features/people/ui/data-health-console.tsx",
@@ -77,8 +78,11 @@
       "src/features/people/ui/people-route.tsx",
       "src/features/people/ui/requests-page.tsx",
       "src/features/people/ui/roster-fields-page.tsx",
+      "src/features/people/ui/roster-console.tsx",
+      "src/features/people/ui/roster-screen.tsx",
       "src/features/people/ui/unplaced-console.tsx",
       "src/features/people/ui/unplaced-page.tsx",
+      "src/features/people/ui/unplaced-roster.tsx",
       "src/features/periods/ui/period-lock-page.tsx",
       "src/features/platform/Tenants.tsx",
       "src/features/settings/ui/screen-style-sheet.tsx",
@@ -119,7 +123,8 @@
       "src/features/people/ui/notice-page.tsx",
       "src/features/people/ui/person-act.tsx",
       "src/features/requests/ui/request-console.tsx",
-      "src/features/requests/ui/request-page.tsx"
+      "src/features/requests/ui/request-page.tsx",
+      "src/routes/employee-record.ts"
     ]
   },
   "wizard": {
@@ -152,6 +157,7 @@
       "src/features/people/ui/notice-new-console.tsx",
       "src/features/people/ui/notice-new-page.tsx",
       "src/features/people/ui/register-dup.tsx",
+      "src/features/people/ui/bulk-rescind.tsx",
       "src/features/people/ui/register-route.tsx",
       "src/features/people/ui/register-run-console.tsx",
       "src/features/people/ui/register-run-page.tsx",

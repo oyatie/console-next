@@ -29,7 +29,7 @@ test("setup edits: a workplace changed twice, a department renamed, a duplicate 
     await expect(edit).toBeHidden();
   }
   const panel = admin.getByRole("complementary", { name: "서울본사" });
-  await expect(panel.getByRole("definition").filter({ hasText: "02-555-0177" })).toBeVisible();
+  await expect(panel.getByRole("definition").filter({ hasText: /^02-555-0177$/ })).toBeVisible();
   await expectAccessible(admin, "workplace after two changes");
 
   // 2. A department added in setup, then renamed in place (applies at once, no approval).

@@ -217,7 +217,7 @@ for (const width of [1440, 390] as const) {
         const statusLink = page.getByRole("link", { name: t("live.statusPage"), exact: true });
         await expect(statusLink).toBeVisible();
         await expect(statusLink).toHaveAttribute("href", "https://status.cosskorea.com");
-        await expect(page.getByText(t("live.crashed.inputKept"), { exact: true })).toBeVisible();
+        await expect(page.getByText(t("live.crashed.inputKept"), { exact: true }).filter({ visible: true })).toBeVisible();
 
         await page.evaluate(() => document.fonts.ready);
         await fits(page, `console crash ${width} ${theme}`);
