@@ -3,6 +3,7 @@
 
 mod audit_stream;
 mod catalog;
+mod control_wire;
 pub use catalog::{catalog_access, evidence_access};
 use catalog::{require_evidence_accept_with_read, require_evidence_link_with_read};
 mod ledger_export;
@@ -34,9 +35,9 @@ use console_compliance_application::{
     LocationConsentLedgerEntry, LocationConsentLedgerPage, PageRequest, RegulationImpactQuery,
 };
 use console_compliance_domain::{
-    ComplianceRiskLevel, ComplianceScope, ComplianceScopeKind, ControlCadence, ControlStatus,
-    ControlType, CoverageLevel, EvidenceBindingStatus, EvidenceConfidence, EvidenceTargetType,
-    FrameworkKind, FrameworkStatus, LocationConsent, LocationConsentState, LocationPing,
+    ComplianceRiskLevel, ComplianceScope, ComplianceScopeKind, ControlCadence, ControlType,
+    CoverageLevel, EvidenceBindingStatus, EvidenceConfidence, EvidenceTargetType, FrameworkKind,
+    FrameworkStatus, LocationConsent, LocationConsentState, LocationPing,
     ObligationRegulationRelationship, ObligationStatus, ObligationType, RegulationImpactStatus,
     ReviewCadence,
 };
@@ -148,15 +149,6 @@ struct FrameworkQuery {
 }
 
 #[derive(Debug, Deserialize)]
-struct ControlQuery {
-    framework_id: String,
-    limit: Option<i64>,
-    offset: Option<i64>,
-    q: Option<String>,
-    status: Option<ControlStatus>,
-}
-
-#[derive(Debug, Deserialize)]
 struct EvidenceQuery {
     limit: Option<i64>,
     offset: Option<i64>,
@@ -245,8 +237,10 @@ struct CreateControlRequest {
     objective: String,
     control_type: ControlType,
     cadence: Option<ControlCadence>,
-    #[serde(default = "catalog::empty_requirements")]
-    evidence_requirements: serde_json::Value,
+    #[serde(default, deserialize_with = "control_wire::present")]
+    evidence_requirements: Option<serde_json::Value>,
+    #[serde(default, deserialize_with = "control_wire::present")]
+    evidence_requirement_items: Option<Vec<serde_json::Value>>,
     owner_user_id: Option<UserId>,
 }
 
@@ -611,8 +605,8 @@ async fn create_framework(
 async fn list_framework_controls(
     State(state): State<ComplianceRestState>,
     headers: HeaderMap,
-    Query(query): Query<ControlQuery>,
-) -> Result<Json<console_compliance_application::ComplianceControlPage>, RestError> {
+    Query(query): Query<control_wire::ControlQuery>,
+) -> Result<Response, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
     require_compliance_read(&principal)?;
     let framework_id = query.framework_id.parse().map_err(|_| {
@@ -630,14 +624,14 @@ async fn list_framework_controls(
         })
         .await
         .map_err(RestError::from_store)?;
-    Ok(Json(result))
+    Ok(control_wire::page(&result))
 }
 
 async fn create_framework_control(
     State(state): State<ComplianceRestState>,
     headers: HeaderMap,
     Json(body): Json<CreateControlRequest>,
-) -> Result<Json<console_compliance_domain::ComplianceControl>, RestError> {
+) -> Result<Response, RestError> {
     let principal = principal_from_headers(&state, &headers).await?;
     require_compliance_manage(&principal)?;
     let result = state
@@ -652,14 +646,17 @@ async fn create_framework_control(
             objective: body.objective,
             control_type: body.control_type,
             cadence: body.cadence,
-            evidence_requirements: body.evidence_requirements,
+            evidence_requirements: control_wire::requirements(
+                body.evidence_requirements,
+                body.evidence_requirement_items,
+            )?,
             owner_user_id: body.owner_user_id,
             trace: current_trace_context(),
             occurred_at: time::OffsetDateTime::now_utc(),
         })
         .await
         .map_err(RestError::from_store)?;
-    Ok(Json(result))
+    Ok(control_wire::control(&result))
 }
 
 async fn link_control_obligation(

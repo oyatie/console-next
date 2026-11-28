@@ -149,3 +149,80 @@ async fn operator_can_create_and_join_catalog_records_through_the_declared_comma
         assert_eq!(page["total"], 1);
     }
 }
+
+#[cfg(feature = "compliance")]
+#[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
+async fn control_requirement_spellings_round_trip_one_ordered_array(pool: PgPool) {
+    let (org, user) = http::tenant(&pool, &["SUPER_ADMIN"]).await;
+    let caller = http::ctx(&pool, org, user, &["SUPER_ADMIN"], None).await;
+    sqlx::query("INSERT INTO tenant_module_enrollments(org_id,module_key,enabled,change_ref) VALUES ($1,'compliance',true,'requirements compatibility')").bind(org).execute(&pool).await.unwrap();
+    let (status, framework) = caller
+        .call(
+            "POST",
+            "/api/v1/compliance/frameworks",
+            Some(json!({
+                "name":"Compatibility", "version_label":"v1", "framework_kind":"INTERNAL_CONTROL"
+            })),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{framework}");
+    let path = "/api/v1/compliance/framework-controls";
+    let framework_id = framework["id"].as_str().unwrap();
+    let post = async |key: &str, fields: Value| {
+        let mut body = json!({"framework_id": framework_id, "control_key": key, "title": key, "objective":"Review", "control_type":"PREVENTIVE"});
+        body.as_object_mut()
+            .unwrap()
+            .extend(fields.as_object().unwrap().clone());
+        caller.call("POST", path, Some(body)).await
+    };
+    let items = json!(["report", {"kinds":["ledger", "receipt"]}, null, 2]);
+    for (key, fields, expected) in [
+        ("OMITTED", json!({}), json!([])),
+        (
+            "LEGACY",
+            json!({"evidence_requirements":items}),
+            items.clone(),
+        ),
+        (
+            "TYPED",
+            json!({"evidence_requirement_items":items}),
+            items.clone(),
+        ),
+        (
+            "MATCHING",
+            json!({"evidence_requirement_items":items, "evidence_requirements":items}),
+            items.clone(),
+        ),
+    ] {
+        let (status, saved) = post(key, fields).await;
+        assert_eq!(status, StatusCode::OK, "{saved}");
+        assert_eq!(saved["evidence_requirements"], expected);
+        assert_eq!(saved["evidence_requirement_items"], expected);
+    }
+    for fields in [
+        json!({"evidence_requirements":{}}),
+        json!({"evidence_requirement_items":{}}),
+        json!({"evidence_requirements":null}),
+        json!({"evidence_requirement_items":null}),
+        json!({"evidence_requirements":null,"evidence_requirement_items":[]}),
+        json!({"evidence_requirements":[],"evidence_requirement_items":null}),
+        json!({"evidence_requirements":items,"evidence_requirement_items":[]}),
+    ] {
+        let (status, error) = post("REFUSED", fields).await;
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{error}");
+    }
+    let (status, page) = caller
+        .call("GET", &format!("{path}?framework_id={framework_id}"), None)
+        .await;
+    assert_eq!(status, StatusCode::OK, "{page}");
+    assert_eq!(page["total"], 4);
+    for row in page["items"].as_array().unwrap() {
+        let expected = if row["control_key"] == "OMITTED" {
+            json!([])
+        } else {
+            items.clone()
+        };
+        assert_eq!(row["evidence_requirements"], expected);
+        assert_eq!(row["evidence_requirement_items"], expected);
+    }
+}

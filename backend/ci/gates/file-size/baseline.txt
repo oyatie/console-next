@@ -86,7 +86,7 @@ crates/compliance/adapter-postgres/src/lib.rs	2047
 crates/compliance/adapter-postgres/tests/location_store.rs	883
 crates/compliance/application/src/lib.rs	463
 crates/compliance/domain/src/lib.rs	810
-crates/compliance/rest/src/lib.rs	1182
+crates/compliance/rest/src/lib.rs	1180
 crates/consulting/rest/src/lib.rs	946
 crates/consulting/rest/tests/audit_atomicity.rs	414
 crates/contracts/src/lib.rs	651

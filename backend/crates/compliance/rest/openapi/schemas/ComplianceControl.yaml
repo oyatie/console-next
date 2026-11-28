@@ -9,7 +9,14 @@ properties:
   control_type: { $ref: '#/components/schemas/ControlType' }
   cadence: { type: [string, 'null'], enum: [CONTINUOUS, DAILY, WEEKLY, MONTHLY, QUARTERLY, ANNUAL, EVENT_DRIVEN, null] }
   status: { $ref: '#/components/schemas/ControlStatus' }
-  evidence_requirements: { type: array, items: {} }
+  evidence_requirements:
+    type: object
+    additionalProperties: true
+    description: Released SDKs declare this legacy property as an object. Historically the server returns the stored JSON array here. Use evidence_requirement_items for the typed array.
+  evidence_requirement_items:
+    type: array
+    items: {}
+    description: Ordered evidence requirements, including any stored JSON values.
   owner_user_id: { type: [string, 'null'], format: uuid }
   created_by: { $ref: '#/components/schemas/Uuid' }
   updated_by: { $ref: '#/components/schemas/Uuid' }

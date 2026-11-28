@@ -19190,7 +19190,12 @@ export interface components {
             /** @enum {string|null} */
             cadence?: "CONTINUOUS" | "DAILY" | "WEEKLY" | "MONTHLY" | "QUARTERLY" | "ANNUAL" | "EVENT_DRIVEN" | null;
             status: components["schemas"]["ControlStatus"];
-            evidence_requirements: unknown[];
+            /** @description Released SDKs declare this legacy property as an object. Historically the server returns the stored JSON array here. Use evidence_requirement_items for the typed array. */
+            evidence_requirements: {
+                [key: string]: unknown;
+            };
+            /** @description Ordered evidence requirements, including any stored JSON values. */
+            evidence_requirement_items?: unknown[];
             /** Format: uuid */
             owner_user_id?: string | null;
             created_by: components["schemas"]["Uuid"];
@@ -19745,7 +19750,12 @@ export interface components {
             control_type: components["schemas"]["ControlType"];
             /** @enum {string|null} */
             cadence?: "CONTINUOUS" | "DAILY" | "WEEKLY" | "MONTHLY" | "QUARTERLY" | "ANNUAL" | "EVENT_DRIVEN" | null;
-            evidence_requirements?: unknown[];
+            /** @description Released SDKs declare this legacy property as an object. Historically the server accepts JSON arrays here and rejects objects. Use evidence_requirement_items for new writes. */
+            evidence_requirements?: {
+                [key: string]: unknown;
+            };
+            /** @description Ordered evidence requirements. Omit both fields for an empty array. When both fields are sent their arrays must match. */
+            evidence_requirement_items?: unknown[];
             /** Format: uuid */
             owner_user_id?: string | null;
         };

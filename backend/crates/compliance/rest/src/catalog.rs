@@ -34,9 +34,6 @@ where
 pub(super) fn empty_metadata() -> serde_json::Value {
     serde_json::json!({})
 }
-pub(super) fn empty_requirements() -> serde_json::Value {
-    serde_json::json!([])
-}
 
 /// The register includes branch obligations. Navigation can expose a permitted branch without opening any
 /// tenant-wide register. Each request authorizes its actual scope in the owning handler.

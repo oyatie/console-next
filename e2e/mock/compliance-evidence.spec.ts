@@ -54,7 +54,7 @@ for (const style of ["baseline", "console"] as const) for (const locale of ["ko"
     await mockRoute(page, "get", "/api/v1/compliance/framework-controls", req => {
       expect(new URL(req.url()).searchParams.get("framework_id")).toBe(id(701));
       return { status: 200, json: { items: [{ ...provenance, id: id(702), framework_id: id(701), title: "Training review",
-        objective: "Review training", control_key: "TRAINING", control_type: "DETECTIVE", status: "ACTIVE", evidence_requirements: [] } satisfies S["ComplianceControl"]],
+        objective: "Review training", control_key: "TRAINING", control_type: "DETECTIVE", status: "ACTIVE", evidence_requirements: {}, evidence_requirement_items: [] } satisfies S["ComplianceControl"]],
         limit: 25, offset: 0, total: 1 } };
     });
     await mockRoute(page, "get", "/api/v1/compliance/obligations", { status: 200, json: { items: [], limit: 25, offset: 0, total: 0 } });
