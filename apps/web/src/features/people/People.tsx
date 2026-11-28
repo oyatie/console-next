@@ -9,7 +9,6 @@ import { ExperienceSwitch } from "../../ui/patterns/pattern-shell";
 import { ApiError, authzQuery, granted, myAccessQuery } from "../../reference/authz/api";
 import { PeopleHead, type PeopleView } from "./ui/people-head";
 import { RosterPage } from "./ui/roster-page";
-import { usePreloadRosterLayout } from "./ui/use-roster-layout";
 import s from "./ui/roster.module.css";
 import { PEOPLE_TABS, type PeopleTab } from "./domain/people-tabs";
 import type { ExitFilter } from "./api";
@@ -111,10 +110,9 @@ function ConsoleTabGate({ tabs, need, children }: { tabs: ReactNode; need: Acces
 
 /** Employees (the roster) or accounts, with their existing server capability decisions. */
 export function PeopleDirectory({ tabs }: { tabs?: ReactNode } = {}) {
-  const { view: asked, placement, sel } = route.useSearch();
+  const { view: asked, sel } = route.useSearch();
   const navigate = route.useNavigate();
   const authz = useQuery(authzQuery);
-  usePreloadRosterLayout(asked !== "accounts" && placement !== "unplaced");
   const can = granted(authz.data?.capabilities);
   // BW-22: a full directory read on any branches lists that reader's branches; a user manager without one has the
   // accounts view only.
