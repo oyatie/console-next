@@ -67,6 +67,7 @@ const STATIC_ROUTES: Readonly<Record<string, () => string>> = {
   "/access/grants/bulk": () => t("shellRoutes.accessGrantsBulk"),
   "/access/ready": () => t("shellRoutes.accessReady"),
   "/access/review": () => t("accessReview.title"),
+  "/audit/evidence": () => t("audit.vault.title"),
   "/audit": () => t("shellRoutes.auditLog"),
   "/audit/support-access": () => t("shellRoutes.auditSupport"),
   "/audit/access-log": () => t("shellRoutes.auditAccessLog"),

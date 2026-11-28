@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { api, ApiError, unwrap, type paths } from "@console/api";
+import { api, ApiError, unwrap, type components, type paths } from "@console/api";
 import { STALE_TIME_MS } from "../../lib/freshness";
 import { get, read } from "../../lib/query";
 
@@ -27,3 +27,16 @@ export const auditAttestationQuery = {
   staleTime: STALE_TIME_MS,
   retry: false as const,
 };
+
+
+type EvidenceQuery = NonNullable<paths["/api/v1/evidence/objects"]["get"]["parameters"]["query"]>;
+export type EvidenceHold = components["schemas"]["LegalHoldRecordView"];
+export type EvidenceHoldRequest = components["schemas"]["EvidenceHoldRequest"];
+export const evidenceQuery = (query: EvidenceQuery) => get("/api/v1/evidence/objects", { params: { query } });
+export const evidenceRecordQuery = (id: string) => get("/api/v1/evidence/objects/{id}", { params: { path: { id } } });
+export const evidenceVerificationQuery = (id: string) => ({
+  ...read("/api/v1/evidence/objects/{id}/verify", () => unwrap(api.POST("/api/v1/evidence/objects/{id}/verify", { params: { path: { id } } })), { path: { id } }),
+  enabled: false, retry: false, gcTime: 0,
+});
+export const changeEvidenceHold = (id: string, body: EvidenceHoldRequest, key: string) =>
+  unwrap(api.POST("/api/v1/evidence/objects/{id}/hold", { params: { path: { id } }, body, headers: { "idempotency-key": key } }));

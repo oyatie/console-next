@@ -395,16 +395,6 @@
    "reason": "P5b owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
-  "GET /api/v1/evidence/objects": {
-   "lane": "S1",
-   "reason": "S1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/v1/evidence/objects/{id}": {
-   "lane": "S1",
-   "reason": "S1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
   "GET /api/v1/evidence/{evidenceId}/status": {
    "lane": "MAT-PARITY",
    "reason": "Workorder evidence is outside Org + HR MVP; reviewed workorder promotion required.",
@@ -648,16 +638,6 @@
   "POST /api/v1/employees/register-facts/bulk": {
    "lane": "S2",
    "reason": "S2 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/evidence/objects/{id}/hold": {
-   "lane": "S1",
-   "reason": "S1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/evidence/objects/{id}/verify": {
-   "lane": "S1",
-   "reason": "S1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
   "POST /api/v1/evidence/presign": {

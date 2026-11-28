@@ -8,7 +8,7 @@ import { expectAccessible, expectAxe } from "./a11y";
 import { apiOf, bearerOf } from "./helpers/api";
 import { redirectTargets, routeList } from "./helpers/route-list";
 import { readQuery } from "./helpers/read-query";
-import { readRequirement } from "../apps/web/src/routes/route-reads";
+import { readRequirement, servedRouteReads } from "../apps/web/src/routes/route-reads";
 import { todayKst } from "../apps/web/src/lib/pure/today";
 import { go, routeReady, vendorPage } from "./flows";
 import { expectStable } from "./stability";
@@ -84,9 +84,13 @@ test.describe("route requirements with a real grantless account", () => {
           await expect(card).toHaveCount(1);
           await expect(card.getByRole("button", { name: bootKo["common.denied.request"], exact: true })).toBeVisible();
           const permission = await card.locator(".state > .muted").innerText();
-          const need = readRequirement(path as Parameters<typeof readRequirement>[0]);
+          const need = path in servedRouteReads ? servedRouteReads[path as keyof typeof servedRouteReads].access : readRequirement(path as Parameters<typeof readRequirement>[0]);
           const required = "allOf" in need ? need.allOf : [need];
           for (const entry of required) {
+            if ("servedCapability" in entry) {
+              expect(permission).toContain(ko["audit.vault.permission"]);
+              continue;
+            }
             if ("action" in entry) {
               expect(permission).toContain(ko[`denied.action.${entry.action}` as keyof typeof ko]);
               continue;

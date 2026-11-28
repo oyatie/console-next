@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
 import { app, screen, str } from "./app";
-import { readRequirement } from "./route-reads";
+import { readRequirement, servedRouteReads } from "./route-reads";
 
 const audit = createRoute({
   getParentRoute: () => app,
@@ -35,4 +35,11 @@ const supportAccess = createRoute({
   component: lazyRouteComponent(screen(() => import("../features/support-access/ui/support-access")), "SupportAccess"),
 });
 
-export const auditRoutes = [audit, accessLog, supportAccess];
+const evidence = createRoute({
+  getParentRoute: () => app,
+  path: "/audit/evidence",
+  staticData: { access: servedRouteReads["/audit/evidence"].access, floorplan: "P-01", pattern: "list-record" },
+  component: lazyRouteComponent(screen(() => import("../features/audit/ui/evidence-vault")), "EvidenceVault"),
+});
+
+export const auditRoutes = [audit, accessLog, supportAccess, evidence];

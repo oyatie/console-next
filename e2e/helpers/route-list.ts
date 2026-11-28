@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 // Static paths are ratcheted against the router; protected reads come from the shared contract.
-import { routeReads } from "../../apps/web/src/routes/route-reads";
+import { routeReads, servedRouteReads } from "../../apps/web/src/routes/route-reads";
 
 /** Shared destinations for navigation readiness and the refused-route walk. */
 export const redirectTargets: Readonly<Record<string, string>> = {
@@ -36,6 +36,7 @@ const paths = [
   "/attendance",
   "/audit",
   "/audit/access-log",
+  "/audit/evidence",
   "/audit/support-access",
   "/inbox",
   "/leave",
@@ -99,5 +100,5 @@ const paths = [
 ] as const;
 
 export const routeList = paths.map(path => ({
-  path, reads: path in routeReads ? routeReads[path as keyof typeof routeReads].reads.map(op => op.slice(4).replace(/\{[^}]+\}/g, "$id")) : [],
+  path, reads: path in servedRouteReads ? servedRouteReads[path as keyof typeof servedRouteReads].reads : path in routeReads ? routeReads[path as keyof typeof routeReads].reads.map(op => op.slice(4).replace(/\{[^}]+\}/g, "$id")) : [],
 }));
