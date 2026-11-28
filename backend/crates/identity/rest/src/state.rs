@@ -11,6 +11,7 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub struct IdentityRestState {
     pub(crate) integrity_access: fn(&console_platform_authz::Principal) -> (bool, bool),
+    pub(crate) evaluation_tasks: fn(&console_platform_authz::Principal) -> bool,
     pub(crate) ledger_access: fn(&console_platform_authz::Principal) -> bool,
     pub(crate) documents_served: bool,
     pub(crate) store: PgOrgStore,
@@ -27,6 +28,7 @@ impl IdentityRestState {
         tenant_facts: impl TenantFactsRead + 'static,
     ) -> Self {
         Self {
+            evaluation_tasks: |_| false,
             ledger_access: |_| false,
             documents_served: false,
             integrity_access: |_| (false, false),
@@ -55,6 +57,15 @@ impl IdentityRestState {
         access: fn(&console_platform_authz::Principal) -> (bool, bool),
     ) -> Self {
         self.integrity_access = access;
+        self
+    }
+
+    #[must_use]
+    pub fn with_evaluation_tasks(
+        mut self,
+        access: fn(&console_platform_authz::Principal) -> bool,
+    ) -> Self {
+        self.evaluation_tasks = access;
         self
     }
 
