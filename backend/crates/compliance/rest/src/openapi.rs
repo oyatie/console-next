@@ -20,6 +20,13 @@ const EXTERNAL_SCHEMAS: &[&str] = &["MobilePasskeyStepUpEnvelope", "Timestamp", 
 
 const PATHS: &[PathItem] = &[
     PathItem {
+        path: "/api/v1/audit-streams/availability",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__audit-streams__availability.get.yaml"),
+        }],
+    },
+    PathItem {
         path: "/api/v1/audit-streams/ceo-covert/access-events",
         operations: &[Operation {
             method: "get",

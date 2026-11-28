@@ -355,16 +355,6 @@
    "reason": "H1 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
-  "GET /api/v1/audit-streams/ceo-covert/access-events": {
-   "lane": "K4",
-   "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "GET /api/v1/audit-streams/ceo-covert/events": {
-   "lane": "K4",
-   "reason": "K4 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
   "GET /api/v1/branches/{id}": {
    "lane": "O3",
    "reason": "O3 owns delivery of this hidden operation; units/maturity/plan.md §2–3.",

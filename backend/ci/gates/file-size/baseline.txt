@@ -12,13 +12,13 @@ app/src/workflow_object_context.rs	460
 app/src/workflow_studio.rs	7096
 app/tests/action_inbox_api.rs	877
 app/tests/attendance_persona_api.rs	415
-app/tests/audit_api.rs	754
+app/tests/audit_api.rs	684
 app/tests/auth_rest.rs	4469
 app/tests/benefit_catalog_api.rs	317
 app/tests/board_ack_api.rs	358
 app/tests/cedar_freshness_mint.rs	375
 app/tests/cedar_shadow_role_manage.rs	304
-app/tests/compliance_api.rs	520
+app/tests/compliance_api.rs	449
 app/tests/compliance_catalog_api.rs	310
 app/tests/console_route_telemetry.rs	312
 app/tests/consulting_engagement_api.rs	1079
@@ -88,7 +88,7 @@ crates/compliance/adapter-postgres/src/lib.rs	2108
 crates/compliance/adapter-postgres/tests/location_store.rs	883
 crates/compliance/application/src/lib.rs	463
 crates/compliance/domain/src/lib.rs	930
-crates/compliance/rest/src/lib.rs	1231
+crates/compliance/rest/src/lib.rs	1197
 crates/consulting/rest/src/lib.rs	966
 crates/consulting/rest/tests/audit_atomicity.rs	501
 crates/contracts/src/lib.rs	651

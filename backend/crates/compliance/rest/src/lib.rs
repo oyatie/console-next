@@ -1,10 +1,14 @@
 //! REST API for Location Information Act consent controls.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
+mod audit_stream;
 mod ledger_export;
 mod ledger_query;
 mod openapi;
 mod state;
+use audit_stream::{
+    audit_stream_availability, list_ceo_covert_audit_access_events, list_ceo_covert_audit_events,
+};
 use ledger_export::ledger_csv;
 use ledger_query::{normalize_arrival_query, normalize_ledger_query};
 pub use openapi::OPENAPI_FRAGMENT;
@@ -18,10 +22,10 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use console_compliance_adapter_postgres::PgComplianceError;
 use console_compliance_application::{
-    AcceptEvidenceBindingCommand, ArrivalEventPage, AuditStreamPage, AuditStreamQuery,
-    AuditStreamReadKind, CEO_COVERT_AUDIT_STREAM_KEY, ComplianceControlQuery,
-    ComplianceFrameworkQuery, ComplianceObligationQuery, ConsentTransitionCommand,
-    ConsentTransitionKind, CreateComplianceControlCommand, CreateComplianceFrameworkCommand,
+    AcceptEvidenceBindingCommand, ArrivalEventPage, AuditStreamQuery, AuditStreamReadKind,
+    CEO_COVERT_AUDIT_STREAM_KEY, ComplianceControlQuery, ComplianceFrameworkQuery,
+    ComplianceObligationQuery, ConsentTransitionCommand, ConsentTransitionKind,
+    CreateComplianceControlCommand, CreateComplianceFrameworkCommand,
     CreateComplianceObligationCommand, CreateEvidenceBindingCommand, CreateRegulationImpactCommand,
     EvidenceBindingQuery, LinkControlObligationCommand, LinkObligationRegulationCommand,
     LocationConsentLedgerEntry, LocationConsentLedgerPage, PageRequest, RegulationImpactQuery,
@@ -62,6 +66,7 @@ pub const COMPLIANCE_ROUTE_PATHS: &[&str] = &[
     "/api/v1/location-consents/ledger",
     "/api/v1/location-consents/ledger.csv",
     "/api/v1/location/arrival-events",
+    "/api/v1/audit-streams/availability",
     "/api/v1/audit-streams/ceo-covert/events",
     "/api/v1/audit-streams/ceo-covert/access-events",
 ];
@@ -114,6 +119,10 @@ pub fn router(state: ComplianceRestState) -> Router {
             get(export_ledger_csv),
         )
         .route("/api/v1/location/arrival-events", get(list_arrival_events))
+        .route(
+            "/api/v1/audit-streams/availability",
+            get(audit_stream_availability),
+        )
         .route(
             "/api/v1/audit-streams/ceo-covert/events",
             get(list_ceo_covert_audit_events),
@@ -1064,61 +1073,11 @@ fn authorize_arrival_read(
     )
 }
 
-async fn list_ceo_covert_audit_events(
-    State(state): State<ComplianceRestState>,
-    headers: HeaderMap,
-    Query(query): Query<AuditStreamRequest>,
-) -> Result<Json<AuditStreamPage>, RestError> {
-    list_ceo_covert_audit_stream(state, headers, query, AuditStreamReadKind::Events).await
-}
-
-async fn list_ceo_covert_audit_access_events(
-    State(state): State<ComplianceRestState>,
-    headers: HeaderMap,
-    Query(query): Query<AuditStreamRequest>,
-) -> Result<Json<AuditStreamPage>, RestError> {
-    list_ceo_covert_audit_stream(state, headers, query, AuditStreamReadKind::AccessEvents).await
-}
-
-async fn list_ceo_covert_audit_stream(
-    state: ComplianceRestState,
-    headers: HeaderMap,
-    query: AuditStreamRequest,
-    read_kind: AuditStreamReadKind,
-) -> Result<Json<AuditStreamPage>, RestError> {
-    let principal = principal_from_headers(&state, &headers).await?;
-    let query = normalize_audit_stream_query(query)?;
-    authorize_ceo_covert_audit_stream(&state, &principal, read_kind, &query).await?;
-    let page = state
-        .store
-        .list_ceo_covert_audit_stream(principal.user_id, read_kind, query)
-        .await
-        .map_err(RestError::from_store)?;
-    Ok(Json(page))
-}
-
-fn normalize_audit_stream_query(query: AuditStreamRequest) -> Result<AuditStreamQuery, RestError> {
-    let limit = query.limit.unwrap_or(100).clamp(1, 1_000);
-    let offset = query.offset.unwrap_or(0);
-    if offset < 0 {
-        return Err(RestError::from_kernel(KernelError::validation(
-            "offset must be non-negative",
-        )));
-    }
-    Ok(AuditStreamQuery {
-        limit,
-        offset,
-        purpose: "ceo_covert_audit_review".to_owned(),
-        channel: "web".to_owned(),
-    })
-}
-
-async fn authorize_ceo_covert_audit_stream(
+async fn audit_stream_authorizer<'a>(
     state: &ComplianceRestState,
-    principal: &Principal,
-    read_kind: AuditStreamReadKind,
-    query: &AuditStreamQuery,
-) -> Result<(), RestError> {
+    principal: &'a Principal,
+    query: &'a AuditStreamQuery,
+) -> Result<impl Fn(AuditStreamReadKind) -> Result<(), RestError> + use<'a>, RestError> {
     let org =
         console_platform_request_context::current_org().map_err(rest_error_from_request_context)?;
     let facts = state
@@ -1132,46 +1091,49 @@ async fn authorize_ceo_covert_audit_stream(
     let bundle = engine::compile_audit_stream_bundle(org, policy_version).map_err(|err| {
         RestError::internal(format!("Cedar audit-stream policy unavailable: {err}"))
     })?;
-    let feature = match read_kind {
-        AuditStreamReadKind::Events => Feature::AuditStreamRead,
-        AuditStreamReadKind::AccessEvents => Feature::AuditStreamAccessLogRead,
-    };
-    let resource = AuthorizationResource::org_wide(org, "audit_stream")
-        .with_resource_id(CEO_COVERT_AUDIT_STREAM_KEY);
-    let mut request = AuthorizationRequest::new(principal.clone(), Action::new(feature), resource)
-        .with_policy_domain("compliance.audit_stream")
-        .with_subject_freshness(principal.authz_freshness)
-        .with_clearance_keys(facts.active_clearance_keys)
-        .requiring_freshness(SubjectFreshnessRequirement {
-            min_policy_version: policy_version,
-            min_subject_version: subject_version,
-            min_session_generation: session_generation,
-            required_step_up_generation: None,
-        })
-        .with_rls_scope_proof(RlsScopeProof::runtime_role_guc(org));
-    request.context = AuthorizationContext {
-        purpose: Some(query.purpose.clone()),
-        channel: Some(query.channel.clone()),
-        request_id: None,
-    };
-    let entry = CoexistenceMapEntry::new(
-        format!("compliance.audit_stream.{}", feature.as_str()),
-        "compliance.audit_stream",
-        feature,
-        "audit_stream",
-        DualEngineMode::CedarOnly,
-        Some(bundle.key.clone()),
-    );
-    let cedar = engine::evaluate(&request, &bundle);
-    let decision = evaluate_cedar_pbac_boundary(&request, Some(&entry), cedar);
-    if decision.effect.is_allow() {
-        Ok(())
-    } else {
-        Err(RestError::from_kernel(KernelError::forbidden(format!(
-            "Cedar denied CEO audit stream access: {:?}",
-            decision.reason
-        ))))
-    }
+    Ok(move |read_kind| {
+        let feature = match read_kind {
+            AuditStreamReadKind::Events => Feature::AuditStreamRead,
+            AuditStreamReadKind::AccessEvents => Feature::AuditStreamAccessLogRead,
+        };
+        let resource = AuthorizationResource::org_wide(org, "audit_stream")
+            .with_resource_id(CEO_COVERT_AUDIT_STREAM_KEY);
+        let mut request =
+            AuthorizationRequest::new(principal.clone(), Action::new(feature), resource)
+                .with_policy_domain("compliance.audit_stream")
+                .with_subject_freshness(principal.authz_freshness)
+                .with_clearance_keys(facts.active_clearance_keys.clone())
+                .requiring_freshness(SubjectFreshnessRequirement {
+                    min_policy_version: policy_version,
+                    min_subject_version: subject_version,
+                    min_session_generation: session_generation,
+                    required_step_up_generation: None,
+                })
+                .with_rls_scope_proof(RlsScopeProof::runtime_role_guc(org));
+        request.context = AuthorizationContext {
+            purpose: Some(query.purpose.clone()),
+            channel: Some(query.channel.clone()),
+            request_id: None,
+        };
+        let entry = CoexistenceMapEntry::new(
+            format!("compliance.audit_stream.{}", feature.as_str()),
+            "compliance.audit_stream",
+            feature,
+            "audit_stream",
+            DualEngineMode::CedarOnly,
+            Some(bundle.key.clone()),
+        );
+        let cedar = engine::evaluate(&request, &bundle);
+        let decision = evaluate_cedar_pbac_boundary(&request, Some(&entry), cedar);
+        if decision.effect.is_allow() {
+            Ok(())
+        } else {
+            Err(RestError::from_kernel(KernelError::forbidden(format!(
+                "Cedar denied CEO audit stream access: {:?}",
+                decision.reason
+            ))))
+        }
+    })
 }
 
 fn freshness_u64(field: &'static str, value: i64) -> Result<u64, RestError> {

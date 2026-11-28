@@ -1761,6 +1761,15 @@ const COMPLIANCE_FRAGMENT_EXTERNAL: &[&str] = &["MobilePasskeyStepUpEnvelope", "
 
 const COMPLIANCE_FRAGMENT_PATHS: &[PathItem] = &[
     PathItem {
+        path: "/api/v1/audit-streams/availability",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../compliance/rest/openapi/paths/api__v1__audit-streams__availability.get.yaml"
+            ),
+        }],
+    },
+    PathItem {
         path: "/api/v1/audit-streams/ceo-covert/access-events",
         operations: &[Operation {
             method: "get",

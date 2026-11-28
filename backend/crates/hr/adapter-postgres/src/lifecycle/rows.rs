@@ -20,8 +20,8 @@ macro_rules! lifecycle_event_select {
              l.from_company, l.to_company, l.from_org_unit, l.to_org_unit, \
              l.from_position, l.to_position, l.effective_date, l.comment, l.comment_code, \
              l.signoffs, l.created_by, u.display_name AS created_by_name, l.created_at, \
-             (SELECT e.actor_kind FROM audit_events e WHERE e.org_id=l.org_id AND e.actor=l.created_by AND e.created_at=l.created_at AND e.target_type='employee' AND e.target_id=l.employee_id::text AND e.outcome='ALLOWED' ORDER BY e.id DESC LIMIT 1) AS actor_kind, \
-             (SELECT e.command_id FROM audit_events e WHERE e.org_id=l.org_id AND e.actor=l.created_by AND e.created_at=l.created_at AND e.target_type='employee' AND e.target_id=l.employee_id::text AND e.outcome='ALLOWED' ORDER BY e.id DESC LIMIT 1) AS command_id, \
+             (SELECT e.actor_kind FROM ordinary_audit_events e WHERE e.org_id=l.org_id AND e.actor=l.created_by AND e.created_at=l.created_at AND e.target_type='employee' AND e.target_id=l.employee_id::text AND e.outcome='ALLOWED' ORDER BY e.id DESC LIMIT 1) AS actor_kind, \
+             (SELECT e.command_id FROM ordinary_audit_events e WHERE e.org_id=l.org_id AND e.actor=l.created_by AND e.created_at=l.created_at AND e.target_type='employee' AND e.target_id=l.employee_id::text AND e.outcome='ALLOWED' ORDER BY e.id DESC LIMIT 1) AS command_id, \
              l.expected_return_date::TEXT AS expected_return_date, \
              l.contract_end_date::TEXT AS contract_end_date, \
              l.leave_type, l.batch_id, l.state, l.applied_at, l.failure_code, \
