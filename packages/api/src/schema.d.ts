@@ -33142,6 +33142,8 @@ export interface components {
             change_mode: components["schemas"]["EntityChangeMode"];
         };
         WorkspaceResponse: {
+            /** @description On reads, whether the tenant currently requires Classic regardless of personal preferences. */
+            legacy_kill_switch_enabled?: boolean;
             /** @description Opaque, frontend-owned console layout object. Stored and returned verbatim; empty default is `{}`. */
             layout: {
                 [key: string]: unknown;
