@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { shell, shellSelectors } from "../shell";
+import { barControl, shell, shellSelectors } from "../shell";
 import { expect, test } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "../a11y";
@@ -210,7 +210,7 @@ for (const width of [1440, 1024, 390]) test(`org: populated, loading and failed 
   } finally { held.resolve(); await page.close(); fixture.release(); }
 });
 
-for (const width of [1440, 390]) test(`shell: failed session restore keeps recovery controls at ${width}px @ui-state @baseline`, async ({ page }) => {
+for (const width of [1440, 390]) for (const classic of [false, true]) test(`shell: failed session restore keeps recovery controls at ${width}px @ui-state${classic ? " @baseline" : ""}`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 });
   const fixture = await mockScreen(page, screens[2], "populated");
   const held = Promise.withResolvers<void>();
@@ -225,11 +225,11 @@ for (const width of [1440, 390]) test(`shell: failed session restore keeps recov
     held.resolve();
     await expect(page.getByRole("main").getByRole("alert")).toContainText(t("common.read.sessionRestoreReason"));
     await expect(shell(page).banner).not.toHaveAttribute("aria-busy");
-    await expect(page.getByRole("combobox", { name: t("shell.locale"), exact: true })).toBeVisible();
+    await expect(await barControl(page, bar => bar.getByRole("combobox", { name: t("shell.locale"), exact: true }))).toBeVisible();
     await expect(page.getByRole("button", { name: t("shell.theme.toDark"), exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: t("shell.logout"), exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: t("common.retry"), exact: true })).toBeVisible();
-    if (width === 390) {
+    if (width === 390 && classic) {
       await page.getByRole("button", { name: t("shell.menu"), exact: true }).click();
       await expect(page.getByRole("navigation", { name: t("shell.nav"), exact: true })).toBeVisible();
     }
