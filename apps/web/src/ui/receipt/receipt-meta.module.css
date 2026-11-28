@@ -1,0 +1,2 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.meta { overflow-wrap: anywhere; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); margin: 0; font-size: var(--text-xs); color: var(--steel); }
