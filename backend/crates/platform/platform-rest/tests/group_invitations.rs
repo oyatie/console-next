@@ -131,16 +131,24 @@ async fn group_join_invitation_lifecycle_accept_decline_and_cancel(owner: PgPool
     assert_eq!(tenant_list["items"].as_array().unwrap().len(), 1);
 
     // Accepting requires fresh passkey step-up from the tenant ops holder.
-    let (status, joined_org) = h
-        .send_as(
-            "POST",
-            &format!("/api/v1/tenant/group-invitations/{inv_a_id}/accept"),
-            json!({ "step_up": ops_a_key.step_up(&h.owner).await }),
-            &ops_a_token,
-        )
-        .await;
+    let accept = format!("/api/v1/tenant/group-invitations/{inv_a_id}/accept");
+    let (status, unauthenticated) = h.send_as("POST", &accept, json!({}), "invalid").await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+    assert_eq!(unauthenticated["error"]["code"], "unauthorized");
+    let _member_key = SoftKey::enroll(&h.owner, org_a, member_a).await;
+    let (status, refusal) = h.send_as("POST", &accept, json!({}), &member_a_token).await;
+    assert_eq!(status, StatusCode::FORBIDDEN, "{refusal}");
+    assert_eq!(refusal["error"]["code"], "forbidden");
+    let (status, challenge) = h.send_as("POST", &accept, json!({}), &ops_a_token).await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+    assert_eq!(challenge["error"]["code"], "passkey_step_up_required");
+    let body = json!({ "step_up": ops_a_key.step_up(&h.owner).await });
+    let (status, joined_org) = h.send_as("POST", &accept, body.clone(), &ops_a_token).await;
     assert_eq!(status, StatusCode::OK, "{joined_org}");
     assert_eq!(joined_org["group_id"], group_id.to_string());
+    let (status, used_assertion) = h.send_as("POST", &accept, body, &ops_a_token).await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+    assert_eq!(used_assertion["error"]["code"], "passkey_step_up_failed");
 
     // Invite org_b, decline as ops_b, then invite org_b again and cancel as platform operator.
     let (status, inv_b1) = h
@@ -155,6 +163,16 @@ async fn group_join_invitation_lifecycle_accept_decline_and_cancel(owner: PgPool
         .await;
     assert_eq!(status, StatusCode::CREATED);
     let inv_b1_id = inv_b1["id"].as_str().unwrap();
+    let (status, enrollment) = h
+        .send_as(
+            "POST",
+            &format!("/api/v1/tenant/group-invitations/{inv_b1_id}/accept"),
+            json!({}),
+            &ops_b_token,
+        )
+        .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert_eq!(enrollment["error"]["code"], "passkey_required");
 
     let (status, _) = h
         .send_as(

@@ -33,12 +33,27 @@ async fn begin_tenant_ops_tx(
     .fetch_optional(tx.as_mut())
     .await?;
     if is_holder != Some(true) {
-        return Err(ProvisioningError::DomainRequestForbidden);
+        return Err(ProvisioningError::Forbidden("ops_holder_only".to_owned()));
     }
     Ok(tx)
 }
 
 impl PlatformProvisioner {
+    /// Check invitation authority before asking for a passkey. Release the account lock
+    /// before WebAuthn takes it. Acceptance checks it again in the write transaction.
+    pub async fn require_tenant_group_invitation_holder(
+        &self,
+        pool: &PgPool,
+        actor: UserId,
+        org: OrgId,
+    ) -> Result<(), ProvisioningError> {
+        begin_tenant_ops_tx(pool, actor, org)
+            .await?
+            .commit()
+            .await?;
+        Ok(())
+    }
+
     pub async fn list_tenant_group_invitations(
         &self,
         pool: &PgPool,

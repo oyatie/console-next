@@ -113,6 +113,9 @@ impl PlatformError {
             ProvisioningError::DomainRequestForbidden => {
                 Self::forbidden("only the tenant ops account may request a company-domain change")
             }
+            ProvisioningError::Forbidden(reason) if reason == "ops_holder_only" => {
+                Self::forbidden("only an active tenant ops holder may perform this action")
+            }
             ProvisioningError::DomainRequestConflict => Self::new(
                 StatusCode::CONFLICT,
                 "domain_request_conflict",

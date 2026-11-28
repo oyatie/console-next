@@ -55,7 +55,7 @@ async fn verify_tenant_step_up(
     let step_up = step_up.ok_or_else(|| {
         PlatformError::new(
             StatusCode::UNAUTHORIZED,
-            "unauthorized",
+            "passkey_step_up_required",
             "accepting a group join invitation requires a fresh passkey assertion",
         )
     })?;
@@ -74,12 +74,16 @@ async fn verify_tenant_step_up(
             *principal.user_id.as_uuid(),
         )
         .await
-        .map_err(|_| {
-            PlatformError::new(
+        .map_err(|err| match err {
+            console_platform_auth::AuthError::Sqlx(_) | console_platform_auth::AuthError::Db(_) => {
+                tracing::error!(error = %err, "tenant invitation passkey check failed on the server");
+                PlatformError::new(StatusCode::INTERNAL_SERVER_ERROR, "internal", "internal server error")
+            }
+            _ => PlatformError::new(
                 StatusCode::UNAUTHORIZED,
-                "unauthorized",
+                "passkey_step_up_failed",
                 "passkey step-up failed",
-            )
+            ),
         })
 }
 
@@ -160,6 +164,11 @@ pub(crate) async fn accept_tenant_invitation(
     Path(invitation_id): Path<Uuid>,
     Json(body): Json<AcceptTenantGroupInvitationRequest>,
 ) -> Result<Response, PlatformError> {
+    state
+        .provisioner
+        .require_tenant_group_invitation_holder(&state.pool, principal.user_id, principal.org_id)
+        .await
+        .map_err(PlatformError::from_provisioning)?;
     verify_tenant_step_up(&state, &principal, body.step_up).await?;
     let org = state
         .provisioner
