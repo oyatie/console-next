@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 export const enPayrollOutlook = {
   "payrollOutlook.title": "Payroll outlook",
-  "payrollOutlook.permission": "Requires access to analytics projections.",
   "payrollOutlook.history": "Historical payroll totals (KRW)",
   "payrollOutlook.historyHint": "Enter one total per line, oldest first, using the same interval for every period.",
   "payrollOutlook.historyInvalid": "Enter at least three positive whole-won totals, one per line.",

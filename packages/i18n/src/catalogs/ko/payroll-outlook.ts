@@ -2,7 +2,6 @@
 import type { enPayrollOutlook } from "../en/payroll-outlook";
 export const koPayrollOutlook: Record<keyof typeof enPayrollOutlook, string> = {
   "payrollOutlook.title": "급여 전망",
-  "payrollOutlook.permission": "분석 예측 조회 권한이 필요합니다.",
   "payrollOutlook.history": "과거 급여 총액(원)",
   "payrollOutlook.historyHint": "같은 간격의 기간별 총액을 오래된 순서대로 한 줄에 하나씩 입력하십시오.",
   "payrollOutlook.historyInvalid": "0보다 큰 원 단위 정수 금액을 한 줄에 하나씩 세 개 이상 입력하십시오.",
