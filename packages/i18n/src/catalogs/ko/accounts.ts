@@ -147,6 +147,7 @@ export const koAccounts: Record<keyof typeof enAccounts, string> = {
   "accounts.invite.removeRoles": "역할 없이 초대",
   "accounts.invite.consequenceWithRoles": "{name} 계정을 생성하고 초기 권한 부여 {count, number}건({grants}) 적용과 첫 로그인 코드 발급을 한 번에 처리합니다.",
   "accounts.invite.doneWithRoles": "{name}님의 계정을 생성하고 초기 권한 부여 {count, number}건과 첫 로그인 코드를 발급했습니다",
+  "accounts.issued.replayed": "{name}님의 초대를 저장했습니다. 첫 로그인 코드를 받지 못했다면 계정에서 새 코드를 발급하세요.",
   "accounts.issued.granted": "초기 권한 부여 {count, number}건을 함께 저장했습니다. 첫 로그인 뒤부터 사용할 수 있습니다.",
   "accounts.reset.peerDelivered": "{name}님의 등록된 복구 연락처({masked})로 로그인 코드를 발송했습니다. 운영 계정 보유자의 초기화 코드는 화면에 표시하지 않습니다.",
   "accounts.reset.peerOpsOnly": "다른 운영 계정 보유자만 초기화할 수 있습니다.",

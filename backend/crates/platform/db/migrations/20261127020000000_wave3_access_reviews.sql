@@ -112,7 +112,7 @@ ON CONFLICT DO NOTHING;
 ALTER TABLE api_idempotency_keys
     DROP CONSTRAINT IF EXISTS api_idempotency_keys_operation_check,
     ADD CONSTRAINT api_idempotency_keys_operation_check CHECK (operation IN (
-        'users.create', 'employee.lifecycle.create', 'hr.exit_case.create',
+        'users.create', 'access.invites.create', 'employee.lifecycle.create', 'hr.exit_case.create',
         'hr.exit_case.bulk_create', 'employee.lifecycle.bulk',
         'period_lock.lock', 'period_lock.unlock', 'period_lock.unlock_approve', 'period_lock.unlock_reject',
         'employee.correction.bulk', 'appointment_notice.issue', 'tenant.domain.request', 'platform.tenant.rename',
