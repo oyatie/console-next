@@ -1,6 +1,23 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 use super::*;
 
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct CreateCycleRequest {
+    name: String,
+    kind: console_evaluation_domain::CycleKind,
+    period_label: String,
+    #[serde(with = "console_evaluation_application::date_fmt")]
+    due_date: time::Date,
+}
+
+#[derive(Debug, Deserialize)]
+pub(super) struct CycleListFilter {
+    stage: Option<CycleStage>,
+    limit: Option<i64>,
+    offset: Option<i64>,
+}
+
 const READ: Feature = Feature::EvaluationRead;
 const MANAGE: Feature = Feature::EvaluationManage;
 

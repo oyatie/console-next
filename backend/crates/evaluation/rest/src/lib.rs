@@ -154,23 +154,6 @@ pub fn router(state: EvaluationRestState) -> Router {
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct CreateCycleRequest {
-    name: String,
-    kind: console_evaluation_domain::CycleKind,
-    period_label: String,
-    #[serde(with = "console_evaluation_application::date_fmt")]
-    due_date: time::Date,
-}
-
-#[derive(Debug, Deserialize)]
-struct CycleListFilter {
-    stage: Option<CycleStage>,
-    limit: Option<i64>,
-    offset: Option<i64>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
 struct AddSubjectRequest {
     cycle_id: Uuid,
     employee_id: Uuid,

@@ -16,13 +16,13 @@ use console_evaluation_adapter_postgres::PgEvaluationStore;
 use console_evaluation_rest::EvaluationRestState;
 use console_kernel_core::{BranchId, OrgId, UserId};
 use console_platform_auth::{AccessTokenInput, JwtIssuer, JwtSettings, JwtVerifier};
+use console_platform_test_support::runtime_role_pool;
 use http::{Request, StatusCode, header};
 use p256::ecdsa::SigningKey;
 use p256::elliptic_curve::Generate;
 use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
 use serde_json::{Value, json};
 use sqlx::PgPool;
-use sqlx::postgres::PgPoolOptions;
 use time::{Duration, OffsetDateTime};
 use tower::ServiceExt;
 use uuid::Uuid;
@@ -1262,20 +1262,6 @@ fn jwt_settings() -> JwtSettings {
         audience: AUDIENCE.to_owned(),
         access_token_ttl: Duration::minutes(15),
     }
-}
-
-async fn runtime_role_pool(owner: &PgPool) -> PgPool {
-    PgPoolOptions::new()
-        .max_connections(8)
-        .after_connect(|conn, _| {
-            Box::pin(async move {
-                sqlx::query("SET ROLE console_rt").execute(conn).await?;
-                Ok(())
-            })
-        })
-        .connect_with(owner.connect_options().as_ref().clone())
-        .await
-        .unwrap()
 }
 
 fn app_state(pool: PgPool, public_key_pem: String) -> Result<AppState, console_app::AppError> {
