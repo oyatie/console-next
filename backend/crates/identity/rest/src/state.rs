@@ -14,6 +14,7 @@ pub struct IdentityRestState {
     pub(crate) evaluation_tasks: fn(&console_platform_authz::Principal) -> bool,
     pub(crate) evaluation_cycles: fn(&console_platform_authz::Principal) -> (bool, bool),
     pub(crate) calendar_access: fn(&console_platform_authz::Principal) -> bool,
+    pub(crate) consulting_access: fn(&console_platform_authz::Principal) -> (bool, bool),
     pub(crate) benefit_access: fn(&console_platform_authz::Principal) -> (bool, bool),
     pub(crate) ledger_access: fn(&console_platform_authz::Principal) -> bool,
     pub(crate) documents_served: bool,
@@ -35,6 +36,7 @@ impl IdentityRestState {
             evaluation_tasks: |_| false,
             evaluation_cycles: |_| (false, false),
             calendar_access: |_| false,
+            consulting_access: |_| (false, false),
             benefit_access: |_| (false, false),
             ledger_access: |_| false,
             documents_served: false,
@@ -100,6 +102,15 @@ impl IdentityRestState {
         access: fn(&console_platform_authz::Principal) -> (bool, bool),
     ) -> Self {
         self.evaluation_cycles = access;
+        self
+    }
+
+    #[must_use]
+    pub fn with_consulting_access(
+        mut self,
+        access: fn(&console_platform_authz::Principal) -> (bool, bool),
+    ) -> Self {
+        self.consulting_access = access;
         self
     }
 

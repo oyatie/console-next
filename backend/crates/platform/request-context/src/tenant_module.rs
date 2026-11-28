@@ -16,6 +16,7 @@ use std::collections::BTreeSet;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TenantModule {
+    Consulting,
     Benefits,
     Calendar,
     Evaluation,
@@ -34,6 +35,7 @@ enum PolicyReadError {
 impl TenantModule {
     fn policy(self) -> (&'static str, SettingKey) {
         match self {
+            Self::Consulting => ("consulting", SettingKey::ModuleConsultingEnabled),
             Self::Benefits => ("benefits", SettingKey::ModuleBenefitsEnabled),
             Self::Calendar => ("calendar", SettingKey::ModuleCalendarEnabled),
             Self::Evaluation => ("evaluation", SettingKey::ModuleEvaluationEnabled),

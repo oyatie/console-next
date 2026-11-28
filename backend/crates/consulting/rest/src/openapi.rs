@@ -101,6 +101,13 @@ const PATHS: &[PathItem] = &[
             ),
         }],
     },
+    PathItem {
+        path: "/api/v1/consulting/options",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!("../openapi/paths/api__v1__consulting__options.get.yaml"),
+        }],
+    },
 ];
 
 const SCHEMAS: &[NamedYaml] = &[
@@ -155,6 +162,10 @@ const SCHEMAS: &[NamedYaml] = &[
     NamedYaml {
         name: "ConsultingObservationCreateRequest",
         body: include_str!("../openapi/schemas/ConsultingObservationCreateRequest.yaml"),
+    },
+    NamedYaml {
+        name: "ConsultingOptionPage",
+        body: include_str!("../openapi/schemas/ConsultingOptionPage.yaml"),
     },
     NamedYaml {
         name: "ConsultingTransitionRequest",

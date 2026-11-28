@@ -48,6 +48,7 @@ import { enAttendanceHolidays } from "./en/attendance-holidays";
 import { enAttendanceCrews } from "./en/attendance-crews";
 import { enAttendanceOverview } from "./en/attendance-overview";
 import { enAttendanceRecords } from "./en/attendance-records";
+import { enConsulting } from "./en/consulting";
 import { enEvaluation } from "./en/evaluation";
 import { enMe } from "./en/me";
 import { enTeam } from "./en/team";
@@ -287,7 +288,7 @@ export const en = {
   ...enDirectoryViews,
   ...enUiWorklist,
   ...enUiLedger,
-  ...enEvaluation, ...enMe, ...enTeam, ...enShellRoutes, ...enAccessPolicies, ...enAccessCheck, ...enAuth,
+  ...enConsulting, ...enEvaluation, ...enMe, ...enTeam, ...enShellRoutes, ...enAccessPolicies, ...enAccessCheck, ...enAuth,
 } as const;
 
 export type ScreenMessageId = keyof typeof en;

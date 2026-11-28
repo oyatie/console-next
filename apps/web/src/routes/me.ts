@@ -4,7 +4,7 @@ import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
 import type { MeAttendanceSearch } from "../features/me/ui/me-attendance-page";
 import type { MeDeskSearch, MeDeskView } from "../features/me/ui/me-desk-page";
 import { app, screen, str } from "./app";
-import { servedRouteReads } from "./route-reads";
+import { servedRouteAccess } from "./route-reads";
 
 const DESK_VIEWS: readonly MeDeskView[] = ["overview", "attendance", "requests", "documents"];
 
@@ -41,13 +41,13 @@ const meDispatchOffers = createRoute({
 const meEvaluations = createRoute({
   getParentRoute: () => app,
   path: "/me/evaluations",
-  staticData: { access: servedRouteReads["/me/evaluations"].access, floorplan: "P-01", pattern: "list-record" },
+  staticData: { access: servedRouteAccess["/me/evaluations"], floorplan: "P-01", pattern: "list-record" },
   component: lazyRouteComponent(screen(() => import("../features/me/ui/evaluation-tasks")), "EvaluationTasks"),
 });
 
 const calendar = createRoute({
   getParentRoute: () => app, path: "/calendar",
-  staticData: { access: servedRouteReads["/calendar"].access, floorplan: "P-03", pattern: "month-grid" },
+  staticData: { access: servedRouteAccess["/calendar"], floorplan: "P-03", pattern: "month-grid" },
   component: lazyRouteComponent(screen(() => import("../features/calendar/ui/calendar-page")), "CalendarPage"),
 });
 export const meRoutes = [meAttendance, meDesk, meDispatchOffers, meEvaluations, calendar];
