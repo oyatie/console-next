@@ -6,6 +6,7 @@ mod clock;
 
 pub async fn hr_handler(pool: &PgPool, org: OrgId, subject: UserId) -> (UserId, Uuid) {
     let handler = seed_user(pool, *org.as_uuid(), "MEMBER").await;
+    person_fixtures::bind_user_to_distinct_person(pool, handler).await;
     let grant = seed_role_and_grant(pool, *org.as_uuid(), subject, handler, "TENANT", None).await;
     sqlx::query("INSERT INTO access_role_versions (org_id,role_id,version,name_ko,status,change_mode,created_by) SELECT org_id,role_id,2,name_ko,status,change_mode,created_by FROM access_role_versions WHERE org_id=$1 AND version=1 AND role_id=(SELECT role_id FROM access_grants WHERE id=$2)")
         .bind(org.as_uuid()).bind(grant).execute(pool).await.unwrap();
@@ -42,14 +43,8 @@ async fn operator_request_is_absent_from_tenant_intake(pool: PgPool) {
         "privacy-isolation",
     )
     .await;
-    let handler = seed_user(&pool, *org.as_uuid(), "MEMBER").await;
-    let grant = seed_role_and_grant(&pool, *org.as_uuid(), actor, handler, "TENANT", None).await;
-    sqlx::query("INSERT INTO access_role_versions (org_id,role_id,version,name_ko,status,change_mode,created_by) SELECT org_id,role_id,2,name_ko,status,change_mode,created_by FROM access_role_versions WHERE org_id=$1 AND version=1 AND role_id=(SELECT role_id FROM access_grants WHERE id=$2)")
-        .bind(org.as_uuid()).bind(grant).execute(&pool).await.unwrap();
-    sqlx::query("INSERT INTO access_role_lines (org_id,role_id,version,domain,levels) SELECT org_id,role_id,2,'hr_basic',ARRAY['edit'] FROM access_grants WHERE org_id=$1 AND id=$2")
-        .bind(org.as_uuid()).bind(grant).execute(&pool).await.unwrap();
-    sqlx::query("UPDATE access_roles SET version=2 WHERE org_id=$1 AND id=(SELECT role_id FROM access_grants WHERE id=$2)")
-        .bind(org.as_uuid()).bind(grant).execute(&pool).await.unwrap();
+    person_fixtures::bind_user_to_distinct_person(&pool, actor).await;
+    let (handler, _) = hr_handler(&pool, org, actor).await;
     let rt = runtime_pool(&pool).await;
     let register = PgComplianceStore::new(rt.clone())
         .statutory_register()
