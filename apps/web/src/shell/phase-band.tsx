@@ -33,7 +33,8 @@ export function PhaseBand({ children, operatingSince }: { children: ReactNode; o
   const access = useQuery(myAccessQuery);
   const settings = useQuery(settingsQuery);
   // The shell identity and the checklist read the same go-live timestamp. Only setup needs the step list here.
-  const useIdentity = q.isPending && q.failureCount === 0 && readable && access.isSuccess && access.data.phase === "OPERATING"
+  const needsTimestamp = q.data === undefined && !isAnswer(q.error) && (q.isPending || q.isError);
+  const useIdentity = needsTimestamp && readable && access.isSuccess && access.data.phase === "OPERATING"
     && canReadSetupChecklist(access.data) && operatingSince !== undefined && settings.isSuccess && settings.data.items !== undefined;
   const [settled, setSettled] = useState(() => deadlines.get(principal) === null);
   const decided = settled || (access.data !== undefined || access.failureCount > 0)
