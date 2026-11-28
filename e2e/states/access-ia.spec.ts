@@ -52,7 +52,13 @@ for (const width of [1440, 390]) for (const colorScheme of ["light", "dark"] as 
     await page.goto("/access/grants");
     await page.getByRole("button", { name: "권한 부여", exact: true }).click();
     const picker = page.getByRole("dialog", { name: "권한 부여할 사람", exact: true });
-    await picker.getByRole("combobox").fill("ACC-0002");
+    const search = (url: URL) => url.pathname === "/api/v1/users" && url.searchParams.get("search") === "ACC-0002";
+    const held = Promise.withResolvers<void>();
+    await page.route(search, async route => { await held.promise; await route.fallback(); });
+    try {
+      await Promise.all([page.waitForRequest(req => search(new URL(req.url()))), picker.getByRole("combobox").fill("ACC-0002")]);
+      await expect(page.getByRole("option", { name: /ACC-0002/ })).toHaveCount(0);
+    } finally { held.resolve(); }
     await page.getByRole("option", { name: /ACC-0002/ }).click();
     const sheet = page.getByRole("dialog", { name: "권한 부여", exact: true });
     const end = sheet.getByRole("group", { name: "종료일", exact: true });

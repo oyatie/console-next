@@ -234,7 +234,14 @@ test.describe("one state contract across console routes", () => {
         const path = new URL(request.url()).pathname;
         if (["/api/v1/me/authz", "/api/v1/support-sessions/active"].includes(path)) protectedReads.push(path);
       });
-      await page.route("**/api/v1/auth/token/refresh", route => route.fulfill(failure(503)));
+      let recovering = false;
+      let release!: () => void;
+      const retryClicked = new Promise<void>(resolve => { release = resolve; });
+      await page.route("**/api/v1/auth/token/refresh", async route => {
+        if (!recovering) return route.fulfill(failure(503));
+        await retryClicked;
+        return route.continue();
+      });
       const failedRefresh = page.waitForResponse(response => new URL(response.url()).pathname === "/api/v1/auth/token/refresh" && response.status() === 503);
       await page.goto(path);
       await (await failedRefresh).finished();
@@ -242,9 +249,13 @@ test.describe("one state contract across console routes", () => {
       await expect(page.getByRole("main").getByText("불러오지 못했습니다", { exact: true })).toBeVisible();
       await expect(page.getByText("화면을 표시하지 못했습니다", { exact: true })).toHaveCount(0);
       expect(protectedReads).toEqual([]);
-      await page.unroute("**/api/v1/auth/token/refresh");
       const restored = page.waitForResponse(response => new URL(response.url()).pathname === "/api/v1/auth/token/refresh" && response.status() === 200);
-      await page.getByRole("button", { name: "다시 불러오기", exact: true }).click();
+      recovering = true;
+      try {
+        await page.getByRole("main").getByRole("button", { name: "다시 불러오기", exact: true }).click();
+      } finally {
+        release();
+      }
       await restored;
       await expect(page.getByRole("main").getByText("불러오지 못했습니다", { exact: true })).toHaveCount(0);
       await expect(page.getByRole("navigation", { name: "주 메뉴" })).toBeVisible();

@@ -6,6 +6,7 @@ import { authz, failure, id, screenAccess } from "./fixtures";
 import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
 import { screens } from "../states/registry";
+import { seededExperience } from "../experience";
 
 test.beforeAll(() => loadCatalog("ko"));
 
@@ -93,10 +94,11 @@ for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
 }
 
 for (const first of ["effective", "capability"] as const) for (const refused of [false, true]) {
-test(`the directory waits for both grants with ${first} first and ${refused ? "a refusal" : "a grant and recheck on return"}`, async ({ page }) => {
+test(`the directory waits for both grants with ${first} first and ${refused ? "a refusal" : "a grant and recheck on return"}`, async ({ page, storageState }) => {
   const state = await fixture(page);
   const effective = Promise.withResolvers<void>(), capability = Promise.withResolvers<void>();
   const counts = { effective: 0, capability: 0, employees: 0, facets: 0, inactiveTabs: 0 };
+  const layouts: string[] = [];
   for (const [path, gate, key] of [["/api/v1/access/me", effective, "effective"], ["/api/v1/me/authz", capability, "capability"]] as const) {
     await page.route(url => url.pathname === path, async route => {
       counts[key]++;
@@ -107,6 +109,8 @@ test(`the directory waits for both grants with ${first} first and ${refused ? "a
   }
   page.on("request", request => {
     const path = new URL(request.url()).pathname;
+    const layout = /^\/assets\/(roster-screen|roster-console)-[\w-]{8}\.js$/.exec(path);
+    if (layout) layouts.push(layout[1]!);
     if (path === "/api/v1/employees") counts.employees++;
     if (path === "/api/v1/employees/facets") counts.facets++;
     if (/^\/assets\/(Accounts|unplaced-roster)-[\w-]+\.js$/.test(path)) counts.inactiveTabs++;
@@ -116,25 +120,26 @@ test(`the directory waits for both grants with ${first} first and ${refused ? "a
     await page.goto("/people");
     await expect.poll(() => counts.effective).toBeGreaterThan(0);
     await expect(grid).toHaveCount(0);
-    expect([counts.employees, counts.facets, counts.inactiveTabs]).toEqual([0, 0, 0]);
+    expect([counts.employees, counts.facets, counts.inactiveTabs, ...layouts]).toEqual([0, 0, 0]);
     await expect.poll(() => counts.capability).toBe(1);
     const firstPath = first === "effective" ? "/api/v1/access/me" : "/api/v1/me/authz";
     const answered = page.waitForResponse(response => new URL(response.url()).pathname === firstPath);
     (first === "effective" ? effective : capability).resolve();
     await answered;
     await expect(grid).toHaveCount(0);
-    expect([counts.employees, counts.facets, counts.inactiveTabs]).toEqual([0, 0, 0]);
+    expect([counts.employees, counts.facets, counts.inactiveTabs, ...layouts]).toEqual([0, 0, 0]);
     (first === "effective" ? capability : effective).resolve();
     if (refused) {
       await expect(page.getByText(t("common.denied.title.plain"), { exact: true }).first()).toBeVisible();
       await expect(grid).toHaveCount(0);
-      expect([counts.employees, counts.facets, counts.inactiveTabs]).toEqual([0, 0, 0]);
+      expect([counts.employees, counts.facets, counts.inactiveTabs, ...layouts]).toEqual([0, 0, 0]);
       expect(state.unexpected).toEqual([]);
       return;
     }
     await expect(grid).toBeVisible();
     expect(counts.employees).toBe(1);
     expect(counts.inactiveTabs).toBe(0);
+    expect(layouts).toEqual([seededExperience(storageState) === "baseline" ? "roster-screen" : "roster-console"]);
 
     const tabs = page.getByRole("navigation", { name: t("roster.head.title"), exact: true }).getByRole("link");
     await tabs.nth(1).click();

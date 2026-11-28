@@ -5,9 +5,10 @@ import { onSecondDevice } from "./auth";
 import { expectAccessible } from "./a11y";
 import { apiAs, soloTenant } from "./chaos";
 import { go, kstDate } from "./flows";
-import { SETUP_DEPARTMENT, setupCompany, setupRail, startOperations } from "./setup-flows";
+import { SETUP_DEPARTMENT, answer, setupCompany, setupRail, startOperations } from "./setup-flows";
 import { confirmImportColumns, chooseWorkbook } from "./helpers/import";
 import { plain, workbook } from "./helpers/import-layouts";
+import { expectStatus } from "./helpers/setup-response";
 import { keyboardActivate, probeActions } from "./helpers/first-run";
 import { addDepartments } from "./structure-flows";
 
@@ -103,7 +104,9 @@ test("BL-016: setup and seven-day operating bands persist across routes in a key
   await go(admin, "/");
   const backup = setupRail(admin).getByRole("listitem").filter({ hasText: ko["setup.step.passkey"] });
   await onSecondDevice(admin);
+  const enrolled = answer(admin, "POST", /^\/api\/v1\/auth\/passkey\/register\/finish$/);
   await keyboardActivate(backup.getByRole("button", { name: ko["account.passkey.add"], exact: true }));
+  await expectStatus(enrolled, 201, "second passkey registration");
   await expect(backup).toHaveAttribute("data-state", "done");
   await keyboardActivate(setupRail(admin).getByRole("button", { name: "직원은 나중에" }));
   await keyboardActivate(setupRail(admin).getByRole("button", { name: "담당자는 나중에" }));

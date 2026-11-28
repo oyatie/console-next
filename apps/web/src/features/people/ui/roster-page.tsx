@@ -4,12 +4,13 @@ import { ReadSkeleton } from "../../../ui/skeleton/skeleton";
 import { useCan } from "../../../reference/authz/ui/use-can";
 import { RosterExport } from "./roster-export";
 import { useRosterScreen } from "./use-roster-screen";
-import { loadedRosterLayout, deferredRosterLayout } from "./use-roster-layout";
+import { useRosterLayout } from "./use-roster-layout";
 
 export function RosterPage(props: { manage: boolean; scoped?: boolean; switcher?: ReactNode; notice?: ReactNode; tabs?: ReactNode }) {
-  const RosterScreen = loadedRosterLayout ?? deferredRosterLayout;
   const screen = useRosterScreen();
+  const RosterScreen = useRosterLayout();
   const can = useCan();
+  if (!RosterScreen) return <ReadSkeleton layout="list" />;
   return (
     <Suspense fallback={<ReadSkeleton layout="list" />}>
       <RosterScreen {...props} screen={screen} actions={can("excel_download") && <RosterExport query={screen.r.query} total={screen.r.total} />} />
