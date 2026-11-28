@@ -91,6 +91,28 @@ for (const [name, mutate] of [
   await assert.rejects(collect(github, merge));
 });
 
+for (const context of ['ci-ok', 'Code scanning gate']) {
+  test(`refuses missing or unbound rules for ${context}`, async () => {
+    for (const unbound of [false, true]) {
+      const { github, data } = fixture();
+      const rules = data.rules[1].parameters.required_status_checks;
+      data.rules[1].parameters.required_status_checks = rules.filter(check => check.context !== context);
+      if (unbound) data.rules[1].parameters.required_status_checks.push({ context });
+      await assert.rejects(collect(github, merge), /Required checks were weakened/);
+    }
+  });
+}
+
+test('records an unbound additional rule separately from the actual check provider', async () => {
+  const { github, data } = fixture();
+  data.rules[1].parameters.required_status_checks.push({ context: 'additional' });
+  data.checks.push({ ...data.checks[0], id: 99, name: 'additional' });
+  const record = await collect(github, merge);
+  assert.deepEqual(record.required_checks.find(check => check.context === 'additional'),
+    { context: 'additional', integration_id: null });
+  assert.equal(record.check_runs.find(check => check.name === 'additional').app_id, policy.check_app_id);
+});
+
 test('a later rerun cannot replace a failed head check at merge', async () => {
   const { github, data } = fixture();
   data.checks.push({ ...data.checks[0], id: 999, started_at: '2026-10-23T01:01:00Z',
