@@ -33,6 +33,15 @@ async fn ledger_navigation_and_reads_agree_for_the_current_binary_and_branch(poo
     for (user, role, permitted) in [(admin, "ADMIN", true), (viewer, "MEMBER", false)] {
         let ctx = http::ctx(&pool, org, user, &[role], None).await;
         let (status, projection) = ctx.call("GET", "/api/v1/me/authz", None).await;
+        let (reported, streams) = ctx
+            .call("GET", "/api/v1/audit-streams/availability", None)
+            .await;
+        if cfg!(feature = "compliance") {
+            assert_eq!(reported, StatusCode::OK);
+            assert_eq!(streams, json!({"events":false,"access_events":false}));
+        } else {
+            assert_eq!(reported, StatusCode::NOT_FOUND);
+        }
         assert_eq!(status, StatusCode::OK, "{projection}");
         let cap = projection["capabilities"]
             .as_array()

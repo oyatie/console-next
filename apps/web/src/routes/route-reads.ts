@@ -9,6 +9,7 @@ export const servedRouteReads = {
   "/payroll/outlook": { access: { servedCapability: "analytics_projection" }, reads: ["/api/v1/analytics/projection"], method: "post" },
   "/audit/lifecycles/$objectType/$objectId": { access: { servedCapability: "lifecycle_manage" }, reads: ["/api/v1/lifecycles/{objectType}/{objectId}"] },
   "/me/evaluations": { access: { servedCapability: "served_evaluation_tasks" }, reads: ["/api/v1/evaluation/my-tasks"] },
+  "/audit/restricted": { access: { servedCapability: "restricted_audit_stream" }, reads: ["/api/v1/audit-streams/ceo-covert/events", "/api/v1/audit-streams/ceo-covert/access-events"] },
   "/audit/location-consents": { access: { servedCapability: "served_location_consent_ledger" }, reads: ["/api/v1/location-consents/ledger"] },
   "/audit/findings": { access: { servedCapability: "served_integrity_findings" }, reads: ["/api/v1/integrity/findings"] },
   "/audit/evidence": { access: { servedCapability: "documents" }, reads: ["/api/v1/evidence/objects"] },

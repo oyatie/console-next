@@ -63,4 +63,11 @@ const locationConsents = createRoute({
   component: lazyRouteComponent(screen(() => import("../features/audit/ui/location-consents")), "LocationConsents"),
 });
 
-export const auditRoutes = [audit, accessLog, supportAccess, evidence, findings, lifecycle, locationConsents];
+const restricted = createRoute({
+  getParentRoute: () => app,
+  path: "/audit/restricted",
+  staticData: { access: servedRouteReads["/audit/restricted"].access, floorplan: "P-01", pattern: "list-record" },
+  component: lazyRouteComponent(screen(() => import("../features/audit/ui/restricted-stream")), "RestrictedStream"),
+});
+
+export const auditRoutes = [audit, accessLog, supportAccess, evidence, findings, lifecycle, locationConsents, restricted];

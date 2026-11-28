@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { t } from "@console/i18n";
 import { tabClass } from "../../../ui/tabs/tab-class";
 import { useAuditDestinations } from "../../authz/ui/use-documents-served";
+import { RestrictedAuditLink } from "./restricted-audit-link";
 import { TabNav } from "../../../ui/tabs/tabs";
 
 export function AuditTabs() {
@@ -14,5 +15,6 @@ export function AuditTabs() {
     {evidenceVault && <Link to="/audit/evidence" className={tabClass}>{t("audit.vault.title")}</Link>}
     {findings && <Link to="/audit/findings" className={tabClass}>{t("audit.findings.title")}</Link>}
     {consents && <Link to="/audit/location-consents" className={tabClass}>{t("audit.consents.title")}</Link>}
+    <RestrictedAuditLink className={tabClass} />
   </TabNav>;
 }

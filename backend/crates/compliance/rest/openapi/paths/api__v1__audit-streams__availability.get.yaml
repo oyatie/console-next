@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: LicenseRef-Proprietary
+tags:
+- audit
+operationId: getAuditStreamAvailability
+summary: Check which restricted audit reads the current session may perform
+description: Applies the existing read decisions without reading events or recording a stream access.
+security:
+- bearerAuth: []
+responses:
+  '200':
+    description: Current read permissions for this principal and tenant.
+    content:
+      application/json:
+        schema:
+          type: object
+          additionalProperties: false
+          required: [events, access_events]
+          properties:
+            events: { type: boolean }
+            access_events: { type: boolean }
+  '401':
+    $ref: '#/components/responses/Unauthorized'

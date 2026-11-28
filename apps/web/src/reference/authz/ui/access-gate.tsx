@@ -8,6 +8,7 @@ import type { ReadBack } from "../../../lib/react/denied";
 import { PageHead } from "../../../ui/page-head/page-head";
 import { ReadSkeleton, type ReadLayout } from "../../../ui/skeleton/skeleton";
 import { accessRefusal, type AccessRequirement, type ServedCapability } from "../domain/access";
+import { RestrictedAccessGate } from "../../audit/ui/restricted-access-gate";
 import { canUseServed } from "./use-documents-served";
 import { ApiError, authzApplies, authzQuery, myAccessQuery } from "../api";
 import { moduleReady, modulesQuery, type ModuleKey } from "../../onboarding/api";
@@ -22,6 +23,7 @@ function ModuleGate({ children, module }: { children: ReactNode; module: ModuleK
 
 /** Form routes wait for their own grant, independently of onboarding and legacy role names. */
 export function AccessGate({ children, layout = "form", ...need }: AccessRequirement & { children: ReactNode; layout?: ReadLayout }) {
+  if ("servedCapability" in need && need.servedCapability === "restricted_audit_stream") return <RestrictedAccessGate layout={layout}>{children}</RestrictedAccessGate>;
   if ("servedCapability" in need) return <ServedAccessGate feature={need.servedCapability} layout={layout}>{children}</ServedAccessGate>;
   return <EffectiveAccessGate {...need} layout={layout}>{children}</EffectiveAccessGate>;
 }

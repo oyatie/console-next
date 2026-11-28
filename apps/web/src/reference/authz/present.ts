@@ -66,6 +66,7 @@ const servedPermission = {
   analytics_projection: "payroll.outlook.permission",
   lifecycle_manage: "audit.lifecycle.permission",
   served_evaluation_tasks: "me.evaluation.permission",
+  restricted_audit_stream: "audit.restricted.permission",
   documents: "audit.vault.permission",
   served_integrity_findings: "audit.findings.permission",
   served_integrity_triage: "audit.findings.permission",
