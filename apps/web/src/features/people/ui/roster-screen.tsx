@@ -11,7 +11,9 @@ import { Receipt } from "../../../ui/receipt/receipt";
 import { rowById } from "../../../ui/long-table/row-keys";
 import { unitPath } from "../../../reference/org/present";
 import { employeeQuery } from "../api";
-import { BulkRescind, BulkSheet, RosterBulk, RosterUnitPanel } from "./roster-actions";
+import { BulkRescind } from "./bulk-rescind";
+import { BulkSheet, RosterUnitPanel } from "./roster-actions";
+import { RosterBulk } from "./roster-bulk";
 import { RosterTable } from "./roster-table";
 import { RosterFilters } from "./roster-filters";
 import { BULK_MAX } from "./use-roster";
@@ -111,7 +113,7 @@ export function RosterScreen({ manage, scoped = false, switcher, notice, screen,
           actions={batch && manage && rescindReady && <Button variant="ghost" onClick={() => setRescinding(true)}>{t("bulk.rescind.open", { count: batch.count })}</Button>}
         />
       )}
-      {rescinding && batch && <Suspense fallback={null}><BulkRescind batchId={batch.id} count={batch.count} onClose={() => setRescinding(false)} onDone={(n) => (setRescinding(false), setBatch(null), setRecorded(t("bulk.rescind.done", { count: n })))} /></Suspense>}
+      {rescinding && batch && <BulkRescind batchId={batch.id} count={batch.count} onClose={() => setRescinding(false)} onDone={(n) => (setRescinding(false), setBatch(null), setRecorded(t("bulk.rescind.done", { count: n })))} />}
       </div>
       </>}
       list={voided ? <VoidedList /> : firstRun ? <RosterFirstRun /> : (
@@ -148,7 +150,7 @@ export function RosterScreen({ manage, scoped = false, switcher, notice, screen,
                 onSelectionChange: setSel,
                 selectAllLimit: { max: BULK_MAX, reason: t("roster.selectAll.tooMany", { total }), remedy: t("roster.selectAll.remedy", { max: BULK_MAX }) },
                 countUnit: "person" as const,
-                selectionActions: <Suspense fallback={null}><RosterBulk sel={sel} rows={r.rows} total={total} query={r.query} onClear={setSel} onDone={bulkDone} /></Suspense>,
+                selectionActions: <RosterBulk sel={sel} rows={r.rows} total={total} query={r.query} onClear={setSel} onDone={bulkDone} />,
               })}
             />
           </>
