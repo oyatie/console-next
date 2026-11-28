@@ -86,7 +86,7 @@ const exitCase = createRoute({
 });
 const people = createRoute({
   getParentRoute: () => app,
-  path: "/people", staticData: { access: readRequirement("/people"), floorplan: "P-01", pattern: "list-record" },
+  path: "/people", staticData: { preloadUserCapabilities: true, access: readRequirement("/people"), floorplan: "P-01", pattern: "list-record" },
   beforeLoad: () => ({ peopleAccess: {
     roster: readRequirement("/people"), appointments: readRequirement("/people/bulk"),
     notices: readRequirement("/people/notices"), exits: readRequirement("/people/exits"), unplaced: readRequirement("/people/unplaced"),

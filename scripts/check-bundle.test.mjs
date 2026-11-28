@@ -53,6 +53,21 @@ describe("check-bundle budgets (JRN-FIRSTPAINT / J-HP-4)", () => {
     return { dir, dist, assets, dynamic, manifest, writeChunk, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
   };
 
+  it("charges the default directory route for the separately loaded roster layout", () => {
+    const mock = createMockDist();
+    try {
+      for (const file of ["index-main.js", "vendor-boot.js"]) mock.writeChunk(file, "boot");
+      const route = "src/features/people/ui/people-route.tsx";
+      const roster = "src/features/people/ui/roster-screen.tsx";
+      for (const [source, file] of [[route, "directory.js"], [roster, "roster.js"]]) {
+        mock.writeChunk(file, randomBytes(700).toString("base64"));
+        mock.dynamic(source, file);
+      }
+      const result = checkRouteBudgets(mock.dist, { list: { budget_kb: 1, routes: [route, roster] } });
+      assert.deepEqual(result.failures.map(failure => failure.route), [route]);
+    } finally { mock.cleanup(); }
+  });
+
   it("sign-in counts only the locale catalogs its loaders await, including shared imports once", () => {
     const mock = createMockDist();
     try {
