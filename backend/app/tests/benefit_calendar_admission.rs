@@ -97,6 +97,34 @@ async fn enrolled_modules_remain_independent_and_check_current_policy_before_rep
         .bind(org).bind(admin.as_uuid()).execute(&pool).await.unwrap();
     assert!(visible(&caller, "served_calendar").await);
     enroll(&pool, org, "calendar", false, "withdrawn").await;
+    let audited: Vec<(String, bool, String, Option<String>)> = sqlx::query_as(
+        "SELECT a.after_snap->>'module', (a.after_snap->>'enabled')::bool, r.resource_type, r.resource_id
+         FROM audit_events a JOIN resource_changes r ON r.org_id=a.org_id AND r.audit_event_id=a.id
+         WHERE a.org_id=$1 AND a.action='module.enrollment_change' ORDER BY a.occurred_at",
+    ).bind(org).fetch_all(&pool).await.unwrap();
+    assert_eq!(
+        audited,
+        [
+            (
+                "benefits".to_owned(),
+                true,
+                "tenant_settings".to_owned(),
+                None
+            ),
+            (
+                "calendar".to_owned(),
+                true,
+                "tenant_settings".to_owned(),
+                None
+            ),
+            (
+                "calendar".to_owned(),
+                false,
+                "tenant_settings".to_owned(),
+                None
+            ),
+        ]
+    );
     assert!(!visible(&caller, "served_calendar").await);
     disabled(
         caller
