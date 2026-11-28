@@ -5,7 +5,7 @@ import { Search } from "lucide-react";
 import { t } from "@console/i18n";
 import { fmtDate, fmtNumber } from "@console/i18n/format";
 import { SUPPORT_SESSION_STATE, codeText, label } from "../../../lib/labels";
-import { SupportLookup } from "../../../lib/react/support-lookup";
+import { SupportLookupForm } from "../../../lib/react/support-lookup";
 import { Button } from "../../../ui/button/button";
 import { Dialog } from "../../../ui/dialog";
 import { EmptyState } from "../../../ui/empty-state";
@@ -287,7 +287,7 @@ export function SupportConsole({
           ) : null}
           <SupportTokenDialog outcome={startedToken} onClose={() => setStartedToken(null)} />
           <Dialog open={lookupOpen} title={t("tenants.supportLookup.title")} onClose={() => setLookupOpen(false)}>
-            <SupportLookup />
+            <SupportLookupForm />
             <div className="form__actions">
               <Button onClick={() => setLookupOpen(false)}>{t("tenants.code.close")}</Button>
             </div>
