@@ -12,7 +12,7 @@ app/src/workflow_object_context.rs	460
 app/src/workflow_studio.rs	7096
 app/tests/action_inbox_api.rs	877
 app/tests/attendance_persona_api.rs	415
-app/tests/audit_api.rs	754
+app/tests/audit_api.rs	684
 app/tests/auth_rest.rs	4469
 app/tests/benefit_catalog_api.rs	317
 app/tests/board_ack_api.rs	358
