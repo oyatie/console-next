@@ -184,7 +184,7 @@ export function WorkspaceTabs({
           {tab.icon}
         </bdi>
       ) : null}
-      <bdi className={s.title}>{tab.label}</bdi>
+      <bdi className={s.title} title={tab.label}>{tab.label}</bdi>
       {tab.count !== undefined && tab.count > 0 ? <Badge count={tab.count} /> : null}
     </>
   );

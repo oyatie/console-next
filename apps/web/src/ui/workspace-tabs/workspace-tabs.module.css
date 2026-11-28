@@ -64,7 +64,13 @@
   cursor: pointer;
 }
 
+/* A working tab changes routes in place. Keep its close button under the pointer when its title changes. */
+.cell[data-closable] {
+  inline-size: calc(var(--space-6) * 5);
+}
+
 .cell[data-closable] .tabLink {
+  flex: 1;
   padding-inline-end: var(--space-1);
 }
 

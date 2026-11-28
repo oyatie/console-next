@@ -113,6 +113,10 @@ test("on a desktop a record tab's close and the new-tab button wait for its titl
   const standIn = t("shellRoutes.peopleCard");
   const asked = Promise.withResolvers<void>(), done = Promise.withResolvers<void>();
   await openPhoneShell("LINKED", { width: 1440, held: { path: "/api/v1/employees/p1", asked: asked.resolve, done: done.promise } });
+  const accountClose = close(t("shell.profile"));
+  await element(accountClose).toBeVisible();
+  const accountCloseBox = await accountClose.boundingBox();
+  const addBox = await add.boundingBox();
   try {
     await page.getByRole("button", { name: "go-person", exact: true }).click();
     await asked.promise;
@@ -124,6 +128,8 @@ test("on a desktop a record tab's close and the new-tab button wait for its titl
   } finally { done.resolve(); }
   await element(close("Minji Kim")).toBeVisible();
   await element(add).toBeVisible();
+  expect(await close("Minji Kim").boundingBox()).toEqual(accountCloseBox);
+  expect(await add.boundingBox()).toEqual(addBox);
 
   // A refused record never names its tab, so both come back once the screen stops reading.
   await page.evaluate(() => localStorage.clear());
