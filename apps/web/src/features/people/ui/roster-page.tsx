@@ -7,8 +7,7 @@ import { useCan } from "../../../reference/authz/ui/use-can";
 import { RosterExport } from "./roster-export";
 import { useRosterScreen } from "./use-roster-screen";
 
-const RosterScreen = lazyRouteComponent(() => chunk(import("./roster-screen")), "RosterScreen");
-export const preloadRosterScreen = () => RosterScreen.preload?.();
+export const RosterScreen = lazyRouteComponent(() => chunk(import("./roster-screen")), "RosterScreen");
 
 export function RosterPage(props: { manage: boolean; scoped?: boolean; switcher?: ReactNode; notice?: ReactNode; tabs?: ReactNode }) {
   const screen = useRosterScreen();

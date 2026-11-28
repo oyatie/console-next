@@ -8,7 +8,7 @@ import { ToggleButton } from "../../ui/button/button";
 import { ExperienceSwitch } from "../../ui/patterns/pattern-shell";
 import { ApiError, authzQuery, granted, myAccessQuery } from "../../reference/authz/api";
 import { PeopleHead, type PeopleView } from "./ui/people-head";
-import { preloadRosterScreen, RosterPage } from "./ui/roster-page";
+import { RosterPage, RosterScreen } from "./ui/roster-page";
 import s from "./ui/roster.module.css";
 import { PEOPLE_TABS, type PeopleTab } from "./domain/people-tabs";
 import type { ExitFilter } from "./api";
@@ -114,7 +114,7 @@ export function PeopleDirectory({ tabs }: { tabs?: ReactNode } = {}) {
   const navigate = route.useNavigate();
   const authz = useQuery(authzQuery);
   useEffect(() => {
-    if (asked !== "accounts" && placement !== "unplaced") void preloadRosterScreen()?.catch(() => undefined);
+    if (asked !== "accounts" && placement !== "unplaced") void RosterScreen.preload?.()?.catch(() => undefined);
   }, [asked, placement]);
   const can = granted(authz.data?.capabilities);
   // BW-22: a full directory read on any branches lists that reader's branches; a user manager without one has the
