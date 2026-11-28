@@ -123,14 +123,23 @@ async fn setup_preflight_preserves_the_full_routed_step_set(pool: PgPool) {
         }
         let (status, full) = ctx.call("GET", "/api/v1/onboarding/checklist", None).await;
         assert_eq!(status, ::http::StatusCode::OK, "{full}");
-        let keys: Vec<_> = full["steps"]
-            .as_array()
-            .unwrap()
+        let steps = full["steps"].as_array().unwrap();
+        let overtime = steps.iter().find(|step| step["key"] == "overtime").unwrap();
+        assert_eq!(overtime["needs"], "settings::edit");
+        assert_eq!(overtime["skippable"], false);
+        let keys: Vec<_> = steps
             .iter()
             .filter(|step| step["can_act"] == true)
             .map(|step| step["key"].as_str().unwrap())
             .collect();
-        assert_eq!(keys, if routed { vec!["approval"] } else { vec![] });
+        assert_eq!(
+            keys,
+            if routed {
+                vec!["approval", "overtime"]
+            } else {
+                vec!["overtime"]
+            }
+        );
         let (status, page) = ctx.call("GET", "/api/v1/me/action-inbox", None).await;
         assert_eq!(status, ::http::StatusCode::OK, "{page}");
         assert!(page["unavailable"].as_array().unwrap().is_empty(), "{page}");

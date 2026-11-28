@@ -152,7 +152,7 @@ async fn read(
         .await
         .map_err(|error| source_failure("clock", error))?;
     let (org, account) = (principal.org_id, principal.user_id);
-    let (created_at, deadline_due_soon_days, policies, snooze_days, snoozed, public_holidays) =
+    let (created_at, deadline_due_soon_days, policies, snooze_days, snoozed) =
         console_platform_db::with_org_conn::<
             _,
             _,
@@ -171,16 +171,7 @@ async fn read(
                 .fetch_one(tx.as_mut())
                 .await
                 .map_err(console_platform_db::DbError::from)?;
-                let holidays: std::collections::HashSet<time::Date> =
-                    sqlx::query_scalar::<_, time::Date>(
-                        "SELECT holiday_date FROM attendance_public_holidays",
-                    )
-                    .fetch_all(tx.as_mut())
-                    .await
-                    .unwrap_or_default()
-                    .into_iter()
-                    .collect();
-                Ok((created, window, policies, snooze_days, snoozed, holidays))
+                Ok((created, window, policies, snooze_days, snoozed))
             })
         })
         .await
@@ -197,7 +188,6 @@ async fn read(
         support_can_approve: tokio::sync::OnceCell::new(),
         privacy_can_handle: tokio::sync::OnceCell::new(),
         statutory_register: request_register::Register::default(),
-        public_holidays,
         setup_created_at: created_at,
         deadline_due_soon_days,
         policies,
@@ -247,7 +237,6 @@ struct PgActionInboxSources {
     support_can_approve: tokio::sync::OnceCell<bool>,
     privacy_can_handle: tokio::sync::OnceCell<bool>,
     statutory_register: request_register::Register,
-    public_holidays: std::collections::HashSet<time::Date>,
     setup_created_at: OffsetDateTime,
     deadline_due_soon_days: i64,
     policies: policy::Policies,

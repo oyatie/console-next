@@ -5,11 +5,12 @@ mod fixtures;
 #[path = "support/http.rs"]
 mod http;
 mod inbox_pool;
+#[path = "inbox_register_once/privacy.rs"]
+mod privacy;
 #[path = "support/reference_logs.rs"]
 mod reference_logs;
 mod settings_support;
 use ::http::StatusCode;
-use console_compliance_adapter_postgres::{PgComplianceStore, rights};
 use serde_json::Value;
 use sqlx::PgPool;
 use tracing::instrument::WithSubscriber;
@@ -265,27 +266,7 @@ async fn a_due_read_from_the_statutory_register_says_so_and_no_other_due_does(po
         .execute(&pool)
         .await
         .unwrap();
-    // A privacy rights request reaches a handler who may edit HR records, not its own subject.
-    let hr = http::add_user(&pool, org, &["MEMBER"]).await;
-    let grant = settings_support::seed_role_and_grant(&pool, org, user, hr, "TENANT", None).await;
-    sqlx::query("INSERT INTO access_role_versions (org_id,role_id,version,name_ko,status,change_mode,created_by) SELECT org_id,role_id,2,name_ko,status,change_mode,created_by FROM access_role_versions WHERE org_id=$1 AND version=1 AND role_id=(SELECT role_id FROM access_grants WHERE id=$2)")
-        .bind(org).bind(grant).execute(&pool).await.unwrap();
-    sqlx::query("INSERT INTO access_role_lines (org_id,role_id,version,domain,levels) SELECT org_id,role_id,2,'hr_basic',ARRAY['edit'] FROM access_grants WHERE org_id=$1 AND id=$2")
-        .bind(org).bind(grant).execute(&pool).await.unwrap();
-    sqlx::query("UPDATE access_roles SET version=2 WHERE org_id=$1 AND id=(SELECT role_id FROM access_grants WHERE id=$2)")
-        .bind(org).bind(grant).execute(&pool).await.unwrap();
-    let runtime = fixtures::runtime_pool(&pool).await;
-    let register = PgComplianceStore::new(runtime.clone())
-        .statutory_register()
-        .await
-        .unwrap();
-    let tenant = console_kernel_core::OrgId::from_uuid(org);
-    let filing = serde_json::from_str(r#"{"controller":"TENANT","kinds":["ACCESS"]}"#).unwrap();
-    let mut tx = rights::begin(&runtime, tenant).await.unwrap();
-    rights::file(&mut tx, tenant, user, Some(employee), &filing, &register)
-        .await
-        .unwrap();
-    tx.commit().await.unwrap();
+    let hr = privacy::file_for_independent_handler(&pool, org, user).await;
     let (page, _) = read(&ctx).await;
     let (intake, _) = read(&http::ctx(&pool, org, hr, &["MEMBER"], None).await).await;
     let items: Vec<&Value> = [&page, &intake]

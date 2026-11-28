@@ -71,6 +71,7 @@ properties:
     - setup_passkey
     - setup_employees
     - setup_roles
+    - setup_overtime
     - setup_golive
     - support_access
     - registration_check
