@@ -154,7 +154,6 @@ impl SettingKey {
         matches!(
             self,
             Self::AuthIdleTimeoutMinutes
-                | Self::AttendanceConsoleClockOut
                 | Self::ApprovalPolicyOrgStructure
                 | Self::ApprovalPolicyPeopleCorrection
                 | Self::ApprovalPolicyIdentityMerge
