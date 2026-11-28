@@ -13,7 +13,6 @@ import { authPost, session } from "./session";
 setRecoveryNotifier(noteCancelledRecovery);
 export { cancelledRecoveryNotice, dismissCancelledRecoveryNotice, subscribeCancelledRecovery };
 
-export type RecoveryChannel = components["schemas"]["RecoveryChannel"];
 type RecoveryStatus = components["schemas"]["RecoveryStatusResponse"];
 type RecoveryContactStatus = components["schemas"]["RecoveryContactStatus"];
 type GeneratedRecoveryCodes = components["schemas"]["GenerateRecoveryCodesResponse"];
