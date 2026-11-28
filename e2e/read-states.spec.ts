@@ -92,6 +92,8 @@ test.describe("route requirements with a real grantless account", () => {
                 documents: ko["audit.vault.permission"],
                 served_integrity_findings: ko["audit.findings.permission"],
                 served_integrity_triage: ko["audit.findings.permission"],
+                served_evaluation_cycles: ko["evaluation.title"],
+                served_evaluation_cycle_create: ko["evaluation.create"],
                 served_evaluation_tasks: ko["me.evaluation.permission"],
                 served_location_consent_ledger: ko["audit.consents.permission"],
               };

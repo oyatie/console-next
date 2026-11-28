@@ -71,5 +71,6 @@ pub(crate) async fn get_me_authz(
         (state.integrity_access)(&principal),
         (state.ledger_access)(&principal),
         (state.evaluation_tasks)(&principal),
+        (state.evaluation_cycles)(&principal),
     )))
 }

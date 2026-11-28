@@ -18,7 +18,8 @@ import { inboxRoute } from "./inbox";
 import { approvalsRoute, approvalNewRoute, approvalViewerRoute } from "./approvals";
 import { leaveRoute } from "./leave";
 import { payslipsRoute } from "./payslips";
+import { evaluationRoutes } from "./evaluation";
 import { meRoutes } from "./me";
 import { teamRoutes } from "./team";
 
-export const routeTree = root.addChildren([...frame.signIn, app.addChildren([...frame.screens, ...payrollRoutes, ...orgRoutes, ...entityRoutes, ...onboardingRoutes, companyDomainRoute, ...peopleRoutes, ...identifierRoutes, ...accessRoutes, ...auditRoutes, ...orgBulkRoutes, ...requestRoutes, ...attendanceRoutes, statutoryRoute, settingsRoute, inboxRoute, approvalsRoute, approvalNewRoute, approvalViewerRoute, leaveRoute, payslipsRoute, ...meRoutes, ...teamRoutes])]);
+export const routeTree = root.addChildren([...frame.signIn, app.addChildren([...frame.screens, ...payrollRoutes, ...orgRoutes, ...entityRoutes, ...onboardingRoutes, companyDomainRoute, ...peopleRoutes, ...identifierRoutes, ...accessRoutes, ...auditRoutes, ...orgBulkRoutes, ...requestRoutes, ...attendanceRoutes, statutoryRoute, settingsRoute, inboxRoute, approvalsRoute, approvalNewRoute, approvalViewerRoute, leaveRoute, payslipsRoute, ...meRoutes, ...teamRoutes, ...evaluationRoutes])]);

@@ -2,7 +2,7 @@
 import type { AccessEffective } from "../api";
 
 export type Requirement = { action: keyof NonNullable<AccessEffective["decisions"]> } | { domain: AccessEffective["entries"][number]["domain"]; level: AccessEffective["entries"][number]["level"]; tenant?: boolean; scopes?: readonly AccessEffective["entries"][number]["scope"]["kind"][] };
-export type ServedCapability = "served_evaluation_tasks" | "documents" | "served_integrity_findings" | "served_integrity_triage" | "served_location_consent_ledger";
+export type ServedCapability = "served_evaluation_cycles" | "served_evaluation_cycle_create" | "served_evaluation_tasks" | "documents" | "served_integrity_findings" | "served_integrity_triage" | "served_location_consent_ledger";
 export type AccessRequirement = Requirement | { servedCapability: ServedCapability } | { allOf: readonly Requirement[] } | { destinations: readonly AccessRequirement[] };
 
 /** The server already Cedar-checked ENFORCED rows; prepared or expired grants never open a form. */

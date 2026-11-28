@@ -1,0 +1,10 @@
+{
+  "baseline": {
+    "apps/web/src/features/evaluation/ui/cycles.tsx#EvaluationCycles": 17,
+    "apps/web/src/features/evaluation/ui/create-cycle.tsx#CreateEvaluationCycle": 31
+  },
+  "newScreens": {
+    "apps/web/src/features/evaluation/ui/cycles.tsx#EvaluationCycles": { "FACT": 13, "REFUSAL": 3, "EMPTY": 1, "LEGAL": 0, "RECEIPT": 0, "EXPLANATION": 0 },
+    "apps/web/src/features/evaluation/ui/create-cycle.tsx#CreateEvaluationCycle": { "FACT": 8, "REFUSAL": 22, "EMPTY": 0, "LEGAL": 0, "RECEIPT": 1, "EXPLANATION": 0 }
+  }
+}

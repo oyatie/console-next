@@ -123,7 +123,10 @@ impl PgEvaluationStore {
             Box::pin(async move {
                 let stage = query.stage.map(CycleStage::as_db);
                 let rows = sqlx::query(
-                    "SELECT c.id, c.name, c.kind, c.period_label, c.due_date, c.stage, c.created_at, \
+                    "WITH visible AS NOT MATERIALIZED (SELECT * FROM evaluation_cycles c \
+                          WHERE ($1::text IS NULL AND c.stage <> 'ARCHIVED') OR c.stage=$1), \
+                        page AS (SELECT * FROM visible ORDER BY created_at DESC, id DESC LIMIT $2 OFFSET $3) \
+                     SELECT tally.total, c.id, c.name, c.kind, c.period_label, c.due_date, c.stage, c.created_at, \
                             (SELECT count(*) FROM evaluation_subjects s WHERE s.cycle_id = c.id) AS subjects_total, \
                             (SELECT count(*) FROM evaluation_subjects s \
                                WHERE s.cycle_id = c.id AND EXISTS (SELECT 1 FROM evaluation_reviews r \
@@ -135,27 +138,23 @@ impl PgEvaluationStore {
                                WHERE s.cycle_id = c.id AND s.calibrated_grade IS NOT NULL) AS calibrated, \
                             (SELECT count(*) FROM evaluation_subjects s \
                                WHERE s.cycle_id = c.id AND s.final_grade IS NOT NULL) AS finalized \
-                     FROM evaluation_cycles c \
-                     WHERE ($1::text IS NULL AND c.stage <> 'ARCHIVED') OR c.stage = $1 \
-                     ORDER BY c.created_at DESC \
-                     LIMIT $2 OFFSET $3",
+                     FROM (SELECT count(*) AS total FROM visible) tally LEFT JOIN page c ON true \
+                     ORDER BY c.created_at DESC, c.id DESC",
                 )
                 .bind(stage)
                 .bind(query.limit)
                 .bind(query.offset)
                 .fetch_all(tx.as_mut())
                 .await?;
-                let total: i64 = sqlx::query_scalar(
-                    "SELECT count(*) FROM evaluation_cycles c \
-                     WHERE ($1::text IS NULL AND c.stage <> 'ARCHIVED') OR c.stage = $1",
-                )
-                .bind(stage)
-                .fetch_one(tx.as_mut())
-                .await?;
-                let items = rows
-                    .into_iter()
-                    .map(cycle_summary_from_row)
-                    .collect::<Result<Vec<_>, PgEvaluationError>>()?;
+                // The count and page share one snapshot. The outer join retains the total even past the last row.
+                let mut total = 0;
+                let mut items = Vec::with_capacity(rows.len());
+                for row in rows {
+                    total = row.try_get("total")?;
+                    if row.try_get::<Option<Uuid>, _>("id")?.is_some() {
+                        items.push(cycle_summary_from_row(row)?);
+                    }
+                }
                 Ok(CyclePage { items, total })
             })
         })
