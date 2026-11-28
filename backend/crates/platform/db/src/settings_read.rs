@@ -57,6 +57,20 @@ pub async fn load_rows_in_tx(
     keys: &[SettingKey],
     entity: Option<Uuid>,
 ) -> Result<(Vec<SettingScope>, BTreeMap<SettingKey, Vec<OverrideRow>>), KernelError> {
+    load_scoped_rows_in_tx(conn, org, keys, entity, false).await
+}
+
+/// Historical document retention can resolve settings for archived workplaces and legal entities.
+///
+/// # Errors
+/// As [`load_rows_in_tx`].
+pub async fn load_scoped_rows_in_tx(
+    conn: &mut PgConnection,
+    org: OrgId,
+    keys: &[SettingKey],
+    entity: Option<Uuid>,
+    include_archived: bool,
+) -> Result<(Vec<SettingScope>, BTreeMap<SettingKey, Vec<OverrideRow>>), KernelError> {
     let wire: Vec<&str> = keys.iter().map(|k| k.as_str()).collect();
     let platform_keys: Vec<&str> = keys
         .iter()
@@ -64,13 +78,34 @@ pub async fn load_rows_in_tx(
         .map(|key| key.as_str())
         .collect();
     let scope_rows = if let Some(target_id) = entity {
-        let fetched =
+        let mut fetched =
             sqlx::query("SELECT scope_id, layer FROM setting_scope_chain($1, $2) ORDER BY seq")
                 .bind(org.as_uuid())
                 .bind(target_id)
                 .fetch_all(&mut *conn)
                 .await
                 .map_err(db_error)?;
+        if fetched.is_empty() && include_archived {
+            fetched = sqlx::query(
+                "WITH target AS (
+                    SELECT w.id AS workplace, e.id AS entity FROM workplaces w
+                      JOIN legal_entities e ON e.org_id=w.org_id AND e.id=w.legal_entity_id
+                     WHERE w.org_id=$1 AND w.id=$2
+                    UNION ALL
+                    SELECT NULL::uuid, e.id FROM legal_entities e WHERE e.org_id=$1 AND e.id=$2
+                    ORDER BY workplace NULLS LAST LIMIT 1
+                 )
+                 SELECT scope_id, layer FROM target
+                   CROSS JOIN LATERAL (VALUES (1, workplace, 'workplace'), (2, entity, 'legal_entity'))
+                      AS scopes(seq, scope_id, layer)
+                  WHERE scope_id IS NOT NULL ORDER BY seq",
+            )
+            .bind(org.as_uuid())
+            .bind(target_id)
+            .fetch_all(&mut *conn)
+            .await
+            .map_err(db_error)?;
+        }
         if fetched.is_empty() {
             tracing::warn!(code = "setting_scope_unknown", "settings scope refused");
             return Err(KernelError::validation("unknown setting scope")

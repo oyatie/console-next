@@ -196,15 +196,14 @@ async fn closed_heads_are_not_live_even_with_a_future_recorded_date(pool: PgPool
             code(store.list_live_effective(actor.org, Some(scope)).await),
             "setting_scope_unknown"
         );
-        assert_eq!(
-            store
-                .list_effective(actor.org, Some(scope))
-                .await
-                .unwrap()
-                .items
-                .len(),
-            SettingKey::ALL.len()
-        );
+        let retained = store.list_effective(actor.org, Some(scope)).await.unwrap();
+        assert_eq!(retained.items.len(), SettingKey::ALL.len());
+        let expected_chain = if scope == workplace {
+            vec![workplace, entity]
+        } else {
+            vec![entity]
+        };
+        assert_eq!(retained.resource_entities, expected_chain);
         let mut cmd = change(json!(20), None);
         cmd.scope_entity_id = Some(scope);
         assert_eq!(

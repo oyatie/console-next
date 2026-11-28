@@ -189,8 +189,14 @@ impl PgSettingsStore {
                 if live_scope {
                     tx::require_live_scope(tx.as_mut(), org, entity).await?;
                 }
-                let (chain, rows) =
-                    load_rows_in_tx(tx.as_mut(), org, SettingKey::ALL, entity).await?;
+                let (chain, rows) = console_platform_db::settings_read::load_scoped_rows_in_tx(
+                    tx.as_mut(),
+                    org,
+                    SettingKey::ALL,
+                    entity,
+                    !live_scope,
+                )
+                .await?;
                 Ok(EffectiveSettings {
                     items: read::effective_settings(&rows, &chain, now),
                     resource_entities: chain.iter().map(|scope| scope.id).collect(),
