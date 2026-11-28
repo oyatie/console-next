@@ -127,6 +127,11 @@ async fn capture(response: Response, path: &str) -> (Response, Option<Value>, Op
     }
     let replay_status = super::response::replay_status(status, path);
     // A clear value opens only through the governed reveal, so its answer is never kept for a replay.
+    // Invitations return a plaintext first-use OTP only in the immediate response.
+    // Their separate receipt requires fresh step-up and current invite authority.
+    if path == "/api/v1/access/invites" {
+        return (response, None, None);
+    }
     if path.ends_with("/reveal") {
         return (response, None, Some(replay_status.as_u16() as i16));
     }

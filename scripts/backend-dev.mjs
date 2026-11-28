@@ -137,6 +137,8 @@ function rrnKeys() {
     return readFileSync(file, "utf8").trim();
   };
   return {
+    ...(process.env.CONSOLE_RECOVERY_CONTACT_KEYRING || process.env.CONSOLE_RECOVERY_CONTACT_KEYRING_FILE || process.env.CONSOLE_RECOVERY_CONTACT_MASTER_KEY_FILE
+      ? {} : { CONSOLE_RECOVERY_CONTACT_MASTER_KEY: process.env.CONSOLE_RECOVERY_CONTACT_MASTER_KEY ?? key("recovery-contact-master.key") }),
     CONSOLE_RRN_MASTER_KEY: process.env.CONSOLE_RRN_MASTER_KEY ?? key("rrn-master.key"),
     CONSOLE_RRN_HMAC_KEY: process.env.CONSOLE_RRN_HMAC_KEY ?? key("rrn-hmac.key"),
     CONSOLE_OTP_HMAC_KEY: process.env.CONSOLE_OTP_HMAC_KEY ?? key("otp-hmac.key"),

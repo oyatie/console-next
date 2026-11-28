@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test, mount, expectWindowAt } from "./grid-table-fixture.playwright";
+import { expect, test, mount, expectWindowAt, expectBoundedRows, gridActionBar, rowHeight } from "./grid-table-fixture.playwright";
 import { expectAxe } from "../../../../../../e2e/a11y";
 
 const unicode = "a \u3131";
 
 test("document scrolling renders the visible rows with the GridPage wrapper", async ({ page }) => {
   await mount(page);
-  await page.evaluate(() => window.scrollTo(0, 8000));
+  await page.evaluate(y => window.scrollTo(0, y), 200 * await rowHeight(page));
   await expectWindowAt(page, 200);
-  await page.evaluate(() => window.scrollTo(0, 40000));
+  await page.evaluate(y => window.scrollTo(0, y), 1000 * await rowHeight(page));
   await expectWindowAt(page, 1000);
 });
 
@@ -16,12 +16,12 @@ test("focused row does not pin rendering during parent scrolling", async ({ page
   await mount(page, true);
   await page.locator("#grid-0-0").focus();
   await expect.poll(() => page.locator("#grid-0-0 input").evaluate((el) => el === document.activeElement)).toBe(true);
-  await page.locator("#scroller").evaluate((el) => { el.scrollTop = 40000; });
+  await page.locator("#scroller").evaluate((el, y) => { el.scrollTop = y; }, 1000 * await rowHeight(page));
   await expectWindowAt(page, 1000);
   expect(await page.getByRole("grid").evaluate((el) => el === document.activeElement)).toBe(true);
   await page.keyboard.press("ArrowDown");
   await expect.poll(() => page.locator("#grid-1-0 input").evaluate((el) => el === document.activeElement)).toBe(true);
-  await page.locator("#scroller").evaluate((el) => { el.scrollTop = 8000; });
+  await page.locator("#scroller").evaluate((el, y) => { el.scrollTop = y; }, 200 * await rowHeight(page));
   await expectWindowAt(page, 200);
 });
 
@@ -30,7 +30,7 @@ test("scrolling an edited cell out of view keeps its draft", async ({ page }) =>
   await page.locator("#grid-0-2").focus();
   await page.keyboard.press("F2");
   await page.locator("#grid-0-2 input").fill("Updated draft");
-  await page.locator("#scroller").evaluate((el) => { el.scrollTop = 40000; });
+  await page.locator("#scroller").evaluate((el, y) => { el.scrollTop = y; }, 1000 * await rowHeight(page));
   await expectWindowAt(page, 1000);
   expect(await page.getByRole("grid").evaluate((el) => el === document.activeElement)).toBe(true);
   await page.locator("#scroller").evaluate((el) => { el.scrollTop = 0; });
@@ -43,7 +43,7 @@ for (const bounded of [false, true]) {
     await page.getByRole("grid").focus();
     await page.keyboard.press("Control+End");
     await expect.poll(() => page.locator("#grid-1999-2 input").evaluate((el) => el === document.activeElement)).toBe(true);
-    expect(await page.getByRole("rowheader").count()).toBeLessThanOrEqual(25 + 10);
+    await expectBoundedRows(page);
     expect(await page.locator("#grid-0-0").count()).toBe(0);
     await expect.poll(() => page.locator("#grid-1999-2").evaluate((el) => {
       const rect = el.getBoundingClientRect();
@@ -121,7 +121,7 @@ test("ArrowDown preserves focus across the render boundary", async ({ page }) =>
   await page.locator("#grid-0-2").click();
   for (let i = 0; i < 70; i++) await page.keyboard.press("ArrowDown");
   await expect.poll(() => page.evaluate(() => document.activeElement?.closest('[role="gridcell"]')?.id)).toBe("grid-70-2");
-  expect(await page.getByRole("rowheader").count()).toBeLessThanOrEqual(25 + 10);
+  await expectBoundedRows(page);
 });
 
 for (const bounded of [false, true]) {
@@ -157,13 +157,14 @@ test("Shift+Tab leaves the grid's single tab stop", async ({ page }) => {
 
 test("density changes keep virtual spacers aligned with rows", async ({ page }) => {
   await mount(page, true);
-  for (const [density, height] of [["regular", 40], ["compact", 32], ["regular", 40]] as const) {
+  for (const density of ["regular", "compact", "regular"] as const) {
+    const height = await page.locator("#scroller").evaluate((el, name) => parseFloat(getComputedStyle(el).getPropertyValue(name)), density === "regular" ? "--row-h" : "--row-h-compact");
     await page.locator("#scroller").evaluate((el, value) => { el.setAttribute("data-density", value); }, density);
     await expect.poll(() => page.getByRole("rowheader").first().evaluate((el) => el.getBoundingClientRect().height)).toBe(height);
     await page.locator("#grid-0-0").focus();
     await page.keyboard.press("Control+End");
     await expect.poll(() => page.locator("#grid-1999-2 input").evaluate((el) => el === document.activeElement)).toBe(true);
-    expect(await page.getByRole("rowheader").count()).toBeLessThanOrEqual(25 + 10);
+    await expectBoundedRows(page);
     await expect.poll(() => page.locator("#grid-1999-2").evaluate((el) => {
       const bounds = el.getBoundingClientRect();
       const wrapper = document.getElementById("scroller")!.getBoundingClientRect();
@@ -188,7 +189,7 @@ test("GridPage Paste focuses row one after it unmounts", async ({ page }) => {
     await page.getByRole("button", { name: /^Paste/ }).click();
     await expect.poll(() => page.evaluate(() => document.activeElement?.closest('[role="gridcell"]')?.id)).toBe("grid-0-0");
   }
-  expect(await page.getByRole("rowheader").count()).toBeLessThanOrEqual(25 + 10);
+  await expectBoundedRows(page);
 });
 
 test("GridPage First error reaches an unmounted stale_record refusal", async ({ page }) => {
@@ -204,14 +205,14 @@ test("GridPage First error reaches an unmounted stale_record refusal", async ({ 
   await page.keyboard.insertText("Updated draft");
   await page.keyboard.press("Enter");
   expect(await page.locator("#grid-0-2").textContent()).toContain("Updated draft");
-  expect(await page.locator("footer").getByRole("button").last().getAttribute("aria-disabled"), await page.locator("footer").innerText()).toBeNull();
+  expect(await page.locator(gridActionBar).getByRole("button").last().getAttribute("aria-disabled"), await page.locator(gridActionBar).innerText()).toBeNull();
   await page.getByRole("button", { name: "Check", exact: true }).click();
   await page.getByRole("button", { name: "Back to editing" }).click();
   expect(await page.locator("#grid-999-2").count()).toBe(0);
   await page.getByRole("button", { name: "Fix errors first" }).click();
   await expect.poll(() => page.evaluate(() => document.activeElement?.closest('[role="gridcell"]')?.id)).toBe("grid-999-2");
   expect(await page.locator("#grid-999-2").getAttribute("aria-invalid")).toBe("true");
-  expect(await page.getByRole("rowheader").count()).toBeLessThanOrEqual(25 + 10);
+  await expectBoundedRows(page);
   await page.getByRole("button", { name: /^Changed/ }).click();
   expect(await page.locator("#grid-999-2").count()).toBe(0);
   await page.getByRole("button", { name: "Fix errors first" }).click();
@@ -231,17 +232,17 @@ test("GridPage keeps the last focused cell above the footer and its header in vi
   await page.getByRole("grid").focus();
   await page.keyboard.press("Control+End");
   await expect.poll(() => page.locator("#grid-1999-2 input").evaluate((el) => el === document.activeElement)).toBe(true);
-  const bounds = await page.locator("#grid-1999-2").evaluate((el) => {
+  const bounds = await page.locator("#grid-1999-2").evaluate((el, selector) => {
     const cell = el.getBoundingClientRect();
-    const bar = document.querySelector('#gallery-grid-table footer')!.getBoundingClientRect();
+    const bar = document.querySelector(selector)!.getBoundingClientRect();
     const header = document.querySelector('#gallery-grid-table [role="columnheader"]')!.getBoundingClientRect();
     return { cellBottom: cell.bottom, cellTop: cell.top, barTop: bar.top, barBottom: bar.bottom, headerTop: header.top, headerBottom: header.bottom };
-  });
+  }, gridActionBar);
   expect(bounds.cellBottom).toBeLessThanOrEqual(bounds.barTop);
   expect(bounds.barBottom).toBeLessThanOrEqual(800);
   expect(bounds.headerTop).toBeGreaterThanOrEqual(0);
   expect(bounds.headerBottom).toBeLessThanOrEqual(bounds.cellTop);
-  expect(await page.getByRole("rowheader").count()).toBeLessThanOrEqual(25 + 10);
+  await expectBoundedRows(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await expectAxe(page, "bulk correction grid at 390px in dark mode", { include: "#gallery-grid-table" });
 });

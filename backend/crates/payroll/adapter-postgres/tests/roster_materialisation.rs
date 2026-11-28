@@ -19,6 +19,8 @@ mod pay_group;
 mod pay_group_ambiguous;
 #[path = "roster_materialisation/pay_group_close.rs"]
 mod pay_group_close;
+#[path = "roster_materialisation/pay_group_transfer.rs"]
+mod pay_group_transfer;
 #[path = "roster_materialisation/placement.rs"]
 mod placement;
 #[path = "roster_materialisation/placement_migration.rs"]

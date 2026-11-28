@@ -88,6 +88,61 @@ pub fn is_valid_sha256_digest(digest: &str) -> bool {
     })
 }
 
+impl GateStatement {
+    pub fn release_image(&self, digest: &str) -> Option<String> {
+        if !is_valid_sha256_digest(digest) {
+            return None;
+        }
+        let hex = digest.strip_prefix("sha256:")?;
+        let mut matching = self
+            .subject
+            .iter()
+            .filter(|s| s.digest.get("sha256").map(String::as_str) == Some(hex));
+        let name = matching.next()?.name.as_deref()?;
+        let (host, repo) = name.split_once('/')?;
+        if matching.next().is_some()
+            || !host
+                .as_bytes()
+                .first()
+                .is_some_and(u8::is_ascii_alphanumeric)
+            || !(host.contains('.') || host.contains(':') || host == "localhost")
+            || repo.is_empty()
+            || !host
+                .bytes()
+                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || b".:-".contains(&c))
+            || !repo.split('/').all(|part| {
+                !part.is_empty()
+                    && part.as_bytes()[0].is_ascii_alphanumeric()
+                    && part.bytes().all(|c| {
+                        c.is_ascii_lowercase() || c.is_ascii_digit() || b"._-".contains(&c)
+                    })
+            })
+        {
+            return None;
+        }
+        Some(format!("{name}@{digest}"))
+    }
+
+    pub fn promotion_gates_pass(&self) -> bool {
+        const COMMON: [&str; 5] = ["code-gates", "api-compat", "sbom", "scan", "smoke"];
+        let gates = &self.predicate.gates;
+        let mut names = std::collections::BTreeSet::new();
+        if !gates.iter().all(|g| {
+            names.insert(g.name.as_str())
+                && (g.result == "pass" || (g.name == "repro" && g.result == "skip"))
+        }) {
+            return false;
+        }
+        // The host also signs candidate and rehearsal gates; its weekly reproducibility check may skip.
+        COMMON.iter().all(|name| names.contains(name))
+            && if self.predicate.inputs.contains_key("infra") {
+                names.contains("candidate") && names.contains("rehearse")
+            } else {
+                names.len() == COMMON.len()
+            }
+    }
+}
+
 pub fn parse_gate_statement(
     raw: &str,
     expected_digest: Option<&str>,

@@ -217,10 +217,18 @@ pub(crate) async fn preview_invite(
 pub(crate) async fn create_invite(
     State(s): S,
     Extension(p): P,
+    settled: Option<Extension<console_platform_request_context::ReadInviteReceipt>>,
     headers: HeaderMap,
     Json(body): Json<invites::CreateInviteIn>,
 ) -> ApiResult<(StatusCode, Json<Value>)> {
-    let (created, out) = invites::create(&s.service, p, idempotency_key(&headers), body).await?;
+    let (created, out) = invites::create(
+        &s.service,
+        p,
+        idempotency_key(&headers),
+        body,
+        settled.is_some(),
+    )
+    .await?;
     let status = if created {
         StatusCode::CREATED
     } else {

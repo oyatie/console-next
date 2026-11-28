@@ -351,6 +351,33 @@ pub async fn calculate_run_in_tx(
         }
     }
 
+    // Modern runs have a unique source label per run. Their series is the pay group and kind.
+    // The target run is already locked, including during recalculation.
+    let carried = sqlx::query(
+        r"WITH previous AS (
+            SELECT p.id FROM payroll_draft_runs r JOIN payroll_draft_runs p
+              ON p.org_id = r.org_id AND p.period_end < r.period_start
+             AND p.pay_group_id IS NOT DISTINCT FROM r.pay_group_id
+             AND p.kind IS NOT DISTINCT FROM r.kind
+             AND (r.pay_group_id IS NOT NULL OR p.source_label = r.source_label)
+            WHERE r.id = $1 ORDER BY p.period_end DESC, p.created_at DESC, p.id DESC LIMIT 1
+        )
+        INSERT INTO payroll_run_exceptions
+            (org_id, run_id, employee_id, employee_display_name, kind, severity,
+             amount_delta_won, summary_ko, detail, linked_refs, carried_from_run_id)
+        SELECT e.org_id, $1, e.employee_id, e.employee_display_name, e.kind, e.severity,
+               e.amount_delta_won, e.summary_ko,
+               e.detail || jsonb_build_object('carried_from_exception_id', e.id), e.linked_refs, e.run_id
+        FROM payroll_run_exceptions e JOIN previous ON previous.id = e.run_id
+        WHERE e.status = 'HELD' AND NOT EXISTS (
+            SELECT 1 FROM payroll_run_exceptions x WHERE x.run_id = $1 AND x.carried_from_run_id = e.run_id
+              AND (x.detail->>'carried_from_exception_id' = e.id::text
+                   OR (NOT x.detail ? 'carried_from_exception_id' AND x.kind = e.kind
+                       AND x.employee_id IS NOT DISTINCT FROM e.employee_id))
+        )"
+    ).bind(run_id).execute(tx.as_mut()).await?;
+    exceptions_created += i64::try_from(carried.rows_affected()).unwrap_or(0);
+
     sqlx::query(
         "UPDATE payroll_draft_runs SET status = 'CALCULATED', updated_at = now() WHERE id = $1",
     )

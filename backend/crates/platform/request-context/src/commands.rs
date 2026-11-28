@@ -31,6 +31,10 @@ struct PreviewQuery {
 #[derive(Clone, Copy)]
 pub struct SupportsDryRun;
 
+/// An already applied invitation may read its redacted receipt, with fresh step-up.
+#[derive(Clone, Copy)]
+pub struct ReadInviteReceipt;
+
 pub(crate) async fn run(
     pool: &PgPool,
     p: &Principal,
@@ -191,6 +195,35 @@ pub(crate) async fn run(
             .await;
         }
         Ok(Reservation::Existing(mut out)) => {
+            if out.state == "APPLIED"
+                && matches!(
+                    out.command.as_str(),
+                    "POST /api/v1/access/invites" | "POST /api/v1/access/invites [respond-async]"
+                )
+            {
+                let mut request = request;
+                request.extensions_mut().insert(ReadInviteReceipt);
+                let response = command_context::scope(audit, async {
+                    let response = next.run(request).await;
+                    if response.status().is_client_error() {
+                        let (response, code) = response::refusal_code(response).await;
+                        if super::record_refusal(pool, p, &code, Some(out.id))
+                            .await
+                            .is_err()
+                        {
+                            return refusal(
+                                StatusCode::SERVICE_UNAVAILABLE,
+                                "service_unavailable",
+                                Some(out.id),
+                            );
+                        }
+                        return response;
+                    }
+                    response
+                })
+                .await;
+                return with_operation(response, out.id);
+            }
             if out.state == "APPLIED"
                 && super::record_access::outcome::readable(pool, p, &mut out, outcome_reader).await
                 && let Some(mut result) = out.result

@@ -47,7 +47,7 @@ pub async fn list_runs_filtered_in_tx(
         SELECT r.id, g.legal_entity_id, r.pay_group_id, r.kind,
                to_char(r.attribution_month, 'YYYY-MM') AS attribution_month,
                r.pay_date, r.period_start, r.period_end,
-               r.variable_period_start, r.variable_period_end,
+               r.variable_period_start, r.variable_period_end, r.attendance_cutoff_date,
                r.source_label, r.status, r.calculation_enabled, r.created_by,
                r.approved_by, r.approved_at, r.close_receipt, r.submitted_by,
                r.submitted_at, r.decided_by, r.decided_at, r.decision_reason,

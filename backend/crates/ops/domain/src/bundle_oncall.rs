@@ -158,7 +158,10 @@ pub fn validate_oncall_json(
         return Err(err("/mode", "expected single-operator or primary-backup"));
     }
     let display_status = check_non_banned_text(&root["display_status"], "/display_status")?;
-    check_non_banned_text(&root["timezone"], "/timezone")?;
+    check_non_banned_text(&root["timezone"], "/timezone")?
+        .trim()
+        .parse::<chrono_tz::Tz>()
+        .map_err(|_| err("/timezone", "expected an IANA timezone"))?;
     if mode == "single-operator" && display_status != "Single operator on call" {
         return Err(err(
             "/display_status",

@@ -15,7 +15,7 @@ use console_entity_adapter_postgres::{OrgUnitSetupFuture, OrgUnitSetupWritePort,
 use console_entity_rest::EntityRestState;
 use console_kernel_core::{KernelError, OrgId, UserId};
 use console_onboarding_adapter_postgres::PgOnboardingStore;
-use console_onboarding_rest::OnboardingRestState;
+use console_onboarding_rest::{OnboardingRestState, PersonalTaskRoutes};
 use console_ontology_canonical_adapter_postgres::org_unit::{
     OrgUnitCommand, OrgUnitError, OrgUnitQuery, write_in_tx,
 };
@@ -143,6 +143,11 @@ pub(crate) fn router(
     let onboarding = console_onboarding_rest::router(
         OnboardingRestState::new(PgOnboardingStore::new(pool), jwt, passkey)
             .with_payroll(cfg!(feature = "payroll"))
+            .with_personal_tasks(PersonalTaskRoutes {
+                location: cfg!(feature = "compliance"),
+                dispatch: cfg!(feature = "dispatch"),
+                workspace: cfg!(feature = "workspace"),
+            })
             .with_approvals(approvals_released),
     );
     entity.merge(onboarding).merge(exceptions)

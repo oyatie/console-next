@@ -34,22 +34,21 @@ export function ApprovalNewPage() {
   const [reason, setReason] = useState("");
   const [steps, setSteps] = useState<DraftStep[]>([]);
   const [tried, setTried] = useState(false);
-  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
   const [startedRunId, setStartedRunId] = useState<string | null>(null);
 
   const activeDef = defs.find((d) => d.id === selectedId) ?? defs[0];
-  const allowOverride = Boolean(activeDef?.allow_approval_line_override);
+  const reviewerRoles = defsQ.data?.reviewer_role_keys ?? [];
+  const allowOverride = Boolean(activeDef?.allow_approval_line_override && reviewerRoles.length);
 
   const submitCmd = useCommand({
     run: () => {
       const overrides: ApprovalLineOverrideStep[] = allowOverride
-        ? steps
-            .filter((s) => s.assignee_role_key.trim().length > 0)
-            .map((s) => ({
-              assignee_role_key: s.assignee_role_key.trim(),
-              ...(s.node_key.trim() ? { node_key: s.node_key.trim() } : {}),
-              ...(s.title.trim() ? { title: s.title.trim() } : {}),
-            }))
+        ? steps.map((s) => ({
+            assignee_role_key: s.assignee_role_key,
+            ...(s.node_key.trim() ? { node_key: s.node_key.trim() } : {}),
+            ...(s.title.trim() ? { title: s.title.trim() } : {}),
+          }))
         : [];
       return startWorkflowRun({
         definition_id: activeDef!.id,
@@ -66,14 +65,14 @@ export function ApprovalNewPage() {
     invalidates: ["/api/v1/approvals", "/api/v1/me/action-inbox"],
     onSuccess: (res) => {
       setStartedRunId(res.run.id);
-      setIdempotencyKey(crypto.randomUUID());
       announce(t("approvals.new.submitted", { id: res.run.id }));
     },
   });
 
   const handleSubmit = () => {
+    if (startedRunId || submitCmd.isPending) return;
     setTried(true);
-    if (!activeDef || !subject.trim() || !reason.trim()) return;
+    if (!activeDef || !subject.trim() || !reason.trim() || (allowOverride && steps.some(step => !step.assignee_role_key.trim()))) return;
     submitCmd.mutate(undefined);
   };
 
@@ -89,20 +88,19 @@ export function ApprovalNewPage() {
   const removeStep = (key: string) =>
     setSteps((prev) => prev.filter((item) => item.key !== key));
 
-  const sections = (
+  const sections = startedRunId ? (
+    <Banner
+      tone="ok"
+      actions={
+        <Link to="/approvals" search={{ box: "requested" }} className={buttonClass("secondary", { size: "sm" })}>
+          {t("approvals.new.viewRequested")}
+        </Link>
+      }
+    >
+      {t("approvals.new.submitted", { id: startedRunId })}
+    </Banner>
+  ) : (
     <>
-      {startedRunId && (
-        <Banner
-          tone="ok"
-          actions={
-            <Link to="/approvals" search={{ box: "requested" }} className={buttonClass("secondary", { size: "sm" })}>
-              {t("approvals.new.viewRequested")}
-            </Link>
-          }
-        >
-          {t("approvals.new.submitted", { id: startedRunId })}
-        </Banner>
-      )}
       <FormSection>
         <h2>{t("approvals.new.templateSection")}</h2>
         {defs.length === 0 ? (
@@ -150,20 +148,20 @@ export function ApprovalNewPage() {
           <p className="muted">{t("approvals.new.lineHint")}</p>
           {steps.map((step) => (
             <div key={step.key} className="form">
-              <Field label={t("approvals.new.stepRole")} required>
-                {(p) => (
-                  <TextInput
-                    {...p}
-                    value={step.assignee_role_key}
-                    onChange={(e) => updateStep(step.key, { assignee_role_key: e.target.value })}
-                  />
-                )}
-              </Field>
+              <SelectField
+                label={t("approvals.new.stepRole")}
+                placeholder={t("approvals.new.stepRole")}
+                value={step.assignee_role_key || null}
+                options={reviewerRoles.map(role => ({ id: role, label: role }))}
+                onChange={role => updateStep(step.key, { assignee_role_key: role })}
+                error={tried && !step.assignee_role_key ? t("approvals.new.requiredFields") : undefined}
+              />
               <Field label={t("approvals.new.stepTitle")} required={false}>
                 {(p) => (
                   <TextInput
                     {...p}
                     value={step.title}
+                    maxLength={160}
                     onChange={(e) => updateStep(step.key, { title: e.target.value })}
                   />
                 )}
@@ -200,9 +198,9 @@ export function ApprovalNewPage() {
       <Link to="/approvals" className={buttonClass("secondary")}>
         {t("common.back")}
       </Link>
-      <Button variant="primary" disabled={!activeDef || submitCmd.isPending} onClick={handleSubmit}>
+      {!startedRunId && <Button variant="primary" disabled={!activeDef || submitCmd.isPending} onClick={handleSubmit}>
         {t("approvals.new.submit")}
-      </Button>
+      </Button>}
     </>
   );
 

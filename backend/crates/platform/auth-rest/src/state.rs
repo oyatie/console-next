@@ -58,6 +58,19 @@ impl AuthRestState {
     }
 
     pub fn new(pool: PgPool, config: AuthRestConfig) -> Result<Self, AuthRestConfigError> {
+        use console_platform_provisioning::ops_self_recovery::{KEYRING_ENV, MASTER_KEY_ENV};
+        let cipher = RecoveryContactCipher::from_env_values(
+            std::env::var(KEYRING_ENV).ok(),
+            std::env::var(MASTER_KEY_ENV).ok(),
+        )?;
+        Self::new_with_recovery_cipher(pool, config, cipher)
+    }
+
+    pub fn new_with_recovery_cipher(
+        pool: PgPool,
+        config: AuthRestConfig,
+        recovery_cipher: RecoveryContactCipher,
+    ) -> Result<Self, AuthRestConfigError> {
         let rp_origin = Url::parse(&config.rp_origin)?;
         // Keep a copy of the validated origin to build the cross-device enrollment
         // handoff URL; `WebauthnSettings` takes ownership of the other clone below.
@@ -85,8 +98,6 @@ impl AuthRestState {
         let bootstrap_credentials = BootstrapCredentialStore::default();
         #[cfg(not(debug_assertions))]
         let bootstrap_credentials = BootstrapCredentialStore::unconfigured();
-        let recovery_cipher = RecoveryContactCipher::from_env()
-            .unwrap_or_else(|_| RecoveryContactCipher::unconfigured());
 
         Ok(Self {
             pool,

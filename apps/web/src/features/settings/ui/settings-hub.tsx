@@ -255,8 +255,13 @@ export function SettingsHubView({
       }
       baseline={() => (
         <Page floorplan="P-05" head={{ title: t("shell.link.settings") }}>
+          {interactive && onSelectSection && (
+            <Button variant="ghost" onClick={() => selectSection(section === "rollout" ? "overview" : "rollout")}>
+              {t(section === "rollout" ? "settingsHub.section.overview" : "settingsHub.section.rollout")}
+            </Button>
+          )}
           <section className={s.grid} aria-label={t("shell.settings.basics")}>
-            {cards}
+            {section === "rollout" ? renderPanel() : cards}
           </section>
         </Page>
       )}

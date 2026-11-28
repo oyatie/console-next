@@ -10,3 +10,4 @@ pub(crate) mod scope;
 pub mod sign_in_id;
 mod update;
 mod workspace;
+pub use workspace::CONSOLE_LEGACY_KILL_SWITCH_FLAG_KEY;

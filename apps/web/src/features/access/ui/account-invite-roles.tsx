@@ -80,6 +80,7 @@ export function InviteWithRolesSheet({
       if (preview.refused > 0) throw new InviteRefused(preview);
       return createAccessInvite(body, key);
     },
+    verify: createAccessInvite,
     invalidates: INVITE_WITH_ROLES_INVALIDATES,
     onSuccess: (out) => {
       onIssued({

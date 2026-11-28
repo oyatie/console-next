@@ -29,7 +29,7 @@ mod current_claims;
 pub use current_claims::{validate_current_claims, validate_current_claims_in_tx};
 pub mod audit_context;
 mod commands;
-pub use commands::SupportsDryRun;
+pub use commands::{ReadInviteReceipt, SupportsDryRun};
 pub mod conflict;
 pub mod record_access;
 mod refusals;

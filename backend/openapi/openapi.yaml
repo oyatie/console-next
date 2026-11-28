@@ -37141,6 +37141,10 @@ components:
           type: string
         scope_label:
           type: string
+        scope_node_id:
+          $ref: '#/components/schemas/Uuid'
+        scope_include_descendants:
+          type: boolean
         valid_from:
           $ref: '#/components/schemas/Timestamp'
         valid_to:
@@ -56274,7 +56278,7 @@ components:
         properties:
           key:
             type: string
-            x-extensible-enum: [home, org, access, approvals, people, exits, attendance, statutory, payroll]
+            x-extensible-enum: [home, org, access, approvals, people, exits, attendance, statutory, payroll, personal_location, dispatch_offers, approval_submission]
           ready:
             type: boolean
           unblock:
@@ -66730,6 +66734,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SubmittableDefinitionResponse'
+        reviewer_role_keys:
+          type: array
+          items:
+            type: string
+          description: Assignable group-inbox roles for optional approval decisions.
     SubmittableDefinitionResponse:
       type: object
       description: An ACTIVE workflow definition the caller may start from the draft template gallery. Carries only the
@@ -68828,7 +68837,8 @@ components:
       additionalProperties: false
       properties:
         channel:
-          $ref: '#/components/schemas/RecoveryChannel'
+          type: string
+          enum: [EMAIL]
         value:
           type: string
         consent_accepted:
@@ -71402,6 +71412,9 @@ components:
     WorkspaceResponse:
       type: object
       properties:
+        legacy_kill_switch_enabled:
+          type: boolean
+          description: On reads, whether the tenant currently requires Classic regardless of personal preferences.
         layout:
           type: object
           additionalProperties: true

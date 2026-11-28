@@ -91,7 +91,7 @@ pub async fn decrypt_recovery_contact_tx(
     };
     let org_s = org.as_uuid().to_string();
     let rec_s = id.to_string();
-    let plain = open_v3(cipher.kms()?, envelope_ctx(&org_s, &rec_s), &sealed).map_err(|_| {
+    let plain = open_v3(cipher.kms(), envelope_ctx(&org_s, &rec_s), &sealed).map_err(|_| {
         ProvisioningError::Conflict("failed to decrypt recovery contact".to_owned())
     })?;
     let text = String::from_utf8(plain.expose_secret().clone()).map_err(|_| {
@@ -110,7 +110,7 @@ pub async fn upsert_recovery_contact_tx(
     now: OffsetDateTime,
 ) -> Result<(RecoveryContactStatus, AuditEvent), ProvisioningError> {
     let is_ops: Option<bool> = sqlx::query_scalar(
-        "SELECT is_tenant_ops AND is_active FROM users WHERE org_id = $1 AND id = $2 FOR SHARE",
+        "SELECT is_tenant_ops AND is_active FROM users WHERE org_id = $1 AND id = $2 FOR UPDATE",
     )
     .bind(org.as_uuid())
     .bind(user_id)
@@ -132,7 +132,7 @@ pub async fn upsert_recovery_contact_tx(
     let org_s = org.as_uuid().to_string();
     let rec_s = record_id.to_string();
     let sealed = seal_v3(
-        cipher.kms()?,
+        cipher.kms(),
         envelope_ctx(&org_s, &rec_s),
         normalized.as_bytes(),
     )
@@ -167,6 +167,20 @@ pub async fn upsert_recovery_contact_tx(
     .bind(now)
     .execute(tx.as_mut())
     .await?;
+
+    // Reconfirming a contact starts a fresh recovery window. The holder row
+    // serializes this update with issuance and redemption of its challenges.
+    if existing_id.is_some() {
+        sqlx::query(
+            "UPDATE recovery_contact_challenges SET consumed_at = $3
+             WHERE org_id = $1 AND user_id = $2 AND consumed_at IS NULL",
+        )
+        .bind(org.as_uuid())
+        .bind(user_id)
+        .bind(now)
+        .execute(tx.as_mut())
+        .await?;
+    }
 
     let status = RecoveryContactStatus {
         channel,

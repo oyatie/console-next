@@ -25,6 +25,9 @@ pub struct AuthRestConfig {
 
 #[derive(Debug, thiserror::Error)]
 pub enum AuthRestConfigError {
+    #[error("account recovery key configuration: {0}")]
+    Recovery(#[from] console_platform_provisioning::ProvisioningError),
+
     #[error("invalid WebAuthn RP origin: {0}")]
     Url(#[from] url::ParseError),
 

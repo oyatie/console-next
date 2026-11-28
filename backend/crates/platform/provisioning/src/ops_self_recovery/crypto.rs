@@ -4,10 +4,14 @@
 
 use std::sync::Arc;
 
-use console_platform_crypto::{EnvelopeContext, KekId, KmsProvider, LocalKeyringProvider};
-use secrecy::{SecretBox, SecretString};
+#[cfg(debug_assertions)]
+use console_platform_crypto::KekId;
+use console_platform_crypto::{EnvelopeContext, KmsProvider, LocalKeyringProvider};
+#[cfg(debug_assertions)]
+use secrecy::SecretBox;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
+use zeroize::Zeroizing;
 
 use crate::ProvisioningError;
 
@@ -55,41 +59,33 @@ pub struct RecoveryContactStatus {
 
 #[derive(Clone)]
 pub struct RecoveryContactCipher {
-    kms: Option<Arc<dyn KmsProvider>>,
+    kms: Arc<dyn KmsProvider>,
 }
 
 impl std::fmt::Debug for RecoveryContactCipher {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("RecoveryContactCipher")
-            .field("configured", &self.kms.is_some())
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
 impl RecoveryContactCipher {
     #[must_use]
     pub fn from_kms(kms: Arc<dyn KmsProvider>) -> Self {
-        Self { kms: Some(kms) }
+        Self { kms }
     }
 
-    #[must_use]
-    pub const fn unconfigured() -> Self {
-        Self { kms: None }
-    }
-
-    pub fn from_env() -> Result<Self, ProvisioningError> {
-        let read = |name: &str| match std::env::var(name) {
-            Ok(v) if !v.trim().is_empty() => Ok(Some(SecretString::from(v))),
-            Ok(_) | Err(std::env::VarError::NotPresent) => Ok(None),
-            Err(_) => Err(console_platform_crypto::CryptoError::InvalidInput),
-        };
-        let ring = LocalKeyringProvider::from_env_vars(KEYRING_ENV, MASTER_KEY_ENV, read).map_err(
-            |_| {
-                ProvisioningError::Conflict(
-                    "invalid recovery contact encryption keyring".to_owned(),
-                )
-            },
-        )?;
+    pub fn from_env_values(
+        keyring: Option<String>,
+        master: Option<String>,
+    ) -> Result<Self, ProvisioningError> {
+        let ring = LocalKeyringProvider::from_env_values(
+            keyring.map(Zeroizing::new),
+            master.map(Zeroizing::new),
+        )
+        .map_err(|_| {
+            ProvisioningError::Conflict("invalid recovery contact encryption keyring".to_owned())
+        })?;
         if let Some(provider) = ring {
             return Ok(Self::from_kms(Arc::new(provider)));
         }
@@ -99,7 +95,9 @@ impl RecoveryContactCipher {
         }
         #[cfg(not(debug_assertions))]
         {
-            Ok(Self::unconfigured())
+            Err(ProvisioningError::Conflict(format!(
+                "{KEYRING_ENV} is required for account recovery"
+            )))
         }
     }
 
@@ -122,10 +120,8 @@ impl RecoveryContactCipher {
         )))
     }
 
-    pub(super) fn kms(&self) -> Result<&dyn KmsProvider, ProvisioningError> {
-        self.kms.as_deref().ok_or_else(|| {
-            ProvisioningError::Conflict("recovery contact encryption is not configured".to_owned())
-        })
+    pub(super) fn kms(&self) -> &dyn KmsProvider {
+        self.kms.as_ref()
     }
 }
 
@@ -164,15 +160,9 @@ pub fn normalize_and_validate_contact(
             }
             Ok(lower)
         }
-        RecoveryChannel::Phone => {
-            let digits: String = trimmed.chars().filter(char::is_ascii_digit).collect();
-            if !(10..=11).contains(&digits.len()) || !digits.starts_with("01") {
-                return Err(ProvisioningError::InvalidInput(
-                    "invalid recovery phone number".to_owned(),
-                ));
-            }
-            Ok(digits)
-        }
+        RecoveryChannel::Phone => Err(ProvisioningError::InvalidInput(
+            "only email recovery delivery is supported".to_owned(),
+        )),
     }
 }
 

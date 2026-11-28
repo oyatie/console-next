@@ -81,6 +81,23 @@ async fn console_kill_switch_forces_legacy_for_all_users_and_audits(pool: PgPool
     assert_eq!(before["effective_route_for_opted_in_user"], "new_console");
     assert_eq!(before["effective_route_for_opted_out_user"], "legacy");
 
+    post_json(
+        service.clone(),
+        "/api/v1/console/kill-switch",
+        &member_token,
+        json!({"enabled":true}),
+        StatusCode::FORBIDDEN,
+    )
+    .await;
+    let workspace = get_json(
+        service.clone(),
+        "/api/v1/me/workspace",
+        &member_token,
+        StatusCode::OK,
+    )
+    .await;
+    assert_eq!(workspace["legacy_kill_switch_enabled"], false);
+
     let activated = post_json(
         service.clone(),
         "/api/v1/console/kill-switch",
@@ -97,6 +114,19 @@ async fn console_kill_switch_forces_legacy_for_all_users_and_audits(pool: PgPool
     assert_eq!(activated["effective_route_for_opted_out_user"], "legacy");
     assert_eq!(activated["overrides_individual_toggles"], true);
 
+    let workspace = get_json(
+        service.clone(),
+        "/api/v1/me/workspace",
+        &member_token,
+        StatusCode::OK,
+    )
+    .await;
+    assert_eq!(workspace["legacy_kill_switch_enabled"], true);
+    assert_eq!(
+        workspace["layout"],
+        json!({}),
+        "emergency rollback preserves personal preferences"
+    );
     let after = get_json(
         service,
         "/api/v1/console/rollout",

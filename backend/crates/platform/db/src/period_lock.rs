@@ -92,15 +92,55 @@ pub async fn assert_period_open_range(
     start: Date,
     end: Date,
 ) -> Result<(), KernelError> {
+    check_open(tx, domain, start, end, &[]).await
+}
+
+/// Freeze clock events for a member of the locked group on the event's business date.
+/// The shared advisory lock lets other employees clock in while ordering against group or freeze changes.
+pub async fn assert_employee_payroll_period_open(
+    tx: &mut Transaction<'_, Postgres>,
+    org: Uuid,
+    employee: Uuid,
+    date: Date,
+) -> Result<(), KernelError> {
+    let domain = PeriodLockDomain::Payroll;
+    sqlx::query("SELECT pg_advisory_xact_lock_shared(hashtextextended($1, 0))")
+        .bind(period_lock_key(domain, org))
+        .execute(tx.as_mut())
+        .await
+        .map_err(sqlx_internal)?;
+    let groups: Vec<Uuid> = sqlx::query_scalar(
+        r"SELECT g.id FROM pay_groups g
+          JOIN employment_assignments a ON a.org_id = g.org_id AND a.legal_entity_id = g.legal_entity_id
+          WHERE a.org_id = $1 AND a.employee_id = $2 AND a.superseded_at IS NULL
+            AND a.valid_from <= $3 AND (a.valid_to IS NULL OR a.valid_to > $3)
+            AND (NOT EXISTS (SELECT 1 FROM pay_groups other WHERE other.org_id = g.org_id
+                              AND other.legal_entity_id = g.legal_entity_id AND other.id <> g.id)
+                 OR EXISTS (SELECT 1 FROM employee_pay_group_assignments p
+                            WHERE p.org_id = g.org_id AND p.employee_id = a.employee_id AND p.pay_group_id = g.id
+                              AND p.superseded_at IS NULL AND p.effective_from <= $3
+                              AND (p.effective_to_exclusive IS NULL OR p.effective_to_exclusive > $3)))"
+    ).bind(org).bind(employee).bind(date).fetch_all(tx.as_mut()).await.map_err(sqlx_internal)?;
+    check_open(tx, domain, date, date, &groups).await
+}
+
+async fn check_open(
+    tx: &mut Transaction<'_, Postgres>,
+    domain: PeriodLockDomain,
+    start: Date,
+    end: Date,
+    groups: &[Uuid],
+) -> Result<(), KernelError> {
     let lock = sqlx::query(
         "SELECT id, locked_by, locked_at, period_start, period_end FROM period_locks \
-         WHERE domain = $1 AND pay_group_id IS NULL AND period_lock_effective(period_locks) \
+         WHERE domain = $1 AND (pay_group_id IS NULL OR pay_group_id = ANY($4)) AND period_lock_effective(period_locks) \
            AND period_start <= $3 AND period_end >= $2 \
          ORDER BY locked_at DESC LIMIT 1",
     )
     .bind(domain.as_str())
     .bind(start)
     .bind(end)
+    .bind(groups)
     .fetch_optional(tx.as_mut())
     .await
     .map_err(|e| kernel_internal(DbError::Sqlx(e)))?;
@@ -147,12 +187,15 @@ pub async fn lock_period_lock_key(
     domain: PeriodLockDomain,
     org_id: Uuid,
 ) -> Result<(), sqlx::Error> {
-    let material = format!("console.period-lock|{}|{}", domain.as_str(), org_id);
     sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))")
-        .bind(material)
+        .bind(period_lock_key(domain, org_id))
         .execute(tx.as_mut())
         .await?;
     Ok(())
+}
+
+fn period_lock_key(domain: PeriodLockDomain, org: Uuid) -> String {
+    format!("console.period-lock|{domain}|{org}")
 }
 
 fn kernel_internal(err: DbError) -> KernelError {
