@@ -24,6 +24,8 @@ export const koSettingLabels: Record<keyof typeof enSettingLabels, string> = {
   "settingsHub.key.approval.doc_class.registered_branch_change.requires_governing_body_decision": "등기 지점 변경 이사회 의결 필요",
   "settingsHub.key.approval.doc_class.registered_manager_appointment.requires_governing_body_decision": "지배인 선임 이사회 의결 필요",
   "settingsHub.key.corporate.small_company_383_proviso": "소규모 법인 상법 제383조 단서 해당",
+  "settingsHub.key.module.benefits.enabled": "복리후생 카탈로그",
+  "settingsHub.key.module.calendar.enabled": "내부 일정",
   "settingsHub.key.module.evaluation.enabled": "평가 모듈 사용",
   "settingsHub.key.module.payroll.enabled": "급여 모듈 사용",
   "settingsHub.key.attendance.week52.warn_hours": "주 52시간 경고 기준",

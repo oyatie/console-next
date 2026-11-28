@@ -1,7 +1,8 @@
 mod calendar_access;
 pub(crate) use calendar_access::calendar_access;
 mod calendar_read;
-use calendar_read::{collect_calendar_events, list_calendar_events};
+use calendar_read::list_calendar_events;
+pub(crate) use calendar_read::read_workbench_calendar;
 
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
@@ -65,16 +66,26 @@ impl CollaborationState {
 pub fn router(state: CollaborationState) -> Router {
     let verifier = state.jwt_verifier.clone();
     let pool = state.pool.clone();
-    let router = Router::new()
+    let calendar = Router::new()
         .route(
             CALENDAR_EVENTS_PATH,
             get(list_calendar_events).post(create_calendar_event),
         )
+        .with_state(state.clone());
+    let calendar = console_platform_request_context::with_request_context(
+        calendar,
+        verifier.clone(),
+        pool.clone(),
+    )
+    .layer(Extension(
+        console_platform_request_context::tenant_module::TenantModule::Calendar,
+    ));
+    let router = Router::new()
         .route(POLLS_PATH, get(list_polls).post(create_poll))
         .route(POLL_VOTE_PATH_TEMPLATE, post(vote_poll))
         .route(MOBILE_POLL_VOTE_PATH_TEMPLATE, post(vote_mobile_poll))
         .with_state(state);
-    console_platform_request_context::with_request_context(router, verifier, pool)
+    console_platform_request_context::with_request_context(router, verifier, pool).merge(calendar)
 }
 
 #[derive(Debug, Deserialize)]
@@ -357,62 +368,6 @@ fn default_poll_status() -> PollStatus {
 
 fn default_anonymity() -> PollAnonymity {
     PollAnonymity::Named
-}
-
-/// Native calendar-owner adapter for the workbench aggregate. It reuses the
-/// authenticated collaboration visibility predicate, applies the aggregate's
-/// exact half-open range and one request ceiling, and never persists a second
-/// calendar projection.
-pub(crate) async fn read_workbench_calendar(
-    pool: &PgPool,
-    principal: &Principal,
-    range: crate::workbench::WorkbenchRange,
-    limit: usize,
-    as_of: OffsetDateTime,
-) -> Result<crate::workbench::CalendarPage, crate::workbench::SourceFailure> {
-    let limit = i64::try_from(limit).map_err(|_| crate::workbench::SourceFailure::Unavailable {
-        code: "calendar_limit_invalid",
-    })?;
-    let snapshot = collect_calendar_events(
-        pool,
-        principal,
-        range.from,
-        range.to,
-        (limit, None),
-        as_of,
-        true,
-    )
-    .await
-    .map_err(|error| {
-        if error.status == StatusCode::FORBIDDEN {
-            crate::workbench::SourceFailure::Denied {
-                code: "calendar_access_denied",
-            }
-        } else {
-            crate::workbench::SourceFailure::Unavailable {
-                code: "calendar_unavailable",
-            }
-        }
-    })?;
-    let items = snapshot
-        .items
-        .into_iter()
-        .map(|item| crate::workbench::CalendarItem {
-            id: item.id,
-            title: item.title,
-            starts_at: item.starts_at,
-            ends_at: item.ends_at,
-            target: crate::workbench::WorkbenchTarget {
-                module: "overview".to_owned(),
-                id: item.id.to_string(),
-            },
-        })
-        .collect();
-    Ok(crate::workbench::CalendarPage {
-        as_of: snapshot.as_of,
-        total: snapshot.total,
-        items,
-    })
 }
 
 async fn create_calendar_event(
@@ -1739,7 +1694,7 @@ mod tests {
         principal: &Principal,
     ) -> std::collections::BTreeSet<Uuid> {
         let now = OffsetDateTime::now_utc();
-        let snapshot = collect_calendar_events(
+        let snapshot = calendar_read::collect_calendar_events(
             pool,
             principal,
             now - time::Duration::hours(1),

@@ -9,3 +9,8 @@ pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<
         .transpose()
         .map_err(serde::de::Error::custom)
 }
+
+/// A missing patch key leaves the stored date unchanged. Explicit null clears it.
+pub fn patch<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<Option<Date>>, D::Error> {
+    deserialize(deserializer).map(Some)
+}

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 export const enMe = {
   "me.evaluation.title": "My evaluation tasks",
-  "me.evaluation.permission": "Evaluation submission access",
   "me.evaluation.empty": "No evaluation tasks assigned",
   "me.evaluation.cycle": "Cycle",
   "me.evaluation.kind": "Review",

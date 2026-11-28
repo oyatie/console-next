@@ -1,7 +1,7 @@
 # Oversize Rust files, pinned at their code-line count (see ci/gates/file-size).
 # Shrink-only: regenerate with `cargo run -p console-gate-file-size -- --write-baseline`.
 app/src/cedar_parity.rs	313
-app/src/collaboration.rs	1416
+app/src/collaboration.rs	1376
 app/src/hr.rs	2898
 app/src/hr/attendance_import_resolve.rs	328
 app/src/objects.rs	2007
@@ -49,7 +49,7 @@ app/tests/recruiting_pipeline_api.rs	767
 app/tests/registry_api.rs	577
 app/tests/search_api.rs	505
 app/tests/submittable_definitions_api.rs	385
-app/tests/workbench_native_api.rs	588
+app/tests/workbench_native_api.rs	530
 app/tests/workflow_four_eyes_publish.rs	967
 app/tests/workflow_object_context_api.rs	564
 app/tests/workflow_run_read_surface.rs	606
@@ -75,7 +75,7 @@ crates/attendance/application/src/lib.rs	400
 crates/attendance/rest/src/lib.rs	1107
 crates/benefit/adapter-postgres/src/lib.rs	1251
 crates/benefit/domain/src/lib.rs	307
-crates/benefit/rest/src/lib.rs	480
+crates/benefit/rest/src/lib.rs	471
 crates/comms/adapter-postgres/src/lib.rs	1257
 crates/comms/adapter-postgres/tests/mail_account_rls_surfaces_as_runtime_role.rs	528
 crates/comms/adapter-postgres/tests/mail_sync_rls_surfaces_as_runtime_role.rs	689

@@ -12,9 +12,12 @@ use console_platform_db::{
     with_org_snapshot,
 };
 use sqlx::PgPool;
+use std::collections::BTreeSet;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TenantModule {
+    Benefits,
+    Calendar,
     Evaluation,
 }
 
@@ -29,30 +32,84 @@ enum PolicyReadError {
 }
 
 impl TenantModule {
-    /// Read operator enrollment and the tenant's effective preference from the same snapshot.
-    ///
-    /// # Errors
-    /// Returns an unavailable error when either authoritative source cannot be read.
-    pub async fn enabled(self, pool: &PgPool, org: OrgId) -> Result<bool, KernelError> {
-        let (module, key) = match self {
+    fn policy(self) -> (&'static str, SettingKey) {
+        match self {
+            Self::Benefits => ("benefits", SettingKey::ModuleBenefitsEnabled),
+            Self::Calendar => ("calendar", SettingKey::ModuleCalendarEnabled),
             Self::Evaluation => ("evaluation", SettingKey::ModuleEvaluationEnabled),
-        };
-        with_org_snapshot(pool, org, |tx| Box::pin(async move {
-            let enrolled = sqlx::query_scalar::<_, bool>(
-                "SELECT enabled FROM tenant_module_enrollments WHERE org_id=$1 AND module_key=$2 ORDER BY revision DESC LIMIT 1"
-            ).bind(org.as_uuid()).bind(module).fetch_optional(tx.as_mut()).await.map_err(DbError::from)?;
-            if enrolled != Some(true) {
-                return Ok(false);
-            }
-            let settings = resolve_in_tx(tx.as_mut(), org, &[key], None, time::OffsetDateTime::now_utc()).await?;
-            match settings.get(&key).and_then(|result| result.as_ref().ok()).map(|value| value.value) {
-                Some(SettingValue::Bool(enabled)) => Ok(enabled),
-                _ => Err(PolicyReadError::InvalidSetting),
-            }
-        })).await.map_err(|err| {
+        }
+    }
+
+    /// Read operator enrollment and effective tenant preferences in one snapshot.
+    /// An absent enrollment excludes the module even when its setting defaults to true.
+    pub async fn enabled_modules(
+        pool: &PgPool,
+        org: OrgId,
+        requested: Vec<Self>,
+    ) -> Result<BTreeSet<Self>, KernelError> {
+        if requested.is_empty() {
+            return Ok(BTreeSet::new());
+        }
+        with_org_snapshot(pool, org, |tx| {
+            Box::pin(async move {
+                let names: Vec<_> = requested.iter().map(|module| module.policy().0).collect();
+                let active = sqlx::query_scalar::<_, String>(
+                    "SELECT module_key FROM (
+                        SELECT DISTINCT ON (module_key) module_key, enabled
+                        FROM tenant_module_enrollments
+                        WHERE org_id=$1 AND module_key=ANY($2)
+                        ORDER BY module_key, revision DESC
+                    ) latest WHERE enabled",
+                )
+                .bind(org.as_uuid())
+                .bind(names)
+                .fetch_all(tx.as_mut())
+                .await
+                .map_err(DbError::from)?;
+                let enrolled: Vec<_> = requested
+                    .into_iter()
+                    .filter(|module| active.iter().any(|name| name == module.policy().0))
+                    .collect();
+                let keys: Vec<_> = enrolled.iter().map(|module| module.policy().1).collect();
+                let mut enabled = BTreeSet::new();
+                if keys.is_empty() {
+                    return Ok(enabled);
+                }
+                let settings = resolve_in_tx(
+                    tx.as_mut(),
+                    org,
+                    &keys,
+                    None,
+                    time::OffsetDateTime::now_utc(),
+                )
+                .await?;
+                for module in enrolled {
+                    let setting = settings
+                        .get(&module.policy().1)
+                        .and_then(|result| result.as_ref().ok());
+                    match setting.map(|resolved| resolved.value) {
+                        Some(SettingValue::Bool(true)) => {
+                            enabled.insert(module);
+                        }
+                        Some(SettingValue::Bool(false)) => {}
+                        _ => return Err(PolicyReadError::InvalidSetting),
+                    }
+                }
+                Ok(enabled)
+            })
+        })
+        .await
+        .map_err(|err| {
             tracing::error!(error = %err, "module policy read failed");
             KernelError::unavailable("module policy unavailable")
         })
+    }
+
+    /// Check current enrollment and preference for one feature router.
+    pub async fn enabled(self, pool: &PgPool, org: OrgId) -> Result<bool, KernelError> {
+        Ok(Self::enabled_modules(pool, org, vec![self])
+            .await?
+            .contains(&self))
     }
 
     pub(crate) async fn refusal(self, pool: &PgPool, org: OrgId) -> Option<Response> {

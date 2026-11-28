@@ -14,6 +14,8 @@ fn event(scope: &str, title: &str) -> Value {
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn members_see_only_mounted_calendar_and_their_own_personal_events(pool: PgPool) {
     let (org, member) = http::tenant(&pool, &["MEMBER"]).await;
+    sqlx::query("INSERT INTO tenant_module_enrollments (org_id,module_key,enabled,change_ref) VALUES ($1,'calendar',true,'test-enrollment') ON CONFLICT DO NOTHING")
+        .bind(org).execute(&pool).await.unwrap();
     let colleague = http::add_user(&pool, org, &["MEMBER"]).await;
     let caller = http::ctx(&pool, org, member, &["MEMBER"], None).await;
     let other = http::ctx(&pool, org, colleague, &["MEMBER"], None).await;
@@ -89,6 +91,8 @@ async fn members_see_only_mounted_calendar_and_their_own_personal_events(pool: P
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn branch_publishers_and_org_publishers_address_only_authorized_audiences(pool: PgPool) {
     let (org, admin) = http::tenant(&pool, &["ADMIN"]).await;
+    sqlx::query("INSERT INTO tenant_module_enrollments (org_id,module_key,enabled,change_ref) VALUES ($1,'calendar',true,'test-enrollment') ON CONFLICT DO NOTHING")
+        .bind(org).execute(&pool).await.unwrap();
     let org_admin = http::add_user(&pool, org, &["EXECUTIVE"]).await;
     let branches: Vec<uuid::Uuid> = sqlx::query_scalar("WITH r AS (INSERT INTO regions (org_id,name) VALUES ($1,'North') RETURNING id) INSERT INTO branches (org_id,region_id,name) SELECT $1,r.id,t.name FROM r CROSS JOIN (VALUES ('Central'),('East')) t(name) RETURNING id")
         .bind(org).fetch_all(&pool).await.unwrap();

@@ -7,6 +7,8 @@ mod http;
 async fn catalog_availability_matches_the_installed_module(pool: sqlx::PgPool) {
     use ::http::StatusCode;
     let (org, admin) = http::tenant(&pool, &["SUPER_ADMIN"]).await;
+    sqlx::query("INSERT INTO tenant_module_enrollments (org_id,module_key,enabled,change_ref) VALUES ($1,'benefits',true,'test-enrollment') ON CONFLICT DO NOTHING")
+        .bind(org).execute(&pool).await.unwrap();
     let ctx = http::ctx(&pool, org, admin, &["SUPER_ADMIN"], None).await;
     let (status, projection) = ctx.call("GET", "/api/v1/me/authz", None).await;
     assert_eq!(status, StatusCode::OK, "{projection}");
@@ -32,6 +34,8 @@ async fn catalog_availability_matches_the_installed_module(pool: sqlx::PgPool) {
 async fn executive_can_inspect_catalog_but_has_no_management_capability(pool: sqlx::PgPool) {
     use ::http::StatusCode;
     let (org, viewer) = http::tenant(&pool, &["EXECUTIVE"]).await;
+    sqlx::query("INSERT INTO tenant_module_enrollments (org_id,module_key,enabled,change_ref) VALUES ($1,'benefits',true,'test-enrollment') ON CONFLICT DO NOTHING")
+        .bind(org).execute(&pool).await.unwrap();
     let ctx = http::ctx(&pool, org, viewer, &["EXECUTIVE"], None).await;
     let (status, projection) = ctx.call("GET", "/api/v1/me/authz", None).await;
     assert_eq!(status, StatusCode::OK, "{projection}");

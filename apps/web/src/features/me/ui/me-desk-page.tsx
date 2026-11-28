@@ -18,7 +18,6 @@ import { Chip } from "../../../ui/chip";
 import { EmptyState } from "../../../ui/empty-state";
 import { KeyValue, StatRow } from "../../../ui/key-value/key-value";
 import { LongTable } from "../../../ui/long-table/long-table";
-import { useServedCapability } from "../../../reference/authz/ui/use-documents-served";
 import { PageHead } from "../../../ui/page-head/page-head";
 import { SettingsPattern } from "../../../ui/patterns/settings";
 import { RecordSection } from "../../../ui/record/record-section";
