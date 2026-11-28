@@ -45,8 +45,8 @@ macro_rules! cols {
     () => {
         "r.entry_id, r.section, r.version, r.kind, r.source, r.reason, r.actor_id, \
     r.created_at, \
-    (SELECT a.actor_kind FROM audit_events a WHERE a.org_id=r.org_id AND a.actor=r.actor_id AND a.created_at=r.created_at AND a.outcome='ALLOWED' ORDER BY a.id DESC LIMIT 1) AS actor_kind, \
-    (SELECT a.command_id FROM audit_events a WHERE a.org_id=r.org_id AND a.actor=r.actor_id AND a.created_at=r.created_at AND a.outcome='ALLOWED' ORDER BY a.id DESC LIMIT 1) AS command_id, edu_school, edu_level, edu_major, edu_status, edu_entered_on, edu_ended_on, \
+    (SELECT a.actor_kind FROM ordinary_audit_events a WHERE a.org_id=r.org_id AND a.actor=r.actor_id AND a.created_at=r.created_at AND a.outcome='ALLOWED' ORDER BY a.id DESC LIMIT 1) AS actor_kind, \
+    (SELECT a.command_id FROM ordinary_audit_events a WHERE a.org_id=r.org_id AND a.actor=r.actor_id AND a.created_at=r.created_at AND a.outcome='ALLOWED' ORDER BY a.id DESC LIMIT 1) AS command_id, edu_school, edu_level, edu_major, edu_status, edu_entered_on, edu_ended_on, \
     qual_name, qual_kind, qual_grade, qual_issuer, qual_number, qual_acquired_on, qual_expires_on, \
     mil_status, mil_branch, mil_rank, mil_served_from, mil_served_to, \
     trn_course, trn_provider, trn_status, trn_started_on, trn_ended_on, trn_hours, \

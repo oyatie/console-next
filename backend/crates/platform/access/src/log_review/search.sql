@@ -1,6 +1,6 @@
 -- SPDX-License-Identifier: LicenseRef-Proprietary
 SELECT a.id
-FROM audit_events a
+FROM ordinary_audit_events a
 WHERE a.org_id=$1 AND a.created_at >= $2 AND a.created_at < $3
   AND a.created_at < $4 AND a.after_snap ? 'self_read'
   AND ($5::text IS NULL OR a.id=ANY($6) OR EXISTS (

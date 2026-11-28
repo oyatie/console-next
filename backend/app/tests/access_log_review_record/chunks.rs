@@ -87,4 +87,71 @@ async fn stored_chunks_preserve_keyset_continuity_across_and_at_boundaries(pool:
             .is_empty()
         );
     }
+
+    let finding = || record::FindingInput {
+        event_id: Some(expected[0]),
+        summary: None,
+        disposition: "confirmed".into(),
+        outcome: Some("justified".into()),
+        note: None,
+        follow_up: None,
+    };
+    let own = record::finding(
+        &service,
+        p.clone(),
+        "2026-09".into(),
+        "review-own-source".into(),
+        finding(),
+    )
+    .await
+    .unwrap_err();
+    assert_eq!(own.code, "self_review_forbidden");
+
+    // A clearance label added after the review was frozen restricts later
+    // ordinary reads without changing its immutable signed evidence.
+    sqlx::query("INSERT INTO audit_stream_event_labels (org_id,audit_event_id,stream_key,sensitivity) SELECT $1,unnest($2::uuid[]),'ceo_covert_audit','CEO_COVERT'")
+        .bind(org.as_uuid()).bind(&expected[..205]).execute(&pool).await.unwrap();
+    let stored_note: uuid::Uuid = sqlx::query_scalar("INSERT INTO audit_events(org_id,actor,action,target_type,target_id,trace_id,span_id,occurred_at,after_snap) VALUES($1,$2,'access_log_review.finding','access_log_review','tenant:2026-09',repeat('a',32),repeat('b',16),now(),$3) RETURNING id")
+        .bind(org.as_uuid()).bind(user.as_uuid()).bind(json!({"event_id":expected[0],"disposition":"confirmed","note":"private source note"})).fetch_one(&pool).await.unwrap();
+    let receipt_visible: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM ordinary_audit_register WHERE id=$1)")
+            .bind(stored_note)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert!(!receipt_visible);
+    let visible = record::frozen_page(&service, p.clone(), "2026-09".into(), None, 200)
+        .await
+        .unwrap();
+    assert_eq!(
+        visible
+            .iter()
+            .map(|event| event.event_id)
+            .collect::<Vec<_>>(),
+        expected[205..405]
+    );
+    let withheld = record::finding(
+        &service,
+        p.clone(),
+        "2026-09".into(),
+        "review-hidden-source".into(),
+        finding(),
+    )
+    .await
+    .unwrap_err();
+    assert_eq!(withheld.code, "finding_target_not_found");
+    let changed = record::complete(
+        &service,
+        p.clone(),
+        "2026-09".into(),
+        "complete-hidden-source".into(),
+        None,
+    )
+    .await
+    .unwrap_err();
+    assert_eq!(changed.code, "review_scope_changed");
+    assert!(changed.details.is_none());
+    let stored_hash: String = sqlx::query_scalar("SELECT after_snap->>'flag_set_sha256' FROM audit_events WHERE org_id=$1 AND action='access_log_review.start'")
+        .bind(org.as_uuid()).fetch_one(&pool).await.unwrap();
+    assert_eq!(stored_hash, stored["flag_set_sha256"].as_str().unwrap());
 }
