@@ -25,6 +25,8 @@ jobs:
         run: |
           python3 deploy/ci/tools.py oasdiff flux cosign
           npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify request schemas and checker regressions
+        run: npm run check:request-body-contract
       - run: node --test deploy/ci/api-compat.test.mjs
       - name: Compare released contract with candidate
         env: {REGISTRY_TOKEN: '${{ github.token }}'}
