@@ -2,6 +2,7 @@
 import { lazy, Suspense, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Ellipsis } from "lucide-react";
 import { t } from "@console/i18n";
+import { fmtNumber } from "@console/i18n/format";
 import { chunk } from "../../lib/chunk-guard";
 import { partitionBarOverflow } from "../bar-overflow";
 import { Badge } from "../badge/badge";
@@ -20,6 +21,8 @@ export type ModuleNavItem = {
   href: string;
   /** Positive actionable count shown beside the module label. */
   count?: number;
+  /** Keep adjacent destinations stationary while this count loads or changes. */
+  reserveCount?: boolean;
   /** The count is a lower bound, so its badge reads with a plus. */
   countMore?: boolean;
   /** The link's name when the badge cannot say the count's state (loading, unreadable); it starts with the label. */
@@ -110,12 +113,14 @@ export function ModuleNavBar({
   const overflowIndices = partition.overflowIndices.filter(idx => idx >= 0 && idx < items.length);
   const resolvedMoreLabel = moreLabel ?? t("shell.nav.more");
 
-  const renderContent = (item: ModuleNavItem) => (
-    <>
+  const renderContent = (item: ModuleNavItem) => {
+    const count = item.count ?? 0;
+    const badge = count > 0 ? <Badge count={count} more={item.countMore} tone="attention" /> : null;
+    return <>
       <bdi>{item.label}</bdi>
-      {item.count !== undefined && item.count > 0 ? <Badge count={item.count} more={item.countMore} tone="attention" /> : null}
-    </>
-  );
+      {item.reserveCount ? <bdi className={s.countSlot} title={count > 0 ? `${fmtNumber(count)}${item.countMore ? "+" : ""}` : undefined}>{badge}</bdi> : badge}
+    </>;
+  };
 
   const renderItem = (item: ModuleNavItem, idx: number) => {
     const isCurrent = item.id === activeId;
