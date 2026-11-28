@@ -255,6 +255,7 @@ export function MeDeskPage() {
         <MeAttendanceSections
           schedule={schedule}
           records={records.data?.items ?? []}
+          consoleClockOut={records.data?.console_clock_out === true}
           exceptions={exceptions.data?.items ?? []}
           recordsQuery={records}
           exceptionsQuery={exceptions}

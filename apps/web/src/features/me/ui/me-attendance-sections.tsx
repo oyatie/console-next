@@ -103,6 +103,7 @@ export function MeAttendanceStrip({
 export function MeAttendanceSections({
   schedule,
   records,
+  consoleClockOut,
   exceptions,
   recordsQuery,
   exceptionsQuery,
@@ -111,6 +112,7 @@ export function MeAttendanceSections({
 }: {
   schedule: UseQueryResult<OwnScheduleCalendar>;
   records: readonly OwnAttendanceRecord[];
+  consoleClockOut: boolean;
   exceptions: readonly OwnException[];
   recordsQuery?: UseQueryResult<{ items: OwnAttendanceRecord[] }>;
   exceptionsQuery?: UseQueryResult<{ items: OwnException[] }>;
@@ -186,7 +188,7 @@ export function MeAttendanceSections({
         id="me-att-records"
         title={t("me.attendance.records.title")}
         tools={
-          canClock ? (
+          canClock && (nextKind !== "CLOCK_OUT" || consoleClockOut) ? (
             <div className={s.sectionTools}>
               <Button
                 size="sm"
@@ -205,7 +207,7 @@ export function MeAttendanceSections({
           {receipt ? <Receipt state="recorded" message={receipt} /> : null}
           <CommandError
             error={punch.error}
-            own={code => (code === "attendance.refuse.missing_grant" ? t("attendance.refuse.missing_grant") : undefined)}
+            own={code => (code === "attendance.refuse.missing_grant" || code === "attendance.refuse.console_clock_out_disabled" ? t(code) : undefined)}
           />
           {recordsQuery ? (
             <QueryState q={recordsQuery} compact>
