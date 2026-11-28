@@ -55,6 +55,7 @@ import { koAttendanceCrews } from "./ko/attendance-crews";
 import { koAttendanceOverview } from "./ko/attendance-overview";
 import { koAttendanceRecords } from "./ko/attendance-records";
 import { koCompliance } from "./ko/compliance";
+import { koConsulting } from "./ko/consulting";
 import { koEvaluation } from "./ko/evaluation";
 import { koMe } from "./ko/me";
 import { koTeam } from "./ko/team";
@@ -292,5 +293,5 @@ export const ko: Record<ScreenMessageId, string> = {
   ...koDirectoryViews,
   ...koUiWorklist,
   ...koUiLedger,
-  ...koCompliance, ...koEvaluation, ...koMe, ...koTeam, ...koShellRoutes, ...koAccessPolicies, ...koAccessCheck, ...koAuth,
+  ...koCompliance, ...koConsulting, ...koEvaluation, ...koMe, ...koTeam, ...koShellRoutes, ...koAccessPolicies, ...koAccessCheck, ...koAuth,
 };

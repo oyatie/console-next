@@ -5,6 +5,7 @@ import { t } from "@console/i18n";
 const ACTION_KINDS = {
   objectTransition: ["audit.lifecycle.state", "units"],
   objectRetention: ["audit.lifecycle.hold", "units"],
+  consultingEngagement: [null, "units"],
   findingReview: ["audit.findings.outcome", "units"],
   evidenceHold: ["audit.vault.hold", "units"],
   supportAccess: ["supportAccess.title", "units"],

@@ -160,6 +160,7 @@ pub(crate) struct ServedModules {
     pub(crate) integrity: (bool, bool),
     pub(crate) ledger: bool,
     pub(crate) compliance: (bool, bool),
+    pub(crate) consulting: (bool, bool),
     pub(crate) benefits: (bool, bool),
     pub(crate) calendar: bool,
     pub(crate) evaluation_tasks: bool,
@@ -177,6 +178,7 @@ pub(crate) fn served_authz_projection(
         integrity: (read_findings, triage_findings),
         ledger,
         compliance: (read_compliance, manage_compliance),
+        consulting: (read_consulting, manage_consulting),
         benefits: (read_benefits, manage_benefits),
         calendar,
         evaluation_tasks,
@@ -196,6 +198,25 @@ pub(crate) fn served_authz_projection(
         });
     }
     for (feature, name, allowed) in [
+        (
+            if read_consulting {
+                Feature::ConsultingRead
+            } else {
+                Feature::ConsultingManage
+            },
+            "served_consulting_entry",
+            read_consulting || manage_consulting,
+        ),
+        (
+            Feature::ConsultingRead,
+            "served_consulting",
+            read_consulting,
+        ),
+        (
+            Feature::ConsultingManage,
+            "served_consulting_manage",
+            manage_consulting,
+        ),
         (
             Feature::KpiRead,
             "analytics_projection",

@@ -2484,6 +2484,15 @@ const CONSULTING_FRAGMENT_PATHS: &[PathItem] = &[
             ),
         }],
     },
+    PathItem {
+        path: "/api/v1/consulting/options",
+        operations: &[Operation {
+            method: "get",
+            body: include_str!(
+                "../../consulting/rest/openapi/paths/api__v1__consulting__options.get.yaml"
+            ),
+        }],
+    },
 ];
 
 const CONSULTING_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
@@ -2550,6 +2559,10 @@ const CONSULTING_FRAGMENT_SCHEMAS: &[NamedYaml] = &[
         body: include_str!(
             "../../consulting/rest/openapi/schemas/ConsultingObservationCreateRequest.yaml"
         ),
+    },
+    NamedYaml {
+        name: "ConsultingOptionPage",
+        body: include_str!("../../consulting/rest/openapi/schemas/ConsultingOptionPage.yaml"),
     },
     NamedYaml {
         name: "ConsultingTransitionRequest",

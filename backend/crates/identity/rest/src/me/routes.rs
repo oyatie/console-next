@@ -67,7 +67,12 @@ pub(crate) async fn get_me_authz(
     let (read_cycles, create_cycles) = (state.evaluation_cycles)(&principal);
     let (read_benefits, manage_benefits) = (state.benefit_access)(&principal);
     let (read_compliance, manage_compliance) = (state.compliance_access)(&principal);
+    let (read_consulting, manage_consulting) = (state.consulting_access)(&principal);
     let requested = [
+        (
+            TenantModule::Consulting,
+            read_consulting || manage_consulting,
+        ),
         (
             TenantModule::Compliance,
             read_compliance || manage_compliance,
@@ -88,6 +93,7 @@ pub(crate) async fn get_me_authz(
     let evaluation = enabled.contains(&TenantModule::Evaluation);
     let benefits = enabled.contains(&TenantModule::Benefits);
     let compliance = enabled.contains(&TenantModule::Compliance);
+    let consulting = enabled.contains(&TenantModule::Consulting);
     let calendar = enabled.contains(&TenantModule::Calendar);
     Ok(Json(served_authz_projection(
         &principal,
@@ -101,6 +107,10 @@ pub(crate) async fn get_me_authz(
                 compliance && manage_compliance,
             ),
             benefits: (benefits && read_benefits, benefits && manage_benefits),
+            consulting: (
+                consulting && read_consulting,
+                consulting && manage_consulting,
+            ),
             calendar,
             evaluation_tasks: evaluation && tasks,
             evaluation_cycles: (evaluation && read_cycles, evaluation && create_cycles),

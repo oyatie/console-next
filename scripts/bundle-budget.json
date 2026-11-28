@@ -80,6 +80,8 @@
       "src/features/audit/ui/findings.tsx",
       "src/features/audit/ui/location-consents.tsx",
       "src/features/compliance/ui/catalog.tsx",
+      "src/features/consulting/ui/register.tsx",
+      "src/features/consulting/ui/engagement.tsx",
       "src/features/evaluation/ui/cycles.tsx",
       "src/features/me/ui/evaluation-tasks.tsx",
       "src/features/audit/ui/restricted-stream.tsx",

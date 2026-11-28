@@ -10,6 +10,7 @@ export const bootEn = {
   ...bootConsentEn,
   "compliance.title": "Compliance catalog",
   "compliance.create": "Add a compliance record",
+  "consulting.title": "Consulting engagements",
   "evaluation.title": "Evaluation cycles",
   "evaluation.create": "Create evaluation cycle",
   "shell.link.payroll": "Payroll",

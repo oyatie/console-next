@@ -2,7 +2,7 @@
 import type { AccessEffective } from "../api";
 
 export type Requirement = { action: keyof NonNullable<AccessEffective["decisions"]> } | { domain: AccessEffective["entries"][number]["domain"]; level: AccessEffective["entries"][number]["level"]; tenant?: boolean; scopes?: readonly AccessEffective["entries"][number]["scope"]["kind"][] };
-export type ServedCapability = "served_compliance_catalog" | "served_compliance_catalog_manage" | "served_evaluation_tasks" | "documents" | "analytics_projection" | "served_integrity_findings" | "served_integrity_triage" | "lifecycle_manage" | "served_location_consent_ledger" | "restricted_audit_stream" | "served_evaluation_cycles" | "served_evaluation_cycle_create" | "served_calendar" | "served_benefit_catalog";
+export type ServedCapability = "served_compliance_catalog" | "served_compliance_catalog_manage" | "served_consulting_entry" | "served_consulting" | "served_consulting_manage" | "served_evaluation_tasks" | "documents" | "analytics_projection" | "served_integrity_findings" | "served_integrity_triage" | "lifecycle_manage" | "served_location_consent_ledger" | "restricted_audit_stream" | "served_evaluation_cycles" | "served_evaluation_cycle_create" | "served_calendar" | "served_benefit_catalog";
 export type AccessRequirement = Requirement | { servedCapability: ServedCapability } | { allOf: readonly Requirement[] } | { destinations: readonly AccessRequirement[] };
 
 type GrantRow = AccessEffective["entries"][number];

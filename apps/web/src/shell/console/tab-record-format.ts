@@ -57,6 +57,9 @@ export function resolveDynamicRouteMeta(path: string): RouteTabMeta | null {
   if (segs[0] === "requests" && segs[1]) {
     return { title: t("shellRoutes.requestDetail"), isFallback: false, recordSpec: null };
   }
+  if (segs[0] === "consulting" && segs[1] === "engagements" && segs[2]) {
+    return { title: t("consulting.detail"), isFallback: false, recordSpec: null };
+  }
   if (segs[0] === "approvals" && segs[1]) {
     const id = safeDecode(segs[1]);
     return {

@@ -4266,6 +4266,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/consulting/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listConsultingOptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/customers": {
         parameters: {
             query?: never;
@@ -19471,6 +19487,16 @@ export interface components {
             /** Format: date-time */
             observedAt: string;
             note: string;
+        };
+        ConsultingOptionPage: {
+            items: {
+                id: components["schemas"]["Uuid"];
+                label: string;
+                /** Format: date-time */
+                recorded_at: string | null;
+            }[];
+            /** Format: int64 */
+            next_offset: number | null;
         };
         ConsultingTransitionRequest: {
             /** @enum {string} */
@@ -41298,6 +41324,46 @@ export interface operations {
                 };
             };
             409: components["responses"]["Conflict"];
+        };
+    };
+    listConsultingOptions: {
+        parameters: {
+            query: {
+                kind: "CUSTOMER" | "DOCUMENT" | "ONTOLOGY_INSTANCE" | "KPI_DEFINITION" | "EVIDENCE" | "APPROVAL";
+                q?: string;
+                /** @description Required for approval choices. */
+                engagementId?: components["schemas"]["Uuid"];
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Eligible tenant-scoped choices in stable order */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultingOptionPage"];
+                };
+            };
+            /** @description Consulting or registry access refused */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid offset or missing engagement */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     createCustomer: {
