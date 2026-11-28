@@ -160,7 +160,6 @@ export const enAccount = {
   "account.hub.attendanceMeta": "Hours, schedule, records",
   "account.hub.payslip": "Payslip",
   "account.hub.payslipPayDate": "{period} · Payday {date}",
-  "account.hub.payslipIssued": "View issued payslips",
   "account.hub.payslipSheetTitle": "Payslip details",
   "account.hub.payslipIssuedAt": "Issued at",
   "account.hub.certificates": "Certificates",
