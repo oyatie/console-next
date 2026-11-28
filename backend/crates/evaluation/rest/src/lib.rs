@@ -10,7 +10,9 @@
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 mod openapi;
+mod tasks;
 pub use openapi::OPENAPI_FRAGMENT;
+pub use tasks::my_tasks_available;
 
 use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, StatusCode};
@@ -130,7 +132,7 @@ pub fn router(state: EvaluationRestState) -> Router {
             post(submit_review),
         )
         .route(EVALUATION_SUBJECT_CALIBRATE_PATH_TEMPLATE, post(calibrate))
-        .route(EVALUATION_MY_TASKS_PATH, get(my_tasks))
+        .route(EVALUATION_MY_TASKS_PATH, get(tasks::my_tasks))
         .route(
             EVALUATION_EMPLOYEE_REVIEWS_PATH_TEMPLATE,
             get(employee_reviews),
@@ -553,20 +555,6 @@ async fn calibrate(
 // ---------------------------------------------------------------------------
 // Task list and person ledger
 // ---------------------------------------------------------------------------
-
-async fn my_tasks(
-    State(state): State<EvaluationRestState>,
-    headers: HeaderMap,
-) -> Result<Json<TaskPage>, RestError> {
-    let principal = principal_from_headers(&state, &headers).await?;
-    require_feature(&principal, Feature::EvaluationSubmit)?;
-    let page = state
-        .store
-        .my_tasks(principal.user_id)
-        .await
-        .map_err(RestError::from_store)?;
-    Ok(Json(page))
-}
 
 async fn employee_reviews(
     State(state): State<EvaluationRestState>,

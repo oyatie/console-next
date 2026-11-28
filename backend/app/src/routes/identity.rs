@@ -32,6 +32,8 @@ pub(super) fn mount(router: Router, deps: &TenantDeps<'_>) -> Router {
             authorize_integrity_triage(principal).is_ok(),
         )
     });
+    #[cfg(feature = "evaluation")]
+    let identity = identity.with_evaluation_tasks(console_evaluation_rest::my_tasks_available);
     #[cfg(feature = "compliance")]
     let identity = identity.with_ledger_access(console_compliance_rest::consent_ledger_available);
     router

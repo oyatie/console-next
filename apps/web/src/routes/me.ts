@@ -4,6 +4,7 @@ import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
 import type { MeAttendanceSearch } from "../features/me/ui/me-attendance-page";
 import type { MeDeskSearch, MeDeskView } from "../features/me/ui/me-desk-page";
 import { app, screen, str } from "./app";
+import { servedRouteReads } from "./route-reads";
 
 const DESK_VIEWS: readonly MeDeskView[] = ["overview", "attendance", "requests", "documents"];
 
@@ -37,4 +38,11 @@ const meDispatchOffers = createRoute({
   component: lazyRouteComponent(screen(loadMeDesk), "MeDispatchOffers"),
 });
 
-export const meRoutes = [meAttendance, meDesk, meDispatchOffers];
+const meEvaluations = createRoute({
+  getParentRoute: () => app,
+  path: "/me/evaluations",
+  staticData: { access: servedRouteReads["/me/evaluations"].access, floorplan: "P-01", pattern: "list-record" },
+  component: lazyRouteComponent(screen(() => import("../features/me/ui/evaluation-tasks")), "EvaluationTasks"),
+});
+
+export const meRoutes = [meAttendance, meDesk, meDispatchOffers, meEvaluations];

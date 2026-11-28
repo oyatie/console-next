@@ -44,6 +44,7 @@ const paths = [
   "/inbox",
   "/leave",
   "/me/attendance",
+  "/me/evaluations",
   "/me/desk",
   "/me/dispatch-offers",
   "/org",
