@@ -17,7 +17,12 @@ Keep `CONSOLE_COOKIE_SECURE` enabled for HTTPS deployments.
 
 Set the API secret `CONSOLE_RECOVERY_CONTACT_KEYRING` to an independent JSON keyring
 for encrypting recovery addresses. Retain its previous keys during rotation so
-registered contacts remain usable across restarts and deployments.
+registered contacts remain usable across restarts and deployments. On preview and
+production hosts, provision the API environment or its
+`CONSOLE_RECOVERY_CONTACT_KEYRING_FILE` through console-infra before updating
+the image. A release API with authentication configured checks the key at startup.
+The Kubernetes template sources the `CONSOLE_RECOVERY_CONTACT_KEYRING` property of
+the environment's `api` external secret and mounts its file into the API pod.
 
 Provide identical `CONSOLE_RRN_KEYRING`, `CONSOLE_RRN_HMAC_KEYRING`, and
 `CONSOLE_MAIL_KEYRING` JSON keyrings (`{"active":"...","keys":{...}}`) to both
