@@ -128,7 +128,7 @@ impl PgOrgStore {
                         trace_id::text AS trace_id,
                         span_id::text AS span_id,
                         occurred_at
-                    FROM audit_events
+                    FROM ordinary_audit_events
                     WHERE org_id = $1
                       AND action LIKE 'policy.%'
                       AND target_type IN ('policy_role', 'policy_role_assignment', 'user')

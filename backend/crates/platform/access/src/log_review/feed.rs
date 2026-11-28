@@ -8,7 +8,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use sqlx::Row;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use uuid::Uuid;
 
@@ -135,7 +135,7 @@ pub async fn get(s: &AccessService, p: Principal, q: Query) -> AccessResult<Valu
             "SELECT a.id,a.actor,a.created_at,a.occurred_at,COALESCE(a.actor_display,u.display_name,'') AS actor_name,\
              COALESCE(a.principal_type,a.after_snap->>'principal_type','') AS principal_type,a.action,a.target_type,COALESCE((a.after_snap->>'subject_count')::bigint,0) AS subject_count,\
              a.ip,{outcome} AS outcome,a.after_snap->>'export_purpose' AS export_purpose,(a.after_snap->>'row_count')::bigint AS row_count \
-             FROM audit_events a LEFT JOIN person_accounts_current u ON u.org_id=a.org_id AND u.id=a.actor \
+             FROM ordinary_audit_events a LEFT JOIN person_accounts_current u ON u.org_id=a.org_id AND u.id=a.actor \
              WHERE a.org_id=$1 AND a.id=ANY($2) ORDER BY a.created_at,a.id", outcome=include_str!("outcome.sql")));
         let rows = sql.build()
             .bind(p.org_id.as_uuid()).bind(ids).fetch_all(tx.as_mut()).await?;
@@ -145,18 +145,21 @@ pub async fn get(s: &AccessService, p: Principal, q: Query) -> AccessResult<Valu
             subjects.insert(serde_json::from_value::<Uuid>(actor["id"].clone()).map_err(AccessError::internal)?);
         }
         let mut items = Vec::with_capacity(rows.len());
-        for (row, key) in rows.iter().zip(&keys) {
+        let mut flags: BTreeMap<_,_> = keys.into_iter().map(|key| (key.event_id,key.flags)).collect();
+        for row in &rows {
+            let id: Uuid = row.try_get("id")?;
+
             let actor: Option<Uuid> = row.try_get("actor")?;
             subjects.extend(actor);
             items.push(json!({
-                "event_id":key.event_id,"created_at":key.created_at.format(&Rfc3339).map_err(AccessError::internal)?,
+                "event_id":id,"created_at":row.try_get::<OffsetDateTime,_>("created_at")?.format(&Rfc3339).map_err(AccessError::internal)?,
                 "occurred_at":row.try_get::<OffsetDateTime,_>("occurred_at")?.format(&Rfc3339).map_err(AccessError::internal)?,
                 "actor_id":actor,"actor_name":row.try_get::<String,_>("actor_name")?,
                 "principal_type":row.try_get::<String,_>("principal_type")?,"action":row.try_get::<String,_>("action")?,
                 "target_type":row.try_get::<String,_>("target_type")?,"subject_count":row.try_get::<i64,_>("subject_count")?,
                 "ip":row.try_get::<Option<String>,_>("ip")?,"outcome":row.try_get::<String,_>("outcome")?,
                 "export_purpose":row.try_get::<Option<String>,_>("export_purpose")?,"row_count":row.try_get::<Option<i64>,_>("row_count")?,
-                "flags":key.flags}));
+                "flags":flags.remove(&id).ok_or_else(|| AccessError::internal("unrequested access event"))?}));
         }
         let subjects: Vec<_> = subjects.into_iter().collect();
         let audit = access_event(&p, AccessRecord {action:"access_log.review_read",target_type:"access_log",target_id:period.clone(),
