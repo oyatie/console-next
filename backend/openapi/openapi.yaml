@@ -41223,6 +41223,9 @@ components:
         status:
           type: string
           enum: [OPEN, APPLIED, DECLINED, WITHDRAWN]
+        can_review:
+          type: boolean
+          description: The viewer meets this open request's assignee and subject-scope rules for apply or decline. The decision command rechecks the current row and policy.
         review_required:
           type: boolean
           description: OTHER requests are reviewed after the fact.

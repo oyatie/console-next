@@ -29,9 +29,8 @@ const LANES: readonly Lane[] = ["all", "me", "role", "filed"];
 const STATUSES: readonly (RequestStatus | undefined)[] = ["OPEN", "APPLIED", "DECLINED", "WITHDRAWN", undefined];
 
 /**
- * Change requests (BW-17). HR (org-wide manage) works the organization's requests by lane, named to me or
- * open to any HR person, and applies or declines each with a reason; anyone else sees the requests they filed and may
- * withdraw an open one. The selected request opens beside the list.
+ * HR can review requests in its management scope. Other users start with their filings and can
+ * follow a link to an assignment. A selected request opens beside the current list.
  */
 export function RequestsPage() {
   const { lane = "all", status = "OPEN", sel, page = 0 } = route.useSearch();
@@ -39,12 +38,13 @@ export function RequestsPage() {
   const can = useCan();
   const authz = useQuery({ ...authzQuery, enabled: authzApplies() });
   const hr = can("employee_directory_manage", "all");
+  const tenantReviewer = !authz.isError && can("employee_directory_manage", "tenant");
   const set = (patch: { lane?: Lane; status?: RequestStatus | "ALL"; sel?: string; page?: number }) =>
     void navigate({ search: (x) => ({ ...x, page: undefined, ...patch }), replace: true });
   const select = (nextSel?: string) => void navigate({ search: (x) => ({ ...x, sel: nextSel }), replace: true });
-  const active = hr ? lane : "filed";
-  const filtered = (hr && active !== "all") || status !== "ALL";
-  const filters = [t(hr ? `requests.lane.${active}` : "requests.mine"), status !== "ALL" && t(`requests.status.${status}`)].filter(Boolean).join(" · ");
+  const active = hr ? lane : lane === "me" ? "me" : "filed";
+  const filtered = active !== (hr ? "all" : "filed") || status !== "ALL";
+  const filters = [t(hr || active === "me" ? `requests.lane.${active}` : "requests.mine"), status !== "ALL" && t(`requests.status.${status}`)].filter(Boolean).join(" · ");
   const list = useQuery({ ...requestsQuery({ lane: active, status: status === "ALL" ? undefined : status, offset: page * REQUEST_PAGE }), enabled: !authz.isLoading });
   const counts = useQuery({ ...changeRequestCountsQuery, enabled: !authz.isLoading && hr });
   const makeColumns = (compact: boolean): Column<ChangeRequest>[] => [
@@ -141,7 +141,7 @@ export function RequestsPage() {
             </QueryState>
           </>}
         </section>
-        {selected ? <RequestPanel r={selected} hr={hr} onClose={() => select(undefined)} onDecided={(out) => { setDecided(out); select(undefined); }} /> :
+        {selected ? <RequestPanel r={selected} hr={tenantReviewer} onClose={() => select(undefined)} onDecided={(out) => { setDecided(out); select(undefined); }} /> :
           selectionState && <aside className="card panel" aria-label={t("requests.panel")}>
             <div className="panel__head"><h2 className="panel__title">{t("requests.panel")}</h2>
               <Button variant="ghost" onClick={() => select(undefined)}>{t("requests.panel.close")}</Button></div>
@@ -230,13 +230,13 @@ export function RequestsPage() {
                   closeLabel: t("requests.panel.close"),
                   onClose: () => select(undefined),
                   returnFocus: () => tableWrapRef.current?.querySelector<HTMLElement>(`[data-id="${CSS.escape(sel)}"]`),
-                  children: selected ? <RequestPanelBody r={selected} hr={hr} onDecided={(out) => { setDecided(out); select(undefined); }} /> : selectionState,
+                  children: selected ? <RequestPanelBody r={selected} hr={tenantReviewer} onDecided={(out) => { setDecided(out); select(undefined); }} /> : selectionState,
                 }
               : null
           }
           statusSegments={[
             { id: "scope", tone: "strong", content: t("requests.title") },
-            { id: "lane", content: t(hr ? `requests.lane.${active}` : "requests.mine") },
+            { id: "lane", content: t(hr || active === "me" ? `requests.lane.${active}` : "requests.mine") },
             { id: "status", content: t(`requests.status.${status}`) },
             ...(selected ? [{ id: "selected", content: subjectText(selected) }] : []),
           ]}

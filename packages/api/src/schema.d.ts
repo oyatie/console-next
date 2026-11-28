@@ -18855,6 +18855,8 @@ export interface components {
             assignee_user_id?: components["schemas"]["Uuid"] | null;
             /** @enum {string} */
             status: "OPEN" | "APPLIED" | "DECLINED" | "WITHDRAWN";
+            /** @description The viewer meets this open request's assignee and subject-scope rules for apply or decline. The decision command rechecks the current row and policy. */
+            can_review?: boolean;
             /** @description OTHER requests are reviewed after the fact. */
             review_required: boolean;
             decided_by?: components["schemas"]["Uuid"] | null;

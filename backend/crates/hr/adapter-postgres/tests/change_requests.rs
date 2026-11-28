@@ -230,9 +230,10 @@ async fn exact_selection_finds_a_later_page_only_with_the_original_row_visibilit
     assert_eq!((first.items.len(), first.total), (20, 21));
     assert!(!first.items.iter().any(|row| row.id == target.id));
     let query = || serde_json::from_value(json!({"id":target.id,"limit":1})).unwrap();
-    for principal in [requester.clone(), w.hr(w.hr_one)] {
+    for (principal, can_review) in [(requester.clone(), false), (w.hr(w.hr_one), true)] {
         let found = w.hr.list_change_requests(principal, query()).await.unwrap();
         assert_eq!((found.total, found.items[0].id), (1, target.id));
+        assert_eq!(found.items[0].can_review, can_review);
     }
     let mismatch = serde_json::from_value(json!({"id":target.id,"status":"DECLINED"})).unwrap();
     assert_eq!(
