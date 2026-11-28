@@ -3,6 +3,7 @@ import { Check, CheckCircle2, Loader2, SearchCheck, Undo2, X } from "lucide-reac
 import { t } from "@console/i18n";
 import { StatusDock } from "../status-dock/status-dock";
 import s from "./receipt.module.css";
+import metadata from "./receipt-meta.module.css";
 
 /**
  * What an action did, in the order it happens (components.html §11, post-decision-receipt-and-advance):
@@ -52,14 +53,14 @@ function Body(props: ReceiptProps) {
       return (
         <div className={`${s.card} ${s.pending}`}>
           <p className={s.top}><Loader2 className={s.icon} size={16} aria-hidden />{props.message}</p>
-          <p className={s.meta}>{t("uiReceipt.sending")}</p>
+          <p className={metadata.meta}>{t("uiReceipt.sending")}</p>
         </div>
       );
     case "recorded":
       return (
         <div className={s.card}>
           <p className={s.top}><CheckCircle2 className={s.icon} size={16} aria-hidden />{props.message}</p>
-          <p className={s.meta}>
+          <p className={metadata.meta}>
             <span className={s.badge}>{t("uiReceipt.recorded")}</span>
             {props.meta}
           </p>
@@ -87,7 +88,7 @@ function Body(props: ReceiptProps) {
       return (
         <div className={`${s.card} ${s.unknown}`}>
           <p className={s.top}><SearchCheck className={s.icon} size={16} aria-hidden />{props.message ?? t("uiReceipt.checking.title")}</p>
-          <p className={s.meta}>{t("uiReceipt.checking")}</p>
+          <p className={metadata.meta}>{t("uiReceipt.checking")}</p>
         </div>
       );
   }

@@ -21,6 +21,11 @@ for (const kind of ["CORPORATION", "INDIVIDUAL"] as const) for (const width of [
       const brn = page.getByRole("main").getByLabel(t("entityCreate.field.brn"));
       const opened = page.getByLabel(t("entityCreate.field.openedOn"));
       await expect(opened).toBeVisible();
+      if (width === 390) {
+        // Exercise both controls with the real phone navigation pinned before scanning the settled form.
+        await opened.click({ trial: true });
+        await opened.locator("..").getByRole("button", { name: t("uiDate.calendar.open") }).click({ trial: true });
+      }
       await expectAxe(page, `entity-create/${kind === "CORPORATION" ? "certificate" : "individual"}/${width}`);
       const business = page.getByRole("group", { name: t("entityCreate.business.label"), exact: true });
       const sector = business.getByRole("textbox", { name: t("entityCreate.business.sectorOf", { n: 1 }), exact: true });
