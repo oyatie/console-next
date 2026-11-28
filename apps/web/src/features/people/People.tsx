@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, type ReactNode } from "react";
+import { lazy, Suspense, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { t } from "@console/i18n";
@@ -8,7 +8,8 @@ import { ToggleButton } from "../../ui/button/button";
 import { ExperienceSwitch } from "../../ui/patterns/pattern-shell";
 import { ApiError, authzQuery, granted, myAccessQuery } from "../../reference/authz/api";
 import { PeopleHead, type PeopleView } from "./ui/people-head";
-import { RosterPage, RosterScreen } from "./ui/roster-page";
+import { RosterPage } from "./ui/roster-page";
+import { usePreloadRosterLayout } from "./ui/use-roster-layout";
 import s from "./ui/roster.module.css";
 import { PEOPLE_TABS, type PeopleTab } from "./domain/people-tabs";
 import type { ExitFilter } from "./api";
@@ -113,9 +114,7 @@ export function PeopleDirectory({ tabs }: { tabs?: ReactNode } = {}) {
   const { view: asked, placement, sel } = route.useSearch();
   const navigate = route.useNavigate();
   const authz = useQuery(authzQuery);
-  useEffect(() => {
-    if (asked !== "accounts" && placement !== "unplaced") void RosterScreen.preload?.()?.catch(() => undefined);
-  }, [asked, placement]);
+  usePreloadRosterLayout(asked !== "accounts" && placement !== "unplaced");
   const can = granted(authz.data?.capabilities);
   // BW-22: a full directory read on any branches lists that reader's branches; a user manager without one has the
   // accounts view only.
