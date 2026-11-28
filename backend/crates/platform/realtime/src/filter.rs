@@ -67,6 +67,20 @@ fn door(resource_type: &str) -> Option<Door> {
 }
 
 pub(crate) fn may_read(principal: &Principal, row: &ChangeRow) -> bool {
+    if row.resource_type == "workspace" {
+        return row
+            .resource_id
+            .as_deref()
+            .and_then(|id| uuid::Uuid::parse_str(id).ok())
+            == Some(*principal.user_id.as_uuid());
+    }
+    if matches!(
+        row.resource_type.as_str(),
+        "console_rollout" | "tenant_settings"
+    ) {
+        // Both reads are available to an authenticated tenant session and never carry a record ID.
+        return row.resource_id.is_none();
+    }
     if row.resource_type == "identifier_correction" {
         return principal.branch_scope == console_kernel_core::BranchScope::All
             && [Feature::LegalEntityManage, Feature::OrgChangeApply]

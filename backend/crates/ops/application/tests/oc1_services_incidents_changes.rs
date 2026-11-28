@@ -264,7 +264,11 @@ fn incidents_changes_and_promote_services_produce_expected_views_and_cmds() -> T
         feedback: &DummyFeedback,
         actions: &actions,
     };
-    assert!(promote_svc.request_promote(&digest, "normal", &ctx).is_ok());
+    assert!(
+        promote_svc
+            .request_promote(&digest, "normal", &vm_slot, &ctx)
+            .is_err()
+    );
 
     let running_digest = format!("sha256:{}", "d".repeat(64));
     vm_slot.begin_read(now);

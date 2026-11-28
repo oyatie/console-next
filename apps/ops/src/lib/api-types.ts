@@ -87,13 +87,14 @@ export type StatusIncident = {
 };
 
 export type ObligationEventPayload =
+  | { event: "countersigned"; fields: { proposal_seq: number } }
   | { event: "in_review"; fields: { note?: string | null } }
   | { event: "redated"; fields: { due: string; reason: string } }
   | {
       event: "done";
       fields: {
         evidence_ref: string;
-        signer: string;
+        signer?: string;
         co_signer?: string | null;
         counsel_url?: string | null;
         signed_on: string;
@@ -103,7 +104,7 @@ export type ObligationEventPayload =
       event: "waived";
       fields: {
         reason: string;
-        signer: string;
+        signer?: string;
         co_signer?: string | null;
         counsel_url?: string | null;
       };

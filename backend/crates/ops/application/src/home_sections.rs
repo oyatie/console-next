@@ -60,11 +60,6 @@ pub fn build_changing(
         .or_else(|| snap.series.get(QUERY_ROLLOUT_WEIGHT_PERCENT))
         .and_then(|v| v.first())
         .map(|s| s.value);
-    let freeze = snap
-        .series
-        .get(QUERY_FREEZE)
-        .and_then(|v| v.first())
-        .map(|s| s.value > 0.0);
     vec![ChangingView {
         key: "production".to_owned(),
         digest: vm.observe(digest, None, now),
@@ -75,7 +70,7 @@ pub fn build_changing(
         maintenance_window: vm.observe(None, None, now),
         weight_percent: vm.observe(weight, Some("%".into()), now),
         watch_until: vm.observe(None, None, now),
-        freeze: vm.observe(freeze, None, now),
+        freeze: vm.deployment_freeze(now),
         next: LinkView {
             href: "/running".to_owned(),
             label: "Inspect rollout".to_owned(),

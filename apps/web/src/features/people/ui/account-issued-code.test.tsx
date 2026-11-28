@@ -57,3 +57,12 @@ test("combined invite with initial role grants renders grant count and links to 
   expect(html).toContain(t("accounts.access.view"));
   expect(html).not.toContain(t("accounts.issued.grant"));
 });
+
+test("a recovered invite confirms the account without rendering unusable code controls", () => {
+  const html = renderToStaticMarkup(
+    <IssuedCode issued={{ user_id: "u-replay", userId: "u-replay", name: "Replayed", otp: "", expires_at: "2026-06-03T12:00:00Z" }} onDone={() => {}} />,
+  );
+  expect(html).toContain(t("accounts.issued.replayed", { name: "Replayed" }));
+  expect(html).not.toContain(t("common.copyCode"));
+  expect(html).not.toContain(t("common.codeDelivered"));
+});

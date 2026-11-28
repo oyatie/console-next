@@ -61,14 +61,20 @@ test.describe("Stage-1 OC1 Ops Cockpit", () => {
     await expect(page.getByText("Event history (2)")).toBeVisible();
 
     await page.getByLabel("Lifecycle transitions").selectOption("done");
-    await page.getByLabel("Evidence reference").fill("docs/ops/pitr-drill-2026-11-21.md");
-    await page.getByLabel("Signer", { exact: true }).fill("ops-lead");
-    await page.getByRole("button", { name: "Mark done" }).click();
+    await expect(page.getByLabel("Signer", { exact: true })).toHaveCount(0);
+    await page.getByRole("button", { name: "Submit for countersignature" }).click();
     await expect(page.getByText("Required obligation transition fields missing")).toBeVisible();
 
-    await page.getByLabel("Co-signer (second operator)").fill("security-lead");
+    await page.getByLabel("Evidence reference").fill("docs/ops/pitr-drill-2026-11-21.md");
     await page.getByLabel("Counsel / evidence URL (https://... or docs/...)").fill("https://counsel.cosskorea.invalid/opinions/lg-0001");
-    await page.getByRole("button", { name: "Mark done" }).click();
+    await page.getByRole("button", { name: "Submit for countersignature" }).click();
+    await expect(page.getByText("Proposed decision Done")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Countersign this decision" })).toHaveCount(0);
+
+    mock.data.me.operator.person = "00000000-0000-4000-8000-000000000003";
+    await page.reload();
+    await expect(page.getByText("Proposed decision Done")).toBeVisible();
+    await page.getByRole("button", { name: "Countersign this decision" }).click();
     await expect(page.getByText("Obligation is finalized and cannot be modified")).toBeVisible();
 
     // Create new obligation
@@ -260,7 +266,7 @@ test.describe("Stage-1 OC1 Ops Cockpit", () => {
     await expect(page.getByText("Check deploy freeze, release gates, blocked signoffs and open P0/P1 feedback")).toBeVisible();
     await expect(page.getByRole("button", { name: "Request promotion" })).toBeDisabled();
 
-    // Unfreeze deploys -> triage P1 feedback -> immediately Ready with 0 signoffs -> Signoff & Request promotion
+    // Unfreeze, resolve the blocker, sign off, then request the signed candidate.
     await page.goto("/changes");
     await page.getByLabel("Change reason (required)").fill("Investigation cleared; lifting freeze");
     await page.getByRole("button", { name: "Unfreeze deploys" }).click();
@@ -271,14 +277,15 @@ test.describe("Stage-1 OC1 Ops Cockpit", () => {
     await page.getByLabel("Feedback ID").fill("FB-101");
     await page.locator('form:has-text("Save triage")').getByLabel("Note").fill("Verified resolved");
     await page.getByRole("button", { name: "Save triage" }).click();
-    await expect(page.getByText("All 5 gates passed · deploy freeze clear · 0 open P0/P1 blockers")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Request promotion" })).toBeEnabled();
+    await expect(page.getByText("Awaiting a ready staging signoff for this candidate digest")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Request promotion" })).toBeDisabled();
 
     await page.locator('form:has-text("Record signoff")').getByLabel("Note").fill("Staging smoke green");
     await page.getByRole("button", { name: "Record signoff" }).click();
     await expect(page.getByRole("button", { name: "Request promotion" })).toBeEnabled();
     await page.getByRole("button", { name: "Request promotion" }).click();
     await expect(page.getByText("ACT-0004 · promote")).toBeVisible();
+    await expect(page.getByText(/scripts\/tb release registry\.example\/tenant\/console-app@sha256:/)).toBeVisible();
     await shotOps(page, "promote");
 
     await page.goto("/actions");

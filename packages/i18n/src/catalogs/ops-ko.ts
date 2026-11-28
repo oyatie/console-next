@@ -12,6 +12,7 @@ const OPS_FORMAT_LABELS_KO = {
     public_attached: "공개 공지 연결", mitigation_added: "완화 조치 추가", notice_sent: "통지 발송", resolved: "해결 완료",
   } as Record<string, string>,
   obligationEvent: {
+    countersigned: "공동 서명",
     opened: "등록됨", in_review: "검토 중", redated: "기한 조정", done: "완료", waived: "면제",
   } as Record<string, string>,
   obligationKind: {

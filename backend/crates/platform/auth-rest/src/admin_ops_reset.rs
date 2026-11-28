@@ -75,18 +75,25 @@ pub(crate) async fn reset_other_ops_holder(
     let bootstrap = services.bootstrap_credentials.clone();
     let cipher = services.recovery_cipher.clone();
     let now = OffsetDateTime::now_utc();
-    let (issue, channel, dest, masked) =
+    let sender = services.email_sender.clone();
+    if !sender.can_send() {
+        return Err(RestError::unavailable(
+            "recovery email delivery is unavailable",
+        ));
+    }
+    let (issue, masked) =
         with_audits::<_, _, RestError>(&state.pool, org, move |tx| {
             Box::pin(async move {
-                let caller_ops: Option<bool> = sqlx::query_scalar(
-                    "SELECT is_tenant_ops AND is_active FROM users WHERE org_id = $1 AND id = $2 FOR SHARE",
+                let holders: Vec<Uuid> = sqlx::query_scalar(
+                    "SELECT id FROM users WHERE org_id = $1 AND id = ANY($2) AND is_tenant_ops AND is_active
+                     ORDER BY id FOR UPDATE",
                 )
                 .bind(org.as_uuid())
-                .bind(actor.as_uuid())
-                .fetch_optional(tx.as_mut())
+                .bind(&[*actor.as_uuid(), target][..])
+                .fetch_all(tx.as_mut())
                 .await
                 .map_err(DbError::Sqlx)?;
-                if caller_ops != Some(true) {
+                if !holders.contains(actor.as_uuid()) || !holders.contains(&target) {
                     return Err(RestError {
                         status: axum::http::StatusCode::FORBIDDEN,
                         code: "ops_holder_only",
@@ -103,27 +110,23 @@ pub(crate) async fn reset_other_ops_holder(
                         message: "the target ops holder has no registered recovery contact"
                             .to_owned(),
                     })?;
+                if channel != RecoveryChannel::Email {
+                    return Err(RestError::unavailable("recovery contact delivery is unavailable"));
+                }
                 let (issue, events) = bootstrap
                     .reset_credentials_for_user_tx(tx, actor, target, org, now, DEFAULT_OTP_TTL)
                     .await
                     .map_err(RestError::from_provisioning)?;
-                Ok(((issue, channel, dest, masked), events))
+                // The target keeps their existing credentials if the transport refuses the code.
+                sender.send_otp(
+                    dest.expose_secret(),
+                    issue.token.as_str(),
+                    std::time::Duration::from_secs(DEFAULT_OTP_TTL.whole_seconds().unsigned_abs()),
+                ).await.map_err(|_| RestError::unavailable("recovery email delivery failed"))?;
+                Ok(((issue, masked), events))
             })
         })
         .await?;
-
-    if channel == RecoveryChannel::Email && services.email_sender.can_send() {
-        let _ = services
-            .email_sender
-            .send_otp(
-                dest.expose_secret(),
-                issue.token.as_str(),
-                std::time::Duration::from_secs(
-                    u64::try_from(DEFAULT_OTP_TTL.whole_seconds()).unwrap_or(14_400),
-                ),
-            )
-            .await;
-    }
 
     Ok(Json(AdminCredentialResetResponse {
         user_id: issue.user_id,

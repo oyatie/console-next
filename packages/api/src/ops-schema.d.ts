@@ -484,7 +484,7 @@ export interface paths {
         put?: never;
         /**
          * Draft Promote Cmd
-         * @description Records signed promote Cmd hand-off in actions spool.
+         * @description Records a signed hand-off for the ready preview digest after checking fresh deployment freeze evidence.
          */
         post: operations["opsPromoteRequest"];
         delete?: never;
@@ -1219,7 +1219,7 @@ export interface components {
         };
         ObligationEventRequest: {
             /** @enum {string} */
-            event: "in_review" | "redated" | "done" | "waived";
+            event: "in_review" | "redated" | "done" | "waived" | "countersigned";
             fields: Record<string, never>;
         };
         ObligationItem: {
@@ -1235,6 +1235,13 @@ export interface components {
             counsel_url?: string | null;
             signed_on: string | null;
             deadline: components["schemas"]["Text"];
+            pending_signoff?: {
+                seq: number;
+                /** @enum {string} */
+                outcome: "done" | "waived";
+                reason: string | null;
+            };
+            requires_reattestation?: boolean;
         };
         /** @enum {string} */
         ObligationKind: "professional-review" | "credential-rotation" | "escrow" | "drill" | "launch-gate" | "owner-decision" | "regulatory-watch";
@@ -1250,8 +1257,10 @@ export interface components {
             operator: components["schemas"]["ObligationOperator"];
             obligation_id: components["schemas"]["Text"];
             /** @enum {string} */
-            event: "opened" | "in_review" | "redated" | "done" | "waived";
+            event: "opened" | "in_review" | "redated" | "done" | "waived" | "countersigned";
             fields: Record<string, never>;
+            /** @enum {integer} */
+            attestation_version?: 1 | 2;
         };
         /** @enum {string} */
         ObligationReviewerRole: "labor-attorney" | "lawyer" | "tax-accountant" | "owner";
@@ -1361,6 +1370,9 @@ export interface components {
         };
         PromoteView: {
             evaluated_at: components["schemas"]["Timestamp"];
+            /** @enum {string|null} */
+            signed_bake?: "normal" | "long" | null;
+            release_image?: string | null;
             candidate_digest: components["schemas"]["ObservedText"];
             state: components["schemas"]["Observation"] & {
                 value?: components["schemas"]["Promotion"] | null;
@@ -2314,6 +2326,24 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            /** @description The requested candidate is not ready for promotion. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Promotion evidence is unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     opsPromoteSignoff: {

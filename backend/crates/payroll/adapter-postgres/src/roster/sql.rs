@@ -5,7 +5,7 @@ pub(super) const MATERIALISE_ROSTER_SQL: &str = r#"
 WITH scope AS (
     -- Single-group entities cover the whole legal entity; multi-group entities require
     -- every active entity employee overlapping the period to carry a pay-group assignment.
-    SELECT r.pay_group_id, g.legal_entity_id,
+    SELECT r.pay_group_id, g.legal_entity_id, r.attribution_month,
            EXISTS (
                SELECT 1 FROM pay_groups o
                WHERE o.org_id = r.org_id AND o.legal_entity_id = g.legal_entity_id AND o.id <> g.id
@@ -39,8 +39,8 @@ WITH scope AS (
                              JOIN pay_groups pg2 ON pg2.org_id = pga.org_id AND pg2.id = pga.pay_group_id
                              WHERE pga.org_id = em.org_id AND pga.employee_id = em.id
                                AND pg2.legal_entity_id = g.legal_entity_id AND pga.superseded_at IS NULL
-                               AND pga.effective_from <= $4
-                               AND (pga.effective_to_exclusive IS NULL OR pga.effective_to_exclusive > $3)
+                               AND pga.effective_from <= LEAST($4, em.exit_on)
+                               AND (pga.effective_to_exclusive IS NULL OR pga.effective_to_exclusive > GREATEST($3, em.hire_on))
                          )
                    )
                )
@@ -63,14 +63,31 @@ WITH scope AS (
             AND a.legal_entity_id = s.legal_entity_id
             AND a.valid_from <= $4 AND (a.valid_to IS NULL OR a.valid_to > $3)
       )
+      -- A close freezes its roster. A subsequent assignment cannot move an already
+      -- closed full-month wage into a second group of the same legal entity.
+      AND NOT EXISTS (
+          SELECT 1 FROM payroll_draft_runs paid
+          JOIN pay_groups pg ON pg.org_id = paid.org_id AND pg.id = paid.pay_group_id
+          JOIN payroll_draft_lines line ON line.org_id = paid.org_id AND line.run_id = paid.id
+          WHERE paid.org_id = m.org_id AND pg.legal_entity_id = s.legal_entity_id
+            AND paid.attribution_month = s.attribution_month AND paid.kind = 'REGULAR'
+            AND paid.pay_group_id <> s.pay_group_id
+            AND paid.status NOT IN ('STAGED','BLOCKED_LEGAL_GATE','READY_FOR_REVIEW','VOID')
+            AND line.employee_id = m.id AND line.calculation_status <> 'VOID'
+      )
       AND (
           NOT s.has_multi_groups
-          OR EXISTS (
-              SELECT 1 FROM employee_pay_group_assignments pga
+          -- A full-period source belongs to the first applicable group in that period.
+          -- A transfer later in the period cannot pay that source a second time.
+          OR s.pay_group_id = (
+              SELECT pga.pay_group_id FROM employee_pay_group_assignments pga
+              JOIN pay_groups pg ON pg.org_id = pga.org_id AND pg.id = pga.pay_group_id
               WHERE pga.org_id = m.org_id AND pga.employee_id = m.id
-                AND pga.pay_group_id = s.pay_group_id AND pga.superseded_at IS NULL
-                AND pga.effective_from <= $4
-                AND (pga.effective_to_exclusive IS NULL OR pga.effective_to_exclusive > $3)
+                AND pg.legal_entity_id = s.legal_entity_id AND pga.superseded_at IS NULL
+                AND pga.effective_from <= LEAST($4, m.exit_on)
+                AND (pga.effective_to_exclusive IS NULL OR pga.effective_to_exclusive > GREATEST($3, m.hire_on))
+              ORDER BY pga.effective_from, pga.id
+              LIMIT 1
           )
       )
     FOR KEY SHARE OF m

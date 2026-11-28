@@ -141,6 +141,7 @@ impl PgPayrollStore {
             if input.pay_basis_allowed.is_empty() || input.pay_basis_allowed.iter().enumerate().any(|(i, basis)| input.pay_basis_allowed[..i].contains(basis)) {
                 return Err(KernelError::validation("select distinct allowed pay bases").with_field("pay_basis_allowed").into());
             }
+            console_platform_db::lock_period_lock_key(tx, console_platform_db::PeriodLockDomain::Payroll, *org.as_uuid()).await?;
             let created = sqlx::query_scalar::<_, Json<PayGroup>>(
                 "INSERT INTO pay_groups(org_id,id,legal_entity_id,name,pay_date_rule,base_period,variable_period,attendance_cutoff_rule,proration,channel,sensitive,pay_basis_allowed)
                  VALUES ($1,$2,$3,$4->>'name',$4->'pay_date_rule',$4->'base_period',$4->'variable_period',NULLIF($4->'attendance_cutoff_rule','null'::jsonb),$4->>'proration',$4->>'channel',($4->>'sensitive')::boolean,ARRAY(SELECT jsonb_array_elements_text($4->'pay_basis_allowed')))

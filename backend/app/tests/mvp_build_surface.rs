@@ -70,10 +70,15 @@ fn router(
     pool: PgPool,
     public_pem: String,
     web_dist: Option<&std::path::Path>,
+    approvals: bool,
 ) -> Result<axum::Router, TestError> {
     let mut pairs = vec![
         ("CONSOLE_APP_ROLE", AppRole::Api.to_string()),
         ("CONSOLE_HTTP_ADDR", "127.0.0.1:0".to_owned()),
+        (
+            "CONSOLE_RELEASE_TOGGLES",
+            if approvals { "approvals" } else { "" }.to_owned(),
+        ),
         ("CONSOLE_JWT_ISSUER", ISSUER.to_owned()),
         ("CONSOLE_JWT_AUDIENCE", AUDIENCE.to_owned()),
         ("CONSOLE_JWT_PUBLIC_KEY_PEM", public_pem),
@@ -166,8 +171,8 @@ async fn compiled_out_module_routes_answer_404_and_mvp_routes_answer(
     std::fs::write(dist.join("index.html"), "<!doctype html><title>spa</title>")?;
     let dist: Arc<std::path::Path> = dist.into();
 
-    for web_dist in [None, Some(&*dist)] {
-        let app = router(runtime.clone(), public_pem.clone(), web_dist)?;
+    for (web_dist, approvals) in [(None, false), (Some(&*dist), true)] {
+        let app = router(runtime.clone(), public_pem.clone(), web_dist, approvals)?;
         // Control: the MVP org surface is mounted on this very router.
         let (status, body) = get(&app, "/api/v1/org-units", &token).await?;
         assert_ne!(status, StatusCode::NOT_FOUND, "MVP route missing: {body}");
@@ -179,6 +184,40 @@ async fn compiled_out_module_routes_answer_404_and_mvp_routes_answer(
                 .iter()
                 .any(|m| m["key"] == "payroll" && m["ready"] == cfg!(feature = "payroll"))
         }));
+        for (key, ready) in [
+            ("approvals", approvals),
+            (
+                "approval_submission",
+                approvals && cfg!(feature = "workspace"),
+            ),
+            ("personal_location", cfg!(feature = "compliance")),
+            ("dispatch_offers", cfg!(feature = "dispatch")),
+        ] {
+            assert!(
+                modules.as_array().is_some_and(|items| items
+                    .iter()
+                    .any(|item| item["key"] == key && item["ready"] == ready)),
+                "{key} readiness must match this binary and its release toggle"
+            );
+        }
+        for (path, compiled) in [
+            (
+                "/api/v1/location-consent/status",
+                cfg!(feature = "compliance"),
+            ),
+            ("/api/v1/me/dispatch-offers", cfg!(feature = "dispatch")),
+            (
+                "/api/v1/workflow-studio/submittable-definitions",
+                cfg!(feature = "workspace"),
+            ),
+        ] {
+            let (status, _) = get(&app, path, &token).await?;
+            assert_eq!(
+                status == StatusCode::NOT_FOUND,
+                !compiled,
+                "{path}: {status}"
+            );
+        }
         #[cfg(feature = "mvp")]
         {
             let (status, body) = get(&app, "/api/v1/payroll/payslips/me", &token).await?;

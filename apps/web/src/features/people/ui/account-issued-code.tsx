@@ -21,13 +21,14 @@ const QrCode = lazy(() => chunk(import("../../../ui/qr-code/qr-code")));
  */
 export function IssuedCode({ issued, onDone }: { issued: Issued | null; onDone: () => void }) {
   const peerDelivered = Boolean(issued?.delivered_to_recovery_contact);
+  const replayed = Boolean(issued && !issued.otp && !peerDelivered);
   const inviteUrl = issued && !peerDelivered && issued.otp && typeof window !== "undefined" ? buildInviteUrl(window.location.origin, issued.otp) : null;
   const copy = () => issued && !peerDelivered && void navigator.clipboard.writeText(issued.otp).then(() => announce(t("common.codeCopied")), () => announce(t("common.copyFailed")));
   const copyLink = () => inviteUrl && void navigator.clipboard.writeText(inviteUrl).then(() => announce(t("common.inviteLinkCopied")), () => announce(t("common.copyFailed")));
   const intro = issued
     ? peerDelivered
       ? t("accounts.reset.peerDelivered", { name: issued.name, masked: issued.masked_contact ?? "—" })
-      : [
+      : replayed ? t("accounts.issued.replayed", { name: issued.name }) : [
           t(issued.reset ? "accounts.resetIssued" : "accounts.issued", { name: issued.name }),
           issued.grantedCount ? t("accounts.issued.granted", { count: issued.grantedCount }) : "",
         ].filter(Boolean).join(" ")
@@ -39,8 +40,8 @@ export function IssuedCode({ issued, onDone }: { issued: Issued | null; onDone: 
           <Muted>{intro}</Muted>
           {/* The sign-in ID goes with the code: the person signs in with both (decisions #33). */}
           {issued.signInId && <KeyValue items={[{ key: "signInId", label: t("accounts.issued.signInId"), value: <span className="code">{issued.signInId}</span> }]} />}
-          {!peerDelivered && <div className="secret" aria-label={t("common.oneTimeCode")}>{issued.otp}</div>}
-          <span className="muted num">{t("common.expiresAt", { at: fmtDateTime(issued.expires_at) })}</span>
+          {!peerDelivered && !replayed && <div className="secret" aria-label={t("common.oneTimeCode")}>{issued.otp}</div>}
+          {!replayed && <span className="muted num">{t("common.expiresAt", { at: fmtDateTime(issued.expires_at) })}</span>}
           {inviteUrl && (
             <div className="qr-group" role="group" aria-label={t("common.inviteLink")}>
               <code className="code">{inviteUrl}</code>
@@ -50,9 +51,9 @@ export function IssuedCode({ issued, onDone }: { issued: Issued | null; onDone: 
             </div>
           )}
           <div className="form__actions">
-            {!peerDelivered && <Button onClick={copy}>{t("common.copyCode")}</Button>}
+            {!peerDelivered && !replayed && <Button onClick={copy}>{t("common.copyCode")}</Button>}
             {inviteUrl && <Button onClick={copyLink}>{t("common.copyInviteLink")}</Button>}
-            {!peerDelivered && !issued.reset && (
+            {!peerDelivered && !replayed && !issued.reset && (
               issued.grantedCount ? (
                 <Link to="/access/people/$accountId" params={{ accountId: issued.userId }} className={buttonClass("secondary")} onClick={onDone}>
                   {t("accounts.access.view")}
@@ -63,7 +64,7 @@ export function IssuedCode({ issued, onDone }: { issued: Issued | null; onDone: 
                 </Link>
               )
             )}
-            <Button variant="primary" onClick={onDone}>{t(peerDelivered ? "uiSheet.close" : "common.codeDelivered")}</Button>
+            <Button variant="primary" onClick={onDone}>{t(peerDelivered || replayed ? "uiSheet.close" : "common.codeDelivered")}</Button>
           </div>
         </>
       )}

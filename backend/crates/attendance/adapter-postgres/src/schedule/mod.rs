@@ -119,7 +119,7 @@ impl Closes {
         let windows = sqlx::query_as::<_, (Uuid, Date, Date, bool, Option<OffsetDateTime>)>(
             "SELECT DISTINCT ON (period_start, period_end) id, period_start, period_end, \
                     period_lock_effective(period_locks), relock_at \
-             FROM period_locks WHERE domain = $1 \
+             FROM period_locks WHERE domain = $1 AND pay_group_id IS NULL \
              ORDER BY period_start, period_end, locked_at DESC",
         )
         .bind(PeriodLockDomain::Payroll.as_str())

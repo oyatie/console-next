@@ -964,9 +964,10 @@ async fn create_my_attendance_record(
                     "attendance work_date unparseable: {e}"
                 )))
             })?;
-            console_platform_db::assert_period_open(
+            console_platform_db::assert_employee_payroll_period_open(
                 tx,
-                console_platform_db::PeriodLockDomain::Payroll,
+                *org.as_uuid(),
+                linked.employee_id,
                 work_date_parsed,
             )
             .await

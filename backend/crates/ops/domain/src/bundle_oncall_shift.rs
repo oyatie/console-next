@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-use time::{Duration, OffsetDateTime, Time, UtcOffset};
+use chrono::{DateTime, Datelike, Days, NaiveDate, TimeZone};
+use chrono_tz::{GapInfo, Tz};
+use time::OffsetDateTime;
 
 use crate::bundle_oncall::{OncallConfig, OncallMode, Weekday};
 
@@ -27,37 +29,38 @@ impl Weekday {
     }
 }
 
-fn tz_offset(name: &str) -> UtcOffset {
-    match name.trim() {
-        "Asia/Seoul" | "ROK" => UtcOffset::from_hms(9, 0, 0).unwrap_or(UtcOffset::UTC),
-        "Asia/Tokyo" => UtcOffset::from_hms(9, 0, 0).unwrap_or(UtcOffset::UTC),
-        _ => UtcOffset::UTC,
-    }
+fn handoff(zone: Tz, date: NaiveDate, hour: u8) -> Option<OffsetDateTime> {
+    let local = date.and_hms_opt(u32::from(hour), 0, 0)?;
+    // Use the first occurrence during a fold and the first valid instant after a gap.
+    let instant = zone
+        .from_local_datetime(&local)
+        .earliest()
+        .or_else(|| GapInfo::new(&local, &zone)?.end)?;
+    OffsetDateTime::from_unix_timestamp(instant.timestamp()).ok()
 }
 
 impl OncallConfig {
-    pub fn active_shift(&self, now: OffsetDateTime) -> ActiveOncallShift {
-        let offset = tz_offset(&self.timezone);
-        let local_now = now.to_offset(offset);
-        let cur_wd = i64::from(local_now.weekday().number_days_from_monday());
-        let target_wd = self.rotation.handoff_weekday.iso_monday_zero();
-        let mut days_back = (cur_wd - target_wd).rem_euclid(7);
-        let handoff_time = Time::from_hms(self.rotation.handoff_hour_local.min(23), 0, 0)
-            .unwrap_or(Time::MIDNIGHT);
-        if days_back == 0 && local_now.time() < handoff_time {
-            days_back = 7;
+    pub fn active_shift(&self, now: OffsetDateTime) -> Option<ActiveOncallShift> {
+        let zone: Tz = self.timezone.trim().parse().ok()?;
+        let today = DateTime::from_timestamp(now.unix_timestamp(), 0)?
+            .with_timezone(&zone)
+            .date_naive();
+        let days_back = (i64::from(today.weekday().num_days_from_monday())
+            - self.rotation.handoff_weekday.iso_monday_zero())
+        .rem_euclid(7);
+        let mut date = today.checked_sub_days(Days::new(days_back.try_into().ok()?))?;
+        let hour = self.rotation.handoff_hour_local;
+        let mut shift_from = handoff(zone, date, hour)?;
+        if now < shift_from {
+            date = date.checked_sub_days(Days::new(7))?;
+            shift_from = handoff(zone, date, hour)?;
         }
-        let handoff_date = local_now.date() - Duration::days(days_back);
-        let shift_from = handoff_date
-            .with_time(handoff_time)
-            .assume_offset(offset)
-            .to_offset(UtcOffset::UTC);
-        let shift_until = shift_from + Duration::days(7);
+        let shift_until = handoff(zone, date.checked_add_days(Days::new(7))?, hour)?;
 
         let (active_person, backup_person) = match self.mode {
             OncallMode::SingleOperator => (self.rotation.primary_person.clone(), None),
             OncallMode::PrimaryBackup => {
-                let week_idx = shift_from.unix_timestamp().div_euclid(7 * 86_400);
+                let week_idx = (date - NaiveDate::default()).num_days().div_euclid(7);
                 if week_idx.rem_euclid(2) == 1 && self.rotation.backup_person.is_some() {
                     (
                         self.rotation.backup_person.clone(),
@@ -72,11 +75,11 @@ impl OncallConfig {
             }
         };
 
-        ActiveOncallShift {
+        Some(ActiveOncallShift {
             active_person,
             backup_person,
             shift_from,
             shift_until,
-        }
+        })
     }
 }

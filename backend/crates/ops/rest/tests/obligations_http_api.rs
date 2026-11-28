@@ -7,6 +7,8 @@ use axum::http::{Request, StatusCode};
 use serde_json::{Value, json};
 use time::{OffsetDateTime, macros::datetime};
 
+#[path = "obligations_http_api/launch_gate.rs"]
+mod launch_gate;
 mod oc1_support;
 use oc1_support::{assert_no_store_no_cors, build_harness, req_get, req_post, send_json};
 
@@ -121,40 +123,7 @@ async fn obligations_seed_transitions_home_gating_and_sse() -> TestResult {
     )
     .await?;
     assert_eq!(st, StatusCode::OK);
-    for (idx, id) in opened_ids.iter().enumerate() {
-        let payload = if idx % 2 == 0 {
-            json!({
-                "event": "done",
-                "fields": {
-                    "evidence_ref": format!("docs/ops/receipt-{idx}.md"),
-                    "signer": "Reviewer",
-                    "co_signer": "Second-Reviewer",
-                    "counsel_url": format!("https://counsel.cosskorea.invalid/opinions/{idx}"),
-                    "signed_on": "2026-11-23"
-                }
-            })
-        } else {
-            json!({
-                "event": "waived",
-                "fields": {
-                    "reason": "Not required",
-                    "signer": "Owner",
-                    "co_signer": "Security-Lead",
-                    "counsel_url": format!("docs/ops/waiver-{idx}.md")
-                }
-            })
-        };
-        let (st, _, b) = send_json(
-            &h.app,
-            req_post(
-                &format!("/api/ops/v1/obligations/{id}/events"),
-                &h.operator_jwt,
-                payload,
-            ),
-        )
-        .await?;
-        assert_eq!(st, StatusCode::OK, "{b}");
-    }
+    launch_gate::record_decisions(&h, &opened_ids, items).await?;
     let (st, _, list_after) =
         send_json(&h.app, req_get("/api/ops/v1/obligations", &h.operator_jwt)).await?;
     assert_eq!(st, StatusCode::OK);
@@ -166,7 +135,14 @@ async fn obligations_seed_transitions_home_gating_and_sse() -> TestResult {
     )
     .await?;
     assert_eq!(st, StatusCode::OK);
-    assert_eq!(detail["history"].as_array().map(Vec::len), Some(4));
+    assert_eq!(
+        detail["history"].as_array().map(Vec::len),
+        Some(if items[0]["kind"] == "launch-gate" {
+            5
+        } else {
+            4
+        })
+    );
     Ok(())
 }
 

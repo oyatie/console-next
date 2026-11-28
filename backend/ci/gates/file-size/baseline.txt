@@ -9,7 +9,7 @@ app/src/office.rs	885
 app/src/privacy/decide.rs	306
 app/src/workbench.rs	650
 app/src/workflow_object_context.rs	460
-app/src/workflow_studio.rs	7115
+app/src/workflow_studio.rs	7096
 app/tests/action_inbox_api.rs	877
 app/tests/attendance_persona_api.rs	415
 app/tests/audit_api.rs	754
@@ -56,7 +56,7 @@ app/tests/workflow_four_eyes_publish.rs	967
 app/tests/workflow_object_context_api.rs	564
 app/tests/workflow_run_read_surface.rs	606
 app/tests/workflow_runtime_finalize_api.rs	835
-app/tests/workflow_runtime_instance_api.rs	1216
+app/tests/workflow_runtime_instance_api.rs	1178
 app/tests/workorder_api.rs	1451
 ci/gates/audit-coverage/src/lib.rs	434
 ci/gates/audit-coverage/tests/gate_detects_violation.rs	450
@@ -277,8 +277,8 @@ crates/support/application/src/lib.rs	748
 crates/support/domain/src/lib.rs	708
 crates/support/rest/src/lib.rs	736
 crates/support/rest/tests/intake.rs	372
-crates/workflow/adapter-postgres/src/lib.rs	2200
-crates/workflow/domain/src/lib.rs	390
+crates/workflow/adapter-postgres/src/lib.rs	2191
+crates/workflow/domain/src/lib.rs	375
 crates/workflow/runtime/src/interpreter.rs	816
 crates/workorder/adapter-postgres/src/lib.rs	2564
 crates/workorder/adapter-postgres/tests/m2_flag_off_parity.rs	362
