@@ -5,7 +5,7 @@ export { routeReads } from "./route-read-data";
 
 /** Served routes require their own server permission decision before the register reads. */
 export const servedRouteReads = {
-  "/consulting": { access: { servedCapability: "served_consulting" }, reads: ["/api/v1/consulting/engagements"] },
+  "/consulting": { access: { servedCapability: "served_consulting_entry" }, reads: ["/api/v1/consulting/engagements"] },
   "/consulting/engagements/$engagementId": { access: { servedCapability: "served_consulting" }, reads: ["/api/v1/consulting/engagements/{engagement_id}", "/api/v1/consulting/engagements/{engagement_id}/history"] },
   "/calendar": { access: { servedCapability: "served_calendar" }, reads: ["/api/v1/collaboration/calendar/events"] },
   "/benefits": { access: { servedCapability: "served_benefit_catalog" }, reads: ["/api/v1/benefit-catalog/items"] },

@@ -3,6 +3,7 @@ export const koConsulting = {
   "consulting.title": "컨설팅 수행 건",
   "consulting.detail": "수행 기록",
   "consulting.name": "수행 건 이름",
+  "consulting.created": "수행 건 “{name}”을 등록했습니다.",
   "consulting.create": "수행 건 등록",
   "consulting.search": "이름 검색",
   "consulting.state": "단계",

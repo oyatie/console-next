@@ -3,6 +3,7 @@ export const enConsulting = {
   "consulting.title": "Consulting engagements",
   "consulting.detail": "Engagement record",
   "consulting.name": "Engagement name",
+  "consulting.created": "Created engagement “{name}”.",
   "consulting.create": "Create engagement",
   "consulting.search": "Search by name",
   "consulting.state": "Stage",

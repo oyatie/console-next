@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import type { Change, Engagement } from "./api";
+import type { Change, Engagement } from "../api";
 export type Next = Extract<Change, { kind: "transition" }>["body"]["toStatus"];
 export function stages(row: Engagement): Next[] {
   switch (row.status) {

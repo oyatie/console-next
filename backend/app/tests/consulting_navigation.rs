@@ -63,6 +63,10 @@ async fn projection_and_routes_agree_for_independent_consulting_grants(pool: PgP
         let (status, caps) = ctx.call("GET", "/api/v1/me/authz", None).await;
         assert_eq!(status, StatusCode::OK, "{caps}");
         assert_eq!(
+            advertised(&caps, "served_consulting_entry"),
+            mounted && org_wide && (read || manage)
+        );
+        assert_eq!(
             advertised(&caps, "served_consulting"),
             mounted && read && org_wide
         );

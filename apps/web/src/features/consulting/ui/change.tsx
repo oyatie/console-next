@@ -10,7 +10,7 @@ import { Composer } from "../../../ui/composer/composer";
 import { choices, engagements, saveChange, type Change, type Engagement } from "../api";
 import { OptionField } from "./option-field";
 
-import { stages, type Next } from "../workflow";
+import { stages, type Next } from "../domain/workflow";
 
 export function EngagementChange({ row, kind, onClose }: { row: Engagement; kind: Change["kind"]; onClose: () => void }) {
   const [description, describe] = useState("");

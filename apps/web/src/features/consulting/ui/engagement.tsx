@@ -12,7 +12,7 @@ import { RecordPaneSection } from "../../../ui/patterns/list-record-parts";
 import { RecordPattern } from "../../../ui/patterns/record";
 import { historyQuery, recordQuery, type Change, type Engagement } from "../api";
 import { EngagementEvidence } from "./engagement-evidence";
-import { availableChanges } from "../workflow";
+import { availableChanges } from "../domain/workflow";
 import { EngagementChange } from "./change";
 
 const route = getRouteApi("/app/consulting/engagements/$engagementId");

@@ -1,15 +1,15 @@
 {
   "baseline": {
-    "apps/web/src/features/consulting/ui/register.tsx#ConsultingRegister": 26,
+    "apps/web/src/features/consulting/ui/register.tsx#ConsultingRegister": 36,
     "apps/web/src/features/consulting/ui/engagement.tsx#ConsultingEngagement": 18
   },
   "newScreens": {
     "apps/web/src/features/consulting/ui/register.tsx#ConsultingRegister": {
-      "FACT": 15,
-      "REFUSAL": 7,
+      "FACT": 19,
+      "REFUSAL": 9,
       "EMPTY": 2,
       "LEGAL": 0,
-      "RECEIPT": 2,
+      "RECEIPT": 6,
       "EXPLANATION": 0
     },
     "apps/web/src/features/consulting/ui/engagement.tsx#ConsultingEngagement": {

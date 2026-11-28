@@ -195,6 +195,15 @@ pub(crate) fn served_authz_projection(
     }
     for (feature, name, allowed) in [
         (
+            if read_consulting {
+                Feature::ConsultingRead
+            } else {
+                Feature::ConsultingManage
+            },
+            "served_consulting_entry",
+            read_consulting || manage_consulting,
+        ),
+        (
             Feature::ConsultingRead,
             "served_consulting",
             read_consulting,

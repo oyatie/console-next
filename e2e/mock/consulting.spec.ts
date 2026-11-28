@@ -16,11 +16,11 @@ const initial: S["ConsultingEngagementDetail"] = {
   id: id(1), customer_id: id(2), title: "North handover", version: 1, status: "DRAFT", created_at: AT, updated_at: AT,
   diagnostics: [], findings: [], initiatives: [], observations: [],
 };
-async function mount(page: Page, access: "read" | "write" | "denied") {
+async function mount(page: Page, access: "read" | "write" | "create" | "denied") {
   await page.addInitScript(() => localStorage.setItem("console.locale", "en"));
   const screen = await mockScreen(page, screens[0], "populated");
   const cap = (feature: string): S["MeAuthzCapability"] => ({ feature, permission: "allow", org_wide: true, scoped: true, branch_scope: { kind: "all" } });
-  const capabilities = access === "denied" ? [] : [cap("served_consulting"), ...(access === "write" ? [cap("served_consulting_manage")] : [])];
+  const capabilities = access === "denied" ? [] : [cap("served_consulting_entry"), ...(access === "create" ? [] : [cap("served_consulting")]), ...(access !== "read" ? [cap("served_consulting_manage")] : [])];
   await mockRoute(page, "get", "/api/v1/me/authz", { status: 200, json: { ...authz, capabilities } });
   return screen;
 }
@@ -136,4 +136,20 @@ test("unenrolled tenants cannot read either register or record", async ({ page }
     await expect(page.getByRole("button", { name: "Create engagement" })).toHaveCount(0);
   }
   expect(screen.unexpected).toEqual([]);
+});
+
+
+test("create-only users receive their receipt without reading the register or opening a record", async ({page}) => {
+  const screen=await mount(page,"create");
+  await mockRoute(page,"get","/api/v1/consulting/options",req=>({status:200,json:{items:new URL(req.url()).searchParams.get("kind")==="CUSTOMER"?[{id:id(2),label:"Customer A",recorded_at:null}]:[],next_offset:null}}));
+  await mockRoute(page,"post",collection,{status:201,json:initial});
+  await page.goto("/consulting");
+  await expect(page.getByText("Consulting read access is required.")).toBeVisible();
+  await page.getByRole("button",{name:"Create engagement"}).click();
+  const dialog=page.getByRole("dialog");
+  await dialog.getByLabel("Engagement name").fill(initial.title);
+  await dialog.getByRole("combobox",{name:"Customer"}).selectOption(id(2));
+  await dialog.getByRole("button",{name:"Record",exact:true}).click();
+  await expect(page.getByText(`Created engagement “${initial.title}”.`)).toBeVisible();
+  await expect(page).toHaveURL(/\/consulting$/);expect(screen.unexpected).toEqual([]);
 });
