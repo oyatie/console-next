@@ -15,6 +15,14 @@ worker loops and state initialization; test its routes and isolation, and confir
 the default build still excludes unrelated modules. `dev-auth` remains opt-in and
 is excluded from `default`, `mvp` and `full`.
 
+## Tenant activation for additional modules
+
+A module may become default-on for tenants whose plan includes it after its server routes, navigation, tenant isolation and opt-out have passed release qualification. Start with designated tenants. Preserve each tenant's explicit choice when the platform default changes. A missing entitlement, a disabled tenant setting or a failed policy read must withhold the module.
+
+Resolve admission on the server before returning protected data, accepting writes or replaying receipts. The same decision governs discovery, exports and background jobs. Each operation still requires its own role, resource scope and effective date. Record who changed the tenant setting and when it took effect.
+
+Location collection, external delivery, financial posting and other consequential effects require their own explicit authorization or activation. A tenant opt-out stops new work. Define how pending operations, historical records and legally required self-service access continue before promotion. Published candidate artifacts and Cargo features describe what the build can serve.
+
 Payroll promotion decision (2026-11-02): the owner approved payroll in the
 production build for closed alpha, enabled by default for all tenants. No tenant
 override rows are created; existing overrides continue to apply. Readiness also

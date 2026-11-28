@@ -90,10 +90,13 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
   // Allow fresh cache reuse on remount so an experience-pack swap on the same route does not duplicate /api/v1/users/me.
   const me = useQuery({ ...navigationRead(meQuery), refetchOnMount: true, queryFn: ({ client }) => client.fetchQuery({ ...meQuery, staleTime: 0, retry: false }), enabled: !platform && active && !pending });
   const phase = me.isSuccess ? me.data?.tenant?.phase : undefined;
-  const checklist = useQuery({ ...checklistQuery, enabled: !platform && active && phase === "SETUP" && canReadSetupChecklist(access.data), retry: false });
+  const checklistEnabled = !platform && active && phase === "SETUP" && canReadSetupChecklist(access.data);
+  // Attach after the grants arrive. An already answered page refusal should wait for an explicit read.
+  const checklist = useQuery({ ...checklistQuery, subscribed: checklistEnabled, retry: false, retryOnMount: false,
+    refetchOnMount: query => !isAnswer(query.state.error) });
   const modules = useQuery({ ...modulesQuery, enabled: !platform && active });
   const { refetch: refetchMe, isEnabled: meEnabled } = me;
-  const { refetch: refetchChecklist, isEnabled: checklistEnabled } = checklist;
+  const { refetch: refetchChecklist } = checklist;
   const { isEnabled: modulesEnabled } = modules;
   const previousPath = useRef(pathname);
   useEffect(() => {
