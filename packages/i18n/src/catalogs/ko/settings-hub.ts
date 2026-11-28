@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import type { enSettingsHub } from "../en/settings-hub";
-import { koOvertimeAttestation } from "./overtime-attestation";
 
 export const koSettingsHub: Record<keyof typeof enSettingsHub, string> = {
   "settingsHub.unknown": "확인 불가",
@@ -291,7 +290,6 @@ export const koSettingsHub: Record<keyof typeof enSettingsHub, string> = {
   "settingsHub.error.setting_scope_not_allowed": "이 설정은 선택한 하위 범위에서 재정의할 수 없습니다.",
   "settingsHub.error.setting_tenant_root_disallowed": "연장근로 인정 기준은 전체 기본값에서 승인 기준으로만 둘 수 있습니다.",
   "settingsHub.error.setting_person_disfavorable": "개인별 재정의는 상위 기준보다 근로자에게 불리하게 정할 수 없습니다.",
-  ...koOvertimeAttestation,
   "settingsHub.rollout.title": "화면 스타일 출시 · 긴급 전환", "settingsHub.rollout.orgFlag": "조직 전체 콘솔 화면 허용",
   "settingsHub.rollout.personalOptIn": "내 계정 콘솔 화면 사용", "settingsHub.rollout.killSwitchTitle": "기존 화면 긴급 전환",
   "settingsHub.rollout.killSwitchActive": "긴급 전환 활성화됨", "settingsHub.rollout.killSwitchInactive": "정상 운영 중",

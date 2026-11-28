@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import type { enOvertimeAttestation } from "../en/overtime-attestation";
+import type { enOvertimeAttestation } from "../en/settings-hub.attestation";
 
 export const koOvertimeAttestation = {
   "settingsHub.attestation.title": "확인 기록",

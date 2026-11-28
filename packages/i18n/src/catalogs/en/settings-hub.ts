@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { enOvertimeAttestation } from "./overtime-attestation";
 
 export const enSettingsHub = {
   "settingsHub.unknown": "Unavailable",
@@ -290,7 +289,6 @@ export const enSettingsHub = {
   "settingsHub.error.setting_scope_not_allowed": "This policy cannot be overridden at the selected scope.",
   "settingsHub.error.setting_tenant_root_disallowed": "Overtime recognition at the tenant root must use the approval basis.",
   "settingsHub.error.setting_person_disfavorable": "An individual override cannot be less favorable to the worker than the inherited rule.",
-  ...enOvertimeAttestation,
   "settingsHub.rollout.title": "Screen style rollout and emergency switch", "settingsHub.rollout.orgFlag": "Enable Console screen across tenant",
   "settingsHub.rollout.personalOptIn": "Use Console screen on my account", "settingsHub.rollout.killSwitchTitle": "Emergency fallback to Classic",
   "settingsHub.rollout.killSwitchActive": "Emergency fallback active", "settingsHub.rollout.killSwitchInactive": "Normal operation",

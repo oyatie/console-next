@@ -146,6 +146,7 @@ import { enPeopleJump } from "./en/people-jump";
 export const en = {
   ...enUiFlexibleColumns,
   ...enSettingsHub,
+  ...enOvertimeAttestation,
   ...enGovernanceRefusals,
   ...enAccountLinkRefusals,
   ...enPeriodUnlockRefusals,
@@ -288,6 +289,7 @@ import { enAccessCheck } from "./en/access-check";
 import { enAccessPolicies } from "./en/access-policies";
 import { enAuth } from "./en/auth";
 import { enDirectoryViews } from "./en/directory-views";
+import { enOvertimeAttestation } from "./en/settings-hub.attestation";
 import { enSettingsHub } from "./en/settings-hub";
 import { enShellRoutes } from "./en/shell-routes";
 import { enUiWorklist } from "./en/ui-worklist";
