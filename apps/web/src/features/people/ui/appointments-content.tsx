@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useState, type ReactNode } from "react";
+import { Suspense, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { t } from "@console/i18n";
@@ -12,7 +12,7 @@ import { Button } from "../../../ui/button/button";
 import { ListRecord } from "../../../ui/patterns/list-record";
 import { ExperienceSwitch } from "../../../ui/patterns/pattern-shell";
 import { BulkPage } from "./bulk-page";
-import { BulkSheet } from "./bulk-sheet";
+import { BulkSheet } from "./roster-actions";
 import { NoticeListPage } from "./notice-list-page";
 import s from "./appointments-content.module.css";
 
@@ -36,7 +36,7 @@ export function AppointmentsContent({ tabs }: { tabs?: ReactNode } = {}) {
           <Button onClick={() => void navigate({ search: previous => ({ ...previous, bulk: "paste" }) })}>{t("bulk.openPaste")}</Button>
           {receipt && <Receipt state="recorded" message={receipt} />}
           <BulkPage />
-          {bulk === "paste" && <BulkSheet source={{ paste: "" }} onClose={close} onDone={message => { setReceipt(message); close(); }} />}
+          {bulk === "paste" && <Suspense fallback={null}><BulkSheet source={{ paste: "" }} onClose={close} onDone={message => { setReceipt(message); close(); }} /></Suspense>}
         </AccessGate>
       </div>
       <AccessGate {...peopleAccess.notices} layout="list"><NoticeListPage /></AccessGate>
@@ -59,7 +59,7 @@ export function AppointmentsContent({ tabs }: { tabs?: ReactNode } = {}) {
             <AccessGate {...peopleAccess.appointments}>
               {receipt && <Receipt state="recorded" message={receipt} />}
               <BulkPage embedded />
-              {bulk === "paste" && <BulkSheet source={{ paste: "" }} onClose={close} onDone={message => { setReceipt(message); close(); }} />}
+              {bulk === "paste" && <Suspense fallback={null}><BulkSheet source={{ paste: "" }} onClose={close} onDone={message => { setReceipt(message); close(); }} /></Suspense>}
             </AccessGate>
           }
           list={<AccessGate {...peopleAccess.notices} layout="list"><NoticeListPage embedded /></AccessGate>}
