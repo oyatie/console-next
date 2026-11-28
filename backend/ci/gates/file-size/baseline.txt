@@ -24,7 +24,7 @@ app/tests/console_route_telemetry.rs	312
 app/tests/consulting_engagement_api.rs	1079
 app/tests/current_authority.rs	729
 app/tests/equipment_3r_api.rs	1344
-app/tests/evaluation_cycle_api.rs	1301
+app/tests/evaluation_cycle_api.rs	1290
 app/tests/facilities_pilot_story.rs	652
 app/tests/field_visit_api.rs	804
 app/tests/hr_attendance_manager_scope.rs	367
@@ -106,8 +106,8 @@ crates/docs/rest/tests/evidence_rest_rls_surfaces_as_runtime_role.rs	780
 crates/equipment/adapter-postgres/src/lib.rs	1189
 crates/equipment/rest/src/lib.rs	524
 crates/erp/domain/src/lib.rs	686
-crates/evaluation/adapter-postgres/src/lib.rs	1430
-crates/evaluation/rest/src/lib.rs	663
+crates/evaluation/adapter-postgres/src/lib.rs	1428
+crates/evaluation/rest/src/lib.rs	576
 crates/facilities/rest/src/lib.rs	635
 crates/finance-gl/adapter-postgres/src/lib.rs	649
 crates/finance-gl/adapter-postgres/tests/voucher_rls_and_fsm_as_runtime_role.rs	551

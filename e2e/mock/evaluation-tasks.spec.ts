@@ -34,7 +34,7 @@ for (const width of [390, 1440]) test(`view the assigned review kind for one sub
   try {
     await page.goto(url);
     await page.getByRole("row").filter({ hasText: t("me.evaluation.manager") }).click();
-    const pane = page.locator("dl").filter({ has: page.getByText(t("me.evaluation.kind"), { exact: true }) });
+    const pane = page.getByRole("complementary", {name: t("me.evaluation.manager"), exact: true});
     await expect(pane).toContainText(t("me.evaluation.manager"));
     await expect(pane).toContainText(t("me.evaluation.draft"));
     await expect(pane).toContainText(subject.cycle_name);

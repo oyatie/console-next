@@ -24,9 +24,13 @@ export function useServedCapability(feature: ServedCapability, enabled = true) {
   return !q.isError && canUseServed(feature, q.data?.capabilities);
 }
 
-/** Both audit destinations use the same response, including its failure state. */
-export function useAuditDestinations(enabled = true) {
+/** Navigation uses one mounted-module answer for the audit alternatives and evaluation entry. */
+export function useServedDestinations(enabled = true) {
   const q = useQuery({ ...authzQuery, enabled: enabled && servedAuthzApplies() });
   const caps = q.isError ? undefined : q.data?.capabilities;
-  return { consents: canUseServed("served_location_consent_ledger", caps), evidenceVault: canReadEvidence(caps), findings: canUseServed("served_integrity_findings", caps) };
+  return {
+    consents: canUseServed("served_location_consent_ledger", caps), evidenceVault: canReadEvidence(caps),
+    findings: canUseServed("served_integrity_findings", caps),
+    served: (["served_evaluation_cycles", "served_evaluation_cycle_create"] as const).filter(feature => canUseServed(feature, caps)),
+  };
 }

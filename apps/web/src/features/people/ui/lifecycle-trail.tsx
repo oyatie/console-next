@@ -11,7 +11,7 @@ import { lifecycleCasesQuery, lifecycleCaseQuery, lifecycleTemplateQuery, type L
 import { lifecycleTrailError, trailText, trailItemLabel, trailGroup } from "../present";
 
 import { TrailItem, TrailCaseEnd } from "./lifecycle-trail-item";
-export { ItemWindow } from "./lifecycle-trail-item";
+export { ItemWindow } from "./lifecycle-item-window";
 
 export function TrailItems({ value, onRecord }: { value: LifecycleCase; onRecord?: (target: string) => void }) {
   return <div className="form" id={`case-${value.id}`}>
