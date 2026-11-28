@@ -1370,6 +1370,9 @@ export interface components {
         };
         PromoteView: {
             evaluated_at: components["schemas"]["Timestamp"];
+            /** @enum {string|null} */
+            signed_bake?: "normal" | "long" | null;
+            release_image?: string | null;
             candidate_digest: components["schemas"]["ObservedText"];
             state: components["schemas"]["Observation"] & {
                 value?: components["schemas"]["Promotion"] | null;
