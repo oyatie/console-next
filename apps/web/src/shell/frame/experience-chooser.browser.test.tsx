@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import { dirname, resolve } from "node:path";
 import { readFileSync, realpathSync } from "node:fs";
-import { afterAll, beforeAll, test } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, test } from "vitest";
 import { expect } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 import { browserEngine, browserTestOptimizeDeps, openBrowserTestPage, type Browser, type Page } from "../../lib/browser-test";
@@ -89,6 +89,9 @@ beforeAll(async () => {
   });
   await server.listen();
   browser = await browserEngine().launch();
+}, 60_000);
+
+beforeEach(async () => {
   page = await browser.newPage();
   await page.route("**/prefs.js", route => route.fulfill({
     contentType: "application/javascript",
@@ -129,18 +132,15 @@ beforeAll(async () => {
   }));
 }, 60_000);
 
-afterAll(async () => { await page?.close(); await browser?.close(); await server?.close(); });
+afterEach(async () => { await page?.close(); });
+afterAll(async () => { await browser?.close(); await server?.close(); });
 
 test("style choice switches in place without reloading, saves personal override, and reverts to organization default", async () => {
   workspaceLayout = { tabs: ["/people"] };
   tenantStyle = "console";
   writes = [];
   await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}experience-switch-test`, page.getByRole("heading", { name: "Experience Harness" }));
-  await page.evaluate(() => localStorage.clear());
-  await page.reload();
-  await expect(page.getByRole("heading", { name: "Experience Harness" })).toBeVisible();
 
-  const bootBefore = await page.evaluate(() => (window as Window & { bootToken?: string }).bootToken);
   const chooser = page.getByRole("combobox", { name: t("account.experience"), exact: true });
 
   // Unconfigured tenant default (console) paints on frame 0 and stays console when settings settle, keeping storage clean.
@@ -149,7 +149,7 @@ test("style choice switches in place without reloading, saves personal override,
   await expect(page.locator("html")).toHaveAttribute("data-experience", "console");
   expect(await page.evaluate(key => localStorage.getItem(key), EXPERIENCE_KEY)).toBeNull();
 
-  await page.reload();
+  await page.reload({ waitUntil: "commit" });
   await expect(page.getByRole("heading", { name: "Experience Harness" })).toBeVisible();
   expect(await page.evaluate(() => (window as Window & { experienceAtBoot?: string | null }).experienceAtBoot)).toBe("console");
   await expect(page.locator("html")).toHaveAttribute("data-experience", "console");
@@ -165,14 +165,13 @@ test("style choice switches in place without reloading, saves personal override,
   expect(await page.evaluate(key => localStorage.getItem(key), EXPERIENCE_KEY)).toBe("baseline");
 
   // Reloading with a personal Classic override paints Classic on frame 0 and stays Classic after settings settle.
-  await page.reload();
+  await page.reload({ waitUntil: "commit" });
   await expect(page.getByRole("heading", { name: "Experience Harness" })).toBeVisible();
   expect(await page.evaluate(() => (window as Window & { experienceAtBoot?: string | null }).experienceAtBoot)).toBe("baseline");
   await expect(chooser).toHaveValue("baseline");
   await expect(page.locator("html")).toHaveAttribute("data-experience", "baseline");
 
   const bootBeforeRevert = await page.evaluate(() => (window as Window & { bootToken?: string }).bootToken);
-  void bootBefore;
 
   // Choosing Follow organization default reverts immediately to tenantStyle (console) and clears personal storage.
   await chooser.selectOption("tenant");
@@ -188,9 +187,7 @@ test("an explicit Classic tenant settles to baseline, caches the tenant default 
   tenantStyle = "baseline";
   writes = [];
   await openBrowserTestPage(page, `${server.resolvedUrls!.local[0]}experience-switch-test`, page.getByRole("heading", { name: "Experience Harness" }));
-  await page.evaluate(() => localStorage.clear());
-  await page.reload();
-  await expect(page.getByRole("heading", { name: "Experience Harness" })).toBeVisible();
+  expect(await page.evaluate(() => (window as Window & { experienceAtBoot?: string }).experienceAtBoot)).toBe("console");
 
   const chooser = page.getByRole("combobox", { name: t("account.experience"), exact: true });
   await expect(chooser).toHaveValue("tenant");
@@ -199,7 +196,7 @@ test("an explicit Classic tenant settles to baseline, caches the tenant default 
   expect(await page.evaluate(key => localStorage.getItem(key), EXPERIENCE_SOURCE_KEY)).toBe("tenant");
 
   // Reloading now paints baseline on frame 0 via prefs.js and keeps baseline settled.
-  await page.reload();
+  await page.reload({ waitUntil: "commit" });
   await expect(page.getByRole("heading", { name: "Experience Harness" })).toBeVisible();
   expect(await page.evaluate(() => (window as Window & { experienceAtBoot?: string | null }).experienceAtBoot)).toBe("baseline");
   await expect(chooser).toHaveValue("tenant");
@@ -209,7 +206,7 @@ test("an explicit Classic tenant settles to baseline, caches the tenant default 
   await chooser.selectOption("console");
   await expect(chooser).toHaveValue("console");
   await expect(page.locator("html")).toHaveAttribute("data-experience", "console");
-  await page.reload();
+  await page.reload({ waitUntil: "commit" });
   await expect(page.getByRole("heading", { name: "Experience Harness" })).toBeVisible();
   expect(await page.evaluate(() => (window as Window & { experienceAtBoot?: string | null }).experienceAtBoot)).toBe("console");
   await expect(chooser).toHaveValue("console");
