@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { moduleReady, modulesQuery, PERSONAL_LOCATION_MODULE } from "../../../reference/onboarding/api";
 import { useState, type ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
@@ -81,6 +82,7 @@ export function MeConsole({
   const leave = useQuery({ ...myLeaveSummaryQuery, enabled: isLinked, retry: false });
   const payslips = useQuery({ ...myPayslipDocsQuery, enabled: isLinked, retry: false });
   const accessLog = useQuery({ ...myAccessLogQuery, enabled: isLinked, retry: false });
+  const modules = useQuery({ ...modulesQuery, enabled: !vendor });
   const recovery = useQuery({ ...tenantRecoveryQuery, enabled: !vendor });
   const passkeysUI = usePasskeysContent({
     ops: vendor ? false : u?.is_tenant_ops,
@@ -207,11 +209,11 @@ export function MeConsole({
                 <bdi className={s.privacyLabel}>{t("account.privacy.title")}</bdi>
                 <ChevronRight size={16} aria-hidden="true" className="muted" />
               </Link>
-              <Link to="/account/location" className={`${s.privacyLink} ${s.plainLink}`}>
+              {moduleReady(modules.data, PERSONAL_LOCATION_MODULE) && <Link to="/account/location" className={`${s.privacyLink} ${s.plainLink}`}>
                 <ShieldCheck size={18} aria-hidden="true" className="t-primary" />
                 <bdi className={s.privacyLabel}>{t("account.location.link")}</bdi>
                 <ChevronRight size={16} aria-hidden="true" className="muted" />
-              </Link>
+              </Link>}
             </div>
           ),
         }]

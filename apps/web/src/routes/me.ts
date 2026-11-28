@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { DISPATCH_OFFERS_MODULE } from "../reference/onboarding/api";
 import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
 import type { MeAttendanceSearch } from "../features/me/ui/me-attendance-page";
 import type { MeDeskSearch, MeDeskView } from "../features/me/ui/me-desk-page";
@@ -31,7 +32,7 @@ const meDesk = createRoute({
 const meDispatchOffers = createRoute({
   getParentRoute: () => app,
   path: "/me/dispatch-offers",
-  staticData: { access: "signed-in", floorplan: "P-03", pattern: "worklist" },
+  staticData: { access: "signed-in", module: DISPATCH_OFFERS_MODULE, floorplan: "P-03", pattern: "worklist" },
   component: lazyRouteComponent(screen(loadMeDesk), "MeDispatchOffers"),
 });
 
