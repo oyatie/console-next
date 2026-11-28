@@ -18,12 +18,23 @@ test("served directory paints its first rows within 2 seconds of the navigation 
     document.addEventListener("DOMContentLoaded", () => mark("DOMContentLoaded"));
     window.addEventListener("load", () => mark("load"));
     mark(document.visibilityState);
+    const firstRow = () => document.querySelector('[role="grid"][aria-label="직원"] [role="rowheader"]');
     const observer = new MutationObserver(() => {
-      const row = document.querySelector('[role="grid"][aria-label="직원"] [role="rowheader"]');
-      if (row?.textContent?.trim() !== "D-0001") return;
+      if (firstRow()?.textContent?.trim() !== "D-0001") return;
       observer.disconnect();
       mark("row DOM");
-      requestAnimationFrame(() => performance.mark("directory:first-rows"));
+      requestAnimationFrame(function markVisibleRow() {
+        const row = firstRow();
+        if (row?.textContent?.trim() === "D-0001" && !row.closest('[inert],[aria-hidden="true"]') && row.checkVisibility({ visibilityProperty: true })) {
+          const box = row.getBoundingClientRect();
+          if (box.width > 0 && box.height > 0 && box.top < innerHeight && box.bottom > 0 && box.left < innerWidth && box.right > 0) {
+            mark("visible row frame");
+            performance.mark("directory:first-rows");
+            return;
+          }
+        }
+        requestAnimationFrame(markVisibleRow);
+      });
     });
     observer.observe(document, { subtree: true, childList: true });
   });

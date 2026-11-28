@@ -76,6 +76,9 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
   const platform = !!claims?.platform;
   useExperienceSync(!platform && active && !pending);
   const identity = useQuery({ ...meQuery, enabled: !platform && active && !pending });
+  // The directory needs the operating notice only. Home also needs the detailed checklist receipt.
+  const operatingSince = pathname === "/people" && identity.isSuccess && identity.isFetchedAfterMount && identity.data.tenant?.phase === "OPERATING"
+    ? identity.data.tenant.go_live_at : undefined;
   const router = useRouter();
   useMainScrollRestoration(router);
   const access = useQuery({ ...myAccessQuery, enabled: !platform && active });
@@ -211,7 +214,7 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
           {!platform && <DomainNotice />}{!platform && !((access.isError || me.isError || pageFailures > 0) && supportFault && !hasSupportNotice) && <ActiveSupportBanner />}
         </ReadFailureContext.Provider>
         <ReadFailureContext.Provider value={recovery}>
-          <RouteGuard>{platform || pathname === "/org/entities/new" || pathname === "/people/new" ? children : <PhaseBand key={principal}><Suspense fallback={<ReadSkeleton layout="list" />}>{children}</Suspense></PhaseBand>}</RouteGuard>
+          <RouteGuard>{platform || pathname === "/org/entities/new" || pathname === "/people/new" ? children : <PhaseBand key={principal} operatingSince={operatingSince}><Suspense fallback={<ReadSkeleton layout="list" />}>{children}</Suspense></PhaseBand>}</RouteGuard>
         </ReadFailureContext.Provider>
         </SessionRecovery>
       </PageMain>
