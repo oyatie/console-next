@@ -106,7 +106,7 @@ crates/equipment/adapter-postgres/src/lib.rs	1189
 crates/equipment/rest/src/lib.rs	524
 crates/erp/domain/src/lib.rs	686
 crates/evaluation/adapter-postgres/src/lib.rs	1428
-crates/evaluation/rest/src/lib.rs	594
+crates/evaluation/rest/src/lib.rs	576
 crates/facilities/rest/src/lib.rs	635
 crates/finance-gl/adapter-postgres/src/lib.rs	649
 crates/finance-gl/adapter-postgres/tests/voucher_rls_and_fsm_as_runtime_role.rs	551

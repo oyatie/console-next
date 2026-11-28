@@ -9,14 +9,14 @@
 //! preflights, SoD, and the `with_audits` carve-outs live in the adapter.
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
-mod access;
 mod cycles;
-use access::{holds_feature, require_feature};
 mod openapi;
 mod tasks;
+mod validation;
 pub use cycles::cycle_access;
 pub use openapi::OPENAPI_FRAGMENT;
 pub use tasks::my_tasks_available;
+use validation::{bounded_optional, bounded_required, validated_weight};
 
 use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, StatusCode};
@@ -31,7 +31,7 @@ use console_evaluation_application::{
 use console_evaluation_domain::{CycleStage, CycleTransition, Grade, ReviewKind};
 use console_kernel_core::{KernelError, UserId};
 use console_platform_auth::JwtVerifier;
-use console_platform_authz::{Feature, Principal};
+use console_platform_authz::{Feature, Principal, authorize_capability, authorize_org_wide};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -515,6 +515,19 @@ async fn employee_reviews(
 // Authorization helpers
 // ---------------------------------------------------------------------------
 
+fn require_feature(principal: &Principal, feature: Feature) -> Result<(), RestError> {
+    if feature == Feature::EvaluationSubmit {
+        authorize_capability(principal, feature.into())
+    } else {
+        authorize_org_wide(principal, feature.into())
+    }
+    .map_err(RestError::from_kernel)
+}
+
+fn holds_feature(principal: &Principal, feature: Feature) -> bool {
+    require_feature(principal, feature).is_ok()
+}
+
 async fn subject_gate(
     state: &EvaluationRestState,
     subject_id: Uuid,
@@ -580,39 +593,6 @@ async fn principal_from_headers(
 // ---------------------------------------------------------------------------
 // Validation helpers (422 before any DB CHECK)
 // ---------------------------------------------------------------------------
-
-fn bounded_required(value: &str, min: usize, max: usize, field: &str) -> Result<String, RestError> {
-    let trimmed = value.trim();
-    let chars = trimmed.chars().count();
-    if chars < min || chars > max {
-        return Err(validation(format!(
-            "{field} must be between {min} and {max} characters"
-        )));
-    }
-    Ok(trimmed.to_owned())
-}
-
-/// Bound an optional text field; a present-but-blank value normalizes to None.
-fn bounded_optional(value: &str, max: usize, field: &str) -> Result<Option<String>, RestError> {
-    let trimmed = value.trim();
-    if trimmed.is_empty() {
-        return Ok(None);
-    }
-    if trimmed.chars().count() > max {
-        return Err(validation(format!(
-            "{field} must be at most {max} characters"
-        )));
-    }
-    Ok(Some(trimmed.to_owned()))
-}
-
-fn validated_weight(weight_pct: i16) -> Result<i16, RestError> {
-    if (0..=100).contains(&weight_pct) {
-        Ok(weight_pct)
-    } else {
-        Err(validation("weight_pct must be between 0 and 100"))
-    }
-}
 
 fn validation(message: impl Into<String>) -> RestError {
     RestError::from_kernel(KernelError::validation(message))
