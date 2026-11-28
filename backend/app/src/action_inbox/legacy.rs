@@ -53,11 +53,18 @@ impl PgActionInboxSources {
                 who: None,
                 due: Some(offer.accept_window_ends_at),
                 submitted: Some(offer.accept_window_started_at),
-                links: vec![ActionInboxLink {
-                    kind: "work_order".to_owned(),
-                    id: offer.work_order_id.to_string(),
-                    label: None,
-                }],
+                links: vec![
+                    ActionInboxLink {
+                        kind: "work_order".to_owned(),
+                        id: offer.work_order_id.to_string(),
+                        label: None,
+                    },
+                    ActionInboxLink {
+                        kind: "dispatch_offer".to_owned(),
+                        id: offer.dispatch_id.to_string(),
+                        label: None,
+                    },
+                ],
                 created_at: offer.created_at,
             })
             .collect();

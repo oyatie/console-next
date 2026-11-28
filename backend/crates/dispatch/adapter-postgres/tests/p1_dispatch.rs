@@ -1203,6 +1203,8 @@ async fn my_pending_offers_lists_only_unanswered_targets(pool: PgPool) {
         assert_eq!(offers[0].dispatch_id, started.id);
         assert_eq!(offers[0].work_order_id, seeded.work_order_id);
         assert!(!offers[0].request_no.is_empty());
+        assert!(offers[0].site_name.starts_with("Dispatch Site "));
+        assert_eq!(offers[0].symptom, "Emergency dispatch test");
 
         // A user the fan-out never targeted sees nothing (deny-by-omission),
         // and neither does a receptionist.

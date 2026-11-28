@@ -178,13 +178,18 @@ for (const width of [1440, 390] as const) {
         work_order_id: id(602),
         branch_id: id(4),
         request_no: "WO-2026-0601",
+        site_name: "North service bay",
+        symptom: "Lift reports a pressure fault",
         accept_window_started_at: AT,
         accept_window_ends_at: "2026-12-01T09:15:00Z",
       },
     ];
+    const other = { ...offers[0]!, dispatch_id: id(603), request_no: "WO-2026-0603" };
+    offers.unshift(other);
     await mockRoute(page, "get", "/api/v1/me/dispatch-offers", () => ({ status: 200, json: { items: offers } }));
-    await mockRoute(page, "post", "/api/v1/p1-dispatches/{dispatchId}/responses", () => {
-      offers = [];
+    await mockRoute(page, "post", "/api/v1/p1-dispatches/{dispatchId}/responses", request => {
+      expect(new URL(request.url()).pathname).toContain(id(601));
+      offers = [other];
       return {
         status: 200 as const,
         json: {
@@ -214,12 +219,16 @@ for (const width of [1440, 390] as const) {
         await fits(page, `/me/dispatch-offers/${width}/${theme}`);
       }
       await expectAxe(page, `/me/dispatch-offers/${width}`);
-
-      if (width === 390) {
-        await main.locator("[data-id]").first().click();
-      }
+      await main.locator(`[data-id="${id(601)}"]`).click();
+      await expect(page).toHaveURL(new RegExp(`sel=${id(601)}`));
+      await page.reload();
+      await expect(main.getByText("North service bay", { exact: true })).toBeVisible();
+      await expect(main.getByText("Lift reports a pressure fault", { exact: true })).toBeVisible();
       await main.getByRole("button", { name: t("me.dispatch.accept"), exact: true }).click();
-      await expect(main.getByText(t("me.dispatch.emptyTitle"))).toBeVisible();
+      await expect(page).not.toHaveURL(/sel=/);
+      await page.goto(`/me/dispatch-offers?sel=${id(601)}`);
+      await expect(main.getByText(t("me.dispatch.unavailable"), { exact: true })).toBeVisible();
+      await expect(main.getByRole("button", { name: t("me.dispatch.accept"), exact: true })).toHaveCount(0);
       expect(fixture.unexpected).toEqual([]);
     } finally {
       await page.close();

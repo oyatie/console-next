@@ -3,7 +3,7 @@ import { DISPATCH_OFFERS_MODULE } from "../reference/onboarding/api";
 import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
 import type { MeAttendanceSearch } from "../features/me/ui/me-attendance-page";
 import type { MeDeskSearch, MeDeskView } from "../features/me/ui/me-desk-page";
-import { app, screen } from "./app";
+import { app, screen, str } from "./app";
 
 const DESK_VIEWS: readonly MeDeskView[] = ["overview", "attendance", "requests", "documents"];
 
@@ -33,6 +33,7 @@ const meDispatchOffers = createRoute({
   getParentRoute: () => app,
   path: "/me/dispatch-offers",
   staticData: { access: "signed-in", module: DISPATCH_OFFERS_MODULE, floorplan: "P-03", pattern: "worklist" },
+  validateSearch: (s: Record<string, unknown>): { sel?: string } => ({ sel: str(s.sel) }),
   component: lazyRouteComponent(screen(loadMeDesk), "MeDispatchOffers"),
 });
 

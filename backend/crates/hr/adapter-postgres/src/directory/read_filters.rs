@@ -30,6 +30,10 @@ pub struct EmployeeListQuery {
     pub home_branch_review_required: Option<bool>,
     pub identity_review_required: Option<bool>,
     pub register_review_required: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub team_review_required: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub contract_ending_on_or_after: Option<String>,
     // Preserve N-1 bulk-selection fingerprints when this filter is absent.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub department_missing: Option<bool>,
@@ -74,6 +78,8 @@ pub struct EmployeeListFilters {
     pub home_branch_review_required: Option<bool>,
     pub identity_review_required: Option<bool>,
     pub register_review_required: Option<bool>,
+    pub team_review_required: Option<bool>,
+    pub contract_ending_on_or_after: Option<Date>,
     pub department_missing: Option<bool>,
     pub org_unit_id: Option<Uuid>,
     pub legal_entity_id: Option<Uuid>,
@@ -167,6 +173,10 @@ impl EmployeeListFilters {
             home_branch_review_required: query.home_branch_review_required,
             identity_review_required: query.identity_review_required,
             register_review_required: query.register_review_required,
+            team_review_required: query.team_review_required,
+            contract_ending_on_or_after: trimmed(&query.contract_ending_on_or_after)
+                .map(|s| parse_yyyy_mm_dd(&s))
+                .transpose()?,
             department_missing: query.department_missing,
             org_unit_id: query.org_unit_id,
             legal_entity_id: query.legal_entity_id,
@@ -318,6 +328,23 @@ impl EmployeeListFilters {
                     and(builder, DEPARTMENT_MISSING);
                     builder.push(" = ");
                     builder.push_bind(required);
+                }
+                if let Some(required) = self.team_review_required {
+                    and(
+                        builder,
+                        concat!(
+                            "(",
+                            crate::register_review_sql!(),
+                            " OR ",
+                            crate::identity_review_sql!(),
+                            " OR p.employment_type IS NULL)"
+                        ),
+                    );
+                    builder.push(" = ").push_bind(required);
+                }
+                if let Some(from) = self.contract_ending_on_or_after {
+                    and(builder, "p.contract_end_date >= ");
+                    builder.push_bind(from);
                 }
                 if let Some(required) = self.register_review_required {
                     and(builder, crate::register_review_sql!());

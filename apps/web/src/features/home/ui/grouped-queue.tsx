@@ -178,7 +178,7 @@ export function Subject({ item }: { item: InboxItem }) {
 /** Only registered record kinds become links; source text cannot provide a URL. */
 // oxlint-disable-next-line react/only-export-components -- Queue rows and their record share one presentation.
 export function recordAction(item: InboxItem, action?: RowAction, textId?: MessageId, focusAfter?: string) {
-  const link = item.links[0];
+  const link = item.links.find(ref => ref.kind === "dispatch_offer") ?? item.links[0];
   if (!link) return null;
   const unlock = item.context?.unlock;
   const fields = (item.context?.register?.missing_fields ?? []).flatMap((key) => REGISTER_FIELDS[key] ? [REGISTER_FIELDS[key]!] : []);
@@ -187,6 +187,7 @@ export function recordAction(item: InboxItem, action?: RowAction, textId?: Messa
   const className = buttonClass("secondary", { size: "sm" });
   const inline = action?.(item, focusAfter);
   switch (link.kind) {
+    case "dispatch_offer": return link.id.trim() ? <Link to="/me/dispatch-offers" search={{ sel: link.id.trim() }} className={className}>{text}</Link> : null;
     case "privacy_request": return <Link to="/account/privacy/intake/$id" params={{ id: link.id }} className={className}>{text}</Link>;
     case "registration_check": {
       const [id, registrationId] = link.id.split("/");

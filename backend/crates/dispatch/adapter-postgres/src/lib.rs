@@ -694,13 +694,14 @@ impl PgDispatchStore {
                 Ok(sqlx::query(
                     r#"
                     SELECT d.id AS dispatch_id, d.work_order_id, d.branch_id,
-                           w.request_no, d.accept_window_started_at, d.accept_window_ends_at
+                           w.request_no, s.name AS site_name, w.symptom, d.accept_window_started_at, d.accept_window_ends_at
                     FROM p1_dispatches d
                     JOIN p1_dispatch_targets t
                       ON t.dispatch_id = d.id
                      AND t.user_id = $1
                      AND t.target_role = 'TECHNICIAN'
-                    JOIN work_orders w ON w.id = d.work_order_id
+                    JOIN work_orders w ON w.id = d.work_order_id AND w.org_id = d.org_id
+                    JOIN registry_sites s ON s.id = w.site_id AND s.org_id = w.org_id
                     WHERE d.status = 'BROADCASTING'
                       AND d.accept_window_ends_at > $2
                       AND NOT EXISTS (
@@ -725,6 +726,8 @@ impl PgDispatchStore {
                     work_order_id: WorkOrderId::from_uuid(row.try_get("work_order_id")?),
                     branch_id: BranchId::from_uuid(row.try_get("branch_id")?),
                     request_no: row.try_get("request_no")?,
+                    site_name: row.try_get("site_name")?,
+                    symptom: row.try_get("symptom")?,
                     accept_window_started_at: row.try_get("accept_window_started_at")?,
                     accept_window_ends_at: row.try_get("accept_window_ends_at")?,
                 })
