@@ -230,6 +230,13 @@ test.each(["console", "baseline"] as const)("the %s attendance screen follows th
   expect(render(<MeAttendancePage />)).toContain(`>${t("me.attendance.records.clockOut")}<`);
 });
 
+test("the desk withholds the clock action when the previous attendance record is unreadable", () => {
+  state.search = { view: "attendance" };
+  state.records403 = true;
+  const html = render(<MeDeskPage />);
+  expect(html).not.toContain(`>${t("me.attendance.records.clockIn")}<`);
+});
+
 test("me attendance renders honest not-provided label when week52 is not available", () => {
   state.week52Status = "not_available";
   const html = render(<MeAttendancePage />);

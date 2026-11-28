@@ -254,10 +254,8 @@ export function MeDeskPage() {
       {(view === "overview" || view === "attendance") && (
         <MeAttendanceSections
           schedule={schedule}
-          records={records.data?.items ?? []}
-          consoleClockOut={records.data?.console_clock_out === true}
-          exceptions={exceptions.data?.items ?? []}
           recordsQuery={records}
+          exceptions={exceptions.data?.items ?? []}
           exceptionsQuery={exceptions}
           compactScheduleWeekStart={view === "overview" ? week : undefined}
           fullScheduleLink={view === "overview"}

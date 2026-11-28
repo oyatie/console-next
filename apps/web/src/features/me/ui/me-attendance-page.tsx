@@ -74,8 +74,7 @@ export function MeAttendancePage() {
               </Card>
               <MeAttendanceSections
                 schedule={schedule}
-                records={records.data?.items ?? []}
-                consoleClockOut={records.data?.console_clock_out === true}
+                recordsQuery={records}
                 exceptions={exceptions.data?.items ?? []}
               />
             </div>
@@ -93,8 +92,7 @@ export function MeAttendancePage() {
       sections={
         <MeAttendanceSections
           schedule={schedule}
-          records={records.data?.items ?? []}
-          consoleClockOut={records.data?.console_clock_out === true}
+          recordsQuery={records}
           exceptions={exceptions.data?.items ?? []}
         />
       }
