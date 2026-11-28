@@ -37,6 +37,8 @@ const paths = [
   "/audit",
   "/audit/access-log",
   "/audit/evidence",
+  "/audit/findings",
+  "/audit/lifecycles/$objectType/$objectId",
   "/audit/support-access",
   "/inbox",
   "/leave",
@@ -103,7 +105,7 @@ const paths = [
 ] as const;
 
 export const routeList = paths.map(path => {
-  if (Object.hasOwn(servedRouteReads, path)) return { path, reads: servedRouteReads[path as keyof typeof servedRouteReads].reads };
+  if (Object.hasOwn(servedRouteReads, path)) return { path, reads: servedRouteReads[path as keyof typeof servedRouteReads].reads.map(read => read.replace("{objectType}", "document").replace(/\{[^}]+\}/g, "$id")) };
   const operations = Object.hasOwn(routeReads, path) ? routeReads[path as keyof typeof routeReads].reads
     : Object.hasOwn(alternativeRouteReads, path) ? [alternativeRouteReads[path as keyof typeof alternativeRouteReads]] : [];
   return { path, reads: operations.map(op => op.slice(4).replace(/\{[^}]+\}/g, "$id")) };

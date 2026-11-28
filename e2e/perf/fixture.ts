@@ -105,7 +105,12 @@ export async function buildTenant(browser: Browser) {
   expect(units.filter(u => u.kind === "DEPARTMENT")).toHaveLength(budget.shape.departments);
   const person = (await get("/employees?limit=1&search=000-1-0001")).items[0] as { id: string };
   const me = await get("/users/me") as { id: string };
+  // The lifecycle engine registers a document when its first governed hold is recorded.
+  const lifecycleId = crypto.randomUUID();
+  const hold = await api(`/lifecycles/document/${lifecycleId}/hold`, "POST", { legalHold: true }, { "Idempotency-Key": crypto.randomUUID() });
+  expect(hold.status()).toBe(200);
   const urls: Record<string, string> = {
+    "/audit/lifecycles/$objectType/$objectId": `/audit/lifecycles/document/${lifecycleId}`,
     "/org/entities/$id": `/org/entities/${entities[0]!.id}`,
     "/org/entities/$id/workplaces/new": `/org/entities/${entities[0]!.id}/workplaces/new`,
     "/people/$id": `/people/${person.id}`,

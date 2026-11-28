@@ -68,6 +68,7 @@ const STATIC_ROUTES: Readonly<Record<string, () => string>> = {
   "/access/grants/bulk": () => t("shellRoutes.accessGrantsBulk"),
   "/access/ready": () => t("shellRoutes.accessReady"),
   "/access/review": () => t("accessReview.title"),
+  "/audit/findings": () => t("audit.findings.title"),
   "/audit/evidence": () => t("audit.vault.title"),
   "/audit": () => t("shellRoutes.auditLog"),
   "/audit/support-access": () => t("shellRoutes.auditSupport"),
@@ -136,6 +137,7 @@ export function resolveRouteTabMeta({
   locale?: string;
 }): RouteTabMeta {
   const path = normalizeAppPath(pathname);
+  if (/^\/audit\/lifecycles\/[^/]+\/[^/]+$/.test(path)) return { title: t("audit.lifecycle.title"), isFallback: false, recordSpec: null };
   if (path === "/") {
     return { title: platform ? t("shell.link.tenants") : t("shell.link.todo"), isFallback: false, recordSpec: null };
   }

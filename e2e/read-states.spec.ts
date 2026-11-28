@@ -80,7 +80,7 @@ test.describe("route requirements with a real grantless account", () => {
         try {
           await page.setViewportSize({ width, height: 900 });
           await page.addInitScript(value => { localStorage.setItem("console.theme", value); }, theme);
-          await go(page, path.replace(/\$[^/]+/g, record), path in redirectTargets);
+          await go(page, path.replace("$objectType", "document").replace(/\$[^/]+/g, record), path in redirectTargets);
           const main = page.getByRole("main");
           const card = main.getByRole("region", { name: bootKo["common.denied.title.plain"], exact: true });
           await expect(card).toHaveCount(1);
@@ -91,7 +91,7 @@ test.describe("route requirements with a real grantless account", () => {
           const required = "destinations" in need ? need.destinations : "allOf" in need ? need.allOf : [need];
           for (const entry of required) {
             if ("servedCapability" in entry) {
-              expect(permission).toContain(ko[entry.servedCapability === "documents" ? "audit.vault.permission" : "payroll.outlook.permission"]);
+              expect(permission).toContain(ko[entry.servedCapability === "analytics_projection" ? "payroll.outlook.permission" : entry.servedCapability === "lifecycle_manage" ? "audit.lifecycle.permission" : entry.servedCapability === "documents" ? "audit.vault.permission" : "audit.findings.permission"]);
               continue;
             }
             if ("action" in entry) {

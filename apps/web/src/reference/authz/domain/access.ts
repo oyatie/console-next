@@ -2,7 +2,7 @@
 import type { AccessEffective } from "../api";
 
 export type Requirement = { action: keyof NonNullable<AccessEffective["decisions"]> } | { domain: AccessEffective["entries"][number]["domain"]; level: AccessEffective["entries"][number]["level"]; tenant?: boolean; scopes?: readonly AccessEffective["entries"][number]["scope"]["kind"][] };
-export type ServedCapability = "documents" | "analytics_projection";
+export type ServedCapability = "documents" | "analytics_projection" | "served_integrity_findings" | "served_integrity_triage" | "lifecycle_manage";
 export type AccessRequirement = Requirement | { servedCapability: ServedCapability } | { allOf: readonly Requirement[] } | { destinations: readonly AccessRequirement[] };
 
 type GrantRow = AccessEffective["entries"][number];

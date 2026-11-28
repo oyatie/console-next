@@ -89,6 +89,8 @@ test("the screens drawn through built patterns declare them, and no other route 
     "/attendance": "month-grid",
     "/audit": "list-record",
     "/audit/evidence": "list-record",
+    "/audit/lifecycles/$objectType/$objectId": "record",
+    "/audit/findings": "worklist",
     "/payroll": "list-record",
     "/payroll/outlook": "register-totals",
     "/payroll/setup": "wizard",

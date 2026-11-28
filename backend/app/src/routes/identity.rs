@@ -24,6 +24,14 @@ pub(super) fn mount(router: Router, deps: &TenantDeps<'_>) -> Router {
     #[cfg(feature = "analytics-quant")]
     let identity = identity
         .with_projection_access(|p| console_analytics_quant_rest::projection_access(p).is_ok());
+    #[cfg(feature = "integrity")]
+    let identity = identity.with_integrity_access(|principal| {
+        use console_integrity::rest::{authorize_integrity_read, authorize_integrity_triage};
+        (
+            authorize_integrity_read(principal).is_ok(),
+            authorize_integrity_triage(principal).is_ok(),
+        )
+    });
     router
         .merge(console_identity_rest::router(identity))
         .merge(console_platform_authz_rest::router(

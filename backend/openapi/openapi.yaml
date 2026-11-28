@@ -19878,6 +19878,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationError'
         '503':
@@ -56256,6 +56258,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ObjectLifecycleTransition'
+        availableTransitions:
+          type: array
+          description: Present on a read. Rule-defined next states currently available to the caller after maker/checker, hold and retention checks.
+          items:
+            type: string
     ObjectLifecycleTransition:
       type: object
       required:
@@ -65523,6 +65530,10 @@ components:
           type: string
           format: date
           description: ISO date; omit or null to clear the retention deadline.
+        expectedUpdatedAt:
+          type: string
+          format: date-time
+          description: Optional revision from the lifecycle read. A changed or absent record returns 409 without changing the hold or retention.
     SetMessengerThreadMuteRequest:
       type: object
       required:

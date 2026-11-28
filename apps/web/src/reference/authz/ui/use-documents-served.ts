@@ -16,6 +16,7 @@ const canReadEvidence = (caps?: Capabilities) =>
   caps?.some(cap => cap.feature === "documents" && cap.org_wide && cap.permission !== "request_only") ?? false;
 
 export function canUseServed(feature: ServedCapability, caps?: Capabilities) {
+  if (feature === "lifecycle_manage") return caps?.some(cap => cap.feature === feature && cap.org_wide && cap.permission !== "request_only") ?? false;
   return feature === "documents" ? canReadEvidence(caps) : caps?.some(cap => cap.feature === feature && cap.permission !== "request_only") ?? false;
 }
 
@@ -24,6 +25,9 @@ export function useServedCapability(feature: ServedCapability, enabled = true) {
   return !q.isError && canUseServed(feature, q.data?.capabilities);
 }
 
-export function useEvidenceServed(enabled = true) {
-  return useServedCapability("documents", enabled);
+/** Both audit destinations use the same response, including its failure state. */
+export function useAuditDestinations(enabled = true) {
+  const q = useQuery({ ...authzQuery, enabled: enabled && servedAuthzApplies() });
+  const caps = q.isError ? undefined : q.data?.capabilities;
+  return { evidenceVault: canReadEvidence(caps), findings: canUseServed("served_integrity_findings", caps) };
 }

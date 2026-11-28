@@ -16,7 +16,7 @@ import { ReadFailureContext } from "../../lib/react/read-failure-context";
 import { chunk } from "../../lib/chunk-guard";
 import { myAccessQuery } from "../../reference/authz/api";
 import { accessRefusal } from "../../reference/authz/domain/access";
-import { useEvidenceServed, useServedCapability } from "../../reference/authz/ui/use-documents-served";
+import { useAuditDestinations, useServedCapability } from "../../reference/authz/ui/use-documents-served";
 import { PLATFORM_NAV, rememberedRail, tenantNav } from "../nav";
 import { ReadSkeleton } from "../../ui/skeleton/skeleton";
 import { PhaseBand } from "../phase-band";
@@ -146,13 +146,14 @@ export function ShellFrame({ layout: Layout, children = <Outlet />, pending = fa
   const displayed = answer ?? (railFault || railTargets?.key === railKey ? savedRail.answer : undefined);
   const supportOwnsFailure = supportFault && !access.isError && !me.isError && pageFailures === 0 && !hasSupportNotice;
   const auditNeed = router.routesByPath["/audit"]?.options.staticData?.access;
-  const evidenceVault = useEvidenceServed(!platform && active && !pending && !!displayed && !displayed.supportApproval &&
-    !!auditNeed && auditNeed !== "signed-in" && accessRefusal(displayed.access, auditNeed) !== null);
+  const checkAuditFallback = !platform && active && !pending && !!displayed && !displayed.supportApproval &&
+    !!auditNeed && auditNeed !== "signed-in" && accessRefusal(displayed.access, auditNeed) !== null;
+  const auditDestinations = useAuditDestinations(checkAuditFallback);
   const payNeed = router.routesByPath["/payroll"]?.options.staticData?.access;
   const payrollOutlook = useServedCapability("analytics_projection", !platform && active && !pending && !!displayed &&
     !!payNeed && payNeed !== "signed-in" && accessRefusal(displayed.access, payNeed) !== null);
   const menu: readonly NavHub[] = platform ? PLATFORM_NAV : displayed ? tenantNav(displayed.access, router.routesByPath,
-    displayed.supportApproval, { ...displayed.context, evidenceVault, payrollOutlook }) : [];
+    displayed.supportApproval, { ...displayed.context, ...auditDestinations, payrollOutlook }) : [];
   // ⌘K / Ctrl+K opens the jump palette anywhere in the tenant app (a modifier chord, so not a single-key shortcut).
   const [jump, setJump] = useState(false);
   useEffect(() => {

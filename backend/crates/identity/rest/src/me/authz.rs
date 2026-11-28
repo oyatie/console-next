@@ -158,6 +158,7 @@ pub(crate) fn served_authz_projection(
     principal: &Principal,
     documents: bool,
     analytics_projection: bool,
+    (read_findings, triage_findings): (bool, bool),
 ) -> MeAuthzResponse {
     let mut response = me_authz_projection(principal);
     if documents
@@ -172,18 +173,35 @@ pub(crate) fn served_authz_projection(
             ..cap
         });
     }
-    // The mounted calculator supplies its own decision for this principal.
-    if analytics_projection
-        && let Some(cap) = response
-            .capabilities
-            .iter()
-            .find(|cap| cap.feature == Feature::KpiRead.as_str())
-            .cloned()
-    {
-        response.capabilities.push(MeAuthzCapability {
-            feature: "analytics_projection".to_owned(),
-            ..cap
-        });
+    for (feature, name, allowed) in [
+        (
+            Feature::KpiRead,
+            "analytics_projection",
+            analytics_projection,
+        ),
+        (
+            Feature::IntegrityFindingsRead,
+            "served_integrity_findings",
+            read_findings,
+        ),
+        (
+            Feature::IntegrityFindingTriage,
+            "served_integrity_triage",
+            triage_findings,
+        ),
+    ] {
+        if allowed
+            && let Some(cap) = response
+                .capabilities
+                .iter()
+                .find(|cap| cap.feature == feature.as_str())
+                .cloned()
+        {
+            response.capabilities.push(MeAuthzCapability {
+                feature: name.to_owned(),
+                ..cap
+            });
+        }
     }
     response
 }
@@ -211,7 +229,7 @@ mod me_authz_org_wide_tests {
             BranchScope::All,
         );
         let contains = |p: &Principal, served| {
-            served_authz_projection(p, served, false)
+            served_authz_projection(p, served, false, (false, false))
                 .capabilities
                 .iter()
                 .any(|cap| cap.feature == "documents")

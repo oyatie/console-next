@@ -1,0 +1,15 @@
+{
+  "baseline": {
+    "apps/web/src/features/audit/ui/lifecycle-record.tsx#LifecycleRecord": 25
+  },
+  "newScreens": {
+    "apps/web/src/features/audit/ui/lifecycle-record.tsx#LifecycleRecord": {
+      "FACT": 17,
+      "REFUSAL": 5,
+      "EMPTY": 1,
+      "LEGAL": 0,
+      "RECEIPT": 2,
+      "EXPLANATION": 0
+    }
+  }
+}
