@@ -26,7 +26,7 @@ export async function recoveryStatus(): Promise<RecoveryStatus | null> {
 }
 
 export async function upsertRecoveryContact(opts: {
-  channel: RecoveryChannel;
+  channel: components["schemas"]["UpsertRecoveryContactRequest"]["channel"];
   value: string;
   consentAccepted: boolean;
   stepUp?: boolean;

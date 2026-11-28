@@ -15,6 +15,10 @@ HMAC-SHA256 hashing of bootstrap OTPs (required for `api` in non-development
 builds); `CONSOLE_OTP_HMAC_KEY_PREV` is optionally accepted during key rotation.
 Keep `CONSOLE_COOKIE_SECURE` enabled for HTTPS deployments.
 
+Set the API secret `CONSOLE_RECOVERY_CONTACT_KEYRING` to an independent JSON keyring
+for encrypting recovery addresses. Retain its previous keys during rotation so
+registered contacts remain usable across restarts and deployments.
+
 Provide identical `CONSOLE_RRN_KEYRING`, `CONSOLE_RRN_HMAC_KEYRING`, and
 `CONSOLE_MAIL_KEYRING` JSON keyrings (`{"active":"...","keys":{...}}`) to both
 `api` and `worker` so API writes and worker re-sealing/backfill share the same

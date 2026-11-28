@@ -56,6 +56,8 @@ spec:
               value: /run/console/CONSOLE_RRN_HMAC_KEYRING
             - name: CONSOLE_MAIL_KEYRING_FILE
               value: /run/console/CONSOLE_MAIL_KEYRING
+            - name: CONSOLE_RECOVERY_CONTACT_KEYRING_FILE
+              value: /run/console/CONSOLE_RECOVERY_CONTACT_KEYRING
           ports:
             - name: http
               containerPort: 8080

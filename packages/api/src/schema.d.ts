@@ -32129,7 +32129,8 @@ export interface components {
             link?: components["schemas"]["NotificationLink"];
         };
         UpsertRecoveryContactRequest: {
-            channel: components["schemas"]["RecoveryChannel"];
+            /** @enum {string} */
+            channel: "EMAIL";
             value: string;
             consent_accepted: boolean;
             step_up?: components["schemas"]["PasskeyStepUpAssertion"];
