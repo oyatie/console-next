@@ -142,7 +142,9 @@ export function Table<R>({ label, rows, columns, rowId, selected, onSelect, onOp
       resize.disconnect();
       scroller?.removeEventListener("scroll", sync);
     };
-  }, []);
+    // The selection can resize the scrollport. Measure that render before it paints a stale cue at the new edge.
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
+  }, [selected]);
   const ids = (groups ? groups.flatMap(g => g.rows) : rows).map(rowId);
   const current = active && ids.includes(active) ? active : selected && ids.includes(selected) ? selected : ids[0];
   const key = (e: KeyboardEvent) => {

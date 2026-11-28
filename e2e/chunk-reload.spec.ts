@@ -30,15 +30,19 @@ async function settled(urls: string[], count: number) {
 
 test("a lazy screen chunk missing once reloads the page once, afresh, and the screen renders", async ({ browser }) => {
   const page = await vendorPage(browser);
-  let tries = 0;
-  await page.route((u) => TENANTS_CHUNK.test(u.pathname), (route) => (++tries === 1 ? notFound(route) : route.continue()));
   const docs = documents(page);
+  const requestedOn = new Set<number>();
+  await page.route((u) => TENANTS_CHUNK.test(u.pathname), (route) => {
+    requestedOn.add(docs.length);
+    // A preload and a dynamic import can both request the chunk in one document.
+    return docs.length === 1 ? notFound(route) : route.continue();
+  });
   await page.goto("/platform");
   await expect(page.getByRole("button", { name: "고객 계정 개설" })).toBeVisible();
   await settled(docs, 2);
   expect(busted(docs[1]!)).toBe(true); // not a plain reload, which a stale cached index.html would answer
   expect(busted(page.url())).toBe(false); // the parameter is gone before the router reads the URL
-  expect(tries).toBe(2);
+  expect([...requestedOn]).toEqual([1, 2]);
   await expect(page.getByText(CRASHED)).toBeHidden();
   await page.unrouteAll();
 });
@@ -46,9 +50,12 @@ test("a lazy screen chunk missing once reloads the page once, afresh, and the sc
 test("a lazy screen chunk that stays missing reloads once, then shows the error screen; its button reloads afresh", async ({ browser }) => {
   const page = await vendorPage(browser);
   try {
-    let tries = 0;
-    await page.route((u) => TENANTS_CHUNK.test(u.pathname), (route) => (++tries, notFound(route)));
     const docs = documents(page);
+    const requestedOn = new Set<number>();
+    await page.route((u) => TENANTS_CHUNK.test(u.pathname), (route) => {
+      requestedOn.add(docs.length);
+      return notFound(route);
+    });
     const referenceRequest = page.waitForRequest(r => new URL(r.url()).pathname === "/api/v1/client-errors" && r.headers().accept === "application/json");
     await page.goto("/platform");
     await expect(page.getByRole("heading", { name: CRASHED })).toBeVisible();
@@ -59,7 +66,7 @@ test("a lazy screen chunk that stays missing reloads once, then shows the error 
     await expectAccessible(page, "chunk recovery support reference");
     await settled(docs, 2); // one reload, no loop
     expect(busted(docs[1]!)).toBe(true);
-    expect(tries).toBe(2);
+    expect([...requestedOn]).toEqual([1, 2]);
 
     // The button reloads afresh; still missing, the screen comes back without a reload of its own.
     await page.getByRole("button", { name: RELOAD }).click();

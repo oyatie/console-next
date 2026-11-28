@@ -8,6 +8,7 @@ test("solo admin can write settings and add reason codes on Cedar, with negative
   const admin = await openTenant(browser, "cedarset", "설정테넌트");
   const bearer = bearerOf(admin);
   await go(admin, "/");
+  await admin.reload();
   await expect.poll(bearer, { timeout: 15_000 }).not.toBe("");
 
   const api = apiOf(admin, bearer);

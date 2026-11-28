@@ -2,13 +2,14 @@ import { useEffect } from "react";
 import { t } from "@console/i18n";
 import { useLocation, useRouter } from "@tanstack/react-router";
 
-let say: ((message: string) => void) | null = null;
+export type Speak = (message: string, source?: "route") => void;
+let say: Speak | null = null;
 
 /** Speaks a confirmation through the shell's single polite live region (ui/announcer.tsx). */
-export const announce = (message: string) => say?.(message);
+export const announce: Speak = (...args) => say?.(...args);
 
 /** The shell's <Announcer> hands its setter here; the returned function unbinds it. */
-export const bindAnnouncer = (fn: (message: string) => void) => {
+export const bindAnnouncer = (fn: Speak) => {
   say = fn;
   return () => {
     if (say === fn) say = null;
@@ -114,7 +115,7 @@ export function useRoutePresentation(pathname: string, ready: boolean) {
       document.title = title;
       if (presented?.pathname !== pathname || presented.title !== title) {
         presented = { pathname, title };
-        announce(title);
+        announce(title, "route");
       }
     };
     const schedule = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(update); };

@@ -1,3 +1,4 @@
+import { ko } from "../packages/i18n/src/catalogs/ko";
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { go, kstDate, option, registerEmployee } from "./flows";
@@ -7,29 +8,30 @@ import { openUnit } from "./helpers/structure";
 import { box, leaveScreen } from "./structure-flows";
 import { shot } from "./shots";
 
-// UX-R3 STRUCT company-01 (P0), company-02, company-14: a 법인 that employed someone closes once they have left. The close
-// sheet asks the 종료 사유 first, names who still keeps it open (linked, with what remains for them), and once their exit is
-// HR-confirmed the 법인 counts nobody, the 「재직자」 blocker is gone and 종료일 opens; the confirm is the danger action.
-// regression: on the parent the 사업장/법인 count kept the exited person, so 「재직자 1명」 never cleared (a dead end).
+// A confirmed exit stops blocking company closure after the employee's last working day.
+// The live chart, dated reads and closure plan must agree at that boundary (company-01, company-14).
 
 for (const lastDay of [-1, 0]) {
-test(`regression: after the only person's exit (${lastDay}) the 법인 counts nobody and its close opens 종료일 (company-01)`, { tag: ["@regression", "@org"] }, async ({ browser }) => {
+test(`regression: the last working day (${lastDay}) determines company headcount and closure (company-01)`, { tag: ["@regression", "@org"] }, async ({ browser }) => {
   const { admin } = await tenantInSetup(browser, `entexit${lastDay + 1}`, "퇴직회사", false, "본사");
-  await registerEmployee(admin, { name: "떠날사람", number: "EX-0001", hired: "2024-03-04", unit: SETUP_DEPARTMENT });
+  const name = "떠날사람";
+  await registerEmployee(admin, { name, number: "EX-0001", hired: "2024-03-04", unit: SETUP_DEPARTMENT });
   const record = new URL(admin.url()).pathname;
   await startOperations(admin);
   await leaveScreen(admin);
 
   // Before the exit: the blocker names the person, linked, and what remains (no exit yet); 종료일 stays locked.
   await go(admin, "/org/entities");
-  await admin.getByRole("row", { name: /퇴직회사/ }).click();
-  await admin.getByRole("button", { name: "법인 종료 계획 보기" }).click();
-  let s = sheet(admin, "법인 종료");
+  const companyRow = admin.getByRole("row", { name: /퇴직회사/ });
+  const showPlan = admin.getByRole("button", { name: ko["entityRecord.close.endPlan"] });
+  const s = sheet(admin, ko["entityRecord.close.title"]);
+  await companyRow.click();
+  await showPlan.click();
   // 종료 사유 comes first, before anything blocks (company-14).
   await expect(s.getByRole("radiogroup", { name: /종료 사유/ })).toBeVisible();
   await expect(s).toContainText("재직자 1명");
-  const staff = s.getByRole("list", { name: "아직 재직 중인 사람" });
-  await expect(staff.getByRole("link", { name: "떠날사람" })).toBeVisible();
+  const staff = s.getByRole("list", { name: ko["entityRecordClose.staff"] });
+  await expect(staff.getByRole("link", { name, exact: true })).toBeVisible();
   await expect(staff).toContainText("퇴직 처리 전");
   await expect(s.getByRole("textbox", { name: /^종료일/ })).toHaveCount(0);
   await expectAccessible(admin, "entity close: the people who keep it open, by name");
@@ -37,7 +39,7 @@ test(`regression: after the only person's exit (${lastDay}) the 법인 counts no
   await admin.keyboard.press("Escape");
   await expect(s).toBeHidden();
 
-  // The exit: reported, then HR-confirmed (the employee leaves at once).
+  // The exit: reported, then HR-confirmed. Employment continues through the last working day.
   await go(admin, record);
   const exitPanel = admin.getByRole("region", { name: "퇴직", exact: true });
   await admin.getByRole("button", { name: "퇴직 보고" }).click();
@@ -52,15 +54,25 @@ test(`regression: after the only person's exit (${lastDay}) the 법인 counts no
   await admin.getByRole("dialog").getByRole("button", { name: /퇴직 1명 (적용|예약)/ }).click();
   await expect(exitPanel).toContainText("인사 확인됨");
 
-  // Live counts drop the confirmed exit; a dated read still includes the last working day.
+  const liveCount = lastDay === 0 ? /, 1명(?:,|$)/ : /, 0명(?:,|$)/;
+  // The company and branch agree across live and dated reads.
   await go(admin, "/org");
-  await expect(box(admin, "본사")).toHaveAccessibleName(/, 0명(?:,|$)/);
-  await expect(admin.getByRole("treeitem", { name: /퇴직회사, 법인,/ })).toHaveAccessibleName(/, 0명(?:,|$)/);
+  await expect(box(admin, "본사")).toHaveAccessibleName(liveCount);
+  await expect(admin.getByRole("treeitem", { name: /퇴직회사, 법인,/ })).toHaveAccessibleName(liveCount);
   await go(admin, `/org?as_of=${kstDate(lastDay)}`);
   await expect(box(admin, "본사")).toHaveAccessibleName(/, 1명(?:,|$)/);
   await expect(admin.getByRole("treeitem", { name: /퇴직회사, 법인,/ })).toHaveAccessibleName(/, 1명(?:,|$)/);
   await go(admin, "/org");
-  await expect(box(admin, "본사")).toHaveAccessibleName(/, 0명(?:,|$)/);
+  await expect(box(admin, "본사")).toHaveAccessibleName(liveCount);
+  if (lastDay === 0) {
+    await go(admin, "/org/entities");
+    await companyRow.click();
+    await showPlan.click();
+    await expect(s).toContainText("재직자 1명");
+    await expect(staff.getByRole("link", { name, exact: true })).toBeVisible();
+    await expect(s.getByRole("textbox", { name: /^종료일/ })).toHaveCount(0);
+    return;
+  }
   // The former member makes this a used 부서: its governed 폐지 clears the 법인's remaining open unit.
   const dept = await openUnit(admin, SETUP_DEPARTMENT);
   await dept.locator("#act-dept-delete").click();
@@ -74,13 +86,11 @@ test(`regression: after the only person's exit (${lastDay}) the 법인 counts no
   // The 법인 list and record count nobody; the close has no 재직자 blocker and 종료일 opens.
   await leaveScreen(admin);
   await go(admin, "/org/entities");
-  const row = admin.getByRole("row", { name: /퇴직회사/ });
-  await expect(row).toContainText("0명");
-  await row.click();
+  await expect(companyRow).toContainText("0명");
+  await companyRow.click();
   // The record, opened again, counts nobody either (company-01: it kept 「1명」).
   await expect(admin.getByRole("main")).toContainText("인원 0명");
-  await admin.getByRole("button", { name: "법인 종료 계획 보기" }).click();
-  s = sheet(admin, "법인 종료");
+  await showPlan.click();
   await expect(s).not.toContainText("재직자");
   await option(admin, "종료 사유", "해산").click();
   await fillDate(s, kstDate(0), "종료일");

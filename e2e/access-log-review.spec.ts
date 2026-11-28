@@ -2,12 +2,12 @@
 import { expect, test } from "@playwright/test";
 import { apiOf, bearerOf, codeOf } from "./helpers/api";
 import { openTenant } from "./helpers/tenant";
-import { go } from "./flows";
+import { reloadAndWait } from "./flows";
 
 test("access-log review settings expose plan defaults and reject invalid policy values", async ({ browser }) => {
   const admin = await openTenant(browser, "logreview", "접속기록 점검");
   const bearer = bearerOf(admin);
-  await go(admin, "/");
+  await reloadAndWait(admin);
   await expect.poll(bearer, { timeout: 15_000 }).not.toBe("");
   const api = apiOf(admin, bearer);
   const settings = await api("/settings");

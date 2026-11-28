@@ -19,9 +19,10 @@ export function bearerOf(page: Page) {
 
 /** One call under the page's session: `api("/employees", "POST", body)`. */
 export const apiOf = (page: Page, bearer: () => string) => async (path: string, method = "GET", data?: object, headers: Record<string, string> = {}) => {
-  const response = await page.request.fetch(`/api/v1${path}`, { method, headers: { authorization: bearer(), ...headers }, data, failOnStatusCode: false });
+  const endpoint = path.startsWith("/api/") ? path : `/api/v1${path}`;
+  const response = await page.request.fetch(endpoint, { method, headers: { authorization: bearer(), ...headers }, data, failOnStatusCode: false });
   if (response.headers()["content-type"]?.includes("application/json")) {
-    const problems = responseTimestampProblems(timestampContract, `/api/v1${path}`, method, response.status(), await response.json());
+    const problems = responseTimestampProblems(timestampContract, endpoint, method, response.status(), await response.json());
     if (problems.length) throw new Error(`${method} ${path}: ${problems.join(", ")}`);
   }
   return response;

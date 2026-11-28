@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 
@@ -33,7 +33,7 @@ function RollbackStatus({ status, run }: { status: ImportRun["status"]; run?: Im
 }
 
 /** The server's inverse plan is acknowledged before its digest is submitted. */
-export function RollbackPanel({ run, onChanged }: { run: ImportRun; onChanged: () => void }) {
+export function RollbackPanel({ run, onChanged, children }: { run: ImportRun; onChanged: () => void; children?: ReactNode }) {
   const canPreview = run.allowed.includes("preview_rollback");
   const preview = useQuery({
     ...rollbackPreviewQuery(run.id), enabled: canPreview, retry: false,
@@ -41,9 +41,10 @@ export function RollbackPanel({ run, onChanged }: { run: ImportRun; onChanged: (
   });
   const pending = run.status === "ROLLBACK_REQUESTED" || run.status === "ROLLBACK_RUNNING" || Boolean(run.rollback.pending_request);
   const closed = run.rollback.refusal_code === "import_rollback_window_closed" || (preview.error instanceof ApiError && preview.error.code === "import_rollback_window_closed");
-  return (
+  return <>
     <section className="card panel form" aria-labelledby="import-rollback">
       <h2 id="import-rollback" className="panel__title">{t("importRollback.title")}</h2>
+      <p className="muted">{t("importRollback.kept")}</p>
       {run.status === "ROLLED_BACK" || pending ? <RollbackStatus status={run.status} run={run} /> : <>
         {(closed || run.rollback.window_until) && <p>
           {closed && t("importRollback.closed")}
@@ -56,9 +57,10 @@ export function RollbackPanel({ run, onChanged }: { run: ImportRun; onChanged: (
         </QueryState> : preview.error ? <QueryState q={{ ...preview, data: undefined }} own={importError}>{() => null}</QueryState> : null}
       </>}
       {run.rollback.job?.error && <CommandError error={new ApiError(run.rollback.job.error.status, run.rollback.job.error.code, run.rollback.job.error.message)} own={importError} />}
-      <p className="muted">{t("importRollback.kept")}</p>
     </section>
-  );
+    {/* The inverse plan can span many rows. Mount the following review below its first settled read. */}
+    {(!canPreview || !preview.isPending) && children}
+  </>;
 }
 
 function Execute({ run, plan, onChanged }: { run: ImportRun; plan: RollbackPreview; onChanged: () => void }) {

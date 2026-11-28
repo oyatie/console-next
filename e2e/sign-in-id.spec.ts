@@ -3,7 +3,7 @@ import { josa } from "@console/i18n";
 import { atPhoneWidth, expectAccessible } from "./a11y";
 import { OTP_LENGTH } from "@console/api";
 import { authenticatorOf, virtualAuthenticator } from "./auth";
-import { tenantNameField, tenantOnboardSubmit, acceptConsent, tenantSlugField, firstSignIn, go, newContext, option, stepUp, takeCode, unique, vendorPage, vendorStepUp } from "./flows";
+import { tenantNameField, tenantOnboardSubmit, koDate, kstDate, acceptConsent, tenantSlugField, firstSignIn, go, newContext, option, stepUp, takeCode, unique, vendorPage, vendorStepUp } from "./flows";
 import { forgetResize } from "./stability";
 import { expectSignedIn, signOut as signOutOfShell } from "./shell";
 
@@ -38,9 +38,11 @@ async function invite(admin: Page, name: string, login: string, audit = false) {
   await sheet.getByRole("textbox", { name: /^이름/ }).fill(name);
   const id = sheet.getByRole("textbox", { name: /^아이디/ });
   await id.fill("홍");
-  await sheet.getByRole("button", { name: "패스키로 확인하고 계정 초대" }).click();
-  await expect(sheet).toContainText("한글이나 전각 문자는 쓸 수 없습니다");
+  const submit = sheet.getByRole("button", { name: "패스키로 확인하고 계정 초대" });
+  await expect(submit).toBeDisabled();
+  await expect(submit).toHaveAccessibleDescription(/한글이나 전각 문자는 쓸 수 없습니다/);
   await id.fill(login);
+  await expect(submit).toBeEnabled();
   if (audit) await expectAccessible(admin, "invite sheet with a sign-in ID");
   await stepUp(sheet, "패스키로 확인하고 계정 초대", admin.getByLabel("일회용 코드"));
   const signInId = (await admin.getByRole("dialog").locator("dl .code").textContent())!.trim();
@@ -122,7 +124,9 @@ test("sign-in ID: a rename keeps the old ID signing in, the history shows both, 
   await expect(panel.getByRole("status")).toContainText(`이개명님의 아이디를 ${josa(`lee.new@${domain}`, "으로로")} 변경했습니다`);
   await panel.getByRole("button", { name: "아이디 이력" }).click();
   const history = panel.getByRole("table", { name: "아이디 이력" });
-  await expect(history.getByRole("row", { name: new RegExp(`lee.new@${domain}.*현재`) })).toBeVisible();
+  const current = history.getByRole("row", { name: new RegExp(`lee.new@${domain}.*현재`) });
+  await expect(current).toBeVisible();
+  await expect(current).toContainText(koDate(kstDate()));
   await expect(history.getByRole("row", { name: new RegExp(`lee.old@${domain}.*까지 로그인 가능`) })).toBeVisible();
   await expectAccessible(admin, "sign-in ID history");
 

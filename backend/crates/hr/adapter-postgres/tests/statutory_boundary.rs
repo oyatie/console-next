@@ -15,6 +15,7 @@ use tracing::instrument::WithSubscriber;
 // SQLx setup also runs SQL; one harness keeps process-global tracing interest stable.
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn register_boundaries_and_requested_acquisition_share_the_clock(pool: PgPool) {
+    workplace_calendar_at_go_live(&pool).await;
     boundary(pool.clone(), "DAYS", "INCLUDED", "UNVERIFIED", 1).await;
     boundary(
         pool.clone(),
@@ -27,6 +28,69 @@ async fn register_boundaries_and_requested_acquisition_share_the_clock(pool: PgP
     boundary(pool.clone(), "DAYS", "EXCLUDED", "CIVIL_CODE161", 4).await;
     requested_acquisition_uses_its_register_clock_across_go_live(pool).await;
 }
+async fn workplace_calendar_at_go_live(pool: &PgPool) {
+    let w = world::world(pool).await;
+    let principal = support::principal(w.tenant.org, w.user);
+    let register = world::register_rules(pool).await;
+    let query = FilingQuery {
+        kind: Some("ACQUIRE".into()),
+        insurer: Some("NHIS".into()),
+        ..Default::default()
+    };
+    let panel = w
+        .tenant
+        .hr
+        .insurance_filings(principal.clone(), query.clone(), register.clone())
+        .await
+        .unwrap();
+    let due_on = panel.items[0].due_on.as_deref().unwrap();
+    // At 10:30 UTC the duty is due today in Seoul and was due yesterday in Kiritimati.
+    let mut tx = pool.begin().await.unwrap();
+    sqlx::query("SET LOCAL session_replication_role=replica")
+        .execute(tx.as_mut())
+        .await
+        .unwrap();
+    sqlx::query("UPDATE tenant_phase SET go_live_at=($2::date + time '10:30') AT TIME ZONE 'UTC' WHERE org_id=$1")
+        .bind(w.tenant.org).bind(due_on).execute(tx.as_mut()).await.unwrap();
+    tx.commit().await.unwrap();
+    for (workplace_zone, expected) in [
+        (None, 1),
+        (Some("Pacific/Kiritimati"), 0),
+        (Some("Asia/Seoul"), 1),
+    ] {
+        sqlx::query("UPDATE workplaces SET time_zone=$2 WHERE id=$1")
+            .bind(w.site)
+            .bind(workplace_zone)
+            .execute(pool)
+            .await
+            .unwrap();
+        let (page, exact) = w
+            .tenant
+            .hr
+            .insurance_inbox_page(principal.clone(), query.clone(), register.clone(), None)
+            .await
+            .unwrap();
+        assert!(exact);
+        assert_eq!(page.total, expected);
+        if expected == 1 {
+            assert_eq!(page.items[0].event_id, w.event);
+            assert_eq!(page.items[0].workplace_id, Some(w.site));
+        }
+    }
+    let outside = FilingQuery {
+        workplace_id: Some(uuid::Uuid::new_v4()),
+        ..query
+    };
+    let (page, exact) = w
+        .tenant
+        .hr
+        .insurance_inbox_page(principal, outside, register, None)
+        .await
+        .unwrap();
+    assert!(exact);
+    assert_eq!(page.total, 0);
+}
+
 async fn boundary(pool: PgPool, kind: &str, first: &str, holiday: &str, value: i32) {
     let w = world::world(&pool).await;
     let on = Date::from_calendar_date(2026, time::Month::September, 1).unwrap();

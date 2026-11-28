@@ -100,11 +100,15 @@ fn step(key: &'static str, group: &'static str, state: StepState, action: &'stat
 pub fn checklist(f: &SetupFacts) -> Checklist {
     use StepState::{Attention, Blocked, Done, Todo};
     let mut steps = Vec::with_capacity(7);
-    let p = preview(f, &crate::Records::new());
+    // After go-live the checklist no longer reports preview blockers.
+    let blockers = if f.phase_is_setup {
+        preview(f, &crate::Records::new()).blockers
+    } else {
+        Vec::new()
+    };
 
     let mut entity = step("entity", "company", Todo, "register_legal_entity");
-    if let Some(blocker) = p
-        .blockers
+    if let Some(blocker) = blockers
         .iter()
         .find(|b| b.code == "entity_without_registration")
     {
@@ -231,10 +235,10 @@ pub fn checklist(f: &SetupFacts) -> Checklist {
     let mut golive = step("golive", "people", Todo, "open_go_live_preview");
     if !f.phase_is_setup {
         golive.state = Done;
-    } else if !p.blockers.is_empty() {
+    } else if !blockers.is_empty() {
         golive.state = Blocked;
-        golive.remedy = p.blockers.first().and_then(|b| b.remedy);
-        golive.count = Some(i64::try_from(p.blockers.len()).unwrap_or(i64::MAX));
+        golive.remedy = blockers.first().and_then(|b| b.remedy);
+        golive.count = Some(i64::try_from(blockers.len()).unwrap_or(i64::MAX));
     }
     steps.push(golive);
 

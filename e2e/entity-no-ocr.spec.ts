@@ -11,10 +11,10 @@ const PDF = { name: "사업자등록증.pdf", mimeType: "application/pdf", buffe
 test("an uploaded 사업자등록증 fills nothing, and the screens never promise it", { tag: ["@org", "@regression"] }, async ({ browser }) => {
   const admin = await openTenant(browser, "no-ocr", "새온");
 
-  // The empty list and the setup step name the act (법인 등록), not the upload, and say nothing is read.
+  // The empty list and the setup step name the act (법인 등록), not the upload, and ask the user to enter the registration details.
   await go(admin, "/org/entities");
   const main = admin.getByRole("main");
-  await expect(main).toContainText("글자를 읽어 오지는 않습니다");
+  await expect(main).toContainText("사업자등록증 정보를 입력해 등록합니다");
   await expect(main).not.toContainText(/채워 드립|사업자등록증 올리기/);
   await admin.getByRole("link", { name: "법인 등록" }).first().click();
 

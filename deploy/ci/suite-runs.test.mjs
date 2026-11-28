@@ -103,7 +103,7 @@ for (const [reason, change, refused] of [
     const jobs = fixture.jobs.get(fixture.liveBrowser.id);
     jobs.unshift(...Array.from({length:100}, (_, shard) => ({...jobs[0], name:`shard ${shard}`})));
     fixture.testsJob(fixture.liveBrowser).conclusion = 'skipped';
-  }, 'e2e-live.yml (job tests: skipped)'],
+  }, 'e2e-live.yml (job Chromium journeys · 1: skipped)'],
   ['a failed run past the first page of runs', fixture => {
     fixture.database.conclusion = 'failure';
     for (let run = 0; run < 100; run++) fixture.addRun('db-tests.yml', 'schedule');
@@ -115,7 +115,7 @@ for (const [reason, change, refused] of [
     fixture.runs['db-tests.yml'].pop();
     fixture.testsJob(fixture.liveBrowser).conclusion = 'cancelled';
     fixture.routeLoad.conclusion = 'failure';
-  }, 'db-tests.yml (missing candidate run), e2e-live.yml (job tests: cancelled), route-load.yml (failure)'],
+  }, 'db-tests.yml (missing candidate run), e2e-live.yml (job Chromium journeys · 1: cancelled), route-load.yml (failure)'],
 ]) test(`production suite gate refuses ${reason}`, async () => {
   const fixture = suiteRunsFixture(sha, candidate.repository);
   change(fixture);
@@ -187,4 +187,18 @@ test('production suite gate propagates a programming error unchanged', async () 
 test('suite gate fails for an environment without an explicit policy', async () => {
   await assert.rejects(() => collectSuiteRuns({}, 'candidate', candidate),
     {name:'AssertionError', message:/^PROMOTE_ENVIRONMENT: candidate has no suite policy$/});
+});
+
+
+test('production requires every shard from the live build plan', async () => {
+  const fixture = suiteRunsFixture(sha, candidate.repository);
+  const jobs = fixture.jobs.get(fixture.liveBrowser.id);
+  const plan = jobs.find(job => job.name === 'Build browser test application').steps.find(step => step.name.startsWith('Planned browser shards · '));
+  plan.name = 'Planned browser shards · 8/8/9';
+  const last = {...jobs.find(job => job.name === 'Firefox UI states · shard 8'), name:'Firefox UI states · shard 9'};
+  assert.match((await suiteGate(fixture)).refusals[0], /expected one job Firefox UI states · shard 9, found 0/);
+  jobs.push(last);
+  assert.deepEqual((await suiteGate(fixture)).refusals, []);
+  jobs.push(last);
+  assert.match((await suiteGate(fixture)).refusals[0], /expected one job Firefox UI states · shard 9, found 2/);
 });

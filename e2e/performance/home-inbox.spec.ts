@@ -71,7 +71,9 @@ test("served 2,000-person Home and its inbox stay within 2 seconds under burst",
       const timing = await admin.evaluate(() => {
         const navigation = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming;
         const resource = (performance.getEntriesByType("resource") as PerformanceResourceTiming[]).find(r => new URL(r.name).pathname === "/api/v1/me/action-inbox");
-        return { responseStart: navigation.responseStart, firstRows: performance.measure("home:response-to-first-rows", { start: navigation.responseStart, end: "home:first-rows" }).duration, inbox: resource?.duration ?? 0 };
+        const [paint] = performance.getEntriesByName("home:first-rows", "mark");
+        // Firefox can report an early response just before the document time origin.
+        return { responseStart: navigation.responseStart, firstRows: paint!.startTime - navigation.responseStart, inbox: resource?.duration ?? 0 };
       });
       for (const reply of await burst) {
         expect(reply.status()).toBe(200);
@@ -91,7 +93,7 @@ test("served 2,000-person Home and its inbox stay within 2 seconds under burst",
     console.log(JSON.stringify(report));
     for (const sample of samples) {
       expect(sample.arrivalReads).toBe(1);
-      expect(sample.responseStart).toBeGreaterThan(0);
+      expect(sample.firstRows).toBeGreaterThan(0);
       expect(sample.inbox).toBeGreaterThan(0);
       expect(sample.inbox).toBeLessThanOrEqual(report.budgetMs);
       expect(sample.firstRows).toBeLessThanOrEqual(report.budgetMs);

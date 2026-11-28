@@ -98,9 +98,13 @@ test("platform first paint shares one read and late fonts leave controls and hea
     await go(page, "/account");
     const link = page.locator('a[href="/platform"]').first();
     await link.hover();
-    await link.click();
-    await routeReady(page, "/platform");
     expect(requests).toBe(1);
+    // Reopening the directory refreshes changes made in other tenant sessions.
+    const refreshed = page.waitForResponse(response => response.request().method() === "GET" && new URL(response.url()).pathname === "/api/platform/orgs");
+    await link.click();
+    expect((await refreshed).ok()).toBe(true);
+    await routeReady(page, "/platform");
+    expect(requests).toBe(2);
   } finally { fonts.resolve(); await page.unroute("**/*.woff2"); }
 });
 

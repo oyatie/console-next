@@ -34,6 +34,7 @@ test("operating: new department and dissolution proposals, a governed move, dele
   });
   const views = admin.getByRole("group", { name: "보기", exact: true });
   await views.getByRole("button", { name: "목록", exact: true }).click();
+  await admin.getByRole("button", { name: "부서 3", exact: true }).click();
   await expect(admin.getByRole("grid", { name: "조직 구조 목록" }).getByRole("row", { name: /인사부/ })).toContainText(count);
   await views.getByRole("button", { name: "조직도", exact: true }).click();
   await admin.getByRole("button", { name: "전체 보기", exact: true }).click();

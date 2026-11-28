@@ -1,3 +1,4 @@
+import { ko } from "../packages/i18n/src/catalogs/ko";
 import { expect, test, type Page } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { tenantNameField, tenantOnboardSubmit, tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
@@ -51,7 +52,7 @@ test("the account's name is never a company node: the 법인 are the top of the 
   await go(admin, "/org");
   await expect(admin.getByRole("heading", { name: "첫 법인을 등록합니다" })).toBeVisible();
   await expect(admin.getByRole("main")).not.toContainText(TENANT);
-  await admin.getByRole("link", { name: "법인 추가" }).click();
+  await admin.getByRole("link", { name: ko["structure.first.addEntity"] }).click();
   await expect(admin.getByText("1번째 법인", { exact: true })).toBeVisible();
   await registerEntity(admin, "가나정밀");
   await go(admin, "/org");

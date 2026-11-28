@@ -192,7 +192,7 @@ export function AuditPage() {
                   return (
                     <div className={s.actionCell}>
                       <span>{title}</span>
-                      {row.action && title !== row.action && <code className="mono t-xs muted">{row.action}</code>}
+                      {row.action && title !== row.action && <code translate="no" className="mono t-xs muted">{row.action}</code>}
                     </div>
                   );
                 },
@@ -245,7 +245,7 @@ export function AuditPage() {
               id: selected.rowKey,
               label: t("audit.detail.title"),
               title: actionTitle(selected.action),
-              meta: selected.action ?? undefined,
+              meta: selected.action ? <code translate="no">{selected.action}</code> : undefined,
               onClose: () => {
                 setSelectedId(null);
                 setDismissedAuto(true);

@@ -34,8 +34,10 @@ export function useReceipt(receiptNeed: AccessRequirement, historyNeed: AccessRe
   const canOpenReceipt = !!access.data && accessRefusal(access.data, receiptNeed) === null;
   const canOpenHistory = !!access.data && accessRefusal(access.data, historyNeed) === null;
   const receipt = useQuery({ ...goLiveReceiptQuery, enabled: band === "started" && canOpenReceipt });
-  // The phase reads are the phase band's to wait on, under its hold. A first failure ends the wait: Home never sits
-  // behind a read's retries.
-  const arriving = receipt.isFetching && receipt.data === undefined && receipt.failureCount === 0;
+  // Home can outlast the shared phase band's brief hold. Wait for the first
+  // operating-phase checklist to determine whether its receipt will sit above the inbox.
+  const phaseArriving = (access.isPending && access.failureCount === 0)
+    || (access.data?.phase === "OPERATING" && q.isPending && q.failureCount === 0);
+  const arriving = phaseArriving || (receipt.isFetching && receipt.data === undefined && receipt.failureCount === 0);
   return { band, data, access: access.data, canOpenReceipt, canOpenHistory, receipt, arriving };
 }

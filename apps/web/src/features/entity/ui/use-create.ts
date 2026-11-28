@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { t } from "@console/i18n";
+import { announce } from "../../../lib/react/announce";
 import { useCommand } from "../../../lib/react/command";
 import { entitiesRef } from "../../../reference/entity/api";
 import { addRegistration, createEntity, ENTITY_READS, registrationCheckAvailabilityQuery, stepKey, type CheckPreview } from "../api";
@@ -51,10 +52,10 @@ export function useCreate(seed?: Partial<Draft>, persist?: { key: string; entry:
       return { id, name, registered: reg !== null };
     },
     invalidates: ENTITY_READS,
-    announce: (r) => t("entityCreate.saved", { name: r.name }),
-    onSuccess: (r, then) => {
+    onSuccess: async (r, then) => {
       st.forget();
-      void (then === "workplace" ? nav({ to: "/org/entities/$id/workplaces/new", params: { id: r.id } }) : nav({ to: "/org/entities/$id", params: { id: r.id } }));
+      await (then === "workplace" ? nav({ to: "/org/entities/$id/workplaces/new", params: { id: r.id } }) : nav({ to: "/org/entities/$id", params: { id: r.id } }));
+      announce(t("entityCreate.saved", { name: r.name }));
     },
   });
   const put = <K extends keyof Draft>(k: K, v: Draft[K]) => st.set("identity", k, v);

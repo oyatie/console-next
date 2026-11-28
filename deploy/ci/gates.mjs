@@ -64,6 +64,37 @@ function unsuccessful({status, conclusion}) {
   return conclusion === 'success' ? null : conclusion || 'missing conclusion';
 }
 
+function liveBrowserCoverageRefusal(jobs) {
+  const build = jobs.find(job => job.name === 'Build browser test application');
+  const counts = build?.steps?.filter(step => step.name.startsWith('Planned browser shards · '));
+  const count = counts?.length === 1 && counts[0];
+  const plans = count && !unsuccessful(count) && /^Planned browser shards · (?<chromium>[1-9]\d*)\/(?<firefox>[1-9]\d*)\/(?<states>[1-9]\d*)$/.exec(count.name)?.groups;
+  if (!plans) return 'missing or invalid live shard plan';
+  const expectedNames = new Set();
+  for (const {job, steps, plan, shards = []} of gatesPolicy.liveBrowserJobs) {
+    let names = [job];
+    if (job.includes('{shard}')) {
+      const count = plan ? Number(plans[plan]) : 0;
+      if (plan && (!Number.isSafeInteger(count) || count < 8 || count + shards.length > 256)) return 'invalid live shard count';
+      const selections = [...Array.from({length:count}, (_, index) => index + 1), ...shards];
+      names = selections.map(shard => job.replace('{shard}', shard));
+    }
+    for (const name of names) {
+      expectedNames.add(name);
+      const matching = jobs.filter(entry => entry.name === name);
+      if (matching.length !== 1) return `expected one job ${name}, found ${matching.length}`;
+      for (const step of steps) {
+        const matches = (matching[0].steps ?? []).filter(entry => entry.name === step);
+        if (matches.length !== 1) return `job ${name}: expected one step ${step}, found ${matches.length}`;
+        const reason = unsuccessful(matches[0]);
+        if (reason) return `job ${name}: step ${step}: ${reason}`;
+      }
+    }
+  }
+  const extra = jobs.find(job => !expectedNames.has(job.name));
+  if (extra) return `unexpected job ${extra.name}`;
+}
+
 async function suiteEvidence(github, params, workflow, sha) {
   const history = await devRuns(github, params, workflow, sha);
   const candidates = history.filter(run => isCandidateRun(run, workflow, sha) &&
@@ -87,6 +118,10 @@ async function suiteEvidence(github, params, workflow, sha) {
         typeof job.name !== 'string' || !job.name) return {refusal:'job identity mismatch'};
       const jobReason = unsuccessful(job);
       if (jobReason) return {refusal:`job ${job.name}: ${jobReason}`};
+    }
+    if (workflow === 'e2e-live.yml') {
+      const refusal = liveBrowserCoverageRefusal(jobs);
+      if (refusal) return {refusal};
     }
     const {id, run_attempt, html_url} = run;
     runs.push({workflow, id, run_attempt, html_url});

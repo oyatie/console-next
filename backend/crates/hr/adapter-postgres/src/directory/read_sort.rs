@@ -76,12 +76,14 @@ impl RosterSort {
         }
     }
 
+    pub fn by_name(self) -> bool {
+        self.key == SortKey::Name
+    }
+
     /// The SQL sort expression; a missing value sorts as `''`.
     pub fn expr(self) -> &'static str {
         match self.key {
-            SortKey::Name => {
-                "COALESCE(console_employee_facts(e.org_id,e.id)->>'legal_name',e.name)"
-            }
+            SortKey::Name => "e.name",
             SortKey::EmployeeNumber => "COALESCE(e.employee_number, '')",
             SortKey::HireDate => "COALESCE(e.hire_date, '')",
             SortKey::OrgUnit => "COALESCE(e.org_unit, '')",
@@ -89,9 +91,14 @@ impl RosterSort {
     }
 
     /// ` AND (key, id) >/< (value, id)` for the page after `cursor`.
-    pub fn push_after(self, builder: &mut QueryBuilder<Postgres>, cursor: &RosterCursor) {
+    pub fn push_after(
+        self,
+        builder: &mut QueryBuilder<Postgres>,
+        cursor: &RosterCursor,
+        expression: &str,
+    ) {
         let op = if self.descending { "<" } else { ">" };
-        builder.push(format!(" AND ({}, e.id) {op} (", self.expr()));
+        builder.push(format!(" AND ({expression}, e.id) {op} ("));
         builder.push_bind(cursor.value.clone());
         builder.push(", ");
         builder.push_bind(cursor.id);
@@ -102,8 +109,7 @@ impl RosterSort {
     pub fn push_order(self, builder: &mut QueryBuilder<Postgres>) {
         let direction = if self.descending { "DESC" } else { "ASC" };
         builder.push(format!(
-            " ORDER BY {} {direction}, e.id {direction}",
-            self.expr()
+            " ORDER BY sort_value {direction}, e.id {direction}"
         ));
     }
 }

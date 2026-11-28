@@ -142,7 +142,7 @@ test("statutory filings and a dated worker register from an empty tenant", { tag
   await filings.first().getByRole("link", { name: "4대보험 신고 열기", exact: true }).click();
   await admin.getByRole("tab", { name: "근로자 명부" }).click();
   await admin.getByRole("textbox", { name: /^기준일/ }).waitFor({ state: "visible" });
-  await admin.getByRole("button", { name: /사업장/ }).click();
+  await admin.getByRole("button", { name: `${t("statutory.pickWorkplace")} ${t("statutory.workplace")}`, exact: true }).click();
   await admin.getByRole("option", { name: /본사/ }).click();
   await expect(admin.getByRole("table", { name: "근로자 명부" })).toContainText("S-1");
   await expect(admin.getByRole("link", { name: /김신고 · 주소 확인 필요/ })).toHaveAttribute("href", /act=fix%3Aaddress/);

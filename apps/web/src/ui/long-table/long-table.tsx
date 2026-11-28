@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEventHandler, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Button, Cell, Checkbox, Collection, Column, Input, Label, ResizableTableContainer, Row, SearchField, Table, TableBody, TableHeader, TableLayout, TableLoadMoreItem, Virtualizer, type CellProps, type ColumnProps, type SortDescriptor } from "react-aria-components";
+import { Button, Cell, Checkbox, Collection, Column, Input, Label, ResizableTableContainer, Row, SearchField, Table, TableBody, TableHeader, TableLoadMoreItem, Virtualizer, type CellProps, type ColumnProps, type SortDescriptor } from "react-aria-components";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { t } from "@console/i18n";
 import { applyKeys, shownKeys, type Selection } from "./selection";
 import { SelectionBar } from "./selection-bar";
 import { Box, Skeleton } from "./long-table-parts";
 import { LAYOUT, rowId, rowKey, SELECT, SELECT_WIDTH, SKELETON_ROWS, tokenRowHeight } from "./long-table-constants";
+import { FocusableTableLayout } from "./focusable-table-layout";
 import { editable, leaveImeKey, listenRowKeys, rowIdOf } from "./row-keys";
 import css from "./long-table.module.css";
 import { useSettledHover } from "./use-settled-hover";
@@ -223,7 +224,7 @@ export function LongTable<R>(p: {
         <SelectionBar sel={sel} loaded={loaded.length} total={p.total ?? undefined} hasMore={p.hasMore} limit={p.selectAllLimit} actions={p.selectionActions} unit={p.countUnit ?? "item"} onChange={p.onSelectionChange} />
       )}
       <ResizableTableContainer>
-      <Virtualizer layout={TableLayout} layoutOptions={layout}>
+      <Virtualizer layout={FocusableTableLayout} layoutOptions={layout}>
         <Table
           ref={el => { grid.current = el; p.scrollRef?.(el); }}
           aria-label={p.label}

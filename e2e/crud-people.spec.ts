@@ -40,7 +40,7 @@ test("퇴직 from the record, refused where it must be, closed alone, and the pe
   await registerEmployee(admin, { name: "떠날사람", number: "CX-0002", hired: "2024-03-04", unit: "본사" });
   await expect(actions(admin).getByRole("button", { name: "퇴직", exact: true })).toBeVisible();
   await expectAccessible(admin, "CRUD: record with 퇴직 and 등록 취소");
-  s = await reportExit(admin, "떠날사람", kstDate(0));
+  s = await reportExit(admin, "떠날사람", kstDate(-1));
   await expect(s).toBeHidden();
   const exitPanel = admin.getByRole("region", { name: "퇴직", exact: true });
   await expect(exitPanel).toContainText("보고됨");
@@ -62,7 +62,7 @@ test("퇴직 from the record, refused where it must be, closed alone, and the pe
   const employeeRead = await holdRead(admin, `**/api/v1/employees/${employeeId}`);
   await admin.getByRole("region", { name: /지금/ }).getByRole("button", { name: "퇴직 본사 확인 1명 적용" }).click();
   await employeeRead.requested;
-  await expect(admin.getByRole("region", { name: "퇴직" })).toContainText("본사 확인됨");
+  await expect(admin.getByRole("main").getByText("본사 확인됨", { exact: true })).toBeVisible();
 
   // Out of the active roster and the headcount, findable under 퇴직.
   await go(admin, "/people");

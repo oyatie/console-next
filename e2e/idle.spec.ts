@@ -1,4 +1,4 @@
-import { expect, test, type Browser, type Page } from "@playwright/test";
+import { expect, test, type Browser, type Page, type Request } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "./a11y";
 import { tenantNameField, tenantOnboardSubmit, tenantSlugField, firstSignIn, go, takeCode, unique, vendorPage } from "./flows";
@@ -98,10 +98,12 @@ test("a refresh that fails for a server fault or a dropped connection never sign
     );
     // A reload restores the session by refresh: with the server unreachable it says so, and stays signed in.
     await page.reload();
-    await expect(page.getByRole("heading", { name: "화면을 표시하지 못했습니다" })).toBeVisible();
+    const failure = page.getByRole("alert");
+    await expect(failure.getByRole("heading", { name: t("common.loadFailed.title") })).toBeVisible();
+    await expect(failure).toContainText(t(fault === "503" ? "common.read.sessionRestoreReason" : "common.networkError"));
     await expect(page).not.toHaveURL(/\/login/);
     await page.unroute("**/api/v1/auth/token/refresh");
-    await page.getByRole("button", { name: "페이지 새로 고침" }).click();
+    await page.getByRole("button", { name: t("common.retry") }).click();
     await expectSignedIn(page);
     await expect(page).not.toHaveURL(/\/login/);
   }
@@ -122,10 +124,13 @@ test("two minutes before the idle cut-off a warning shows, and staying signed in
   await page.keyboard.press("Shift"); // real input
   const warning = page.getByRole("alert").filter({ hasText: "자동으로 로그아웃됩니다" });
 
+  // Finish the real reads, including the key's report, before advancing their request deadlines with the idle timer.
+  await settled(page);
   await page.clock.fastForward("27:00");
   await page.clock.runFor(10_000);
   await expect(warning).toHaveCount(0);
 
+  await settled(page); // the stream may have reconnected and asked the open screen to read again
   await page.clock.fastForward("01:30");
   await page.clock.runFor(10_000);
   await expect(warning).toBeVisible();
@@ -186,30 +191,42 @@ test("half an hour of typing with no save keeps reporting itself once a minute, 
   const warning = page.getByRole("alert").filter({ hasText: "자동으로 로그아웃됩니다" });
   // The screen's own reads finish first: one still in flight after the first key would carry it too (Firefox).
   await settled(page);
+  const report = (r: Request) => new URL(r.url()).pathname === "/api/v1/users/me" && r.method() === "GET" && Boolean(r.headers()["x-last-interaction"]);
   const pings: string[] = [];
-  page.on("request", (r) => {
-    const h = r.headers()["x-last-interaction"];
-    if (new URL(r.url()).pathname === "/api/v1/users/me" && r.method() === "GET" && h) pings.push(h);
-  });
+  page.on("request", r => { if (report(r)) pings.push(r.headers()["x-last-interaction"]!); });
 
-  // Typing (keys with no request of their own) for 30 minutes: each minute's input reaches the server once, so the
-  // server's idle cut (INF-03) never sees an idle session, and the warning never shows.
-  for (let m = 0; m < 30; m++) {
-    await page.keyboard.press("Shift");
-    await page.clock.fastForward("01:00");
+  // Advance the input clock independently of the real server's stream heartbeats. Driving the stream's watchdog a
+  // minute per key would force reconnects and ordinary /users/me reads alongside the activity reports under test.
+  const start = await page.evaluate(() => Date.now() + 1_000);
+  await page.clock.pauseAt(start);
+  for (let minute = 0; minute < 29; minute++) {
+    await page.clock.setSystemTime(start + minute * 60_000);
+    const [answer] = await Promise.all([page.waitForResponse(r => report(r.request())), page.keyboard.press("Shift")]);
+    expect(answer.ok()).toBe(true);
   }
-  await page.clock.runFor(10_000);
-  await expect(warning).toHaveCount(0);
-  expect(pings.length, "one report a minute").toBeGreaterThanOrEqual(29);
-  expect(pings.length, "never more than one a minute").toBeLessThanOrEqual(30);
-
-  // Then nothing: no report without input (decision #27), and the warning comes before the cut-off. (The cut itself
-  // is the server's, INF-03; refusing the signed-out stream is pinned above and in the backend's sse_session.)
-  const idle = pings.length;
-  await page.clock.fastForward("28:30");
-  await page.clock.runFor(10_000);
-  await expect(warning).toBeVisible();
-  expect(pings.slice(idle), "nothing reported while idle").toEqual([]);
+  // Let the last key's report finish after idle starts. Its arrival cannot turn that key into a new interaction.
+  const held = Promise.withResolvers<void>();
+  await page.route("**/api/v1/users/me", async route => { await held.promise; await route.continue(); }, { times: 1 });
+  try {
+    await page.clock.setSystemTime(start + 29 * 60_000);
+    const [last] = await Promise.all([page.waitForRequest(report), page.keyboard.press("Shift")]);
+    expect(pings, "one report per minute of typing").toHaveLength(30);
+    const idle = pings.length;
+    // A resumed tab checks the current wall clock immediately, including all 30 minutes of input.
+    await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+    await page.clock.runFor(16);
+    await expect(warning).toHaveCount(0);
+    const stamp = last.headers()["x-last-interaction"]!;
+    const delivered = page.waitForResponse(r => r.request() === last);
+    await page.clock.runFor(1_000);
+    held.resolve();
+    expect((await delivered).ok()).toBe(true);
+    await page.clock.fastForward("28:30");
+    await page.clock.runFor(10_000);
+    await expect(warning).toBeVisible();
+    // Reconnects may reread /users/me during this jump. Every read still carries just the last real key.
+    expect(pings.slice(idle).filter(value => value !== stamp), "no new interaction while idle").toEqual([]);
+  } finally { held.resolve(); }
 });
 
 const WARNED = "자동으로 로그아웃됩니다";

@@ -459,6 +459,8 @@ test("cluster-wide role mutators and console_app migrations share exclusive exec
   assert.match(group, /test-group = 'cluster-global'/);
   assert.match(group, /threads-required = "num-test-threads"/);
   for (const name of [
+    "binary(owner_only_acl_postgres18)", "test(=corrects_stored_phones_and_preserves_revision_history)",
+    "test(=baseline_upgrade_preserves_keys_and_denies_unknown_codec)",
     "leave_migration_expand_contract", "key_revision_migration_upgrade",
     "attendance_console_migration_contract", "apalis_adapter", "apalis_schema_contract",
     "apalis_runtime_release", "group_of_one_expand_contract",

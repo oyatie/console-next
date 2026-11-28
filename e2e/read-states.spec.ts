@@ -49,6 +49,7 @@ test.describe("route requirements with a real grantless account", () => {
   test.describe.configure({ mode: "default" });
   let admin: Page;
   let reader: Page;
+  let themedPages: Record<"light" | "dark", Page>;
   let token: ReturnType<typeof bearerOf>;
   test.beforeAll(async ({ browser }) => {
     ({ admin, exec: reader } = await tenantBeforeSetup(browser, `route-refusal-${test.info().workerIndex}`, "권한 없는 화면", false, "none"));
@@ -59,46 +60,49 @@ test.describe("route requirements with a real grantless account", () => {
     const me = await (await apiOf(reader, token)("/access/me")).json();
     expect(me.is_ops).toBe(false);
     expect(me.entries).toEqual([]);
+    // A new tab rotates this session. Keep both appearances signed in as the route matrix walks them.
+    themedPages = { light: await reader.context().newPage(), dark: await reader.context().newPage() };
+    for (const [theme, page] of Object.entries(themedPages)) {
+      await page.addInitScript(value => { localStorage.setItem("console.theme", value); }, theme);
+    }
   });
   test.afterAll(async () => { await Promise.all([admin?.context().close(), reader?.context().close()]); });
 
   for (const { path, reads } of routeList.filter(route => route.reads.length)) {
     test(`${path}: the server refuses the protected read`, async () => {
       for (const read of reads) {
-      const endpoint = read.replace(/\$[^/]+/g, record).replace("/api/v1", "");
-      const query = new URLSearchParams(readQuery(read, record));
-      const response = await apiOf(reader, token)(`${endpoint}${query.size ? `?${query}` : ""}`);
-      expect(response.status(), read).toBe(403);
-      expect((await response.json()).error.code).toBeTruthy();
+        const endpoint = read.replace(/\$[^/]+/g, record);
+        const query = new URLSearchParams(readQuery(read, record));
+        const response = await apiOf(reader, token)(`${endpoint}${query.size ? `?${query}` : ""}`);
+        expect(response.status(), read).toBe(403);
+        expect((await response.json()).error.code).toBeTruthy();
       }
     });
-    for (const width of [1440, 390]) for (const theme of ["light", "dark"]) {
+    for (const width of [1440, 390]) for (const theme of ["light", "dark"] as const) {
       test(`${path}: one refusal, no page controls at ${width} ${theme}`, async () => {
-        const page = await reader.context().newPage();
-        try {
-          await page.setViewportSize({ width, height: 900 });
-          await page.addInitScript(value => { localStorage.setItem("console.theme", value); }, theme);
-          await go(page, path.replace(/\$[^/]+/g, record), path in redirectTargets);
-          const main = page.getByRole("main");
-          const card = main.getByRole("region", { name: bootKo["common.denied.title.plain"], exact: true });
-          await expect(card).toHaveCount(1);
-          await expect(card.getByRole("button", { name: bootKo["common.denied.request"], exact: true })).toBeVisible();
-          const permission = await card.locator(".state > .muted").innerText();
-          const need = readRequirement(path as Parameters<typeof readRequirement>[0]);
-          const required = "allOf" in need ? need.allOf : [need];
-          for (const entry of required) {
-            if ("action" in entry) {
-              expect(permission).toContain(ko[`denied.action.${entry.action}` as keyof typeof ko]);
-              continue;
-            }
-            expect(permission).toContain(ko[`accessCodes.domain.${entry.domain}` as keyof typeof ko]);
-            expect(permission).toContain(ko[`accessCodes.level.${entry.level}` as keyof typeof ko]);
+        const page = themedPages[theme];
+        await page.setViewportSize({ width, height: 900 });
+        await go(page, path.replace(/\$[^/]+/g, record), path in redirectTargets);
+        await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+        const main = page.getByRole("main");
+        const card = main.getByRole("region", { name: bootKo["common.denied.title.plain"], exact: true });
+        await expect(card).toHaveCount(1);
+        await expect(card.getByRole("button", { name: bootKo["common.denied.request"], exact: true })).toBeVisible();
+        const permission = await card.locator(".state > .muted").innerText();
+        const need = readRequirement(path as Parameters<typeof readRequirement>[0]);
+        const required = "allOf" in need ? need.allOf : [need];
+        for (const entry of required) {
+          if ("action" in entry) {
+            expect(permission).toContain(ko[`denied.action.${entry.action}` as keyof typeof ko]);
+            continue;
           }
-          expect(await main.locator("button, a, input, select, textarea, [role=tab]").evaluateAll((elements, label) => elements.filter(element => element.closest('section[aria-label]')?.getAttribute("aria-label") !== label).length, bootKo["common.denied.title.plain"])).toBe(0);
-          expect(await main.innerText()).toBe(await card.innerText());
-          expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
-          if (["/people", "/org/changes", "/access/roles"].includes(path)) await expectAxe(page, `${path} refused at ${width} ${theme}`);
-        } finally { await page.close(); }
+          expect(permission).toContain(ko[`accessCodes.domain.${entry.domain}` as keyof typeof ko]);
+          expect(permission).toContain(ko[`accessCodes.level.${entry.level}` as keyof typeof ko]);
+        }
+        expect(await main.locator("button, a, input, select, textarea, [role=tab]").evaluateAll((elements, label) => elements.filter(element => element.closest('section[aria-label]')?.getAttribute("aria-label") !== label).length, bootKo["common.denied.title.plain"])).toBe(0);
+        expect(await main.innerText()).toBe(await card.innerText());
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+        if (["/people", "/org/changes", "/access/roles"].includes(path)) await expectAxe(page, `${path} refused at ${width} ${theme}`);
       });
     }
   }
@@ -199,10 +203,13 @@ test.describe("one state contract across console routes", () => {
         await route.fulfill(failure(503));
       });
       try {
-        const requested = page.waitForRequest(request => request.method() === "GET" && new URL(request.url()).pathname === read);
-        await page.goto(path);
+        // A fresh tab must restore its session before issuing the protected read. Time the
+        // loading UI from that read, holding its answer until the shell and skeleton are visible.
+        await Promise.all([
+          page.waitForRequest(request => request.method() === "GET" && new URL(request.url()).pathname === read),
+          page.goto(path),
+        ]);
         await expect(page.getByRole("navigation", { name: "주 메뉴" })).toBeVisible({ timeout: 1500 });
-        await requested;
         await expect(page.getByRole("main").locator('[aria-busy="true"]').last()).toBeVisible({ timeout: 1500 });
         await expect(page.getByRole("main").locator("[data-read-layout]").last()).toBeVisible({ timeout: 1500 });
         held = false;
@@ -227,7 +234,14 @@ test.describe("one state contract across console routes", () => {
         const path = new URL(request.url()).pathname;
         if (["/api/v1/me/authz", "/api/v1/support-sessions/active"].includes(path)) protectedReads.push(path);
       });
-      await page.route("**/api/v1/auth/token/refresh", route => route.fulfill(failure(503)));
+      let recovering = false;
+      let release!: () => void;
+      const retryClicked = new Promise<void>(resolve => { release = resolve; });
+      await page.route("**/api/v1/auth/token/refresh", async route => {
+        if (!recovering) return route.fulfill(failure(503));
+        await retryClicked;
+        return route.continue();
+      });
       const failedRefresh = page.waitForResponse(response => new URL(response.url()).pathname === "/api/v1/auth/token/refresh" && response.status() === 503);
       await page.goto(path);
       await (await failedRefresh).finished();
@@ -235,9 +249,13 @@ test.describe("one state contract across console routes", () => {
       await expect(page.getByRole("main").getByText("불러오지 못했습니다", { exact: true })).toBeVisible();
       await expect(page.getByText("화면을 표시하지 못했습니다", { exact: true })).toHaveCount(0);
       expect(protectedReads).toEqual([]);
-      await page.unroute("**/api/v1/auth/token/refresh");
       const restored = page.waitForResponse(response => new URL(response.url()).pathname === "/api/v1/auth/token/refresh" && response.status() === 200);
-      await page.getByRole("button", { name: "다시 불러오기", exact: true }).click();
+      recovering = true;
+      try {
+        await page.getByRole("main").getByRole("button", { name: "다시 불러오기", exact: true }).click();
+      } finally {
+        release();
+      }
       await restored;
       await expect(page.getByRole("main").getByText("불러오지 못했습니다", { exact: true })).toHaveCount(0);
       await expect(page.getByRole("navigation", { name: "주 메뉴" })).toBeVisible();

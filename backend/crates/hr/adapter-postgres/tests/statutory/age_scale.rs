@@ -37,3 +37,15 @@ pub async fn inbox_ids(pool: &PgPool, org: Uuid) -> Vec<String> {
     sqlx::query_scalar("SELECT 'insurance_filing_AGE60_NPS:' || id::text FROM employee_lifecycle_events WHERE org_id=$1 ORDER BY created_at,id LIMIT 51")
         .bind(org).fetch_all(pool).await.unwrap()
 }
+
+/// Replay the production period query. These fixtures are inside the cutoff.
+pub async fn filing_periods(pool: &PgPool, org: Uuid) -> serde_json::Value {
+    let rows = sqlx::query_scalar::<_, sqlx::types::Json<Vec<serde_json::Value>>>(include_str!(
+        "../../src/statutory/filing_periods.sql"
+    ))
+    .bind(org)
+    .fetch_all(pool)
+    .await
+    .unwrap();
+    serde_json::Value::Array(rows.into_iter().flat_map(|row| row.0).collect())
+}

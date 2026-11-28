@@ -41,7 +41,7 @@ async function statutoryFirst(page: Page) {
   await go(page, "/statutory?tab=register");
   // go() changes the URL before the lazy screen renders: wait for it, or the click lands on the page before.
   await expect(page.getByRole("tab", { name: "근로자 명부", selected: true })).toBeVisible();
-  await page.getByRole("button", { name: /사업장/ }).click();
+  await page.getByRole("main").getByRole("button", { name: /사업장/ }).click();
   const first = await page.getByRole("option", { name: /주식회사 가나/ }).first().textContent();
   await page.keyboard.press("Escape");
   return first?.includes(LAB) ? LAB : HOLD;
@@ -134,11 +134,9 @@ test("legal entities and workplaces reorder on the chart and every surface shows
   const main = (await box(admin, "본사").boundingBox())!;
   const center = (await box(admin, "기술센터").boundingBox())!;
   await admin.mouse.move(main.x + 12, main.y + main.height - 4);
-  await expect(admin.getByRole("toolbar", { name: "본사 작업" })).toHaveAttribute("data-side", "inside");
-  expect(await admin.evaluate(({ x, y }) => {
-    const target = document.elementFromPoint(x, y);
-    return { toolbar: target?.closest<HTMLElement>("[data-tools]")?.dataset.side, button: Boolean(target?.closest("button")) };
-  }, { x: main.x + 12, y: main.y + main.height - 4 })).toEqual({ toolbar: "inside", button: true });
+  await expect(admin.getByRole("toolbar", { name: "본사 작업" })).toHaveAttribute("data-ready", "true");
+  const origin = { x: main.x + 12, y: main.y + main.height - 4 };
+  expect(await box(admin, "본사").evaluate((el, { x, y }) => document.elementFromPoint(x, y)?.closest("[data-box]") === el, origin)).toBe(true);
   await admin.mouse.down();
   await admin.mouse.move(main.x + 32, main.y + main.height - 12, { steps: 4 });
   await expect(admin.getByRole("status").filter({ hasText: "본사 이동 중" })).toBeVisible();
@@ -219,7 +217,7 @@ test("legal entities and workplaces reorder on the chart and every surface shows
   await admin.getByRole("button", { name: "목록", exact: true }).click();
   const rows = admin.getByRole("grid", { name: "조직 구조 목록" }).getByRole("row", { name: /주식회사 가나/ });
   await expect(rows.first()).toContainText(LAB);
-  await expect(rows.first().getByRole("button", { name: `${LAB} 위로` })).toBeDisabled();
+  await expect(rows.first().getByRole("button", { name: `${LAB} 위로` })).toHaveCount(0);
   await expectAccessible(admin, "structure list (legal entity order)");
   await go(admin, "/org/entities");
   await expect(listRows(admin).first()).toContainText(LAB);

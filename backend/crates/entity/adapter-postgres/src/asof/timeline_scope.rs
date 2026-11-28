@@ -64,7 +64,7 @@ pub(super) async fn visible(
     let changes = super::projection::load(tx, point).await?;
     if granted.is_none() {
         let ids: Vec<Uuid> = sqlx::query_scalar(
-            "SELECT id FROM org_units WHERE created_at <= COALESCE($1::timestamptz,now())",
+            "SELECT id FROM org_units WHERE created_at <= COALESCE($1::timestamptz,'infinity')",
         )
         .bind(q.known_at)
         .fetch_all(tx.as_mut())
@@ -87,13 +87,13 @@ pub(super) async fn visible(
     let revisions: Vec<(Uuid, Date, Value)> = sqlx::query_as(
         "SELECT org_unit_id,effective,attributes FROM (SELECT DISTINCT ON (org_unit_id,effective) org_unit_id,attributes, \
          COALESCE(entity_try_iso_date(attributes->>'effective_from'),(created_at AT TIME ZONE 'Asia/Seoul')::date) AS effective \
-         FROM org_unit_revisions WHERE created_at <= COALESCE($2::timestamptz,now()) \
+         FROM org_unit_revisions WHERE created_at <= COALESCE($2::timestamptz,'infinity') \
          ORDER BY org_unit_id,effective,version DESC) r WHERE effective <= $1 ORDER BY effective,org_unit_id",
     ).bind(to).bind(q.known_at).fetch_all(tx.as_mut()).await?;
     let placements: Vec<(Uuid, Uuid, Date, Option<Date>)> = sqlx::query_as(
         "SELECT org_unit_id,workplace_id,valid_from,CASE WHEN valid_to_recorded_at > $2 THEN NULL ELSE valid_to END \
          FROM org_unit_placements WHERE represents_workplace AND valid_from <= $1 \
-           AND created_at <= COALESCE($2::timestamptz,now()) ORDER BY valid_from DESC,created_at DESC,id DESC",
+           AND created_at <= COALESCE($2::timestamptz,'infinity') ORDER BY valid_from DESC,created_at DESC,id DESC",
     ).bind(to).bind(q.known_at).fetch_all(tx.as_mut()).await?;
     let initial = from.previous_day().unwrap_or(from);
     let boundaries: Vec<_> = [initial, from, to]

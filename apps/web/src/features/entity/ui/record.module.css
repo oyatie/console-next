@@ -88,3 +88,7 @@
   .director { grid-template-columns: minmax(0, 1fr); align-items: stretch; }
 }
 .conflict { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) var(--space-4); border: 1px solid var(--warn-bd); border-radius: var(--radius); background: var(--warn-bg); }
+/* Keep the reason control below the upload in place as the attachment receipt arrives. */
+.certReceipt { display: flex; align-items: center; gap: var(--space-2); min-block-size: var(--control-h); }
+.certReceipt > bdi { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.certReceipt > svg { flex-shrink: 0; }

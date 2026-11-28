@@ -55,9 +55,8 @@ test("roster: first run, counts that add up, 3-year retention, a void in setup a
   // E9 for someone who has left, in setup: CRUD's 등록 취소 sheet (the ⋯ menu opens it) follows the server's end-options —
   // the setup delete of an exited person inside the 명부 period asks that the original register is kept, unticked
   // (the refusal of a used record after go-live is crud-people.spec's).
-  await openByNumber(a, "10201", "최도현", "EXITED");
-  await a.getByRole("group", { name: "인사카드 동작" }).getByRole("button", { name: "더 보기" }).click();
-  await a.getByRole("menuitem", { name: /등록 취소/ }).click();
+  await a.getByRole("rowheader", { name: "최도현" }).click();
+  await a.getByRole("complementary").getByRole("link", { name: "등록 취소", exact: true }).click();
   await expect(sheet(a).getByRole("checkbox", { name: "원본 근로자 명부를 따로 보관하고 있습니다" })).not.toBeChecked();
   await a.keyboard.press("Escape");
 
@@ -171,6 +170,9 @@ test("record card: a hire date corrected within budget, a taken number refused, 
   await empno.getByRole("button", { name: "사번 1명 변경", exact: true }).press("Enter"); // aria-disabled (R9): goes to the number
   await expect(empno.getByRole("textbox", { name: "새 사번" })).toBeFocused();
   await a.keyboard.press("Escape");
+  await expect(empno.getByRole("status")).toContainText("한 번 더 누르면 닫습니다");
+  await a.keyboard.press("Escape");
+  await expect(empno).toBeHidden();
   await expect(cardHeading(a).locator("..")).toContainText(HERO.no);
 
   // E12-conflict-sheet (refusal): the person changed after the sheet opened; nothing is saved, the three values show,

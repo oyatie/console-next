@@ -50,7 +50,7 @@ export function AuditDetailPane({
         name={selected.actor_display ?? selected.actor ?? "—"}
         badges={<Chip tone={selected.anomaly ? "warn" : selected.outcome === "DENIED" ? "danger" : "ok"}>{outcomeLabel}</Chip>}
         roleLine={fmtDateTime(selected.occurred_at)}
-        path={selected.action ? <code className="mono t-xs muted">{selected.action}</code> : undefined}
+        path={selected.action ? <code translate="no" className="mono t-xs muted">{selected.action}</code> : undefined}
       />
       <RecordPaneSection title={t("audit.detail.title")}>
         <KeyValue

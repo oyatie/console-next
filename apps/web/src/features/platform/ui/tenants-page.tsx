@@ -25,6 +25,7 @@ import { SupportLookup } from "../../../lib/react/support-lookup";
 import { ExperienceSwitch } from "../../../ui/patterns/pattern-shell";
 import { PlatformConsole } from "./platform-console";
 import { TenantPanel } from "./tenant-panel";
+import styles from "./tenants.module.css";
 import { KeyNotices } from "./key-notices";
 
 /** The URL holds what a support ticket links to: the tenant, the search and the view. */
@@ -132,7 +133,7 @@ function TenantsBaseline() {
           <Receipt state="recorded" message={recorded.message} meta={recorded.meta} />
         </div>
       )}
-      <div className="split" data-open={Boolean(selected)}>
+      <div className={`split ${styles.directory}`} data-open={Boolean(selected)}>
         <section id="tenants-list" className="card" aria-label={t("tenants.table")}>
           {empty ? (
                 <EmptyState title={t("tenants.empty.title")} reason={t("tenants.empty.reason")} actions={create} />
@@ -144,6 +145,7 @@ function TenantsBaseline() {
               <>
                 {ops.isError && <QueryState q={ops} own={() => t("tenants.opsFailed")}>{() => null}</QueryState>}
                 <Table
+                  tableClassName={styles.directoryTable}
                   label={t("tenants.table")}
                   rows={rows}
                   rowId={(o: Org) => o.id}

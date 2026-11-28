@@ -10,11 +10,11 @@ pub(crate) async fn changed(tx: &mut Tx<'_>, p: ReadPoint) -> Result<HashSet<Uui
     }
     Ok(sqlx::query_scalar::<_, Uuid>(
         "SELECT legal_entity_id FROM legal_entity_revisions WHERE effective_from > $1 AND effective_from <= $2 \
-             AND created_at <= COALESCE($3::timestamptz,now()) \
+             AND created_at <= COALESCE($3::timestamptz,'infinity') \
          UNION SELECT workplace_id FROM workplace_revisions WHERE effective_from > $1 AND effective_from <= $2 \
-             AND created_at <= COALESCE($3::timestamptz,now()) \
+             AND created_at <= COALESCE($3::timestamptz,'infinity') \
          UNION SELECT org_unit_id FROM org_unit_revisions WHERE entity_try_iso_date(attributes->>'effective_from') > $1 \
-             AND entity_try_iso_date(attributes->>'effective_from') <= $2 AND created_at <= COALESCE($3::timestamptz,now())",
+             AND entity_try_iso_date(attributes->>'effective_from') <= $2 AND created_at <= COALESCE($3::timestamptz,'infinity')",
     ).bind(p.as_of).bind(p.today).bind(p.known_at).fetch_all(tx.as_mut()).await?.into_iter().collect())
 }
 

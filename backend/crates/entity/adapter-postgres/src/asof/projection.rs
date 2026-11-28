@@ -20,7 +20,7 @@ pub(super) async fn load(tx: &mut Tx<'_>, point: ReadPoint) -> Result<Changes, P
     let rows = sqlx::query(
         "SELECT r.id, r.code, (h.v->>'effective_date')::date AS effective_date, h.v->'proposal' AS proposal \
          FROM org_change_requests r JOIN LATERAL (SELECT v FROM jsonb_array_elements(r.projection_history) \
-             WITH ORDINALITY AS history(v,n) WHERE (v->>'recorded_at')::timestamptz <= COALESCE($2::timestamptz,now()) \
+             WITH ORDINALITY AS history(v,n) WHERE (v->>'recorded_at')::timestamptz <= COALESCE($2::timestamptz,'infinity') \
              ORDER BY n DESC LIMIT 1) h ON true \
          WHERE (h.v->>'effective_date')::date <= $1 \
            AND h.v->>'status' IN ('APPROVED','IN_APPROVAL') ORDER BY effective_date, r.code",

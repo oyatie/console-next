@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { expectAccessible } from "./a11y";
-import { authenticatorOf, virtualAuthenticator } from "./auth";
+import { onSecondDevice } from "./auth";
 import { tenantNameField, tenantOnboardSubmit, tenantSlugField, firstSignIn, go, kstDate, option, takeCode, unique, vendorPage } from "./flows";
 import { pickKind, setupCompany, setupRail, startOperations, tenantInSetup, typeAddress, workplaceSheet } from "./setup-flows";
 import { fillRegister, openRegistered, pressRegister, registerSheet } from "./helpers/register";
@@ -20,19 +20,9 @@ const shot = (page: Page, name: string) => (process.env.E2E_SHOTS ? page.screens
 const ENTITY = "주식회사 새온정밀";
 test.beforeAll(() => loadCatalog("ko"));
 
-/** The next WebAuthn registration lands on a second device (the first holds this account's credential, which is excluded). */
-async function onSecondDevice(page: Page) {
-  const first = authenticatorOf(page);
-  await page.route("**/api/v1/auth/passkey/register/start", async (route) => {
-    await first.remove();
-    await virtualAuthenticator(page);
-    await route.continue();
-  });
-}
-
 /** Registers `name` from `unit`'s box at `site` (two 사업장: the sheet asks which), hired `hired`; lands on their record. */
 async function hire(page: Page, name: string, unit: string, site: string, hired: string) {
-  await go(page, "/org");
+  if (new URL(page.url()).pathname !== "/org") await go(page, "/org");
   await revealUnit(page, unit);
   await page.getByRole("complementary", { name: unit, exact: true }).getByRole("link", { name: `${unit}에 직원 등록` }).click();
   await expect(registerSheet(page).getByRole("textbox", { name: /^이름/ })).toBeVisible();
@@ -78,24 +68,28 @@ test("go-live counts what the panels show and fixes each record in place; the te
   await setupCompany(admin, "새온정밀", "본사");
   const record = new URL(admin.url()).pathname;
   await addOsong(admin);
+  await go(admin, "/");
+  const rail = setupRail(admin);
+  await expect(rail.locator("[data-step][data-state=done]").first()).toBeVisible();
+  await expect(rail.locator("[data-step][aria-current=step]")).toBeVisible();
+
   await go(admin, "/org");
-  // Regression (entity-ops:25's 0.0017 shift): a setup-panel step has one height whatever its state, so the checklist's
-  // re-read after a command never moves the steps below it or the preview link. Here the steps are in mixed states.
-  const panelSteps = admin.locator("aside[aria-labelledby=setup-panel-title] li");
-  await expect(panelSteps.first()).toBeVisible();
-  // The setup and record panels share their final width so switching them cannot move chart controls.
-  const panelWidth = await admin.locator("aside[aria-labelledby=setup-panel-title]").evaluate((el) => ({
-    setup: el.getBoundingClientRect().width,
-    record: Number.parseFloat(getComputedStyle(el).getPropertyValue("--panel-w")),
-  }));
-  expect(panelWidth.setup).toBe(panelWidth.record);
-  const steps = await panelSteps.evaluateAll((els) => els.map((el) => ({ state: el.getAttribute("data-state"), h: (el as HTMLElement).offsetHeight })));
-  expect(new Set(steps.map((x) => x.state)).size).toBeGreaterThan(1);
-  expect(new Set(steps.map((x) => x.h)), JSON.stringify(steps)).toHaveProperty("size", 1);
+  await expect(admin.getByRole("tree")).toBeVisible();
+  await expect(admin.getByRole("main").getByRole("progressbar")).toHaveCount(0);
+  // Switching workplace records keeps the chart's detail panel in the same place.
+  await revealUnit(admin, "본사");
+  const firstPanel = admin.getByRole("complementary", { name: "본사", exact: true });
+  await expect(firstPanel).toBeVisible();
+  const panel = await firstPanel.boundingBox();
+  await revealUnit(admin, "오송공장");
+  const secondPanel = admin.getByRole("complementary", { name: "오송공장", exact: true });
+  await expect(secondPanel).toBeVisible();
+  expect(await secondPanel.boundingBox()).toMatchObject({ x: panel!.x, width: panel!.width });
   await addDepartments(admin, "본사", ["인사부"]);
   await addDepartments(admin, "오송공장", ["생산팀"]);
   await hire(admin, "김본사", "인사부", "본사", kstDate(-30));
-  await hire(admin, "이오송", "생산팀", "오송공장", kstDate(-30));
+  // This additional workplace opens today. The direct registration uses its opening date.
+  await hire(admin, "이오송", "생산팀", "오송공장", kstDate(0));
   await hire(admin, "박예정", "인사부", "본사", kstDate(12));
 
   // org-14: the 사업장 panel's crumb starts at the 법인, never at the account's name.
@@ -154,10 +148,9 @@ test("go-live counts what the panels show and fixes each record in place; the te
   await shot(admin, "after-home-rail-passkey-step");
   const step = setupRail(admin).getByRole("listitem").filter({ hasText: "다른 기기에 패스키 하나 더" });
   await onSecondDevice(admin);
-  await step.getByRole("button", { name: "새 패스키 등록" }).click();
-  await expect(step.getByRole("button", { name: "새 패스키 등록" })).toBeHidden();
+  await step.getByRole("button", { name: t("account.passkey.add"), exact: true }).click();
+  await expect(step.getByRole("button", { name: t("account.passkey.add"), exact: true })).toBeHidden();
   await expect(step).toHaveAttribute("data-state", "done");
-  await admin.unroute("**/api/v1/auth/passkey/register/start");
   await go(admin, "/setup/go-live");
   await expect(main.getByRole("alert").first()).toBeVisible();
   await expect(main).not.toContainText("패스키가 1개뿐입니다");
@@ -199,7 +192,11 @@ test("after go-live the only ops holder is asked for a second passkey on Home an
   await expectAccessible(admin, "My account: second passkey in passkey card");
   await shot(admin, "after-account-second-passkey-card");
   await onSecondDevice(admin);
-  await keys.getByRole("button", { name: "패스키로 확인하고 새 패스키 등록", exact: true }).click();
+  await keys.getByRole("button", { name: t("account.passkey.add"), exact: true }).click();
+  const add = admin.getByRole("dialog", { name: t("account.passkey.add"), exact: true });
+  await add.getByRole("textbox", { name: t("account.passkey.label") }).fill("예비 기기");
+  await add.getByRole("button", { name: t("account.passkey.addCommit"), exact: true }).click();
+  await expect(keys.getByText("예비 기기", { exact: true })).toBeVisible();
   await expect(admin.getByRole("table", { name: "패스키" }).getByRole("row")).toHaveCount(3);
   await expect(warning).toHaveCount(0);
   await expect(admin.getByRole("region", { name: "다른 기기에 패스키 하나 더" })).toHaveCount(0);

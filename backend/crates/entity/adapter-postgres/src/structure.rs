@@ -55,7 +55,7 @@ pub(crate) async fn compose(
     let mut members = crate::asof::membership::load(tx, point).await?;
     let scheduled = crate::asof::projection::apply(tx, point, &mut tree, &mut members).await?;
     let represented = crate::asof::placements::represented(tx, point).await?;
-    let entities = crate::read::entities_at(tx, None, granted, false, point).await?;
+    let entities = crate::read::entity_records_at(tx, None, granted, false, point).await?;
     let counts = crate::asof::membership::count(
         &mut tree,
         &mut members,
