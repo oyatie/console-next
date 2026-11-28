@@ -1,5 +1,6 @@
 // English for `denied.` ids (source: ../ko/denied.ts).
 export const enDenied = {
+  "denied.capability.served_calendar": "Requires internal calendar access.",
   "denied.capability.documents": "Requires organization-wide evidence access.",
   "denied.capability.served_integrity_findings": "Requires access to integrity findings.",
   "denied.capability.served_integrity_triage": "Requires access to integrity findings.",

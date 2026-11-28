@@ -1,3 +1,8 @@
+mod calendar_access;
+pub(crate) use calendar_access::calendar_access;
+mod calendar_read;
+use calendar_read::{collect_calendar_events, list_calendar_events};
+
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -74,6 +79,7 @@ pub fn router(state: CollaborationState) -> Router {
 
 #[derive(Debug, Deserialize)]
 struct CalendarEventQuery {
+    cursor: Option<String>,
     #[serde(default, with = "time::serde::rfc3339::option")]
     from: Option<OffsetDateTime>,
     #[serde(default, with = "time::serde::rfc3339::option")]
@@ -83,6 +89,7 @@ struct CalendarEventQuery {
 
 #[derive(Debug, Serialize)]
 struct CalendarEventListResponse {
+    next_cursor: Option<String>,
     items: Vec<CalendarEventResponse>,
 }
 
@@ -352,110 +359,6 @@ fn default_anonymity() -> PollAnonymity {
     PollAnonymity::Named
 }
 
-async fn list_calendar_events(
-    State(state): State<CollaborationState>,
-    Extension(principal): Extension<Principal>,
-    Query(query): Query<CalendarEventQuery>,
-) -> Result<Json<CalendarEventListResponse>, CollaborationError> {
-    let limit = normalize_limit(query.limit);
-    let as_of = OffsetDateTime::now_utc();
-    let from = query
-        .from
-        .unwrap_or_else(|| as_of - time::Duration::days(1));
-    let to = query.to.unwrap_or_else(|| as_of + time::Duration::days(14));
-    if to < from {
-        return Err(CollaborationError::validation(
-            "calendar query end must be after start",
-        ));
-    }
-    let snapshot =
-        collect_calendar_events(&state.pool, &principal, from, to, limit, as_of, false).await?;
-    record_collaboration_request("calendar_list", "success");
-    Ok(Json(CalendarEventListResponse {
-        items: snapshot.items,
-    }))
-}
-
-struct CalendarEventSnapshot {
-    items: Vec<CalendarEventResponse>,
-    total: usize,
-    as_of: OffsetDateTime,
-}
-
-async fn collect_calendar_events(
-    pool: &PgPool,
-    principal: &Principal,
-    from: OffsetDateTime,
-    to: OffsetDateTime,
-    limit: i64,
-    as_of: OffsetDateTime,
-    half_open_range: bool,
-) -> Result<CalendarEventSnapshot, CollaborationError> {
-    authorize_collaboration_member(principal)?;
-    let org = principal.org_id;
-    let user_ref = principal.user_id.as_uuid().to_string();
-    let user_id = *principal.user_id.as_uuid();
-    let (branch_all, branch_refs) = audience_branch_binds(principal);
-    let audience = scope_visibility_sql(
-        "scope_type",
-        "scope_ref",
-        "created_by",
-        "$3",
-        "$4",
-        "$8",
-        "$9",
-    );
-    let sql = format!(
-        "SELECT id, scope_type, scope_ref, title, description, starts_at, ends_at, \
-                all_day, status, object_type, object_id, created_by, created_at, updated_at, \
-                COUNT(*) OVER() AS snapshot_total \
-         FROM collaboration_calendar_events \
-         WHERE status = 'ACTIVE' \
-           AND ( \
-               ($7 AND starts_at < $1 AND ends_at > $2) \
-               OR (NOT $7 AND starts_at <= $1 AND ends_at >= $2) \
-           ) \
-           AND {audience} \
-           AND created_at <= $5 \
-           AND updated_at <= $5 \
-         ORDER BY starts_at ASC, created_at DESC \
-         LIMIT $6"
-    );
-    let rows = with_org_conn::<_, _, CollaborationError>(pool, org, move |tx| {
-        Box::pin(async move {
-            Ok(sqlx::query(sqlx::AssertSqlSafe(sql))
-                .bind(to)
-                .bind(from)
-                .bind(user_ref)
-                .bind(user_id)
-                .bind(as_of)
-                .bind(limit)
-                .bind(half_open_range)
-                .bind(branch_all)
-                .bind(&branch_refs)
-                .fetch_all(tx.as_mut())
-                .await?)
-        })
-    })
-    .await?;
-    let total = rows
-        .first()
-        .map(|row| row.try_get::<i64, _>("snapshot_total"))
-        .transpose()?
-        .unwrap_or(0);
-    let total = usize::try_from(total)
-        .map_err(|_| CollaborationError::internal("calendar count exceeded supported range"))?;
-    let items = rows
-        .into_iter()
-        .map(calendar_event_from_row)
-        .collect::<Result<Vec<_>, _>>()?;
-    Ok(CalendarEventSnapshot {
-        items,
-        total,
-        as_of,
-    })
-}
-
 /// Native calendar-owner adapter for the workbench aggregate. It reuses the
 /// authenticated collaboration visibility predicate, applies the aggregate's
 /// exact half-open range and one request ceiling, and never persists a second
@@ -470,20 +373,27 @@ pub(crate) async fn read_workbench_calendar(
     let limit = i64::try_from(limit).map_err(|_| crate::workbench::SourceFailure::Unavailable {
         code: "calendar_limit_invalid",
     })?;
-    let snapshot =
-        collect_calendar_events(pool, principal, range.from, range.to, limit, as_of, true)
-            .await
-            .map_err(|error| {
-                if error.status == StatusCode::FORBIDDEN {
-                    crate::workbench::SourceFailure::Denied {
-                        code: "calendar_access_denied",
-                    }
-                } else {
-                    crate::workbench::SourceFailure::Unavailable {
-                        code: "calendar_unavailable",
-                    }
-                }
-            })?;
+    let snapshot = collect_calendar_events(
+        pool,
+        principal,
+        range.from,
+        range.to,
+        (limit, None),
+        as_of,
+        true,
+    )
+    .await
+    .map_err(|error| {
+        if error.status == StatusCode::FORBIDDEN {
+            crate::workbench::SourceFailure::Denied {
+                code: "calendar_access_denied",
+            }
+        } else {
+            crate::workbench::SourceFailure::Unavailable {
+                code: "calendar_unavailable",
+            }
+        }
+    })?;
     let items = snapshot
         .items
         .into_iter()
@@ -512,10 +422,12 @@ async fn create_calendar_event(
 ) -> Result<Json<CalendarEventResponse>, CollaborationError> {
     authorize_collaboration_member(&principal)?;
     let normalized = normalize_calendar_event(body, principal.user_id.as_uuid())?;
-    if let Err(denied) = authorize_scope_publisher(&principal, normalized.scope_type) {
-        record_collaboration_request("calendar_create", "denied_scope");
-        return Err(denied);
-    }
+    let target_branch = calendar_access::authorize_audience(
+        &principal,
+        normalized.scope_type,
+        normalized.scope_ref.as_deref(),
+    )
+    .inspect_err(|_| record_collaboration_request("calendar_create", "denied_scope"))?;
     let event_id = Uuid::new_v4();
     let org = principal.org_id;
     let actor = principal.user_id;
@@ -541,6 +453,9 @@ async fn create_calendar_event(
     .with_snapshots(None, Some(audit_after.clone()));
     let response = with_audit::<_, _, CollaborationError>(&state.pool, audit_event, move |tx| {
         Box::pin(async move {
+            if let Some(branch) = target_branch {
+                calendar_access::require_active_branch(tx, org, branch).await?;
+            }
             let row = sqlx::query(
                 r#"
                 INSERT INTO collaboration_calendar_events (
@@ -1829,7 +1744,7 @@ mod tests {
             principal,
             now - time::Duration::hours(1),
             now + time::Duration::hours(2),
-            50,
+            (50, None),
             now + time::Duration::minutes(5),
             false,
         )
@@ -1947,7 +1862,9 @@ mod tests {
         let org = seed_org(&pool).await;
         let member_user = seed_user(&pool, org, "MEMBER", None).await;
         let admin_user = seed_user(&pool, org, "ADMIN", None).await;
-        let branch = BranchId::new();
+        let branch = BranchId::from_uuid(sqlx::query_scalar::<_, Uuid>(
+            "WITH r AS (INSERT INTO regions (org_id,name) VALUES ($1,'East') RETURNING id) INSERT INTO branches (org_id,region_id,name) SELECT $1,id,'Central' FROM r RETURNING id"
+        ).bind(org.as_uuid()).fetch_one(&pool).await.unwrap());
         let state = collab_state(&pool);
 
         let request =
@@ -2005,17 +1922,44 @@ mod tests {
             Role::Admin,
             console_kernel_core::BranchScope::single(branch),
         );
-        let created = create_calendar_event(
+        for (scope, target) in [
+            (ScopeType::Tenant, None),
+            (ScopeType::Org, None),
+            (ScopeType::Team, Some("Personnel".to_owned())),
+            (ScopeType::Department, Some(BranchId::new().to_string())),
+        ] {
+            let denied = create_calendar_event(
+                State(state.clone()),
+                Extension(admin.clone()),
+                Json(request(scope, target)),
+            )
+            .await
+            .unwrap_err();
+            assert_eq!(denied.status, StatusCode::FORBIDDEN);
+        }
+        let granted = create_calendar_event(
             State(state.clone()),
             Extension(admin.clone()),
-            Json(request(ScopeType::Tenant, Some("ignored".to_owned()))),
+            Json(request(ScopeType::Department, Some(branch.to_string()))),
         )
         .await
-        .expect("admin holds the notice-manage tier");
-        assert_eq!(
-            created.0.scope_ref, None,
-            "tenant/org rows must not store a decorative scope_ref"
+        .unwrap();
+        assert_eq!(granted.0.scope_ref, Some(branch.to_string()));
+
+        let executive = principal_of(
+            seed_user(&pool, org, "EXECUTIVE", None).await,
+            org,
+            Role::Executive,
+            BranchScope::All,
         );
+        let created = create_calendar_event(
+            State(state.clone()),
+            Extension(executive),
+            Json(request(ScopeType::Tenant, None)),
+        )
+        .await
+        .unwrap();
+        assert_eq!(created.0.scope_ref, None);
 
         // A custom NoticeManage grant (not the built-in matrix) also qualifies.
         let mut granted_member = principal_of(

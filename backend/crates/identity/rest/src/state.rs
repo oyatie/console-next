@@ -11,6 +11,7 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub struct IdentityRestState {
     pub(crate) integrity_access: fn(&console_platform_authz::Principal) -> (bool, bool),
+    pub(crate) calendar_access: fn(&console_platform_authz::Principal) -> bool,
     pub(crate) benefit_access: fn(&console_platform_authz::Principal) -> (bool, bool),
     pub(crate) ledger_access: fn(&console_platform_authz::Principal) -> bool,
     pub(crate) documents_served: bool,
@@ -28,6 +29,7 @@ impl IdentityRestState {
         tenant_facts: impl TenantFactsRead + 'static,
     ) -> Self {
         Self {
+            calendar_access: |_| false,
             benefit_access: |_| (false, false),
             ledger_access: |_| false,
             documents_served: false,
@@ -57,6 +59,15 @@ impl IdentityRestState {
         access: fn(&console_platform_authz::Principal) -> (bool, bool),
     ) -> Self {
         self.integrity_access = access;
+        self
+    }
+
+    #[must_use]
+    pub fn with_calendar_access(
+        mut self,
+        access: fn(&console_platform_authz::Principal) -> bool,
+    ) -> Self {
+        self.calendar_access = access;
         self
     }
 

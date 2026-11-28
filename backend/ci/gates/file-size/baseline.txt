@@ -1,7 +1,7 @@
 # Oversize Rust files, pinned at their code-line count (see ci/gates/file-size).
 # Shrink-only: regenerate with `cargo run -p console-gate-file-size -- --write-baseline`.
 app/src/cedar_parity.rs	313
-app/src/collaboration.rs	1499
+app/src/collaboration.rs	1416
 app/src/hr.rs	2898
 app/src/hr/attendance_import_resolve.rs	328
 app/src/objects.rs	2007
@@ -148,7 +148,6 @@ crates/messenger/rest/src/lib.rs	493
 crates/messenger/rest/tests/api.rs	505
 crates/notices/adapter-postgres/src/lib.rs	681
 crates/notices/adapter-postgres/tests/notices_rls_surfaces_as_runtime_role.rs	540
-crates/notices/rest/src/lib.rs	337
 crates/notices/rest/tests/api.rs	558
 crates/notifications/adapter-postgres/src/lib.rs	834
 crates/notifications/adapter-postgres/tests/notifications_rls_surfaces_as_runtime_role.rs	1005

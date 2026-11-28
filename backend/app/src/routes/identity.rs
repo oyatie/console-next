@@ -29,6 +29,8 @@ pub(super) fn mount(router: Router, deps: &TenantDeps<'_>) -> Router {
             authorize_integrity_triage(principal).is_ok(),
         )
     });
+    #[cfg(feature = "workspace")]
+    let identity = identity.with_calendar_access(crate::collaboration::calendar_access);
     #[cfg(feature = "benefit")]
     let identity = identity.with_benefit_access(console_benefit_rest::catalog_access);
     #[cfg(feature = "compliance")]

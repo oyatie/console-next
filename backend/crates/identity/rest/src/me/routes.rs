@@ -71,5 +71,6 @@ pub(crate) async fn get_me_authz(
         (state.integrity_access)(&principal),
         (state.ledger_access)(&principal),
         (state.benefit_access)(&principal),
+        (state.calendar_access)(&principal),
     )))
 }

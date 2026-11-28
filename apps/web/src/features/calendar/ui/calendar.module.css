@@ -1,0 +1,6 @@
+/* SPDX-License-Identifier: LicenseRef-Proprietary */
+.form, .agenda {
+  display: grid;
+  gap: var(--space-3);
+  min-inline-size: 0;
+}
