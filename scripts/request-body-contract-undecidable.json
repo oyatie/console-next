@@ -1045,7 +1045,7 @@
     },
     {
       "operation": "POST /api/v1/lifecycles/{objectType}/{objectId}/hold",
-      "rust_file": "backend/app/src/lifecycle.rs",
+      "rust_file": "backend/app/src/lifecycle/record_routes.rs",
       "handler": "set_lifecycle_hold",
       "body_type": "SetLifecycleHoldRequest",
       "body_struct_file": "backend/app/src/lifecycle_bodies.rs",
@@ -1055,7 +1055,7 @@
     },
     {
       "operation": "POST /api/v1/lifecycles/{objectType}/{objectId}/transition",
-      "rust_file": "backend/app/src/lifecycle.rs",
+      "rust_file": "backend/app/src/lifecycle/record_routes.rs",
       "handler": "transition_lifecycle",
       "body_type": "TransitionLifecycleRequest",
       "body_struct_file": "backend/app/src/lifecycle_bodies.rs",

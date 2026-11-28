@@ -35,10 +35,9 @@ pub const PERIOD_LOCK_UNLOCK_REJECT_PATH_TEMPLATE: &str =
     "/api/v1/period-locks/{lockId}/unlock/reject";
 pub const PERIOD_LOCK_UNLOCK_REVIEW_PATH_TEMPLATE: &str =
     "/api/v1/period-locks/{lockId}/unlock/reviews/{exceptionId}/acknowledge";
-pub const LIFECYCLE_PATH_TEMPLATE: &str = "/api/v1/lifecycles/{objectType}/{objectId}";
-pub const LIFECYCLE_TRANSITION_PATH_TEMPLATE: &str =
-    "/api/v1/lifecycles/{objectType}/{objectId}/transition";
-pub const LIFECYCLE_HOLD_PATH_TEMPLATE: &str = "/api/v1/lifecycles/{objectType}/{objectId}/hold";
+pub use record_routes::{
+    LIFECYCLE_HOLD_PATH_TEMPLATE, LIFECYCLE_PATH_TEMPLATE, LIFECYCLE_TRANSITION_PATH_TEMPLATE,
+};
 
 pub const LIFECYCLE_ROUTE_PATHS: &[&str] = &[
     PERIOD_LOCKS_PATH,

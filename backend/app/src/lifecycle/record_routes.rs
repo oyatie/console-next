@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-use super::{
-    LIFECYCLE_HOLD_PATH_TEMPLATE, LIFECYCLE_PATH_TEMPLATE, LIFECYCLE_TRANSITION_PATH_TEMPLATE,
-    LifecycleState, get_lifecycle, set_lifecycle_hold, transition_lifecycle,
-};
+use super::{LifecycleState, get_lifecycle, set_lifecycle_hold, transition_lifecycle};
 use axum::{
     Router,
     extract::Path,
     response::IntoResponse,
     routing::{get, post},
 };
+
+pub const LIFECYCLE_PATH_TEMPLATE: &str = "/api/v1/lifecycles/{objectType}/{objectId}";
+pub const LIFECYCLE_TRANSITION_PATH_TEMPLATE: &str =
+    "/api/v1/lifecycles/{objectType}/{objectId}/transition";
+pub const LIFECYCLE_HOLD_PATH_TEMPLATE: &str = "/api/v1/lifecycles/{objectType}/{objectId}/hold";
 
 pub(super) fn router(state: LifecycleState) -> Router {
     let verifier = state.jwt_verifier.clone();
