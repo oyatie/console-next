@@ -9,6 +9,10 @@
 pub fn global_table_allowlist() -> &'static [(&'static str, &'static str)] {
     &[
         (
+            "release_modules",
+            "migration-owned list of supported module keys and settings; contains no tenant enrollments and has no runtime privileges",
+        ),
+        (
             "setting_definitions",
             "migration-owned settings validation metadata; no tenant data or secrets, runtime SELECT only",
         ),
