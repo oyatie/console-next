@@ -176,6 +176,13 @@ async fn definitions_migrated_by_console_app_are_read_only_for_runtime(pool: PgP
     let result = MIGRATOR.run(&mut *conn).await;
     conn.detach().close().await.unwrap();
     result.unwrap();
+    let can_change_catalog: bool = sqlx::query_scalar(
+        "SELECT has_table_privilege('console_rt','public.release_modules','INSERT,UPDATE,DELETE,TRUNCATE')",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert!(!can_change_catalog);
     let grants: (bool, bool, bool, bool) = sqlx::query_as(
         "SELECT has_table_privilege('console_rt','public.setting_definitions','SELECT'), \
          has_table_privilege('console_rt','public.setting_definitions','INSERT'), \
