@@ -106,7 +106,7 @@ test("unavailable builds conceal both destinations and both private operations",
     for (const name of [t("evaluation.title"), t("evaluation.create")]) await expect(page.getByRole("link", {name, exact:true})).toHaveCount(0);
     for (const path of ["/evaluation","/evaluation/new"]) {
       await page.goto(path);
-      await expect(page.getByRole("main").getByText(t(path === "/evaluation" ? "evaluation.title" : "evaluation.create"), {exact:true})).toBeVisible();
+      await expect(page.getByRole("main").getByText(t(path === "/evaluation" ? "denied.capability.served_evaluation_cycles" : "denied.capability.served_evaluation_cycle_create"), {exact:true})).toBeVisible();
       await expect(page.getByRole("combobox")).toHaveCount(0);
     }
     expect(f.unexpected).toEqual([]);

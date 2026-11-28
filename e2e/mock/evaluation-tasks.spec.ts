@@ -50,7 +50,7 @@ test("an unserved evaluation register makes no task request", async ({ page }) =
   await mockRoute(page, "get", endpoint, () => { reads++; return { status: 403, json: failure("forbidden") }; });
   try {
     await page.goto(url);
-    await expect(page.getByText(t("me.evaluation.permission"), { exact: false }).first()).toBeVisible();
+    await expect(page.getByText(t("denied.capability.served_evaluation_tasks"), { exact: false }).first()).toBeVisible();
     expect(reads).toBe(0);
     expect(screen.unexpected).toEqual([]);
   } finally { screen.release(); }
