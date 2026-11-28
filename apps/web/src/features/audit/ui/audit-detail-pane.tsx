@@ -6,31 +6,11 @@ import { Chip } from "../../../ui/chip";
 import { EmptyState } from "../../../ui/empty-state";
 import { KeyValue } from "../../../ui/key-value/key-value";
 import { RecordIdentityBar, RecordPaneSection } from "../../../ui/patterns/list-record-parts";
+import { buildSnapDiffRows } from "../present";
 import type { AuditRecord } from "../api";
 import s from "./audit.module.css";
 
 type AttestationLike = { ok: boolean; unsealed_tail: boolean; kind: string } | null | undefined;
-
-function formatSnapValue(value: unknown): string {
-  if (value === null || value === undefined) return "—";
-  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return String(value);
-  return JSON.stringify(value);
-}
-
-function buildSnapDiffRows(beforeSnap: unknown, afterSnap: unknown) {
-  const beforeObj = beforeSnap && typeof beforeSnap === "object" && !Array.isArray(beforeSnap) ? (beforeSnap as Record<string, unknown>) : null;
-  const afterObj = afterSnap && typeof afterSnap === "object" && !Array.isArray(afterSnap) ? (afterSnap as Record<string, unknown>) : null;
-  if (!beforeObj && !afterObj) {
-    if (beforeSnap === undefined && afterSnap === undefined) return [];
-    return [{ key: "payload", label: t("audit.detail.diff"), value: `${formatSnapValue(beforeSnap)} → ${formatSnapValue(afterSnap)}` }];
-  }
-  const keys = [...new Set([...Object.keys(beforeObj ?? {}), ...Object.keys(afterObj ?? {})])];
-  return keys.map(key => ({
-    key,
-    label: key,
-    value: `${t("audit.detail.before")}: ${formatSnapValue(beforeObj?.[key])} · ${t("audit.detail.after")}: ${formatSnapValue(afterObj?.[key])}`,
-  }));
-}
 
 export function AuditDetailPane({
   selected,

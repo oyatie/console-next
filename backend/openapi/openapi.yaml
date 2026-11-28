@@ -5150,6 +5150,29 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/ValidationError' }
+  /api/v1/audit-streams/availability:
+    get:
+      tags:
+      - audit
+      operationId: getAuditStreamAvailability
+      summary: Check which restricted audit reads the current session may perform
+      description: Applies the existing read decisions without reading events or recording a stream access.
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: Current read permissions for this principal and tenant.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [events, access_events]
+                properties:
+                  events: { type: boolean }
+                  access_events: { type: boolean }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
   /api/v1/audit-streams/ceo-covert/access-events:
     get:
       tags:

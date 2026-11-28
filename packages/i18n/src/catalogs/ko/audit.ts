@@ -1,6 +1,17 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 import type { enAudit } from "../en/audit";
 export const koAudit: Record<keyof typeof enAudit, string> = {
+  "audit.restricted.title": "제한 감사",
+  "audit.log.action.audit_stream.ceo_read": "제한 감사 기록 열람",
+  "audit.log.action.audit_stream.access_log_read": "제한 감사 열람 이력 조회",
+  "audit.restricted.permission": "제한 감사 기록 열람 권한이 필요합니다.",
+  "audit.restricted.stream": "감사 기록 종류",
+  "audit.restricted.events": "제한 감사 기록",
+  "audit.restricted.reads": "열람 이력",
+  "audit.restricted.empty": "기록 없음",
+  "audit.restricted.emptyEvents": "제한 감사 기록이 없습니다.",
+  "audit.restricted.emptyReads": "기록된 열람 이력이 없습니다.",
+  "audit.restricted.receipt": "열람 기록 · {id}",
   "audit.consents.title": "위치정보 동의 이력",
   "audit.consents.permission": "선택한 지점의 감사 조회 권한이 필요합니다.",
   "audit.consents.branch": "지점",

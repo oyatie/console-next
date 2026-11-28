@@ -89,6 +89,7 @@ test.describe("route requirements with a real grantless account", () => {
           for (const entry of required) {
             if ("servedCapability" in entry) {
               const expected = {
+                restricted_audit_stream: ko["audit.restricted.permission"],
                 documents: ko["audit.vault.permission"],
                 served_integrity_findings: ko["audit.findings.permission"],
                 served_integrity_triage: ko["audit.findings.permission"],

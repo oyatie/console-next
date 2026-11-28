@@ -1,6 +1,9 @@
 {
   "source": "console-compliance-rest",
   "paths": {
+    "/api/v1/audit-streams/availability": [
+      "get"
+    ],
     "/api/v1/audit-streams/ceo-covert/access-events": [
       "get"
     ],

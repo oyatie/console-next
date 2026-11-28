@@ -54,3 +54,14 @@ export type ConsentEvent = components["schemas"]["LocationConsentLedgerEntry"];
 type ConsentFilter = NonNullable<paths["/api/v1/location-consents/ledger"]["get"]["parameters"]["query"]>;
 export const consentLedgerQuery = (query: ConsentFilter) => get("/api/v1/location-consents/ledger", { params: { query } });
 export const consentLedgerCsv = (query: ConsentFilter) => unwrap(api.GET("/api/v1/location-consents/ledger.csv", { params: { query }, parseAs: "blob" }));
+
+export type StreamKind = components["schemas"]["AuditStreamReadKind"];
+export type StreamRecord = components["schemas"]["AuditStreamRecord"];
+export const restrictedStreamQuery = (kind: StreamKind, offset: number, limit: number) => ({
+  ...get(kind === "events" ? "/api/v1/audit-streams/ceo-covert/events" : "/api/v1/audit-streams/ceo-covert/access-events", { params: { query: { offset, limit } } }),
+  gcTime: 0,
+  staleTime: 0,
+  retry: false,
+  refetchOnWindowFocus: false,
+  refetchOnReconnect: false,
+});
