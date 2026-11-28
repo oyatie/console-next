@@ -59,6 +59,7 @@ export const koMe: Record<keyof typeof enMe, string> = {
   "me.desk.stat.leave": "잔여 연차",
   "me.desk.stat.leaveValue": "{days}일",
   "me.desk.stat.requests": "진행 중인 요청",
+  "me.desk.stat.requestsUnavailable": "확인할 수 없음",
   "me.desk.stat.requestsValue": "{count, number}건",
   "me.desk.links.title": "바로가기",
   "me.desk.links.profile": "내 정보 · 수정",

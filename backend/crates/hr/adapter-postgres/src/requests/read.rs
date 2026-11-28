@@ -4,7 +4,7 @@
 //! explanation). A correction carries the values it asks for, so HR's page is
 //! a list read of the people its corrections are about.
 
-use console_hr_domain::requests::ChangeRequestKind;
+use console_hr_domain::requests::{ChangeRequestDecision, ChangeRequestKind, check_close};
 use console_platform_authz::{Feature, Principal};
 use console_platform_db::with_audits;
 use serde_json::json;
@@ -34,6 +34,8 @@ pub fn change_request_from_row(row: &PgRow) -> Result<ChangeRequestResponse, HrE
     let kind: String = row.try_get("kind")?;
     Ok(ChangeRequestResponse {
         id: row.try_get("id")?,
+        // Create returns to its requester; decision returns a closed row. List reads set the actor's result below.
+        can_review: false,
         review_required: ChangeRequestKind::parse(&kind)
             .map(ChangeRequestKind::review_required)
             .unwrap_or(false),
@@ -147,16 +149,26 @@ impl HrService {
         let org = principal.org_id;
         let (items, total) = with_audits::<_, _, HrError>(&self.pool, org, move |tx| {
             Box::pin(async move {
+                let scoped_requests = || {
+                    let mut sql = QueryBuilder::<Postgres>::new("WITH scoped_requests AS NOT MATERIALIZED (SELECT r.*, ");
+                    if let Some(reach) = &reach {
+                        push_subject_in_reach(&mut sql, reach, "r.");
+                    } else {
+                        sql.push("FALSE");
+                    }
+                    sql.push(" AS hr_in_reach FROM change_requests r) ");
+                    sql
+                };
                 let push_filters = |builder: &mut QueryBuilder<Postgres>| {
                     builder.push(" WHERE TRUE AND (r.requested_by = ");
                     builder.push_bind(me);
                     builder.push(" OR r.assignee_user_id = ");
                     builder.push_bind(me);
-                    if let Some(reach) = &reach {
-                        builder.push(" OR ");
-                        push_subject_in_reach(builder, reach, "r.");
+                    builder.push(" OR r.hr_in_reach)");
+                    if let Some(id) = query.id {
+                        builder.push(" AND r.id = ");
+                        builder.push_bind(id);
                     }
-                    builder.push(")");
                     if filed_only {
                         builder.push(" AND r.requested_by = ");
                         builder.push_bind(me);
@@ -176,11 +188,13 @@ impl HrService {
                         builder.push_bind(status);
                     }
                 };
-                let mut count = QueryBuilder::<Postgres>::new("SELECT count(*) FROM change_requests r");
+                let mut count = scoped_requests();
+                count.push("SELECT count(*) FROM scoped_requests r");
                 push_filters(&mut count);
                 let total: i64 = count.build_query_scalar().fetch_one(tx.as_mut()).await?;
-                let mut rows = QueryBuilder::<Postgres>::new(
-                    "SELECT r.id, r.kind, r.subject_type, r.subject_id, r.payload, r.reason_code, \
+                let mut rows = scoped_requests();
+                rows.push(
+                    "SELECT r.hr_in_reach, r.id, r.kind, r.subject_type, r.subject_id, r.payload, r.reason_code, \
                      r.note, r.requested_by, r.assignee_role, r.assignee_user_id, r.status, \
                      r.decided_by, r.decision_reason_code, r.decision_note, r.created_at, r.decided_at, \
                      CASE WHEN r.subject_type = 'EMPLOYEE' THEN \
@@ -188,7 +202,7 @@ impl HrService {
                      WHEN r.subject_type = 'USER_ACCOUNT' THEN u.display_name \
                      WHEN r.subject_type = 'BRANCH' THEN b.name END AS subject_name, \
                      CASE WHEN r.subject_type = 'EMPLOYEE' THEN e.employee_number END AS subject_number \
-                     FROM change_requests r \
+                     FROM scoped_requests r \
                      LEFT JOIN person_employees_current e \
                        ON r.subject_type = 'EMPLOYEE' AND e.org_id = r.org_id AND e.id = r.subject_id \
                      LEFT JOIN person_accounts_current u \
@@ -206,8 +220,16 @@ impl HrService {
                     .fetch_all(tx.as_mut())
                     .await?
                     .iter()
-                    .map(change_request_from_row)
-                    .collect::<Result<Vec<_>, _>>()?;
+                    .map(|row| {
+                        let mut request = change_request_from_row(row)?;
+                        let hr_in_reach = row.try_get("hr_in_reach")?;
+                        if let Ok(kind) = ChangeRequestKind::parse(&request.kind) {
+                            request.can_review = kind.reviewer(hr_in_reach, request.assignee_user_id == Some(me))
+                                && check_close(&request.status, request.requested_by, request.assignee_user_id, me, ChangeRequestDecision::Apply).is_ok();
+                        }
+                        Ok(request)
+                    })
+                    .collect::<Result<Vec<_>, HrError>>()?;
                 let mut corrected: Vec<Uuid> = items
                     .iter()
                     .filter(|r| r.kind == "PROFILE_CORRECTION" && r.subject_type == "EMPLOYEE")

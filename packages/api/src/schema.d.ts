@@ -3606,7 +3606,7 @@ export interface paths {
         };
         /**
          * List change requests
-         * @description BW-17. HR (org-wide employee_directory_manage) sees the organization's requests; any other caller sees only the requests it filed ("waiting") or is named on. `assignee=me` lists the requests named to the caller (an explanation request to answer); `assignee=role` is HR-only. A correction carries the values it asks for, so an HR page with PROFILE_CORRECTION rows leaves one employee.list_read access log row naming the employees they are about, never the values.
+         * @description BW-17. HR sees requests about subjects in its directory management scope. A caller also sees requests it filed or is named on. `assignee=me` lists the requests named to the caller (an explanation request to answer); `assignee=role` is HR-only. A correction carries the values it asks for, so an HR page with PROFILE_CORRECTION rows leaves one employee.list_read access log row naming the employees they are about, never the values.
          */
         get: operations["listChangeRequests"];
         put?: never;
@@ -18861,6 +18861,8 @@ export interface components {
             assignee_user_id?: components["schemas"]["Uuid"] | null;
             /** @enum {string} */
             status: "OPEN" | "APPLIED" | "DECLINED" | "WITHDRAWN";
+            /** @description The viewer meets this open request's assignee and subject-scope rules for apply or decline. The decision command rechecks the current row and policy. */
+            can_review?: boolean;
             /** @description OTHER requests are reviewed after the fact. */
             review_required: boolean;
             decided_by?: components["schemas"]["Uuid"] | null;
@@ -39667,6 +39669,8 @@ export interface operations {
     listChangeRequests: {
         parameters: {
             query?: {
+                /** @description Select one visible request by ID. A missing or inaccessible request returns an empty page. */
+                id?: string;
                 /** @description me = named to the caller; role = open to any HR person. */
                 assignee?: "me" | "role";
                 /** @description me = only the requests the caller filed ("waiting"). */

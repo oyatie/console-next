@@ -57,6 +57,7 @@ export const enMe = {
   "me.desk.stat.leave": "Remaining leave",
   "me.desk.stat.leaveValue": "{days}d",
   "me.desk.stat.requests": "Open requests",
+  "me.desk.stat.requestsUnavailable": "Unavailable",
   "me.desk.stat.requestsValue": "{count, number}",
   "me.desk.links.title": "Quick links",
   "me.desk.links.profile": "My profile & edits",
