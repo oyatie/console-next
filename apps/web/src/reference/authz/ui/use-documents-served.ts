@@ -31,6 +31,6 @@ export function useServedDestinations(enabled = true) {
   return {
     consents: canUseServed("served_location_consent_ledger", caps), evidenceVault: canReadEvidence(caps),
     findings: canUseServed("served_integrity_findings", caps),
-    served: (["served_evaluation_cycles", "served_evaluation_cycle_create"] as const).filter(feature => canUseServed(feature, caps)),
+    served: (["served_consulting", "served_evaluation_cycles", "served_evaluation_cycle_create"] as const).filter(feature => canUseServed(feature, caps)),
   };
 }

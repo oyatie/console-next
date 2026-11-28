@@ -2,6 +2,8 @@
 // worst-case-44). Rules: the header of ../ko.ts and GUIDE.md.
 import type { enDenied } from "../en/denied";
 export const koDenied: Record<keyof typeof enDenied, string> = {
+  "denied.capability.served_consulting": "컨설팅 조회 권한이 필요합니다.",
+  "denied.capability.served_consulting_manage": "컨설팅 관리 권한이 필요합니다.",
   "denied.capability.served_evaluation_cycles": "평가 주기 조회 권한이 필요합니다.",
   "denied.capability.served_evaluation_cycle_create": "평가 주기 생성 권한이 필요합니다.",
   "denied.capability.served_evaluation_tasks": "평가 제출 권한이 필요합니다.",

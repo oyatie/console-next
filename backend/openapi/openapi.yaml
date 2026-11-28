@@ -8174,6 +8174,20 @@ paths:
       parameters: [{ name: engagement_id, in: path, required: true, schema: { $ref: '#/components/schemas/Uuid' } }]
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ConsultingTransitionRequest' } } } }
       responses: { '200': { description: Transitioned engagement, content: { application/json: { schema: { $ref: '#/components/schemas/ConsultingEngagement' } } } }, '409': { $ref: '#/components/responses/Conflict' } }
+  /api/v1/consulting/options:
+    get:
+      tags: [consulting]
+      operationId: listConsultingOptions
+      security: [{ bearerAuth: [] }]
+      parameters:
+      - { name: kind, in: query, required: true, schema: { type: string, enum: [CUSTOMER, DOCUMENT, ONTOLOGY_INSTANCE, KPI_DEFINITION, EVIDENCE, APPROVAL] } }
+      - { name: q, in: query, schema: { type: string } }
+      - { name: engagementId, in: query, description: Required for approval choices., schema: { $ref: '#/components/schemas/Uuid' } }
+      - { name: offset, in: query, schema: { type: integer, format: int64, minimum: 0 } }
+      responses:
+        '200': { description: Eligible tenant-scoped choices in stable order, content: { application/json: { schema: { $ref: '#/components/schemas/ConsultingOptionPage' } } } }
+        '403': { description: Consulting or registry access refused }
+        '422': { description: Invalid offset or missing engagement }
   /api/v1/customers:
     post:
       tags:
@@ -42089,6 +42103,20 @@ components:
       { type: object, additionalProperties: false, required: [findingId, title, hypothesis, kpiDefinitionId, targetDirection], properties: { findingId: { $ref: '#/components/schemas/Uuid' }, title: { type: string, minLength: 1 }, hypothesis: { type: string, minLength: 1 }, kpiDefinitionId: { $ref: '#/components/schemas/Uuid' }, targetDirection: { type: string, enum: [INCREASE, DECREASE] } } }
     ConsultingObservationCreateRequest:
       { type: object, additionalProperties: false, required: [initiativeId, kpiDefinitionId, evidenceId, observedAt, note], properties: { initiativeId: { $ref: '#/components/schemas/Uuid' }, kpiDefinitionId: { $ref: '#/components/schemas/Uuid' }, evidenceId: { $ref: '#/components/schemas/Uuid' }, observedAt: { type: string, format: date-time }, note: { type: string, minLength: 1 } } }
+    ConsultingOptionPage:
+      type: object
+      required: [items, next_offset]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [id, label, recorded_at]
+            properties:
+              id: { $ref: '#/components/schemas/Uuid' }
+              label: { type: string }
+              recorded_at: { type: string, format: date-time, nullable: true }
+        next_offset: { type: integer, format: int64, nullable: true }
     ConsultingTransitionRequest:
       { type: object, additionalProperties: false, required: [toStatus, expectedVersion, reason], properties: { toStatus: { type: string, enum: [PROPOSED, APPROVED, IMPLEMENTED, MEASURED, SUSTAINED, CORRECTIVE] }, expectedVersion: { type: integer, format: int64, minimum: 1 }, approvalId: { $ref: '#/components/schemas/Uuid', nullable: true }, reason: { type: string, minLength: 1 } } }
     ConsumeInventoryItemRequest:

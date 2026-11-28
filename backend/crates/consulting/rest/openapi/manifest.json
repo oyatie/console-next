@@ -25,6 +25,9 @@
     ],
     "/api/v1/consulting/engagements/{engagement_id}/transition": [
       "post"
+    ],
+    "/api/v1/consulting/options": [
+      "get"
     ]
   },
   "schemas": [
@@ -41,6 +44,7 @@
     "ConsultingInitiative",
     "ConsultingInitiativeCreateRequest",
     "ConsultingObservationCreateRequest",
+    "ConsultingOptionPage",
     "ConsultingTransitionRequest"
   ],
   "external_schemas": [

@@ -12,6 +12,7 @@ use std::sync::Arc;
 pub struct IdentityRestState {
     pub(crate) integrity_access: fn(&console_platform_authz::Principal) -> (bool, bool),
     pub(crate) calendar_access: fn(&console_platform_authz::Principal) -> bool,
+    pub(crate) consulting_access: fn(&console_platform_authz::Principal) -> (bool, bool),
     pub(crate) benefit_access: fn(&console_platform_authz::Principal) -> (bool, bool),
     pub(crate) evaluation_tasks: fn(&console_platform_authz::Principal) -> bool,
     pub(crate) evaluation_cycles: fn(&console_platform_authz::Principal) -> (bool, bool),
@@ -32,6 +33,7 @@ impl IdentityRestState {
     ) -> Self {
         Self {
             calendar_access: |_| false,
+            consulting_access: |_| (false, false),
             benefit_access: |_| (false, false),
             evaluation_tasks: |_| false,
             evaluation_cycles: |_| (false, false),
@@ -81,6 +83,15 @@ impl IdentityRestState {
         access: fn(&console_platform_authz::Principal) -> bool,
     ) -> Self {
         self.evaluation_tasks = access;
+        self
+    }
+
+    #[must_use]
+    pub fn with_consulting_access(
+        mut self,
+        access: fn(&console_platform_authz::Principal) -> (bool, bool),
+    ) -> Self {
+        self.consulting_access = access;
         self
     }
 

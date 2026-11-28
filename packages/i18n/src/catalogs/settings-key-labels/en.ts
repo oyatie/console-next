@@ -24,6 +24,7 @@ export const enSettingLabels = {
   "settingsHub.key.approval.doc_class.registered_manager_appointment.requires_governing_body_decision": "Registered manager appointment board resolution",
   "settingsHub.key.corporate.small_company_383_proviso": "Small company Commercial Act Art. 383 proviso",
   "settingsHub.key.module.benefits.enabled": "Benefits catalog",
+  "settingsHub.key.module.consulting.enabled": "Consulting engagements",
   "settingsHub.key.module.calendar.enabled": "Internal calendar",
   "settingsHub.key.module.evaluation.enabled": "Evaluations module",
   "settingsHub.key.module.payroll.enabled": "Payroll module",

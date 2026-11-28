@@ -1,0 +1,12 @@
+tags: [consulting]
+operationId: listConsultingOptions
+security: [{ bearerAuth: [] }]
+parameters:
+- { name: kind, in: query, required: true, schema: { type: string, enum: [CUSTOMER, DOCUMENT, ONTOLOGY_INSTANCE, KPI_DEFINITION, EVIDENCE, APPROVAL] } }
+- { name: q, in: query, schema: { type: string } }
+- { name: engagementId, in: query, description: Required for approval choices., schema: { $ref: '#/components/schemas/Uuid' } }
+- { name: offset, in: query, schema: { type: integer, format: int64, minimum: 0 } }
+responses:
+  '200': { description: Eligible tenant-scoped choices in stable order, content: { application/json: { schema: { $ref: '#/components/schemas/ConsultingOptionPage' } } } }
+  '403': { description: Consulting or registry access refused }
+  '422': { description: Invalid offset or missing engagement }

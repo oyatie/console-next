@@ -3,6 +3,7 @@ import { t } from "@console/i18n";
 
 /** Action nouns and verbs are catalog data; screens describe intent, never build frame copy. */
 const ACTION_KINDS = {
+  consultingEngagement: [null, "units"],
   findingReview: ["audit.findings.outcome", "units"],
   evidenceHold: ["audit.vault.hold", "units"],
   supportAccess: ["supportAccess.title", "units"],

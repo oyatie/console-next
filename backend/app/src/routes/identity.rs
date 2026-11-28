@@ -31,6 +31,8 @@ pub(super) fn mount(router: Router, deps: &TenantDeps<'_>) -> Router {
     });
     #[cfg(feature = "workspace")]
     let identity = identity.with_calendar_access(crate::collaboration::calendar_access);
+    #[cfg(feature = "consulting")]
+    let identity = identity.with_consulting_access(console_consulting_rest::consulting_access);
     #[cfg(feature = "benefit")]
     let identity = identity.with_benefit_access(console_benefit_rest::catalog_access);
     #[cfg(feature = "evaluation")]

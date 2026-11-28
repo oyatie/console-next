@@ -1,5 +1,7 @@
 // English for `denied.` ids (source: ../ko/denied.ts).
 export const enDenied = {
+  "denied.capability.served_consulting": "Consulting read access is required.",
+  "denied.capability.served_consulting_manage": "Consulting management access is required.",
   "denied.capability.served_evaluation_cycles": "Requires access to evaluation cycles.",
   "denied.capability.served_evaluation_cycle_create": "Requires permission to create evaluation cycles.",
   "denied.capability.served_evaluation_tasks": "Requires evaluation submission access.",

@@ -89,6 +89,8 @@ test("the screens drawn through built patterns declare them, and no other route 
     "/attendance": "month-grid",
     "/audit": "list-record",
     "/audit/evidence": "list-record",
+    "/consulting": "list-record",
+    "/consulting/engagements/$engagementId": "record",
     "/evaluation": "list-record",
     "/evaluation/new": "form",
     "/me/evaluations": "list-record",
