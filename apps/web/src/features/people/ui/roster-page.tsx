@@ -16,7 +16,6 @@ export function RosterPage(props: RosterPageProps) {
 }
 
 function SelectedRosterPage({ layout, ...props }: RosterPageProps & { layout: typeof baselineRosterLayout }) {
-  if (!performance.getEntriesByName("dir:permitted-screen").length) performance.mark("dir:permitted-screen");
   const screen = useRosterScreen();
   const can = useCan();
   const content = useRosterLayout(layout, { ...props, screen, actions: can("excel_download") && <RosterExport query={screen.r.query} total={screen.r.total} /> });

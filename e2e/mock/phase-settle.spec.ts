@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { loadCatalog, t } from "@console/i18n";
 import { fits } from "../a11y";
 import { openAccount } from "../shell";
-import { authz, checklist, failure, id, inbox, screenAccess } from "./fixtures";
+import { authz, checklist, failure, id, inbox, screenAccess, user } from "./fixtures";
 import { mockRoute } from "./route";
 import { mockScreen } from "./screen";
 import { entityRecordPath, mockEntityRecord } from "../states/entity-record";
@@ -70,6 +70,12 @@ for (const path of ["/people", entityRecordPath]) for (const width of [1440, 390
       await mockRoute(page, "get", "/api/v1/me/action-inbox", { status: 200, json: inbox(0) });
       const access = Promise.withResolvers<void>();
       const phase = Promise.withResolvers<void>();
+      const identity = Promise.withResolvers<void>();
+      const goLiveAt = new Date(Date.now() - (outcome === "expired" ? 3 * 86400000 : 0)).toISOString();
+      if (path === "/people") await mockRoute(page, "get", "/api/v1/users/me", async () => {
+        await identity.promise;
+        return { status: 200, json: { ...user, tenant: { ...user.tenant!, go_live_at: goLiveAt } } };
+      });
       const accessAsked = Promise.withResolvers<void>();
       const phaseAsked = Promise.withResolvers<void>();
       await mockRoute(page, "get", "/api/v1/access/me", async () => {
@@ -86,7 +92,7 @@ for (const path of ["/people", entityRecordPath]) for (const width of [1440, 390
         phaseAsked.resolve();
         await phase.promise;
         return outcome === "checklist-503" ? { status: 503, json: failure("service_unavailable") }
-          : { status: 200, json: { ...checklist, go_live_at: new Date(Date.now() - (outcome === "expired" ? 3 * 86400000 : 0)).toISOString() } };
+          : { status: 200, json: { ...checklist, go_live_at: goLiveAt } };
       });
       await freezeClock(page);
       try {
@@ -123,7 +129,7 @@ for (const path of ["/people", entityRecordPath]) for (const width of [1440, 390
         }
         expect(fixture.unexpected).toEqual([]);
       } finally {
-        access.resolve(); phase.resolve();
+        identity.resolve(); access.resolve(); phase.resolve();
         await page.close(); fixture.release();
       }
     });
@@ -318,6 +324,10 @@ for (const capabilities of ["none", "request_only", "read"] as const) {
 test("a held page keeps its head laid out at the revealed width @ui-state", async ({ page }) => {
   const fixture = await mockScreen(page, screens[1], "populated");
   const held = Promise.withResolvers<void>();
+  await mockRoute(page, "get", "/api/v1/users/me", async () => {
+    await held.promise;
+    return { status: 200, json: { ...user, tenant: { ...user.tenant!, go_live_at: checklist.go_live_at } } };
+  });
   await mockRoute(page, "get", "/api/v1/onboarding/checklist", async () => {
     await held.promise;
     return { status: 200, json: checklist };

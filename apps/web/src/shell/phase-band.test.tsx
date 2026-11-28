@@ -40,6 +40,12 @@ test.each(["effectiveRead", "capabilityRead"] as const)("an identity timestamp c
   expect(html).not.toContain('data-phase-band="started"');
 });
 
+test.each([[503, true], [403, false]] as const)("an operating identity receipt after a checklist %i", (status, visible) => {
+  state.error = new ApiError(status, "read_failed", "unavailable");
+  const html = renderToStaticMarkup(<PhaseBand operatingSince={new Date().toISOString()}><PageHead title="Route" /></PhaseBand>);
+  expect(html.includes('data-phase-band="started"')).toBe(visible);
+});
+
 test("the phase hold leaves the read layout owned by the mounted page", () => {
   const html = renderToStaticMarkup(<main><PhaseBand><ReadSkeleton layout="record" /></PhaseBand></main>);
   expect(html.match(/data-read-layout=/g)).toHaveLength(1);

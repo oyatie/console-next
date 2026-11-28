@@ -213,7 +213,6 @@ export function RosterTable({
   onSort?: (sort: RosterOrder) => void;
   consoleMode?: boolean;
 }) {
-  if (!performance.getEntriesByName("dir:table-render").length) performance.mark("dir:table-render");
   const indexById = new Map(p.rows.map((row, idx) => [row.id, idx + 1]));
   const resolveIndex = rowIndex ?? ((e: Employee) => indexById.get(e.id) ?? 1);
   const activeKey = SORTS.find(key => sort === key || sort === `-${key}`)!;

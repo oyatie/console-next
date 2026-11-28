@@ -1,5 +1,4 @@
 import { ko } from "../packages/i18n/src/catalogs/ko";
-import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
 import { go, kstDate, registerEmployee } from "./flows";
@@ -44,7 +43,8 @@ test("roster facets, employment type, purposeful download and exit search", { ta
   await dialog.getByRole("button", { name: "2명 내려받기" }).click();
   const file = await download;
   expect(file.suggestedFilename()).toBe(`직원명부-${kstDate()}.csv`);
-  const csv = await readFile((await file.path())!, "utf8");
+  const parts = await (await file.createReadStream()).toArray();
+  const csv = Buffer.concat(parts).toString("utf8");
   expect(csv).toContain("RD-0001");
   expect(csv).toContain("RD-0002");
   expect(csv.split("\n")[0]).not.toMatch(/rrn|resident|pay|account/i);

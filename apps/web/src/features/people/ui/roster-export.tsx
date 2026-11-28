@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { lazy, Suspense, useState } from "react";
 import { t } from "@console/i18n";
 import { chunk } from "../../../lib/chunk-guard";
@@ -8,7 +9,7 @@ const ExportDialog = lazy(() => chunk(import("./roster-export-dialog")).then(mod
 export function RosterExport(props: { query: object; total: number | undefined }) {
   const [open, setOpen] = useState(false);
   return <>
-    <Button onClick={() => setOpen(true)}>{t("roster.export")}</Button>
-    {open && <Suspense fallback={<span className="sr-only" role="status">{t("common.loading")}</span>}><ExportDialog {...props} close={() => setOpen(false)} /></Suspense>}
+    <Button aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(true)}>{t("roster.export")}</Button>
+    {open && <Suspense fallback={null}><ExportDialog {...props} close={() => setOpen(false)} /></Suspense>}
   </>;
 }

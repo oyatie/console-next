@@ -4,7 +4,11 @@ on: workflow_dispatch
 permissions: {}
 jobs:
   measurements:
-    name: Measure original Firefox shard three
+    name: Measure Firefox directory (${{ matrix.proof }})
+    strategy:
+      fail-fast: false
+      matrix:
+        proof: [original-shard, single-session]
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 90
     permissions: {actions: read, contents: read}
@@ -64,6 +68,12 @@ jobs:
       - name: Build the candidate frontend
         run: npm run build
       - name: Run original Firefox shard
+        if: matrix.proof == 'original-shard'
         env:
           CONSOLE_DEV_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
         run: npx playwright test --project=firefox --test-list=.cache/e2e-live-runtime/.cache/e2e-live-plan/firefox-3.txt --global-timeout=2400000 --retries=0 --reporter=line
+      - name: Run isolated directory acceptance
+        if: matrix.proof == 'single-session'
+        env:
+          CONSOLE_DEV_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: npx playwright test --project=firefox e2e/performance/people-directory.spec.ts --workers=1 --retries=0 --reporter=line

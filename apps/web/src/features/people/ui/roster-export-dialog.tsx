@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LicenseRef-Proprietary
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { t } from "@console/i18n";
