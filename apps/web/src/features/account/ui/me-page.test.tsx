@@ -27,6 +27,8 @@ const state = vi.hoisted(() => ({
   experience: "console" as "baseline" | "console",
   search: {} as Record<string, unknown>,
   platform: false,
+  staff: false,
+  payslip: true,
   me: {
     id: "u1",
     display_name: "Hajun Yun",
@@ -143,13 +145,13 @@ vi.mock("@tanstack/react-query", async original => {
         return { data: { balance: { remaining_units: "9.5" }, requests: { items: [], next_cursor: null } }, isPending: false, isSuccess: true, error: null, refetch: vi.fn() };
       }
       if (q === myPayslipDocsQuery || q?.queryFn === myPayslipDocsQuery.queryFn) {
-        return { data: { items: [{ id: "doc1", kind: "payslip", title: "Payslip 2026-10-01 ~ 2026-10-31", locked: false, created_at: "2026-11-10T00:00:00Z" }], next_cursor: null }, isPending: false, isSuccess: true, error: null, refetch: vi.fn() };
+        return { data: { items: state.payslip ? [{ id: "doc1", kind: "payslip", title: "Payslip 2026-10-01 ~ 2026-10-31", locked: false, created_at: "2026-11-10T00:00:00Z" }] : [], next_cursor: null }, isPending: false, isSuccess: true, error: null, refetch: vi.fn() };
       }
       if (q === myChangeRequestsQuery || q?.queryFn === myChangeRequestsQuery.queryFn) {
         return { data: { items: state.changeRequestItems, total: state.changeRequestItems.length, limit: 10, offset: 0 }, isPending: false, isSuccess: true, error: null, refetch: vi.fn() };
       }
       if (q === myAccessQuery || q?.queryFn === myAccessQuery.queryFn) {
-        return { data: { is_ops: false, entries: [] }, isPending: false, isSuccess: true, error: null, refetch: vi.fn() };
+        return { data: { is_ops: state.staff, entries: [] }, isPending: false, isSuccess: true, error: null, refetch: vi.fn() };
       }
       if (q === consentQuery || q?.queryFn === consentQuery.queryFn) {
         return { data: { accepted: true, accepted_at: "2026-10-25T00:00:00Z" }, isPending: false, isSuccess: true, error: null, refetch: vi.fn() };
@@ -170,6 +172,8 @@ afterEach(() => {
   state.experience = "console";
   state.platform = false;
   state.search = {};
+  state.staff = false;
+  state.payslip = true;
   state.me.employee_link_status = "LINKED";
   state.profileError = null;
 });
@@ -265,4 +269,17 @@ test("the certificate sheet opens from the address, so the phone nav and a share
   expect(renderMe(false)).toContain('data-certificates-sheet="closed"');
   state.search = { sheet: "certificates" };
   expect(renderMe(false)).toContain('data-certificates-sheet="open"');
+});
+
+test.each([true, false])("personal destinations stay personal when staff access is %s", staff => {
+  state.staff = staff;
+  state.payslip = false;
+  const account = renderMe(false);
+  expect(account).toContain('data-href="/leave"');
+  expect(account).toContain('data-href="/payslips"');
+  expect(account).toContain('data-href="/me/desk"');
+  state.experience = "baseline";
+  expect(renderMe(false)).toContain('data-href="/me/desk"');
+  state.me.employee_link_status = "UNLINKED";
+  expect(renderMe(false)).not.toContain('data-href="/me/desk"');
 });
