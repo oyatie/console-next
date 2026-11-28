@@ -83,14 +83,16 @@ One compact height (`min-height: var(--control-h)`, stretching to fill the enclo
 | `--fw-medium` | `font-weight` |
 | `--fw-strong` | `font-weight` |
 | `--ink` | `color` |
+| `--kbd-h` | `line-height` |
 | `--muted` | `background` |
 | `--primary` | `border-block-end`, `outline` |
 | `--primary-soft` | `background` |
 | `--space-1` | `padding` |
 | `--space-1-5` | `gap` |
-| `--space-3` | `padding` |
+| `--space-3` | `inline-size`, `padding` |
 | `--space-half` | `border-block-end` |
 | `--steel` | `color` |
 | `--text-sm` | `font-size` |
+| `--text-xs` | `font-size` |
 
 <!-- /ds:tokens -->
