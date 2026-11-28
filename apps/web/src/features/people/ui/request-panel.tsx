@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import type { components } from "@console/api/schema";
 import { t } from "@console/i18n";
@@ -46,14 +46,14 @@ function answerKind(r: ChangeRequest) {
   return r.kind === "ACCESS_EXPLANATION" || r.kind === "POLICY_QUESTION";
 }
 
-function decisionChoices(r: ChangeRequest, hr: boolean): Decision[] {
+function decisionChoices(r: ChangeRequest): Decision[] {
   if (r.status !== "OPEN") return [];
   const me = mySub();
   if (!me) return [];
   if (r.requested_by === me) return ["WITHDRAW"];
-  // Older API responses have no row-level projection. Their named-assignee rule still applies.
-  const named = r.assignee_user_id === me;
-  const eligible = r.can_review ?? ((!r.assignee_user_id || named) && (hr || (named && answerKind(r))));
+  // A visible, unassigned row filed by someone else proves the caller has management reach.
+  // An older response also identifies named answer handlers. Other named rows need the scope projection.
+  const eligible = r.can_review ?? (!r.assignee_user_id || (r.assignee_user_id === me && answerKind(r)));
   return eligible ? ["APPLY", "DECLINE"] : [];
 }
 
@@ -70,23 +70,36 @@ function DecisionBlock({ r, choices, onDecided }: {
   );
 }
 
+export function RequestPanelFrame({ title, status, onClose, children }: {
+  title: string;
+  status?: ReactNode;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <aside className="card panel" aria-label={t("requests.panel")}>
+      <div className="panel__head">
+        <h2 className="panel__title">{title}</h2>
+        {status}
+        <Button variant="ghost" onClick={onClose} aria-label={t("requests.panel.close")}><X size={16} aria-hidden /></Button>
+      </div>
+      {children}
+    </aside>
+  );
+}
+
 /**
  * One request beside the list: what it asks (each field's requested value), why, who filed it and when, and how it
  * closed. The requester can withdraw it. Eligible reviewers can apply or decline, and an
  * explanation or policy question requires an answer that the requester can read.
  */
-export function RequestPanel({ r, subject, hr, onClose, onDecided }: { r: ChangeRequest; subject?: Employee; hr: boolean; onClose: () => void; onDecided: (out: ChangeRequest) => void }) {
+export function RequestPanel({ r, subject, onClose, onDecided }: { r: ChangeRequest; subject?: Employee; onClose: () => void; onDecided: (out: ChangeRequest) => void }) {
   const mine = r.requested_by === mySub();
-  const choices = decisionChoices(r, hr);
+  const choices = decisionChoices(r);
   const status = statusOf(r.status);
   const changes = requestedChanges(r);
   return (
-    <aside className="card panel" aria-label={t("requests.panel")}>
-      <div className="panel__head">
-        <h2 className="panel__title">{kindText(r.kind)}</h2>
-        <Chip tone={status.tone}>{status.label}</Chip>
-        <Button variant="ghost" onClick={onClose} aria-label={t("requests.panel.close")}><X size={16} aria-hidden /></Button>
-      </div>
+    <RequestPanelFrame title={kindText(r.kind)} status={<Chip tone={status.tone}>{status.label}</Chip>} onClose={onClose}>
       <dl className="kv">
         <dt>{t("requests.col.subject")}</dt>
         <dd>{subjectNode(r, subject)}</dd>
@@ -116,14 +129,14 @@ export function RequestPanel({ r, subject, hr, onClose, onDecided }: { r: Change
         </section>
       )}
       <DecisionBlock r={r} choices={choices} onDecided={onDecided} />
-    </aside>
+    </RequestPanelFrame>
   );
 }
 
 /** Console `PaneGrid.record` body for `/people/requests` (SidePane owns `<aside>` and `.paneHead`). */
-export function RequestPanelBody({ r, hr, onDecided }: { r: ChangeRequest; hr: boolean; onDecided: (out: ChangeRequest) => void }) {
+export function RequestPanelBody({ r, onDecided }: { r: ChangeRequest; onDecided: (out: ChangeRequest) => void }) {
   const mine = r.requested_by === mySub();
-  const choices = decisionChoices(r, hr);
+  const choices = decisionChoices(r);
   const changes = requestedChanges(r);
   const items: KeyValueItem[] = [
     { key: "subject", label: t("requests.col.subject"), value: subjectNode(r) },

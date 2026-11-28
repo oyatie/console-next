@@ -20,7 +20,7 @@ import { Table, type Column } from "../../../ui/table";
 import { tabClass } from "../../../ui/tabs/tab-class";
 import { TabCount, TabNav } from "../../../ui/tabs/tabs";
 import { changeRequestCountsQuery, mySub, REQUEST_PAGE, requestsQuery, selectedRequestQuery, type ChangeRequest, type Lane, type RequestStatus } from "../api";
-import { RequestPanel, RequestPanelBody } from "./request-panel";
+import { RequestPanel, RequestPanelBody, RequestPanelFrame } from "./request-panel";
 import { kindText, reasonText, statusOf, subjectText } from "../present";
 import s from "./requests.module.css";
 
@@ -38,7 +38,6 @@ export function RequestsPage() {
   const can = useCan();
   const authz = useQuery({ ...authzQuery, enabled: authzApplies() });
   const hr = can("employee_directory_manage", "all");
-  const tenantReviewer = !authz.isError && can("employee_directory_manage", "tenant");
   const set = (patch: { lane?: Lane; status?: RequestStatus | "ALL"; sel?: string; page?: number }) =>
     void navigate({ search: (x) => ({ ...x, page: undefined, ...patch }), replace: true });
   const select = (nextSel?: string) => void navigate({ search: (x) => ({ ...x, sel: nextSel }), replace: true });
@@ -141,12 +140,10 @@ export function RequestsPage() {
             </QueryState>
           </>}
         </section>
-        {selected ? <RequestPanel r={selected} hr={tenantReviewer} onClose={() => select(undefined)} onDecided={(out) => { setDecided(out); select(undefined); }} /> :
-          selectionState && <aside className="card panel" aria-label={t("requests.panel")}>
-            <div className="panel__head"><h2 className="panel__title">{t("requests.panel")}</h2>
-              <Button variant="ghost" onClick={() => select(undefined)}>{t("requests.panel.close")}</Button></div>
+        {selected ? <RequestPanel r={selected} onClose={() => select(undefined)} onDecided={(out) => { setDecided(out); select(undefined); }} /> :
+          selectionState && <RequestPanelFrame title={t("requests.panel")} onClose={() => select(undefined)}>
             {selectionState}
-          </aside>}
+          </RequestPanelFrame>}
       </div>
     </div>
   );
@@ -230,7 +227,7 @@ export function RequestsPage() {
                   closeLabel: t("requests.panel.close"),
                   onClose: () => select(undefined),
                   returnFocus: () => tableWrapRef.current?.querySelector<HTMLElement>(`[data-id="${CSS.escape(sel)}"]`),
-                  children: selected ? <RequestPanelBody r={selected} hr={tenantReviewer} onDecided={(out) => { setDecided(out); select(undefined); }} /> : selectionState,
+                  children: selected ? <RequestPanelBody r={selected} onDecided={(out) => { setDecided(out); select(undefined); }} /> : selectionState,
                 }
               : null
           }
