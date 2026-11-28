@@ -99,13 +99,17 @@ test("placement follows confirmed workplace or physical-site bindings, with reme
   const placeQueue = admin.getByRole("main").getByRole("link", { name: t("roster.unplaced.place"), exact: true });
   await expect(placeQueue).toHaveAttribute("href", "/people/unplaced");
   await placeQueue.click();
-  await expect(admin.getByRole("row").filter({ hasText: "현장직원" })).toBeVisible();
+  await expect(admin.getByRole("row").filter({ hasText: "현장직원" })).toContainText(t("home.inbox.reason.unplaced"));
   await expect(admin.getByRole("row").filter({ hasText: "배치직원" })).toHaveCount(0);
   await admin.evaluate(clearShifts);
   await go(admin, "/");
-  await expect(admin.getByText("사업장 없음", { exact: true })).toBeVisible();
-  await expect(admin.getByRole("listitem").filter({ hasNot: admin.getByRole("list") }).filter({ hasText: "현장직원" }).getByRole("link", { name: "배치", exact: true })).toHaveAttribute("href", `/people/${sitePeople.items[0]!.id}?act=TRANSFER`);
+  const setupPlacement = admin.getByRole("region", { name: t("setup.title"), exact: true })
+    .getByRole("listitem").filter({ hasText: t("setup.stats.unplacedCount", { count: 1 }) });
+  const setupQueue = setupPlacement.getByRole("link", { name: t("setup.step.employees") });
+  await expect(setupQueue).toHaveAttribute("href", "/people/unplaced");
   await accessibleAtBothWidths(admin, "placement follow-up on Home");
+  await setupQueue.click();
+  await expect(admin.getByRole("row", { name: sites[0]![1], exact: true })).toContainText(t("home.inbox.reason.unplaced"));
   const remembered = await preview(admin, "같은현장다시.xlsx", sites);
   expect(remembered.sheets_needing_mapping).toBe(1);
   await expect(admin.getByRole("combobox", { name: "명부 시트 E열(사업장)의 직원 항목", exact: true })).toHaveValue("worksite_name");

@@ -1,3 +1,4 @@
+import { loadCatalog, t } from "@console/i18n";
 import { expect, test } from "@playwright/test";
 import { atPhoneWidth, expectAccessible, fits } from "./a11y";
 import { clickCounter } from "./clicks";
@@ -31,15 +32,16 @@ test("J7 dissolve: one sheet sends each member somewhere, closes the unit on its
   // 1. Someone on leave still belongs to the unit: it counts them and lists them.
   await go(admin, "/org");
   await revealUnit(admin, "채용팀");
+  await loadCatalog("ko");
   const panel = admin.getByRole("complementary", { name: "채용팀" });
-  await expect(panel.getByRole("region", { name: "직속 구성원 2" })).toBeVisible();
+  await expect(panel.getByRole("region", { name: t("orgUnit.members", { count: 2 }) })).toBeVisible();
   await expect(panel.getByRole("link", { name: "이동이" })).toBeVisible();
 
   // 2. 폐지 opens the one dissolution sheet (no 「삭제 · 폐지」 sheet first, org-06).
   await c.click(panel.getByRole("button", { name: "부서 폐지", exact: true }));
   const dissolve = sheet(admin, "채용팀 폐지");
   await expect(sheet(admin, "채용팀 삭제 · 폐지")).toHaveCount(0);
-  await expect(dissolve).toContainText("구성원은 모두 본사 › 인사부로 갑니다 · 바로 위 조직(기본)");
+  await expect(dissolve).toContainText(t("orgUnit.dissolve.allTo", { n: 2, to: "본사 › 인사부" }));
   await expect(dissolve.getByRole("region", { name: "본사 › 인사부로 2명" })).toBeVisible();
   await expect(dissolve).toContainText("부서장이 없습니다");
   await expect(dissolve).toContainText("이 부서 범위로 준 권한이 없습니다");

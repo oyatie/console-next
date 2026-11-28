@@ -209,9 +209,9 @@ test("Operators tab: bound-passkey invite -> cop_ login link, reissue, pending/p
   await inviteDialog.getByLabel(t("tenants.operators.form.name")).fill("Doyun Lee");
   await inviteDialog.getByLabel(t("tenants.operators.form.login")).fill("doyun.lee@platform.test");
   await inviteDialog.getByRole("button", { name: t("tenants.operators.form.submit") }).click();
+  await expect(page.getByRole("dialog").getByText("cop_InviteToken01", { exact: true })).toBeVisible();
   expect(stepUps.at(-1)?.binding?.action_kind).toBe("OPERATOR_RECOVERY");
   expect(String(stepUps.at(-1)?.binding?.payload_hash ?? "")).toMatch(/^[0-9a-f]{64}$/);
-  await expect(page.getByRole("dialog").getByText("cop_InviteToken01", { exact: true })).toBeVisible();
   await page.getByRole("dialog").getByRole("button", { name: t("tenants.code.close") }).first().click();
 
   await main.locator(`[data-id="${ME_ID}"]`).click();

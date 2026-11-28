@@ -10,25 +10,6 @@ use sqlx::{Postgres, Row, Transaction};
 use time::Date;
 use uuid::Uuid;
 
-// Express each trigger version in exit/event dates, once for the small legal register.
-// assess selects a loss offset on the exit date, then selects the duty on the shifted
-// date. Those two versions can have different offsets on opposite sides of a cutover.
-macro_rules! filing_rule_periods {
-    () => {
-        "(WITH versions AS MATERIALIZED (SELECT r.*, filing_rule->>'filing_kind' AS kind, \
-            filing_rule->>'insurer' AS insurer, COALESCE((filing_rule->>'loss_offset_days')::int,0) AS loss_days \
-            FROM lifecycle_filing_rules r WHERE filing_rule IS NOT NULL) \
-          SELECT r.*, r.effective_from AS event_from, r.effective_to_exclusive AS event_until \
-          FROM versions r WHERE kind <> 'LOSE' UNION ALL \
-          SELECT r.*, greatest(base.effective_from,r.effective_from-base.loss_days) AS event_from, \
-            least(base.effective_to_exclusive,r.effective_to_exclusive-base.loss_days) AS event_until \
-          FROM versions r JOIN versions base ON base.kind=r.kind AND base.insurer=r.insurer \
-          WHERE r.kind='LOSE' AND daterange(base.effective_from,base.effective_to_exclusive) \
-            && daterange(r.effective_from-base.loss_days,r.effective_to_exclusive-base.loss_days))"
-    };
-}
-pub(super) use filing_rule_periods;
-
 pub(super) async fn load(tx: &mut Transaction<'_, Postgres>, org: Uuid) -> Result<Value, HrError> {
     let go_live: Date = sqlx::query_scalar(
         "SELECT min((COALESCE(p.go_live_at,now()) AT TIME ZONE z.time_zone)::date) \
@@ -40,21 +21,21 @@ pub(super) async fn load(tx: &mut Transaction<'_, Postgres>, org: Uuid) -> Resul
     .bind(org)
     .fetch_one(tx.as_mut())
     .await?;
-    // Discard archived versions before decoding and inverting the register clocks.
-    let rows = sqlx::query(concat!("WITH source_bounds AS MATERIALIZED (SELECT min(first_on) AS first_on,max(last_on) AS last_on FROM ( \
-      SELECT effective_date::date-(event_type='GROUP_TRANSFER')::int AS first_on,effective_date::date AS last_on FROM employee_lifecycle_events WHERE org_id=$1 UNION ALL \
-      SELECT anchor_on,anchor_on FROM insurance_filing_requests WHERE org_id=$1 AND filing_kind<>'ACQUIRE_REQUESTED') sources) \
-      SELECT r.code,r.effective_from,r.filing_rule,min(r.event_from) AS first_possible_on FROM ", filing_rule_periods!(), " r CROSS JOIN source_bounds b \
-      WHERE r.filing_rule->>'age_trigger_years' IS NOT NULL OR (r.event_from<=b.last_on AND (r.event_until IS NULL OR b.first_on<r.event_until)) \
-      GROUP BY r.code,r.effective_from,r.filing_rule"))
-        .bind(org).fetch_all(tx.as_mut()).await?;
-    let mut bounds = Vec::with_capacity(rows.len());
+    let rows = sqlx::query(include_str!("filing_periods.sql"))
+        .bind(org)
+        .fetch_all(tx.as_mut())
+        .await?;
+    let mut bounds = Vec::new();
     for row in rows {
         let rule: FilingRule = serde_json::from_value(row.try_get("filing_rule")?)
             .map_err(|e| HrError::internal(e.to_string()))?;
-        bounds.push(json!({"code":row.try_get::<String,_>("code")?,
-            "effective_from":row.try_get::<Date,_>("effective_from")?.to_string(),
-            "earliest_event_on":earliest_event_on(&rule, go_live, row.try_get("first_possible_on")?)?.map(|d|d.to_string())}));
+        let cutoff = earliest_event_on(&rule, go_live, row.try_get("first_possible_on")?)?
+            .map(|date| date.to_string());
+        let periods: sqlx::types::Json<Vec<Value>> = row.try_get("periods")?;
+        for mut period in periods.0 {
+            period["earliest_event_on"] = json!(cutoff);
+            bounds.push(period);
+        }
     }
     Ok(Value::Array(bounds))
 }

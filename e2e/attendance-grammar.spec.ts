@@ -1,9 +1,18 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+import { t } from "@console/i18n";
 import { apiOf, bearerOf } from "./helpers/api";
 import { cellOf, officeSchedule, openMonth, pastWorkDay, pasteText } from "./helpers/attendance-records";
 import { chooseRadio, go, kstDate, registerEmployee } from "./flows";
 import { staffedTenant } from "./setup-flows";
+
+async function draftPaste(page: Page, text: string, count = 1) {
+  await page.getByRole("grid", { name: t("attendanceRecords.grid.label") }).focus();
+  await pasteText(page, text);
+  const preview = page.getByRole("dialog", { name: t("attendanceRecords.paste.preview.title") });
+  await preview.getByRole("button", { name: t("attendanceRecords.paste.preview.accept", { cells: count }), exact: true }).click();
+  await expect(preview).toBeHidden();
+}
 
 test("grammar refusals explain the input and preserve an empty record", { tag: "@hr" }, async ({ browser }) => {
   test.setTimeout(600_000);
@@ -27,12 +36,12 @@ test("grammar refusals explain the input and preserve an empty record", { tag: "
   }
   expect(rest, "a planned past rest day from the month payload").toBeTruthy();
   await cellOf(admin, "윤하준", rest!.date).click();
-  await pasteText(admin, "휴");
+  await draftPaste(admin, "휴");
   await expect(cellOf(admin, "윤하준", rest!.date)).toHaveAttribute("data-look", "refused");
   await expect(admin.getByText("이 날은 이미 휴무입니다", { exact: false }).first()).toBeVisible();
-  await pasteText(admin, "9-18");
+  await draftPaste(admin, "9-18");
   await expect(cellOf(admin, "윤하준", rest!.date)).toHaveAttribute("data-look", "draft");
-  await pasteText(admin, "휴");
+  await draftPaste(admin, "휴");
   const preview = await api("/attendance/entries/preview", "POST", { cells: [{ employee_id: person, work_date: rest!.date, value: "휴" }] });
   expect(preview.ok()).toBe(true);
   expect((await preview.json()).cells[0]).toMatchObject({ status: "REFUSED", code: "already_day_off" });
@@ -53,7 +62,7 @@ test("grammar refusals explain the input and preserve an empty record", { tag: "
     ["연차", "휴가는 아직 근태 기록에 저장할 수 없습니다"],
   ]) {
     await cellOf(admin, "윤하준", date).click();
-    await pasteText(admin, raw!);
+    await draftPaste(admin, raw!);
     await expect(admin.getByText(copy!, { exact: false }).first()).toBeVisible();
   }
   expect((await (await api(`/attendance/people/${person}/month?month=${month}`)).json()).history).toHaveLength(0);
@@ -110,7 +119,7 @@ test("24 unscheduled drafts are judged again after assigning a schedule", { tag:
   expect(dates).toHaveLength(24);
   await go(admin, `/attendance?month=${month}`);
   await cellOf(admin, "윤하준", dates[0]!).click();
-  await pasteText(admin, dates.map(() => "=").join("\t"));
+  await draftPaste(admin, dates.map(() => "=").join("\t"), dates.length);
   await expect(admin.getByRole("status").filter({ hasText: "저장 안 된 칸 24" })).toContainText("저장 못 함 24");
 
   await officeSchedule(admin);

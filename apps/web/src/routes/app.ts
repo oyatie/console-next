@@ -17,6 +17,7 @@ export { FLOORPLANS as ROUTE_FLOORPLANS };
 declare module "@tanstack/react-router" {
   interface StaticDataRouteOption {
     access?: AccessRequirement | "signed-in";
+    preloadUserCapabilities?: boolean;
     floorplan?: Floorplan;
     pattern?: PatternId;
     module?: ModuleKey;

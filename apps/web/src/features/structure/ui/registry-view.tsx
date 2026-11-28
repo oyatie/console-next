@@ -57,7 +57,7 @@ export function RegistryView({ s, cmd, sel, onSelect, onVisibleRows, find: q = "
       rowHeader: true,
       card: "title",
       width: "3fr",
-      minWidth: 232,
+      minWidth: 272,
       header: t("structure.list.name"),
       cell: (n) => {
         const Icon = n.kind === "tenant" ? Network : ICON[n.kind];
@@ -71,8 +71,10 @@ export function RegistryView({ s, cmd, sel, onSelect, onVisibleRows, find: q = "
             {n.kind !== "dept" && <Icon size={14} aria-hidden />}
             <span className={n.kind === "dept" ? undefined : css.strong} onDoubleClick={() => g.canEdit && n.kind === "dept" && setEdit({ kind: "rename", id: n.id })}>{n.kind === "entity" ? <EntityName name={n.name} alias={n.alias} /> : n.name}</span>
             {temporalLabel(n) && <Chip>{temporalLabel(n)}</Chip>}
-            {n.headOffice && <Chip>{t("structure.node.headOffice")}</Chip>}
-            {n.primary && <Chip>{t("structure.node.primary")}</Chip>}
+            {(n.headOffice || n.primary) && <span className={css.siteFlags}>
+              {n.headOffice && <Chip>{t("structure.node.headOffice")}</Chip>}
+              {n.primary && <Chip>{t("structure.node.primary")}</Chip>}
+            </span>}
           </span>
         );
       },
@@ -92,7 +94,7 @@ export function RegistryView({ s, cmd, sel, onSelect, onVisibleRows, find: q = "
         : none,
     },
     { id: "people", card: "fact", width: 142, header: t("structure.list.people"), cell: (n) => <span className="num">{unitCounts(n)}</span> },
-    { id: "site", card: "omit", width: 120, header: t("orgUnit.fact.place"), cell: (n) => n.kind === "site" ? n.name : n.siteId ? s.byId.get(n.siteId)?.name ?? none : none },
+    { id: "site", card: "omit", width: "1fr", minWidth: 80, header: t("orgUnit.fact.place"), cell: (n) => n.kind === "site" ? n.name : n.siteId ? s.byId.get(n.siteId)?.name ?? none : none },
     { id: "chips", card: "status", width: "2fr", minWidth: 112, header: t("structure.list.chips"), cell: (n) => n.chips.length ? (compact ? <span className="muted">{n.chips.map((c) => t(`structure.chip.${c}`)).join(" · ")}</span> : <span className="row">{n.chips.map((c) => <Chip key={c} tone="warn">{t(`structure.chip.${c}`)}</Chip>)}</span>) : null },
     ...(!s.readOnly ? [{ id: "order", focusMode: "child" as const, card: (compact ? "omit" : "action") as "omit" | "action", width: 64, header: t("structureChart.list.order"), cell: (n: ChartNode) => <OrderCell s={s} n={n} order={cmd.order} /> }] : []),
     ...(!s.readOnly ? [{

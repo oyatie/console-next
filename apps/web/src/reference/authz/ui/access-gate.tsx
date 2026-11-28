@@ -46,6 +46,12 @@ function EffectiveAccessGate({ children, layout, ...need }: Exclude<AccessRequir
   return <QueryState q={q} layout={layout} need={need}>{() => children}</QueryState>;
 }
 
+/** Warm the signed-in user's capability decision alongside the screen's effective access check. */
+function PreloadUserCapabilities() {
+  useQuery({ ...authzQuery, enabled: authzApplies() });
+  return null;
+}
+
 /** The leaf route decides before its page (or a nested sheet's parent page) mounts. */
 export function RouteGuard({ children }: { children: ReactNode }) {
   const route = useMatches({ select: matches => matches.at(-1)?.staticData });
@@ -58,6 +64,7 @@ export function RouteGuard({ children }: { children: ReactNode }) {
   if (!need) throw new Error("Route must declare staticData.access");
   const page = route.module ? <ModuleGate module={route.module}>{children}</ModuleGate> : children;
   return <Suspense fallback={<ReadSkeleton layout="list" />}>
+    {route?.preloadUserCapabilities && <PreloadUserCapabilities />}
     {need === "signed-in" ? page : <AccessGate {...need} layout="list">{page}</AccessGate>}
   </Suspense>;
 }

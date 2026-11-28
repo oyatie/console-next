@@ -5,6 +5,8 @@ import { withLifecycleDate } from "./clock";
 import { go, kstDate, koDate, registerEmployee } from "./flows";
 import { expectHrActs, expectNoHrActs, hrAct, openHistory } from "./record";
 import { staffedTenant } from "./setup-flows";
+import { ko } from "../packages/i18n/src/catalogs/ko";
+import { leaveScreen } from "./structure-flows";
 import { koDay } from "./dates";
 import { dateBox, koMonthDay, reasonBox, said, sheet, todayPreset, fillDate } from "./sheet";
 import { reasonChip } from "./helpers/lifecycle";
@@ -103,7 +105,10 @@ test("J2 appointment: transfer and promotion from the server's allowed events; a
   await hrAct(admin, "전보");
   await fillDate(transfer, later);
   await expect(transfer).toContainText(`${koMonthDay(later)} 전보 예약을 이 내용으로 변경합니다`);
-  await transfer.getByRole("button", { name: "닫기", exact: true }).last().click();
+  const closeEdited = transfer.getByRole("button", { name: "닫기", exact: true }).last();
+  await closeEdited.click();
+  await expect(transfer.getByRole("status").filter({ hasText: ko["composer.unsaved"] })).toBeVisible();
+  await closeEdited.click();
   await expect(transfer).toBeHidden();
 
   await atPhoneWidth(admin, async () => {
@@ -124,6 +129,7 @@ test("J2 appointment: transfer and promotion from the server's allowed events; a
   // An executive reads the record but changes nothing: no HR actions, no cancel, pay not shown.
   await go(exec, "/people");
   await c.click(exec.getByRole("rowheader", { name: "오발령", exact: true }));
+  await leaveScreen(exec);
   await c.click(exec.getByRole("complementary", { name: "직원 상세" }).getByRole("link", { name: "인사카드 열기" }));
   await expect(exec.getByRole("heading", { name: /오발령/, level: 1 })).toBeVisible();
   const execProfile = exec.getByRole("region", { name: "재직·배치" });
@@ -200,6 +206,7 @@ test("J2 appointment: transfer and promotion from the server's allowed events; a
   await expect(next).not.toContainText(`${koDate(moveOn)} 전보 예정`);
   await expect(profile).toContainText("인사부");
   await expect(profile).not.toContainText("채용팀");
+  await leaveScreen(admin);
   await go(admin, "/people");
   const applied = admin.getByRole("row", { name: /오발령/ });
   await expect(applied).toContainText("인사부");

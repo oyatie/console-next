@@ -29,7 +29,8 @@ export type Issued = {
 export type Recorded = { message: string; meta?: string };
 
 /** Every tenant, unpaged (the vendor's own `platform` row included; screens leave it out). */
-export const tenantsQuery = get("/api/platform/orgs");
+// A tenant can request a rename or enroll its administrator from a separate session.
+export const tenantsQuery = { ...get("/api/platform/orgs"), refetchOnMount: "always" as const };
 /** Per-tenant usage counts. Optional to every screen: the list still works when it fails. */
 export const opsQuery = get("/api/platform/ops");
 /** Platform customer groups and their member orgs. */

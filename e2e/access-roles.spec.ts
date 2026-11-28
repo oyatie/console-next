@@ -124,5 +124,5 @@ test("pilot roles: no presets, a role made in setup, granted for go-live, enforc
   await expect(hr.getByRole("heading", { name: t("roster.head.title"), level: 1, exact: true })).toBeVisible();
   await expect(hr.getByRole("link", { name: "권한" })).toHaveCount(0);
   await go(hr, "/access/roles");
-  await expect(hr.getByText("접근 권한이 없습니다")).toBeVisible();
+  await expect(hr.getByRole("main").getByRole("heading", { name: t("common.denied.title.plain"), exact: true })).toBeVisible();
 });

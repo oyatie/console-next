@@ -30,8 +30,7 @@ pub(super) async fn explain_filing_hydration(
         !ids.is_empty(),
         "current hires must exercise filing hydration"
     );
-    let bounds: Value = sqlx::query_scalar("SELECT jsonb_agg(jsonb_build_object('code',code,'effective_from',effective_from,'earliest_event_on',NULL)) FROM lifecycle_filing_rules WHERE filing_rule IS NOT NULL")
-        .fetch_one(pool).await.unwrap();
+    let bounds = age_scale::filing_periods(pool, org).await;
     let as_of = time::OffsetDateTime::parse(
         page["as_of"].as_str().unwrap(),
         &time::format_description::well_known::Rfc3339,

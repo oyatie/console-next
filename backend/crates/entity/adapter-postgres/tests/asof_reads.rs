@@ -63,6 +63,8 @@ async fn read(
         .unwrap()
 }
 
+include!("asof_reads/clock_regression.rs");
+
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]
 async fn dated_rename_and_later_correction_keep_prior_effective_and_known_values(owner: PgPool) {
     let (store, actor) = tenant(&owner, Uuid::new_v4(), "asof-record").await;

@@ -1,3 +1,4 @@
+import { ko } from "../packages/i18n/src/catalogs/ko";
 import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 import { expectAccessible } from "./a11y";
@@ -15,13 +16,18 @@ test("roster facets, employment type, purposeful download and exit search", { ta
   await expect(admin.getByRole("button", { name: /^재직 2/ })).toBeVisible();
   await expect(admin.getByRole("row", { name: /고정규/ })).toContainText("정규직");
   await expect(admin.getByRole("row", { name: /나계약/ })).toContainText("계약직");
-  // The contract ending within the window counts on its chip from the same facets read.
-  await expect(admin.getByRole("button", { name: /^계약 종료 \d+일 이내 1/ })).toBeVisible();
+  // The ending-contract view returns the one person inside its displayed window.
+  await admin.getByRole("button", { name: /^계약 종료 \d+일 이내$/ }).click();
+  const filtered = admin.getByRole("grid");
+  await expect(filtered.locator("[data-row-id]")).toHaveCount(1);
+  await expect(filtered.getByRole("rowheader", { name: "나계약", exact: true })).toBeVisible();
+  await admin.getByRole("button", { name: ko["roster.view.current"], exact: true }).click();
   await expectAccessible(admin, "roster with the employment column");
 
   // The download asks why first, says it is logged, and carries no resident number or pay.
-  await admin.getByRole("button", { name: "명부 내려받기" }).click();
-  const dialog = admin.getByRole("dialog", { name: "직원 명부 내려받기" });
+  await admin.getByRole("button", { name: ko["roster.export"] }).click();
+  const dialog = admin.getByRole("dialog", { name: ko["roster.export.title"] });
+  await dialog.getByText(ko["roster.export.directory"], { exact: true }).click();
   await expect(dialog).toContainText("접속기록에 남습니다");
   await dialog.getByRole("button", { name: "2명 내려받기" }).click();
   await expect(dialog).toContainText("용도를 선택하십시오");

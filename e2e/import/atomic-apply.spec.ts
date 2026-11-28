@@ -33,14 +33,12 @@ test("an interrupted import leaves no people and retry replays the complete repo
   await admin.getByRole("button", { name: "모의 반영 실행" }).click();
   await settled(admin);
   // Fault injection only: the tenant, structure and workbook all use the product.
+  // Trip the final ledger write for this run, after its people and placements were written in the same transaction.
+  // The shared audit table also receives writes from other journeys while this fixture is installed.
   psql(unique(slug), `CREATE FUNCTION fail_import_settle() RETURNS trigger LANGUAGE plpgsql AS $$
-BEGIN
- IF NEW.action='employee.import.settle' AND NEW.target_id='${run}' THEN
-  RAISE EXCEPTION 'injected settle failure';
- END IF;
- RETURN NEW;
-END $$;
-CREATE TRIGGER fail_import_settle AFTER INSERT ON audit_events FOR EACH ROW EXECUTE FUNCTION fail_import_settle();`);
+BEGIN RAISE EXCEPTION 'injected settle failure'; END $$;
+CREATE TRIGGER fail_import_settle AFTER UPDATE OF rollback_ledger_complete ON data_import_runs
+ FOR EACH ROW WHEN (NEW.id='${run}'::uuid AND NEW.rollback_ledger_complete) EXECUTE FUNCTION fail_import_settle();`);
   const applyPath = `/employees/import/${run}/apply`;
   try {
     await admin.getByRole("button", { name: /^명부 반영: 신규 2명/ }).click();
@@ -63,7 +61,7 @@ CREATE TRIGGER fail_import_settle AFTER INSERT ON audit_events FOR EACH ROW EXEC
     await expect(admin.getByRole("alert")).not.toContainText("이미 들어간");
     await expect(admin.getByRole("heading", { name: "명부 반영 중", exact: true })).toHaveCount(0);
   } finally {
-    psql(unique(slug), "DROP TRIGGER fail_import_settle ON audit_events; DROP FUNCTION fail_import_settle();");
+    psql(unique(slug), "DROP TRIGGER fail_import_settle ON data_import_runs; DROP FUNCTION fail_import_settle();");
   }
   await admin.getByRole("button", { name: "모의 반영으로 돌아가기" }).click();
   const applied = admin.waitForResponse(r => r.request().method() === "POST" && r.url().endsWith(applyPath));
@@ -104,26 +102,23 @@ test("import progress reaches the screen before any employee is committed", { ta
   await admin.getByRole("button", { name: "모의 반영 실행" }).click();
   await settled(admin);
   // Hold each chunk until the browser has observed the preceding committed counter.
-  psql(unique(slug), `CREATE TABLE import_progress_gate (chunk int PRIMARY KEY, released boolean NOT NULL DEFAULT false);
-INSERT INTO import_progress_gate(chunk) VALUES (1),(2);
+  psql(unique(slug), `CREATE TABLE import_progress_gate (done int PRIMARY KEY, released boolean NOT NULL DEFAULT false);
+INSERT INTO import_progress_gate(done) VALUES (100),(200);
 GRANT SELECT ON import_progress_gate TO console_rt;
 CREATE FUNCTION pause_import_progress() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
- IF NEW.action='employee.import.settle' AND NEW.target_id='${run}' THEN
-  WHILE EXISTS (SELECT 1 FROM public.import_progress_gate WHERE chunk=
-    (SELECT count(*) FROM public.audit_events WHERE target_id=NEW.target_id AND action='employee.import.settle')
-    AND NOT released) LOOP
-   PERFORM pg_sleep(0.05);
-  END LOOP;
- END IF;
+ WHILE EXISTS (SELECT 1 FROM public.import_progress_gate WHERE done=NEW.done AND NOT released) LOOP
+  PERFORM pg_sleep(0.05);
+ END LOOP;
  RETURN NEW;
 END $$;
-CREATE TRIGGER pause_import_progress AFTER INSERT ON audit_events FOR EACH ROW EXECUTE FUNCTION pause_import_progress();`);
+CREATE TRIGGER pause_import_progress BEFORE UPDATE OF done ON import_apply_progress
+ FOR EACH ROW WHEN (NEW.run_id='${run}'::uuid) EXECUTE FUNCTION pause_import_progress();`);
   try {
     await admin.getByRole("button", { name: /^명부 반영: 신규 300명/ }).click();
     const progress = admin.getByRole("progressbar", { name: "명부 반영 중" });
     await expect(progress).toHaveText(/0행\s*\/\s*300행/, { timeout: 60_000 });
-    psql(unique(slug), "UPDATE import_progress_gate SET released=true WHERE chunk=1;");
+    psql(unique(slug), "UPDATE import_progress_gate SET released=true WHERE done=100;");
     await expect(progress).toHaveText(/100행\s*\/\s*300행/, { timeout: 60_000 });
     expect(await headcount(api), "progress must not expose the uncommitted roster").toBe(0);
     await atPhoneWidth(admin, () => fits(admin, "live import progress"));
@@ -139,12 +134,12 @@ CREATE TRIGGER pause_import_progress AFTER INSERT ON audit_events FOR EACH ROW E
         }
       }
     }
-    psql(unique(slug), "UPDATE import_progress_gate SET released=true WHERE chunk=2;");
+    psql(unique(slug), "UPDATE import_progress_gate SET released=true WHERE done=200;");
     await expect(admin.getByRole("heading", { name: "명부를 반영했습니다" })).toBeVisible({ timeout: 60_000 });
     expect(await headcount(api)).toBe(300);
   } finally {
     psql(unique(slug), "UPDATE import_progress_gate SET released=true;");
     await expect.poll(async () => (await (await api(`/employees/import/${run}/apply`)).json()).state, { timeout: 60_000 }).toMatch(/^(done|failed)$/);
-    psql(unique(slug), "DROP TRIGGER pause_import_progress ON audit_events; DROP FUNCTION pause_import_progress(); DROP TABLE import_progress_gate;");
+    psql(unique(slug), "DROP TRIGGER pause_import_progress ON import_apply_progress; DROP FUNCTION pause_import_progress(); DROP TABLE import_progress_gate;");
   }
 });

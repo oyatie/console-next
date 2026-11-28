@@ -7,7 +7,6 @@ import { Button } from "../../../ui/button/button";
 import { buttonClass } from "../../../ui/button/button-class";
 import { EmptyState } from "../../../ui/empty-state";
 import { ListRecord } from "../../../ui/patterns/list-record";
-import { ExperienceSwitch } from "../../../ui/patterns/pattern-shell";
 import { Receipt } from "../../../ui/receipt/receipt";
 import { rowById } from "../../../ui/long-table/row-keys";
 import { unitPath } from "../../../reference/org/present";
@@ -35,7 +34,6 @@ import type { useRosterScreen } from "./use-roster-screen";
 import { RosterFoot } from "./roster-foot";
 import { useRosterHead } from "./roster-head";
 import { ExitTabs, VoidedList } from "./exit-tabs";
-import { RosterConsole } from "./roster-console";
 import { RosterSavedViews } from "./roster-saved-views";
 
 type RosterScreenProps = { manage: boolean; scoped?: boolean; switcher?: ReactNode; notice?: ReactNode; actions?: ReactNode; tabs?: ReactNode; screen: ReturnType<typeof useRosterScreen> };
@@ -60,15 +58,7 @@ function TableScrollRestoration({ id, grid }: { id: string; grid: RefObject<HTML
 }
 
 /** The people list: status and attention chips, a virtualized server-paged table, and the selected person beside it. */
-export function RosterScreen(props: RosterScreenProps) {
-  return (
-    <ExperienceSwitch baseline={() => <BaselineRosterScreen {...props} />}>
-      {() => <RosterConsole manage={props.manage} scoped={props.scoped} notice={props.notice} actions={props.actions} tabs={props.tabs} screen={props.screen} />}
-    </ExperienceSwitch>
-  );
-}
-
-function BaselineRosterScreen({ manage, scoped = false, switcher, notice, screen, actions }: RosterScreenProps) {
+export function RosterScreen({ manage, scoped = false, switcher, notice, screen, actions }: RosterScreenProps) {
   const {
     contractWindow, soonDays, search, navigate, today, status, review, unit,
     open, openUnit, select, selectRelated, full, expand, restore, unitTrigger, unitItems, selectedUnit,

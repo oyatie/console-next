@@ -269,8 +269,23 @@ test("the 사업장 holding the certificate shows the 소재지 the reissue move
   await a.getByRole("row", { name: /서울 본사/ }).click();
   await a.getByRole("link", { name: "000-81-00009 등록증 재발급·정정" }).first().click();
   const sheet = a.getByRole("dialog", { name: "등록증 재발급·정정" });
+  // The attachment receipt arrives while the user is pressing the next choice.
+  const upload = Promise.withResolvers<void>();
+  await a.route("**/api/v1/entity-documents", async route => {
+    if (route.request().method() === "POST") await upload.promise;
+    await route.continue();
+  });
   await sheet.locator('input[type="file"]').setInputFiles(PDF("v2"));
-  await option(a, "발급 사유", "변경 · 정정신고로 다시 받음").click();
+  try {
+    await option(a, "발급 사유", "변경 · 정정신고로 다시 받음").hover();
+    await a.mouse.down();
+    upload.resolve();
+    await expect(sheet.getByText("첨부함 · 사업자등록증-v2.pdf")).toBeVisible();
+  } finally {
+    upload.resolve();
+    await a.mouse.up();
+  }
+  await expect(sheet.getByRole("radio", { name: "변경 · 정정신고로 다시 받음" })).toBeChecked();
   await fillDate(sheet, kstDate(), "발급일");
   await sheet.getByRole("group", { name: "바뀐 항목" }).getByRole("button", { name: /^사업장 소재지/ }).click();
   await sheet.getByRole("group", { name: "사업장 소재지", exact: true }).getByRole("button", { name: "주소 다시 찾기" }).click();

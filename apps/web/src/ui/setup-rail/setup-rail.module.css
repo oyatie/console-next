@@ -29,6 +29,11 @@
 /* Blocked is waiting on an earlier step, not an error: quiet, with its remedy beside it. */
 .step[data-state="blocked"] .icon { color: var(--faint); }
 .step[data-state="blocked"] .title { color: var(--steel); }
+@container (min-width: 481px) {
+  /* Keep each status beside its title when a live update replaces or removes that step's actions. */
+  .step { grid-template-columns: max-content minmax(0, max-content) minmax(max-content, 1fr) auto; }
+  .badge { justify-self: start; }
+}
 @container (max-width: 480px) {
   .step { grid-template-columns: max-content minmax(0, 1fr) max-content; }
   .actions { grid-column: 2 / -1; justify-content: flex-start; order: 2; }

@@ -14,6 +14,7 @@ import { ExperienceSwitch } from "../../../ui/patterns/pattern-shell";
 import { BulkPage } from "./bulk-page";
 import { BulkSheet } from "./bulk-sheet";
 import { NoticeListPage } from "./notice-list-page";
+import s from "./appointments-content.module.css";
 
 const route = getRouteApi("/app/people");
 const READY_Q: ReadState = { isPending: false, error: null, data: { ready: true }, refetch: () => {} };
@@ -30,12 +31,14 @@ export function AppointmentsContent({ tabs }: { tabs?: ReactNode } = {}) {
 
   const renderBaseline = () => (
     <>
-      <AccessGate {...peopleAccess.appointments}>
-        <Button onClick={() => void navigate({ search: previous => ({ ...previous, bulk: "paste" }) })}>{t("bulk.openPaste")}</Button>
-        {receipt && <Receipt state="recorded" message={receipt} />}
-        <BulkPage />
-        {bulk === "paste" && <BulkSheet source={{ paste: "" }} onClose={close} onDone={message => { setReceipt(message); close(); }} />}
-      </AccessGate>
+      <div className={s.workspace}>
+        <AccessGate {...peopleAccess.appointments}>
+          <Button onClick={() => void navigate({ search: previous => ({ ...previous, bulk: "paste" }) })}>{t("bulk.openPaste")}</Button>
+          {receipt && <Receipt state="recorded" message={receipt} />}
+          <BulkPage />
+          {bulk === "paste" && <BulkSheet source={{ paste: "" }} onClose={close} onDone={message => { setReceipt(message); close(); }} />}
+        </AccessGate>
+      </div>
       <AccessGate {...peopleAccess.notices} layout="list"><NoticeListPage /></AccessGate>
     </>
   );

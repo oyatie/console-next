@@ -29,12 +29,24 @@ test("an opened chart menu takes the toolbar from the selection", { tag: "@webki
     await page.goto("/org");
     await box(page, parent.name).click();
     await expect(box(page, entity.name)).toBeVisible();
+    const selectedTools = page.getByRole("toolbar", { name: t("structure.tools.label", { name: parent.name }), exact: true });
+    const foundTools = page.getByRole("toolbar", { name: t("structure.tools.label", { name: entity.name }), exact: true });
+    await expect(selectedTools).toBeVisible();
+    const find = page.getByRole("searchbox", { name: t("structure.find.label") });
+    await find.fill(entity.name);
+    await find.press("Enter");
+    await expect(box(page, entity.name)).toHaveAttribute("data-s", /\bnow\b/);
+    await expect(selectedTools).toBeHidden();
+    await box(page, entity.name).hover();
+    await expect(foundTools).toBeVisible();
+    await find.press("Escape");
+    await expect(selectedTools).toBeVisible();
     await box(page, entity.name).focus();
     await page.keyboard.press("Shift+F10");
     await expect(page.getByRole("menu")).toBeVisible();
     await expect(box(page, parent.name)).toHaveAttribute("aria-selected", "true");
     await expect(page.getByRole("toolbar")).toHaveCount(1);
-    await expect(page.getByRole("toolbar", { name: t("structure.tools.label", { name: entity.name }), exact: true })).toBeVisible();
+    await expect(foundTools).toBeVisible();
     expect(fixture.unexpected).toEqual([]);
   } finally { await page.close(); fixture.release(); }
 });

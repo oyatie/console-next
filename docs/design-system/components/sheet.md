@@ -419,7 +419,7 @@ Notes on the tables:
 | `--sheet-w` | `width` |
 | `--sheet-w-lg` | `width` |
 | `--space-1` | `gap` |
-| `--space-2` | `gap` |
+| `--space-2` | `gap`, `padding` |
 | `--space-3` | `gap` |
 | `--space-4` | `padding` |
 | `--space-5` | `gap`, `padding` |

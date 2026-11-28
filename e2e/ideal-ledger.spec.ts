@@ -145,7 +145,8 @@ test("BL-010 invalid and missing lookup keys show their refusal and a correction
   const missingRes = await missingResponse;
   expect(missingRes.status()).toBe(404);
   expect((await missingRes.json()).error.code).toBe("request_not_found");
-  await expect(admin.getByRole("heading", { name: "요청을 찾을 수 없습니다. 요청 번호와 조회 권한을 확인하십시오.", exact: true })).toBeVisible();
+  await expect(admin.getByRole("heading", { name: t("common.read.notFound.title"), exact: true })).toBeVisible();
+  await expect(admin.getByText(t("requestOutcome.notFound"), { exact: false })).toBeVisible();
   await expect(admin.getByText(REMEDY)).toBeVisible();
   await expectAccessible(admin, "BL-010 missing request remedy");
   await admin.getByRole("link", { name: "요청 번호 또는 요청 키", exact: true }).first().click();

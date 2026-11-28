@@ -44,6 +44,16 @@ test.describe("catalog isolation in one worker", () => {
       expect(fixture.unexpected).toEqual([]);
     } finally { await page.close(); fixture.release(); }
   });
+
+  test.describe("English browser override", () => {
+    test.use({ locale: "en" });
+    test("selects the English catalog", async () => {
+      expect(i18n.locale).toBe("en");
+    });
+    test.afterAll(() => {
+      expect(i18n.locale).toBe("ko");
+    });
+  });
 });
 
 test.describe("catalog setup", () => {

@@ -257,12 +257,18 @@ test("a clean twelve-row 사업장 import has no 지점 미지정 chips and its 
   expect(await headcount(api)).toBe(before + 12);
   await go(admin, "/people");
   await expect(admin.getByText("지점직원1", { exact: true })).toBeVisible();
+  const directory = await api("/employees?limit=100");
+  expect(directory.status()).toBe(200);
+  const { items } = await directory.json() as components["schemas"]["EmployeePage"];
+  const imported = items.filter(e => /^BR-\d+$/.test(e.employee_number ?? ""));
+  expect(imported).toHaveLength(12);
+  expect(imported.map(e => e.home_branch_name)).toEqual(Array(12).fill("본점"));
   for (const width of [1440, 390]) {
     await admin.setViewportSize({ width, height: 960 });
     await forgetResize(admin);
     for (const theme of ["light", "dark"] as const) {
       await admin.locator("html").evaluate((el, value) => { el.dataset.theme = value; }, theme);
-      await expect(admin.getByRole("button", { name: /지점 미지정/ })).toHaveText(/지점 미지정\s*0$/);
+      await expect(admin.getByText("지점 미지정", { exact: true })).toHaveCount(0);
       await expectAccessible(admin, `imported home branches ${width} ${theme}`);
       await shot(admin, `people--import-home-branch--${width}-${theme}`);
     }

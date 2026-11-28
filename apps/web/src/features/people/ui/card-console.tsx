@@ -14,6 +14,7 @@ import { operationAccess } from "../../../reference/authz/domain/operation-acces
 import { useDocumentsServed } from "../../../reference/authz/ui/use-documents-served";
 import { RecordPattern } from "../../../ui/patterns/record";
 import { certificatesQuery } from "../api/certificates";
+import { CardSkeleton } from "./card-states";
 import { LoadedConsoleCard } from "./card-console-loaded";
 import type { CardTab } from "./card-head";
 import type { ContractEdit } from "./contracts-card";
@@ -81,7 +82,7 @@ export function CardConsole({
 function ConsolePrintHost({ d, onClose }: { d: Detail; onClose: () => void }) {
   const c = useCard(d);
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<CardSkeleton />}>
       <CardPrint c={c} onClose={onClose} />
     </Suspense>
   );

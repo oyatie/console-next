@@ -87,7 +87,7 @@ test("a solo administrator checks NTS explicitly and a scheduled closed answer r
     await go(page, "/");
     const inboxLink = page.getByRole("link", { name: t("nts.inbox.review"), exact: true });
     await expect(inboxLink).toHaveAttribute("href", `${recordPath}?nts=${registration.id}`);
-    await expect(page.locator(`[id="nts-${checked.inbox_item_id}"]`)).toContainText("국세청 확인 법인");
+    await expect(page.getByRole("row").filter({ has: page.locator(`[id="nts-${checked.inbox_item_id}"]`) })).toContainText("국세청 확인 법인");
     await inboxLink.click();
     await expect(card(page)).toContainText(t("nts.mismatch"));
     expect((await request.post(control, { data: { status_code: "01", end_dt: "", valid: "01" } })).ok()).toBe(true);

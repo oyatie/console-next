@@ -65,7 +65,8 @@ for (const explicit of [false, true]) {
     await expect(review.getByRole("link", { name: "빠진 정보 입력", exact: true })).toBeVisible();
     await review.locator('a[href="/people?review=register"]').click();
     await expect(page.getByRole("grid", { name: "직원", exact: true }).getByText("최최소", { exact: true })).toBeVisible();
-    await page.getByRole("link", { name: "미배치", exact: true }).click();
+    await page.getByRole("button", { name: t("roster.view.unplaced"), exact: true }).click();
+    await page.getByRole("link", { name: t("roster.unplaced.place"), exact: true }).click();
     await expect(page.getByText("최최소", { exact: true }).first()).toBeVisible();
     if (!explicit) {
       for (const name of ["최다음", "최마지막"]) {
@@ -112,8 +113,6 @@ for (const explicit of [false, true]) {
 
 test("zero-facet roster shows a failed read and retry before the first-use empty state", { tag: ["@hr", "@regression"] }, async ({ browser }) => {
   const page = await soloTenant(browser, "roster-failed", "목록실패");
-  // Exhaust the longest retry jitter, which can outlast an assertion's default deadline.
-  await page.evaluate(() => { Math.random = () => 1 - Number.EPSILON; });
   let fail = true;
   let requests = 0;
   await page.route("**/api/v1/employees?*", async (route) => {
@@ -122,15 +121,15 @@ test("zero-facet roster shows a failed read and retry before the first-use empty
     else await route.continue();
   });
   await go(page, "/people");
-  await page.getByText("목록을 받지 못했습니다", { exact: true }).waitFor({ state: "visible" });
-  await expect(page.getByText("목록을 받지 못했습니다", { exact: true })).toBeVisible();
+  await page.getByRole("heading", { name: t("common.loadFailed.title"), exact: true }).waitFor({ state: "visible" });
+  await expect(page.getByRole("heading", { name: t("common.loadFailed.title"), exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "아직 직원이 없습니다" })).toBeHidden();
   fail = false;
   const before = requests;
-  await page.getByRole("button", { name: "다시 시도", exact: true }).click();
+  await page.getByRole("button", { name: t("common.retry"), exact: true }).click();
   await expect(page.getByRole("heading", { name: "아직 직원이 없습니다" })).toBeVisible();
   expect(requests).toBeGreaterThan(before);
-  await expect(page.getByText("목록을 받지 못했습니다", { exact: true })).toBeHidden();
+  await expect(page.getByRole("heading", { name: t("common.loadFailed.title"), exact: true })).toBeHidden();
 });
 
 test("zero-facet roster waits for its delayed list before claiming first-use empty", { tag: ["@hr", "@regression"] }, async ({ browser }) => {
@@ -144,7 +143,7 @@ test("zero-facet roster waits for its delayed list before claiming first-use emp
   });
   const navigating = go(page, "/people");
   try {
-    await expect(page.getByRole("grid", { name: "직원", exact: true })).toBeVisible();
+    await expect(page.getByRole("main").getByRole("status", { name: t("common.loading"), exact: true }).first()).toBeVisible();
     await expect(page.getByRole("heading", { name: "아직 직원이 없습니다" })).toBeHidden();
   } finally {
     release();

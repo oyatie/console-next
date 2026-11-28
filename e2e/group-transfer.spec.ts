@@ -128,7 +128,7 @@ test("전적: nowhere to go says why, then one act records the exit and the hire
   // (open from the 퇴직일, due D-n), moving forward only — the way back is the 전적's own, from the history.
   await admin.getByRole("link", { name: /퇴직 정산 열기$/ }).click();
   await expect(admin.getByRole("heading", { level: 1 })).toContainText("강전적");
-  const deadlines = admin.getByRole("region", { name: "서류 · 법정 기한 · 할 일" }).getByRole("region", { name: "지급", exact: true });
+  const deadlines = admin.getByRole("region", { name: "서류 · 법정 기한 · 할 일" }).getByRole("region", { name: "정산·급여", exact: true });
   await expect(deadlines).toContainText("금품청산");
   await expect(deadlines).toContainText("퇴직급여 지급");
   await expect(deadlines).toContainText("근로기준법 제36조");
@@ -181,7 +181,7 @@ test("전적: nowhere to go says why, then one act records the exit and the hire
   expect((await settlement()).status).toBe("HR_CONFIRMED");
   // Their screen says the same: no such record here, and nothing to act on.
   await go(stranger, `/people/${person}`);
-  await expect(stranger.getByRole("heading", { name: "볼 권한이 없는 인사카드입니다", level: 1 })).toBeVisible();
+  await expect(stranger.getByRole("heading", { name: "기록을 찾을 수 없습니다", exact: true })).toBeVisible();
   expect(await events()).toHaveLength(before);
 
   // The same refusal in the sheet: a stale choice of the person's own 법인 is refused in its own words, with the way on.

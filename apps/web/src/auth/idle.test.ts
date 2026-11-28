@@ -141,6 +141,8 @@ test("typing for 30 minutes with no other request reports itself once a minute; 
   }
   expect(sent).toHaveLength(30);
   expect(sent.every((h) => h !== "none")).toBe(true);
+  vi.advanceTimersByTime(30 * MIN);
+  expect(sent).toHaveLength(30);
   ping.mockRestore();
   session.set(null);
   vi.useRealTimers();

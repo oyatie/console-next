@@ -7,10 +7,8 @@ import { queryView } from "../../lib/react/query-view";
 import { ToggleButton } from "../../ui/button/button";
 import { ExperienceSwitch } from "../../ui/patterns/pattern-shell";
 import { ApiError, authzQuery, granted, myAccessQuery } from "../../reference/authz/api";
-import { Accounts } from "./Accounts";
 import { PeopleHead, type PeopleView } from "./ui/people-head";
 import { RosterPage } from "./ui/roster-page";
-import { UnplacedRoster } from "./ui/unplaced-roster";
 import s from "./ui/roster.module.css";
 import { PEOPLE_TABS, type PeopleTab } from "./domain/people-tabs";
 import type { ExitFilter } from "./api";
@@ -23,6 +21,8 @@ import { accessRefusal, type AccessRequirement } from "../../reference/authz/dom
 
 const AppointmentsContent = lazy(() => import("./ui/appointments-content").then(module => ({ default: module.AppointmentsContent })));
 const ExitCaseListContent = lazy(() => import("./ui/exit-list").then(module => ({ default: module.ExitCaseListContent })));
+const Accounts = lazy(() => import("./Accounts").then(module => ({ default: module.Accounts })));
+const UnplacedRoster = lazy(() => import("./ui/unplaced-roster").then(module => ({ default: module.UnplacedRoster })));
 
 /**
  * The People page's URL: the view, the selected row, and the roster's filters (`status`: a status or "all",
@@ -145,8 +145,8 @@ export function PeopleDirectory({ tabs }: { tabs?: ReactNode } = {}) {
 
 function Directory({ tabs, ...props }: Parameters<typeof RosterPage>[0]) {
   const { peopleAccess } = route.useRouteContext();
-  const access = useQuery(myAccessQuery);
   const unplaced = route.useSearch().placement === "unplaced";
+  const access = useQuery({ ...myAccessQuery, enabled: unplaced });
   const refused = access.data && accessRefusal(access.data, peopleAccess.unplaced) !== null;
   if (unplaced && !refused) {
     return (

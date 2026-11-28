@@ -103,9 +103,9 @@ test("a go-live receipt still arriving holds Home: its counts and actions land a
 test("a receipt record the phase calls for once the band decides is still waited on: Home's arrival latches after the hold", () => {
   landed();
   const view = (settled: boolean) => renderToStaticMarkup(<PagePhase value={{ slot: null, settled }}><HomeScreen /></PagePhase>);
+  state.receiptArriving = true;
   expect(view(false)).toContain('data-pending="false"');
   expect(state.settled).toBe(false);
-  state.receiptArriving = true;
   expect(view(true)).toContain('data-pending="true"');
   state.receiptArriving = false;
   expect(view(true)).toContain('data-pending="false"');
@@ -158,6 +158,17 @@ test("an inline command needs both the server verb and its registered record lin
   expect(state.action).toBeTypeOf("function");
   expect(renderToStaticMarkup(state.action!(item({ context: { command: "approve" }, links: [{ kind: "employee", id: "record" }] })))).toBe("");
   expect(renderToStaticMarkup(state.action!(item({ kind: "org_change_draft" })))).toBe("");
+});
+
+test("setup rows already drawn in the rail leave Home open to changes from other sessions", () => {
+  landed(checklist);
+  state.entities = state.units = { isSuccess: true, isFetching: false, isError: false };
+  state.inbox.data!.pages[0]!.items = [item({ kind: "setup_entity" })];
+  render();
+  expect(state.hold).toHaveBeenLastCalledWith(false, true);
+  state.inbox.data!.pages[0]!.items.push(item());
+  render();
+  expect(state.hold).toHaveBeenLastCalledWith(true, true);
 });
 
 test("only painted queue rows need a live hold", () => {

@@ -33,8 +33,8 @@ test("regression: a move on a placement day names its fix and leaves one draft, 
   // The draft's record names the cause and the fix; nothing speaks of a generic conflict.
   await expect(admin).toHaveURL(/\/org\/changes\/[^/?]+/);
   const main = admin.getByRole("main");
-  await expect(main.getByRole("alert")).toContainText("진행하지 못했습니다");
-  await expect(main).toContainText(`시행일을 ${kstDate(1)}로 바꾸십시오`);
+  await expect(main.getByText(/진행하지 못했습니다.*초안은 저장되어 있습니다/)).toBeVisible();
+  await expect(main.getByRole("region", { name: "사전 점검" })).toContainText(`시행일을 ${kstDate(1)}로 바꾸십시오`);
   await expect(admin.getByText("요청이 현재 상태와 충돌합니다.")).toHaveCount(0);
   await expectAccessible(admin, "org change: a refused move names its fix");
   await shot(admin, "after-org-01-refusal-names-fix");

@@ -210,4 +210,16 @@ test("typed compact virtual rows stay bounded at 2,000 rows", async () => {
   await visible(rows.first().locator('[role="gridcell"]').first()).toHaveCSS("height", "32px");
   expect(await rows.count()).toBeLessThanOrEqual(40);
   expect(await rows.count()).toBeGreaterThan(1);
+  const grid = page.getByRole("grid");
+  const first = grid.locator('[aria-rowindex="2"]').getByRole("rowheader");
+  await first.focus();
+  await grid.evaluate(el => { el.scrollTop = el.scrollHeight; });
+  const last = grid.locator('[aria-rowindex="2001"]').getByRole("rowheader");
+  await visible(last).toBeInViewport();
+  await visible(first).toBeFocused();
+  expect(await rows.count()).toBeLessThanOrEqual(40);
+  await last.focus();
+  await page.keyboard.press("ArrowUp");
+  await visible(grid.locator('[aria-rowindex="2000"]').getByRole("rowheader")).toBeFocused();
+  expect(await rows.count()).toBeLessThanOrEqual(40);
 });

@@ -125,7 +125,7 @@
 "apps/web/src/features/people/ui/person-next.tsx": {"dsClass":2},
 "apps/web/src/features/people/ui/person.module.css": {"restyle":10,"literal":2},
 "apps/web/src/features/people/ui/profile-host.tsx": {"dsClass":2},
-"apps/web/src/features/people/ui/register-run.module.css": {"restyle":52,"literal":14},
+"apps/web/src/features/people/ui/register-run.module.css": {"restyle":52,"literal":5},
 "apps/web/src/features/people/ui/register.module.css": {"restyle":49},
 "apps/web/src/features/people/ui/request-panel.tsx": {"dsClass":6},
 "apps/web/src/features/people/ui/requests-page.tsx": {"dsClass":7},

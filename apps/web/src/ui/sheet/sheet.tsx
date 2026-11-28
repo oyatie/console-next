@@ -68,11 +68,11 @@ function OpenSheet(p: Props) {
             <Button className="btn btn--ghost" aria-label={t("uiSheet.close")} isDisabled={p.pending} onPress={requestClose}><X size={16} aria-hidden /></Button>
           </div>
           <div className={s.body} inert={p.pending || p.locked || undefined} onInputCapture={onInput} onChangeCapture={onInput}>{p.loading ? <Skeleton bones={["title", "row", "row", "row"]} label={t("common.loading")} /> : p.children}</div>
+          {armed && dirty && <div className={s.unsaved} role="status">{t("composer.unsaved")}</div>}
           <div className={s.foot}>
             {reads.length > 0 && <QueryState q={readGroup(reads)}>{() => null}</QueryState>}
             {p.notice}
             {draft && (draft.problem || draft.restored) && <div role="status">{t(draft.problem ? "draft.unavailable" : "draft.restored")}{draft.restored && !draft.problem && <Button className="btn btn--ghost" onPress={draft.discard}>{t("draft.discard")}</Button>}</div>}
-            {armed && dirty && <div role="status">{t("composer.unsaved")}</div>}
             <div className={s.consequence}>{p.consequence}</div>
             <div className={s.actions} inert={p.pending || undefined}>{p.actions}</div>
           </div>

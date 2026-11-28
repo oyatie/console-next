@@ -25,7 +25,8 @@ export async function importPeople(page: Page) {
     expect(dry.ok()).toBeTruthy();
     const { dry_run_digest } = await dry.json();
     const applied = await page.request.post(`/api/v1/employees/import/${run_id}/apply`, { headers, data: { dry_run_digest }, timeout: 60_000 });
-    expect(applied.ok()).toBeTruthy();
-    expect((await applied.json()).inserted).toBe(rows.length);
+    const report = await applied.json();
+    expect(applied.status(), report.error?.code).toBe(200);
+    expect(report.inserted).toBe(rows.length);
   }
 }

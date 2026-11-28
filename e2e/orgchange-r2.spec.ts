@@ -5,7 +5,7 @@ import { withLifecycleDate } from "./clock";
 import { go, kstDate, registerEmployee } from "./flows";
 import { addDepts, openUnit, sheet } from "./helpers/structure";
 import { registerBranch, startOperations, tenantInSetup } from "./setup-flows";
-import { inlineUnitDetails, box } from "./structure-flows";
+import { inlineUnitDetails, box, leaveScreen } from "./structure-flows";
 import { openHistory } from "./record";
 import { holdRead } from "./helpers/read";
 
@@ -146,7 +146,8 @@ test("a scheduled change can be moved or cancelled, frees its unit when cancelle
   await dissolve.getByRole("button", { name: "부서 폐지 1개 예약" }).click();
   await expect(admin.getByRole("link", { name: "예정 2건" })).toBeVisible();
   const held = await openUnit(admin, "영업2팀");
-  await held.getByRole("link", { name: /^이 부서를 붙잡고 있는 OC-\d{4}-\d{4} 열기/ }).click();
+  const scheduled = /OC-\d{4}-\d{4}.*영업2팀/;
+  await held.getByRole("link", { name: scheduled }).click();
 
   // 예약 취소 says what it does first; the unit is free again and nothing changed on the chart.
   await expect(admin.getByRole("main")).not.toContainText(APPROVAL);
@@ -157,10 +158,11 @@ test("a scheduled change can be moved or cancelled, frees its unit when cancelle
   await cancel.getByRole("button", { name: "조직 변경 취소" }).click();
   await expect(admin.getByRole("button", { name: "예약 취소", exact: true })).toBeHidden();
   const freed = await openUnit(admin, "영업2팀");
-  await expect(freed.getByRole("link", { name: /^이 부서를 붙잡고 있는/ })).toHaveCount(0);
+  await expect(freed.getByRole("link", { name: scheduled })).toHaveCount(0);
   await expect(admin.getByRole("link", { name: "예정 1건" })).toBeVisible();
 
   // On its date the rename applies with nobody pressing anything.
+  await leaveScreen(admin);
   await admin.getByRole("link", { name: "예정 1건" }).click();
   await expectAccessible(admin, "organization changes at 1440px");
   await atPhoneWidth(admin, async () => { await expectAccessible(admin, "organization changes at 390px"); });

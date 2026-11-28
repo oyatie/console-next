@@ -216,6 +216,7 @@ export const enAudit = {
   "audit.log.action.settings.change": "Policy setting changed",
   "audit.log.action.payroll.run.approve": "Payroll run approved",
   "audit.log.action.employee.rrn_reveal": "Resident ID revealed",
+  "audit.log.action.access.role.create": "Access role created",
   "audit.log.action.access.grant.create": "Access role granted",
   "audit.log.action.access.grant.assign": "Access role assigned",
   "audit.log.action.employee.export": "Export employee directory",

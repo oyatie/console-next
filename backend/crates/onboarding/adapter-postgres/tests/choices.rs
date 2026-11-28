@@ -127,6 +127,21 @@ async fn prepared_grants_count_their_holders_without_unlocking_the_setup_rail(ow
         p.details.access_admin_holders[0].id,
         a.user.as_uuid().to_string()
     );
+
+    operating(&owner, &a).await;
+    let c = store.checklist(&prepared).await.unwrap();
+    let roles = c.steps.iter().find(|step| step.key == "roles").unwrap();
+    assert_eq!(roles.state, console_onboarding_domain::StepState::Done);
+    assert!(!roles.can_act);
+    assert_eq!(
+        store
+            .preview(&a)
+            .await
+            .unwrap()
+            .details
+            .access_admin_holders,
+        p.details.access_admin_holders
+    );
 }
 
 #[sqlx::test(migrator = "console_platform_test_support::MIGRATOR")]

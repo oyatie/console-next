@@ -18,6 +18,7 @@ import { accessRefusal } from "../../../reference/authz/domain/access";
 import s from "./roster.module.css";
 
 const route = getRouteApi("/app/people");
+const contractView = VIEWS.find((v) => v.id === "contractSoon")!;
 
 /**
  * The roster's phase, today's as-of fact, commands and built-in filter views, with its accounts switch.
@@ -57,9 +58,10 @@ export function useRosterHead({ manage, status, review, soonDays, onView, action
             <Link className={buttonClass("primary")} to="/people/new" search={{}}><Plus size={16} aria-hidden /> {t("people.register")} <Kbd k="A" /></Link>
           </>
         ), tabs: <div className={s.views} role="group" aria-label={t("roster.view.label")}>
-        {VIEWS.filter((v) => v.status && (v.id !== "contractSoon" || soonDays !== undefined)).map((v) => <ToggleButton key={v.id} pressed={!unplaced && view === v.id} onClick={() => onView(v)}>{v.id === "contractSoon" ? t("directoryViews.contractSoon", { days: soonDays ?? "—" }) : t(`roster.view.${v.id}`)}</ToggleButton>)}
+        {VIEWS.map((v) => v.status && v.id !== "contractSoon" && <ToggleButton key={v.id} pressed={!unplaced && view === v.id} onClick={() => onView(v)}>{t(`roster.view.${v.id}`)}</ToggleButton>)}
         {access.data && accessRefusal(access.data, peopleAccess.unplaced) === null && <ToggleButton pressed={unplaced} onClick={() => void navigate({ to: "/people", search: previous => ({ ...previous, placement: unplaced ? undefined : "unplaced", sel: undefined }), replace: true })}>{t("roster.view.unplaced")}</ToggleButton>}
         {switcher}
+        {soonDays !== undefined && <ToggleButton pressed={!unplaced && view === contractView.id} onClick={() => onView(contractView)}>{t("directoryViews.contractSoon", { days: soonDays })}</ToggleButton>}
       </div> };
 }
 

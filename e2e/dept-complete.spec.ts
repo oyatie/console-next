@@ -25,8 +25,9 @@ test("staffed people at 사업장 직속 block go-live even when a department ex
     const blocker = admin.getByRole("alert", { name: "부서 없는 직원 3명", exact: true });
     await expect(blocker).toBeVisible();
     await expect(blocker).toContainText("people_without_department");
-    for (const name of names) await expect(blocker.getByText(name, { exact: true })).toBeVisible();
-    await expect(blocker.getByRole("grid").getByRole("columnheader", { name: "직원", exact: true })).toBeVisible();
+    const missing = blocker.getByRole("grid");
+    for (const name of names) await expect(missing.getByRole("rowheader", { name, exact: true })).toBeVisible();
+    await expect(missing.getByRole("columnheader", { name: width === 390 ? await blocker.getByRole("heading").innerText() : "직원", exact: true })).toBeVisible();
     await expect(blocker.getByRole("link", { name: "부서 지정", exact: true })).toHaveCount(1);
     await expect(admin.getByRole("button", { name: "운영 시작", exact: true })).toBeDisabled();
     await admin.evaluate(clearShifts);

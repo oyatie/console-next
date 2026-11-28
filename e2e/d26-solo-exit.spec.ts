@@ -56,7 +56,8 @@ test("a solo ops account registers a person and closes their exit alone, with no
   const inbox = admin.getByRole("region", { name: t("home.inbox.title"), exact: true });
   await expect(inbox.locator("tbody tr")).toHaveCount(1);
   await expect(inbox.getByRole("button", { name: "패스키 등록", exact: true })).toBeVisible();
-  await expect(admin.getByRole("main")).not.toContainText(/결재|기안/);
+  await expect(inbox.getByRole("button", { name: t("home.worklist.strip.approval") + " 0", exact: true })).toBeVisible();
+  await expect(inbox.locator("tbody")).not.toContainText(/결재|기안/);
 
   // Register, report the exit, and confirm it for HR: the employee leaves at once.
   await registerEmployee(admin, { name: "홀로퇴직", number: "D26-0001", hired: "2024-03-04", unit: "본사" });
