@@ -37,7 +37,7 @@ beforeAll(async () => {
         const tenant = { name: '이름이 아주 긴 고객 계정 이름 전체', phase: location.hash === '#operating' ? 'OPERATING' : 'SETUP', go_live_at: null };
         function RouteMarker() {
           const { state } = useLocation();
-          return location.hash === '#pending' ? React.createElement('span', { hidden: true, 'data-route-key': state.__TSR_key }) : null;
+          return location.hash === '#pending' ? React.createElement('span', { hidden: true, 'data-route-key': state["__TSR_key"] }) : null;
         }
         const root = createRootRoute({ component: () => React.createElement('main', null,
           React.createElement(RouteMarker),

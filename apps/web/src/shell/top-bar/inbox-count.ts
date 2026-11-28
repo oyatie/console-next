@@ -36,14 +36,10 @@ export function useCountAfterArrival(active: boolean, routeKey: string | undefin
     if (!active || ready) return;
     const marker = document.querySelector<HTMLElement>("[data-route-key]");
     const arrived = () => marker?.dataset.routeKey === routeKey && !!marker?.dataset.routeReady;
-    if (!marker || arrived()) {
-      setReady(true);
-      return;
-    }
     const observer = new MutationObserver(() => { if (arrived()) setReady(true); });
-    observer.observe(marker, { attributes: true, attributeFilter: ["data-route-key", "data-route-ready"] });
+    if (marker) observer.observe(marker, { attributes: true, attributeFilter: ["data-route-key", "data-route-ready"] });
     // A slow or paused route still gets its count, and opening the panel always reads immediately.
-    const timeout = window.setTimeout(() => setReady(true), BACKGROUND_SETTLE_MS);
+    const timeout = window.setTimeout(() => setReady(true), marker && !arrived() ? BACKGROUND_SETTLE_MS : 0);
     return () => { observer.disconnect(); window.clearTimeout(timeout); };
   }, [active, ready, routeKey]);
   return ready;

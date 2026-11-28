@@ -24,7 +24,7 @@ export function NeedsMeMenu({ id, seed }: { id: string; seed?: InboxPage }) {
   const home = pathname === "/";
   const fullInbox = pathname === "/inbox";
   const shared = home || fullInbox;
-  const backgroundReady = useCountAfterArrival(!seed && !platform && !shared, state.__TSR_key);
+  const backgroundReady = useCountAfterArrival(!seed && !platform && !shared, state["__TSR_key"]);
   const filter = fullInbox ? inboxReadFilter(inboxView(search.tab)) : "turn";
   // Queue pages start their arrival read; keep the shared observer live after that answer.
   const inbox = useInfiniteQuery({ ...(shared ? cursorPages("/api/v1/me/action-inbox", home ? { filter, attention: "all" } : { filter }) : countRead), enabled: query => !seed && !platform && (shared ? !!query.state.data : open || backgroundReady), staleTime: Infinity, placeholderData: keepPreviousData, notifyOnChangeProps: "all" });
