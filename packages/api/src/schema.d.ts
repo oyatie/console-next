@@ -26380,6 +26380,8 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             transitions: components["schemas"]["ObjectLifecycleTransition"][];
+            /** @description Present on a read. Rule-defined next states currently available to the caller after maker/checker, hold and retention checks. */
+            availableTransitions?: string[];
         };
         ObjectLifecycleTransition: {
             fromState: string;
@@ -30620,6 +30622,11 @@ export interface components {
              * @description ISO date; omit or null to clear the retention deadline.
              */
             retentionUntil?: string;
+            /**
+             * Format: date-time
+             * @description Optional revision from the lifecycle read. A changed or absent record returns 409 without changing the hold or retention.
+             */
+            expectedUpdatedAt?: string;
         };
         SetMessengerThreadMuteRequest: {
             muted: boolean;
@@ -52066,6 +52073,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
             422: components["responses"]["ValidationError"];
             /** @description JWT verification is not configured. */
             503: {

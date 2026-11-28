@@ -1050,7 +1050,7 @@
       "body_type": "SetLifecycleHoldRequest",
       "body_struct_file": "backend/app/src/lifecycle_bodies.rs",
       "body_struct": "SetLifecycleHoldRequest",
-      "schema_sha256": "0745dd31aa03e0f278f024dab3ae2fd83c9e96f18f6ef75dbbc5aa373d383788",
+      "schema_sha256": "85273251befcae56295022eba0144222c1fb3e99ab8d0dd88201b62a7b7986b7",
       "status": "resolved"
     },
     {

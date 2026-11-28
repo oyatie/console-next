@@ -38,6 +38,7 @@ const paths = [
   "/audit/access-log",
   "/audit/evidence",
   "/audit/findings",
+  "/audit/lifecycles/$objectType/$objectId",
   "/audit/support-access",
   "/inbox",
   "/leave",
@@ -101,5 +102,5 @@ const paths = [
 ] as const;
 
 export const routeList = paths.map(path => ({
-  path, reads: path in servedRouteReads ? servedRouteReads[path as keyof typeof servedRouteReads].reads : path in routeReads ? routeReads[path as keyof typeof routeReads].reads.map(op => op.slice(4).replace(/\{[^}]+\}/g, "$id")) : [],
+  path, reads: path in servedRouteReads ? servedRouteReads[path as keyof typeof servedRouteReads].reads.map(read => read.replace("{objectType}", "document").replace(/\{[^}]+\}/g, "$id")) : path in routeReads ? routeReads[path as keyof typeof routeReads].reads.map(op => op.slice(4).replace(/\{[^}]+\}/g, "$id")) : [],
 }));

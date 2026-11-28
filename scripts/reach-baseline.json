@@ -450,11 +450,6 @@
    "reason": "E3a owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
-  "GET /api/v1/lifecycles/{objectType}/{objectId}": {
-   "lane": "P5a",
-   "reason": "P5a owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
   "GET /api/v1/me/notification-policies": {
    "lane": "MAT-PARITY",
    "reason": "Notification centre is ideal scope, outside the MVP; units/maturity/plan.md §3–4.",
@@ -688,16 +683,6 @@
   "POST /api/v1/leave/requests/{id}/decide": {
    "lane": "leave",
    "reason": "Leave module promoted to mvp; web callers follow in the leave screen PR.",
-   "when": "mvp"
-  },
-  "POST /api/v1/lifecycles/{objectType}/{objectId}/hold": {
-   "lane": "P5a",
-   "reason": "P5a owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
-   "when": "mvp"
-  },
-  "POST /api/v1/lifecycles/{objectType}/{objectId}/transition": {
-   "lane": "P5a",
-   "reason": "P5a owns delivery of this hidden operation; units/maturity/plan.md §2–3.",
    "when": "mvp"
   },
   "POST /api/v1/me/inbox-docs/{id}/confirm-receipt": {

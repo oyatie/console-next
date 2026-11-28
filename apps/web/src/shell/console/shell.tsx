@@ -21,6 +21,7 @@ import { ConsoleTopBar } from "./console-top-bar";
 import { tabIconForHref } from "./tab-icon";
 import { useResolvedTabTitle } from "./tab-titles";
 import { useConsoleCounts } from "./use-console-counts";
+import { useDesktopChromeHeld } from "./use-desktop-chrome-held";
 import { useWorkspaceTabs } from "./workspace-tabs-state";
 import s from "./shell.module.css";
 
@@ -201,9 +202,8 @@ function ConsoleLayout({
   // My profile alone would span the bottom bar until the menu lands, then jump to its own slot. It stays reachable while
   // the menu is away, in the last of the bar's five places, and keeps that place if the menu's read fails.
   const menuAway = !platform && navigationState !== "ready" && phoneHeader?.phoneNav !== "self-service";
-  // With a session, a desktop bar draws once the reader's own read has settled too: the tenant's name sets the brand's
-  // width, and the scope chip, the nav and the status segments sit after it.
-  const holding = restoring || (Boolean(session.token) && !platform && !pending && profileRead.isPending);
+  const awaitingProfile = Boolean(session.token) && !platform && !pending && profileRead.isPending;
+  const holding = useDesktopChromeHeld(restoring, awaitingProfile);
 
   return (
     <PagePhoneHeader value={phoneHeaderValue}>

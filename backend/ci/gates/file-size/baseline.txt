@@ -215,7 +215,6 @@ crates/platform/authz/src/cedar_pbac/visible.rs	319
 crates/platform/authz/tests/cedar_pbac_readiness_cases.rs	499
 crates/platform/authz/tests/policy.rs	1449
 crates/platform/db/src/durability.rs	579
-crates/platform/db/src/lifecycle.rs	301
 crates/platform/db/tests/attendance_console_migration_contract.rs	1250
 crates/platform/db/tests/auth_command_role.rs	492
 crates/platform/db/tests/auth_security_state.rs	479

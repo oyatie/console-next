@@ -18,6 +18,9 @@
 //! (reads), so RLS tenancy and audit atomicity come from the caller's
 //! transaction.
 
+mod review;
+pub use review::{available_transitions, require_current_revision};
+
 use console_kernel_core::KernelError;
 use sqlx::{Postgres, Row, Transaction};
 use time::{Date, OffsetDateTime};
@@ -311,26 +314,7 @@ pub async fn transition_lifecycle(
         )));
     }
 
-    // Maker–checker (SoD): the approver must not be the drafter.
-    if is_checker_transition(object_type, &current.current_state, to_state) {
-        enforce_maker_checker(tx, &current, actor).await?;
-    }
-
-    // Dispose gate: legal hold and retention fail closed.
-    if to_state == DISPOSED_STATE {
-        if current.legal_hold {
-            return Err(KernelError::conflict(format!(
-                "{object_type} {object_id} is under legal hold; dispose refused"
-            )));
-        }
-        if let Some(retention_until) = current.retention_until
-            && retention_until > today
-        {
-            return Err(KernelError::conflict(format!(
-                "{object_type} {object_id} is retained until {retention_until}; dispose refused"
-            )));
-        }
-    }
+    review::check_restrictions(tx, &current, to_state, actor, today).await?;
 
     let updated = sqlx::query(
         "UPDATE object_lifecycles SET current_state = $2, updated_at = now() WHERE id = $1 \

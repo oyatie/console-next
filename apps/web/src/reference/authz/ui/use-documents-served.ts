@@ -16,6 +16,7 @@ const canReadEvidence = (caps?: Capabilities) =>
   caps?.some(cap => cap.feature === "documents" && cap.org_wide && cap.permission !== "request_only") ?? false;
 
 export function canUseServed(feature: ServedCapability, caps?: Capabilities) {
+  if (feature === "lifecycle_manage") return caps?.some(cap => cap.feature === feature && cap.org_wide && cap.permission !== "request_only") ?? false;
   return feature === "documents" ? canReadEvidence(caps) : caps?.some(cap => cap.feature === feature && cap.permission !== "request_only") ?? false;
 }
 

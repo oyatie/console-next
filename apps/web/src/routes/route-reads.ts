@@ -20,6 +20,7 @@ const register = "POST /api/v1/employees";
 
 /** Runtime-served capabilities come from /me/authz, independently of the effective-domain grants. */
 export const servedRouteReads = {
+  "/audit/lifecycles/$objectType/$objectId": { access: { servedCapability: "lifecycle_manage" }, reads: ["/api/v1/lifecycles/{objectType}/{objectId}"] },
   "/audit/findings": { access: { servedCapability: "served_integrity_findings" }, reads: ["/api/v1/integrity/findings"] },
   "/audit/evidence": { access: { servedCapability: "documents" }, reads: ["/api/v1/evidence/objects"] },
 } as const;

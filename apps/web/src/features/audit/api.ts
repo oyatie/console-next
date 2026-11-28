@@ -49,3 +49,14 @@ export const triageFinding = (id: string, body: Triage, key: string) =>
   unwrap(api.POST("/api/v1/integrity/findings/{id}/triage", {
     params: { path: { id } }, headers: { "Idempotency-Key": key }, body,
   }));
+
+export type Lifecycle = components["schemas"]["ObjectLifecycle"];
+type LifecycleTarget = { objectType: string; objectId: string };
+type HoldUpdate = components["schemas"]["SetLifecycleHoldRequest"];
+type Transition = components["schemas"]["TransitionLifecycleRequest"];
+export const lifecyclePath = "/api/v1/lifecycles/{objectType}/{objectId}";
+export const lifecycleQuery = (path: LifecycleTarget) => get(lifecyclePath, { params: { path } });
+export const changeLifecycleHold = (path: LifecycleTarget, body: HoldUpdate, key: string) =>
+  unwrap(api.POST("/api/v1/lifecycles/{objectType}/{objectId}/hold", { params: { path }, headers: { "Idempotency-Key": key }, body }));
+export const transitionLifecycle = (path: LifecycleTarget, body: Transition, key: string) =>
+  unwrap(api.POST("/api/v1/lifecycles/{objectType}/{objectId}/transition", { params: { path }, headers: { "Idempotency-Key": key }, body }));

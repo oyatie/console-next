@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
+import { Link } from "@tanstack/react-router";
+import { useServedCapability } from "../../../reference/authz/ui/use-documents-served";
+import { lifecycleTarget } from "../present";
 import { t } from "@console/i18n";
 import { fmtDateTime } from "@console/i18n/format";
 import { Banner } from "../../../ui/banner/banner";
@@ -44,6 +47,7 @@ export function AuditDetailPane({
   sourceLabel: string;
 }) {
   const diffRows = buildSnapDiffRows(selected.before_snap, selected.after_snap);
+  const target = lifecycleTarget(selected.target_type, selected.target_id);
   return (
     <div className={s.paneDetail}>
       <RecordIdentityBar
@@ -68,6 +72,7 @@ export function AuditDetailPane({
           ]}
         />
       </RecordPaneSection>
+      {target && <LifecycleLink target={target} />}
       {attestation && (
         <RecordPaneSection title={t("audit.detail.attestation")}>
           <Banner
@@ -85,4 +90,10 @@ export function AuditDetailPane({
       </RecordPaneSection>
     </div>
   );
+}
+
+
+function LifecycleLink({ target }: { target: NonNullable<ReturnType<typeof lifecycleTarget>> }) {
+  const allowed = useServedCapability("lifecycle_manage");
+  return allowed ? <Link to="/audit/lifecycles/$objectType/$objectId" params={target}>{t("audit.lifecycle.open")}</Link> : null;
 }
