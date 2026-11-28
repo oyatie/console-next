@@ -157,6 +157,10 @@ impl HrService {
                         push_subject_in_reach(builder, reach, "r.");
                     }
                     builder.push(")");
+                    if let Some(id) = query.id {
+                        builder.push(" AND r.id = ");
+                        builder.push_bind(id);
+                    }
                     if filed_only {
                         builder.push(" AND r.requested_by = ");
                         builder.push_bind(me);

@@ -71,6 +71,12 @@ async fn a_named_handler_answers_its_access_explanation_without_directory_access
             .await
             .unwrap();
     assert_eq!((mine.total, mine.items[0].id), (1, asked.id));
+    let exact = serde_json::from_value(json!({"id": asked.id, "limit": 1})).unwrap();
+    let linked =
+        w.hr.list_change_requests(handler.clone(), exact)
+            .await
+            .unwrap();
+    assert_eq!((linked.total, linked.items[0].id), (1, asked.id));
     let inbox =
         w.hr.change_request_inbox_page(&handler, as_of, None, 50)
             .await

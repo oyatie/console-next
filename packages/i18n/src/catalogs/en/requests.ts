@@ -43,6 +43,7 @@ export const enRequests = {
   "requests.none.title": "No requests",
   "requests.none.hr": "Nothing matches. Corrections branches or staff ask for collect here",
   "requests.none.mine": "You have sent no requests. Send one from an employee’s record with “Request a change from HR”",
+  "requests.selection.unavailable": "This request is unavailable to this account. Choose another request from the list.",
   "requests.panel": "Request details",
   "requests.panel.close": "Close request details",
   "requests.note": "Note",

@@ -46,6 +46,7 @@ export const koRequests: Record<keyof typeof enRequests, string> = {
   "requests.none.title": "요청이 없습니다",
   "requests.none.hr": "이 조건에 맞는 요청이 없습니다. 지점이나 직원이 정정을 요청하면 여기에 쌓입니다",
   "requests.none.mine": "보낸 요청이 없습니다. 직원 기록에서 「인사팀에 변경 요청」으로 보낼 수 있습니다",
+  "requests.selection.unavailable": "이 계정에서 확인할 수 없는 요청입니다. 목록에서 다른 요청을 선택하십시오.",
   "requests.panel": "요청 상세",
   "requests.panel.close": "요청 상세 닫기",
   "requests.note": "메모",

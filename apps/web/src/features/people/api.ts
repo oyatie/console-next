@@ -234,7 +234,10 @@ export const requestsQuery = (q: { lane: Lane; mine?: boolean; status?: RequestS
   get("/api/v1/change-requests", {
     params: { query: { assignee: q.lane === "all" ? undefined : q.lane, requester: q.mine ? "me" : undefined, status: q.status, limit: REQUEST_PAGE, offset: q.offset } },
   });
-/** The organization's open requests for Home's queue (HR only; the server lists a requester's own otherwise). */
+/** A record link can point beyond the active lane, status and page. The server applies the same row visibility. */
+export const selectedRequestQuery = (id: string | undefined) => get("/api/v1/change-requests", {
+  params: { query: { id, limit: 1 } },
+});
 /** Single-scan OPEN counts per HR lane (`all`, `me`, `role`). */
 export const changeRequestCountsQuery = read(
   "/api/v1/change-requests/counts",
