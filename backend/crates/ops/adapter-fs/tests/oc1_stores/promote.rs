@@ -9,7 +9,8 @@ fn promotion_uses_complete_gates_and_the_current_spool_verdicts() -> TestResult 
     use console_ops_application::snapshot::SourceKind;
     use console_ops_application::sources_status::SourceSlot;
     use console_ops_application::victoriametrics::{
-        InstantSample, QUERY_PREVIEW_DIGEST_INFO, QUERY_PREVIEW_RUNNING, VictoriaMetricsSnapshot,
+        InstantSample, QUERY_FREEZE, QUERY_PREVIEW_DIGEST_INFO, QUERY_PREVIEW_RUNNING,
+        VictoriaMetricsSnapshot,
     };
     use std::num::NonZeroU64;
 
@@ -68,6 +69,13 @@ fn promotion_uses_complete_gates_and_the_current_spool_verdicts() -> TestResult 
     vm.finish_ok(VictoriaMetricsSnapshot {
         series: [
             (QUERY_PREVIEW_DIGEST_INFO.into(), vec![sample.clone()]),
+            (
+                QUERY_FREEZE.into(),
+                vec![InstantSample {
+                    value: 0.0,
+                    ..sample.clone()
+                }],
+            ),
             (QUERY_PREVIEW_RUNNING.into(), vec![sample]),
         ]
         .into(),

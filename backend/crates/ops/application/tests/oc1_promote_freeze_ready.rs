@@ -170,14 +170,6 @@ fn promote_service_watches_without_signoffs_and_blocks_ready_on_freeze() -> Test
     let actions = MemActions(Mutex::new(vec![]));
     let digest = format!("sha256:{}", "a".repeat(64));
 
-    let promote_svc = PromoteService {
-        releases: None,
-        promotions: &DummyPromotions,
-        feedback: &DummyFeedback,
-        actions: &actions,
-    };
-    assert!(promote_svc.request_promote(&digest, "normal", &ctx).is_ok());
-
     let gates_store = AllGatesPass;
     let watching_svc = PromoteService {
         releases: Some(&gates_store),
@@ -220,6 +212,79 @@ fn promote_service_watches_without_signoffs_and_blocks_ready_on_freeze() -> Test
         ]),
         targets: vec![],
     });
+    assert!(
+        ready_svc
+            .build_view(&promo_vm, now)
+            .map_err(|e| format!("{e:?}"))?
+            .state
+            .value()
+            .is_none()
+    );
+    assert!(
+        ready_svc
+            .request_promote(&digest, "normal", &promo_vm, &ctx)
+            .is_err()
+    );
+    let clear = InstantSample {
+        metric: BTreeMap::new(),
+        timestamp_s: now.unix_timestamp() as f64,
+        value: 0.0,
+    };
+    for samples in [
+        vec![],
+        vec![InstantSample {
+            timestamp_s: clear.timestamp_s - 121.0,
+            ..clear.clone()
+        }],
+        vec![InstantSample {
+            timestamp_s: clear.timestamp_s + 2.0,
+            ..clear.clone()
+        }],
+        vec![InstantSample {
+            value: f64::NAN,
+            ..clear.clone()
+        }],
+    ] {
+        promo_vm
+            .current
+            .as_mut()
+            .ok_or("missing snapshot")?
+            .series
+            .insert(QUERY_FREEZE.to_owned(), samples);
+        assert!(
+            ready_svc
+                .request_promote(&digest, "normal", &promo_vm, &ctx)
+                .is_err()
+        );
+    }
+    promo_vm
+        .current
+        .as_mut()
+        .ok_or("missing snapshot")?
+        .series
+        .insert(QUERY_FREEZE.to_owned(), vec![clear]);
+    assert!(
+        watching_svc
+            .request_promote(&digest, "normal", &promo_vm, &ctx)
+            .is_err()
+    );
+    let other_digest = format!("sha256:{}", "b".repeat(64));
+    assert!(
+        ready_svc
+            .request_promote(&other_digest, "normal", &promo_vm, &ctx)
+            .is_err()
+    );
+    assert!(
+        actions
+            .list_actions()
+            .map_err(|e| format!("{e:?}"))?
+            .is_empty()
+    );
+    assert!(
+        ready_svc
+            .request_promote(&digest, "normal", &promo_vm, &ctx)
+            .is_ok()
+    );
     let watching_view = watching_svc
         .build_view(&promo_vm, now)
         .map_err(|e| format!("{e:?}"))?;
@@ -243,7 +308,7 @@ fn promote_service_watches_without_signoffs_and_blocks_ready_on_freeze() -> Test
             (
                 QUERY_PREVIEW_DIGEST_INFO.to_owned(),
                 vec![InstantSample {
-                    metric: [("digest".into(), digest)].into(),
+                    metric: [("digest".into(), digest.clone())].into(),
                     timestamp_s: now.unix_timestamp() as f64,
                     value: 1.0,
                 }],
@@ -274,6 +339,15 @@ fn promote_service_watches_without_signoffs_and_blocks_ready_on_freeze() -> Test
         frozen_view.state.value(),
         Some(&Promotion::Blocked),
         "active QUERY_FREEZE must block promotion"
+    );
+    assert!(
+        ready_svc
+            .request_promote(&digest, "normal", &promo_vm, &ctx)
+            .is_err()
+    );
+    assert_eq!(
+        actions.list_actions().map_err(|e| format!("{e:?}"))?.len(),
+        1
     );
     Ok(())
 }

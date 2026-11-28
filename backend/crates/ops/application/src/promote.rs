@@ -13,7 +13,7 @@ use crate::changes::ReleasesStore;
 use crate::obligations::{Context, Error as SpoolError};
 use crate::sources_status::SourceSlot;
 use crate::victoriametrics::{
-    QUERY_FREEZE, QUERY_PREVIEW_DIGEST_INFO, QUERY_PREVIEW_RUNNING, VictoriaMetricsSnapshot,
+    QUERY_PREVIEW_DIGEST_INFO, QUERY_PREVIEW_RUNNING, VictoriaMetricsSnapshot,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -80,6 +80,8 @@ pub struct PromoteView {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PromoteError {
+    EvidenceUnavailable,
+    NotReady,
     InvalidInput(String),
     Spool(SpoolError),
 }
@@ -117,11 +119,7 @@ impl<'a> PromoteService<'a> {
                 .get(QUERY_PREVIEW_RUNNING)
                 .is_some_and(|v| v.iter().any(|s| s.value > 0.0))
         });
-        let frozen = vm.current.as_ref().is_some_and(|snap| {
-            snap.series
-                .get(QUERY_FREEZE)
-                .is_some_and(|v| v.iter().any(|s| s.value > 0.0))
-        });
+        let freeze = vm.deployment_freeze(now);
 
         let state_val = preview_digest
             .as_deref()
@@ -150,7 +148,7 @@ impl<'a> PromoteService<'a> {
                     .filter(|s| s.digest == digest)
                     .map(|s| (&s.operator, s.verdict.as_str()))
                     .collect();
-                if frozen
+                if freeze.value() == Some(&true)
                     || !gates_ok
                     || has_open_blocker
                     || current_verdicts.values().any(|v| *v != "ready")
@@ -166,7 +164,17 @@ impl<'a> PromoteService<'a> {
         Ok(PromoteView {
             evaluated_at: now,
             candidate_digest: vm.observe(preview_digest, None, now),
-            state: vm.observe(state_val, None, now),
+            state: if freeze.value().is_some() {
+                vm.observe(state_val, None, now)
+            } else {
+                Observed::unknown(
+                    vm.producer.clone(),
+                    freeze
+                        .reason()
+                        .unwrap_or("deployment freeze status unavailable")
+                        .to_owned(),
+                )
+            },
             signoffs,
             feedback,
         })
@@ -226,6 +234,7 @@ impl<'a> PromoteService<'a> {
         &self,
         digest: &str,
         bake: &str,
+        vm: &SourceSlot<VictoriaMetricsSnapshot>,
         context: &Context,
     ) -> Result<CmdHandOff, PromoteError> {
         let d = digest.trim();
@@ -233,6 +242,16 @@ impl<'a> PromoteService<'a> {
             return Err(PromoteError::InvalidInput(
                 "promote request requires valid sha256 digest and bake (normal|long)".to_owned(),
             ));
+        }
+        let view = self.build_view(vm, context.at)?;
+        let readiness = view
+            .state
+            .value()
+            .ok_or(PromoteError::EvidenceUnavailable)?;
+        if *readiness != Promotion::Ready
+            || view.candidate_digest.value().map(String::as_str) != Some(d)
+        {
+            return Err(PromoteError::NotReady);
         }
         let cmd = format!(
             "APPROVER={} BAKE={} scripts/tb release {d}",

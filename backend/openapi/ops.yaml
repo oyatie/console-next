@@ -257,9 +257,9 @@ paths:
       summary: "Draft Promote Cmd"
       x-cedar-action: "change.request.promote"
       security: [{"accessJwt": []}]
-      description: "Records signed promote Cmd hand-off in actions spool."
+      description: "Records a signed hand-off for the ready preview digest after checking fresh deployment freeze evidence."
       requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/PromoteRequest"}}}}
-      responses: {"201": {"description": "Cmd hand-off recorded.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CmdResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}}
+      responses: {"201": {"description": "Cmd hand-off recorded.", "headers": {"Cache-Control": {"schema": {"type": "string", "const": "no-store"}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CmdResponse"}}}}, "401": {"$ref": "#/components/responses/Unauthorized"}, "403": {"$ref": "#/components/responses/Forbidden"}, "409": {"description": "The requested candidate is not ready for promotion.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}, "503": {"description": "Promotion evidence is unavailable.", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}}
   /api/ops/v1/promote/signoff:
     post:
       # SPDX-License-Identifier: LicenseRef-Proprietary

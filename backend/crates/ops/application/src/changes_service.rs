@@ -18,8 +18,8 @@ use crate::obligations::Context;
 use crate::sources_status::SourceSlot;
 use crate::victoriametrics::{
     QUERY_CONFIG_BUNDLE_INFO, QUERY_CONFIG_LAST_TS, QUERY_CONTAINER_INFO, QUERY_DEPLOY_LAST_TS,
-    QUERY_FREEZE, QUERY_PREVIEW_DIGEST_INFO, QUERY_ROLLOUT_CANARY_PERCENT,
-    QUERY_ROLLOUT_WEIGHT_PERCENT, VictoriaMetricsSnapshot,
+    QUERY_PREVIEW_DIGEST_INFO, QUERY_ROLLOUT_CANARY_PERCENT, QUERY_ROLLOUT_WEIGHT_PERCENT,
+    VictoriaMetricsSnapshot,
 };
 
 pub struct ChangesService<'a> {
@@ -149,12 +149,6 @@ impl<'a> ChangesService<'a> {
         timeline.sort_by_key(|a| std::cmp::Reverse(a.at));
 
         let dora5 = compute_dora5(&samples, "host-state", Some(now), now, interval_s);
-        let freeze_val = vm
-            .current
-            .as_ref()
-            .and_then(|s| s.series.get(QUERY_FREEZE))
-            .and_then(|v| v.first())
-            .map(|s| s.value > 0.0);
         let canary_val = vm
             .current
             .as_ref()
@@ -178,7 +172,7 @@ impl<'a> ChangesService<'a> {
             releases,
             timeline,
             dora5,
-            freeze: vm.observe(freeze_val, None, now),
+            freeze: vm.deployment_freeze(now),
             canary_percent: vm.observe(canary_val, Some("%".into()), now),
             bundle_sha: vm.observe(bundle_sha, None, now),
         }
